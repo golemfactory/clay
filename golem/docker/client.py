@@ -7,5 +7,7 @@ def local_client():
     local docker daemon.
     :returns docker.Client:
     """
-    client = Client(**kwargs_from_env(assert_hostname=False))
+    kwargs = kwargs_from_env(assert_hostname=False)
+    kwargs["timeout"] = 600
+    client = Client(**kwargs)
     return client

@@ -1,4 +1,5 @@
 import logging
+from psutil import virtual_memory
 from os import path
 
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
@@ -14,7 +15,7 @@ START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
 MAX_RESOURCE_SIZE = 250 * 1024
-MAX_MEMORY_SIZE = 250 * 1024
+MAX_MEMORY_SIZE = int(virtual_memory().total * 0.75) / 1024
 DISTRIBUTED_RES_NUM = 2
 
 logger = logging.getLogger(__name__)

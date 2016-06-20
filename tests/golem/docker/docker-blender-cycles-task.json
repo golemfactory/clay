@@ -3,6 +3,7 @@
   "renderer_options":{
     "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
+    "compositing":false,
     "environment":{
       "py/object":"gnr.renderingenvironment.BlenderEnvironment",
       "docker_images":[

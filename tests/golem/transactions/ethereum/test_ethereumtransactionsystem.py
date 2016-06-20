@@ -21,3 +21,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_payment_address() == '0x' + addr.encode('hex')
         e.pay_for_task("xyz", [])
+
+    def test_get_balance(self):
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        assert e.get_balance() == (0, 0)

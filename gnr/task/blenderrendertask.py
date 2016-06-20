@@ -112,6 +112,7 @@ class BlenderRendererOptions(GNROptions):
         self.environment = BlenderEnvironment()
         self.use_frames = False
         self.frames = range(1, 11)
+        self.compositing = False
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
@@ -141,6 +142,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.root_path,
                                          self.task_definition.renderer_options.use_frames,
                                          self.task_definition.renderer_options.frames,
+                                         self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
         return self._set_verification_options(blender_task)
@@ -182,6 +184,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  root_path,
                  use_frames,
                  frames,
+                 compositing,
                  max_price,
                  return_address="",
                  return_port=0,
@@ -201,6 +204,11 @@ class BlenderRenderTask(FrameRenderingTask):
         except IOError as err:
             logger.error("Wrong script file: {}".format(err))
             self.script_src = ""
+
+        self.compositing = compositing
+        self.frames_given = {}
+        for frame in frames:
+            self.frames_given[frame] = {}
 
         if not self.use_frames:
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
@@ -253,7 +261,8 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
-        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y)
+        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y,
+                                                  self.compositing)
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
@@ -303,7 +312,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             frames = [1]
 
-        script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0)
+        script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0, self.compositing)
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
@@ -388,7 +397,8 @@ class BlenderRenderTask(FrameRenderingTask):
         start_y = start_box[1] + (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
         max_y = float(self.res_y - start_y) / self.res_y
         min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
-        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y)
+        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y,
+                                                  self.compositing)
         extra_data['script_src'] = script_src
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
@@ -459,6 +469,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
+
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):

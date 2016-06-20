@@ -2,8 +2,6 @@ from multiprocessing import freeze_support
 
 import click
 
-from golem.core.simpleenv import get_local_datadir
-
 from gnrstartapp import start_app, config_logging
 from renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
@@ -20,7 +18,7 @@ def main(datadir):
     app = GNRGui(logic, AppMainWindow)
     gui = RenderingMainWindowCustomizer
 
-    start_app(logic, app, gui,  datadir=datadir, rendering=True)
+    start_app(logic, app, gui, datadir=datadir, rendering=True)
 
 if __name__ == "__main__":
     freeze_support()
