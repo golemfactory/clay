@@ -14,10 +14,3 @@ class TestingTaskProgressDialogCustomizer(Customizer):
         :param enable: True if you want to enable button, false otherwise
         """
         self.gui.ui.okButton.setEnabled(enable)
-
-    def is_enabled(self):
-        """
-        Verify if 'ok' button is enabled
-        :return: True if enabled, False otherwise
-        """
-        self.gui.ui.okButton.isEnabled()
