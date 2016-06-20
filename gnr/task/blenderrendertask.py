@@ -92,6 +92,9 @@ class PreviewUpdater(object):
         self.chunks = {}
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
+        if os.path.exists(self.preview_file_path):
+            img = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
+            img.save(self.preview_file_path, "BMP")
 
 
 def build_blender_renderer_info(dialog, customizer):
@@ -294,9 +297,10 @@ class BlenderRenderTask(FrameRenderingTask):
         if self.use_frames:
             for preview in self.preview_updaters:
                 preview.restart()
+            self._update_frame_task_preview()
         else:
             self.preview_updater.restart()
-
+            self._update_task_preview()
 
     ###################
     # GNRTask methods #
