@@ -2,6 +2,7 @@ import shutil
 import os
 import zlib
 import cPickle as pickle
+from datetime import datetime, timedelta
 
 from mock import Mock
 
@@ -53,6 +54,13 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.get_stdout(subtask_id), "stdout in file")
         self.assertEqual(task.get_stderr(subtask_id), "stderr in file")
+
+        task.restart()
+        assert task.num_tasks_received == 0
+        assert task.last_task == 0
+        assert len(task.subtasks_given) == 0
+        assert task.num_failed_subtasks == 0
+        assert task.header.deadline >= datetime.utcnow() + timedelta(seconds=(task.full_task_timeout - 2))
 
     def test_interpret_task_results(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",

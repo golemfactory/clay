@@ -293,7 +293,6 @@ class TaskManager(object):
                 t.task_status = TaskStatus.failure
                 self.tasks_states[th.task_id].status = TaskStatus.failure
                 self.__notice_task_updated(th.task_id)
-                continue
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
                 if s.subtask_status == SubtaskStatus.starting:

@@ -1,12 +1,27 @@
+import time
 from mock import Mock
 
+from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
 from golem.task.taskmanager import TaskManager, logger
+from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestTaskManager(LogTestCase, TestDirFixture):
+    @staticmethod
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", timeout=120, subtask_timeout=120):
+        task_mock = Mock()
+        task_mock.header.task_id = task_id
+        task_mock.header.resource_size = 2 * 1024
+        task_mock.header.estimated_memory = 3 * 1024
+        task_mock.header.max_price = 10000
+        task_mock.header.deadline = timeout_to_deadline(timeout)
+        task_mock.query_extra_data.return_value.task_id = task_id
+        task_mock.query_extra_data.return_value.subtask_id = subtask_id
+        task_mock.query_extra_data.return_value.deadline = timeout_to_deadline(subtask_timeout)
+        return task_mock
 
     def test_get_next_subtask(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
@@ -15,12 +30,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         self.assertEqual(subtask, None)
         self.assertEqual(wrong_task, True)
-        task_mock = Mock()
-        task_mock.header.task_id = "xyz"
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
-        task_mock.header.max_price = 10000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
+        task_mock = self._get_task_mock()
         # Task's initial state is set to 'waiting' (found in activeStatus)
         tm.add_new_task(task_mock)
         subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
@@ -54,13 +64,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         with self.assertLogs(logger, level=1) as l:
             tm.set_computation_time("xxyyzz", 12)
-        task_mock = Mock()
-        task_mock.header.task_id = "xyz"
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
-        task_mock.header.max_price = 1000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
-        task_mock.query_extra_data.return_value.subtask_id = "xxyyzz"
+        task_mock = self._get_task_mock()
         tm.add_new_task(task_mock)
         with self.assertLogs(logger, level=1) as l:
             tm.set_value("xyz", "xxyyzz", 13)
@@ -88,23 +92,41 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_id = "xyz"
 
         resources = ['first', 'second']
-        hash_resources = [['first', 'deadbeef01'], ['second', 'deadbeef02']]
 
         def get_resources(*args):
             return resources
 
-        task_mock = Mock()
-        task_mock.header.task_id = task_id
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
-        task_mock.header.max_price = 10000
+        task_mock = self._get_task_mock()
         task_mock.get_resources = get_resources
-        task_mock.query_extra_data.return_value.task_id = task_id
-
         tm.add_new_task(task_mock)
 
         assert tm.get_resources(task_id, task_mock.header) is resources
         assert not tm.get_resources(task_id + "2", task_mock.header)
 
-
+    def test_remove_old_tasks(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.remove_old_tasks()
+        task_mock = self._get_task_mock()
+        tm.add_new_task(task_mock)
+        tm.remove_old_tasks()
+        assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+        task_mock = self._get_task_mock("abc", "aabbcc", 1)
+        tm.add_new_task(task_mock)
+        time.sleep(1)
+        tm.remove_old_tasks()
+        assert tm.tasks_states["abc"].status == TaskStatus.failure
+        task_mock = self._get_task_mock("qwe", "qwerty", 10, 1)
+        tm.add_new_task(task_mock)
+        tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(1)
+        tm.remove_old_tasks()
+        assert tm.tasks_states["qwe"].status == TaskStatus.waiting
+        assert tm.tasks_states["qwe"].subtask_states["qwerty"].subtask_status == SubtaskStatus.failure
+        task_mock = self._get_task_mock("mno", "mmnnoo", 1, 1)
+        tm.add_new_task(task_mock)
+        tm.get_next_subtask("ABC", "ABC", "mno", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(1)
+        tm.remove_old_tasks()
+        assert tm.tasks_states["mno"].status == TaskStatus.failure
+        assert tm.tasks_states["mno"].subtask_states["mmnnoo"].subtask_status == SubtaskStatus.failure
 

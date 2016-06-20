@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta
 from unittest import TestCase
 
@@ -99,6 +100,31 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertEqual(task_header["max_price"], th.max_price)
         th = tk.get_task()
         self.assertEqual(task_header["id"], th.task_id)
+
+    def test_old_tasks(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        e = Environment()
+        e.accept_tasks = True
+        tk.environments_manager.add_environment(e)
+        task_header = get_task_header()
+        task_header["deadline"] = timeout_to_deadline(10)
+        assert tk.add_task_header(task_header)
+        task_header["deadline"] = timeout_to_deadline(1)
+        task_header["id"] = "abc"
+        assert tk.add_task_header(task_header)
+        assert tk.task_headers.get("abc") is not None
+        assert tk.task_headers.get("xyz") is not None
+        assert tk.removed_tasks.get("abc") is None
+        assert tk.removed_tasks.get("xyz") is None
+        assert len(tk.supported_tasks) == 2
+        time.sleep(1.1)
+        tk.remove_old_tasks()
+        assert tk.task_headers.get("abc") is None
+        assert tk.task_headers.get("xyz") is not None
+        assert tk.removed_tasks.get("abc") is not None
+        assert tk.removed_tasks.get("xyz") is None
+        assert len(tk.supported_tasks) == 1
+        assert tk.supported_tasks[0] == "xyz"
 
 
 def get_task_header():
