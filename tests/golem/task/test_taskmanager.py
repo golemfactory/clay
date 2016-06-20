@@ -114,7 +114,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.add_new_task(task_mock)
         time.sleep(1)
         tm.remove_old_tasks()
-        assert tm.tasks_states["abc"].status == TaskStatus.failure
+        assert tm.tasks_states["abc"].status == TaskStatus.timeout
         task_mock = self._get_task_mock("qwe", "qwerty", 10, 1)
         tm.add_new_task(task_mock)
         tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
@@ -127,6 +127,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.get_next_subtask("ABC", "ABC", "mno", 1000, 10, 5, 10, 2, "10.10.10.10")
         time.sleep(1)
         tm.remove_old_tasks()
-        assert tm.tasks_states["mno"].status == TaskStatus.failure
+        assert tm.tasks_states["mno"].status == TaskStatus.timeout
         assert tm.tasks_states["mno"].subtask_states["mmnnoo"].subtask_status == SubtaskStatus.failure
 

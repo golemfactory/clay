@@ -290,8 +290,8 @@ class TaskManager(object):
             cur_time = datetime.utcnow()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
-                t.task_status = TaskStatus.failure
-                self.tasks_states[th.task_id].status = TaskStatus.failure
+                t.task_status = TaskStatus.timeout
+                self.tasks_states[th.task_id].status = TaskStatus.timeout
                 self.__notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
