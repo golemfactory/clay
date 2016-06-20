@@ -94,7 +94,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertEqual(task_header["key_id"], th.task_owner_key_id)
         self.assertEqual(task_header["environment"], th.environment)
         self.assertEqual(task_header["task_owner"], th.task_owner)
-        self.assertEqual(task_header["ttl"], th.ttl)
+        self.assertEqual(task_header["deadline"], th.deadline)
         self.assertEqual(task_header["subtask_timeout"], th.subtask_timeout)
         self.assertEqual(task_header["max_price"], th.max_price)
         th = tk.get_task()
