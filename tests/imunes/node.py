@@ -1,6 +1,7 @@
 import click
 
-from gnr.node import start, GNRNode, node_cli, parse_node_addr
+from golemapp import start
+from gnr.node import GNRNode
 
 
 def disable_blender(ctx, param, value):
@@ -10,7 +11,7 @@ def disable_blender(ctx, param, value):
 
 
 def set_network_info(ctx, param, value):
-    addr = parse_node_addr(ctx, param, value)
+    addr = GNRNode.parse_node_addr(ctx, param, value)
     if addr:
         import golem.network.p2p.node
         # Patch the Node.collect_network_info() method to set the provided
@@ -25,22 +26,26 @@ def set_network_info(ctx, param, value):
 
 # This command group is created only to create extra options for running in
 # imunes simulation.
-@click.group()
+@click.command()
 @click.option('--blender/--no-blender', default=True, callback=disable_blender,
               help="Enable/disable Blender environment (enabled by default)")
 @click.option('--public-address', '-A', multiple=False, type=click.STRING,
               callback=set_network_info,
               help="Public network address to use for this node")
-def dummy_cli():
-    pass
+@click.pass_context
+def immunes_start(ctx):
+    # FIXME: Pass other options/arguments to golemapp.start
+    # This does not work.
+    ctx.forward(start)
 
 
 # Copy the extra options from `dummy_cli` to the `node_cli`
 # group defined in `gnr.node`.
 # This is probably a lame way of adding options to an existing command...
-start_command = node_cli.commands['start']
-for param in dummy_cli.params:
-    start_command.params.append(param)
+# FIXME: See above
+# start_command = node_cli.commands['start']
+# for param in dummy_cli.params:
+#     start_command.params.append(param)
 
 
 if __name__ == "__main__":
