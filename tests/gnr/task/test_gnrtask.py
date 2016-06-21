@@ -5,17 +5,22 @@ import cPickle as pickle
 
 from mock import Mock
 
-from gnr.task.gnrtask import GNRTask, logger
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
+from gnr.task.gnrtask import GNRTask, logger
+
 
 class TestGNRTask(LogTestCase, TestDirFixture):
     def _get_gnr_task(self):
-        return GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
+        task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
                         "environment", 3000, 30, 1024, 1024, 100)
+        dm = DirManager(self.path, "ABC")
+        task.initialize(dm)
+        return task
 
     def test_gnr_task(self):
         task = self._get_gnr_task()
@@ -61,7 +66,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3]+".err.log")
         files[3] += ".err.log"
         subtask_id = "xxyyzz"
-        task.interpret_task_results(subtask_id, files, result_types["files"], self.path)
+        task.interpret_task_results(subtask_id, files, result_types["files"])
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
@@ -76,14 +81,16 @@ class TestGNRTask(LogTestCase, TestDirFixture):
                self.__compress_and_pickle_file(files[3], "errlog"),
                self.__compress_and_pickle_file(files[4], "ghi")]
         subtask_id = "aabbcc"
-        task.interpret_task_results(subtask_id, res, result_types["data"], self.path)
-        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
-        self.assertEqual(task.stderr[subtask_id], files[3])
-        self.assertEqual(task.stdout[subtask_id], files[2])
+        task.interpret_task_results(subtask_id, res, result_types["data"])
+        self.assertEqual(task.results[subtask_id], [os.path.join(task.tmp_dir, os.path.basename(files[0])),
+                                                    os.path.join(task.tmp_dir, os.path.basename(files[1])),
+                                                    os.path.join(task.tmp_dir, os.path.basename(files[4]))])
+        self.assertEqual(task.stderr[subtask_id], os.path.join(task.tmp_dir, os.path.basename(files[3])))
+        self.assertEqual(task.stdout[subtask_id], os.path.join(task.tmp_dir, os.path.basename(files[2])))
         for f in files:
-            self.assertTrue(os.path.isfile(f))
+            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, os.path.basename(f))))
         subtask_id = "112233"
-        task.interpret_task_results(subtask_id, res, 58, self.path)
+        task.interpret_task_results(subtask_id, res, 58)
         self.assertEqual(task.results[subtask_id], [])
         self.assertEqual(task.stderr[subtask_id], "[GOLEM] Task result 58 not supported")
         self.assertEqual(task.stdout[subtask_id], "")
@@ -101,15 +108,13 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         task.subtasks_given["abc"] = {'status': SubtaskStatus.restarted, 'verified': False}
         assert not task.should_accept("abc")
         assert task.should_verify("abc")
-        dir_manager = Mock()
-        dir_manager.get_task_temporary_dir.return_value = self.path
-        assert task.verify_results("abc", [], dir_manager, 0) == []
+        assert task.verify_results("abc", [],  0) == []
         assert task.subtasks_given["abc"]["verified"] == False
         files_ = self.additional_dir_content([3])
-        assert task.verify_results("abc", files_, dir_manager, 1) == files_
+        assert task.verify_results("abc", files_, 1) == files_
         assert task.subtasks_given["abc"]["verified"] == True
         task.subtasks_given["abc"] = {'status': SubtaskStatus.restarted, 'verified': False}
-        task.computation_finished("abc", files_, dir_manager, 1)
+        task.computation_finished("abc", files_,  1)
         assert task.subtasks_given["abc"]["verified"] == True
 
 

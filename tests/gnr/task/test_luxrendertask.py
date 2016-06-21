@@ -1,6 +1,7 @@
 import unittest
 import os
 
+from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
@@ -24,6 +25,8 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         lb = LuxRenderTaskBuilder("ABC", td, self.path)
         luxtask = lb.build()
 
+        dir_manager = DirManager("ABC", self.path, tmp="luxtmp")
+        luxtask.initialize(dir_manager)
         self.__after_test_errors(luxtask)
 
         self.__queries(luxtask)
@@ -33,7 +36,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
             luxtask.after_test({}, self.path)
         open(os.path.join(self.path, "sth.flm"), 'w').close()
         if os.path.isdir(luxtask.tmp_dir):
-            os.remove(luxtask.tmp_dir)
+            os.rmdir(luxtask.tmp_dir)
         luxtask.after_test({}, self.path)
         prev_tmp_dir = luxtask.tmp_dir
         luxtask.tmp_dir = "/dev/null/:errors?"

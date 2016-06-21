@@ -7,7 +7,6 @@ from copy import deepcopy, copy
 
 from PIL import Image, ImageChops
 
-from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder, react_to_key_error
 from gnr.task.imgrepr import verify_img, advance_verify_img
@@ -102,8 +101,6 @@ class RenderingTask(GNRTask):
         if is_windows():
             self.__get_path = self.__get_path_windows
 
-        self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-
     @react_to_key_error
     def computation_failed(self, subtask_id):
         GNRTask.computation_failed(self, subtask_id)
@@ -169,8 +166,7 @@ class RenderingTask(GNRTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
+        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
 
@@ -265,10 +261,8 @@ class RenderingTask(GNRTask):
         return verify_img(file_, res_x, res_y)
 
     def _open_preview(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.res_x, self.res_y))
             img.save(self.preview_file_path, "BMP")
 

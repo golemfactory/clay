@@ -222,14 +222,14 @@ class TaskManager(object):
         subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
         if subtask_status != SubtaskStatus.starting:
             if subtask_status == SubtaskStatus.restarted:
-                self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type)
+                self.tasks[task_id].computation_finished(subtask_id, result, result_type)
                 return self.tasks[task_id].verify_subtask(subtask_id)
             else:
                 logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
                 self.__notice_task_updated(task_id)
                 return False
 
-        self.tasks[task_id].computation_finished(subtask_id, result, self.dir_manager, result_type)
+        self.tasks[task_id].computation_finished(subtask_id, result, result_type)
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.subtask_progress = 1.0
         ss.subtask_rem_time = 0.0

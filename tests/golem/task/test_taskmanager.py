@@ -130,7 +130,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+            def computation_finished(self, subtask_id, task_result, result_type=0):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
 

@@ -6,10 +6,13 @@ from random import randrange, shuffle
 import OpenEXR
 from PIL import Image
 
+from golem.resource.dirmanager import DirManager
+from golem.testutils import TempDirFixture
+
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from golem.testutils import TempDirFixture
+
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -43,6 +46,9 @@ class TestBlenderFrameTask(TempDirFixture):
                                compositing=False,
                                max_price=10)
 
+        dm = DirManager(self.path, "example-node-name")
+        bt.initialize(dm)
+
         assert len(bt.preview_file_path) == len(bt.frames)
         assert len(bt.preview_task_file_path) == len(bt.frames)
 
@@ -72,6 +78,9 @@ class TestBlenderTaskDivision(TempDirFixture):
                                     compositing=False,
                                     frames=[1],
                                     max_price=10)
+
+        dm = DirManager(self.path, "example-node-name")
+        self.bt.initialize(dm)
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
@@ -108,7 +117,7 @@ class TestBlenderTaskDivision(TempDirFixture):
                 exr.close()
                 self.bt.collected_file_names[i] = file1
             self.bt.res_y = res_y
-            self.bt._put_image_together(self.tempdir)
+            self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
             img = Image.open(self.bt.output_file)
             img_x, img_y = img.size
@@ -133,7 +142,7 @@ class TestBlenderTaskDivision(TempDirFixture):
                     img.save(file1, output_format.upper())
                     self.bt.collected_file_names[i] = file1
                 self.bt.res_y = res_y
-                self.bt._put_image_together(self.tempdir)
+                self.bt._put_image_together()
                 self.assertTrue(path.isfile(self.bt.output_file))
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size

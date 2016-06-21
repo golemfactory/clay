@@ -176,7 +176,7 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             dir_manager=None, result_type=0):
+                             result_type=0):
 
         self.subtask_results[subtask_id] = task_result
         if not self.verify_subtask(subtask_id):

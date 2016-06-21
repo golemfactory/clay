@@ -2,7 +2,6 @@ import logging
 import os
 import random
 import shutil
-import subprocess
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
@@ -10,11 +9,10 @@ from PIL import Image, ImageChops
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
-from golem.environments.environment import Environment
 
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions, react_to_key_error
 from gnr.task.localcomputer import LocalComputer
@@ -136,7 +134,6 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
-        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -153,6 +150,10 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
+
+    def initialize(self, dir_manager):
+        super(LuxTask, self).initialize(dir_manager)
+        self.undeletable.append(self.__get_test_flm())
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         if not self._accept_client(node_id):
@@ -300,10 +301,10 @@ class LuxTask(RenderingTask):
         files = [os.path.basename(new_flm), os.path.basename(self.__get_test_flm())]
         return self.__get_merge_ctd(files)
 
-    def verify_results(self, subtask_id, task_result, dir_manager, result_type):
+    def verify_results(self, subtask_id, task_result, result_type):
         num_start = self.subtasks_given[subtask_id]['start_task']
         test_result_flm = self.__get_test_flm()
-        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
+        self.interpret_task_results(subtask_id, task_result, result_type)
         tr_files = [os.path.normpath(file_) for file_ in self.results[subtask_id]]
         if len(tr_files) == 0:
             return tr_files

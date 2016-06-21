@@ -14,6 +14,7 @@ from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
+from golem.resource.dirmanager import DirManager
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -70,6 +71,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         node_name = "0123456789abcdef"
         task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
         render_task = task_builder.build()
+        dir_manager = DirManager(node_name, self.path)
+        render_task.initialize(dir_manager)
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 

@@ -4,10 +4,8 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.core.compress import decompress
-from gnr.renderingdirmanager import get_tmp_path
 import os
 import logging
-import time
 import pickle
 import copy
 
@@ -102,12 +100,13 @@ class GNRTask(Task):
         self.results = {}  # for each subtask keep information about files containing results
 
         self.res_files = {}
+        self.tmp_dir = None
 
     def is_docker_task(self):
         return self.header.docker_images is not None
 
     def initialize(self, dir_manager):
-        pass
+        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
@@ -154,13 +153,13 @@ class GNRTask(Task):
         pass
 
     @react_to_key_error
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         if not self.should_accept(subtask_id):
             if self.should_verify(subtask_id):
-                self.verify_results(subtask_id, task_result, dir_manager, result_type)
+                self.verify_results(subtask_id, task_result, result_type)
             return
 
-        result_files = self.verify_results(subtask_id, task_result, dir_manager, result_type)
+        result_files = self.verify_results(subtask_id, task_result, result_type)
         if self.subtasks_given[subtask_id]['verified']:
             self.accept_results(subtask_id, result_files)
         else:
@@ -172,14 +171,10 @@ class GNRTask(Task):
     def get_resources(self, task_id, resource_header, resource_type=0):
 
         dir_name = self._get_resources_root_dir()
-        tmp_dir = self.__get_tmp_dir()
-
-        if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
 
         if os.path.exists(dir_name):
             if resource_type == resource_types["zip"]:
-                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
+                return prepare_delta_zip(dir_name, resource_header, self.tmp_dir, self.task_resources)
 
             elif resource_type == resource_types["parts"]:
                 return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
@@ -214,36 +209,34 @@ class GNRTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type, tmp_dir):
+    def interpret_task_results(self, subtask_id, task_results, result_type):
         """ Change received results into a list of image files, filter out ".log" files that should
         represents stdout and stderr from computing machine.
         :param subtask_id: id of a subtask for which results are received
         :param task_results: it may be a list of files if result_type is equal to result_types["files"] or
         it may be a pickled zip file containing all files if result_type is equal to result_types["data"]
         :param result_type: a number from result_types, it may represents data format or files format
-        :param tmp_dir: directory where received files should be or where they should be saved
         :return: list of files that don't have .log extension
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        tr_files = self.load_task_results(task_results, result_type, tmp_dir, subtask_id)
+        tr_files = self.load_task_results(task_results, result_type, subtask_id)
         self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
 
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
 
-    def load_task_results(self, task_result, result_type, tmp_dir, subtask_id):
+    def load_task_results(self, task_result, result_type, subtask_id):
         """ Change results to a list of files. If result_type is equal to result_types["files"} this
         function only return task_results without making any changes. If result_type is equal to
         result_types["data"] tham task_result is unpickled and unzipped and files are saved in tmp_dir.
         :param task_result: list of files of pickles ziped file with files
         :param result_type: result_types element
-        :param tmp_dir: directory where files should be written if result_type is equal to result_types["data"]
         :param str subtask_id:
         :return:
         """
         if result_type == result_types['data']:
-            return [self._unpack_task_result(trp, tmp_dir) for trp in task_result]
+            return [self._unpack_task_result(trp) for trp in task_result]
         elif result_type == result_types['files']:
             return task_result
         else:
@@ -286,9 +279,8 @@ class GNRTask(Task):
     def should_verify(self, subtask_id):
         return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.restarted
 
-    def verify_results(self, subtask_id, task_results, dir_manager, result_type):
-        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
-        self.interpret_task_results(subtask_id, task_results, result_type, self.tmp_dir)
+    def verify_results(self, subtask_id, task_results, result_type):
+        self.interpret_task_results(subtask_id, task_results, result_type)
         tr_files = self.results[subtask_id]
         if len(tr_files) == 0:
             return tr_files
@@ -322,19 +314,12 @@ class GNRTask(Task):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
         self.num_failed_subtasks += 1
 
-    def _unpack_task_result(self, trp, tmp_dir):
+    def _unpack_task_result(self, trp):
         tr = pickle.loads(trp)
-        with open(os.path.join(tmp_dir, tr[0]), "wb") as fh:
+        with open(os.path.join(self.tmp_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
-        return os.path.join(tmp_dir, tr[0])
+        return os.path.join(self.tmp_dir, tr[0])
 
     def _get_resources_root_dir(self):
         prefix = os.path.commonprefix(self.task_resources)
         return os.path.dirname(prefix)
-
-    def __get_tmp_dir(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
-                               self.root_path)
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-        return tmp_dir

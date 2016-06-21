@@ -113,11 +113,10 @@ class Task(object):
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
-        :param DirManager dir_manager: directory manager that keeps information where results are kept
         :param result_type: result_types representation
         """
         return  # Implement in derived class
