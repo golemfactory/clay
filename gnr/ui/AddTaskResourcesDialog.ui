@@ -30,7 +30,11 @@
       </widget>
      </item>
      <item>
-      <widget class="QTreeView" name="folderTreeView"/>
+      <widget class="QTreeView" name="folderTreeView">
+       <attribute name="headerStretchLastSection">
+        <bool>false</bool>
+       </attribute>
+      </widget>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
