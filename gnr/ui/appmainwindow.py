@@ -20,3 +20,18 @@ class AppMainWindow(object):
     def show(self):
         self.window.show()
 
+    def setEnabled(self, tab_name, enable):
+        if tab_name.lower() == 'new_task':
+            self.ui.testTaskButton.setEnabled(enable)
+            self.ui.finishButton.setEnabled(enable)
+            self.ui.showAdvanceNewTaskButton.setEnabled(enable)
+            self.ui.addResourceButton.setEnabled(enable)
+            self.ui.saveButton.setEnabled(enable)
+            self.ui.loadButton.setEnabled(enable)
+            self.ui.taskTypeComboBox.setEnabled(enable)
+        elif tab_name.lower() == 'recount':
+            self.ui.recountBlenderButton.setEnabled(enable)
+            self.ui.recountButton.setEnabled(enable)
+            self.ui.recountLuxButton.setEnabled(enable)
+            self.ui.settingsOkButton.setEnabled(enable)
+            self.ui.settingsCancelButton.setEnabled(enable)
