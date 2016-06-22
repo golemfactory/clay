@@ -78,6 +78,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         for l in self.client.listeners:
             l.task_updated(task_id)
 
+
 class Client:
     def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
@@ -189,9 +190,6 @@ class Client:
         files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
         self.resource_server.add_task(files, task_id)
 
-    def get_resource_peers(self):
-        self.p2pservice.send_get_resource_peers()
-
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
@@ -221,14 +219,14 @@ class Client:
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
-    def get_node_name(self):
-        return self.config_desc.node_name
-
     def increase_trust(self, node_id, stat, mod=1.0):
         self.ranking.increase_trust(node_id, stat, mod)
 
     def decrease_trust(self, node_id, stat, mod=1.0):
         self.ranking.decrease_trust(node_id, stat, mod)
+
+    def get_node_name(self):
+        return self.config_desc.node_name
 
     def get_neighbours_degree(self):
         return self.p2pservice.get_peers_degree()
@@ -238,6 +236,52 @@ class Client:
 
     def get_suggested_conn_reverse(self, key_id):
         return self.p2pservice.get_suggested_conn_reverse(key_id)
+
+    def get_resource_peers(self):
+        self.p2pservice.send_get_resource_peers()
+
+    def get_peers(self):
+        return self.p2pservice.peers.values()
+
+    # TODO: simplify
+    def get_keys_auth(self):
+        return self.keys_auth
+
+    def get_client_id(self):
+        return self.keys_auth.get_key_id()
+
+    def get_config(self):
+        return self.config_desc
+
+    def get_datadir(self):
+        return self.datadir
+
+    def get_p2p_port(self):
+        return self.p2pservice.cur_port
+
+    def get_task_server_port(self):
+        return self.task_server.cur_port
+
+    def get_payment_address(self):
+        return self.transaction_system.get_payment_address()
+
+    def get_balance(self):
+        if self.use_transaction_system():
+            return self.transaction_system.get_balance()
+        return None, None
+
+    def get_payments_list(self):
+        if self.use_transaction_system():
+            return self.transaction_system.get_payments_list()
+        return ()
+
+    def get_incomes_list(self):
+        if self.use_transaction_system():
+            return self.transaction_system.get_incomes_list()
+        return ()
+
+    def use_transaction_system(self):
+        return bool(self.transaction_system)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
@@ -310,6 +354,12 @@ class Client:
     def remove_received_files(self):
         dir_manager = DirManager(self.datadir, self.config_desc.node_name)
         dir_manager.clear_dir(self.get_received_files_dir())
+
+    def remove_task(self, task_id):
+        self.p2pservice.remove_task(task_id)
+
+    def remove_task_header(self, task_id):
+        self.task_server.remove_task_header(task_id)
 
     def get_environments(self):
         return self.environments_manager.get_environments()
@@ -440,9 +490,6 @@ class Client:
         if self.transaction_system:
             msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
-
-    def get_peers(self):
-        return self.p2pservice.peers.values()
 
     def __lock_datadir(self):
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')

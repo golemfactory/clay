@@ -1,5 +1,13 @@
 import logging.config
+from multiprocessing import Process
 from os import path
+
+import time
+
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.ui.appmainwindow import AppMainWindow
+
+from gnr.application import GNRGui
 
 from golem.client import start_client
 from golem.core.common import get_golem_path
@@ -13,6 +21,8 @@ from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
+from golem.rpc.client import JsonRPCClient
+from golem.rpc.server import JsonRPCServer
 
 
 def config_logging():
@@ -32,56 +42,56 @@ def install_reactor():
     return reactor
 
 
-def register_gui(logic, app, gui):
-    logic.register_gui(app.get_main_window(), gui)
-
-
-def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
-                                                                 BlenderRenderDialogCustomizer))
-    logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
-                                                           LuxRenderDialogCustomizer))
-
-
 def load_environments():
     return [LuxRenderEnvironment(),
             BlenderEnvironment(),
             Environment()]
 
 
-def start_and_configure_client(logic, environments, datadir,
-                               transaction_system=False):
-    client = start_client(datadir, transaction_system)
-    for env in environments:
-        client.environments_manager.add_environment(env)
+def start_gui_process(client, logic, rendering):
 
-    client.environments_manager.load_config(client.datadir)
+    app = GNRGui(logic, AppMainWindow)
+    gui = RenderingMainWindowCustomizer
+
+    logic.register_gui(app.get_main_window(), gui)
+
+    if rendering:
+        logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
+                                                                     BlenderRenderDialogCustomizer))
+        logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
+                                                               LuxRenderDialogCustomizer))
 
     logic.register_client(client)
     logic.start()
     logic.check_network_state()
 
-    return client
-
-
-def run_ranking(client, reactor):
-    client.ranking.run(reactor)
-
-
-def start_app(logic, app, gui, datadir=None, rendering=False,
-              start_ranking=True, transaction_system=False):
-    reactor = install_reactor()
-    register_gui(logic, app, gui)
-    if rendering:
-        register_rendering_task_types(logic)
-    environments = load_environments()
-
-    client = start_and_configure_client(logic, environments, datadir,
-                                        transaction_system)
-
-    if start_ranking:
-        run_ranking(client, reactor)
-
     app.execute(True)
 
+
+rpc_server = None
+
+
+def start_app(logic, datadir=None, rendering=False,
+              start_ranking=True, transaction_system=False):
+
+    reactor = install_reactor()
+    environments = load_environments()
+    client = start_client(datadir, transaction_system)
+
+    for env in environments:
+        client.environments_manager.add_environment(env)
+    client.environments_manager.load_config(client.datadir)
+
+    if start_ranking:
+        client.ranking.run(reactor)
+
+    def start_gui():
+        global rpc_server
+        rpc_server = JsonRPCServer.listen(client)
+        rpc_client = JsonRPCClient(client, rpc_server.url)
+
+        gui_process = Process(target=start_gui_process, args=(rpc_client, logic, rendering))
+        gui_process.start()
+
+    reactor.callWhenRunning(start_gui)
     reactor.run()

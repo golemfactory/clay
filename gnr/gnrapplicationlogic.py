@@ -80,9 +80,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.register_listener(GNRClientEventListener(self))
         self.customizer.init_config()
         payment_address = ""
-        if client.transaction_system:
-            payment_address = client.transaction_system.get_payment_address()
-        self.customizer.set_options(self.get_config(), client.keys_auth.get_key_id(),
+        if client.use_transaction_system():
+            payment_address = client.get_payment_address()
+        self.customizer.set_options(self.get_config(), client.get_client_id(),
                                     payment_address)
 
     def register_start_new_node_function(self, func):
@@ -101,12 +101,12 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.remove_received_files()
 
     def check_network_state(self):
-        listen_port = self.client.p2pservice.cur_port
-        task_server_port = self.client.task_server.cur_port
+        listen_port = self.client.get_p2p_port()
+        task_server_port = self.client.get_task_server_port()
         if listen_port == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             return
-        peers_num = len(self.client.p2pservice.peers)
+        peers_num = len(self.client.get_peers())
         if peers_num == 0:
             self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
             return
@@ -145,9 +145,8 @@ class GNRApplicationLogic(QtCore.QObject):
             table.setItem(i, 3, QTableWidgetItem(peer.node_name))
 
     def update_payments_view(self):
-        ts = self.client.transaction_system
-        if ts:
-            b, ab = ts.get_balance()
+        b, ab = self.client.get_balance()
+        if not (b is None or ab is None):
             rb = b - ab
             deposit = 0  # TODO: Get current deposit value.
             total = deposit + b
@@ -161,7 +160,7 @@ class GNRApplicationLogic(QtCore.QObject):
             ui.totalBalanceLabel.setText(fmt.format(total * ether))
 
     def get_config(self):
-        return self.client.config_desc
+        return self.client.get_config()
 
     def quit(self):
         self.client.quit()
@@ -204,7 +203,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
                                                                                   task_state.definition,
-                                                                                  self.client.datadir)
+                                                                                  self.client.get_datadir())
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -238,7 +237,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.show_task_result(task_id)
 
     def get_keys_auth(self):
-        return self.client.keys_auth
+        return self.client.get_keys_auth()
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
@@ -307,7 +306,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             t = Task.build_task(tb)
 
-            self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_success,
+            self.tt = TaskTester(t, self.client.get_datadir(), self._test_task_computation_success,
                                  self._test_task_computation_error)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
@@ -330,8 +329,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         t = Task.build_task(tb)
 
-        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
-                                self._benchmark_computation_error, benchmark)
+        self.br = BenchmarkRunner(t, self.client.get_datadir(),
+                                  lambda p: self._benchmark_computation_success(performance=p, label=label),
+                                  self._benchmark_computation_error,
+                                  benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
@@ -377,8 +378,8 @@ class GNRApplicationLogic(QtCore.QObject):
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
             if ts.status in task_to_remove_status:
-                self.client.task_server.remove_task_header(task_id)
-                self.client.p2pservice.remove_task(task_id)
+                self.client.remove_task_header(task_id)
+                self.client.remove_task(task_id)
         else:
             assert False, "Should never be here!"
 
@@ -389,14 +390,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.key_changed()
 
     def get_payments(self):
-        if self.client.transaction_system:
-            return self.client.transaction_system.get_payments_list()
-        return ()
+        return self.client.get_payments_list()
 
     def get_incomes(self):
-        if self.client.transaction_system:
-            return self.client.transaction_system.get_incomes_list()
-        return ()
+        return self.client.get_incomes_list()
 
     def get_max_price(self):
         """ Return suggested max price per hour of computation
