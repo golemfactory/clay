@@ -168,13 +168,15 @@ class GNRTask(Task):
     def get_progress(self):
         return float(self.num_tasks_received) / self.total_tasks
 
-    def get_resources(self, task_id, resource_header, resource_type=0):
+    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
 
         dir_name = self._get_resources_root_dir()
+        if tmp_dir is None:
+            tmp_dir = self.tmp_dir
 
         if os.path.exists(dir_name):
             if resource_type == resource_types["zip"]:
-                return prepare_delta_zip(dir_name, resource_header, self.tmp_dir, self.task_resources)
+                return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
             elif resource_type == resource_types["parts"]:
                 return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,

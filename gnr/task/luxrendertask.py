@@ -10,6 +10,7 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
@@ -153,6 +154,9 @@ class LuxTask(RenderingTask):
 
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
+        hold_flm = self.__get_test_flm(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path))
+        if os.path.isfile(hold_flm):
+            shutil.move(hold_flm, self.__get_test_flm())
         self.undeletable.append(self.__get_test_flm())
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
@@ -235,11 +239,12 @@ class LuxTask(RenderingTask):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
+        hold_results_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if flm is not None:
             try:
-                if not os.path.exists(self.tmp_dir):
-                    os.makedirs(self.tmp_dir)
-                shutil.copy(flm, self.__get_test_flm())
+                if not os.path.exists(hold_results_dir):
+                    os.makedirs(hold_results_dir)
+                shutil.copy(flm, self.__get_test_flm(hold_results_dir))
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
@@ -471,5 +476,7 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self):
-        return os.path.join(self.tmp_dir, "test_result.flm")
+    def __get_test_flm(self, dir_=None):
+        if dir_ is None:
+            dir_ = self.tmp_dir
+        return os.path.join(dir_, "test_result.flm")

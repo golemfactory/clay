@@ -24,25 +24,22 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         td.renderer_options = lro
         lb = LuxRenderTaskBuilder("ABC", td, self.path)
         luxtask = lb.build()
-
-        dir_manager = DirManager("ABC", self.path, tmp="luxtmp")
-        luxtask.initialize(dir_manager)
         self.__after_test_errors(luxtask)
-
         self.__queries(luxtask)
 
     def __after_test_errors(self, luxtask):
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
         open(os.path.join(self.path, "sth.flm"), 'w').close()
-        if os.path.isdir(luxtask.tmp_dir):
-            os.rmdir(luxtask.tmp_dir)
         luxtask.after_test({}, self.path)
-        prev_tmp_dir = luxtask.tmp_dir
-        luxtask.tmp_dir = "/dev/null/:errors?"
+        prev_dir = luxtask.root_path
+        luxtask.root_path = "/dev/null/:errors?"
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
-        luxtask.tmp_dir = prev_tmp_dir
+        luxtask.root_path = prev_dir
+        dir_manager = DirManager("ABC", self.path, tmp="luxtmp")
+        luxtask.initialize(dir_manager)
+        assert os.path.isfile(os.path.join(luxtask.tmp_dir, "test_result.flm"))
 
     def __queries(self, luxtask):
         luxtask.collected_file_names["xxyyzz"] = "xxyyzzfile"
