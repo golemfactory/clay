@@ -275,19 +275,21 @@ class RenderingTask(GNRTask):
         return False
 
     def _accept_client(self, node_id):
-        if node_id in self.counting_nodes:
-            if self.counting_nodes[node_id] > 0:  # client with accepted task
-                return True
-            elif self.counting_nodes[node_id] == 0:  # client took task but hasn't return result yet
-                self.counting_nodes[node_id] = -1
-                return True
-            else:
-                self.counting_nodes[node_id] = -1
-                # client with failed task or client that took more than one task without returning any results
-                return False
-        else:
-            self.counting_nodes[node_id] = 0
-            return True  # new node
+        return True
+        # FIXME Commented right now because current network is too small. We should repair this method later.
+        # if node_id in self.counting_nodes:
+        #     if self.counting_nodes[node_id] > 0:  # client with accepted task
+        #         return True
+        #     elif self.counting_nodes[node_id] == 0:  # client took task but hasn't return result yet
+        #         self.counting_nodes[node_id] = -1
+        #         return True
+        #     else:
+        #         self.counting_nodes[node_id] = -1
+        #         # client with failed task or client that took more than one task without returning any results
+        #         return False
+        # else:
+        #     self.counting_nodes[node_id] = 0
+        #     return True  # new node
 
     def _choose_adv_ver_file(self, tr_files, subtask_id):
         adv_test_file = None
