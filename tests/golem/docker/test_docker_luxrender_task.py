@@ -128,6 +128,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
+        dir_manager = DirManager(task.header.node_name, self.path)
+        task.initialize(dir_manager)
         test_file = task._LuxTask__get_test_flm()
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
