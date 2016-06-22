@@ -336,7 +336,6 @@ class TaskManager(object):
             self.tasks_states[task_id].status = TaskStatus.waiting
             self.tasks_states[task_id].time_started = time.time()
 
-            self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
             for ss in self.tasks_states[task_id].subtask_states.values():
                 if ss.subtask_status != SubtaskStatus.failure:
                     ss.subtask_status = SubtaskStatus.restarted

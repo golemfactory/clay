@@ -70,9 +70,9 @@ class FrameRenderingTask(RenderingTask):
 
     def restart(self):
         RenderingTask.restart(self)
-        if self.use_frames:
-            self.preview_file_path = [None] * len(self.frames)
-            self.preview_task_file_path = [None] * len(self.frames)
+        # if self.use_frames:
+        #     self.preview_file_path = [None] * len(self.frames)
+        #     self.preview_task_file_path = [None] * len(self.frames)
 
     def verify_results(self, subtask_id, task_results, result_type):
         tr_files = super(FrameRenderingTask, self).verify_results(subtask_id, task_results, result_type)
@@ -95,9 +95,9 @@ class FrameRenderingTask(RenderingTask):
             if not self.use_frames:
                 self._collect_image_part(num_start, tr_file)
             elif self.total_tasks <= len(self.frames):
-                self._collect_frames(num_start, tr_file, self.subtasks_given[subtask_id]['frames'], self.tmp_dir)
+                self._collect_frames(num_start, tr_file, self.subtasks_given[subtask_id]['frames'])
             else:
-                self._collect_frame_part(num_start, tr_file, parts, self.tmp_dir)
+                self._collect_frame_part(num_start, tr_file, parts)
 
         self.num_tasks_received += num_end - num_start + 1
 
@@ -105,7 +105,7 @@ class FrameRenderingTask(RenderingTask):
             if self.use_frames:
                 self._copy_frames()
             else:
-                self._put_image_together(self.tmp_dir)
+                self._put_image_together()
 
     def reject_results(self, subtask_id):
         super(FrameRenderingTask, self).reject_results(subtask_id)
@@ -169,7 +169,7 @@ class FrameRenderingTask(RenderingTask):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
 
-            if sub['status'] == SubtaskStatus.failure or sub['status'] == SubtaskStatus.restarted:
+            if sub['status'] == SubtaskStatus.failure:
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, failed_color)
 
@@ -254,12 +254,12 @@ class FrameRenderingTask(RenderingTask):
         self._update_preview(tr_file, num_start)
         self._update_task_preview()
 
-    def _collect_frames(self, num_start, tr_file, frames_list, tmp_dir):
+    def _collect_frames(self, num_start, tr_file, frames_list):
         self.frames_given[frames_list[0]][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
 
-    def _collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
+    def _collect_frame_part(self, num_start, tr_file, parts):
 
         frame_num = self.frames[(num_start - 1) / parts]
         part = self._count_part(num_start, parts)
