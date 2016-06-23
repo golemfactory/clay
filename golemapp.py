@@ -4,7 +4,6 @@ import click
 
 from gnr.gnrstartapp import start_app
 from gnr.node import GNRNode  # TODO: This also configures the logging.
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
 
 
 @click.command()
@@ -23,8 +22,7 @@ def start(gui, payments, datadir, node_address, peer, task):
     freeze_support()
 
     if gui:
-        logic = RenderingApplicationLogic()
-        start_app(logic, datadir=datadir, rendering=True,
+        start_app(datadir=datadir, rendering=True,
                   transaction_system=payments)
     else:
         node = GNRNode(datadir=datadir, node_address=node_address,

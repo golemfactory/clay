@@ -208,8 +208,8 @@ class DockerJob(object):
             for chunk in s:
                 container_logger.debug(chunk)
 
-        stream = client.attach(self.container_id, stdout=True, stderr=True,
-                               stream=True, logs=True)
+        stream = client.add_session(self.container_id, stdout=True, stderr=True,
+                                    stream=True, logs=True)
         self.logging_thread = threading.Thread(
             target=log_stream, args=(stream,), name="ContainerLoggingThread")
         self.logging_thread.start()

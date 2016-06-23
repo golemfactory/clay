@@ -2,27 +2,26 @@ import logging.config
 from multiprocessing import Process
 from os import path
 
-import time
-
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
+import sys
 
 from gnr.application import GNRGui
-
-from golem.client import start_client
-from golem.core.common import get_golem_path
-from golem.environments.environment import Environment
-
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
-from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.blenderrendertask import build_blender_renderer_info
+from gnr.task.luxrendertask import build_lux_render_info
+from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
-from golem.rpc.client import JsonRPCClient
+from golem.client import start_client
+from golem.core.common import get_golem_path
+from golem.environments.environment import Environment
+from golem.rpc.client import JsonRPCClientBuilder
 from golem.rpc.server import JsonRPCServer
+from golem.rpc.websockets import WebSocketRPCSession, WebSocketAddress, WebSocketRPCInfo, WebSocketServer
 
 
 def config_logging():
@@ -31,7 +30,7 @@ def config_logging():
     logging.config.fileConfig(config_file, disable_existing_loggers=False)
 
 
-def install_reactor():
+def install_qt4_reactor():
     try:
         import qt4reactor
     except ImportError:
@@ -48,8 +47,12 @@ def load_environments():
             Environment()]
 
 
-def start_gui_process(client, logic, rendering):
+def start_gui_process(ws_rpc_client_info, rendering):
+    config_logging()
+    install_qt4_reactor()
 
+    # client = client_builder.build()
+    logic = RenderingApplicationLogic()
     app = GNRGui(logic, AppMainWindow)
     gui = RenderingMainWindowCustomizer
 
@@ -61,20 +64,31 @@ def start_gui_process(client, logic, rendering):
         logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
                                                                LuxRenderDialogCustomizer))
 
+    ws_address = ws_rpc_client_info.ws_address
+    ws_rpc = WebSocketRPCSession.create(ws_address)
+    ws_rpc.register_service(logic)
+    ws_rpc_logic_info = ws_rpc.client_info
+
+    client = ws_rpc.client(ws_rpc_client_info)
+
     logic.register_client(client)
     logic.start()
     logic.check_network_state()
 
+    # rpc_server = JsonRPCServer.listen(logic)
+    # rpc_client_builder = JsonRPCClientBuilder(client, rpc_server.url)
+    # client.set_interface_rpc(rpc_client_builder)
+
+    client.set_interface_rpc(ws_rpc_logic_info)
+
     app.execute(True)
 
 
-rpc_server = None
-
-
-def start_app(logic, datadir=None, rendering=False,
+def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
 
-    reactor = install_reactor()
+    from twisted.internet import reactor
+
     environments = load_environments()
     client = start_client(datadir, transaction_system)
 
@@ -86,12 +100,25 @@ def start_app(logic, datadir=None, rendering=False,
         client.ranking.run(reactor)
 
     def start_gui():
-        global rpc_server
-        rpc_server = JsonRPCServer.listen(client)
-        rpc_client = JsonRPCClient(client, rpc_server.url)
 
-        gui_process = Process(target=start_gui_process, args=(rpc_client, logic, rendering))
-        gui_process.start()
+        ws_listen_info = WebSocketServer.listen(port=45000)
+        ws_address = ws_listen_info.ws_address
+
+        def on_rpc_server_started(*args, **kwargs):
+            ws_rpc.register_service(client)
+            ws_rpc_client_info = ws_rpc.client_info
+            # rpc_server = JsonRPCServer.listen(client)
+            # rpc_client_builder = JsonRPCClientBuilder(client, rpc_server.url)
+            gui_process = Process(target=start_gui_process, args=(ws_rpc_client_info, rendering))
+            gui_process.daemon = True
+            gui_process.start()
+
+        def on_rpc_server_failure(*args, **kwargs):
+            print "Cannot start the RPC server {} {}".format(args, kwargs)
+            sys.exit(1)
+
+        ws_rpc, deferred = WebSocketRPCSession.create(ws_address)
+        deferred.addCallbacks(on_rpc_server_started, on_rpc_server_failure)
 
     reactor.callWhenRunning(start_gui)
     reactor.run()

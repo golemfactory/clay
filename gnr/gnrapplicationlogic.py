@@ -1,30 +1,25 @@
-import os
-import logging
 import cPickle
-
+import logging
+import os
 from PyQt4 import QtCore
 
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 
-from golem.task.taskstate import TaskStatus
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskState
+from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
+from gnr.benchmarks.minilight.src.minilight import makePerfTest
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.renderingdirmanager import get_benchmarks_path
+from gnr.renderingtaskstate import RenderingTaskState
+from gnr.ui.dialog import TestingTaskProgressDialog
+from golem.client import GolemClientEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
-from golem.client import GolemClientEventListener
-
-from gnr.ui.dialog import TestingTaskProgressDialog
-from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gnr.renderingdirmanager import get_benchmarks_path
-from gnr.gnrtaskstate import GNRTaskState
-from gnr.task.tasktester import TaskTester
-from gnr.renderingtaskstate import RenderingTaskState
-
-from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
-
-from gnr.benchmarks.minilight.src.minilight import makePerfTest
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +49,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
         self.client = None
-        self.tt = None
         self.progress_dialog = None
         self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
@@ -77,7 +71,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def register_client(self, client):
         self.client = client
-        self.client.register_listener(GNRClientEventListener(self))
+        # self.client.register_listener(GNRClientEventListener(self))
         self.customizer.init_config()
         payment_address = ""
         if client.use_transaction_system():
@@ -106,7 +100,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if listen_port == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             return
-        peers_num = len(self.client.get_peers())
+        peers_num = len(self.client.get_peer_info())
         if peers_num == 0:
             self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
             return
@@ -126,7 +120,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def get_peers(self):
         table = self.customizer.gui.ui.connectedPeersTable
-        peers = self.client.get_peers()
+        peers = self.client.get_peer_info()
 
         row_count = table.rowCount() if isinstance(table, QObject) else 0
         new_row_count = len(peers)
@@ -287,27 +281,23 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             assert False, "Test task {} already registered".format(test_task_info.name)
 
-    def save_task(self, task_state, file_path):
+    @staticmethod
+    def save_task(task_state, file_path):
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
 
-    def recount_performance(self, num_cores):
+    @staticmethod
+    def recount_performance(num_cores):
         test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
             tb = self._get_builder(task_state)
-
-            t = Task.build_task(tb)
-
-            self.tt = TaskTester(t, self.client.get_datadir(), self._test_task_computation_success,
-                                 self._test_task_computation_error)
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
@@ -315,7 +305,8 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.gui.setEnabled('new_task', False)       # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            self.tt.run()
+            t = Task.build_task(tb)
+            self.client.run_test_task(t)
 
             return True
         else:
@@ -365,14 +356,14 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def _test_task_computation_success(self, results, est_mem):
+    def test_task_computation_success(self, results, est_mem):
         self.progress_dialog_customizer.show_message("Test task computation success!")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
-    def _test_task_computation_error(self, error):
+    def test_task_computation_error(self, error):
         err_msg = "Task test computation failure. "
         if error:
             err_msg += error

@@ -1,3 +1,5 @@
+import uuid
+
 from golem.rpc.client import JsonRPCClient
 from golem.rpc.server import JsonRPCServer
 from golem.tools.testwithreactor import TestWithReactor
@@ -21,9 +23,15 @@ class TestRPCClient(TestWithReactor):
 
     def test(self):
 
+        big_chunk = []
+
+        for i in xrange(0, 1000):
+            big_chunk.extend(list(str(uuid.uuid4())))
+
         service = MockService()
         server = JsonRPCServer.listen(service)
         client = JsonRPCClient(service, server.url)
 
         assert client.method_1(123) == 123
+        assert client.method_1(big_chunk) == big_chunk
         assert client.some_property is None

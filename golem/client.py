@@ -2,6 +2,8 @@ import logging
 import time
 from os import path
 from threading import Lock
+
+from gnr.task.tasktester import TaskTester
 from twisted.internet import task
 
 from golem.appconfig import AppConfig
@@ -14,6 +16,7 @@ from golem.model import Database
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.dirmanager import DirManager
@@ -130,6 +133,7 @@ class Client:
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
+        self.interface_rpc = None
         self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
@@ -184,6 +188,9 @@ class Client:
         self.task_server = None
         self.nodes_manager_client = None
 
+    def set_interface_rpc(self, interface_rpc_builder):
+        self.interface_rpc = interface_rpc_builder.build()
+
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
         self.task_server.task_manager.add_new_task(task)
@@ -199,6 +206,12 @@ class Client:
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
+
+    def run_test_task(self, task):
+        tt = TaskTester(task, self.datadir,
+                        self.interface_rpc.test_task_computation_success,
+                        self.interface_rpc.test_task_computation_error)
+        tt.run()
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
@@ -242,6 +255,12 @@ class Client:
 
     def get_peers(self):
         return self.p2pservice.peers.values()
+
+    def get_peer_info(self):
+        peers, info = self.get_peers(), []
+        for p in peers:
+            info.append(PeerSessionInfo(p))
+        return info
 
     # TODO: simplify
     def get_keys_auth(self):
