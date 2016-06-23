@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>983</width>
-    <height>718</height>
+    <height>737</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -1428,7 +1428,7 @@
                    <string>Number of tasks that were successfully computed on this machine.</string>
                   </property>
                   <property name="text">
-                   <string>Computed tasks</string>
+                   <string>Computed subtasks</string>
                   </property>
                  </widget>
                 </item>
@@ -1445,7 +1445,7 @@
                    <string>Number of tasks that this machine tried to compute, but ended up with errors.</string>
                   </property>
                   <property name="text">
-                   <string>Task with errors</string>
+                   <string>Subtask with errors</string>
                   </property>
                  </widget>
                 </item>
@@ -1462,7 +1462,7 @@
                    <string>Number of tasks that this machine tried to compute but ended up with timeout. </string>
                   </property>
                   <property name="text">
-                   <string>Tasks with timeouts</string>
+                   <string>Subtasks with timeouts</string>
                   </property>
                  </widget>
                 </item>
