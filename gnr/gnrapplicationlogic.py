@@ -63,12 +63,14 @@ class GNRApplicationLogic(QtCore.QObject):
         task_status = task.LoopingCall(self.get_status)
         task_peers = task.LoopingCall(self.get_peers)
         task_payments = task.LoopingCall(self.update_payments_view)
-        task_computing_stats = task.LoopingCall(self.update_computing_stats)
+        task_computing_stats = task.LoopingCall(self.update_stats)
+        task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
         task_status.start(3.0)
         task_peers.start(3.0)
         task_payments.start(5.0)
-        task_computing_stats.start(5.0)
-        self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats)
+        task_computing_stats.start(3.0)
+        task_estimated_reputation.start(60.0)
+        self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats, task_estimated_reputation)
 
     def stop(self):
         for looping_call in self.__looping_calls:
@@ -162,7 +164,7 @@ class GNRApplicationLogic(QtCore.QObject):
             ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
             ui.totalBalanceLabel.setText(fmt.format(total * ether))
 
-    def update_computing_stats(self):
+    def update_estimated_reputation(self):
         ranking = self.client.ranking
         if ranking:
             ui = self.customizer.gui.ui
@@ -174,6 +176,18 @@ class GNRApplicationLogic(QtCore.QObject):
             message = "Ranking system turn off"
             self.customizer.gui.ui.estimatedRequestorReputation.setText(message)
             self.customizer.gui.ui.estimatedProviderReputation.setText(message)
+
+    def update_stats(self):
+        known_tasks = len(self.client.task_server.task_keeper.get_all_tasks())
+        supported = len(self.client.task_server.task_keeper.supported_tasks)
+        self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
+        self.customizer.gui.ui.supportedTasks.setText(str(supported))
+        computed_tasks = self.client.task_server.task_computer.stats.computed_tasks
+        tasks_with_timeout = self.client.task_server.task_computer.stats.tasks_with_timeout
+        tasks_with_errors = self.client.task_server.task_computer.stats.tasks_with_errors
+        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
+        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
 
     def get_config(self):
         return self.client.config_desc
