@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>4</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -1420,6 +1420,91 @@
                     <string>Name</string>
                    </property>
                   </column>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="computedTasksLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that were successfully computed on this machine.</string>
+                  </property>
+                  <property name="text">
+                   <string>Computed tasks</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLabel" name="computedTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="taskWithErrorsLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that this machine tried to compute, but ended up with errors.</string>
+                  </property>
+                  <property name="text">
+                   <string>Task with errors</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLabel" name="tasksWithErrors">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="tasksWithTimeoutsLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that this machine tried to compute but ended up with timeout. </string>
+                  </property>
+                  <property name="text">
+                   <string>Tasks with timeouts</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0">
+                 <widget class="QLabel" name="estimatedRankLabel">
+                  <property name="toolTip">
+                   <string>Estimated rank of this machine. </string>
+                  </property>
+                  <property name="text">
+                   <string>Estimated rank</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QLabel" name="knownTasksLabel">
+                  <property name="toolTip">
+                   <string>Number of active tasks in Golem Net. </string>
+                  </property>
+                  <property name="text">
+                   <string>Known active tasks</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QLabel" name="knownTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="1">
+                 <widget class="QLabel" name="estimatedRank">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLabel" name="tasksWithTimeouts">
+                  <property name="text">
+                   <string/>
+                  </property>
                  </widget>
                 </item>
                </layout>
