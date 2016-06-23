@@ -63,10 +63,12 @@ class GNRApplicationLogic(QtCore.QObject):
         task_status = task.LoopingCall(self.get_status)
         task_peers = task.LoopingCall(self.get_peers)
         task_payments = task.LoopingCall(self.update_payments_view)
+        task_computing_stats = task.LoopingCall(self.update_computing_stats)
         task_status.start(3.0)
         task_peers.start(3.0)
         task_payments.start(5.0)
-        self.__looping_calls = (task_peers, task_status, task_payments)
+        task_computing_stats.start(5.0)
+        self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats)
 
     def stop(self):
         for looping_call in self.__looping_calls:
@@ -159,6 +161,19 @@ class GNRApplicationLogic(QtCore.QObject):
             ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
             ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
             ui.totalBalanceLabel.setText(fmt.format(total * ether))
+
+    def update_computing_stats(self):
+        ranking = self.client.ranking
+        if ranking:
+            ui = self.customizer.gui.ui
+            pro_rep = int(ranking.get_computing_trust(self.client.node.key) * 100)
+            ui.estimatedProviderReputation.setText("{}%".format(pro_rep))
+            req_rep = int(ranking.get_requesting_trust(self.client.node.key) * 100)
+            ui.estimatedRequestorReputation.setText("{}%".format(req_rep))
+        else:
+            message = "Ranking system turn off"
+            self.customizer.gui.ui.estimatedRequestorReputation.setText(message)
+            self.customizer.gui.ui.estimatedProviderReputation.setText(message)
 
     def get_config(self):
         return self.client.config_desc
