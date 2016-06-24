@@ -14,8 +14,10 @@ ESTIMATED_DEFAULT = 2220.0
 START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
+NUM_CORES = 4
+MIN_MEMORY_SIZE = 1000 * 1024
 MAX_RESOURCE_SIZE = 250 * 1024
-MAX_MEMORY_SIZE = int(virtual_memory().total * 0.75) / 1024
+MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
 DISTRIBUTED_RES_NUM = 2
 
 logger = logging.getLogger(__name__)
@@ -116,7 +118,7 @@ class AppConfig:
         node_config = NodeConfig(node_address="",
                                  seed_host="",
                                  seed_port=START_PORT,
-                                 num_cores=4,
+                                 num_cores=NUM_CORES,
                                  max_resource_size=MAX_RESOURCE_SIZE,
                                  max_memory_size=MAX_MEMORY_SIZE,
                                  send_pings=SEND_PINGS,
