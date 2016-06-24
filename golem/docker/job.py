@@ -107,6 +107,9 @@ class DockerJob(object):
                 return nt_path_to_posix_path(path)
             return path
 
+        container_config = dict(self.host_config)
+        cpuset = container_config.pop('cpuset', None)
+
         host_cfg = client.create_host_config(
             binds={
                 posix_path(self.work_dir): {
@@ -121,9 +124,9 @@ class DockerJob(object):
                     "bind": self.OUTPUT_DIR,
                     "mode": "rw"
                 }
-            }
+            },
+            **container_config
         )
-        host_cfg.update(self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
@@ -132,7 +135,8 @@ class DockerJob(object):
             volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             command=[container_script_path],
-            working_dir=self.WORK_DIR
+            working_dir=self.WORK_DIR,
+            cpuset=cpuset
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
