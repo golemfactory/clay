@@ -356,7 +356,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def _benchmark_computation_error(self, error):
         self.progress_dialog_customizer.show_message("Recounting failed: " + error)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True, False)         # enable all 'recount' buttons
 
     def get_environments(self):
         return self.client.get_environments()
@@ -377,7 +377,7 @@ class GNRApplicationLogic(QtCore.QObject):
             err_msg += error
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
-        self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
+        self.customizer.gui.setEnabled('new_task', True, False)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
