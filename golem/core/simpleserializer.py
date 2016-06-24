@@ -1,6 +1,8 @@
 import json   # debug version
 import cPickle  # release version
 
+import cbor
+
 IS_DEBUG = False  # True - json, False - pickle
 
 
@@ -44,6 +46,16 @@ class SimpleSerializerRelease(object):
         :return: deserialized Python object
         """
         return cPickle.loads(data)
+
+
+class CBORSerializer(object):
+    @classmethod
+    def dumps(cls, obj):
+        return cbor.dumps(obj)
+
+    @classmethod
+    def loads(cls, data):
+        return cbor.loads(data)
 
 
 if IS_DEBUG:

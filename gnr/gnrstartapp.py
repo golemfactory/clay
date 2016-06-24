@@ -1,8 +1,7 @@
 import logging.config
+import sys
 from multiprocessing import Process
 from os import path
-
-import sys
 
 from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
@@ -19,9 +18,6 @@ from gnr.ui.widget import TaskWidget
 from golem.client import start_client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
-from golem.rpc.client import JsonRPCClientBuilder
-from golem.rpc.server import JsonRPCServer
-from golem.rpc.websockets import WebSocketRPCSession, WebSocketAddress, WebSocketRPCInfo, WebSocketServer
 
 
 def config_logging():
@@ -64,22 +60,20 @@ def start_gui_process(ws_rpc_client_info, rendering):
         logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
                                                                LuxRenderDialogCustomizer))
 
-    ws_address = ws_rpc_client_info.ws_address
-    ws_rpc = WebSocketRPCSession.create(ws_address)
-    ws_rpc.register_service(logic)
-    ws_rpc_logic_info = ws_rpc.client_info
+    # ws_address = ws_rpc_client_info.ws_address
+    # ws_rpc = WebSocketRPCSession.create(ws_address)
+    # ws_rpc.register_service(logic)
+    # ws_rpc_logic_info = ws_rpc.client_info
 
-    client = ws_rpc.client(ws_rpc_client_info)
+#    client = ws_rpc.client(ws_rpc_client_info)
+
+    client = None
 
     logic.register_client(client)
     logic.start()
     logic.check_network_state()
 
-    # rpc_server = JsonRPCServer.listen(logic)
-    # rpc_client_builder = JsonRPCClientBuilder(client, rpc_server.url)
-    # client.set_interface_rpc(rpc_client_builder)
-
-    client.set_interface_rpc(ws_rpc_logic_info)
+#    client.set_interface_rpc(ws_rpc_logic_info)
 
     app.execute(True)
 
@@ -101,24 +95,25 @@ def start_app(datadir=None, rendering=False,
 
     def start_gui():
 
-        ws_listen_info = WebSocketServer.listen(port=45000)
-        ws_address = ws_listen_info.ws_address
+#        ws_listen_info = WebSocketServer.listen(port=45000)
+#        ws_address = ws_listen_info.ws_address
 
         def on_rpc_server_started(*args, **kwargs):
-            ws_rpc.register_service(client)
-            ws_rpc_client_info = ws_rpc.client_info
+#            ws_rpc.register_service(client)
+#            ws_rpc_client_info = ws_rpc.client_info
             # rpc_server = JsonRPCServer.listen(client)
             # rpc_client_builder = JsonRPCClientBuilder(client, rpc_server.url)
-            gui_process = Process(target=start_gui_process, args=(ws_rpc_client_info, rendering))
-            gui_process.daemon = True
-            gui_process.start()
+#            gui_process = Process(target=start_gui_process, args=(ws_rpc_client_info, rendering))
+#            gui_process.daemon = True
+#            gui_process.start()
+            pass
 
         def on_rpc_server_failure(*args, **kwargs):
             print "Cannot start the RPC server {} {}".format(args, kwargs)
             sys.exit(1)
 
-        ws_rpc, deferred = WebSocketRPCSession.create(ws_address)
-        deferred.addCallbacks(on_rpc_server_started, on_rpc_server_failure)
+#        ws_rpc, deferred = WebSocketRPCSession.create(ws_address)
+#        deferred.addCallbacks(on_rpc_server_started, on_rpc_server_failure)
 
     reactor.callWhenRunning(start_gui)
     reactor.run()
