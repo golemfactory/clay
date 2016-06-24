@@ -5,7 +5,7 @@ from golem.docker.task_thread import DockerTaskThread
 __all__ = ['DockerConfigManager']
 
 DEFAULT_HOST_CONFIG = dict(
-    privileged=False,
+    # privileged=False,
     # mount the container's root filesystem as read only
     read_only=True,
     # ['bridge', 'none', 'container:<name|id>', 'host']
