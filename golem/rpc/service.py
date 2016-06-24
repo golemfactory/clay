@@ -41,7 +41,7 @@ class ServiceMethods(object):
 
 class ServiceProxy(ServiceMethods):
 
-    name_exceptions = ['service', 'methods', 'name_exceptions', 'wrap']
+    name_exceptions = ['parent' 'service', 'methods', 'name_exceptions', 'wrap']
 
     def __init__(self, service):
         ServiceMethods.__init__(self, service)
@@ -50,9 +50,10 @@ class ServiceProxy(ServiceMethods):
 
     def __getattribute__(self, name, exceptions=None):
         exceptions = exceptions or ServiceProxy.name_exceptions
+
         if name.startswith('_') or name in exceptions:
-            return ServiceMethods.__getattribute__(self, name)
-        if hasattr(self, 'methods'):
+            return object.__getattribute__(self, name)
+        elif hasattr(self, 'methods'):
             return self.methods.get(name, None)
         return None
 

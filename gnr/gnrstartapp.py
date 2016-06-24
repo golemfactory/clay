@@ -1,6 +1,5 @@
 import logging.config
-import sys
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 from os import path
 
 from gnr.application import GNRGui
@@ -18,6 +17,7 @@ from gnr.ui.widget import TaskWidget
 from golem.client import start_client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
+from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 
 
 def config_logging():
@@ -27,6 +27,7 @@ def config_logging():
 
 
 def install_qt4_reactor():
+    print "install reactor"
     try:
         import qt4reactor
     except ImportError:
@@ -43,43 +44,50 @@ def load_environments():
             Environment()]
 
 
-def start_gui_process(ws_rpc_client_info, rendering):
+def start_gui_process(queue, rendering):
     config_logging()
-    install_qt4_reactor()
+    reactor = install_qt4_reactor()
 
-    # client = client_builder.build()
-    logic = RenderingApplicationLogic()
-    app = GNRGui(logic, AppMainWindow)
-    gui = RenderingMainWindowCustomizer
+    service_info = queue.get(True, 3600)
+    ws_address = service_info.ws_address
+    ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
-    logic.register_gui(app.get_main_window(), gui)
+    def on_success(*args, **kwargs):
+        client = ws_client.build_client(service_info)
 
-    if rendering:
-        logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
-                                                                     BlenderRenderDialogCustomizer))
-        logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
-                                                               LuxRenderDialogCustomizer))
+        logic = RenderingApplicationLogic()
+        app = GNRGui(logic, AppMainWindow)
+        gui = RenderingMainWindowCustomizer
 
-    # ws_address = ws_rpc_client_info.ws_address
-    # ws_rpc = WebSocketRPCSession.create(ws_address)
-    # ws_rpc.register_service(logic)
-    # ws_rpc_logic_info = ws_rpc.client_info
+        logic.register_gui(app.get_main_window(), gui)
 
-#    client = ws_rpc.client(ws_rpc_client_info)
+        if rendering:
+            logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
+                                                                         BlenderRenderDialogCustomizer))
+            logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
+                                                                   LuxRenderDialogCustomizer))
 
-    client = None
+        logic_service_info = ws_client.add_service(logic)
 
-    logic.register_client(client)
-    logic.start()
-    logic.check_network_state()
+        logic.register_client(client)
+        logic.start()
+        logic.check_network_state()
 
-#    client.set_interface_rpc(ws_rpc_logic_info)
+        #    client.set_interface_rpc(logic_service_info)
 
-    app.execute(True)
+        app.execute(True)
+
+    def on_error(*args, **kwargs):
+        print "Error connecting", args, kwargs
+
+    def start():
+        ws_client.connect().addCallbacks(on_success, on_error)
+
+    reactor.callWhenRunning(start)
+    reactor.run()
 
 
-def start_app(datadir=None, rendering=False,
-              start_ranking=True, transaction_system=False):
+def start_client_process(queue, datadir, transaction_system, start_ranking):
 
     from twisted.internet import reactor
 
@@ -90,30 +98,31 @@ def start_app(datadir=None, rendering=False,
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)
 
+    def start():
+        ws_server = WebSocketRPCServerFactory()
+        ws_server.listen()
+
+        service_info = ws_server.add_service(client)
+        queue.put(service_info)
+
     if start_ranking:
         client.ranking.run(reactor)
 
-    def start_gui():
-
-#        ws_listen_info = WebSocketServer.listen(port=45000)
-#        ws_address = ws_listen_info.ws_address
-
-        def on_rpc_server_started(*args, **kwargs):
-#            ws_rpc.register_service(client)
-#            ws_rpc_client_info = ws_rpc.client_info
-            # rpc_server = JsonRPCServer.listen(client)
-            # rpc_client_builder = JsonRPCClientBuilder(client, rpc_server.url)
-#            gui_process = Process(target=start_gui_process, args=(ws_rpc_client_info, rendering))
-#            gui_process.daemon = True
-#            gui_process.start()
-            pass
-
-        def on_rpc_server_failure(*args, **kwargs):
-            print "Cannot start the RPC server {} {}".format(args, kwargs)
-            sys.exit(1)
-
-#        ws_rpc, deferred = WebSocketRPCSession.create(ws_address)
-#        deferred.addCallbacks(on_rpc_server_started, on_rpc_server_failure)
-
-    reactor.callWhenRunning(start_gui)
+    reactor.callWhenRunning(start)
     reactor.run()
+
+
+def start_app(datadir=None, rendering=False,
+              start_ranking=True, transaction_system=False):
+
+    queue = Queue()
+
+    client_process = Process(target=start_client_process, args=(queue, datadir, transaction_system, start_ranking))
+    client_process.daemon = True
+    client_process.start()
+
+    gui_process = Process(target=start_gui_process, args=(queue, rendering))
+    gui_process.daemon = True
+    gui_process.start()
+
+    client_process.join()

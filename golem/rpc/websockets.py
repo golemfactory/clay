@@ -1,29 +1,24 @@
 import logging
-import uuid
-
 import time
+
 from autobahn.twisted import WebSocketServerProtocol
-from autobahn.twisted.websocket import WrappingWebSocketServerFactory, WebSocketClientProtocol, \
-    WrappingWebSocketClientFactory
-from twisted.internet.interfaces import IListeningPort
+from autobahn.twisted.websocket import WebSocketClientProtocol, \
+    WebSocketServerFactory, WebSocketClientFactory
+from twisted.internet.defer import Deferred
+from twisted.internet.tcp import Port
 
 from golem.core.simpleserializer import CBORSerializer
-from golem.rpc.service import ServiceNameProxy, to_names_list, full_name
+from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION
+from golem.rpc.service import ServiceNameProxy, to_names_list, to_dict
 
 logger = logging.getLogger(__name__)
 
-
-REALM = 'Golem'
-
-PROTOCOL_VERSION = '0.1'
-
-RPC_ERR_NOT_FOUND = 'Not found'
 
 class WebSocketAddress(object):
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.address = u'ws://{}:{}/{}'.format(host, port, REALM)
+        self.address = u'ws://{}:{}'.format(host, port)
 
     def __str__(self):
         return str(self.address)
@@ -36,7 +31,7 @@ class WebSocketConnectionInfo(object):
     def __init__(self, conn_info):
         self.conn_info = conn_info
 
-        if isinstance(conn_info, IListeningPort):
+        if isinstance(conn_info, Port):
             self.host = conn_info.getHost()
             self.port = self.host.port
             host = self.host.host
@@ -65,14 +60,6 @@ class IKeyring(object):
 
     def decrypt(self, message, identifier):
         raise NotImplementedError()
-
-
-class DummyKeyring(IKeyring):
-    def encrypt(self, message, identifier):
-        return message
-
-    def decrypt(self, message, identifier):
-        return message
 
 
 class KeyringMixin(object):
@@ -108,11 +95,17 @@ class MessageParserMixin(KeyringMixin, SerializerMixin):
         return self.encrypt(self.serialize(message), session_id)
 
 
-class SessionMixin(object):
+class SessionManager(object):
+
+    def __init__(self):
+        self.sessions = {}
+
     def add_session(self, session):
+        logger.debug("Add session {}".format(session))
         self.sessions[session.peer] = session
 
     def remove_session(self, session):
+        logger.debug("Remove session {}".format(session))
         self.sessions.pop(session.peer, None)
 
     def has_session(self, session):
@@ -125,7 +118,7 @@ class SessionMixin(object):
         return None
 
 
-class MessageLedger(object, MessageParserMixin):
+class MessageLedger(MessageParserMixin):
 
     def __init__(self):
         self.requests = {}
@@ -173,65 +166,6 @@ class MessageLedger(object, MessageParserMixin):
             session[session_key].pop(message_or_id, None)
 
 
-class WebSocketRPCServerFactory(WrappingWebSocketServerFactory, MessageLedger, SessionMixin):
-
-    def __init__(self, serializer, keyring, *args, **kwargs):
-        WrappingWebSocketServerFactory.__init__(self, *args, **kwargs)
-        MessageLedger.__init__(self)
-
-        self.serializer = serializer
-        self.keyring = keyring
-        self.sessions = dict()
-
-    def buildProtocol(self, addr):
-        proto = WebSocketRPCServerProtocol()
-        proto.factory = self
-        proto._proto = self._factory.buildProtocol(addr)
-        proto._proto.transport = proto
-        return proto
-
-
-class WebSocketRPCClientFactory(WrappingWebSocketClientFactory, MessageLedger, SessionMixin):
-
-    def __init__(self, serializer, keyring, *args, **kwargs):
-        WrappingWebSocketClientFactory.__init__(self, *args, **kwargs)
-        MessageLedger.__init__(self)
-
-        self.serializer = serializer
-        self.keyring = keyring
-        self.sessions = dict()
-
-    def buildProtocol(self, addr):
-        proto = WebSocketRPCClientProtocol()
-        proto.factory = self
-        proto._proto = self._factory.buildProtocol(addr)
-        proto._proto.transport = proto
-        return proto
-
-
-class RPCMessage(object):
-    def __init__(self):
-        self.id = str(uuid.uuid4())
-        self.protocol_version = PROTOCOL_VERSION
-
-
-class RPCRequestMessage(RPCMessage):
-    def __init__(self, method, *args, **kwargs):
-        super(RPCRequestMessage, self).__init__()
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs
-
-
-class RPCResponseMessage(RPCMessage):
-    def __init__(self, request_id, method, result, errors, *args, **kwargs):
-        super(RPCResponseMessage, self).__init__()
-        self.request_id = request_id
-        self.method = method
-        self.result = result
-        self.errors = errors
-
-
 class WebSocketRPCProtocol(object):
 
     def onOpen(self):
@@ -247,7 +181,7 @@ class WebSocketRPCProtocol(object):
             message = None
 
         if isinstance(message, RPCRequestMessage):
-            result, errors = self.perform_request(message)
+            result, errors = self.factory.perform_request(message)
             response = RPCResponseMessage(request_id=message.id,
                                           method=message.method,
                                           result=result,
@@ -268,9 +202,6 @@ class WebSocketRPCProtocol(object):
     def get_response(self, message):
         return self.factory.get_response(message)
 
-    def perform_request(self):
-        pass
-
 
 class WebSocketRPCServerProtocol(WebSocketServerProtocol, WebSocketRPCProtocol):
     pass
@@ -280,93 +211,182 @@ class WebSocketRPCClientProtocol(WebSocketClientProtocol, WebSocketRPCProtocol):
     pass
 
 
-class WebSocketRPCClient(WebSocketRPCClientFactory):
+class WebSocketRPCFactory(MessageLedger, SessionManager):
 
-    def __init__(self, host, port, serializer=None, keyring=None):
-        self.host = host
-        self.port = port
+    def __init__(self):
+        MessageLedger.__init__(self)
+        SessionManager.__init__(self)
+
+        self.services = []
+        self.host = None
+        self.port = None
+        self.ws_conn_info = None
+
+    def add_service(self, service):
+        if not self.ws_conn_info:
+            raise Exception("Not connected")
+
+        rpc_proxy = RPCProxyService(service)
+        self.services.append(rpc_proxy)
+        return WebSocketRPCServiceInfo(service, self.ws_conn_info.ws_address)
+
+    def build_client(self, service_info, timeout=None):
+        rpc = BlockingRPC(self, timeout=timeout)
+        return RPCProxyClient(rpc, service_info.method_names)
+
+    def perform_request(self, message):
+        for server in self.services:
+            if server.supports(message.method):
+                return server.call(message.method,
+                                   message.args,
+                                   message.kwargs)
+
+        raise Exception("Local service call not supported: {}"
+                        .format(message.__dict__))
+
+
+class WebSocketRPCServerFactory(WebSocketServerFactory, WebSocketRPCFactory):
+
+    protocol = WebSocketRPCServerProtocol
+
+    def __init__(self, port=0, serializer=None, keyring=None, *args, **kwargs):
+        WebSocketServerFactory.__init__(self, *args, **kwargs)
+        WebSocketRPCFactory.__init__(self)
+
         self.serializer = serializer or CBORSerializer
         self.keyring = keyring
-        self.ws_connect_info = None
-        self.factory = WebSocketRPCClientFactory(self.serializer, self.keyring)
-
-    def connect(self):
-        from twisted.internet import reactor
-
-        connect_info = reactor.connectTCP(self.host, self.port, self.factory)
-        self.ws_connect_info = WebSocketConnectionInfo(connect_info)
-
-        logger.info("WebSocket RPC client connected to {}:{}"
-                    .format(self.host, self.port))
-
-
-class WebSocketRPCServer(WebSocketRPCClientFactory):
-
-    def __init__(self, port=0, serializer=None, keyring=None):
-        self.serializer = serializer or CBORSerializer
-        self.keyring = keyring
         self.port = port
-        self.ws_listen_info = None
-        self.factory = WebSocketRPCServerFactory(self.serializer, self.keyring)
+        self.ws_conn_info = None
 
     def listen(self):
         from twisted.internet import reactor
 
-        listen_info = reactor.listenTCP(self.port, self.factory)
-        self.ws_listen_info = WebSocketConnectionInfo(listen_info)
+        listen_info = reactor.listenTCP(self.port, self)
+        self.ws_conn_info = WebSocketConnectionInfo(listen_info)
 
         logger.info("WebSocket RPC server listening on {}"
-                    .format(self.ws_listen_info))
+                    .format(self.ws_conn_info))
+
+
+class WebSocketRPCClientFactory(WebSocketClientFactory, WebSocketRPCFactory):
+
+    protocol = WebSocketRPCClientProtocol
+
+    def __init__(self, host, port, serializer=None, keyring=None, *args, **kwargs):
+        WebSocketClientFactory.__init__(self, *args, **kwargs)
+        WebSocketRPCFactory.__init__(self)
+
+        self.host = host
+        self.port = port
+        self.serializer = serializer or CBORSerializer
+        self.keyring = keyring
+        self.ws_conn_info = None
+        self.status = Deferred()
+
+    def connect(self):
+        from twisted.internet import reactor
+
+        connect_info = reactor.connectTCP(self.host, self.port, self)
+        self.ws_conn_info = WebSocketConnectionInfo(connect_info)
+
+        logger.info("WebSocket RPC client connecting to {}"
+                    .format(self.ws_conn_info))
+
+        self.status.called = True
+        return self.status
+
+    def startedConnecting(self, connector):
+        WebSocketClientFactory.startedConnecting(self, connector)
+        self.status.callback(connector)
+
+    def clientConnectionLost(self, connector, reason):
+        WebSocketClientFactory.clientConnectionLost(self, connector, reason)
+        self.status.errback(reason)
+
+    def clientConnectionFailed(self, connector, reason):
+        WebSocketClientFactory.clientConnectionFailed(self, connector, reason)
+        self.status.errback(reason)
 
 
 class WebSocketRPCServiceInfo(object):
 
     def __init__(self, service, ws_address):
-        self.full_service_name = full_name(service)
         self.method_names = to_names_list(service)
         self.ws_address = ws_address
 
 
-class WebSocketRPCCall(object):
+class BlockingRPC(object):
 
-    def __init__(self, ws_rpc_client, timeout=10):
-        self.ws_rpc_client = ws_rpc_client
-        self.timeout = timeout
+    def __init__(self, factory, timeout=None):
+        self.factory = factory
+        self.host = factory.host
+        self.port = factory.port
+        self.timeout = timeout or 2
 
-    def run(self, method_name, *args, **kwargs):
+    def call(self, method_name, *args, **kwargs):
         rpc_request = RPCRequestMessage(method_name, *args, **kwargs)
+
+        logger.debug("RPC call {}({}, {})".format(method_name, args, kwargs))
 
         started = time.time()
         sleep = 0.01
         responded = False
+        session = self.factory.get_session(self.host, self.port)
 
-        self.ws_rpc_client.send_message(rpc_request)
+        if not session:
+            raise Exception("BlockingRPC: no session ({})"
+                            .format(method_name))
+
+        session.send_message(rpc_request)
 
         while not responded:
-            responded, response = self.ws_rpc_client.get_response(rpc_request)
+
+            if not session:
+                raise Exception("BlockingRPC: no session ({})"
+                                .format(method_name))
+
+            responded, response = session.get_response(rpc_request)
 
             if responded:
-                break
-            elif time.time() - started > self.timeout:
+                session.clear_request(rpc_request)
+                return response
+            elif time.time() - started >= self.timeout:
                 break
             else:
                 time.sleep(sleep)
 
+        session.clear_request(rpc_request)
         if not responded:
-            raise Exception("No response found")
+            raise Exception("BlockingRPC: timeout ({})"
+                            .format(method_name))
 
 
-class RPCClient(ServiceNameProxy):
+class RPCProxyService(object):
+    def __init__(self, service):
+        self.methods = to_dict(service)
 
-    name_exceptions = ServiceNameProxy.name_exceptions + \
-                      ['full_service_name', 'ws_rpc_client']
+    def supports(self, method_name):
+        return method_name in self.methods
 
-    def __init__(self, ws_rpc_client, full_service_name, method_names):
-        self.full_service_name = full_service_name
-        self.ws_rpc_client = ws_rpc_client
+    def call(self, method_name, *args, **kwargs):
+        self.methods[method_name](*args, **kwargs)
+
+
+class RPCProxyClient(ServiceNameProxy):
+
+    name_exceptions = ServiceNameProxy.name_exceptions + ['rpc']
+
+    def __init__(self, rpc, method_names):
+        self.rpc = rpc
         ServiceNameProxy.__init__(self, method_names)
 
     def wrap(self, name, _):
+        rpc = object.__getattribute__(self, 'rpc')
+
         def wrapper(*args, **kwargs):
-            return self.ws_rpc_client.call(name, *args, **kwargs)
+            return rpc.call(name, *args, **kwargs)
+
         return wrapper
+
+
+
