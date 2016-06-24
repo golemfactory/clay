@@ -1,4 +1,6 @@
 import logging
+
+import multiprocessing
 from psutil import virtual_memory
 from os import path
 
@@ -14,10 +16,10 @@ ESTIMATED_DEFAULT = 2220.0
 START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
-NUM_CORES = 4
 MIN_MEMORY_SIZE = 1000 * 1024
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
+NUM_CORES = max(multiprocessing.cpu_count(), 1)
 DISTRIBUTED_RES_NUM = 2
 
 logger = logging.getLogger(__name__)
