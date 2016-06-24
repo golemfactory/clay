@@ -1,6 +1,7 @@
 import multiprocessing
 import logging
 import subprocess
+import threading
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
@@ -259,8 +260,11 @@ class ConfigurationDialogCustomizer(Customizer):
             self.gui.ui.requestingTrustSlider.setValue(trust)
         except ValueError:
             return
+        
 
     def __change_config(self):
+        self.__run_blender_benchmark_button_clicked()
+        self.__run_lux_benchmark_button_clicked()
         cfg_desc = ClientConfigDescriptor()
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)

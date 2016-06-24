@@ -32,6 +32,7 @@ class BenchmarkRunner(LocalComputer):
         self.start_time = time.time()
         logger.debug("Started at {}".format(self.start_time))
         LocalComputer.run(self)
+        self.tt.join()
     
     def task_computed(self, task_thread):
         self.end_time = time.time()
