@@ -150,10 +150,10 @@ class AbsRenderingMainWindowCustomizer(object):
             file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
             time.sleep(0.5)
             if os.path.exists(file_path):
-                self.gui.ui.previewLabel.setPixmap(QPixmap(file_path))
+                self.__update_img(QPixmap(file_path))
                 self.last_preview_path = file_path
         else:
-            self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+            self.__update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
     def __get_frame_name(self, definition, num):
@@ -199,11 +199,11 @@ class AbsRenderingMainWindowCustomizer(object):
         if len(self.slider_previews) > num:
             if self.slider_previews[num]:
                 if os.path.exists(self.slider_previews[num]):
-                    self.gui.ui.previewLabel.setPixmap(QPixmap(self.slider_previews[num]))
+                    self.__update_img(QPixmap(self.slider_previews[num]))
                     self.last_preview_path = self.slider_previews[num]
                     return
 
-        self.gui.ui.previewLabel.setPixmap(QPixmap(self.preview_path))
+        self.__update_img(QPixmap(self.preview_path))
         self.last_preview_path = self.preview_path
 
     def __open_output_file(self):
@@ -290,6 +290,12 @@ class AbsRenderingMainWindowCustomizer(object):
             p.drawPoint(x, y)
         p.end()
         self.gui.ui.previewLabel.setPixmap(pixmap)
+
+    def __update_img(self, img):
+        size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
+        pic = img.scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        self.gui.ui.previewLabel.setScaledContents(False)
+        self.gui.ui.previewLabel.setPixmap(pic)
 
 
 class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWindowCustomizer):
