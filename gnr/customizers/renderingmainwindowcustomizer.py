@@ -289,7 +289,7 @@ class AbsRenderingMainWindowCustomizer(object):
         for (x, y) in border:
             p.drawPoint(x, y)
         p.end()
-        self.gui.ui.previewLabel.setPixmap(pixmap)
+        self.__update_img(pixmap)
 
     def __update_img(self, img):
         size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
