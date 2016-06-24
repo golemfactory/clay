@@ -106,6 +106,27 @@ class GNRTask(Task):
         self.tmp_dir = None
         self.verification_options = None
 
+    def __getstate__(self):
+        self.task_resources = set()
+
+        self.total_tasks = 0
+        self.last_task = 0
+
+        self.num_tasks_received = 0
+        self.subtasks_given = {}
+        self.num_failed_subtasks = 0
+
+        self.full_task_timeout = 2200
+        self.counting_nodes = {}
+
+        self.root_path = None
+
+        self.stdout = {}  # for each subtask keep information about stdout received from computing node
+        self.stderr = {}  # for each subtask keep information about stderr received from computing node
+        self.results = {}  # for each subtask keep information about files containing results
+
+        self.res_files = {}
+
     def is_docker_task(self):
         return self.header.docker_images is not None
 

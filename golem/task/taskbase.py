@@ -56,6 +56,14 @@ class ComputeTaskDef(object):
         self.docker_images = None
 
 
+class TaskEventListener(object):
+    def __init__(self):
+        pass
+
+    def notify_update_task(self, task_id):
+        pass
+
+
 class Task(object):
 
     class ExtraData(object):
@@ -76,7 +84,18 @@ class Task(object):
         self.header = header
         self.undeletable = []
 
-        self.notify_update_task = lambda task_id: None
+        self.listeners = []
+
+    def register_listner(self, listener):
+        assert isinstance(TaskEventListener)
+        self.listeners.append(listener)
+
+    def unregister_listener(self, listener):
+        assert isinstance(listener, TaskEventListener)
+        for i in range(len(self.listeners)):
+            if self.listeners[i] is listener:
+                del self.listeners[i]
+                return
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
@@ -268,6 +287,7 @@ class Task(object):
         :return:
         """
         pass
+
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1, 'hashes': 2}
