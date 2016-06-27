@@ -31,3 +31,8 @@ class TestTaskBase(unittest.TestCase):
         assert u.get_results("abc") == []
         assert len(t.listeners) == 2
         assert len(u.listeners) == 0
+        t.unregister_listener(tl2)
+        assert len(t.listeners) == 1
+        assert t.listeners[0] == tl1
+        t.unregister_listener(tl1)
+        assert len(t.listeners) == 0

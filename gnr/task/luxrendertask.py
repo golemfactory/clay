@@ -453,7 +453,7 @@ class LuxTask(RenderingTask):
             except (IOError, OSError) as err:
                 logger.warning("Couldn't rename and copy img file. {}".format(err))
 
-        self.notify_update_task(self.header.task_id)
+        self.notify_update_task()
 
     def __final_img_error(self, error):
         logger.error("Cannot generate final image: {}".format(error))
