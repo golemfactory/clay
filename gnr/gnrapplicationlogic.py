@@ -173,7 +173,7 @@ class GNRApplicationLogic(QtCore.QObject):
             req_rep = int(ranking.get_requesting_trust(self.client.node.key) * 100)
             ui.estimatedRequestorReputation.setText("{}%".format(req_rep))
         else:
-            message = "Ranking system turn off"
+            message = "Ranking system off"
             self.customizer.gui.ui.estimatedRequestorReputation.setText(message)
             self.customizer.gui.ui.estimatedProviderReputation.setText(message)
 
