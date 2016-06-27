@@ -145,10 +145,10 @@ class BankContractTest(unittest.TestCase):
         assert self.balance_of(6) == v
         a = tester.accounts[6]
         b0 = self.state.block.get_balance(a)
-        self.withdraw(6, w)
+        with self.assertRaises(tester.TransactionFailed):
+            self.withdraw(6, w)
         g = b0 - self.state.block.get_balance(a)
-        limit = 21000 + 1097
-        assert g <= limit
+        assert g == 3141592  # OOG
         assert self.balance_of(6) == v
 
     def test_withdraw_explicit_to_self(self):

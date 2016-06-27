@@ -32,18 +32,22 @@ contract BankOfDeposit {
         _balance[msg.sender] += msg.value;
     }
 
-    // Withdraw money from bank.
-    // Param `to` is the Ethereum address where the money will be send to.
+    // Withdraw ether from bank.
+    // Param `to` is the Ethereum address where the ether will be send to.
     // If not provided, message sender's address will be used.
     function withdraw(uint value, address to) external {
-        uint balance = _balance[msg.sender];
-        if (balance >= value) {
-            address target = to; // Copy is needed because `to` is immutable.
-            if (target == 0)
-                target = msg.sender;
-            if (target.send(value)) // Sending money can fail
-                _balance[msg.sender] -= value;
-        }
+        // Precondition: check sender's balance is enough.
+        if (_balance[msg.sender] < value)
+            throw;
+
+        // Handle default value of `to` address.
+        address target = (to != 0) ? to : msg.sender;
+
+        _balance[msg.sender] -= value;
+
+        // Try sending ether.
+        if (!target.send(value))
+            throw;  // In case of failure revert the transaction.
     }
 
     // This function allows batch payments using sent value and
