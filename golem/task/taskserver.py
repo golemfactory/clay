@@ -277,7 +277,12 @@ class TaskServer(PendingConnectionsServer):
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
         if value and self.client.transaction_system:
-            self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
+            if account_info.eth_account.address:
+                self.client.transaction_system.add_payment_info(
+                    task_id, subtask_id, value, account_info)
+            else:
+                logger.warning("Unknown payment address of {} ({})".format(
+                    account_info.node_name, account_info.addr))
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
 
