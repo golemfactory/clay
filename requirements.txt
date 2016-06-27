@@ -1,1 +1,1 @@
-https://github.com/ethereum/pyethereum/tarball/develop#egg=ethereum
+ethereum==1.3.2
