@@ -404,5 +404,8 @@ class RenderingTask(GNRTask):
 
     def __get_path(self, path):
         if is_windows():
-            return self.__get_path(path)
+            return self.__get_path_windows(path)
         return path
+
+    def __get_path_windows(self, path):
+        return path.replace("\\", "/")

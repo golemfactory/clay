@@ -74,6 +74,16 @@ class TaskManager(object):
 
         self.comp_task_keeper = CompTaskKeeper()
 
+    def save_state(self):
+        comp_task_keeper = SimpleSerializerRelease.dumps(self.comp_task_keeper)
+        tasks = SimpleSerializerRelease.dumps(self.tasks)
+        tasks_states = SimpleSerializerRelease.dumps(self.tasks_states)
+        subtask2task_mapping = SimpleSerializerRelease.dump(self.subtask2task_mapping)
+        print comp_task_keeper
+        print tasks
+        print tasks_states
+        print subtask2task_mapping
+
     def get_task_manager_root(self):
         return self.root_path
 
@@ -519,6 +529,7 @@ class TaskManager(object):
 
     @handle_key_error
     def notice_task_updated(self, task_id):
+        # self.save_state()
         for l in self.listeners:
             l.task_status_updated(task_id)
 

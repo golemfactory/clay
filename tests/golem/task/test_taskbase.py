@@ -1,13 +1,13 @@
 import cPickle as pickle
-import unittest
 
 from mock import Mock
 
-from golem.task.taskbase import Task, TaskHeader, TaskEventListener
+from golem.task.taskbase import Task, TaskHeader, TaskEventListener, logger
+from golem.tools.assertlogs import LogTestCase
 from golem.network.p2p.node import Node
 
 
-class TestTaskBase(unittest.TestCase):
+class TestTaskBase(LogTestCase):
     def test_task(self):
         t = Task(Mock(), "")
         self.assertIsInstance(t, Task)
@@ -34,5 +34,8 @@ class TestTaskBase(unittest.TestCase):
         t.unregister_listener(tl2)
         assert len(t.listeners) == 1
         assert t.listeners[0] == tl1
+        t.listeners[0].notify_update_task("abc")
         t.unregister_listener(tl1)
         assert len(t.listeners) == 0
+        with self.assertLogs(logger, level="WARNING"):
+            t.unregister_listener(tl1)

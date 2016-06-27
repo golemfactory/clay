@@ -1,5 +1,5 @@
 import unittest
-from os import makedirs
+from os import makedirs, path
 
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
@@ -19,6 +19,13 @@ class TestRenderingTask(TestDirFixture):
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
+
+    def test_paths(self):
+        rt = self._init_task()
+        res1 = path.join(self.path, "dir1", "dir2", "name1")
+        res2 = path.join(self.path, "dir1", "dir2", "name2")
+        rt.task_resources = {res1, res2}
+        assert rt._get_working_directory() == "../.."
 
     def test_box_start(self):
         rt = self._init_task()

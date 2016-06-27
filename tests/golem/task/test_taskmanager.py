@@ -1,10 +1,13 @@
+from unittest import TestCase
+
 from mock import Mock
 
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager, logger
+from golem.task.taskmanager import TaskManager, logger, TMTaskEventListener
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
+
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -217,3 +220,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called
 
+
+class TestTMTaskEventListener(TestCase):
+    def test_listener(self):
+        manager = Mock()
+        listener = TMTaskEventListener(manager)
+        assert listener.task_manager == manager
+        assert isinstance(listener, TaskEventListener)
+        listener.notify_update_task("xyz")
+        manager.notice_task_update.assert_called_with("xyz")

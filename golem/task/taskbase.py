@@ -1,8 +1,11 @@
 import abc
+import logging
 import time
 from copy import deepcopy
 
 from golem.core.variables import APP_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class TaskHeader(object):
@@ -106,6 +109,7 @@ class Task(object):
             if self.listeners[i] is listener:
                 del self.listeners[i]
                 return
+        logger.warning("Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
