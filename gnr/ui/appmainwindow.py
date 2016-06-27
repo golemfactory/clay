@@ -1,6 +1,6 @@
 from os import path
 
-from PyQt4.QtGui import QPixmap
+from PyQt4.QtGui import QPixmap, QFrame
 
 from golem.core.common import get_golem_path
 
@@ -15,6 +15,7 @@ class AppMainWindow(object):
         self.ui = Ui_MainWindow()
 
         self.ui.setupUi(self.window)
+        self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
 
     def show(self):
