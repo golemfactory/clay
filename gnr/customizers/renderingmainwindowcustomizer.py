@@ -73,6 +73,8 @@ class AbsRenderingMainWindowCustomizer(object):
         QtCore.QObject.connect(self.gui.ui.previewLabel, QtCore.SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
                                self.__pixmap_clicked)
         self.gui.ui.previewLabel.setMouseTracking(True)
+        QtCore.QObject.connect(self.gui.ui.previewLabel, QtCore.SIGNAL("mouseMoveEvent(int, int, QMouseEvent)"),
+                               self.__mouse_on_pixmap_moved)
 
     def _setup_advance_task_connections(self):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
@@ -247,6 +249,47 @@ class AbsRenderingMainWindowCustomizer(object):
             subtask = self.__get_subtask(num)
             if subtask is not None:
                 self.show_subtask_details_dialog(subtask)
+
+    def __mouse_on_pixmap_moved(self, x, y, *args):
+        num = self.__get_task_num_from_pixels(x, y)
+        if num is not None:
+            definition = self.current_task_highlighted.definition
+            if not isinstance(definition, RenderingTaskDefinition):
+                return
+            renderer = self.logic.get_renderer(definition.renderer)
+            subtask = self.__get_subtask(num)
+            if subtask is not None:
+                if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
+                    frames = len(definition.renderer_options.frames)
+                    frame_num = self.gui.ui.frameSlider.value()
+                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
+                                                       subtask.extra_data['end_task'],
+                                                       subtask.extra_data['total_tasks'],
+                                                       self.current_task_highlighted.definition.resolution[0],
+                                                       self.current_task_highlighted.definition.resolution[1],
+                                                       use_frames=True,
+                                                       frames=frames,
+                                                       frame_num=frame_num)
+                else:
+                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
+                                                       subtask.extra_data['end_task'],
+                                                       subtask.extra_data['total_tasks'],
+                                                       self.current_task_highlighted.definition.resolution[0],
+                                                       self.current_task_highlighted.definition.resolution[1])
+
+                if os.path.isfile(self.last_preview_path):
+                    self.__draw_boarder(border)
+
+    def __draw_boarder(self, border):
+        pixmap = QPixmap(self.last_preview_path)
+        p = QPainter(pixmap)
+        pen = QPen(QColor(0, 0, 0))
+        pen.setWidth(3)
+        p.setPen(pen)
+        for (x, y) in border:
+            p.drawPoint(x, y)
+        p.end()
+        self.__update_img(pixmap)
 
     def __update_img(self, img):
         size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
