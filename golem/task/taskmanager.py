@@ -35,7 +35,7 @@ def log_key_error(*args, **kwargs):
 
 class TMTaskEventListener(TaskEventListener):
     def __init__(self, task_manager):
-        super(TaskEventListener).__init__()
+        super(TaskEventListener, self).__init__()
         self.task_manager = task_manager
 
     def notify_update_task(self, task_id):

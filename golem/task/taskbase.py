@@ -1,5 +1,6 @@
-import time
 import abc
+import time
+from copy import deepcopy
 
 from golem.core.variables import APP_VERSION
 
@@ -86,8 +87,17 @@ class Task(object):
 
         self.listeners = []
 
-    def register_listner(self, listener):
-        assert isinstance(TaskEventListener)
+    def __getstate__(self):
+        state = deepcopy(vars(self))
+        del state['listeners']
+        return state
+
+    def __setstate__(self, dict_):
+        self.__dict__ = dict_
+        self.listeners = []
+
+    def register_listener(self, listener):
+        assert isinstance(listener, TaskEventListener)
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):

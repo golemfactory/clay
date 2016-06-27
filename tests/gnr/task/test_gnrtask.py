@@ -29,7 +29,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
         subtask_id = "xxyyzz"
 
-        task.subtasks_given[subtask_id] = Mock()
+        task.subtasks_given[subtask_id] = {}
         self.assertEqual(task.get_stdout(subtask_id), "")
         self.assertEqual(task.get_stderr(subtask_id), "")
         self.assertEqual(task.get_results(subtask_id), [])
@@ -55,6 +55,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stderr(subtask_id), files[1])
         
         self.assertEqual(task.after_test(None, None), None)
+
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()
