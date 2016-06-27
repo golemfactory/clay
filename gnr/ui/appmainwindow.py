@@ -34,8 +34,6 @@ class AppMainWindow(object):
             self.ui.saveButton.setEnabled(enable)
             self.ui.loadButton.setEnabled(enable)
             self.ui.taskTypeComboBox.setEnabled(enable)
-            if success:
-                self.ui.finishButton.setEnabled(enable)
         elif tab_name.lower() == 'recount':
             self.ui.recountBlenderButton.setEnabled(enable)
             self.ui.recountButton.setEnabled(enable)
