@@ -1,18 +1,27 @@
 import logging
-import threading
-import time
+import sys
 import traceback
+from Queue import Queue, Empty
+from twisted.python.failure import Failure
 
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketServerFactory, WebSocketClientFactory
-from twisted.internet import threads
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from twisted.internet.tcp import Port
 
 from golem.core.simpleserializer import SimpleSerializerRelease
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION
 from golem.rpc.service import ServiceNameProxy, to_names_list, to_dict
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+root.addHandler(ch)
 
 logger = logging.getLogger(__name__)
 
@@ -135,24 +144,26 @@ class MessageLedger(MessageParserMixin):
         self.session_requests = {}
 
     def add_request(self, message, session):
-        logger.debug("add request (ledger)".format(id(self)))
+        logger.debug("add request (ledger) {} {}".format(id(self), message.id))
+
         entry = dict(
-            reponded=False,
+            responded=False,
             response=None,
             message=message,
-            event=threading.Event()
+            session=session,
+            deferred=Deferred()
         )
 
-        peer = session.transport.getPeer()
-        session_key = (peer.host, peer.port)
+        self.requests[message.id] = entry
+
+        session_key = self._get_session_key(session)
         if session_key not in self.session_requests:
             self.session_requests[session_key] = {}
-
-        self.requests[message.id] = entry
         self.session_requests[session_key][message.id] = entry
 
     def add_response(self, message):
-        logger.debug("add response (ledger)".format(id(self)))
+        logger.debug("add response (ledger) {} {} for {}".format(id(self), message.id, message.request_id))
+
         if message.request_id in self.requests:
             request_dict = self.requests[message.request_id]
             request_dict.update(dict(
@@ -160,15 +171,15 @@ class MessageLedger(MessageParserMixin):
                 response=message
             ))
 
-            event = request_dict['event']
-            event.set()
+            deferred = request_dict['deferred']
+            deferred.callback(message)
 
     def get_response(self, message):
         message_id = message.id
 
         if message_id in self.requests:
             entry = self.requests[message_id]
-            return entry['event'], entry
+            return entry['deferred'], entry
 
         return None, None
 
@@ -178,56 +189,68 @@ class MessageLedger(MessageParserMixin):
 
         entry = self.requests.pop(message_or_id, None)
         if entry:
-            session = entry['session']
-            session_key = (session.host, session.port)
-            entry = session[session_key].pop(message_or_id, None)
-            if entry and entry['event']:
-                entry['event'].clear()
+            session_key = self._get_session_key(entry['session'])
+            self.session_requests[session_key].pop(message_or_id, None)
+
+    @staticmethod
+    def _get_session_key(session):
+        peer = session.transport.getPeer()
+        return peer.host, peer.port
 
 
 class WebSocketRPCProtocol(object):
 
     def onOpen(self):
-        logger.debug("onOpen {}".format(id(self)))
-        self.factory.add_session(self)
+        try:
+            self.factory.add_session(self)
+        except:
+            traceback.print_exc()
 
     def onClose(self, wasClean, code, reason):
-        logger.debug("onClose {}".format(id(self)))
-        self.factory.remove_session(self)
+        try:
+            self.factory.remove_session(self)
+        except:
+            traceback.print_exc()
 
     def onMessage(self, payload, isBinary):
-        logger.debug("onMessage {}".format(id(self)))
-
         try:
             message = self.factory.receive_message(payload, id(self))
         except:
+            traceback.print_exc()
             message = None
 
         if isinstance(message, RPCRequestMessage):
+            result, errors = None, None
             try:
                 result = self.factory.perform_request(message)
-                errors = None
             except Exception as exc:
-                result = None
                 errors = exc.message
+
             response = RPCResponseMessage(request_id=message.id,
                                           method=message.method,
                                           result=result,
                                           errors=errors)
-            self.send_message(response)
+
+            self.send_message(response, add_request=False)
+
         elif isinstance(message, RPCResponseMessage):
-            self.factory.add_response(message)
+            try:
+                self.factory.add_response(message)
+            except:
+                traceback.print_exc()
         else:
             logger.error("RPC: received invalid message")
 
     def get_sessions(self):
         return self.factory.sessions
 
-    def send_message(self, message):
+    def send_message(self, message, add_request=True):
         try:
-            self.factory.add_request(message, self)
+            if add_request:
+                self.factory.add_request(message, self)
+
             prepared = self.factory.prepare_message(message, id(self))
-            self.sendMessage(prepared, sync=True)
+            self.sendMessage(prepared)
         except Exception as exc:
             logger.error("RPC: error sending message: {}"
                          .format(exc))
@@ -265,7 +288,7 @@ class WebSocketRPCFactory(MessageLedger, SessionManager):
         return WebSocketRPCServiceInfo(service, self.ws_conn_info.ws_address)
 
     def build_client(self, service_info, timeout=None):
-        rpc = BlockingRPC(self, timeout=timeout)
+        rpc = RPC(self, timeout=timeout)
         return RPCProxyClient(rpc, service_info.method_names)
 
     def perform_request(self, message):
@@ -343,45 +366,37 @@ class WebSocketRPCServiceInfo(object):
         self.ws_address = ws_address
 
 
-class BlockingRPC(object):
+class RPC(object):
 
     def __init__(self, factory, timeout=None):
+        from twisted.internet import reactor
+
+        self.reactor = reactor
         self.factory = factory
         self.host = factory.host
         self.port = factory.port
-        self.timeout = timeout or 5
+        self.timeout = timeout or 2
 
+    @inlineCallbacks
     def call(self, method_name, *args, **kwargs):
+        logger.debug("RPC call {}".format(method_name))
 
-        logger.debug("RPC call {}({}, {})".format(method_name, args, kwargs))
+        session = self.factory.get_session(self.host, self.port)
+        if not session:
+            raise Exception("RPC: no session ({})"
+                            .format(method_name))
 
         rpc_request = RPCRequestMessage(method_name, args, kwargs)
-        session = self.factory.get_session(self.host, self.port)
-
-        if not session:
-            raise Exception("BlockingRPC: no session ({})"
-                            .format(method_name))
 
         session.send_message(rpc_request)
+        deferred, entry = session.get_response(rpc_request)
 
-        event, entry = session.get_response(rpc_request)
-
-        from twisted.internet import reactor
-        threads.blockingCallFromThread(reactor, event.wait, self.timeout)
-
-        responded = entry['responded']
-        response = entry['response']
-
-        self.factory.clear_request(rpc_request)
-
-        if not responded:
-            raise Exception("BlockingRPC: timeout ({})"
-                            .format(method_name))
-
-        return response
+        response = yield deferred
+        returnValue(response.result)
 
 
 class RPCProxyService(object):
+
     def __init__(self, service):
         self.methods = to_dict(service)
 
@@ -389,7 +404,7 @@ class RPCProxyService(object):
         return method_name in self.methods
 
     def call(self, method_name, *args, **kwargs):
-        self.methods[method_name](*args, **kwargs)
+        return self.methods[method_name](*args, **kwargs)
 
 
 class RPCProxyClient(ServiceNameProxy):
@@ -405,5 +420,4 @@ class RPCProxyClient(ServiceNameProxy):
 
         def wrapper(*args, **kwargs):
             return rpc.call(name, *args, **kwargs)
-
         return wrapper

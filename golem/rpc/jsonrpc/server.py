@@ -29,7 +29,6 @@ class JsonRPCServer(ServerEvents, RPCServer):
         return self
 
     def processrequest(self, result, args, **kw):
-        print "RPC SERVER {} {} {}".format(result.__dict__, result.result, type(result.result))
         if result:
             if result.result:
                 result.result = cPickle.dumps(result.result)

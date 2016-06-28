@@ -6,6 +6,7 @@ from PyQt4 import QtCore
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
@@ -69,21 +70,30 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
 
+    @inlineCallbacks
     def register_client(self, client):
         self.client = client
-        # self.client.register_listener(GNRClientEventListener(self))
+        # yield self.client.register_listener(GNRClientEventListener(self))
         self.customizer.init_config()
-        payment_address = ""
-        if client.use_transaction_system():
-            payment_address = client.get_payment_address()
-        self.customizer.set_options(self.get_config(), client.get_client_id(),
-                                    payment_address)
+
+        use_transaction_system = yield client.use_transaction_system()
+        if use_transaction_system:
+            payment_address = yield client.get_payment_address()
+        else:
+            payment_address = ""
+
+        config = yield self.get_config()
+        client_id = yield self.client.get_client_id()
+
+        self.customizer.set_options(config, client_id, payment_address)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
 
+    @inlineCallbacks
     def get_res_dirs(self):
-        return self.client.get_res_dirs()
+        dirs = yield self.client.get_res_dirs()
+        returnValue(dirs)
 
     def remove_computed_files(self):
         self.client.remove_computed_files()
@@ -94,16 +104,20 @@ class GNRApplicationLogic(QtCore.QObject):
     def remove_received_files(self):
         self.client.remove_received_files()
 
+    @inlineCallbacks
     def check_network_state(self):
-        listen_port = self.client.get_p2p_port()
-        task_server_port = self.client.get_task_server_port()
+        listen_port = yield self.client.get_p2p_port()
+        task_server_port = yield self.client.get_task_server_port()
         if listen_port == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
-            return
-        peers_num = len(self.client.get_peer_info())
+            returnValue(None)
+
+        peer_info = yield self.client.get_peer_info()
+        peers_num = len(peer_info)
+
         if peers_num == 0:
             self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
-            return
+            returnValue(None)
 
         self.customizer.gui.ui.errorLabel.setText("")
 
@@ -115,12 +129,15 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_task_types(self):
         return self.task_types
 
+    @inlineCallbacks
     def get_status(self):
-        self.customizer.gui.ui.statusTextBrowser.setText(self.client.get_status())
+        client_status = yield self.client.get_status()
+        self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
+    @inlineCallbacks
     def get_peers(self):
         table = self.customizer.gui.ui.connectedPeersTable
-        peers = self.client.get_peer_info()
+        peers = yield self.client.get_peer_info()
 
         row_count = table.rowCount() if isinstance(table, QObject) else 0
         new_row_count = len(peers)
@@ -138,8 +155,9 @@ class GNRApplicationLogic(QtCore.QObject):
             table.setItem(i, 2, QTableWidgetItem(peer.key_id))
             table.setItem(i, 3, QTableWidgetItem(peer.node_name))
 
+    @inlineCallbacks
     def update_payments_view(self):
-        b, ab = self.client.get_balance()
+        b, ab = yield self.client.get_balance()
         if not (b is None or ab is None):
             rb = b - ab
             deposit = 0  # TODO: Get current deposit value.
@@ -153,8 +171,10 @@ class GNRApplicationLogic(QtCore.QObject):
             ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
             ui.totalBalanceLabel.setText(fmt.format(total * ether))
 
+    @inlineCallbacks
     def get_config(self):
-        return self.client.get_config()
+        config = yield self.client.get_config()
+        returnValue(config)
 
     def quit(self):
         self.client.quit()
@@ -230,8 +250,10 @@ class GNRApplicationLogic(QtCore.QObject):
     def show_task_result(self, task_id):
         self.customizer.show_task_result(task_id)
 
+    @inlineCallbacks
     def get_keys_auth(self):
-        return self.client.get_keys_auth()
+        keys_auth = yield self.client.get_keys_auth()
+        returnValue(keys_auth)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
@@ -313,6 +335,7 @@ class GNRApplicationLogic(QtCore.QObject):
             return False
 
     # label param is the gui element to set text
+    @inlineCallbacks
     def run_benchmark(self, benchmark, label):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
@@ -322,7 +345,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
         t = Task.build_task(tb)
 
-        self.br = BenchmarkRunner(t, self.client.get_datadir(),
+        datadir = yield self.client.get_datadir()
+
+        self.br = BenchmarkRunner(t, datadir,
                                   lambda p: self._benchmark_computation_success(performance=p, label=label),
                                   self._benchmark_computation_error,
                                   benchmark)
@@ -350,8 +375,10 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
+    @inlineCallbacks
     def get_environments(self):
-        return self.client.get_environments()
+        environments = yield self.client.get_environments()
+        returnValue(environments)
 
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
@@ -373,10 +400,11 @@ class GNRApplicationLogic(QtCore.QObject):
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
+    @inlineCallbacks
     def task_status_changed(self, task_id):
 
         if task_id in self.tasks:
-            ts = self.client.query_task_state(task_id)
+            ts = yield self.client.query_task_state(task_id)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
@@ -392,17 +420,23 @@ class GNRApplicationLogic(QtCore.QObject):
     def key_changed(self):
         self.client.key_changed()
 
+    @inlineCallbacks
     def get_payments(self):
-        return self.client.get_payments_list()
+        payments_list = yield self.client.get_payments_list()
+        returnValue(payments_list)
 
+    @inlineCallbacks
     def get_incomes(self):
-        return self.client.get_incomes_list()
+        incomes_list = yield self.client.get_incomes_list()
+        returnValue(incomes_list)
 
+    @inlineCallbacks
     def get_max_price(self):
         """ Return suggested max price per hour of computation
         :return:
         """
-        return self.get_config().max_price
+        config = yield self.get_config()
+        returnValue(config.max_price)
 
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox

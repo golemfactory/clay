@@ -1,8 +1,5 @@
-import uuid
-
 import time
-
-from twisted.internet import threads
+import uuid
 
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 from golem.tools.testwithreactor import TestWithReactor
@@ -40,25 +37,27 @@ class TestRPCClient(TestWithReactor):
         ws_address = service_info.ws_address
         ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
+        client = ws_client.build_client(service_info)
         result = [None, None]
 
-        def run_client():
-            client = ws_client.build_client(service_info)
+        def on_success(*args, **kwargs):
 
-            def on_success(*args, **kwargs):
-                result[0] = client.method_1(12)
+            def on_result(value):
+                result[0] = value
                 result[1] = True
-                assert result[0] == 12
+                assert result[0] == big_chunk
 
-            def on_error(*args, **kwargs):
-                result[0] = None
-                result[1] = False
+            deferred = client.method_1(big_chunk)
+            deferred.addCallback(on_result)
 
-            ws_client.connect().addCallbacks(on_success, on_error)
+        def on_error(*args, **kwargs):
+            result[0] = None
+            result[1] = False
+            self.fail("Error occurred {}".format(args))
 
-        threads.deferToThread(run_client)
+        ws_client.connect().addCallbacks(on_success, on_error)
 
         while result[1] is None:
-            time.sleep(0.1)
+            time.sleep(1)
 
-        assert result[0]
+

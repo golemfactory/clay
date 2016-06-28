@@ -1,10 +1,8 @@
 import logging.config
-import traceback
 from multiprocessing import Process, Queue
 from os import path
 
-import time
-from twisted.internet.task import LoopingCall
+from twisted.internet.defer import inlineCallbacks
 
 from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
@@ -47,57 +45,64 @@ def load_environments():
             Environment()]
 
 
+class GUIApp(object):
+    def __init__(self, rendering):
+        self.logic = RenderingApplicationLogic()
+        self.app = GNRGui(self.logic, AppMainWindow)
+        self.logic.register_gui(self.app.get_main_window(),
+                                RenderingMainWindowCustomizer)
+        self.client = None
+
+        if rendering:
+            self.logic.register_new_renderer_type(
+                build_blender_renderer_info(
+                    TaskWidget(Ui_BlenderWidget),
+                    BlenderRenderDialogCustomizer
+                )
+            )
+            self.logic.register_new_renderer_type(
+                build_lux_render_info(
+                    TaskWidget(Ui_LuxWidget),
+                    LuxRenderDialogCustomizer
+                )
+            )
+
+    @inlineCallbacks
+    def start(self, client):
+        self.client = client
+        yield self.logic.register_client(self.client)
+        yield self.logic.start()
+        yield self.logic.check_network_state()
+        self.app.execute(True)
+
+
 def start_gui_process(queue, rendering):
     config_logging()
 
-    try:
-        import qt4reactor
-    except ImportError:
-        # Maybe qt4reactor is placed inside twisted.internet in site-packages?
-        from twisted.internet import qt4reactor
-    qt4reactor.install()
-
     service_info = queue.get(True, 3600)
+    queue.close()
+
+    reactor = install_qt4_reactor()
+
     ws_address = service_info.ws_address
     ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
-    def on_success(*args, **kwargs):
+    gui_app = GUIApp(rendering)
+
+    def on_success(_):
         client = ws_client.build_client(service_info)
+        gui_app.start(client)
 
-        logic = RenderingApplicationLogic()
-        app = GNRGui(logic, AppMainWindow)
-        gui = RenderingMainWindowCustomizer
-
-        logic.register_gui(app.get_main_window(), gui)
-
-        if rendering:
-            logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
-                                                                         BlenderRenderDialogCustomizer))
-            logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
-                                                                   LuxRenderDialogCustomizer))
-
-        logic_service_info = ws_client.add_service(logic)
-
-        try:
-            logic.register_client(client)
-            logic.start()
-            logic.check_network_state()
-        except Exception as exc:
-            traceback.print_exc()
-            raise
-
-        #    client.set_interface_rpc(logic_service_info)
-
-        app.execute(True)
+        logic_service_info = ws_client.add_service(gui_app.logic)
+        client.set_interface_rpc(logic_service_info)
 
     def on_error(*args, **kwargs):
         print "Error connecting", args, kwargs
 
-    def start():
+    def connect():
         ws_client.connect().addCallbacks(on_success, on_error)
 
-    from twisted.internet import reactor
-    reactor.callWhenRunning(start)
+    reactor.callWhenRunning(connect)
     reactor.run()
 
 
@@ -129,16 +134,19 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
 
 def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
-
+    config_logging()
     queue = Queue()
 
     client_process = Process(target=start_client_process, args=(queue, datadir, transaction_system, start_ranking))
     client_process.daemon = True
     client_process.start()
 
-    gui_process = Process(target=start_gui_process, args=(queue, rendering))
-    gui_process.daemon = True
-    gui_process.start()
+    # gui_process = Process(target=start_gui_process, args=(queue, rendering))
+    # gui_process.daemon = True
+    # gui_process.start()
 
-    gui_process.join()
+    # start_client_process(queue, datadir, transaction_system, start_ranking)
+    start_gui_process(queue, rendering)
+
+    # gui_process.join()
     client_process.join()

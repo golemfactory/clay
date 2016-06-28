@@ -4,6 +4,7 @@ import subprocess
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
+from twisted.internet.defer import inlineCallbacks
 
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -28,8 +29,9 @@ class ConfigurationDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
         Customizer.__init__(self, gui, logic)
 
+    @inlineCallbacks
     def load_data(self):
-        config_desc = self.logic.get_config()
+        config_desc = yield self.logic.get_config()
         self.__load_basic_config(config_desc)
         self.__load_advance_config(config_desc)
         self.__load_resource_config()
@@ -195,12 +197,14 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__refresh_disk_computed()
         self.__refresh_disk_received()
 
+    @inlineCallbacks
     def __refresh_disk_received(self):
-        res_dirs = self.logic.get_res_dirs()
+        res_dirs = yield self.logic.get_res_dirs()
         self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
 
+    @inlineCallbacks
     def __refresh_disk_computed(self):
-        res_dirs = self.logic.get_res_dirs()
+        res_dirs = yield self.logic.get_res_dirs()
         self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
 
     def __remove_from_computing(self):
