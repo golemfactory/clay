@@ -2,13 +2,15 @@ import time
 import logging
 from math import ceil
 
+from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
-from golem.resource.dirmanager import DirManager
-from golem.core.hostaddress import get_external_address
+
+
 
 logger = logging.getLogger(__name__)
 

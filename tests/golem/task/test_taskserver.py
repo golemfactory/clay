@@ -1,14 +1,14 @@
 import uuid
 
-import time
 from mock import Mock, MagicMock
-from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
-from golem.task.taskbase import ComputeTaskDef
-from golem.network.p2p.node import Node
+
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.network.p2p.node import Node
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 
 class TestTaskServer(TestWithKeysAuth, LogTestCase):

@@ -1,15 +1,18 @@
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
-from golem.task.taskstate import SubtaskStatus
-from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+import copy
+import logging
+import pickle
+import os
+import time
+
+from golem.core.compress import decompress
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.core.compress import decompress
+from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskstate import SubtaskStatus
+
 from gnr.renderingdirmanager import get_tmp_path
-import os
-import logging
-import time
-import pickle
-import copy
+
 
 logger = logging.getLogger(__name__)
 
