@@ -3,7 +3,6 @@ import time
 
 from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
-
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 
@@ -73,16 +72,6 @@ class TaskManager(object):
         self.task_events_listener = TMTaskEventListener(self)
 
         self.comp_task_keeper = CompTaskKeeper()
-
-    def save_state(self):
-        comp_task_keeper = SimpleSerializerRelease.dumps(self.comp_task_keeper)
-        tasks = SimpleSerializerRelease.dumps(self.tasks)
-        tasks_states = SimpleSerializerRelease.dumps(self.tasks_states)
-        subtask2task_mapping = SimpleSerializerRelease.dump(self.subtask2task_mapping)
-        print comp_task_keeper
-        print tasks
-        print tasks_states
-        print subtask2task_mapping
 
     def get_task_manager_root(self):
         return self.root_path
