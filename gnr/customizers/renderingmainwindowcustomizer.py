@@ -140,8 +140,8 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.frameSlider.setSingleStep(1)
         self.gui.ui.frameSlider.setPageStep(1)
         self.__update_slider_preview()
-        first_frame_namee = self.__get_frame_name(t.definition, 0)
-        self.gui.ui.outputFile.setText(u"{}".format(first_frame_namee))
+        first_frame_name = self.__get_frame_name(t.definition, 0)
+        self.gui.ui.outputFile.setText(u"{}".format(first_frame_name))
 
     def __set_preview(self, t):
         self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
