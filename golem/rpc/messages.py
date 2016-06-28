@@ -11,7 +11,7 @@ class RPCMessage(object):
 
 
 class RPCRequestMessage(RPCMessage):
-    def __init__(self, method, *args, **kwargs):
+    def __init__(self, method, args, kwargs):
         super(RPCRequestMessage, self).__init__()
         self.method = method
         self.args = args

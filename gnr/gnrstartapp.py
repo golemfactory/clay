@@ -1,6 +1,10 @@
 import logging.config
+import traceback
 from multiprocessing import Process, Queue
 from os import path
+
+import time
+from twisted.internet.task import LoopingCall
 
 from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
@@ -27,7 +31,6 @@ def config_logging():
 
 
 def install_qt4_reactor():
-    print "install reactor"
     try:
         import qt4reactor
     except ImportError:
@@ -46,7 +49,13 @@ def load_environments():
 
 def start_gui_process(queue, rendering):
     config_logging()
-    reactor = install_qt4_reactor()
+
+    try:
+        import qt4reactor
+    except ImportError:
+        # Maybe qt4reactor is placed inside twisted.internet in site-packages?
+        from twisted.internet import qt4reactor
+    qt4reactor.install()
 
     service_info = queue.get(True, 3600)
     ws_address = service_info.ws_address
@@ -69,9 +78,13 @@ def start_gui_process(queue, rendering):
 
         logic_service_info = ws_client.add_service(logic)
 
-        logic.register_client(client)
-        logic.start()
-        logic.check_network_state()
+        try:
+            logic.register_client(client)
+            logic.start()
+            logic.check_network_state()
+        except Exception as exc:
+            traceback.print_exc()
+            raise
 
         #    client.set_interface_rpc(logic_service_info)
 
@@ -83,11 +96,13 @@ def start_gui_process(queue, rendering):
     def start():
         ws_client.connect().addCallbacks(on_success, on_error)
 
+    from twisted.internet import reactor
     reactor.callWhenRunning(start)
     reactor.run()
 
 
 def start_client_process(queue, datadir, transaction_system, start_ranking):
+    config_logging()
 
     from twisted.internet import reactor
 
@@ -125,4 +140,5 @@ def start_app(datadir=None, rendering=False,
     gui_process.daemon = True
     gui_process.start()
 
+    gui_process.join()
     client_process.join()
