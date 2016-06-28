@@ -148,3 +148,4 @@ class TestClient(TestWithDatabase):
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
         assert "Not accepting tasks" in status
+        c._unlock_datadir()
