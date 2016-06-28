@@ -60,8 +60,7 @@ class DockerTaskThread(TaskThread):
 
             with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir,
-                           host_config=self.container_host_config,
-                           container_log_level=0) as job:
+                           host_config=self.container_host_config) as job:
                 self.job = job
                 if self.check_mem:
                     mc = MemoryChecker()

@@ -49,7 +49,7 @@ class DockerJob(object):
 
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
-                 host_config=None, container_log_level=None):
+                 host_config=None):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -76,10 +76,7 @@ class DockerJob(object):
         self.container_log = None
         self.state = self.STATE_NEW
 
-        if container_log_level is None:
-            container_log_level = container_logger.getEffectiveLevel()
-        else:
-            container_log_level = container_log_level
+        container_log_level = container_logger.getEffectiveLevel()
         self.log_std_streams = 0 < container_log_level <= logging.DEBUG
         self.logging_thread = None
 
