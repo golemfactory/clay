@@ -21,12 +21,11 @@ class AppMainWindow(object):
     def show(self):
         self.window.show()
 
-    def setEnabled(self, tab_name, enable, success=True):
+    def setEnabled(self, tab_name, enable):
         """
         Enable or disable buttons on the 'New task' or 'Provider' tab
         :param tab_name: Tab name. Available values: 'new_task' and 'recount'
         :param enable: enable if True, disable otherwise
-        :param success: test result
         """
         if tab_name.lower() == 'new_task':
             self.ui.testTaskButton.setEnabled(enable)
