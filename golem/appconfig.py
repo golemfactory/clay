@@ -47,6 +47,7 @@ TASK_REQUEST_INTERVAL = 5.0
 USE_WAITING_FOR_TASK_TIMEOUT = 0
 WAITING_FOR_TASK_TIMEOUT = 36000
 NODE_SNAPSHOT_INTERVAL = 4.0
+NETWORK_CHECK_INTERVAL = 1.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
@@ -131,6 +132,7 @@ class AppConfig:
                                  use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
                                  waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
                                  node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
+                                 network_check_interval=NETWORK_CHECK_INTERVAL,
                                  add_tasks=ADD_TASKS,
                                  max_results_sending_delay=MAX_SENDING_DELAY,
                                  requesting_trust=REQUESTING_TRUST,

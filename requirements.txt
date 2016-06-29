@@ -23,5 +23,4 @@ devp2p>=0.5.1
 cffi>=1.1.2
 ethereum>=1.1.0
 autobahn>=0.14.1
-dill
-jsonrpc
+dill>=0.2.5

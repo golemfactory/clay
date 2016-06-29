@@ -105,6 +105,7 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.client = Mock()
         logic.customizer = Mock()
         eth = 10**18
+
         logic.client.transaction_system.get_balance.return_value = (3 * eth, 1 * eth)
         logic.update_payments_view()
 

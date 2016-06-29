@@ -94,7 +94,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def register_client(self, client, logic_service_info):
-
         event_listener = GNRClientRemoteEventListener(logic_service_info)
 
         self.client = client
@@ -108,10 +107,15 @@ class GNRApplicationLogic(QtCore.QObject):
             payment_address = ""
 
         config = yield self.get_config()
-        client_id = yield self.client.get_client_id()
+        response = yield self.client.start_batch() \
+            .get_client_id() \
+            .get_datadir()   \
+            .get_node_name() \
+            .call()
 
-        self.datadir = yield self.client.get_datadir()
-        self.node_name = yield self.client.get_node_name()
+        self.node_name = response.pop()
+        self.datadir = response.pop()
+        client_id = response.pop()
 
         self.customizer.set_options(config, client_id, payment_address)
 
@@ -221,11 +225,20 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def update_stats(self):
-        known_tasks = yield self.client.get_task_count()
-        supported = yield self.client.get_supported_task_count()
-        computed_tasks = yield self.client.get_computed_task_count()
-        tasks_with_timeout = yield self.client.get_timeout_task_count()
-        tasks_with_errors = yield self.client.get_error_task_count()
+
+        response = yield self.client.start_batch() \
+            .get_task_count() \
+            .get_supported_task_count() \
+            .get_computed_task_count() \
+            .get_error_task_count() \
+            .get_timeout_task_count() \
+            .call()
+
+        tasks_with_timeout = response.pop()
+        tasks_with_errors = response.pop()
+        computed_tasks = response.pop()
+        supported = response.pop()
+        known_tasks = response.pop()
 
         self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
         self.customizer.gui.ui.supportedTasks.setText(str(supported))

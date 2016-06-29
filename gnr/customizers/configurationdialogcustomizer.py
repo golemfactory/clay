@@ -29,13 +29,14 @@ class ConfigurationDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
         Customizer.__init__(self, gui, logic)
 
-    @inlineCallbacks
     def load_data(self):
-        config_desc = yield self.logic.get_config()
-        self.__load_basic_config(config_desc)
-        self.__load_advance_config(config_desc)
-        self.__load_resource_config()
-        self.__load_payment_config(config_desc)
+        def load(config_desc):
+            self.__load_basic_config(config_desc)
+            self.__load_advance_config(config_desc)
+            self.__load_resource_config()
+            self.__load_payment_config(config_desc)
+
+        self.logic.get_config().addCallback(load)
 
     @staticmethod
     def du(path):
@@ -197,15 +198,15 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__refresh_disk_computed()
         self.__refresh_disk_received()
 
-    @inlineCallbacks
     def __refresh_disk_received(self):
-        res_dirs = yield self.logic.get_res_dirs()
-        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        def change(res_dirs):
+            self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        self.logic.get_res_dirs().addCallback(change)
 
-    @inlineCallbacks
     def __refresh_disk_computed(self):
-        res_dirs = yield self.logic.get_res_dirs()
-        self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        def change(res_dirs):
+            self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',

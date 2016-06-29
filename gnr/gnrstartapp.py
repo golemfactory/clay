@@ -45,6 +45,13 @@ def load_environments():
             Environment()]
 
 
+def register_rendering_task_types(logic):
+    logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
+                                                                 BlenderRenderDialogCustomizer))
+    logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
+                                                           LuxRenderDialogCustomizer))
+
+
 class GUIApp(object):
     def __init__(self, rendering):
         self.logic = RenderingApplicationLogic()
@@ -54,24 +61,12 @@ class GUIApp(object):
         self.client = None
 
         if rendering:
-            self.logic.register_new_renderer_type(
-                build_blender_renderer_info(
-                    TaskWidget(Ui_BlenderWidget),
-                    BlenderRenderDialogCustomizer
-                )
-            )
-            self.logic.register_new_renderer_type(
-                build_lux_render_info(
-                    TaskWidget(Ui_LuxWidget),
-                    LuxRenderDialogCustomizer
-                )
-            )
+            register_rendering_task_types(self.logic)
 
     @inlineCallbacks
     def start(self, client, logic_service_info):
         self.client = client
-        yield self.logic.register_client(self.client,
-                                         logic_service_info)
+        yield self.logic.register_client(self.client, logic_service_info)
         yield self.logic.start()
         yield self.logic.check_network_state()
         self.app.execute(True)
@@ -86,7 +81,7 @@ def start_gui_process(queue, rendering):
     gui_app = GUIApp(rendering)
     reactor = install_qt4_reactor()
 
-    ws_address = client_service_info.ws_address
+    ws_address = client_service_info.rpc_address
     ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
     def on_success(_):
@@ -113,6 +108,7 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
         client = start_client(datadir, transaction_system)
     except Exception as exc:
         print "Exiting client process: {}".format(exc)
+        queue.close()
         return
 
     for env in environments:
@@ -126,6 +122,7 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
         client_service_info = client.set_rpc_server(ws_server)
 
         queue.put(client_service_info)
+        queue.close()
 
     from twisted.internet import reactor
 

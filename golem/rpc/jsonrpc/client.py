@@ -1,13 +1,13 @@
+import cPickle
 import logging
 
-import cPickle
 from jsonrpc.proxy import JSONRPCProxy, ProxyEvents
 
-from golem.rpc.service import ServiceNameProxy, to_names_list
+from golem.rpc.service import ServiceMethodNamesProxy, ServiceHelper
 
 logger = logging.getLogger(__name__)
 
-RPCClient = ServiceNameProxy
+RPCClient = ServiceMethodNamesProxy
 
 
 class CustomJSONRPCProxy(JSONRPCProxy, ProxyEvents):
@@ -35,11 +35,11 @@ class CustomJSONRPCProxy(JSONRPCProxy, ProxyEvents):
 
 class JsonRPCClient(RPCClient):
 
-    name_exceptions = RPCClient.name_exceptions + ['rpc_proxy']
+    _name_exceptions = RPCClient._name_exceptions + ['rpc_proxy']
 
     def __init__(self, service_or_methods, url):
         if not isinstance(service_or_methods, list):
-            service_or_methods = to_names_list(service_or_methods)
+            service_or_methods = ServiceHelper.to_list(service_or_methods)
 
         self.rpc_proxy = CustomJSONRPCProxy(url, timeout=5)
         RPCClient.__init__(self, service_or_methods)
@@ -51,12 +51,12 @@ class JsonRPCClient(RPCClient):
 
     def __getattribute__(self, name, exceptions=None):
         return super(JsonRPCClient, self).__getattribute__(name,
-                                                           JsonRPCClient.name_exceptions)
+                                                           JsonRPCClient._name_exceptions)
 
 
 class JsonRPCClientBuilder(object):
     def __init__(self, service, url):
-        self.method_names = to_names_list(service)
+        self.method_names = ServiceHelper.to_list(service)
         self.url = url
 
     def build(self):

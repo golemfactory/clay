@@ -113,6 +113,7 @@ class Client:
 
         self.task_server = None
         self.last_nss_time = time.time()
+        self.last_net_check_time = time.time()
 
         self.last_node_state_snapshot = None
 
@@ -285,6 +286,9 @@ class Client:
     def get_client_id(self):
         return self.keys_auth.get_key_id()
 
+    def get_node_key(self):
+        return self.node.key
+
     def get_config(self):
         return self.config_desc
 
@@ -296,6 +300,21 @@ class Client:
 
     def get_task_server_port(self):
         return self.task_server.cur_port
+
+    def get_task_count(self):
+        return len(self.task_server.task_keeper.get_all_tasks())
+
+    def get_supported_task_count(self):
+        return len(self.task_server.task_keeper.supported_tasks)
+
+    def get_computed_task_count(self):
+        return self.task_server.task_computer.stats.computed_tasks
+
+    def get_timeout_task_count(self):
+        return self.task_server.task_computer.stats.tasks_with_timeout
+
+    def get_error_task_count(self):
+        return self.task_server.task_computer.stats.tasks_with_errors
 
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
@@ -317,6 +336,19 @@ class Client:
 
     def use_transaction_system(self):
         return bool(self.transaction_system)
+
+    def get_computing_trust(self, node_id):
+        if self.use_ranking():
+            return self.ranking.get_computing_trust(node_id)
+        return None
+
+    def get_requesting_trust(self, node_id):
+        if self.use_ranking():
+            return self.ranking.get_requesting_trust(node_id)
+        return None
+
+    def use_ranking(self):
+        return bool(self.ranking)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
@@ -468,11 +500,13 @@ class Client:
             if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
                 with self.snapshot_lock:
                     self.__make_node_state_snapshot()
+                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
+
+            if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
                 for l in self.listeners:
                     l.check_network_state()
-
-                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
+                self.last_net_check_time = time.time()
 
     def __make_node_state_snapshot(self, is_running=True):
 
