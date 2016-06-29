@@ -24,5 +24,12 @@ sdist/
 .installed.cfg
 *.egg
 
+# Golem files
+*.db
+*.log
+
+# Project structure parse results
+lextab.py
+yacctab.py
 # Local data
 data/

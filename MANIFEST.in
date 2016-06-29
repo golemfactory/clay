@@ -1,3 +1,5 @@
+include golemapp.py
+include requirements.txt
 include gnr/logging.ini
 include gnr/ui/nopreview.png
 include gnr/ui/img/*
