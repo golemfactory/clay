@@ -1,6 +1,6 @@
 from os import path
 
-from PyQt4.QtGui import QPixmap
+from PyQt4.QtGui import QPixmap, QFrame
 
 from golem.core.common import get_golem_path
 
@@ -15,15 +15,20 @@ class AppMainWindow(object):
         self.ui = Ui_MainWindow()
 
         self.ui.setupUi(self.window)
+        self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
 
     def show(self):
         self.window.show()
 
     def setEnabled(self, tab_name, enable):
+        """
+        Enable or disable buttons on the 'New task' or 'Provider' tab
+        :param tab_name: Tab name. Available values: 'new_task' and 'recount'
+        :param enable: enable if True, disable otherwise
+        """
         if tab_name.lower() == 'new_task':
             self.ui.testTaskButton.setEnabled(enable)
-            self.ui.finishButton.setEnabled(enable)
             self.ui.showAdvanceNewTaskButton.setEnabled(enable)
             self.ui.addResourceButton.setEnabled(enable)
             self.ui.saveButton.setEnabled(enable)
