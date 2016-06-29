@@ -16,7 +16,7 @@ from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.imgrepr import load_img, blend
-from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNROptions, react_to_key_error
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.scenefileeditor import regenerate_lux_file
@@ -364,7 +364,7 @@ class LuxTask(RenderingTask):
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
 
-    @check_subtask_id_wrapper
+    @react_to_key_error
     def _remove_from_preview(self, subtask_id):
         preview_files = []
         for subId, task in self.subtasks_given.iteritems():
