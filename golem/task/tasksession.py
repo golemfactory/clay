@@ -3,6 +3,7 @@ import logging
 import os
 import struct
 import time
+from threading import Timer
 
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
@@ -46,6 +47,9 @@ class TaskSession(MiddlemanSafeSession):
         self.last_resource_msg = None  # last message about resource
 
         self.result_owner = None  # information about user that should be rewarded (or punished) for the result
+
+        self.waiting_clients = []   # list of clients waiting for a task
+        self.is_launched = False    # define if timer has been launched
 
         self.__set_msg_interpretations()
 
@@ -320,20 +324,15 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_want_to_compute_task(self, msg):
         trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                 msg.perf_index, msg.price, msg.max_resource_size,
-                                                                 msg.max_memory_size, msg.num_cores, self.address)
+        if trust < self.task_server.config_desc.computing_trust:
+            warn = "Client not trusted: {} need at least {}".format(trust, self.task_server.config_desc.computing_trust)
+            logger.error(warn)
+            self.send(MessageCannotAssignTask(msg.task_id, warn))
         else:
-            ctd, wrong_task = None, False
-
-        if wrong_task:
-            self.send(MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
-            self.send(MessageRemoveTask(msg.task_id))
-        elif ctd:
-            self.send(MessageTaskToCompute(ctd))
-        else:
-            self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
+            self.waiting_clients.append(msg)    # add node to waiting list
+            if not self.is_launched:            # if timer is not launched
+                Timer(120 - self.task_server.config_desc.trading_ratio, self.__select_offer, ()).start()  # launch it
+                self.is_launched = True         # set launch flag
 
     def _react_to_task_to_compute(self, msg):
         if self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
@@ -551,7 +550,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_resource_parts_list(self, msg):
         res = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
-                                              resource_types["parts"])
+                                                                   resource_types["parts"])
         if res is None:
             return
         delta_header, parts_list = res
@@ -643,3 +642,46 @@ class TaskSession(MiddlemanSafeSession):
         # self.can_be_not_encrypted.append(MessageHello.Type)
         self.can_be_unsigned.append(MessageHello.Type)
         self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+
+    def __sort_by_ratio(el1, el2):
+        """ Sort elements of list by task id and by ratio """
+        if el1[1].task_id != el2[1].task_id:
+            # first sort by task_id
+            return 0 if el1[1].task_id == el2[1].task_id else 1 if el1[1].task_id > el2[1].task_id else -1
+        else:
+            # then sort by ratio
+            return 0 if el1[0] == el2[0] else 1 if el1[0] > el2[0] else -1
+
+    def __select_offer(self):
+        """ Select best offers for specified tasks """
+        ratio_list = []
+        # when trading ratio is high, user want to compute tasks fast
+        # when it is low, user want to compute cheap
+        trading_ratio = self.task_server.config_desc.trading_ratio
+        for node in self.waiting_clients:
+            ratio = ((100 - trading_ratio) * node.price) /\
+                    (trading_ratio * (node.max_memory_size + node.max_resource_size + 1))
+            ratio_list.append((ratio, node))
+
+        # sort by task_id and ratio
+        ratio_list.sort(self.__sort_by_ratio)
+
+        last_task_id = ''
+        for client in ratio_list:                   # for each waiting client
+            if last_task_id == client[1].task_id:   # check if task has been already assigned to any node
+                continue
+            else:                                   # if not, assign it to most optimal node
+                ctd, wrong_task = self.task_manager.get_next_subtask(
+                    self.key_id, client[1].node_name, client[1].task_id, client[1].perf_index, client[1].price,
+                    client[1].max_resource_size, client[1].max_memory_size, client[1].num_cores, self.address)
+
+                if wrong_task:
+                    self.send(MessageCannotAssignTask(client[1].task_id, "Not my task  {}".format(client[1].task_id)))
+                    self.send(MessageRemoveTask(client[1].task_id))
+                elif ctd:
+                    self.send(MessageTaskToCompute(ctd))
+                    last_task_id = client[1].task_id        # change only if task has been successfully assigned
+                else:
+                    self.send(
+                        MessageCannotAssignTask(client[1].task_id, "No more subtasks in {}".format(client[1].task_id)))
+        self.is_launched = False
