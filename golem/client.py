@@ -207,8 +207,8 @@ class Client:
         self.resource_port = resource_port
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
-    def run_test_task(self, task):
-        tt = TaskTester(task, self.datadir,
+    def run_test_task(self, t):
+        tt = TaskTester(t, self.datadir,
                         self.interface_rpc.test_task_computation_success,
                         self.interface_rpc.test_task_computation_error)
         tt.run()

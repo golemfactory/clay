@@ -1,8 +1,6 @@
 import logging
 import sys
 import traceback
-from Queue import Queue, Empty
-from twisted.python.failure import Failure
 
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
@@ -10,7 +8,7 @@ from autobahn.twisted.websocket import WebSocketClientProtocol, \
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 from twisted.internet.tcp import Port
 
-from golem.core.simpleserializer import SimpleSerializerRelease
+from golem.core.simpleserializer import DILLSerializer
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION
 from golem.rpc.service import ServiceNameProxy, to_names_list, to_dict
 
@@ -93,9 +91,15 @@ class KeyringMixin(object):
 class SerializerMixin(object):
 
     def serialize(self, message):
+        if message is None:
+            return None
         return self.serializer.dumps(message)
 
     def deserialize(self, message):
+        if isinstance(message, basestring):
+            return self.serializer.loads(message)
+        elif message is None:
+            return None
         return self.serializer.loads(str(message))
 
 
@@ -250,7 +254,7 @@ class WebSocketRPCProtocol(object):
                 self.factory.add_request(message, self)
 
             prepared = self.factory.prepare_message(message, id(self))
-            self.sendMessage(prepared)
+            self.sendMessage(prepared, isBinary=True)
         except Exception as exc:
             logger.error("RPC: error sending message: {}"
                          .format(exc))
@@ -310,7 +314,7 @@ class WebSocketRPCServerFactory(WebSocketRPCFactory, WebSocketServerFactory):
         WebSocketServerFactory.__init__(self, *args, **kwargs)
         WebSocketRPCFactory.__init__(self)
 
-        self.serializer = serializer or SimpleSerializerRelease
+        self.serializer = serializer or DILLSerializer
         self.keyring = keyring
         self.port = port
         self.ws_conn_info = None
@@ -335,7 +339,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
         self.host = host
         self.port = port
-        self.serializer = serializer or SimpleSerializerRelease
+        self.serializer = serializer or DILLSerializer
         self.keyring = keyring
         self.ws_conn_info = None
         self.status = Deferred()

@@ -82,12 +82,11 @@ def start_gui_process(queue, rendering):
     service_info = queue.get(True, 3600)
     queue.close()
 
+    gui_app = GUIApp(rendering)
     reactor = install_qt4_reactor()
 
     ws_address = service_info.ws_address
     ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
-
-    gui_app = GUIApp(rendering)
 
     def on_success(_):
         client = ws_client.build_client(service_info)
@@ -97,7 +96,7 @@ def start_gui_process(queue, rendering):
         client.set_interface_rpc(logic_service_info)
 
     def on_error(*args, **kwargs):
-        print "Error connecting", args, kwargs
+        print "Error connecting to client", args, kwargs
 
     def connect():
         ws_client.connect().addCallbacks(on_success, on_error)
@@ -109,10 +108,13 @@ def start_gui_process(queue, rendering):
 def start_client_process(queue, datadir, transaction_system, start_ranking):
     config_logging()
 
-    from twisted.internet import reactor
-
     environments = load_environments()
-    client = start_client(datadir, transaction_system)
+
+    try:
+        client = start_client(datadir, transaction_system)
+    except Exception as exc:
+        print "Exiting client process: {}".format(exc)
+        return
 
     for env in environments:
         client.environments_manager.add_environment(env)
@@ -124,6 +126,9 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
 
         service_info = ws_server.add_service(client)
         queue.put(service_info)
+        queue.close()
+
+    from twisted.internet import reactor
 
     if start_ranking:
         client.ranking.run(reactor)
@@ -134,7 +139,7 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
 
 def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
-    config_logging()
+
     queue = Queue()
 
     client_process = Process(target=start_client_process, args=(queue, datadir, transaction_system, start_ranking))

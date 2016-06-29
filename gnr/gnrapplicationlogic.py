@@ -53,6 +53,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog = None
         self.progress_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
+        self.datadir = None
+        self.res_dirs = None
+        self.node_name = None
+        self.br = None
+        self.__looping_calls = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
@@ -84,6 +89,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
         config = yield self.get_config()
         client_id = yield self.client.get_client_id()
+
+        self.datadir = yield self.client.get_datadir()
+        self.node_name = yield self.client.get_node_name()
 
         self.customizer.set_options(config, client_id, payment_address)
 
@@ -205,7 +213,6 @@ class GNRApplicationLogic(QtCore.QObject):
             return
 
         tb = self._get_builder(ts)
-
         t = Task.build_task(tb)
 
         self.client.enqueue_new_task(t)
@@ -215,9 +222,10 @@ class GNRApplicationLogic(QtCore.QObject):
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
 
-        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
-                                                                                  task_state.definition,
-                                                                                  self.client.get_datadir())
+        builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
+                                                                                     task_state.definition,
+                                                                                     self.datadir)
+        return builder
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -323,31 +331,28 @@ class GNRApplicationLogic(QtCore.QObject):
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
-            self.customizer.gui.setEnabled('new_task', False)       # disable everything on 'new task' tab
+            self.progress_dialog_customizer.button_enable(False)  # disable 'ok' button
+            self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
             t = Task.build_task(tb)
             self.client.run_test_task(t)
 
             return True
-        else:
-            return False
+
+        return False
 
     # label param is the gui element to set text
-    @inlineCallbacks
     def run_benchmark(self, benchmark, label):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
-        tb = self._get_builder(task_state)
 
+        tb = self._get_builder(task_state)
         t = Task.build_task(tb)
 
-        datadir = yield self.client.get_datadir()
-
-        self.br = BenchmarkRunner(t, datadir,
+        self.br = BenchmarkRunner(t, self.datadir,
                                   lambda p: self._benchmark_computation_success(performance=p, label=label),
                                   self._benchmark_computation_error,
                                   benchmark)
