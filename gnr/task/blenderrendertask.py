@@ -238,6 +238,9 @@ class BlenderRenderTask(FrameRenderingTask):
             return None
 
         start_task, end_task = self._get_next_task()
+        if start_task is None or end_task is None:
+            logger.error("Task doesn't have more subtasks.")
+            return None
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
@@ -464,6 +467,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
+
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):

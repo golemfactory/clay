@@ -76,10 +76,14 @@ class GNRApplicationLogic(QtCore.QObject):
         task_status = task.LoopingCall(self.get_status)
         task_peers = task.LoopingCall(self.get_peers)
         task_payments = task.LoopingCall(self.update_payments_view)
+        task_computing_stats = task.LoopingCall(self.update_stats)
+        task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
         task_status.start(3.0)
         task_peers.start(3.0)
         task_payments.start(5.0)
-        self.__looping_calls = (task_peers, task_status, task_payments)
+        task_computing_stats.start(3.0)
+        task_estimated_reputation.start(60.0)
+        self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats, task_estimated_reputation)
 
     def stop(self):
         for looping_call in self.__looping_calls:
@@ -194,6 +198,40 @@ class GNRApplicationLogic(QtCore.QObject):
             ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
             ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
             ui.totalBalanceLabel.setText(fmt.format(total * ether))
+
+    @inlineCallbacks
+    def update_estimated_reputation(self):
+        use_ranking = yield self.client.use_ranking()
+        if use_ranking:
+            client_key = yield self.client.get_node_key()
+            ui = self.customizer.gui.ui
+
+            computing_trust = yield self.client.get_computing_trust(client_key)
+            requesting_trust = yield self.client.get_requesting_trust(client_key)
+
+            pro_rep = int(computing_trust * 100)
+            req_rep = int(requesting_trust * 100)
+
+            ui.estimatedProviderReputation.setText("{}%".format(pro_rep))
+            ui.estimatedRequestorReputation.setText("{}%".format(req_rep))
+        else:
+            message = "Ranking system off"
+            self.customizer.gui.ui.estimatedRequestorReputation.setText(message)
+            self.customizer.gui.ui.estimatedProviderReputation.setText(message)
+
+    @inlineCallbacks
+    def update_stats(self):
+        known_tasks = yield self.client.get_task_count()
+        supported = yield self.client.get_supported_task_count()
+        computed_tasks = yield self.client.get_computed_task_count()
+        tasks_with_timeout = yield self.client.get_timeout_task_count()
+        tasks_with_errors = yield self.client.get_error_task_count()
+
+        self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
+        self.customizer.gui.ui.supportedTasks.setText(str(supported))
+        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
+        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
 
     @inlineCallbacks
     def get_config(self):
