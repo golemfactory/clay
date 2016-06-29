@@ -15,7 +15,7 @@ from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog
-from golem.client import GolemClientEventListener
+from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.task.taskbase import Task
@@ -35,6 +35,19 @@ class GNRClientEventListener(GolemClientEventListener):
 
     def check_network_state(self):
         self.logic.check_network_state()
+
+
+class GNRClientRemoteEventListener(GolemClientRemoteEventListener):
+    def __init__(self, service_info):
+        GolemClientRemoteEventListener.__init__(self, service_info)
+
+    def task_updated(self, task_id):
+        assert self.remote_client
+        self.remote_client.task_status_changed(task_id)
+
+    def check_network_state(self):
+        assert self.remote_client
+        self.remote_client.check_network_state()
 
 
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused]
@@ -76,9 +89,12 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer = customizer_class(gui, self)
 
     @inlineCallbacks
-    def register_client(self, client):
+    def register_client(self, client, logic_service_info):
+
+        event_listener = GNRClientRemoteEventListener(logic_service_info)
+
         self.client = client
-        # yield self.client.register_listener(GNRClientEventListener(self))
+        self.client.register_listener(event_listener)
         self.customizer.init_config()
 
         use_transaction_system = yield client.use_transaction_system()
@@ -327,14 +343,13 @@ class GNRApplicationLogic(QtCore.QObject):
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
-            tb = self._get_builder(task_state)
-
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog_customizer.button_enable(False)  # disable 'ok' button
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
+            tb = self._get_builder(task_state)
             t = Task.build_task(tb)
             self.client.run_test_task(t)
 

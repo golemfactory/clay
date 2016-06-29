@@ -3,9 +3,9 @@ import time
 from os import path
 from threading import Lock
 
-from gnr.task.tasktester import TaskTester
 from twisted.internet import task
 
+from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
@@ -73,6 +73,17 @@ class GolemClientEventListener:
         pass
 
 
+class GolemClientRemoteEventListener(GolemClientEventListener):
+    def __init__(self, service_info):
+        GolemClientEventListener.__init__(self)
+        self.service_info = service_info
+        self.remote_client = None
+
+    def build(self, client_builder):
+        self.remote_client = client_builder.build_client(self.service_info)
+        return self.remote_client
+
+
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
         self.client = client
@@ -133,7 +144,9 @@ class Client:
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
-        self.interface_rpc = None
+        self.rpc_server = None
+        self.rpc_clients = []
+
         self.ipfs_manager = None
         self.resource_server = None
         self.resource_port = 0
@@ -183,13 +196,10 @@ class Client:
         self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Implement this method proberly - send disconnect package, close connections etc.
+        # FIXME: Implement this method properly - send disconnect package, close connections etc.
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
-
-    def set_interface_rpc(self, interface_rpc_builder):
-        self.interface_rpc = interface_rpc_builder.build()
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
@@ -208,9 +218,15 @@ class Client:
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t):
-        tt = TaskTester(t, self.datadir,
-                        self.interface_rpc.test_task_computation_success,
-                        self.interface_rpc.test_task_computation_error)
+        def on_success(*args, **kwargs):
+            for rpc_client in self.rpc_clients:
+                rpc_client.test_task_computation_success(*args, **kwargs)
+
+        def on_error(*args, **kwargs):
+            for rpc_client in self.rpc_clients:
+                rpc_client.test_task_computation_error(*args, **kwargs)
+
+        tt = TaskTester(t, self.datadir, on_success, on_error)
         tt.run()
 
     def abort_task(self, task_id):
@@ -314,7 +330,16 @@ class Client:
     # CLIENT CONFIGURATION
     def register_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
+
+        if self.rpc_server:
+            if isinstance(listener, GolemClientRemoteEventListener):
+                self.rpc_clients.append(listener.build(self.rpc_server))
+
         self.listeners.append(listener)
+
+    def set_rpc_server(self, rpc_server):
+        self.rpc_server = rpc_server
+        return self.rpc_server.add_service(self)
 
     def change_config(self, new_config_desc):
         self.config_desc = self.config_approver.change_config(new_config_desc)

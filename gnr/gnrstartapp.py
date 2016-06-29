@@ -68,9 +68,10 @@ class GUIApp(object):
             )
 
     @inlineCallbacks
-    def start(self, client):
+    def start(self, client, logic_service_info):
         self.client = client
-        yield self.logic.register_client(self.client)
+        yield self.logic.register_client(self.client,
+                                         logic_service_info)
         yield self.logic.start()
         yield self.logic.check_network_state()
         self.app.execute(True)
@@ -79,21 +80,19 @@ class GUIApp(object):
 def start_gui_process(queue, rendering):
     config_logging()
 
-    service_info = queue.get(True, 3600)
+    client_service_info = queue.get(True, 3600)
     queue.close()
 
     gui_app = GUIApp(rendering)
     reactor = install_qt4_reactor()
 
-    ws_address = service_info.ws_address
+    ws_address = client_service_info.ws_address
     ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
     def on_success(_):
-        client = ws_client.build_client(service_info)
-        gui_app.start(client)
-
+        client = ws_client.build_client(client_service_info)
         logic_service_info = ws_client.add_service(gui_app.logic)
-        client.set_interface_rpc(logic_service_info)
+        gui_app.start(client, logic_service_info)
 
     def on_error(*args, **kwargs):
         print "Error connecting to client", args, kwargs
@@ -124,9 +123,9 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
         ws_server = WebSocketRPCServerFactory()
         ws_server.listen()
 
-        service_info = ws_server.add_service(client)
-        queue.put(service_info)
-        queue.close()
+        client_service_info = client.set_rpc_server(ws_server)
+
+        queue.put(client_service_info)
 
     from twisted.internet import reactor
 
@@ -154,4 +153,4 @@ def start_app(datadir=None, rendering=False,
     start_gui_process(queue, rendering)
 
     # gui_process.join()
-    client_process.join()
+    # client_process.join()

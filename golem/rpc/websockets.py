@@ -1,5 +1,4 @@
 import logging
-import sys
 import traceback
 
 from autobahn.twisted import WebSocketServerProtocol
@@ -11,15 +10,6 @@ from twisted.internet.tcp import Port
 from golem.core.simpleserializer import DILLSerializer
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION
 from golem.rpc.service import ServiceNameProxy, to_names_list, to_dict
-
-root = logging.getLogger()
-root.setLevel(logging.DEBUG)
-
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
 
 logger = logging.getLogger(__name__)
 
@@ -38,32 +28,24 @@ class WebSocketAddress(object):
         return self.address
 
 
-class WebSocketConnectionInfo(object):
+class WebSocketConnectionInfo(WebSocketAddress):
 
     def __init__(self, conn_info):
-        self.conn_info = conn_info
 
         if isinstance(conn_info, Port):
-            self.host = conn_info.getHost()
-            self.port = self.host.port
-            host = self.host.host
+            conn_host = conn_info.getHost()
+            host = conn_host.host
+            port = conn_host.port
         else:
-            self.host = conn_info.host
-            self.port = conn_info.port
-            host = self.host
+            host = conn_info.host
+            port = conn_info.port
 
         if host == '0.0.0.0':
             host = '127.0.0.1'
         elif host == '::0':
             host = '::1'
 
-        self.ws_address = WebSocketAddress(host, self.port)
-
-    def __str__(self):
-        return str(self.ws_address)
-
-    def __unicode__(self):
-        return self.ws_address
+        super(WebSocketConnectionInfo, self).__init__(host, port)
 
 
 class IKeyring(object):
@@ -197,30 +179,27 @@ class MessageLedger(MessageParserMixin):
             self.session_requests[session_key].pop(message_or_id, None)
 
     @staticmethod
-    def _get_session_key(session):
+    def get_session_addr(session):
         peer = session.transport.getPeer()
         return peer.host, peer.port
+
+    @classmethod
+    def _get_session_key(cls, session):
+        return cls.get_session_addr(session)
 
 
 class WebSocketRPCProtocol(object):
 
     def onOpen(self):
-        try:
-            self.factory.add_session(self)
-        except:
-            traceback.print_exc()
+        self.factory.add_session(self)
 
     def onClose(self, wasClean, code, reason):
-        try:
-            self.factory.remove_session(self)
-        except:
-            traceback.print_exc()
+        self.factory.remove_session(self)
 
     def onMessage(self, payload, isBinary):
         try:
             message = self.factory.receive_message(payload, id(self))
         except:
-            traceback.print_exc()
             message = None
 
         if isinstance(message, RPCRequestMessage):
@@ -238,15 +217,9 @@ class WebSocketRPCProtocol(object):
             self.send_message(response, add_request=False)
 
         elif isinstance(message, RPCResponseMessage):
-            try:
-                self.factory.add_response(message)
-            except:
-                traceback.print_exc()
+            self.factory.add_response(message)
         else:
             logger.error("RPC: received invalid message")
-
-    def get_sessions(self):
-        return self.factory.sessions
 
     def send_message(self, message, add_request=True):
         try:
@@ -262,6 +235,9 @@ class WebSocketRPCProtocol(object):
 
     def get_response(self, message):
         return self.factory.get_response(message)
+
+    def get_sessions(self):
+        return self.factory.sessions
 
 
 class WebSocketRPCServerProtocol(WebSocketRPCProtocol, WebSocketServerProtocol):
@@ -279,20 +255,20 @@ class WebSocketRPCFactory(MessageLedger, SessionManager):
         SessionManager.__init__(self)
 
         self.services = []
-        self.host = None
-        self.port = None
-        self.ws_conn_info = None
+        self.local_host = None
+        self.local_port = None
 
     def add_service(self, service):
-        if not self.ws_conn_info:
+        if not self.local_host:
             raise Exception("Not connected")
 
         rpc_proxy = RPCProxyService(service)
         self.services.append(rpc_proxy)
-        return WebSocketRPCServiceInfo(service, self.ws_conn_info.ws_address)
+
+        return WebSocketRPCServiceInfo(service, WebSocketAddress(self.local_host, self.local_port))
 
     def build_client(self, service_info, timeout=None):
-        rpc = RPC(self, timeout=timeout)
+        rpc = RPC(self, service_info.ws_address, timeout=timeout)
         return RPCProxyClient(rpc, service_info.method_names)
 
     def perform_request(self, message):
@@ -316,51 +292,62 @@ class WebSocketRPCServerFactory(WebSocketRPCFactory, WebSocketServerFactory):
 
         self.serializer = serializer or DILLSerializer
         self.keyring = keyring
-        self.port = port
-        self.ws_conn_info = None
+        self.listen_port = port
 
     def listen(self):
         from twisted.internet import reactor
 
-        listen_info = reactor.listenTCP(self.port, self)
-        self.ws_conn_info = WebSocketConnectionInfo(listen_info)
+        listen_info = reactor.listenTCP(self.listen_port, self)
+        ws_conn_info = WebSocketConnectionInfo(listen_info)
+
+        self.local_host = ws_conn_info.host
+        self.local_port = ws_conn_info.port
 
         logger.info("WebSocket RPC server listening on {}"
-                    .format(self.ws_conn_info))
+                    .format(ws_conn_info))
 
 
 class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     protocol = WebSocketRPCClientProtocol
 
-    def __init__(self, host, port, serializer=None, keyring=None, *args, **kwargs):
+    def __init__(self, remote_host, remote_port, serializer=None, keyring=None, *args, **kwargs):
+
         WebSocketClientFactory.__init__(self, *args, **kwargs)
         WebSocketRPCFactory.__init__(self)
 
-        self.host = host
-        self.port = port
+        self.remote_host = remote_host
+        self.remote_port = remote_port
+        self.connector = None
+
         self.serializer = serializer or DILLSerializer
         self.keyring = keyring
-        self.ws_conn_info = None
+
         self.status = Deferred()
+        self.status.addCallback(self.__connected)
 
     def connect(self):
         from twisted.internet import reactor
-
-        connect_info = reactor.connectTCP(self.host, self.port, self)
-        self.ws_conn_info = WebSocketConnectionInfo(connect_info)
+        self.connector = reactor.connectTCP(self.remote_host, self.remote_port, self)
 
         logger.info("WebSocket RPC client connecting to {}"
-                    .format(self.ws_conn_info))
-
+                    .format(WebSocketAddress(self.remote_host, self.remote_port)))
         return self.status
 
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
         self.status.callback(session)
 
+    # def clientConnectionLost(self, connector, reason):
+    #     self.remove_session()
+
     def clientConnectionFailed(self, connector, reason):
         self.status.errback(reason)
+
+    def __connected(self, *args):
+        addr = self.connector.transport.socket.getsockname()
+        self.local_host = addr[0]
+        self.local_port = addr[1]
 
 
 class WebSocketRPCServiceInfo(object):
@@ -372,13 +359,13 @@ class WebSocketRPCServiceInfo(object):
 
 class RPC(object):
 
-    def __init__(self, factory, timeout=None):
+    def __init__(self, factory, ws_address, timeout=None):
         from twisted.internet import reactor
 
         self.reactor = reactor
         self.factory = factory
-        self.host = factory.host
-        self.port = factory.port
+        self.host = ws_address.host
+        self.port = ws_address.port
         self.timeout = timeout or 2
 
     @inlineCallbacks
@@ -387,8 +374,9 @@ class RPC(object):
 
         session = self.factory.get_session(self.host, self.port)
         if not session:
-            raise Exception("RPC: no session ({})"
-                            .format(method_name))
+            raise Exception("RPC: no session for {}:{} ({}) : {}"
+                            .format(self.host, self.port,
+                                    method_name, self.factory.sessions))
 
         rpc_request = RPCRequestMessage(method_name, args, kwargs)
 
