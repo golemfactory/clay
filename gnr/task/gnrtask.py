@@ -1,8 +1,7 @@
 import copy
 import logging
-import os
 import pickle
-import time
+import os
 
 from golem.core.common import timeout_to_deadline
 from golem.core.compress import decompress

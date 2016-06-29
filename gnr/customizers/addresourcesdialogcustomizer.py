@@ -1,4 +1,5 @@
 from PyQt4 import QtCore
+from PyQt4.QtGui import QHeaderView
 
 from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 from gnr.ui.checkabledirmodel import CheckableDirModel
@@ -15,7 +16,12 @@ class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
         fs_model.setFilter(QtCore.QDir.AllDirs | QtCore.QDir.Files | QtCore.QDir.NoDotAndDotDot)
 
         self.gui.ui.folderTreeView.setModel(fs_model)
-        self.gui.ui.folderTreeView.setColumnWidth(0, self.gui.ui.folderTreeView.columnWidth(0) * 2)
+
+        header = self.gui.ui.folderTreeView.header()
+        header.setResizeMode(QHeaderView.Stretch)
+        header.setResizeMode(0, QHeaderView.Stretch)
+        for i in xrange(1, header.count()):
+            header.setResizeMode(i, QHeaderView.ResizeToContents)
 
     def _set_folder_tree(self, gui):
         self.folder_tree = gui.ui.folderTreeView

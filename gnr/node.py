@@ -8,7 +8,6 @@ from os import path
 
 import click
 import jsonpickle
-from twisted.internet import reactor
 
 from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
@@ -36,8 +35,11 @@ class Node(object):
     """
     default_environments = []
 
-    def __init__(self, datadir=None, **config_overrides):
-        self.client = create_client(datadir, **config_overrides)
+    def __init__(self, datadir=None, transaction_system=False,
+                 **config_overrides):
+        self.client = create_client(datadir,
+                                    transaction_system=transaction_system,
+                                    **config_overrides)
 
     def initialize(self):
         self.client.start_network()
@@ -61,7 +63,12 @@ class Node(object):
 
     def run(self):
         try:
+            # Import reactor locally because it also installs it and GUI
+            # requires Qt reactor version.
+            from twisted.internet import reactor
             reactor.run()
+        except Exception as ex:
+            logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()
             sys.exit(0)
@@ -85,75 +92,44 @@ class GNRNode(Node):
         else:
             return LuxRenderTaskBuilder
 
+    @staticmethod
+    def parse_node_addr(ctx, param, value):
+        del ctx, param
+        if value:
+            try:
+                SocketAddress(value, 1)
+                return value
+            except AddressValueError as e:
+                raise click.BadParameter(
+                    "Invalid network address specified: {}".format(e.message))
+        return ''
 
-def parse_node_addr(ctx, param, value):
-    del ctx, param
-    if value:
-        try:
-            SocketAddress(value, 1)
-            return value
-        except AddressValueError as e:
-            raise click.BadParameter(
-                "Invalid network address specified: {}".format(e.message))
-    return ''
+    @staticmethod
+    def parse_peer(ctx, param, value):
+        del ctx, param
+        addresses = []
+        for arg in value:
+            try:
+                addresses.append(SocketAddress.parse(arg))
+            except AddressValueError as e:
+                raise click.BadParameter(
+                    "Invalid peer address specified: {}".format(e.message))
+        return addresses
 
-
-def parse_peer(ctx, param, value):
-    del ctx, param
-    addresses = []
-    for arg in value:
-        try:
-            addresses.append(SocketAddress.parse(arg))
-        except AddressValueError as e:
-            raise click.BadParameter(
-                "Invalid peer address specified: {}".format(e.message))
-    return addresses
-
-
-def parse_task_file(ctx, param, value):
-    del ctx, param
-    tasks = []
-    for task_file in value:
-        with open(task_file, 'r') as f:
-            if f.name.endswith('.json'):
-                try:
-                    task_def = jsonpickle.decode(f.read())
-                except ValueError as e:
-                    raise click.BadParameter(
-                        "Invalid task json file: {}".format(e.message))
-            else:
-                task_def = pickle.loads(f.read())
-        task_def.task_id = str(uuid.uuid4())
-        tasks.append(task_def)
-    return tasks
-
-
-@click.group()
-def node_cli():
-    pass
-
-
-@node_cli.command()
-@click.option('--datadir', '-d', type=click.Path())
-@click.option('--node-address', '-a', multiple=False, type=click.STRING,
-              callback=parse_node_addr,
-              help="Network address to use for this node")
-@click.option('--peer', '-p', multiple=True, callback=parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-@click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
-              callback=parse_task_file,
-              help="Request task from file")
-def start(datadir, node_address, peer, task, **extra_args):
-    del extra_args
-
-    node = GNRNode(datadir=datadir, node_address=node_address)
-    node.initialize()
-
-    node.connect_with_peers(peer)
-    node.add_tasks(task)
-
-    node.run()
-
-
-if __name__ == "__main__":
-    start()
+    @staticmethod
+    def parse_task_file(ctx, param, value):
+        del ctx, param
+        tasks = []
+        for task_file in value:
+            with open(task_file, 'r') as f:
+                if f.name.endswith('.json'):
+                    try:
+                        task_def = jsonpickle.decode(f.read())
+                    except ValueError as e:
+                        raise click.BadParameter(
+                            "Invalid task json file: {}".format(e.message))
+                else:
+                    task_def = pickle.loads(f.read())
+            task_def.task_id = str(uuid.uuid4())
+            tasks.append(task_def)
+        return tasks

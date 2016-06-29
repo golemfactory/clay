@@ -16,6 +16,13 @@ from golem.docker.task_thread import DockerTaskThread
 logger = logging.getLogger(__name__)
 
 
+class StatsKeeper(object):
+    def __init__(self):
+        self.computed_tasks = 0
+        self.tasks_with_timeout = 0
+        self.tasks_with_errors = 0
+
+
 class TaskComputer(object):
     """ TaskComputer is responsible for task computations that take place in Golem application. Tasks are started
     in separate threads.
@@ -47,6 +54,8 @@ class TaskComputer(object):
         self.docker_manager = DockerMachineManager()
         self.change_config(task_server.config_desc,
                            in_background=False)
+
+        self.stats = StatsKeeper()
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
@@ -139,15 +148,21 @@ class TaskComputer(object):
                 return
 
             if task_thread.error or task_thread.error_msg:
+                if "Task timed out" in task_thread.error_msg:
+                    self.stats.tasks_with_timeout += 1
+                else:
+                    self.stats.tasks_with_errors += 1
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
                                                   subtask.task_owner, self.node_name)
             elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
                 logger.info("Task {} computed".format(subtask_id))
+                self.stats.computed_tasks += 1
                 self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
             else:
+                self.stats.tasks_with_errors += 1
                 self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                                   subtask.return_address, subtask.return_port, subtask.key_id,
                                                   subtask.task_owner, self.node_name)

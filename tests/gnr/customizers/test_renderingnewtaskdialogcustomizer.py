@@ -34,6 +34,7 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         definition.renderer = renderer.name
         definition.renderer_options = Mock()
         definition.renderer_options.use_frames = False
+        definition.renderer_options.compositing = False
         resources = self.additional_dir_content([3])
         definition.renderer_options.remove_from_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)

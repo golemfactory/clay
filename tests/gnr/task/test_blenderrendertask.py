@@ -41,6 +41,7 @@ class TestBlenderFrameTask(TempDirFixture):
                                root_path=self.tempdir,
                                use_frames=True,
                                frames=[10],
+                               compositing=False,
                                max_price=10)
 
         assert len(bt.preview_file_path) == len(bt.frames)
@@ -69,6 +70,7 @@ class TestBlenderTask(TempDirFixture):
                                     estimated_memory=123,
                                     root_path=self.tempdir,
                                     use_frames=False,
+                                    compositing=False,
                                     frames=[1],
                                     max_price=10)
 
