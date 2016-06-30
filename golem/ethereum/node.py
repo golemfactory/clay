@@ -59,6 +59,7 @@ class NodeProcess(object):
                                      stdout=subprocess.PIPE).communicate()
         ver = StrictVersion(re.search("Version: (\d\.\d\.\d)", output).group(1))
         assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
+        log.info("geth version {}".format(ver))
 
         if not path.exists(datadir):
             os.makedirs(datadir)
@@ -71,8 +72,9 @@ class NodeProcess(object):
         if not path.exists(path.join(datadir, 'chaindata')):
             genesis_file = path.join(path.dirname(__file__),
                                      'genesis_golem.json')
-            subprocess.check_call([program, '--datadir', datadir,
-                                   'init', genesis_file])
+            init_args = [program, '--datadir', datadir, 'init', genesis_file]
+            subprocess.check_call(init_args)
+            log.info("geth init: {}".format(' '.join(init_args)))
 
         self.datadir = datadir
         self.__ps = None
