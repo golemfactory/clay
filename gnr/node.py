@@ -26,7 +26,7 @@ def config_logging():
 
 
 config_logging()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class Node(object):

@@ -5,7 +5,7 @@ from PIL import Image
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.benchmarks")
 
 
 class Benchmark(object):

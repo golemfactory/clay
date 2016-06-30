@@ -13,7 +13,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 def react_to_key_error(func):

@@ -20,7 +20,7 @@ from gnr.task.scenefileeditor import regenerate_blender_crop_file
 from gnr.task.imgrepr import load_img
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class BlenderDefaults(RendererDefaults):
