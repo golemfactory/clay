@@ -1,5 +1,6 @@
 import logging
 import sys
+from collections import deque
 
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
@@ -194,18 +195,11 @@ class WebSocketRPCProtocol(object):
     def onMessage(self, payload, isBinary):
 
         try:
-
             message = self.factory.receive_message(payload, id(self))
-
         except Exception as exc:
+            message = None
             logger.error("RPC: error parsing message {}"
                          .format(exc))
-            print("RPC: error parsing message {}"
-                         .format(exc))
-            import traceback
-            traceback.print_exc()
-
-            message = None
 
         if isinstance(message, RPCRequestMessage):
             self.perform_requests(message)
@@ -227,7 +221,7 @@ class WebSocketRPCProtocol(object):
 
         try:
             if batch:
-                results = list()
+                results = deque()
                 for request in message.requests:
                     result = self.factory.perform_request(request.method,
                                                           request.args,
@@ -240,24 +234,21 @@ class WebSocketRPCProtocol(object):
         except Exception as exc:
             errors = exc.message
 
-            import traceback
-            traceback.print_exc()
-
         response = RPCResponseMessage(request_id=message.id,
                                       result=results,
                                       errors=errors)
 
-        self.send_message(response, add_request=False)
+        self.send_message(response, is_request=False)
 
-    def send_message(self, message, add_request=True):
+    def send_message(self, message, is_request=True):
         try:
-            if add_request:
+            if is_request:
                 self.factory.add_request(message, self)
             prepared = self.factory.prepare_message(message, id(self))
 
         except Exception as exc:
 
-            if add_request and message:
+            if is_request and message:
                 self.factory.remove_request(message)
 
             logger.error("RPC: error sending message: {}"
