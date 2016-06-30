@@ -6,11 +6,12 @@ from random import randrange, shuffle
 import OpenEXR
 from PIL import Image
 
+from golem.task.taskstate import SubtaskStatus
+from golem.testutils import TempDirFixture
+
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from golem.task.taskstate import SubtaskStatus
-from golem.testutils import TempDirFixture
 
 
 class TestBlenderDefaults(unittest.TestCase):

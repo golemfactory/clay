@@ -98,6 +98,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         task_mock = self._get_task_mock()
         task_mock.get_resources = get_resources
+
         tm.add_new_task(task_mock)
 
         assert tm.get_resources(task_id, task_mock.header) is resources
@@ -129,4 +130,3 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.remove_old_tasks()
         assert tm.tasks_states["mno"].status == TaskStatus.timeout
         assert tm.tasks_states["mno"].subtask_states["mmnnoo"].subtask_status == SubtaskStatus.failure
-
