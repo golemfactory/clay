@@ -27,14 +27,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger("golem.client")
 
 
-def start_client(datadir, transaction_system=False, connect_to_known_hosts=True):
-    c = Client(datadir=datadir, transaction_system=transaction_system,
-               connect_to_known_hosts=connect_to_known_hosts)
-    logger.info("Starting all asynchronous services")
-    c.start_network()
-    return c
-
-
 class GolemClientEventListener:
     def __init__(self):
         pass
@@ -131,6 +123,9 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+
+    def start(self):
+        self.start_network()
 
     def start_network(self):
         logger.info("Starting network ...")
