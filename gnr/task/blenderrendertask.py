@@ -9,7 +9,7 @@ from PIL import Image, ImageChops
 from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingenvironment import BlenderEnvironment
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions
 from gnr.task.renderingtask import RenderingTask
@@ -17,7 +17,6 @@ from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBu
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
-from gnr.task.imgrepr import load_img
 
 
 logger = logging.getLogger(__name__)
@@ -205,7 +204,7 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[frame] = {}
         
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = self._get_tmp_dir()
         if not self.use_frames:
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
         else:
@@ -295,11 +294,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
-            frames = []
 
         if self.use_frames:
             frames = [self.frames[0]]
