@@ -4,7 +4,6 @@ import cPickle as pickle
 import logging.config
 import sys
 import uuid
-from os import path
 
 import click
 import jsonpickle
@@ -14,18 +13,10 @@ from gnr.renderingenvironment import BlenderEnvironment, \
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import create_client
-from golem.core.common import get_golem_path
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
 
 
-def config_logging():
-    """Config logger"""
-    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, disable_existing_loggers=False)
-
-
-config_logging()
 logger = logging.getLogger("gnr.app")
 
 
