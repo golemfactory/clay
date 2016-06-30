@@ -4,7 +4,6 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from gnr.task.gnrtask import react_to_key_error
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from gnr.renderingdirmanager import get_tmp_path
@@ -70,7 +69,7 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
 
-    @react_to_key_error
+    @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
         if not self.should_accept(subtask_id):
             return
@@ -206,7 +205,7 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @react_to_key_error
+    @RenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         if not self.use_frames or self.__full_frames():
             return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
