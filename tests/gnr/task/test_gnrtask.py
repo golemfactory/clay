@@ -29,7 +29,6 @@ class TestGNRTask(LogTestCase, TestDirFixture):
             self.assertEqual(task.get_results(subtask_id), False)
         self.assertTrue(any(["not my subtask" in log for log in l.output]))
 
-
         task.subtasks_given[subtask_id] = Mock()
         self.assertEqual(task.get_stdout(subtask_id), "")
         self.assertEqual(task.get_stderr(subtask_id), "")
