@@ -1,8 +1,8 @@
 import os
 
-from mock import patch, Mock, MagicMock
+from mock import Mock, MagicMock
 
-from golem.client import create_client, Client
+from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
@@ -11,35 +11,18 @@ from golem.tools.testwithdatabase import TestWithDatabase
 
 class TestCreateClient(TestDirFixture):
 
-    @patch('golem.client.Client')
-    def test_config_default(self, mock_client):
-        create_client()
-        for name, args, kwargs in mock_client.mock_calls:
-            if name == "":  # __init__ call
-                config_desc = args[0]
-                self.assertIs(type(config_desc), ClientConfigDescriptor)
-                return
-        self.fail("__init__ call not found")
+    def test_config_override_valid(self):
+        assert hasattr(ClientConfigDescriptor(), "node_address")
+        c = Client(datadir=self.path, node_address='1.0.0.0')
+        assert c.config_desc.node_address == '1.0.0.0'
 
-    @patch('golem.client.Client')
-    def test_config_override_valid(self, mock_client):
-        self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
-        create_client(datadir=self.path, node_address='1.0.0.0')
-        for name, args, kwargs in mock_client.mock_calls:
-            if name == "":  # __init__ call
-                config_desc = args[0]
-                self.assertEqual(config_desc.node_address, '1.0.0.0')
-                return
-        self.fail("__init__ call not found")
-
-    @patch('golem.client.Client')
-    def test_config_override_invalid(self, mock_client):
-        """Test that create_client() does not allow to override properties
+    def test_config_override_invalid(self):
+        """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
-        self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
+        assert not hasattr(ClientConfigDescriptor(), "node_colour")
         with self.assertRaises(AttributeError):
-            create_client(datadir=self.path, node_colour='magenta')
+            Client(datadir=self.path, node_colour='magenta')
 
 
 class TestClient(TestWithDatabase):
@@ -87,6 +70,7 @@ class TestClient(TestWithDatabase):
 
     def test_datadir_lock(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
+        assert c.config_desc.node_address == ''
         with self.assertRaises(IOError):
             Client(ClientConfigDescriptor(), datadir=self.path)
         c._unlock_datadir()

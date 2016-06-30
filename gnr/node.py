@@ -13,7 +13,7 @@ from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from golem.client import create_client
+from golem.client import Client
 from golem.core.common import get_golem_path
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
@@ -37,9 +37,9 @@ class Node(object):
 
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
-        self.client = create_client(datadir,
-                                    transaction_system=transaction_system,
-                                    **config_overrides)
+        self.client = Client(datadir=datadir,
+                             transaction_system=transaction_system,
+                             **config_overrides)
 
     def initialize(self):
         self.client.start_network()

@@ -24,36 +24,12 @@ from golem.task.taskserver import TaskServer
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
-logger = logging.getLogger(__name__)
-
-
-def create_client(datadir=None, transaction_system=False, connect_to_known_hosts=True, **config_overrides):
-    # TODO: All these feature should be move to Client()
-    init_messages()
-
-    if not datadir:
-        datadir = get_local_datadir('default')
-
-    app_config = AppConfig.load_config(datadir)
-    config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(app_config)
-
-    for key, val in config_overrides.iteritems():
-        if hasattr(config_desc, key):
-            setattr(config_desc, key, val)
-        else:
-            raise AttributeError(
-                "Can't override nonexistent config attribute '{}'".format(key))
-
-    logger.info("Creating public client interface named: {}".format(app_config.get_node_name()))
-    return Client(config_desc, datadir=datadir, config=app_config,
-                  transaction_system=transaction_system,
-                  connect_to_known_hosts=connect_to_known_hosts)
+logger = logging.getLogger("golem.client")
 
 
 def start_client(datadir, transaction_system=False, connect_to_known_hosts=True):
-    c = create_client(datadir, transaction_system=transaction_system,
-                      connect_to_known_hosts=connect_to_known_hosts)
+    c = Client(datadir=datadir, transaction_system=transaction_system,
+               connect_to_known_hosts=connect_to_known_hosts)
     logger.info("Starting all asynchronous services")
     c.start_network()
     return c
@@ -78,9 +54,34 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         for l in self.client.listeners:
             l.task_updated(task_id)
 
-class Client:
-    def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
+
+class Client(object):
+    def __init__(self, config_desc=None, datadir=None, config=None,
+                 transaction_system=False, connect_to_known_hosts=True,
+                 **config_overrides):
+
+        # TODO: Should we init it only once?
+        init_messages()
+
+        if not datadir:
+            datadir = get_local_datadir('default')
+        self.datadir = datadir
+        self.__lock_datadir()
+
+        if not config:
+            config = AppConfig.load_config(datadir)
+
+        if not config_desc:
+            config_desc = ClientConfigDescriptor()
+            config_desc.init_from_app_config(config)
+        for key, val in config_overrides.iteritems():
+            if hasattr(config_desc, key):
+                setattr(config_desc, key, val)
+            else:
+                raise AttributeError(
+                    "Can't override nonexistent config attribute '{}'".format(key))
         self.config_desc = config_desc
+
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
         self.config_approver = ConfigApprover(config_desc)
 
@@ -89,11 +90,13 @@ class Client:
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
 
-        self.node.collect_network_info(self.config_desc.seed_host, use_ipv6=self.config_desc.use_ipv6)
-        self.datadir = datadir
-        self.__lock_datadir()
+        # FIXME: do in start()
+        self.node.collect_network_info(self.config_desc.seed_host,
+                                       use_ipv6=self.config_desc.use_ipv6)
+
         logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
+
         self.p2pservice = None
 
         self.task_server = None
@@ -103,7 +106,7 @@ class Client:
 
         self.nodes_manager_client = None
 
-        self.do_work_task = task.LoopingCall(self.__do_work)
+        self.do_work_task = task.LoopingCall(self.__do_work)  # FIXME: do in start()
         self.do_work_task.start(0.1, False)
 
         self.listeners = []
@@ -166,7 +169,8 @@ class Client:
         self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
-        logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
+        logger.debug("P2pservice connecting to {} on port {}".format(
+                     socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
 
     def quit(self):
