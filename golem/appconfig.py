@@ -1,12 +1,11 @@
 import logging
-
-import multiprocessing
-from psutil import virtual_memory
 from os import path
 
+from psutil import virtual_memory
+
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -19,7 +18,7 @@ OPTIMAL_PEER_NUM = 10
 MIN_MEMORY_SIZE = 1000 * 1024
 MAX_RESOURCE_SIZE = 250 * 1024
 MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
-NUM_CORES = max(multiprocessing.cpu_count(), 1)
+NUM_CORES = 1
 DISTRIBUTED_RES_NUM = 2
 
 logger = logging.getLogger(__name__)
