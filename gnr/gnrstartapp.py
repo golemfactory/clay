@@ -15,10 +15,10 @@ from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 
 
-def config_logging():
+def config_logging(logname="golem.log"):
     """Config logger"""
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, disable_existing_loggers=False)
+    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
 
 
 def install_reactor():

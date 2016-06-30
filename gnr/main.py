@@ -1,4 +1,5 @@
 from multiprocessing import freeze_support
+from os import path
 
 import click
 
@@ -12,7 +13,10 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 @click.command()
 @click.option('--datadir', '-d', type=click.Path())
 def main(datadir):
-    config_logging()
+    if datadir:
+        config_logging(path.join(datadir, 'golem.log'))
+    else:
+        config_logging()
 
     logic = RenderingApplicationLogic()
     app = GNRGui(logic, AppMainWindow)
