@@ -56,9 +56,8 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
 
 
 class Client(object):
-    def __init__(self, config_desc=None, datadir=None, config=None,
-                 transaction_system=False, connect_to_known_hosts=True,
-                 **config_overrides):
+    def __init__(self, datadir=None, transaction_system=False,
+                 connect_to_known_hosts=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -68,22 +67,17 @@ class Client(object):
         self.datadir = datadir
         self.__lock_datadir()
 
-        if not config:
-            config = AppConfig.load_config(datadir)
-
-        if not config_desc:
-            config_desc = ClientConfigDescriptor()
-            config_desc.init_from_app_config(config)
+        config = AppConfig.load_config(datadir)
+        self.config_desc = ClientConfigDescriptor()
+        self.config_desc.init_from_app_config(config)
         for key, val in config_overrides.iteritems():
-            if hasattr(config_desc, key):
-                setattr(config_desc, key, val)
-            else:
+            if not hasattr(self.config_desc, key):
                 raise AttributeError(
-                    "Can't override nonexistent config attribute '{}'".format(key))
-        self.config_desc = config_desc
+                    "Can't override nonexistent config entry '{}'".format(key))
+            setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
-        self.config_approver = ConfigApprover(config_desc)
+        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,

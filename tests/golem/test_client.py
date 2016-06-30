@@ -28,8 +28,7 @@ class TestCreateClient(TestDirFixture):
 class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path,
-                   transaction_system=True)
+        c = Client(datadir=self.path, transaction_system=True)
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
@@ -46,7 +45,7 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_remove_resources(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         c.start_network()
 
         d = c.get_computed_files_dir()
@@ -69,14 +68,14 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_datadir_lock(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         assert c.config_desc.node_address == ''
         with self.assertRaises(IOError):
-            Client(ClientConfigDescriptor(), datadir=self.path)
+            Client(datadir=self.path)
         c._unlock_datadir()
 
     def test_metadata(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         meta = c.get_metadata()
         assert meta is not None
         assert not meta
@@ -84,7 +83,7 @@ class TestClient(TestWithDatabase):
 
     def test_interpret_metadata(self):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
         c.ipfs_manager = IPFSDaemonManager()
         meta = c.get_metadata()
@@ -101,8 +100,7 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_get_status(self):
-        ccd = ClientConfigDescriptor()
-        c = Client(ccd, datadir=self.path)
+        c = Client(datadir=self.path)
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
         c.p2pservice = MagicMock()
