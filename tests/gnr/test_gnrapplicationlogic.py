@@ -1,11 +1,15 @@
 import os
 import time
-from mock import Mock
+from mock import Mock, MagicMock, patch
+
+from twisted.internet.defer import Deferred
 
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
+from golem.appconfig import CommonConfig
+from golem.client import Client
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -52,6 +56,21 @@ class TTaskBuilder(TaskBuilder):
         return t
 
 
+class RPCClient(object):
+
+    def __init__(self):
+        self.success = False
+        self.error = False
+
+    def test_task_computation_success(self, *args, **kwargs):
+        self.success = True
+        self.error = False
+
+    def test_task_computation_error(self, *args, **kwargs):
+        self.success = False
+        self.error = True
+
+
 class TestGNRApplicationLogic(TestDirFixture):
 
     def test_root_path(self):
@@ -59,34 +78,45 @@ class TestGNRApplicationLogic(TestDirFixture):
         self.assertTrue(os.path.isdir(logic.root_path))
 
     def test_run_test_task(self):
+        rpc_client = RPCClient()
+
         logic = GNRApplicationLogic()
-        logic.client = Mock()
+        logic.client = Client.__new__(Client)
+        logic.client.datadir = logic.root_path
+        logic.client.rpc_clients = [rpc_client]
+
         gnrgui = GNRGui(Mock(), AppMainWindow)
+
         logic.client.datadir = self.path
         logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
+
         ts = Mock()
         files = self.additional_dir_content([1])
         ts.definition.main_program_file = files[0]
         ts.definition.renderer = "TESTTASK"
+
         task_type = Mock()
         ttb = TTaskBuilder(self.path)
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
+
         logic.run_test_task(ts)
         time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, True)
+
+        assert rpc_client.success
+
         ttb.src_code = "raise Exception('some error')"
         logic.run_test_task(ts)
         time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, False)
+
+        assert rpc_client.error
+
         ttb.src_code = "print 'hello'"
         logic.run_test_task(ts)
         time.sleep(0.5)
-        success = logic.customizer.new_task_dialog_customizer.test_task_computation_finished.call_args[0][0]
-        self.assertEqual(success, False)
+
+        assert rpc_client.error
 
         prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
         logic.task_settings_changed()
@@ -106,7 +136,11 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.customizer = Mock()
         eth = 10**18
 
-        logic.client.transaction_system.get_balance.return_value = (3 * eth, 1 * eth)
+        balance_deferred = Deferred()
+        balance_deferred.result = (3 * eth, 1 * eth)
+        balance_deferred.called = True
+
+        logic.client.get_balance.return_value = balance_deferred
         logic.update_payments_view()
 
         ui = logic.customizer.gui.ui

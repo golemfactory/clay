@@ -93,7 +93,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
             l.task_updated(task_id)
 
 
-class Client:
+class Client(object):
     def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
         self.config_desc = config_desc
         self.keys_auth = EllipticalKeysAuth(config_desc.node_name)
@@ -120,7 +120,6 @@ class Client:
         self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
-        self.do_work_task.start(0.1, False)
 
         self.listeners = []
 
@@ -155,6 +154,8 @@ class Client:
         self.get_resource_peers_interval = 5.0
 
     def start_network(self):
+        self.do_work_task.start(0.1, False)
+
         logger.info("Starting network ...")
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,

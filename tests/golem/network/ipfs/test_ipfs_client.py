@@ -8,6 +8,13 @@ from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
 
+def first_valid_response(responses, abs_path=True):
+    for response in responses:
+        if response and 'Name' in response and 'Hash' in response:
+            if not abs_path or (abs_path and os.path.isabs(response['Name'])):
+                return response
+
+
 class TestIpfsClient(TestDirFixture):
 
     def setUp(self):
@@ -40,7 +47,7 @@ class TestIpfsClient(TestDirFixture):
 
         tmp_filename = 'tmp_file'
 
-        client.get_file(response[0]['Hash'],
+        client.get_file(first_valid_response(response)['Hash'],
                         filepath=self.test_dir,
                         filename=tmp_filename)
 
@@ -50,7 +57,7 @@ class TestIpfsClient(TestDirFixture):
 
         self.assertIsNotNone(response)
 
-        client.pin_add(response[0]['Hash'])
+        client.pin_add(first_valid_response(response)['Hash'])
 
     def testPinRm(self):
         client = IPFSClient()
@@ -58,8 +65,10 @@ class TestIpfsClient(TestDirFixture):
 
         self.assertIsNotNone(response)
 
-        client.pin_add(response[0]['Hash'])
-        client.pin_rm(response[0]['Hash'])
+        resp = first_valid_response(response)
+
+        client.pin_add(resp['Hash'])
+        client.pin_rm(resp['Hash'])
 
 
 class TestParseResponseEntry(unittest.TestCase):
@@ -173,7 +182,6 @@ class TestChunkedHttpClient(TestDirFixture):
             f.write("test content 2")
 
     def testGetFile(self):
-        root_path = os.path.abspath(os.sep)
         client = IPFSClient()
 
         self.added_files = []
@@ -182,21 +190,12 @@ class TestChunkedHttpClient(TestDirFixture):
 
         for added in self.added_files:
             name = added['Name']
-            if name.startswith(root_path):
+            hash = added['Hash'] if 'Hash' in added else None
+
+            if os.path.isabs(name) and name and hash:
                 target_filename = 'downloaded_file'
 
-                result = client.get_file(added['Hash'],
-                                         filepath=self.target_dir,
-                                         filename=target_filename)
-
-                filename, multihash = result[0]
-                filepath = os.path.join(self.target_dir, filename)
-                assert filename == target_filename
-                assert os.path.exists(filepath)
-
-                os.remove(filepath)
-
-                result = client.get_file(added['Hash'],
+                result = client.get_file(hash,
                                          filepath=self.target_dir,
                                          filename=target_filename,
                                          compress=True,

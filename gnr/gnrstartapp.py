@@ -84,7 +84,7 @@ def start_gui_process(queue, rendering):
     ws_address = client_service_info.rpc_address
     ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
 
-    def on_success(_):
+    def on_connected(_):
         client = ws_client.build_client(client_service_info)
         logic_service_info = ws_client.add_service(gui_app.logic)
         gui_app.start(client, logic_service_info)
@@ -93,7 +93,7 @@ def start_gui_process(queue, rendering):
         print "Error connecting to client", args, kwargs
 
     def connect():
-        ws_client.connect().addCallbacks(on_success, on_error)
+        ws_client.connect().addCallbacks(on_connected, on_error)
 
     reactor.callWhenRunning(connect)
     reactor.run()
@@ -115,7 +115,7 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)
 
-    def start():
+    def listen():
         ws_server = WebSocketRPCServerFactory()
         ws_server.listen()
 
@@ -129,7 +129,7 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
     if start_ranking:
         client.ranking.run(reactor)
 
-    reactor.callWhenRunning(start)
+    reactor.callWhenRunning(listen)
     reactor.run()
 
 

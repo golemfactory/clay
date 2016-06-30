@@ -74,7 +74,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
-        task_peers = task.LoopingCall(self.get_peers)
+        task_peers = task.LoopingCall(self.update_peers_view)
         task_payments = task.LoopingCall(self.update_payments_view)
         task_computing_stats = task.LoopingCall(self.update_stats)
         task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
@@ -166,17 +166,17 @@ class GNRApplicationLogic(QtCore.QObject):
         client_status = yield self.client.get_status()
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
-    @inlineCallbacks
-    def get_peers(self):
-        table = self.customizer.gui.ui.connectedPeersTable
-        peers = yield self.client.get_peer_info()
+    def update_peers_view(self):
+        self.client.get_peer_info().addCallback(self._update_peers_view)
 
+    def _update_peers_view(self, peers):
+        table = self.customizer.gui.ui.connectedPeersTable
         row_count = table.rowCount() if isinstance(table, QObject) else 0
         new_row_count = len(peers)
 
         if new_row_count < row_count:
             for i in xrange(row_count, new_row_count, -1):
-                table.removeRow(i-1)
+                table.removeRow(i - 1)
         elif new_row_count > row_count:
             for i in xrange(row_count, new_row_count):
                 table.insertRow(i)
@@ -187,29 +187,33 @@ class GNRApplicationLogic(QtCore.QObject):
             table.setItem(i, 2, QTableWidgetItem(peer.key_id))
             table.setItem(i, 3, QTableWidgetItem(peer.node_name))
 
-    @inlineCallbacks
     def update_payments_view(self):
-        b, ab = yield self.client.get_balance()
-        if not (b is None or ab is None):
-            rb = b - ab
-            deposit = 0  # TODO: Get current deposit value.
-            total = deposit + b
-            ether = 1.0 / 10**18
-            fmt = "{:.6f} ETH"
-            ui = self.customizer.gui.ui
-            ui.localBalanceLabel.setText(fmt.format(b * ether))
-            ui.availableBalanceLabel.setText(fmt.format(ab * ether))
-            ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
-            ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
-            ui.totalBalanceLabel.setText(fmt.format(total * ether))
+        self.client.get_balance().addCallback(self._update_payments_view)
+
+    def _update_payments_view(self, result_tuple):
+        b, ab = result_tuple
+        if not (b and ab):
+            return
+
+        rb = b - ab
+        deposit = 0  # TODO: Get current deposit value.
+        total = deposit + b
+        ether = 1.0 / 10 ** 18
+        fmt = "{:.6f} ETH"
+        ui = self.customizer.gui.ui
+        ui.localBalanceLabel.setText(fmt.format(b * ether))
+        ui.availableBalanceLabel.setText(fmt.format(ab * ether))
+        ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
+        ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
+        ui.totalBalanceLabel.setText(fmt.format(total * ether))
 
     @inlineCallbacks
     def update_estimated_reputation(self):
         use_ranking = yield self.client.use_ranking()
         if use_ranking:
-            client_key = yield self.client.get_node_key()
             ui = self.customizer.gui.ui
 
+            client_key = yield self.client.get_node_key()
             computing_trust = yield self.client.get_computing_trust(client_key)
             requesting_trust = yield self.client.get_requesting_trust(client_key)
 
