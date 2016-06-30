@@ -136,12 +136,12 @@ class DockerJob(object):
             volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             command=[container_script_path],
-            working_dir=self.WORK_DIR,
-            cpuset=cpuset
+            working_dir=self.WORK_DIR
+            # cpuset=cpuset
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
-                     .format(self.container_id, self.image.name, 
+                     .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
                      )
         assert self.container_id
@@ -163,7 +163,7 @@ class DockerJob(object):
         if self.logging_thread:
             self.logging_thread.join()
             self.logging_thread = None
-            
+
     def __enter__(self):
         self._prepare()
         return self
