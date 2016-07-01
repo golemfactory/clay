@@ -94,9 +94,3 @@ class TestGNRTask(LogTestCase, TestDirFixture):
     def __compress_and_pickle_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
         return pickle.dumps((os.path.basename(file_name), file_data))
-
-
-
-
-
-
