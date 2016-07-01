@@ -9,15 +9,14 @@ from PIL import Image, ImageChops
 from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingenvironment import BlenderEnvironment
-from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNROptions
 from gnr.task.renderingtask import RenderingTask
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
-from gnr.task.imgrepr import load_img
 
 
 logger = logging.getLogger("gnr.task")
@@ -205,7 +204,7 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[frame] = {}
         
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = self._get_tmp_dir()
         if not self.use_frames:
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
         else:
@@ -299,11 +298,6 @@ class BlenderRenderTask(FrameRenderingTask):
         if self.use_frames:
             frames = [self.frames[0]]
         else:
-            frames = []
-
-        if self.use_frames:
-            frames = [self.frames[0]]
-        else:
             frames = [1]
 
         script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0, self.compositing)
@@ -378,12 +372,12 @@ class BlenderRenderTask(FrameRenderingTask):
                 res_y = ceiling_height
         return res_y
 
-    @check_subtask_id_wrapper
+    @FrameRenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         x, y = self._get_part_size(subtask_id)
         return 0, 0, x, y
 
-    @check_subtask_id_wrapper
+    @FrameRenderingTask.handle_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
         min_x = start_box[0] / float(self.res_x)
