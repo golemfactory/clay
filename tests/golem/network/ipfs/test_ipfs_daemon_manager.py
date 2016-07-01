@@ -1,4 +1,7 @@
 import unittest
+import uuid
+
+import requests
 
 from golem.network.ipfs.client import IPFSAddress, IPFSCommands
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
@@ -7,7 +10,7 @@ from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 class TestIPFSDaemonManager(unittest.TestCase):
 
     def testStoreInfo(self):
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
 
         ipfs_id = dm.node_id
@@ -17,7 +20,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
 
     def testAddRemoveBootstrapNodes(self):
         default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.remove_bootstrap_node(default_node, async=False)
         nodes = dm.list_bootstrap_nodes()
 
@@ -28,7 +31,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
         assert len(dm.list_bootstrap_nodes()) == len(nodes)
 
     def testMetadata(self):
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
         metadata = dm.get_metadata()
 
@@ -41,7 +44,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
                 assert metadata['ipfs']['addresses']
 
     def testInterpretMetadata(self):
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
         meta = dm.get_metadata()
         node_id = dm.addresses[0].node_id
@@ -77,7 +80,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
         assert len(dm.list_bootstrap_nodes()) == len(nodes)
 
     def testSwarm(self):
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
 
         err_node = '/ip4/127.0.0.1/tcp/4001/ipfs/badhash'
@@ -86,18 +89,28 @@ class TestIPFSDaemonManager(unittest.TestCase):
         assert not dm.swarm_disconnect(err_node, async=False)
         assert dm.swarm_peers() is not None
 
+    def testCommandFailed(self):
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=True)
+        dm.last_backoff_clear_ts = 0
+        dm.command_failed(requests.exceptions.ReadTimeout(),
+                          IPFSCommands.get,
+                          str(uuid.uuid4()),
+                          async=False)
+
     def testNodeAction(self):
-        dm = IPFSDaemonManager()
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         status = [True]
 
         def success(*args, **kwargs):
             status[0] = True
+            return True
 
         def error(*args, **kwargs):
             status[0] = False
+            return False
 
         def method(*args, **kwargs):
-            pass
+            return True
 
         def raise_method(*args, **kwargs):
             raise Exception("Error")

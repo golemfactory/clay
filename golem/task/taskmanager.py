@@ -1,16 +1,15 @@
-import time
 import logging
+import time
 from math import ceil
 
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
+
+from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -56,8 +55,8 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        resource_manager = IPFSResourceManager(self.dir_manager,
-                                               resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
+                                                         resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.listeners = []

@@ -124,8 +124,8 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         def success(*args, **kwargs):
             pass
 
-        def error(*args, **kwargs):
-            self.fail("Error downloading package: {}".format(args[0]))
+        def error(exc, *args, **kwargs):
+            self.fail("Error downloading package: {}".format(exc))
 
         node_name = self.dir_manager.node_name + "2"
         dir_manager = DirManager(self.path, node_name)

@@ -1078,24 +1078,28 @@ class MessageTaskResultHash(Message):
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     MULTIHASH_STR = u"MULTIHASH"
     SECRET_STR = u"SECRET"
+    OPTIONS_STR = u"OPTIONS"
 
-    def __init__(self, subtask_id=0, multihash="", secret="", sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id=0, multihash="", secret="", options=None, sig="", timestamp=None, dict_repr=None):
 
         Message.__init__(self, MessageTaskResultHash.Type, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.multihash = multihash
         self.secret = secret
+        self.options = options
 
         if dict_repr:
             self.subtask_id = dict_repr[MessageTaskResultHash.SUB_TASK_ID_STR]
             self.multihash = dict_repr[MessageTaskResultHash.MULTIHASH_STR]
             self.secret = dict_repr[MessageTaskResultHash.SECRET_STR]
+            self.options = dict_repr[MessageTaskResultHash.OPTIONS_STR]
 
     def dict_repr(self):
         return {MessageTaskResultHash.SUB_TASK_ID_STR: self.subtask_id,
                 MessageTaskResultHash.MULTIHASH_STR: self.multihash,
-                MessageTaskResultHash.SECRET_STR: self.secret}
+                MessageTaskResultHash.SECRET_STR: self.secret,
+                MessageTaskResultHash.OPTIONS_STR: self.options}
 
 
 class MessageGetResource(Message):
@@ -1749,12 +1753,13 @@ class MessageSendResource(Message):
         return {MessageSendResource.RESOURCE_STR: self.resource}
 
 
-class MessageResourceHashList(Message):
+class MessageResourceList(Message):
     Type = RESOURCE_MSG_BASE + 7
 
     RESOURCES_STR = u"resources"
+    OPTIONS_STR = u"options"
 
-    def __init__(self, resources=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, resources=None, options=None, sig="", timestamp=None, dict_repr=None):
         """
         Create message with resource request
         :param str resources: resource list
@@ -1762,14 +1767,17 @@ class MessageResourceHashList(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResourceHashList.Type, sig, timestamp)
+        Message.__init__(self, MessageResourceList.Type, sig, timestamp)
         self.resources = resources
+        self.options = options
 
         if dict_repr:
-            self.resources = dict_repr[MessageResourceHashList.RESOURCES_STR]
+            self.resources = dict_repr[MessageResourceList.RESOURCES_STR]
+            self.options = dict_repr[MessageResourceList.OPTIONS_STR]
 
     def dict_repr(self):
-        return {MessageResourceHashList.RESOURCES_STR: self.resources}
+        return {MessageResourceList.RESOURCES_STR: self.resources,
+                MessageResourceList.OPTIONS_STR: self.options}
 
 
 def init_messages():
@@ -1835,4 +1843,4 @@ def init_messages():
     MessagePullResource()
     MessagePullAnswer()
     MessageSendResource()
-    MessageResourceHashList()
+    MessageResourceList()

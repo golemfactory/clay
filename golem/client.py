@@ -2,6 +2,7 @@ import logging
 import time
 from os import path
 from threading import Lock
+
 from twisted.internet import task
 
 from golem.appconfig import AppConfig
@@ -11,13 +12,13 @@ from golem.core.simpleenv import get_local_datadir
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database
-from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.transport.message import init_messages
 from golem.ranking.ranking import Ranking, RankingStats
+from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourceserver import IPFSResourceServer
+from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
@@ -77,6 +78,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
     def task_status_updated(self, task_id):
         for l in self.client.listeners:
             l.task_updated(task_id)
+
 
 class Client:
     def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
@@ -138,14 +140,18 @@ class Client:
     def start_network(self):
         logger.info("Starting network ...")
 
+        # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
+        # self.ipfs_manager.store_client_info()
+
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6)
-        self.resource_server = IPFSResourceServer(self.task_server.task_computer.dir_manager,
-                                                  self.keys_auth, self)
-        self.ipfs_manager = IPFSDaemonManager()
-        self.ipfs_manager.store_client_info()
+
+        dir_manager = self.task_server.task_computer.dir_manager
+
+        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+                                                  dir_manager, self.keys_auth, self)
 
         logger.info("Starting p2p server ...")
         self.p2pservice.start_accepting()
@@ -187,7 +193,8 @@ class Client:
         task_id = task.header.task_id
         self.task_server.task_manager.add_new_task(task)
         files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
-        self.resource_server.add_task(files, task_id)
+        client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
+        self.resource_server.add_task(files, task_id, client_options=client_options)
 
     def get_resource_peers(self):
         self.p2pservice.send_get_resource_peers()
@@ -197,6 +204,9 @@ class Client:
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         self.task_server.task_computer.task_resource_collected(task_id, unpack_delta)
+
+    def task_resource_failure(self, task_id, reason):
+        self.task_server.task_computer.task_resource_failure(task_id, reason)
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
@@ -276,9 +286,8 @@ class Client:
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)
 
-    def pull_resources(self, task_id, list_files):
-        self.resource_server.add_files_to_get(list_files, task_id)
-        self.get_resource_peers()
+    def pull_resources(self, task_id, list_files, client_options=None):
+        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -408,20 +417,21 @@ class Client:
 
     def get_metadata(self):
         metadata = dict()
-        if self.ipfs_manager:
-            metadata.update(self.ipfs_manager.get_metadata())
+        # if self.ipfs_manager:
+        #     metadata.update(self.ipfs_manager.get_metadata())
         return metadata
 
     def interpret_metadata(self, metadata, address, port, node_info):
-        if self.config_desc and node_info and metadata:
-            seed_addresses = self.p2pservice.get_seeds()
-            node_addresses = [
-                (address, port),
-                (node_info.pub_addr, node_info.pub_port)
-            ]
-            self.ipfs_manager.interpret_metadata(metadata,
-                                                 seed_addresses,
-                                                 node_addresses)
+        pass
+        # if self.config_desc and node_info and metadata:
+        #     seed_addresses = self.p2pservice.get_seeds()
+        #     node_addresses = [
+        #         (address, port),
+        #         (node_info.pub_addr, node_info.pub_port)
+        #     ]
+        #     self.ipfs_manager.interpret_metadata(metadata,
+        #                                          seed_addresses,
+        #                                          node_addresses)
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()

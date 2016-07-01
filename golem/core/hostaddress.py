@@ -2,6 +2,9 @@ import socket
 import os
 import logging
 import netifaces
+
+import ipaddress
+import struct
 import stun
 
 from variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
@@ -37,8 +40,77 @@ def ip_addresses(use_ipv6=False):
     return addresses
 
 
+def ip_networks(use_ipv6=False):
+    if use_ipv6:
+        addr_family = netifaces.AF_INET6
+    else:
+        addr_family = netifaces.AF_INET
+    addresses = []
+    for inter in netifaces.interfaces():
+        ip = netifaces.ifaddresses(inter).get(addr_family)
+        if not ip:
+            continue
+        for addrInfo in ip:
+            addr = unicode(addrInfo.get('addr'))
+            mask = unicode(addrInfo.get('netmask'))
+
+            try:
+                ip_addr = ipaddress.ip_network((addr, mask), strict=False)
+            except Exception as exc:
+                logger.error("Error parsing ip address {}: {}".format(addr, exc.message))
+                continue
+
+            if addr != '127.0.0.1' and addr != '::1':
+                split = unicode(ip_addr).split('/')
+                addresses.append((split[0], split[1]))
+    return addresses
+
+
 ip4Addresses = ip_addresses
 get_host_addresses = ip_addresses
+
+
+def __parse_ipv4_networks(networks):
+    result = []
+    for net_class in networks:
+        ip_net = ipaddress.ip_network(net_class)
+        result.append((int(ip_net.network_address), int(ip_net.netmask)))
+    return result
+
+
+__ipv4_private_networks = [
+    u'10.0.0.0/8',
+    u'127.0.0.0/8',
+    u'172.16.0.0/12',
+    u'192.168.0.0/16'
+]
+__parsed_ipv4_private_networks = __parse_ipv4_networks(__ipv4_private_networks)
+
+
+def ip_address_private(address):
+    if address.find(':') != -1:
+        try:
+            return ipaddress.IPv6Address(unicode(address)).is_private
+        except Exception as exc:
+            logger.error("Cannot parse IPv6 address {}: {}"
+                         .format(address, exc.message))
+            return False
+    try:
+        a = struct.unpack('!I', socket.inet_aton(address))[0]
+    except Exception as exc:
+        logger.error("Cannot parse IPv4 address {}: {}"
+                     .format(address, exc.message))
+        return False
+
+    for n_addr, n_mask in __parsed_ipv4_private_networks:
+        if (a & n_mask) == n_addr:
+            return True
+    return False
+
+
+def ip_network_contains(network, mask, address):
+    return ipaddress.ip_network((network, mask), strict=False) == \
+           ipaddress.ip_network((unicode(address), mask), strict=False)
 
 
 def get_host_address_from_connection(connect_to=DEFAULT_CONNECT_TO, connect_to_port=DEFAULT_CONNECT_TO_PORT,

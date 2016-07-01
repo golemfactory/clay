@@ -4,8 +4,9 @@ import shutil
 import uuid
 
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.resource.base.resourceserver import TransferStatus
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourceserver import IPFSResourceServer, dummy_context, IPFSTransferStatus
+from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.tools.testdirfixture import TestDirFixture
 
 node_name = 'test_suite'
@@ -15,6 +16,7 @@ class MockClient:
 
     def __init__(self):
         self.downloaded = None
+        self.failed = None
         self.resource_peers = []
 
     def get_resource_peers(self, *args, **kwargs):
@@ -22,6 +24,9 @@ class MockClient:
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
+
+    def task_resource_failure(self, *args, **kwrags):
+        self.failed = True
 
 
 class MockConfig:
@@ -220,15 +225,7 @@ class TestResourceServer(TestDirFixture):
         rs, file_names = self.testAddFilesToGet()
 
         for entry in file_names:
-            rs.resource_download_error(entry[0], self.task_id)
+            rs.resource_download_error(Exception("Error " + entry[0]),
+                                       entry[0], entry[1], self.task_id)
 
-        assert len(file_names) == len(rs.resources_to_get)
-
-        for entry in rs.resources_to_get:
-            assert entry[-1] == IPFSTransferStatus.failed
-
-
-class TestDummyContext(unittest.TestCase):
-    def test(self):
-        with dummy_context():
-            pass
+        assert len(rs.resources_to_get) == 0

@@ -56,6 +56,7 @@ class BasicSession(FileSession):
     """
 
     # Disconnect reasons
+    DCRProtocolVersion = "Protocol version"
     DCRBadProtocol = "Bad protocol"
     DCRTimeout = "Timeout"
 

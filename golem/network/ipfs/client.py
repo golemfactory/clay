@@ -1,11 +1,11 @@
+import abc
 import copy
 import json
 import logging
 import os
 import shutil
-import socket
 import tarfile
-import urllib2
+import urllib
 import uuid
 from functools import wraps
 from threading import Lock
@@ -13,48 +13,57 @@ from types import FunctionType
 
 import ipfsApi
 import requests
-import twisted
 from ipfsApi.commands import ArgCommand
 from ipfsApi.http import HTTPClient, pass_defaults
-from twisted.internet import threads
 
+from golem.core.hostaddress import ip_address_private
+from golem.http.stream import StreamMonitor, ChunkStream
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.resource.client import ClientCommands, ClientConfig, ClientHandler, IClient, ClientOptions
 
 logger = logging.getLogger(__name__)
-
-__all__ = [
-    'IPFSAddress', 'IPFSCommands', 'IPFSClient',
-    'IPFSAsyncCall', 'IPFSAsyncExecutor',
-    'StreamFileObject',
-    'IPFS_DEFAULT_TCP_PORT',
-    'IPFS_DEFAULT_UDP_PORT',
-]
 
 IPFS_DEFAULT_TCP_PORT = 4001
 IPFS_DEFAULT_UDP_PORT = 4002
 
-BOOTSTRAP_NODES = [
-    '/ip4/52.37.205.43/udp/4002/utp/ipfs/QmS8Kx4wTTH7ASvjhqLj12evmHvuqK42LDiHa3tLn24VvB'
+IPFS_BOOTSTRAP_NODES = [
+    '/ip4/94.23.17.170/tcp/4001/ipfs/QmXR8NZWUJhsbixGmeNoC6DxJQxySCP3BEHRm3mbk8Yv7G',
+    '/ip4/52.40.149.71/tcp/4001/ipfs/QmX47BhziLbt3CVYsSmrH5xGfQM1t2T5De2XFZFfR4EBWr',
+    '/ip4/52.40.149.24/tcp/4001/ipfs/QmNSjTqoyieCCBPBMGeSzzg3C4SNUDuqg8ob16L83X4WRf'
 ]
 
 
-class StreamFileObject:
+class IPFSCommands(ClientCommands):
+    pin = 3
+    unpin = 4
 
-    def __init__(self, source):
-        self.source = source
-        self.source_iter = None
+    bootstrap_add = 5
+    bootstrap_rm = 6
+    bootstrap_list = 7
 
-    def read(self, count):
-        if not self.source_iter:
-            self.source_iter = self.source.iter_content(count)
+    swarm_connect = 8
+    swarm_disconnect = 9
+    swarm_peers = 10
+    swarm_dial_backoff_clear = 11
 
-        try:
-            return self.source_iter.next()
-        except StopIteration:
-            return None
+IPFSCommands.build_names()
 
 
-class ChunkedHTTPClient(HTTPClient):
+class IPFSConfig(ClientConfig):
+
+    def __init__(self, max_concurrent_downloads=3, max_retries=8,
+                 timeout=None, bootstrap_nodes=None):
+
+        super(IPFSConfig, self).__init__(max_concurrent_downloads,
+                                         max_retries,
+                                         timeout)
+        if bootstrap_nodes:
+            self.bootstrap_nodes = bootstrap_nodes
+        else:
+            self.bootstrap_nodes = IPFS_BOOTSTRAP_NODES
+
+
+class IPFSHTTPClient(HTTPClient):
 
     lock = Lock()
     chunk_size = 1024
@@ -67,17 +76,17 @@ class ChunkedHTTPClient(HTTPClient):
     @pass_defaults
     def download(self, path, args=[], opts={},
                  filepath=None, filename=None,
-                 compress=False, archive=True, **kwargs):
+                 compress=True, archive=True, **kwargs):
         """
         Downloads a file from IPFS to the directory given by :filepath:
         Support for :filename: was added (which replaces file's hash)
         """
-        method = 'get'
         multihash = args[0]
 
         url = self.base + path
         work_dir = filepath or '.'
         params = [('stream-channels', 'true')]
+        mode = 'r|gz' if compress else 'r|'
 
         if compress:
             params += [('compress', 'true')]
@@ -85,30 +94,30 @@ class ChunkedHTTPClient(HTTPClient):
         if archive:
             params += [('archive', 'true')]
 
+        if not (archive and compress):
+            raise Exception("Only compress + archive mode is supported")
+
         for opt in opts.items():
             params.append(opt)
         for arg in args:
             params.append(('arg', arg))
 
-        if self._session:
-            res = self._session.request(method, url,
-                                        params=params, stream=True,
-                                        **kwargs)
-        else:
-            res = requests.request(method, url,
-                                   params=params, stream=True,
-                                   **kwargs)
+        uri = '/'.join([''] + url.split('/')[3:])
+        query_params = '?' + urllib.urlencode(params) if params else ''
 
-        res.raise_for_status()
+        socket_stream = ChunkStream((self.host, self.port),
+                                    uri + query_params,
+                                    kwargs.pop('timeout', None))
+        socket_stream.connect()
 
-        if archive:
-            stream = StreamFileObject(res)
-            mode = 'r|gz' if compress else 'r|'
-            with tarfile.open(fileobj=stream, mode=mode) as tar_file:
+        try:
+            StreamMonitor.monitor(socket_stream)
+
+            with tarfile.open(fileobj=socket_stream, mode=mode) as tar_file:
                 return self._tar_extract(tar_file, work_dir,
                                          filename, multihash)
-        else:
-            return self._write_file(res, work_dir, filename, multihash)
+        finally:
+            socket_stream.disconnect()
 
     @classmethod
     def _tar_extract(cls, tar_file, work_dir, filename, multihash):
@@ -137,24 +146,12 @@ class ChunkedHTTPClient(HTTPClient):
         return None, None
 
     @classmethod
-    def _write_file(cls, res, work_dir, filename, multihash):
-        dst_path = os.path.join(work_dir, filename)
-        with open(dst_path, 'wb') as f:
-            for chunk in res.iter_content(cls.chunk_size, False):
-                if chunk:
-                    f.write(chunk)
-
-        cls.__log_downloaded(filename, multihash, dst_path)
-        return filename, multihash
-
-    @classmethod
     def __log_downloaded(cls, filename, multihash, dst_path):
         logger.debug("IPFS: downloaded {} ({}) to {}"
                      .format(filename, multihash, dst_path))
 
 
 def parse_response(resp):
-
     """ Returns python objects from a string """
     result = []
 
@@ -194,21 +191,7 @@ def response_wrapper(func):
     return wrapped
 
 
-class IPFSCommands(object):
-    id = 0
-    pin = 1
-    unpin = 2
-    add = 3
-    pull = 4
-    bootstrap_add = 5
-    bootstrap_rm = 6
-    bootstrap_list = 7
-    swarm_connect = 8
-    swarm_disconnect = 9
-    swarm_peers = 10
-
-
-class IPFSClientMetaClass(type):
+class IPFSClientMetaClass(abc.ABCMeta):
 
     """ IPFS api client methods decorated with response wrappers """
 
@@ -227,17 +210,57 @@ class IPFSClientMetaClass(type):
             new_dict[name] = attribute
 
         instance = type.__new__(mcs, class_name, bases, new_dict)
-        instance._clientfactory = ChunkedHTTPClient
+        instance._clientfactory = IPFSHTTPClient
 
         return instance
 
 
-class IPFSClient(ipfsApi.Client):
+class IPFSClientFileCommand(ipfsApi.Command):
+
+    def request(self, client, *args, **kwargs):
+        return self.post_files(client, args[0], **kwargs)
+
+    def post_files(self, client, f, **kwargs):
+        responses = []
+        url = client.base + self.path + '?' + urllib.urlencode([
+            ('stream-channels', 'true'),
+            ('encoding', 'json')
+        ])
+
+        if isinstance(f, basestring):
+            responses.append(self.post_file(url, f))
+        else:
+            for file_path in f:
+                responses.append(self.post_file(url, file_path))
+
+        return responses
+
+    @staticmethod
+    def post_file(url, file_path):
+        if os.path.isfile(file_path):
+            with open(file_path, 'rb') as input_file:
+                file_name = os.path.basename(file_path)
+                files = dict(
+                    file=(
+                        file_name,
+                        input_file,
+                        'application/octet-stream'
+                    )
+                )
+                r = requests.post(url, files=files)
+                return r.text
+        return None
+
+
+class IPFSClient(IClient, ipfsApi.Client):
 
     """ Class of ipfsApi.Client methods decorated with response wrapper """
 
     __metaclass__ = IPFSClientMetaClass
-    _clientfactory = ChunkedHTTPClient
+    _clientfactory = IPFSHTTPClient
+
+    CLIENT_ID = 'ipfs'
+    VERSION = 1.0
 
     def __init__(self,
                  host=None,
@@ -250,8 +273,19 @@ class IPFSClient(ipfsApi.Client):
                                          base=base, default_enc=default_enc,
                                          **defaults)
 
+        self._add = IPFSClientFileCommand('/add')
         self._refs_local = ArgCommand('/refs/local')
         self._bootstrap_list = ArgCommand('/bootstrap/list')
+        self._swarm_dial_backoff_clear = ArgCommand('/swarm/dial/backoff/clear')
+
+    def build_options(self, node_id, **kwargs):
+        return ClientOptions(self.CLIENT_ID, self.VERSION)
+
+    def swarm_connect(self, *args, **kwargs):
+        return self._swarm_connect.request(self._client, *args, **kwargs)
+
+    def swarm_dial_backoff_clear(self, *args, **kwargs):
+        return self._swarm_dial_backoff_clear.request(self._client, *args, **kwargs)
 
     def refs_local(self, **kwargs):
         return self._refs_local.request(self._client, **kwargs)
@@ -266,142 +300,27 @@ class IPFSClient(ipfsApi.Client):
         raise NotImplementedError("Please use the get_file method")
 
 
-class IPFSConfig:
-    def __init__(self, max_concurrent_downloads=4, max_retries=16,
-                 client_timeout=None, bootstrap_nodes=None):
-
-        self.max_retries = max_retries
-        self.max_concurrent_downloads = max_concurrent_downloads
-        self.bootstrap_nodes = bootstrap_nodes if bootstrap_nodes else BOOTSTRAP_NODES
-        self.client = {
-            'timeout': client_timeout or (24000, 24000)
-        }
-
-
-try:
-    from requests.packages.urllib3.exceptions import *
-    urllib_exceptions = [MaxRetryError, TimeoutError, ReadTimeoutError,
-                         ConnectTimeoutError, ConnectionError]
-except ImportError:
-    urllib_exceptions = [urllib2.URLError]
-
-
-class IPFSClientHandler(object):
-
-    timeout_exceptions = [requests.exceptions.ConnectionError,
-                          requests.exceptions.ConnectTimeout,
-                          requests.exceptions.ReadTimeout,
-                          requests.exceptions.RetryError,
-                          requests.exceptions.Timeout,
-                          requests.exceptions.HTTPError,
-                          requests.exceptions.StreamConsumedError,
-                          requests.exceptions.RequestException,
-                          twisted.internet.defer.TimeoutError,
-                          socket.timeout] + urllib_exceptions
+class IPFSClientHandler(ClientHandler):
 
     def __init__(self, config=None):
+        super(IPFSClientHandler, self).__init__(IPFSCommands,
+                                                config or IPFSConfig())
 
-        self.command_retries = dict()
-        self.commands = dict()
-        self.config = config or IPFSConfig()
-
-        for name, val in IPFSCommands.__dict__.iteritems():
-            if not name.startswith('_'):
-                self.command_retries[val] = {}
-                self.commands[val] = name
-
-    def new_ipfs_client(self):
+    def new_client(self):
         return IPFSClient(**self.config.client)
 
-    @staticmethod
-    def _ipfs_async_call(method, success, error, *args, **kwargs):
-        call = IPFSAsyncCall(method, *args, **kwargs)
-        IPFSAsyncExecutor.run(call, success, error)
-
-    def _handle_retries(self, method, cmd, *args, **kwargs):
-        working = True
-        result = None
-
-        if args:
-            obj_id = args[0]
-        else:
-            obj_id = kwargs.pop('obj_id', method)
-
-        while working:
-            try:
-                result = method(*args, **kwargs)
-                working = False
-            except Exception as exc:
-                if not self._can_retry(exc, cmd, obj_id):
-                    self._clear_retry(cmd, obj_id)
-                    raise
-
-        self._clear_retry(cmd, obj_id)
-        return result
-
-    def _can_retry(self, exc, cmd, obj_id):
-        if type(exc) in self.timeout_exceptions:
-            this_cmd = self.command_retries[cmd]
-
-            if obj_id not in this_cmd:
-                this_cmd[obj_id] = 0
-
-            if this_cmd[obj_id] < self.config.max_retries:
-                this_cmd[obj_id] += 1
-                return True
-
-            this_cmd.pop(obj_id, None)
-
-        return False
-
-    def _clear_retry(self, cmd, obj_id):
-        self.command_retries[cmd].pop(obj_id, None)
-
-
-class IPFSAsyncCall(object):
-
-    """ Deferred job descriptor """
-
-    def __init__(self, method, *args, **kwargs):
-        self.method = method
-        self.args = args
-        self.kwargs = kwargs if kwargs else {}
-
-
-class IPFSAsyncExecutor(object):
-
-    """ Execute a deferred job in a separate thread (Twisted) """
-    initialized = False
-
-    @classmethod
-    def run(cls, deferred_call, success, error):
-        if not cls.initialized:
-            cls.__initialize()
-
-        deferred = threads.deferToThread(deferred_call.method,
-                                         *deferred_call.args,
-                                         **deferred_call.kwargs)
-        deferred.addCallbacks(success, error)
-
-    @classmethod
-    def __initialize(cls):
-        cls.initialized = True
-        from twisted.internet import reactor
-        reactor.suggestThreadPoolSize(reactor.getThreadPool().max + 4)
+    def command_failed(self, exc, cmd, obj_id):
+        logger.error("IPFS: Error executing command '{}': {}"
+                     .format(IPFSCommands.names[cmd], exc.message))
 
 
 class IPFSAddress(object):
 
-    private_nets_172 = ['172.' + str(s) + '.' for s in range(16, 32)]
-    private_nets_172_ip6 = ['::' + a for a in private_nets_172]
-    private_ip_prefixes = [
-        # local
-        '127.0.0.',
-        # private nets
-        '10.', '::10.'
-        '192.168.', '::192.168.',
-        'fc00:',
-    ] + private_nets_172 + private_nets_172_ip6
+    pattern = '/{}/{}/{}/{}/ipfs/{}'
+    pattern_encap = '/{}' + pattern
+
+    min_len = 6
+    max_len = 7
 
     def __init__(self, ip_address, node_id, port=IPFS_DEFAULT_TCP_PORT,
                  proto=None, encap_proto=None):
@@ -427,24 +346,17 @@ class IPFSAddress(object):
         sa = SocketAddress(self.ip_address, port)
 
         if self.encap_proto:
-            pattern = '/{}/{}/{}/{}/{}/ipfs/{}'
-            return pattern.format(ip6 if sa.ipv6 else ip4,
-                                  self.ip_address, proto, port,
-                                  self.encap_proto, self.node_id)
+            return self.pattern_encap.format(ip6 if sa.ipv6 else ip4,
+                                             self.ip_address, proto, port,
+                                             self.encap_proto, self.node_id)
         else:
-            pattern = '/{}/{}/{}/{}/ipfs/{}'
-            return pattern.format(ip6 if sa.ipv6 else ip4,
-                                  self.ip_address, proto, port,
-                                  self.node_id)
+            return self.pattern.format(ip6 if sa.ipv6 else ip4,
+                                       self.ip_address, proto, port,
+                                       self.node_id)
 
     @staticmethod
     def allowed_ip_address(address):
-        if not address or address == '::1':
-            return False
-        for prefix in IPFSAddress.private_ip_prefixes:
-            if address.startswith(prefix):
-                return False
-        return True
+        return not ip_address_private(address)
 
     @staticmethod
     def parse(ipfs_address_str):
@@ -456,14 +368,17 @@ class IPFSAddress(object):
         if not ipfs_address_str:
             raise ValueError('Empty IPFS address')
 
+        min_len = IPFSAddress.min_len + 1
+        max_len = IPFSAddress.max_len + 1
+
         split = ipfs_address_str.split('/')
         split_len = len(split)
-        encap = split_len == 8
+        encap = split_len == max_len
 
-        if split_len < 7 or split_len > 8:
+        if split_len < min_len or split_len > max_len:
             raise ValueError('Invalid IPFS address')
 
-        # first elem is empty because of the starting slash
+        # first elem is empty (starting slash)
         split = split[1:]
 
         return IPFSAddress(
@@ -473,4 +388,3 @@ class IPFSAddress(object):
             encap_proto=split[4] if encap else None,
             node_id=split[-1]
         )
-

@@ -93,16 +93,15 @@ class TaskServer(PendingConnectionsServer):
         return 0
 
     def request_resource(self, subtask_id, resource_header, address, port, key_id, task_owner):
-        args = {
-            'key_id': key_id,
-            'subtask_id': subtask_id,
-            'resource_header': resource_header
-        }
-        self._add_pending_request(TaskConnTypes.ResourceRequest, task_owner, port, key_id, args)
+        if subtask_id in self.task_sessions:
+            session = self.task_sessions[subtask_id]
+            session.request_resource(subtask_id, resource_header)
+        else:
+            logger.error("Cannot map subtask_id {} to session".format(subtask_id))
         return subtask_id
 
-    def pull_resources(self, task_id, list_files):
-        self.client.pull_resources(task_id, list_files)
+    def pull_resources(self, task_id, list_files, client_options=None):
+        self.client.pull_resources(task_id, list_files, client_options=client_options)
 
     def send_results(self, subtask_id, task_id, result, computing_time, owner_address, owner_port, owner_key_id, owner,
                      node_name):
@@ -116,10 +115,14 @@ class TaskServer(PendingConnectionsServer):
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
             if self.client.transaction_system:
-                self.client.transaction_system.add_to_waiting_payments(
-                    task_id, owner_key_id, value)
+                self.client.transaction_system.add_to_waiting_payments(task_id, owner_key_id, value)
+
+            delay_time = 0.0
+            last_sending_trial = 0
+
             self.results_to_send[subtask_id] = WaitingTaskResult(task_id, subtask_id, result['data'],
-                                                                 result['result_type'], computing_time, 0.0, 0.0,
+                                                                 result['result_type'], computing_time,
+                                                                 last_sending_trial, delay_time,
                                                                  owner_address, owner_port, owner_key_id, owner)
         else:
             assert False
@@ -187,7 +190,7 @@ class TaskServer(PendingConnectionsServer):
         return self.last_messages
 
     def get_waiting_task_result(self, subtask_id):
-        return self.results_to_send.get(subtask_id)
+        return self.results_to_send.get(subtask_id, None)
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -222,10 +225,12 @@ class TaskServer(PendingConnectionsServer):
         self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def task_result_sent(self, subtask_id):
-        if subtask_id in self.results_to_send:
-            del self.results_to_send[subtask_id]
-        else:
-            assert False
+        return self.results_to_send.pop(subtask_id, None)
+
+    def retry_sending_task_result(self, subtask_id):
+        wtr = self.results_to_send.get(subtask_id, None)
+        if wtr:
+            wtr.already_sending = False
 
     def change_config(self, config_desc):
         PendingConnectionsServer.change_config(self, config_desc)
@@ -244,10 +249,11 @@ class TaskServer(PendingConnectionsServer):
 
     def subtask_rejected(self, subtask_id):
         logger.debug("Subtask {} result rejected".format(subtask_id))
+        self.task_result_sent(subtask_id)
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(subtask_id)
         if task_id is not None:
             self.decrease_trust_payment(task_id)
-            self.remove_task_header(task_id)
+            # self.remove_task_header(task_id)
             # TODO Inform transaction system and task manager about failed payment
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
@@ -266,6 +272,7 @@ class TaskServer(PendingConnectionsServer):
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
+        self.task_result_sent(subtask_id)
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
@@ -308,9 +315,9 @@ class TaskServer(PendingConnectionsServer):
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.decrease_trust(account_info.key_id, RankingStats.wrong_computed, mod)
-        args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
-        self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
-                                  account_info.key_id, args)
+        # args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
+        # self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
+        #                           account_info.key_id, args)
 
     def unpack_delta(self, dest_dir, delta, task_id):
         self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
