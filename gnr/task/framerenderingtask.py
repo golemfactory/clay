@@ -106,7 +106,7 @@ class FrameRenderingTask(RenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
 
             for tr_file in tr_files:
 

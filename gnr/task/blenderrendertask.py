@@ -12,7 +12,7 @@ from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, get_tmp_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.gnrtask import GNROptions, check_subtask_id_wrapper
-from gnr.task.renderingtask import RenderingTask
+from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
@@ -233,15 +233,18 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        if not self._accept_client(node_id):
-            logger.warning("Client {} banned from this task ".format(node_name))
-            return None
+        verdict = self._accept_client(node_id)
+        if verdict != AcceptClientVerdict.ACCEPTED:
+
+            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+            if should_wait:
+                logger.warning("Waiting for client's {} task results".format(node_name))
+            else:
+                logger.warning("Client {} banned from this task".format(node_name))
+
+            return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
-        if start_task is None or end_task is None:
-            logger.error("Task doesn't have more subtasks.")
-            return None
-
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
 
@@ -285,7 +288,8 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        return self.ExtraData(ctd=ctd)
 
     ###################
     # GNRTask methods #

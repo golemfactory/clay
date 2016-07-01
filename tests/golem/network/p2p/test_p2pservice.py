@@ -1,6 +1,7 @@
 import time
 import uuid
 
+from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from mock import MagicMock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -57,7 +58,9 @@ class TestP2PService(DatabaseFixture):
         assert len(service.peers) == 1
         node.last_message_time = 0
         service.sync_network()
-        assert len(service.peers) == 0
+
+        # DISABLED
+        assert len(service.peers) == 1
 
         service.add_peer(node.key, node)
         service.peers[node.key].last_message_time = time.time() + 1000
@@ -214,8 +217,11 @@ class TestP2PService(DatabaseFixture):
 
     def test_want_to_start_task_session(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         service.task_server = MagicMock()
+        service.task_server.task_connections_helper = TaskConnectionsHelper()
+        service.task_server.task_connections_helper.task_server = service.task_server
 
         def true_method(*args):
             return True

@@ -226,6 +226,9 @@ class GNRTask(Task):
         tr_files = self.load_task_results(task_results, result_type, tmp_dir, subtask_id)
         self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
 
+    def result_incoming(self, subtask_id):
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
+
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
 
@@ -296,7 +299,7 @@ class GNRTask(Task):
     @check_subtask_id_wrapper
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, tmp_dir):

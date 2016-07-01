@@ -73,7 +73,7 @@ class TestTaskSession(LogTestCase):
         ts2.task_server.get_computing_trust.return_value = 0.1
         ts2.task_server.config_desc.computing_trust = 0.2
         ts2.task_server.config_desc.max_price = 100
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", False)
+        ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
         ts2.interpret(mt)
         ts2.task_server.get_computing_trust.assert_called_with("DEF")
         ms = ts2.conn.send_message.call_args[0][0]
@@ -83,10 +83,10 @@ class TestTaskSession(LogTestCase):
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageTaskToCompute)
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", True)
+        ts2.task_manager.get_next_subtask.return_value = ("CTD", True, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, MessageRemoveTask)
+        self.assertIsInstance(ms, MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
 
     def test_send_report_computed_task(self):

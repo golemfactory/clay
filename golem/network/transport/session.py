@@ -58,6 +58,7 @@ class BasicSession(FileSession):
     # Disconnect reasons
     DCRBadProtocol = "Bad protocol"
     DCRTimeout = "Timeout"
+    DCRNoMoreMessages = "No more messages"
 
     def __init__(self, conn):
         """

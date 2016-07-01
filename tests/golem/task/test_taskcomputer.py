@@ -73,7 +73,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.support_direct_computation = True
         tc.task_given(ctd, 10)
         assert tc.task_resource_collected("xyz")
-        assert tc.waiting_for_task is None
+        assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
 
@@ -142,9 +142,10 @@ class TestTaskThread(TestDirFixture):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
         tc = TaskComputer("ABC", MagicMock())
         tc.counting_task = True
+        tc.waiting_for_task = None
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},
                           "hello thread", os.path.dirname(files_[0]), os.path.dirname(files_[1]), 20)
         tt.run()
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
-        self.assertFalse(tc.counting_task)
+        self.assertTrue(tc.counting_task)

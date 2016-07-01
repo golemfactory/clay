@@ -1596,6 +1596,27 @@ class MessageNatPunchFailure(Message):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
 
 
+class MessageWaitingForResults(Message):
+    Type = TASK_MSG_BASE + 25
+
+    WAITING_FOR_RESULTS_STR = u"WAITING_FOR_RESULTS"
+
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that the node is waiting for results
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageWaitingForResults.Type, sig, timestamp)
+
+        if dict_repr:
+            assert dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR)
+
+    def dict_repr(self):
+        return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True}
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1820,6 +1841,7 @@ def init_messages():
     MessageNatPunch()
     MessageWaitForNatTraverse()
     MessageNatPunchFailure()
+    MessageWaitingForResults()
     MessageSubtaskResultAccepted()
     MessageSubtaskResultRejected()
     MessageDeltaParts()

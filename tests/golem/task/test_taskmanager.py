@@ -12,7 +12,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm = TaskManager("ABC", Node(), root_path=self.path)
         self.assertIsInstance(tm, TaskManager)
 
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         self.assertEqual(subtask, None)
         self.assertEqual(wrong_task, True)
         task_mock = Mock()
@@ -20,24 +20,29 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = "xyz"
+
+        task_mock.query_extra_data.return_value = extra_data
         # Task's initial state is set to 'waiting' (found in activeStatus)
         tm.add_new_task(task_mock)
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         self.assertIsNotNone(subtask)
         self.assertEqual(wrong_task, False)
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 1, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 1, 10, 2, "10.10.10.10")
         self.assertIsNone(subtask)
         self.assertEqual(wrong_task, False)
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 2, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 2, 2, "10.10.10.10")
         self.assertIsNone(subtask)
         self.assertEqual(wrong_task, False)
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         self.assertIsInstance(subtask, Mock)
         self.assertEqual(wrong_task, False)
         self.assertEqual(tm.tasks_states["xyz"].subtask_states[subtask.subtask_id].computer.price, 10)
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
         self.assertIsNone(subtask)
         self.assertFalse(wrong_task)
         tm.delete_task("xyz")
@@ -59,17 +64,24 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 1000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
-        task_mock.query_extra_data.return_value.subtask_id = "xxyyzz"
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = "xyz"
+        extra_data.ctd.subtask_id = "xxyyzz"
+
+        task_mock.query_extra_data.return_value = extra_data
+
         tm.add_new_task(task_mock)
         with self.assertLogs(logger, level=1) as l:
             tm.set_value("xyz", "xxyyzz", 13)
         self.assertTrue(any(["not my subtask" in log for log in l.output]))
 
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
-        subtask, wrong_task = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
         self.assertIsInstance(subtask, Mock)
         self.assertEqual(wrong_task, False)
+
         tm.set_value("xyz", "xxyyzz", 13)
         self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
         self.assertEqual(tm.get_value("xxyyzz"), 13)
@@ -99,7 +111,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
         task_mock.get_resources = get_resources
-        task_mock.query_extra_data.return_value.task_id = task_id
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = task_id
+
+        task_mock.query_extra_data.return_value = extra_data
 
         tm.add_new_task(task_mock)
 

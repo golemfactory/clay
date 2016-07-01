@@ -11,6 +11,7 @@ from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
@@ -24,6 +25,9 @@ MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 
 logger = logging.getLogger(__name__)
+
+
+MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class RenderingTaskBuilder(GNRTaskBuilder):
@@ -49,6 +53,12 @@ class RenderingTaskBuilder(GNRTaskBuilder):
         return new_task
 
 
+class AcceptClientVerdict(object):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class RenderingTask(GNRTask):
 
     ################
@@ -58,7 +68,8 @@ class RenderingTask(GNRTask):
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, max_price, docker_images=None):
+                 estimated_memory, max_price, docker_images=None,
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -99,7 +110,9 @@ class RenderingTask(GNRTask):
         self.collected_file_names = {}
 
         self.advanceVerification = False
+
         self.verified_clients = set()
+        self.max_pending_client_results = max_pending_client_results
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -281,19 +294,19 @@ class RenderingTask(GNRTask):
         return False
 
     def _accept_client(self, node_id):
-        if node_id in self.counting_nodes:
-            if self.counting_nodes[node_id] > 0:  # client with accepted task
-                return True
-            elif self.counting_nodes[node_id] == 0:  # client took task but hasn't return result yet
-                self.counting_nodes[node_id] = -1
-                return True
-            else:
-                self.counting_nodes[node_id] = -1
-                # client with failed task or client that took more than one task without returning any results
-                return False
-        else:
-            self.counting_nodes[node_id] = 0
-            return True  # new node
+        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        finishing = client.finishing()
+        max_finishing = self.max_pending_client_results
+
+        # if client.rejected():
+        #     return AcceptClientVerdict.REJECTED
+        # elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
+
+        if finishing >= max_finishing or client.started() - finishing >= max_finishing:
+            return AcceptClientVerdict.SHOULD_WAIT
+
+        client.start()
+        return AcceptClientVerdict.ACCEPTED
 
     def _choose_adv_ver_file(self, tr_files, subtask_id):
         adv_test_file = None

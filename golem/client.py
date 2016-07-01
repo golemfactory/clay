@@ -2,6 +2,7 @@ import logging
 import time
 from os import path
 from threading import Lock
+
 from twisted.internet import task
 
 from golem.appconfig import AppConfig
@@ -77,6 +78,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
     def task_status_updated(self, task_id):
         for l in self.client.listeners:
             l.task_updated(task_id)
+
 
 class Client:
     def __init__(self, config_desc, datadir, config=None, transaction_system=False, connect_to_known_hosts=True):
@@ -197,6 +199,9 @@ class Client:
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         self.task_server.task_computer.task_resource_collected(task_id, unpack_delta)
+
+    def task_resource_failure(self, task_id, reason):
+        self.task_server.task_computer.task_resource_failure(task_id, reason)
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
