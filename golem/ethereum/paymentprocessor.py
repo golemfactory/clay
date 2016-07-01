@@ -119,7 +119,8 @@ class PaymentProcessor(object):
         value = payment.value
         assert type(value) in (int, long)
         balance = self.available_balance()
-        log.info("Payment to {} ({})".format(payment.payee, value))
+        log.info("Payment to {} ({})".format(payment.payee.encode('hex'),
+                                             value))
         if value > balance:
             log.warning("Not enough money: {}".format(balance))
             return False

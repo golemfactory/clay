@@ -44,13 +44,13 @@ class PaymentTableElem(object):
         self.task_item.setText(self.task)
 
         self.node_item = QTableWidgetItem()
-        self.node_item.setText(self.node)
+        self.node_item.setText(self.node.encode('hex'))
 
         self.value_item = QTableWidgetItem()
-        self.value_item.setText(str(self.value))
+        self.value_item.setText("{:f} ETH".format(float(self.value) / 10**18))
 
         self.state_item = QTableWidgetItem()
-        self.state_item.setText(str(self.state))
+        self.state_item.setText(str(self.state).replace("PaymentStatus.", ""))
 
         self.cols = [self.task_item, self.node_item, self.state_item, self.value_item]
 
@@ -68,4 +68,3 @@ class IncomeTableElem(PaymentTableElem):
         self.expected_value_item = QTableWidgetItem()
         self.expected_value_item.setText(str(self.expected_value))
         self.cols += [self.expected_value_item]
-
