@@ -5,6 +5,7 @@ import time
 from stun import FullCone, OpenInternet
 from collections import deque
 
+from golem.core.hostaddress import ip_address_private, ip_network_contains, ip_networks
 from server import Server
 from tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
@@ -23,6 +24,10 @@ class TCPServer(Server):
         """
         Server.__init__(self, config_desc, network)
         self.cur_port = 0  # current listening port
+        self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
+        self.ipv4_networks = ip_networks()
+        self.ipv6_networks = ip_networks(use_ipv6=True) \
+            if self.use_ipv6 else []
 
     def change_config(self, config_desc):
         """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
@@ -130,7 +135,10 @@ class PendingConnectionsServer(TCPServer):
             logger.error("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
-        sockets = self.get_socket_addresses(task_owner, port, key_id)
+        sockets = [sock for sock in
+                   self.get_socket_addresses(task_owner, port, key_id) if
+                   self._is_address_accessible(sock)]
+
         pc = PendingConnection(req_type, sockets,
                                self.conn_established_for_type[req_type],
                                self.conn_failure_for_type[req_type], args)
@@ -142,6 +150,30 @@ class PendingConnectionsServer(TCPServer):
                               self.listen_failure_for_type[req_type], args)
         pl.args["listen_id"] = pl.id
         self.pending_listenings.append(pl)
+
+    def _is_address_accessible(self, socket_addr):
+        if not socket_addr:
+            return False
+
+        use_ipv6 = self.use_ipv6
+        is_ipv6 = socket_addr.ipv6
+
+        if is_ipv6 and not use_ipv6:
+            return False
+
+        addr = socket_addr.address
+        if ip_address_private(addr):
+            if is_ipv6:
+                return self._is_address_in_network(addr, self.ipv6_networks)
+            return self._is_address_in_network(addr, self.ipv4_networks)
+        return True
+
+    @staticmethod
+    def _is_address_in_network(addr, networks):
+        for net, mask in networks:
+            if ip_network_contains(net, mask, addr):
+                return True
+        return False
 
     def _sync_pending(self):
         cnt_time = time.time()

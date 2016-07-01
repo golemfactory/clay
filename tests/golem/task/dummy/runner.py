@@ -165,7 +165,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     def monitor_subprocess(proc):
         global task_finished
-        while not proc.returncode:
+        while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
                 print line

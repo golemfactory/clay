@@ -51,6 +51,11 @@ class SessionProtocol(Protocol):
     # Protocol function
     def connectionMade(self):
         """Called when new connection is successfully opened"""
+        try:
+            self.transport.setTcpKeepAlive(1)
+        except AttributeError:
+            pass
+
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
 
