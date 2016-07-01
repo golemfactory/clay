@@ -22,7 +22,7 @@ RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try s
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
-SEEDS = [('52.37.205.43', 40102)]
+SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
 
 
 class P2PService(PendingConnectionsServer):

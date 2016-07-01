@@ -143,6 +143,11 @@ class TestPendingConnectionServer(unittest.TestCase):
         req_type = 0
         final_failure_called = [False]
 
+        node_info = Mock()
+        node_info.prv_addresses = ["1.2.3.4"]
+        node_info.pub_addr = "1.2.3.4"
+        node_info.pub_port = self.port
+
         def final_failure(_):
             final_failure_called[0] = True
 
@@ -150,7 +155,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
         assert len(server.pending_connections) == 1
 
         server._sync_pending()
@@ -159,7 +164,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         network.connected = False
         server.pending_connections = {}
 
-        server._add_pending_request(req_type, self.node_info, self.port, self.key_id, args={})
+        server._add_pending_request(req_type, node_info, self.port, self.key_id, args={})
         assert len(server.pending_connections) == 1
         pending_conn = next(server.pending_connections.itervalues())
         pending_conn.socket_addresses = []
