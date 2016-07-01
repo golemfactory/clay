@@ -1,6 +1,6 @@
 import logging
 import time
-from os import path
+from os import path, makedirs
 from threading import Lock
 from twisted.internet import task
 
@@ -438,6 +438,10 @@ class Client(object):
         return self.p2pservice.peers.values()
 
     def __lock_datadir(self):
+        if not path.exists(self.datadir):
+            # Create datadir if not exists yet.
+            # TODO: It looks we have the same code in many places
+            makedirs(self.datadir)
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
         try:

@@ -68,10 +68,13 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_datadir_lock(self):
-        c = Client(datadir=self.path)
+        # Let's use non existing dir as datadir here to check how the Client
+        # is able to cope with that.
+        datadir = os.path.join(self.path, "non-existing-dir")
+        c = Client(datadir=datadir)
         assert c.config_desc.node_address == ''
         with self.assertRaises(IOError):
-            Client(datadir=self.path)
+            Client(datadir=datadir)
         c._unlock_datadir()
 
     def test_metadata(self):
