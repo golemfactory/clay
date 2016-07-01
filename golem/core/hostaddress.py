@@ -1,10 +1,9 @@
-import socket
-import os
 import logging
 import netifaces
+import os
+import socket
 
 import ipaddress
-import struct
 import stun
 
 from variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
@@ -70,23 +69,6 @@ ip4Addresses = ip_addresses
 get_host_addresses = ip_addresses
 
 
-def __parse_ipv4_networks(networks):
-    result = []
-    for net_class in networks:
-        ip_net = ipaddress.ip_network(net_class)
-        result.append((int(ip_net.network_address), int(ip_net.netmask)))
-    return result
-
-
-__ipv4_private_networks = [
-    u'10.0.0.0/8',
-    u'127.0.0.0/8',
-    u'172.16.0.0/12',
-    u'192.168.0.0/16'
-]
-__parsed_ipv4_private_networks = __parse_ipv4_networks(__ipv4_private_networks)
-
-
 def ip_address_private(address):
     if address.find(':') != -1:
         try:
@@ -96,16 +78,11 @@ def ip_address_private(address):
                          .format(address, exc.message))
             return False
     try:
-        a = struct.unpack('!I', socket.inet_aton(address))[0]
+        return ipaddress.IPv4Address(unicode(address)).is_private
     except Exception as exc:
         logger.error("Cannot parse IPv4 address {}: {}"
                      .format(address, exc.message))
         return False
-
-    for n_addr, n_mask in __parsed_ipv4_private_networks:
-        if (a & n_mask) == n_addr:
-            return True
-    return False
 
 
 def ip_network_contains(network, mask, address):
