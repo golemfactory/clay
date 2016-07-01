@@ -11,7 +11,6 @@ class TestHostAddress(unittest.TestCase):
         self.assertEqual(get_host_address('10.30.100.100'), '10.30.10.216')
         self.assertEqual(get_host_address('10.30.10.217'), '10.30.10.216')
 
-    @unittest.skip("Find network testing framework")
     def testGetIPNetworks(self):
         ip_networks()
         ip_networks(use_ipv6=True)

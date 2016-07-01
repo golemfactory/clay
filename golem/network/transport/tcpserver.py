@@ -26,8 +26,10 @@ class TCPServer(Server):
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ip_networks()
-        self.ipv6_networks = ip_networks(use_ipv6=True) \
-            if self.use_ipv6 else []
+        if self.use_ipv6:
+            self.ipv6_networks = ip_networks(use_ipv6=True)
+        else:
+            self.ipv6_networks = []
 
     def change_config(self, config_desc):
         """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
@@ -152,6 +154,11 @@ class PendingConnectionsServer(TCPServer):
         self.pending_listenings.append(pl)
 
     def _is_address_accessible(self, socket_addr):
+        """ Checks if an address is directly accessible. The IP address has to be public or in a private
+        network that this node might have access to.
+        :param socket_addr: A destination address
+        :return: bool
+        """
         if not socket_addr:
             return False
 
@@ -170,10 +177,7 @@ class PendingConnectionsServer(TCPServer):
 
     @staticmethod
     def _is_address_in_network(addr, networks):
-        for net, mask in networks:
-            if ip_network_contains(net, mask, addr):
-                return True
-        return False
+        return any(ip_network_contains(net, mask, addr) for net, mask in networks)
 
     def _sync_pending(self):
         cnt_time = time.time()
