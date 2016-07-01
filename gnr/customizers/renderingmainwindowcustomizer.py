@@ -159,7 +159,7 @@ class AbsRenderingMainWindowCustomizer(object):
     def __get_frame_name(self, definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
         frame_num = definition.renderer_options.frames[num]
-        padding = len(output_name.split('_')[-1])
+        padding = len(output_name.split('_')[-2])
         output_name += str(frame_num).zfill(padding)
         return output_name + ext
 
