@@ -6,10 +6,12 @@ from random import randrange, shuffle
 import OpenEXR
 from PIL import Image
 
+from golem.task.taskstate import SubtaskStatus
+from golem.testutils import TempDirFixture
+
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from golem.testutils import TempDirFixture
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -47,15 +49,15 @@ class TestBlenderFrameTask(TempDirFixture):
         assert len(bt.preview_task_file_path) == len(bt.frames)
 
 
-class TestBlenderTaskDivision(TempDirFixture):
+class TestBlenderTask(TempDirFixture):
     def setUp(self):
-        super(TestBlenderTaskDivision, self).setUp()
+        super(TestBlenderTask, self).setUp()
         program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
         self.bt = BlenderRenderTask(node_name="example-node-name",
                                     task_id="example-task-id",
                                     main_scene_dir=self.tempdir,
-                                    main_scene_file="example.blend",
+                                    main_scene_file=path.join(self.path, "example.blend"),
                                     main_program_file=program_file,
                                     total_tasks=7,
                                     res_x=2,
@@ -75,7 +77,13 @@ class TestBlenderTaskDivision(TempDirFixture):
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
-        self.assertTrue(self.bt.main_scene_file == "example.blend")
+        self.assertTrue(self.bt.main_scene_file == path.join(self.path, "example.blend"))
+        ctd = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        assert ctd.extra_data['start_task'] == 1
+        assert ctd.extra_data['end_task'] == 1
+        self.bt.last_task = self.bt.total_tasks
+        self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
+        assert self.bt.query_extra_data(1000, 2, "ABC", "abc") is None
 
     def test_get_min_max_y(self):
         self.assertTrue(self.bt.res_x == 2)

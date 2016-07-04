@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>983</width>
-    <height>689</height>
+    <height>737</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>4</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -1422,6 +1422,98 @@
                   </column>
                  </widget>
                 </item>
+                <item row="3" column="0">
+                 <widget class="QLabel" name="computedTasksLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that were successfully computed on this machine.</string>
+                  </property>
+                  <property name="text">
+                   <string>Computed subtasks</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QLabel" name="computedTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="taskWithErrorsLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that this machine tried to compute, but ended up with errors.</string>
+                  </property>
+                  <property name="text">
+                   <string>Subtask with errors</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLabel" name="tasksWithErrors">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QLabel" name="tasksWithTimeoutsLabel">
+                  <property name="toolTip">
+                   <string>Number of tasks that this machine tried to compute but ended up with timeout. </string>
+                  </property>
+                  <property name="text">
+                   <string>Subtasks with timeouts</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QLabel" name="tasksWithTimeouts">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QLabel" name="knownTasksLabel">
+                  <property name="toolTip">
+                   <string>Number of active tasks in Golem Net. </string>
+                  </property>
+                  <property name="text">
+                   <string>Tasks in the network</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QLabel" name="knownTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
+                 <widget class="QLabel" name="estimatedRankLabel">
+                  <property name="toolTip">
+                   <string>Estimated rank of this machine. </string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="0">
+                 <widget class="QLabel" name="supportedTasksLabel">
+                  <property name="text">
+                   <string>Supported tasks</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="7" column="1">
+                 <widget class="QLabel" name="supportedTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </item>
              </layout>
@@ -1446,7 +1538,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -2389,7 +2481,24 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="2" column="0">
+               <widget class="QLabel" name="estimatedRequestorReputationLabel">
+                <property name="toolTip">
+                 <string>Estimated reputation that this node has in network as a requestor.</string>
+                </property>
+                <property name="text">
+                 <string>Requestor reputation</string>
+                </property>
+               </widget>
+              </item>
+              <item row="4" column="0">
+               <widget class="Line" name="line_6">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="0">
                <widget class="QLabel" name="ethAddressConst">
                 <property name="toolTip">
                  <string>The Ethereum address used privately by the Golem App</string>
@@ -2399,7 +2508,7 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="6" column="1">
                <widget class="QLabel" name="ethAddressLabel">
                 <property name="text">
                  <string/>
@@ -2409,7 +2518,7 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="0">
+              <item row="7" column="0">
                <widget class="QLabel" name="localBalanceConst">
                 <property name="toolTip">
                  <string>The balance of the local Ethereum address. Can be spent directly on tasks.</string>
@@ -2419,7 +2528,7 @@
                 </property>
                </widget>
               </item>
-              <item row="4" column="1">
+              <item row="7" column="1">
                <widget class="QLabel" name="localBalanceLabel">
                 <property name="text">
                  <string/>
@@ -2432,7 +2541,7 @@
                 </property>
                </widget>
               </item>
-              <item row="5" column="0">
+              <item row="8" column="0">
                <widget class="QLabel" name="availableBalanceConst">
                 <property name="toolTip">
                  <string>Balance available for spending</string>
@@ -2442,24 +2551,7 @@
                 </property>
                </widget>
               </item>
-              <item row="9" column="0">
-               <widget class="QLabel" name="paymentsConst">
-                <property name="toolTip">
-                 <string>Your incomes and payments history</string>
-                </property>
-                <property name="text">
-                 <string>Payments</string>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="1">
-               <widget class="QPushButton" name="paymentsButton">
-                <property name="text">
-                 <string>View Payments History</string>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="1">
+              <item row="8" column="1">
                <widget class="QLabel" name="availableBalanceLabel">
                 <property name="text">
                  <string/>
@@ -2469,7 +2561,7 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="0">
+              <item row="9" column="0">
                <widget class="QLabel" name="reservedBalanceConst">
                 <property name="toolTip">
                  <string>Balance reserved for planned payments and maintenance</string>
@@ -2479,7 +2571,7 @@
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
+              <item row="9" column="1">
                <widget class="QLabel" name="reservedBalanceLabel">
                 <property name="text">
                  <string/>
@@ -2489,14 +2581,7 @@
                 </property>
                </widget>
               </item>
-              <item row="2" column="0">
-               <widget class="Line" name="line_6">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="0">
+              <item row="10" column="0">
                <widget class="QLabel" name="depositBalanceConst">
                 <property name="toolTip">
                  <string>The amount of ethers kept in the Deposit contract. Can be withdrawn at any time.</string>
@@ -2506,7 +2591,7 @@
                 </property>
                </widget>
               </item>
-              <item row="7" column="1">
+              <item row="10" column="1">
                <widget class="QLabel" name="depositBalanceLabel">
                 <property name="text">
                  <string/>
@@ -2516,7 +2601,7 @@
                 </property>
                </widget>
               </item>
-              <item row="8" column="0">
+              <item row="11" column="0">
                <widget class="QLabel" name="totalBalanceConst">
                 <property name="toolTip">
                  <string>Total amount of ethers owned by this Golem App</string>
@@ -2526,7 +2611,7 @@
                 </property>
                </widget>
               </item>
-              <item row="8" column="1">
+              <item row="11" column="1">
                <widget class="QLabel" name="totalBalanceLabel">
                 <property name="font">
                  <font>
@@ -2540,6 +2625,47 @@
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QLabel" name="paymentsConst">
+                <property name="toolTip">
+                 <string>Your incomes and payments history</string>
+                </property>
+                <property name="text">
+                 <string>Payments</string>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1">
+               <widget class="QPushButton" name="paymentsButton">
+                <property name="text">
+                 <string>View Payments History</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="estimatedProviderReputationLabel">
+                <property name="toolTip">
+                 <string>Estimated reputation that this node has in network as a providor.</string>
+                </property>
+                <property name="text">
+                 <string>Provider reputation</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="estimatedRequestorReputation">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="estimatedProviderReputation">
+                <property name="text">
+                 <string/>
                 </property>
                </widget>
               </item>

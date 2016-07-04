@@ -7,3 +7,10 @@ class TestingTaskProgressDialogCustomizer(Customizer):
 
     def show_message(self, msg):
         self.gui.ui.message.setText(msg)
+
+    def button_enable(self, enable):
+        """
+        Enable or disable 'ok' button
+        :param enable: True if you want to enable button, false otherwise
+        """
+        self.gui.ui.okButton.setEnabled(enable)
