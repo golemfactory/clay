@@ -28,6 +28,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __init__(self, gui, logic):
         Customizer.__init__(self, gui, logic)
+        self.max_memory_changed = False
 
     def load_data(self):
         config_desc = self.logic.get_config()
@@ -35,6 +36,8 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__load_advance_config(config_desc)
         self.__load_resource_config()
         self.__load_payment_config(config_desc)
+        self.max_memory_changed = False
+
 
     @staticmethod
     def du(path):
@@ -62,6 +65,16 @@ class ConfigurationDialogCustomizer(Customizer):
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__recount_performance)
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__run_blender_benchmark_button_clicked)
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__run_lux_benchmark_button_clicked)      
+        
+        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageComboBox, QtCore.SIGNAL("currentIndexChanged(QString)"),
+                               self.__max_memory_changed)
+        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__max_memory_changed)
+        
 
         self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
         self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
@@ -81,6 +94,10 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__check_eth_account)
 
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
+
+    def __max_memory_changed(self):
+        self.max_memory_changed = True
+        
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
@@ -263,13 +280,19 @@ class ConfigurationDialogCustomizer(Customizer):
         
 
     def __change_config(self):
-        self.__run_blender_benchmark_button_clicked()
-        self.__run_lux_benchmark_button_clicked()
         cfg_desc = ClientConfigDescriptor()
+        
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc)
+        
+        if self.max_memory_changed:
+            self.__run_blender_benchmark_button_clicked()
+            self.__run_lux_benchmark_button_clicked()
+            self.max_memory_changed = False
+        
+
 
     def __read_basic_config(self, cfg_desc):
         cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
