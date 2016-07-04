@@ -1,3 +1,5 @@
+from golem.task.taskclient import TaskClient
+from golem.task.taskstate import TaskState, SubtaskStatus, SubtaskState
 from mock import Mock
 
 from golem.network.p2p.node import Node
@@ -123,3 +125,48 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         assert tm.get_resources(task_id, task_mock.header) is resources
         assert not tm.get_resources(task_id + "2", task_mock.header)
+
+    def test_task_result_incoming(self):
+        subtask_id = "xxyyzz"
+        node_id = 'node'
+
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+
+        task_mock = self._get_task_mock()
+        task_mock.counting_nodes = {}
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = "xyz"
+        extra_data.ctd.subtask_id = subtask_id
+
+        task_mock.query_extra_data.return_value = extra_data
+
+        tm.task_result_incoming(subtask_id)
+        assert not task_mock.result_incoming.called
+
+        task_mock.subtasks_given = dict()
+        task_mock.subtasks_given[subtask_id] = TaskClient(node_id)
+
+        subtask_state = SubtaskState()
+        subtask_state.status = SubtaskStatus.waiting
+        subtask_state.subtask_id = subtask_id
+        subtask_state.computer = Mock()
+        subtask_state.computer.node_id = node_id
+
+        task_state = TaskState()
+        task_state.computer = Mock()
+        task_state.subtask_states[subtask_id] = subtask_state
+
+        tm.add_new_task(task_mock)
+        tm.subtask2task_mapping[subtask_id] = "xyz"
+        tm.tasks_states["xyz"] = task_state
+
+        tm.task_result_incoming(subtask_id)
+        assert task_mock.result_incoming.called
+
+        task_mock.result_incoming.called = False
+        tm.tasks = []
+
+        tm.task_result_incoming(subtask_id)
+        assert not task_mock.result_incoming.called

@@ -1,7 +1,7 @@
 import os
 import time
 
-from mock import MagicMock
+from mock import MagicMock, Mock
 
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
@@ -40,6 +40,44 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         tc2.run()
         task_server.request_task.assert_not_called()
+
+        tc2.runnable = True
+        tc2.compute_tasks = True
+        tc2.waiting_for_task = False
+        tc2.counting_task = False
+
+        tc2.last_task_request = 0
+        tc2.current_computations = []
+
+        tc2.run()
+
+        assert task_server.request_task.called
+
+        task_server.request_task.called = False
+
+        tc2.waiting_for_task = 'xxyyzz'
+        tc2.use_waiting_ttl = True
+        tc2.last_checking = 10 ** 10
+
+        tc2.run()
+
+    def test_resource_failure(self):
+        task_server = MagicMock()
+        tc = TaskComputer("ABC", task_server)
+
+        task_id = 'xyz'
+        subtask_id = 'xxyyzz'
+
+        tc.task_resource_failure(task_id, 'reason')
+        assert not task_server.send_task_failed.called
+
+        tc.task_to_subtask_mapping[task_id] = subtask_id
+        tc.assigned_subtasks[subtask_id] = Mock()
+
+        tc.task_resource_failure(task_id, 'reason')
+        assert task_server.send_task_failed.called
+
+        tc.resource_request_rejected(subtask_id, 'reason')
 
     def test_computation(self):
         task_server = MagicMock()

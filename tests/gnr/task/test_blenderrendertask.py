@@ -78,12 +78,13 @@ class TestBlenderTask(TempDirFixture):
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertTrue(self.bt.main_scene_file == path.join(self.path, "example.blend"))
-        ctd = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        ctd = extra_data.ctd
         assert ctd.extra_data['start_task'] == 1
         assert ctd.extra_data['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.query_extra_data(1000, 2, "ABC", "abc") is None
+        assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
 
     def test_get_min_max_y(self):
         self.assertTrue(self.bt.res_x == 2)
@@ -236,7 +237,14 @@ class TestBlenderTask(TempDirFixture):
             for j in range(34, 133):
                 pixel = img_task2.getpixel((i, j))
                 self.assertTrue(pixel == color)
-        
+
+    def test_query_extra_data(self):
+        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        assert extra_data.ctd
+        assert not extra_data.should_wait
+
+        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        assert extra_data.should_wait
 
 
 class TestPreviewUpdater(TempDirFixture):
