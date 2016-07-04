@@ -15,7 +15,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
-from gnr.task.gnrtask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.renderingtaskcollector import exr_to_pil
 
@@ -104,7 +104,7 @@ class RenderingTask(GNRTask):
         if is_windows():
             self.__get_path = self.__get_path_windows
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def computation_failed(self, subtask_id):
         GNRTask.computation_failed(self, subtask_id)
         self._update_task_preview()
@@ -116,7 +116,7 @@ class RenderingTask(GNRTask):
 
         self.collected_file_names = {}
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
@@ -139,7 +139,7 @@ class RenderingTask(GNRTask):
     def _get_part_size(self, subtask_id):
         return self.res_x, self.res_y
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         num_task = self.subtasks_given[subtask_id]['start_task']
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
@@ -156,7 +156,7 @@ class RenderingTask(GNRTask):
         img_current = ImageChops.add(img_current, img)
         img_current.save(self.preview_file_path, "BMP")
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
         if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
@@ -302,7 +302,7 @@ class RenderingTask(GNRTask):
                 adv_test_file = random.sample(tr_files, 1)
         return adv_test_file
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _verify_imgs(self, subtask_id, tr_files):
         res_x, res_y = self._get_part_size(subtask_id)
 
@@ -337,7 +337,7 @@ class RenderingTask(GNRTask):
         start_y = random.randint(y0, y1 - ver_y)
         return start_x, start_y
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data = copy(self.subtasks_given[subtask_id])
         extra_data['outfilebasename'] = str(uuid.uuid4())
@@ -353,7 +353,7 @@ class RenderingTask(GNRTask):
         else:
             return None
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def __use_adv_verification(self, subtask_id):
         if self.verification_options.type == 'forAll':
             return True

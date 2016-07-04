@@ -4,6 +4,7 @@ import pickle
 import os
 import time
 
+from golem.core.common import HandleKeyError
 from golem.core.compress import decompress
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
@@ -13,20 +14,12 @@ from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 
-
 logger = logging.getLogger(__name__)
 
 
-def check_subtask_id_wrapper(func):
-    def check_subtask_id(*args, **kwargs):
-        task = args[0]
-        subtask_id = args[1]
-        if subtask_id not in task.subtasks_given:
-            logger.error("This is not my subtask {}".format(subtask_id))
-            return False
-        return func(*args, **kwargs)
-
-    return check_subtask_id
+def log_key_error(*args, **kwargs):
+    logger.warning("This is not my subtask {}".format(args[1]))
+    return False
 
 
 class GNRTaskBuilder(TaskBuilder):
@@ -58,6 +51,7 @@ class GNROptions(object):
 
 
 class GNRTask(Task):
+    handle_key_error = HandleKeyError(log_key_error)
 
     ################
     # Task methods #
@@ -122,7 +116,7 @@ class GNRTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def verify_subtask(self, subtask_id):
         return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished
 
@@ -147,7 +141,7 @@ class GNRTask(Task):
         self.header.last_checking = time.time()
         self.header.ttl = self.full_task_timeout
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
@@ -166,7 +160,7 @@ class GNRTask(Task):
     def get_resources(self, task_id, resource_header, resource_type=0):
 
         dir_name = self._get_resources_root_dir()
-        tmp_dir = self.__get_tmp_dir()
+        tmp_dir = self._get_tmp_dir()
 
         if resource_type == resource_types["zip"] and not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
@@ -186,24 +180,24 @@ class GNRTask(Task):
     def update_task_state(self, task_state):
         pass
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def get_trust_mod(self, subtask_id):
         return 1.0
 
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def get_stderr(self, subtask_id):
         err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def get_stdout(self, subtask_id):
         out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
@@ -273,7 +267,7 @@ class GNRTask(Task):
     def after_test(self, results, tmp_dir):
         pass
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
@@ -293,7 +287,7 @@ class GNRTask(Task):
             logger.error("Can't read file {}: {}".format(f, err))
             return ""
 
-    @check_subtask_id_wrapper
+    @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
@@ -309,7 +303,7 @@ class GNRTask(Task):
         prefix = os.path.commonprefix(self.task_resources)
         return os.path.dirname(prefix)
 
-    def __get_tmp_dir(self):
+    def _get_tmp_dir(self):
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
                                self.root_path)
         if not os.path.exists(tmp_dir):

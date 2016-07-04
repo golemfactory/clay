@@ -15,7 +15,8 @@ from golem.testutils import DatabaseFixture
 class TestP2PService(DatabaseFixture):
     def test_add_to_peer_keeper(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         node = Node()
         node.key = EllipticalKeysAuth("TEST").get_key_id()
         m_test2 = MagicMock()
@@ -47,7 +48,8 @@ class TestP2PService(DatabaseFixture):
 
     def test_remove_old_peers(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         node = MagicMock()
         node.key = EllipticalKeysAuth("TEST").get_key_id()
         node.key_id = node.key
@@ -67,7 +69,8 @@ class TestP2PService(DatabaseFixture):
 
     def test_refresh_peers(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = MagicMock()
@@ -100,7 +103,8 @@ class TestP2PService(DatabaseFixture):
 
     def test_redundant_peers(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = MagicMock()
@@ -116,8 +120,10 @@ class TestP2PService(DatabaseFixture):
 
     def test_add_known_peer(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         key_id = EllipticalKeysAuth("TEST").get_key_id()
+        nominal_seeds = len(service.seeds)
 
         node = Node(
             'super_node', key_id,
@@ -150,7 +156,7 @@ class TestP2PService(DatabaseFixture):
         assert len_2 == len_1
         assert select_2[0].last_connected > last_conn_1
 
-        assert len(service.seeds) >= 1
+        assert len(service.seeds) > nominal_seeds
 
         # try to add more than max, we already have at least 1
         pub_prefix = '2.2.3.'
@@ -169,11 +175,12 @@ class TestP2PService(DatabaseFixture):
             service.add_known_peer(n, pub, n.prv_port)
 
         assert len(KnownHosts.select()) == MAX_STORED_HOSTS
-        assert len(service.seeds) <= 1
+        assert len(service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
 
         node = MagicMock()
         node.key = EllipticalKeysAuth("TEST").get_key_id()
@@ -198,7 +205,8 @@ class TestP2PService(DatabaseFixture):
 
     def test_reconnect_with_seed(self):
         keys_auth = EllipticalKeysAuth()
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
         service.connect_to_seeds()
         time_ = time.time()
         last_time = service.last_time_tried_connect_with_seed
