@@ -51,6 +51,15 @@ class SessionProtocol(Protocol):
     # Protocol function
     def connectionMade(self):
         """Called when new connection is successfully opened"""
+
+        # If the underlying transport is TCP, enable TCP keepalive.
+        # Otherwise, the setTcpKeepAlive method will not be present
+        # in the 'transport' object and an AttributeError will be raised
+        try:
+            self.transport.setTcpKeepAlive(1)
+        except AttributeError:
+            pass
+
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
 

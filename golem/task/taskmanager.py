@@ -2,6 +2,7 @@ import time
 import logging
 from math import ceil
 
+from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -9,7 +10,6 @@ from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
-
 
 
 logger = logging.getLogger(__name__)
@@ -26,20 +26,16 @@ class TaskManagerEventListener:
         pass
 
 
-def react_to_key_error(func):
-    def func_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            logger.warning("This is not my subtask {}".format(args[1]))
-            return None
-
-    return func_wrapper
+def log_key_error(*args, **kwargs):
+    logger.warning("This is not my subtask {}".format(args[1]))
+    return None
 
 
 class TaskManager(object):
     """ Keeps and manages information about requested tasks
     """
+    handle_key_error = HandleKeyError(log_key_error)
+
     def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
         self.node_name = node_name
@@ -217,7 +213,7 @@ class TaskManager(object):
             return
         subtask_state.value = value
 
-    @react_to_key_error
+    @handle_key_error
     def get_value(self, subtask_id):
         """ Return value of a given subtask
         :param subtask_id:  id of a computed subtask
@@ -474,7 +470,7 @@ class TaskManager(object):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    @react_to_key_error
+    @handle_key_error
     def set_computation_time(self, subtask_id, computation_time):
         """
         Set computation time for subtask and also compute and set new value based on saved price for this subtask
