@@ -5,13 +5,12 @@ import cPickle
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
-
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-                          EnvironmentsDialog, IdentityDialog
+    EnvironmentsDialog, IdentityDialog
 
-from gnr.ui.tasktableelem import TaskTableElem
+from gnr.ui.tasktableelem import TaskTableElem, ItemMap
 
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
@@ -54,7 +53,6 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
 
-
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
         self.logic.enqueue_new_task(ui_new_task_info)
@@ -62,11 +60,12 @@ class GNRMainWindowCustomizer(Customizer):
     # Updates tasks information in gui
     def update_tasks(self, tasks):
         for i in range(self.gui.ui.taskTableWidget.rowCount()):
-            task_id = self.gui.ui.taskTableWidget.item(i, 0).text()
+            task_id = self.gui.ui.taskTableWidget.item(i, ItemMap.index_of('id')).text()
             task_id = "{}".format(task_id)
             if task_id in tasks:
-                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[task_id].task_state.status)
-                progress_bar_in_box_layout = self.gui.ui.taskTableWidget.cellWidget(i, 2)
+                self.gui.ui.taskTableWidget.item(i, ItemMap.index_of('status')).setText(
+                    tasks[task_id].task_state.status)
+                progress_bar_in_box_layout = self.gui.ui.taskTableWidget.cellWidget(i, ItemMap.index_of('progress'))
                 layout = progress_bar_in_box_layout.layout()
                 pb = layout.itemAt(0).widget()
                 pb.setProperty("value", int(tasks[task_id].task_state.progress * 100.0))
@@ -79,7 +78,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     # Add task information in gui
     def add_task(self, task):
-        self._add_task(task.definition.task_id, task.status)
+        self._add_task(task.definition.task_id, task.status, task.definition.task_name)
 
     def update_task_additional_info(self, t):
         self.current_task_highlighted = t
@@ -190,16 +189,17 @@ class GNRMainWindowCustomizer(Customizer):
             return
         self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
-    def _add_task(self, task_id, status):
+    def _add_task(self, task_id, status, task_name):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()
         self.gui.ui.taskTableWidget.insertRow(current_row_count)
 
-        task_table_elem = TaskTableElem(task_id, status)
+        task_table_elem = TaskTableElem(task_id, status, task_name)
 
-        for col in range(0, 2):
+        for col in range(0, ItemMap.count() - 1):
             self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.get_column_item(col))
 
-        self.gui.ui.taskTableWidget.setCellWidget(current_row_count, 2, task_table_elem.progressBarInBoxLayoutWidget)
+        self.gui.ui.taskTableWidget.setCellWidget(current_row_count, ItemMap.index_of('progress'),
+                                                  task_table_elem.progressBarInBoxLayoutWidget)
 
         self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(current_row_count, 1))
         self.update_task_additional_info(self.logic.get_task(task_id))

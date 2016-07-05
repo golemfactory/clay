@@ -145,6 +145,7 @@ class NewTaskDialogCustomizer(Customizer):
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
+        self.gui.ui.taskNameLineEdit.setText(definition.task_name)
 
         self._load_options(definition)
 
@@ -202,6 +203,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._read_basic_task_params(definition)
         self._read_task_type(definition)
         self._read_price_params(definition)
+        self._read_task_name(definition)
         definition.options = self.options
         return definition
 
@@ -222,6 +224,9 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _read_task_type(self, definition):
         definition.task_type = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+
+    def _read_task_name(self, definition):
+        definition.task_name = u"{}".format(self.gui.ui.taskNameLineEdit.text())
 
     def _read_price_params(self, definition):
         try:

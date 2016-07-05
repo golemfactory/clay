@@ -53,6 +53,7 @@ class ClientConfigDescriptor(object):
         self.min_price = 0
         self.max_price = 0
         self.public_address = ""
+        self.task_name = ""
 
         self.accept_tasks = 1
 

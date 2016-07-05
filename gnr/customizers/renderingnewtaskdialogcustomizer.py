@@ -192,6 +192,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _load_basic_task_params(self, definition):
         r = self.logic.get_renderer(definition.renderer)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
+        self.gui.ui.taskNameLineEdit.setText(definition.task_name)
         NewTaskDialogCustomizer._load_basic_task_params(self, definition)
 
     def _load_resources(self, definition):
@@ -239,6 +240,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self._read_renderer_params(definition)
         self._read_advance_verification_params(definition)
         self._read_price_params(definition)
+        self._read_task_name(definition)
 
         return definition
 

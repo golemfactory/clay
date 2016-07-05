@@ -30,6 +30,7 @@ class TestNewTaskDialogCustomizer(TestCase):
         td = GNRTaskDefinition()
         td.resources = ["/abc/./def", "/ghi/jik"]
         td.main_program_file = "/a/b/c/"
+        td.task_name = "something..."
         win_norm_resources = {"\\abc\\def", "\\ghi\\jik"}
         oth_norm_resources = {"/abc/def", "/ghi/jik"}
         customizer.load_task_definition(td)

@@ -37,6 +37,7 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.main_scene_file = ""
         self.output_file = ""
         self.output_format = ""
+        self.task_name = ""
 
 
 class RenderingTaskState:
