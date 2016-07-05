@@ -1,19 +1,19 @@
 import unittest
 
 import time
-from threading import Thread
+import threading
 
 from golem.core.threads import ThreadQueueExecutor
 
 
-class TestThread(Thread):
+class Thread(threading.Thread):
 
     def __init__(self, secs, sleep=0.5, group=None,
                  target=None, name=None, args=(),
                  kwargs=None, verbose=None):
 
-        super(TestThread, self).__init__(group, target, name,
-                                         args, kwargs, verbose)
+        super(Thread, self).__init__(group, target, name,
+                                     args, kwargs, verbose)
         self.working = True
         self.sleep = sleep
         self.secs = secs
@@ -34,9 +34,9 @@ class TestThreadExecutor(unittest.TestCase):
         executor = ThreadQueueExecutor()
         executor.start()
 
-        j1 = TestThread(30)
-        j2 = TestThread(30)
-        j3 = TestThread(30)
+        j1 = Thread(30)
+        j2 = Thread(30)
+        j3 = Thread(30)
 
         executor.push(j1)
         assert len(executor._queue) == 1
@@ -55,8 +55,8 @@ class TestThreadExecutor(unittest.TestCase):
         executor = ThreadQueueExecutor()
         executor.start()
 
-        j1 = TestThread(0)
-        j2 = TestThread(0)
+        j1 = Thread(0)
+        j2 = Thread(0)
 
         executor.push(j1)
         executor.push(j2)
