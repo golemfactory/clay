@@ -1,6 +1,8 @@
 import uuid
 
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, ANY
+
+from stun import FullCone
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -245,6 +247,104 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         ts.retry_sending_task_result(subtask_id)
         assert not wtr.already_sending
+
+    def test_send_waiting_results(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, Mock(), self.client)
+        ts.network = Mock()
+        ts._mark_connected = Mock()
+        ts.task_computer = Mock()
+        ts.task_manager = Mock()
+        ts.task_manager.remove_old_tasks.return_value = []
+        ts.task_keeper = Mock()
+        ts.task_connections_helper = Mock()
+        ts._add_pending_request = Mock()
+
+        subtask_id = 'xxyyzz'
+
+        wtr = Mock()
+        ts.results_to_send[subtask_id] = wtr
+
+        wtr.already_sending = True
+        wtr.last_sending_trial = 0
+        wtr.delay_time = 0
+        wtr.subtask_id = subtask_id
+        wtr.address = '127.0.0.1'
+        wtr.port = 10000
+
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+
+        wtr.last_sending_trial = 0
+        ts.retry_sending_task_result(subtask_id)
+
+        ts.sync_network()
+        assert ts._add_pending_request.called
+
+        ts._add_pending_request.called = False
+        ts.task_sessions[subtask_id] = Mock()
+
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+
+        ts._add_pending_request.called = False
+        ts.results_to_send = dict()
+
+        wtf = wtr
+
+        ts.failures_to_send[subtask_id] = wtf
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+        assert not ts.failures_to_send
+
+        ts._add_pending_request.called = False
+        ts.task_sessions.pop(subtask_id)
+
+        ts.failures_to_send[subtask_id] = wtf
+        ts.sync_network()
+        assert ts._add_pending_request.called
+        assert not ts.failures_to_send
+
+    def test_add_task_session(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, Mock(), self.client)
+        ts.network = Mock()
+
+        session = Mock()
+        subtask_id = 'xxyyzz'
+        ts.add_task_session(subtask_id, session)
+        assert ts.task_sessions[subtask_id]
+
+    def test_initiate_nat_traversal(self):
+        ccd = ClientConfigDescriptor()
+        node = Node()
+        node.nat_type = FullCone
+
+        ts = TaskServer(node, ccd, Mock(), self.client)
+        ts.network = Mock()
+        ts._add_pending_request = Mock()
+
+        initiate = ts._TaskServer__initiate_nat_traversal
+
+        key_id = 'key_id'
+        node_info = {}
+        super_node_info = Mock()
+        ans_conn_id = 'conn_id'
+
+        initiate(key_id, node_info, None, ans_conn_id)
+        assert not ts._add_pending_request.called
+
+        initiate(key_id, node_info, super_node_info, ans_conn_id)
+        ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
+                                                   ANY, ANY, ANY, ANY)
+
+        node.nat_type = None
+        initiate(key_id, node_info, super_node_info, ans_conn_id)
+        ts._add_pending_request.assert_called_with(TaskConnTypes.Middleman,
+                                                   ANY, ANY, ANY, ANY)
+
+
+
 
     @staticmethod
     def __get_example_task_header():
