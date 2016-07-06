@@ -529,7 +529,7 @@ class P2PService(PendingConnectionsServer):
     #############################
     def set_resource_server(self, resource_server):
         """ Set resource server
-        :param ResourceServer resource_server: resource server instance
+        :param BaseResourceServer resource_server: resource server instance
         """
         self.resource_server = resource_server
 
