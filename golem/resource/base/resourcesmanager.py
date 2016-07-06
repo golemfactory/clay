@@ -61,6 +61,10 @@ class BaseAbstractResourceManager(IClientHandler):
     def split_path(path):
         return re.split('/|\\\\', path) if path else path
 
+    def command_failed(self, exc, cmd, obj_id, **kwargs):
+        logger.error("Resource manager: Error executing command '{}': {}"
+                     .format(self.commands.names[cmd], exc.message))
+
     def copy_resources(self, from_dir):
         resource_dir = self.get_root_dir()
         from_dir = os.path.normpath(from_dir)
@@ -387,10 +391,6 @@ class BaseAbstractResourceManager(IClientHandler):
             self.__push_to_queue(filename, multihash, task_id,
                                  success, error,
                                  client, client_options, async, pin)
-
-    def command_failed(self, exc, cmd, obj_id):
-        # IPFSDaemonManager().command_failed(exc, cmd, obj_id)
-        pass
 
     def __copy_cached(self, filename, multihash, task_id):
         cached_path = self.get_cached(multihash)

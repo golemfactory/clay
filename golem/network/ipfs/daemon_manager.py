@@ -72,9 +72,6 @@ class IPFSDaemonManager(IPFSClientHandler):
             }
         }
 
-    def command_failed(self, exc, cmd, obj_id, async=True):
-        pass
-
     def connect_to_bootstrap_nodes(self, client=None, async=True):
         for bootstrap_node in self.bootstrap_nodes:
             self.swarm_connect(bootstrap_node, client=client, async=async)

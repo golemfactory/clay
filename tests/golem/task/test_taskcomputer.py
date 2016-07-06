@@ -1,7 +1,7 @@
 import os
 import time
 
-from mock import MagicMock
+from mock import MagicMock, Mock
 
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
@@ -41,6 +41,44 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc2.run()
         task_server.request_task.assert_not_called()
 
+        tc2.runnable = True
+        tc2.compute_tasks = True
+        tc2.waiting_for_task = False
+        tc2.counting_task = False
+
+        tc2.last_task_request = 0
+        tc2.current_computations = []
+
+        tc2.run()
+
+        assert task_server.request_task.called
+
+        task_server.request_task.called = False
+
+        tc2.waiting_for_task = 'xxyyzz'
+        tc2.use_waiting_ttl = True
+        tc2.last_checking = 10 ** 10
+
+        tc2.run()
+
+    def test_resource_failure(self):
+        task_server = MagicMock()
+        tc = TaskComputer("ABC", task_server)
+
+        task_id = 'xyz'
+        subtask_id = 'xxyyzz'
+
+        tc.task_resource_failure(task_id, 'reason')
+        assert not task_server.send_task_failed.called
+
+        tc.task_to_subtask_mapping[task_id] = subtask_id
+        tc.assigned_subtasks[subtask_id] = Mock()
+
+        tc.task_resource_failure(task_id, 'reason')
+        assert task_server.send_task_failed.called
+
+        tc.resource_request_rejected(subtask_id, 'reason')
+
     def test_computation(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
@@ -73,7 +111,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.support_direct_computation = True
         tc.task_given(ctd, 10)
         assert tc.task_resource_collected("xyz")
-        assert tc.waiting_for_task is None
+        assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
         self.__wait_for_tasks(tc)
 
@@ -142,9 +180,10 @@ class TestTaskThread(TestDirFixture):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
         tc = TaskComputer("ABC", MagicMock())
         tc.counting_task = True
+        tc.waiting_for_task = None
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},
                           "hello thread", os.path.dirname(files_[0]), os.path.dirname(files_[1]), 20)
         tt.run()
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
-        self.assertFalse(tc.counting_task)
+        self.assertTrue(tc.counting_task)

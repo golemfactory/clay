@@ -11,7 +11,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageResourceList, MessageTaskResultHash
+    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
@@ -339,54 +339,49 @@ class TaskSession(MiddlemanSafeSession):
         trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                 msg.perf_index, msg.price, msg.max_resource_size,
-                                                                 msg.max_memory_size, msg.num_cores, self.address)
+            ctd, wrong_task, wait = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
+                                                                       msg.perf_index, msg.price, msg.max_resource_size,
+                                                                       msg.max_memory_size, msg.num_cores, self.address)
         else:
-            ctd, wrong_task = None, False
+            ctd, wrong_task, wait = None, False, False
 
         if wrong_task:
             self.send(MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
-            self.send(MessageRemoveTask(msg.task_id))
+            self.dropped()
         elif ctd:
             self.send(MessageTaskToCompute(ctd))
+        elif wait:
+            self.send(MessageWaitingForResults())
         else:
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
+            self.dropped()
 
     def _react_to_task_to_compute(self, msg):
         if self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
+            self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
         else:
+            self.task_computer.session_closed()
             self.dropped()
+
+    def _react_to_waiting_for_results(self, _):
+        self.task_computer.session_closed()
+        if not self.msgs_to_send:
+            self.disconnect(self.DCRNoMoreMessages)
 
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
+        self.task_computer.session_closed()
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
             self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
             delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
-
-            # if delay == -1.0:
-            #     self.dropped()
-            # elif delay == 0.0:
-            if delay <= 0.0:
-                self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
-                                                   msg.eth_account)
-                self.send(MessageGetTaskResult(msg.subtask_id, delay))
-
-                # if msg.result_type == result_types['data']:
-                #     self.__receive_data_result(msg)
-                # elif msg.result_type == result_types['files']:
-                #     self.__receive_files_result(msg)
-                # else:
-                #     logger.error("Unknown result type {}".format(msg.result_type))
-                #     self.dropped()
-            else:
-                self.send(MessageGetTaskResult(msg.subtask_id, delay))
-                # self.dropped()
+            self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
+                                               msg.eth_account)
+            self.send(MessageGetTaskResult(msg.subtask_id, delay))
         else:
             self.dropped()
 
@@ -429,6 +424,7 @@ class TaskSession(MiddlemanSafeSession):
                                                        'Error downloading task result')
             self.dropped()
 
+        self.task_manager.task_result_incoming(subtask_id)
         self.task_manager.task_result_manager.pull_package(multihash,
                                                            task_id,
                                                            subtask_id,
@@ -445,7 +441,6 @@ class TaskSession(MiddlemanSafeSession):
         if self.last_resource_msg is not None:
             if self.task_server.config_desc.use_distributed_resource_management:
                 self.__send_resource_list(self.last_resource_msg)
-                # self.dropped()
             else:
                 self.__send_delta_resource(self.last_resource_msg)
             self.last_resource_msg = None
@@ -455,7 +450,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource(self, msg):
         self.task_computer.resource_given(msg.subtask_id)
-        # self.dropped()
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -473,7 +467,6 @@ class TaskSession(MiddlemanSafeSession):
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(msg.node_name, msg.addr, msg.port, self.key_id, msg.node_info)
-        # self.dropped()
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
@@ -483,7 +476,6 @@ class TaskSession(MiddlemanSafeSession):
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
-        # self.dropped()
 
     def _react_to_resource_format(self, msg):
         if not msg.use_distributed_resource:
@@ -603,7 +595,6 @@ class TaskSession(MiddlemanSafeSession):
         client_options = resource_manager.build_client_options(self.task_server.get_key_id())
         res = resource_manager.list_split_resources(msg.task_id)
         self.send(MessageResourceList(res, options=client_options))
-        # self.dropped()
 
     def __send_resource_format(self, use_distributed_resource):
         self.send(MessageResourceFormat(use_distributed_resource))
@@ -698,6 +689,7 @@ class TaskSession(MiddlemanSafeSession):
             MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
             MessageNatPunch.Type: self._react_to_nat_punch,
             MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
+            MessageWaitingForResults.Type: self._react_to_waiting_for_results,
         })
 
         # self.can_be_not_encrypted.append(MessageHello.Type)

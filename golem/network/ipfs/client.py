@@ -304,9 +304,9 @@ class IPFSClientHandler(ClientHandler):
     def new_client(self):
         return IPFSClient(**self.config.client)
 
-    def command_failed(self, exc, cmd, obj_id):
+    def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("IPFS: Error executing command '{}': {}"
-                     .format(IPFSCommands.names[cmd], exc.message))
+                     .format(self.commands.names[cmd], exc.message))
 
 
 class IPFSAddress(object):

@@ -287,3 +287,8 @@ class TestResourcesManager(TestDirFixture):
                          success, error,
                          async=async)
         wait()
+
+    def testCommandFailed(self):
+        rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+        rm.command_failed(Exception('Unknown error'), rm.commands.id, str(uuid.uuid4()))

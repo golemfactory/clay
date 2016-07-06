@@ -66,7 +66,7 @@ class IClientHandler(object):
         pass
 
     @abc.abstractmethod
-    def command_failed(self, exc, cmd, obj_id):
+    def command_failed(self, exc, cmd, obj_id, **kwargs):
         pass
 
     @abc.abstractmethod

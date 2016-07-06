@@ -59,6 +59,7 @@ class BasicSession(FileSession):
     DCRProtocolVersion = "Protocol version"
     DCRBadProtocol = "Bad protocol"
     DCRTimeout = "Timeout"
+    DCRNoMoreMessages = "No more messages"
 
     def __init__(self, conn):
         """
