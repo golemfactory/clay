@@ -217,6 +217,20 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         )
         assert ts.task_sessions[subtask_id] == session
 
+    def test_retry_sending_task_result(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts.network = Mock()
+
+        subtask_id = 'xxyyzz'
+        wtr = Mock()
+        wtr.already_sending = True
+
+        ts.results_to_send[subtask_id] = wtr
+
+        ts.retry_sending_task_result(subtask_id)
+        assert not wtr.already_sending
+
     @staticmethod
     def __get_example_task_header():
         node = Node()

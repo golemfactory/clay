@@ -43,7 +43,7 @@ class BaseAbstractResourceManager(IClientHandler):
         else:
             self.resource_dir_method = dir_manager.get_task_resource_dir
 
-        self.add_resource_dir(self.get_resource_root_dir())
+        self.add_resource_dir(self.get_root_dir())
 
         if not hasattr(self, 'commands'):
             self.commands = ClientCommands
@@ -62,16 +62,12 @@ class BaseAbstractResourceManager(IClientHandler):
         return re.split('/|\\\\', path) if path else path
 
     def copy_resources(self, from_dir):
-        resource_dir = self.get_resource_root_dir()
+        resource_dir = self.get_root_dir()
         from_dir = os.path.normpath(from_dir)
         if resource_dir == from_dir:
             return
 
         copy_file_tree(from_dir, resource_dir)
-        file_names = next(os.walk(from_dir))[2]
-
-        for f in file_names:
-            os.remove(os.path.join(from_dir, f))
 
         self.update_resource_dir()
 
@@ -106,11 +102,11 @@ class BaseAbstractResourceManager(IClientHandler):
         self.__init__(self.dir_manager,
                       resource_dir_method=self.resource_dir_method)
 
+    def get_root_dir(self):
+        return self.dir_manager.get_node_dir()
+
     def get_resource_dir(self, task_id):
         return os.path.normpath(self.resource_dir_method(task_id))
-
-    def get_resource_root_dir(self):
-        return self.get_resource_dir('')
 
     def get_resource_path(self, resource, task_id):
         resource_dir = self.get_resource_dir(task_id)
@@ -132,6 +128,14 @@ class BaseAbstractResourceManager(IClientHandler):
             if os.path.exists(res_path):
                 return uni_path, uni_multihash
         return None
+
+    @staticmethod
+    def list_files(directory):
+        result = []
+        for src_dir, dirs, files in os.walk(directory):
+            for f in files:
+                result.append(os.path.join(src_dir, f))
+        return result
 
     def get_cached(self, multihash):
         return self.hash_to_path.get(multihash, None)
@@ -194,6 +198,12 @@ class BaseAbstractResourceManager(IClientHandler):
             del self.task_id_to_files[task_id]
 
         self.task_common_prefixes.pop(task_id, None)
+
+    def clear_resources(self):
+        self.file_to_hash = dict()
+        self.hash_to_path = dict()
+        self.task_id_to_files = dict()
+        self.task_common_prefixes = dict()
 
     def add_resources(self, resource_coll, task_id,
                       absolute_path=False, client=None, client_options=None):

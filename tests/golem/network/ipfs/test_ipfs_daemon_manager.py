@@ -1,9 +1,10 @@
 import unittest
 import uuid
+from mock import patch, Mock
 
 import requests
 
-from golem.network.ipfs.client import IPFSAddress, IPFSCommands
+from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
@@ -90,7 +91,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
         assert dm.swarm_peers() is not None
 
     def testCommandFailed(self):
-        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=True)
+        dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.last_backoff_clear_ts = 0
         dm.command_failed(requests.exceptions.ReadTimeout(),
                           IPFSCommands.get,
@@ -138,3 +139,16 @@ class TestIPFSDaemonManager(unittest.TestCase):
         )
 
         assert not status[0]
+
+    @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
+    def testConnectToBootstrapNodes(self, MockClient):
+
+        invalid_node = 'invalid node'
+
+        config = IPFSConfig(bootstrap_nodes=IPFS_BOOTSTRAP_NODES + [invalid_node])
+        dm = IPFSDaemonManager(config=config)
+
+        client = Mock()
+        dm.bootstrap_nodes = IPFS_BOOTSTRAP_NODES
+        dm.connect_to_bootstrap_nodes(async=False, client=client)
+        assert client.swarm_connect.called

@@ -9,10 +9,7 @@ from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFSAddre
 __all__ = ['IPFSDaemonManager']
 logger = logging.getLogger(__name__)
 
-daemon_manager_instance = None
-
 MAX_IPFS_ADDRESSES_PER_NODE = 8
-SWARM_DIAL_BACKOFF_CLEAR_INTERVAL = 30
 
 
 def to_unicode(source):
@@ -21,17 +18,10 @@ def to_unicode(source):
     return source
 
 
-def IPFSDaemonManager(**kwargs):
-    global daemon_manager_instance
-    if not daemon_manager_instance:
-        daemon_manager_instance = _IPFSDaemonManager(**kwargs)
-    return daemon_manager_instance
-
-
-class _IPFSDaemonManager(IPFSClientHandler):
+class IPFSDaemonManager(IPFSClientHandler):
 
     def __init__(self, config=None, connect_to_bootstrap_nodes=True):
-        super(_IPFSDaemonManager, self).__init__(config)
+        super(IPFSDaemonManager, self).__init__(config)
 
         self.node_id = None
         self.public_key = None
@@ -84,31 +74,10 @@ class _IPFSDaemonManager(IPFSClientHandler):
 
     def command_failed(self, exc, cmd, obj_id, async=True):
         pass
-        # Requires a forked version of go-ipfs
-        #
-        # super(_IPFSDaemonManager, self).command_failed(exc, cmd, obj_id)
-        # if self._exception_type(exc) is requests.exceptions.ReadTimeout:
-        #     self.clear_dial_backoffs(async=async)
-        #     self.connect_to_bootstrap_nodes(async=async)
 
-    def connect_to_bootstrap_nodes(self, async=True):
+    def connect_to_bootstrap_nodes(self, client=None, async=True):
         for bootstrap_node in self.bootstrap_nodes:
-            self.swarm_connect(bootstrap_node, async=async)
-
-    def clear_dial_backoffs(self, async=True):
-        if time.time() - self.last_backoff_clear_ts >= SWARM_DIAL_BACKOFF_CLEAR_INTERVAL:
-
-            client = self.new_client()
-            swarm_peers = self.swarm_peers(client=client)
-            parsed_peers = []
-
-            if swarm_peers and swarm_peers[0]:
-                if u'Strings' in swarm_peers[0]:
-                    parsed_peers = swarm_peers[0][u'Strings']
-
-            for peer in parsed_peers:
-                self.swarm_dial_backoff_clear(peer, client,
-                                              async=async)
+            self.swarm_connect(bootstrap_node, client=client, async=async)
 
     def interpret_metadata(self, metadata, seed_addresses, node_addresses, async=True):
         ipfs_meta = metadata.get('ipfs')
@@ -171,17 +140,6 @@ class _IPFSDaemonManager(IPFSClientHandler):
                                  command=IPFSCommands.swarm_disconnect,
                                  success=self.__swarm_disconnect_success,
                                  error=self.__swarm_disconnect_error,
-                                 obj_id=url)
-
-    def swarm_dial_backoff_clear(self, url, client=None, async=True):
-        if not client:
-            client = self.new_client()
-        return self._node_action(url,
-                                 async=async,
-                                 method=client.swarm_dial_backoff_clear,
-                                 command=IPFSCommands.swarm_dial_backoff_clear,
-                                 success=self.__swarm_dial_backoff_clear_success,
-                                 error=self.__swarm_dial_backoff_clear_error,
                                  obj_id=url)
 
     def swarm_peers(self, client=None):
@@ -281,11 +239,3 @@ class _IPFSDaemonManager(IPFSClientHandler):
     @staticmethod
     def __swarm_disconnect_error(exc, *args):
         logger.debug("IPFS: Error disconnecting from node: {}".format(exc))
-
-    @staticmethod
-    def __swarm_dial_backoff_clear_success(url):
-        logger.debug("IPFS: Dial backoff cleared for node: {}".format(url))
-
-    @staticmethod
-    def __swarm_dial_backoff_clear_error(exc, *args):
-        logger.debug("IPFS: Error clearing dial backoff for node: {}".format(exc))

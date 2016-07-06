@@ -22,19 +22,14 @@ class IPFSResourceManager(BaseAbstractResourceManager, IPFSClientHandler):
         IPFSClientHandler.__init__(self, config or IPFSConfig())
         BaseAbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
 
-    def add_resource_dir(self, dir_name,
-                         client=None, client_options=None):
-        if not client:
-            client = self.new_client()
-
+    def add_resource_dir(self, dir_name, client=None, client_options=None):
         dir_name = os.path.normpath(dir_name)
         task_ids = self.dir_manager.list_task_ids_in_dir(dir_name)
 
         for task_id in task_ids:
-            self.add_resource(task_id,
-                              task_id=task_id,
-                              client=client,
-                              client_options=client_options)
+            task_root_dir = self.dir_manager.get_task_resource_dir(task_id)
+            files = self.list_files(task_root_dir)
+            self.add_task(files, task_id)
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:

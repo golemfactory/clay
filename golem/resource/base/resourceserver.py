@@ -35,7 +35,7 @@ class BaseResourceServer:
         if self.dir_manager.root_path == config_desc.root_path:
             return
 
-        old_resource_dir = self.resource_manager.get_resource_root_dir()
+        old_resource_dir = self.resource_manager.get_root_dir()
 
         self.dir_manager.root_path = config_desc.root_path
         self.dir_manager.node_name = config_desc.node_name
@@ -43,7 +43,7 @@ class BaseResourceServer:
         self.resource_manager.copy_resources(old_resource_dir)
 
     def get_distributed_resource_root(self):
-        return self.resource_manager.get_resource_root_dir()
+        return self.resource_manager.get_root_dir()
 
     def get_peers(self):
         self.client.get_resource_peers()
