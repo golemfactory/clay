@@ -888,7 +888,7 @@
                <bool>true</bool>
               </property>
               <property name="columnCount">
-               <number>4</number>
+               <number>6</number>
               </property>
               <attribute name="horizontalHeaderVisible">
                <bool>false</bool>
@@ -927,6 +927,16 @@
               <column>
                <property name="text">
                 <string>Status</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Time</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Cost</string>
                </property>
               </column>
               <column>

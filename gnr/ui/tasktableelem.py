@@ -36,6 +36,12 @@ class TaskTableElem:
         self.status_item = QTableWidgetItem()
         self.status_item.setText(self.status)
 
+        self.timer_item = QTableWidgetItem()
+        self.timer_item.setText('00:00:00')
+
+        self.cost_item = QTableWidgetItem()
+        self.cost_item.setText('0,000000')
+
     def setProgress(self, val):
         if 0.0 <= val <= 1.0:
             self.progress = val
@@ -49,14 +55,17 @@ class TaskTableElem:
             return self.id_item
         if col == 2:
             return self.status_item
+        if col == 3:
+            return self.timer_item
+        if col == 4:
+            return self.cost_item
 
-        assert False, "Wrong column index"
+        assert False, "Wrong column"
 
 
 class ItemMap(object):
     def __init__(self):
-        self.__index = {'name': 0, 'id': 1, 'status': 2, 'progress': 3}
-        self.__item = {0: 'name', 1: 'id', 2: 'status', 3: 'progress'}
+        self.__index = ['name', 'id', 'status', 'time', 'cost', 'progress']
 
     def index_of(self, name):
         """
@@ -64,7 +73,7 @@ class ItemMap(object):
         :param name: item name
         :return: index of item
         """
-        return self.__index.get(name)
+        return self.__index.index(name)
 
     def item_at(self, index):
         """
@@ -72,7 +81,7 @@ class ItemMap(object):
         :param index: index of item
         :return: item name
         """
-        return self.__item.get(index)
+        return self.__index[index]
 
     def count(self):
         """

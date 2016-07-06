@@ -1,6 +1,7 @@
 import logging
 import os
 import cPickle
+from threading import Lock
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
@@ -35,6 +36,10 @@ class GNRMainWindowCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
+        self.lock = Lock()
+        self.timer = QtCore.QTimer()
+        self.timer.start(1000)
+        self.timer.timeout.connect(self.update_time)
 
     def init_config(self):
         ConfigurationDialogCustomizer(self.gui, self.logic)
@@ -75,6 +80,18 @@ class GNRMainWindowCustomizer(Customizer):
 
             else:
                 assert False, "Update task for unknown task."
+
+    def update_time(self):
+        with self.lock:
+            for i in range(self.gui.ui.taskTableWidget.rowCount()):
+                status = self.gui.ui.taskTableWidget.item(i, ItemMap.index_of('status')).text()
+                if status == 'Computing' or status == 'Waiting':
+                    l = self.gui.ui.taskTableWidget.item(i, ItemMap.index_of('time')).text().split(':')
+                    time_ = int(l[0]) * 3600 + int(l[1]) * 60 + int(l[2]) + 1
+                    m, s = divmod(time_, 60)
+                    h, m = divmod(m, 60)
+                    self.gui.ui.taskTableWidget.item(i, ItemMap.index_of('time')).setText(
+                        ("%02d:%02d:%02d" % (h, m, s)))
 
     # Add task information in gui
     def add_task(self, task):
@@ -195,8 +212,9 @@ class GNRMainWindowCustomizer(Customizer):
 
         task_table_elem = TaskTableElem(task_id, status, task_name)
 
-        for col in range(0, ItemMap.count() - 1):
-            self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.get_column_item(col))
+        for col in range(0, ItemMap.count()):
+            if ItemMap.index_of('progress') != col:
+                self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.get_column_item(col))
 
         self.gui.ui.taskTableWidget.setCellWidget(current_row_count, ItemMap.index_of('progress'),
                                                   task_table_elem.progressBarInBoxLayoutWidget)
