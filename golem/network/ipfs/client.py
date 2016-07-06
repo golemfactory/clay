@@ -44,7 +44,6 @@ class IPFSCommands(ClientCommands):
     swarm_connect = 8
     swarm_disconnect = 9
     swarm_peers = 10
-    swarm_dial_backoff_clear = 11
 
 IPFSCommands.build_names()
 
@@ -276,16 +275,12 @@ class IPFSClient(IClient, ipfsApi.Client):
         self._add = IPFSClientFileCommand('/add')
         self._refs_local = ArgCommand('/refs/local')
         self._bootstrap_list = ArgCommand('/bootstrap/list')
-        self._swarm_dial_backoff_clear = ArgCommand('/swarm/dial/backoff/clear')
 
     def build_options(self, node_id, **kwargs):
         return ClientOptions(self.CLIENT_ID, self.VERSION)
 
     def swarm_connect(self, *args, **kwargs):
         return self._swarm_connect.request(self._client, *args, **kwargs)
-
-    def swarm_dial_backoff_clear(self, *args, **kwargs):
-        return self._swarm_dial_backoff_clear.request(self._client, *args, **kwargs)
 
     def refs_local(self, **kwargs):
         return self._refs_local.request(self._client, **kwargs)
