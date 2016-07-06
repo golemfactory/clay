@@ -61,33 +61,40 @@ def register_rendering_task_types(logic):
 class ProcessMonitor(Thread):
 
     def __init__(self, *child_processes):
-        super(ProcessMonitor, self).__init__(target=self.start_monitoring,
-                                             name="GNRProcessMonitor")
+        super(ProcessMonitor, self).__init__(target=self.start_monitoring)
         self.child_processes = child_processes
         self.working = False
-
-    def add_process(self, process):
-        self.child_processes.append(process)
+        self.stop_reactor = True
 
     def start_monitoring(self):
         self.working = True
 
         while self.working:
-            time.sleep(1)
             for process in self.child_processes:
                 if not process.is_alive():
                     self.exit()
+            time.sleep(1)
 
-    def exit(self, sig=signal.SIGTERM):
-        from twisted.internet import reactor
-        if reactor.running:
-            reactor.stop()
-
+    def exit(self):
+        self.kill_processes()
+        if self.stop_reactor:
+            from twisted.internet import reactor
+            if reactor.running:
+                reactor.stop()
         self.working = False
 
+    def kill_processes(self, sig=signal.SIGTERM):
         for process in self.child_processes:
-            if process.is_alive():
+            self.kill_process(process, sig)
+
+    @staticmethod
+    def kill_process(process, sig=signal.SIGTERM):
+        if process.is_alive():
+            try:
                 os.kill(process.pid, sig)
+            except Exception as exc:
+                print "Error terminating process {}: {}".format(
+                    process, exc)
 
 
 class GUIApp(object):
@@ -111,17 +118,19 @@ class GUIApp(object):
         self.app.execute(True)
 
 
-def start_gui_process(queue, rendering):
-    logger = config_logging()
+def start_gui_process(queue, rendering=True, gui_app=None, reactor=None):
 
+    logger = config_logging()
     client_service_info = queue.get(True, 3600)
 
     if not isinstance(client_service_info, RPCServiceInfo):
         logger.error("GUI process error: {}".format(client_service_info))
         return
 
-    gui_app = GUIApp(rendering)
-    reactor = install_qt4_reactor()
+    if not gui_app:
+        gui_app = GUIApp(rendering)
+    if not reactor:
+        reactor = install_qt4_reactor()
 
     rpc_address = client_service_info.rpc_address
     rpc_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
@@ -129,30 +138,34 @@ def start_gui_process(queue, rendering):
     def on_connected(_):
         golem_client = rpc_client.build_client(client_service_info)
         logic_service_info = rpc_client.add_service(gui_app.logic)
-        gui_app.start(golem_client, logic_service_info)
+        gui_app.start(client=golem_client, logic_service_info=logic_service_info)
 
     def on_error(error):
-        if reactor.running: reactor.stop()
+        if reactor.running:
+            reactor.stop()
         logger.error("GUI process error: {}".format(error))
 
     def connect():
         rpc_client.connect().addCallbacks(on_connected, on_error)
 
     reactor.callWhenRunning(connect)
-    reactor.run()
+    if not reactor.running:
+        reactor.run()
 
 
-def start_client_process(queue, datadir, transaction_system, start_ranking):
+def start_client_process(queue, start_ranking, datadir=None,
+                         transaction_system=False, client=None):
+
     logger = config_logging()
-
     environments = load_environments()
 
-    try:
-        client = start_client(datadir, transaction_system)
-    except Exception as exc:
-        logger.error("Client process error: {}".format(exc))
-        queue.put(exc)
-        return
+    if not client:
+        try:
+            client = start_client(datadir, transaction_system)
+        except Exception as exc:
+            logger.error("Client process error: {}".format(exc))
+            queue.put(exc)
+            return
 
     for env in environments:
         client.environments_manager.add_environment(env)
@@ -173,7 +186,8 @@ def start_client_process(queue, datadir, transaction_system, start_ranking):
         client.ranking.run(reactor)
 
     reactor.callWhenRunning(listen)
-    reactor.run()
+    if not reactor.running:
+        reactor.run()
 
 
 def start_app(datadir=None, rendering=False,
@@ -182,24 +196,16 @@ def start_app(datadir=None, rendering=False,
     queue = Queue()
 
     client_process = Process(target=start_client_process,
-                             args=(queue, datadir, transaction_system, start_ranking))
+                             args=(queue, start_ranking, datadir, transaction_system))
     client_process.daemon = True
     client_process.start()
-
-    # gui_process = Process(target=start_gui_process,
-    #                       args=(queue, rendering))
-    # gui_process.daemon = True
-    # gui_process.start()
 
     process_monitor = ProcessMonitor(client_process)
     process_monitor.start()
 
-    # start_client_process(queue, datadir, transaction_system, start_ranking)
     try:
         start_gui_process(queue, rendering)
     except Exception as exc:
         print "Exception in GUI thread: {}".format(exc)
 
-    # gui_process.join()
-    # client_process.join()
     process_monitor.exit()

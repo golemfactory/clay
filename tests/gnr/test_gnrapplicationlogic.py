@@ -1,5 +1,7 @@
 import os
 import time
+import uuid
+
 from mock import Mock, MagicMock, patch
 
 from twisted.internet.defer import Deferred
@@ -10,6 +12,7 @@ from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.appconfig import CommonConfig
 from golem.client import Client
+from golem.rpc.service import RPCProxyClient, RPCServiceInfo, RPCAddress
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -69,6 +72,32 @@ class RPCClient(object):
     def test_task_computation_error(self, *args, **kwargs):
         self.success = False
         self.error = True
+
+
+class MockDeferred(Deferred):
+    def __init__(self, result):
+        Deferred.__init__(self)
+        self.result = result
+        self.called = True
+
+
+class MockDeferredCall(MagicMock):
+    def __call__(self, *args, **kwargs):
+        return MockDeferred(MagicMock())
+
+
+class MockRPCClient(RPCProxyClient):
+    def __init__(self, *args):
+        self.rpc = Mock()
+        self.methods = {}
+
+    def call_batch(self, batch):
+        return MockDeferred(MagicMock())
+
+
+class MockService(object):
+    def method_1(self):
+        return 1
 
 
 class TestGNRApplicationLogic(TestDirFixture):
@@ -147,3 +176,26 @@ class TestGNRApplicationLogic(TestDirFixture):
         ui.localBalanceLabel.setText.assert_called_once_with("3.000000 ETH")
         ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
+
+    def test_inline_callbacks(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+
+        client = MockRPCClient()
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+
+        logic.register_client(client, service_info)
+        logic.get_res_dirs()
+        logic.check_network_state()
+        logic.get_status()
+        logic.update_estimated_reputation()
+        logic.update_stats()
+        logic.get_config()
+        logic.get_keys_auth()
+        logic.save_task('any', os.path.join(self.path, str(uuid.uuid4())))
+        logic.recount_performance(1)
+        logic.get_environments()
+        logic.task_status_changed('xyz')
+        logic.get_payments()
+        logic.get_incomes()
+        logic.get_max_price()

@@ -154,8 +154,6 @@ class Client(object):
         self.get_resource_peers_interval = 5.0
 
     def start_network(self):
-        self.do_work_task.start(0.1, False)
-
         logger.info("Starting network ...")
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
@@ -185,12 +183,18 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.p2pservice.connect_to_network()
 
+        self.do_work_task.start(0.1, False)
+
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
 
     def quit(self):
-        self.task_server.quit()
+        if self.do_work_task.running:
+            self.do_work_task.stop()
+        if self.task_server:
+            self.task_server.quit()
+        self._unlock_datadir()
 
     def key_changed(self):
         self.node.key = self.keys_auth.get_key_id()

@@ -3,7 +3,7 @@ import unittest
 from mock import MagicMock
 from random import random
 
-from golem.network.p2p.peersession import PeerSession, logger
+from golem.network.p2p.peersession import PeerSession, logger, PeerSessionInfo
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.assertlogs import LogTestCase
@@ -35,3 +35,20 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         with self.assertLogs(logger, level=1) as l:
             self.assertEqual(ps2.decrypt(data), data)
         self.assertTrue(any(["not encrypted" in log for log in l.output]))
+
+
+class TestPeerSessionInfo(unittest.TestCase):
+
+    def test(self):
+        attributes = PeerSessionInfo.attributes
+        session = MagicMock()
+
+        for attr in attributes:
+            setattr(session, attr, True)
+
+        session.unknown_property = False
+        session_info = PeerSessionInfo(session)
+
+        for attr in attributes:
+            assert hasattr(session_info, attr)
+        assert not hasattr(session_info, 'unknown_property')

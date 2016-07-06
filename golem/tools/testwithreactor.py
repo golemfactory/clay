@@ -38,7 +38,11 @@ class MockReactor(SelectReactor):
         super(MockReactor, self).__init__()
 
     def stop(self):
-        result = super(MockReactor, self).stop()
+        if self.running:
+            result = super(MockReactor, self).stop()
+        else:
+            result = False
+
         self._startedBefore = False
         self.running = False
         return result
@@ -57,29 +61,35 @@ class MockReactorThread(Thread):
 
         super(MockReactorThread, self).__init__(group, self.__reactor_loop,
                                                 name, args, kwargs, verbose)
-        self._reactor = _reactor
+        self.reactor = _reactor
         self.working = False
+        self.done = False
 
     def start(self):
         self.working = True
-        self.runner_thread = Thread(target=self._reactor.run)
+        self.done = False
+        self.runner_thread = Thread(target=self.reactor.run)
         self.runner_thread.daemon = True
         self.runner_thread.start()
         return super(MockReactorThread, self).start()
 
     def stop(self):
         self.working = False
-        if self._reactor.threadpool:
-            self._reactor.threadpool.stop()
-        self._reactor.stop()
+        if self.reactor.threadpool:
+            self.reactor.threadpool.stop()
+        self.reactor.stop()
+
+        while not self.done:
+            time.sleep(0.1)
 
     def __reactor_loop(self):
         while self.working:
             try:
-                self._reactor.runUntilCurrent()
-                self._reactor.doIteration(self._reactor.timeout() or 0)
+                self.reactor.runUntilCurrent()
+                self.reactor.doIteration(self.reactor.timeout() or 0)
             except Exception as e:
                 print "Unexpected error in main loop:", e.message
+        self.done = True
 
 
 class TestWithReactor(unittest.TestCase):
@@ -101,6 +111,10 @@ class TestWithReactor(unittest.TestCase):
         if cls.reactor_thread:
             cls.reactor_thread.stop()
             uninstall_reactor()
+
+    @classmethod
+    def _get_reactor(cls):
+        return cls.reactor_thread.reactor
 
     @staticmethod
     def _sleep(async, secs=0.5):

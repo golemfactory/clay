@@ -1,8 +1,12 @@
 import os
+import unittest
+import uuid
 
 from mock import patch, Mock, MagicMock
+from twisted.internet.defer import Deferred
 
-from golem.client import create_client, Client
+from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
+from golem.client import create_client, Client, GolemClientRemoteEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
@@ -60,11 +64,23 @@ class TestClient(TestWithDatabase):
         c.transaction_system.check_payments = Mock()
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
         c.check_payments()
-        c._unlock_datadir()
+        c.quit()
 
     def test_remove_resources(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
-        c.start_network()
+
+        def unique_dir():
+            d = os.path.join(self.path, str(uuid.uuid4()))
+            if not os.path.exists(d):
+                os.makedirs(d)
+            return d
+
+        c.task_server = Mock()
+        c.task_server.get_task_computer_root.return_value = unique_dir()
+        c.task_server.task_manager.get_task_manager_root.return_value = unique_dir()
+
+        c.resource_server = Mock()
+        c.resource_server.get_distributed_resource_root.return_value = unique_dir()
 
         d = c.get_computed_files_dir()
         assert self.path in d
@@ -83,20 +99,20 @@ class TestClient(TestWithDatabase):
         self.additional_dir_content([3], d)
         c.remove_received_files()
         assert not os.listdir(d)
-        c._unlock_datadir()
+        c.quit()
 
     def test_datadir_lock(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
         with self.assertRaises(IOError):
             Client(ClientConfigDescriptor(), datadir=self.path)
-        c._unlock_datadir()
+        c.quit()
 
     def test_metadata(self):
         c = Client(ClientConfigDescriptor(), datadir=self.path)
         meta = c.get_metadata()
         assert meta is not None
         assert not meta
-        c._unlock_datadir()
+        c.quit()
 
     def test_interpret_metadata(self):
         from golem.network.ipfs.daemon_manager import IPFSDaemonManager
@@ -114,7 +130,7 @@ class TestClient(TestWithDatabase):
         node.prv_port = port_1
 
         c.interpret_metadata(meta, ip_1, port_1, node)
-        c._unlock_datadir()
+        c.quit()
 
     def test_get_status(self):
         ccd = ClientConfigDescriptor()
@@ -148,4 +164,27 @@ class TestClient(TestWithDatabase):
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
         assert "Not accepting tasks" in status
-        c._unlock_datadir()
+        c.quit()
+
+
+class TestEventListener(unittest.TestCase):
+
+    def test_remote_event_listener(self):
+
+        builder = Mock()
+        builder.build_client = lambda x: Mock()
+        listener = GolemClientRemoteEventListener(Mock())
+
+        assert listener.build(builder)
+        assert listener.remote_client
+
+        gnr_listener = GNRClientRemoteEventListener(Mock())
+
+        assert gnr_listener.build(builder)
+        assert gnr_listener.remote_client
+
+        gnr_listener.task_updated('xyz')
+        assert gnr_listener.remote_client.task_status_changed.called
+
+        gnr_listener.check_network_state()
+        assert gnr_listener.remote_client.check_network_state.called
