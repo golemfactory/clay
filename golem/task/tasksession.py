@@ -441,6 +441,7 @@ class TaskSession(MiddlemanSafeSession):
         if self.last_resource_msg is not None:
             if self.task_server.config_desc.use_distributed_resource_management:
                 self.__send_resource_list(self.last_resource_msg)
+                # self.dropped()
             else:
                 self.__send_delta_resource(self.last_resource_msg)
             self.last_resource_msg = None
