@@ -1,5 +1,6 @@
 import logging
 import netifaces
+
 import os
 import socket
 

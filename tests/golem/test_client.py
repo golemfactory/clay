@@ -4,7 +4,6 @@ from mock import Mock, MagicMock
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 
@@ -84,23 +83,24 @@ class TestClient(TestWithDatabase):
         assert not meta
         c._unlock_datadir()
 
-    def test_interpret_metadata(self):
-        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-        c = Client(datadir=self.path)
-        c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
-        c.ipfs_manager = IPFSDaemonManager()
-        meta = c.get_metadata()
-        assert meta and meta['ipfs']
-
-        ip_1 = '127.0.0.1'
-        port_1 = 40102
-
-        node = MagicMock()
-        node.prv_addr = ip_1
-        node.prv_port = port_1
-
-        c.interpret_metadata(meta, ip_1, port_1, node)
-        c._unlock_datadir()
+    # IPFS metadata disabled
+    # def test_interpret_metadata(self):
+    #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+    #     c = Client(datadir=self.path)
+    #     c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
+    #     c.ipfs_manager = IPFSDaemonManager()
+    #     meta = c.get_metadata()
+    #     assert meta and meta['ipfs']
+    #
+    #     ip_1 = '127.0.0.1'
+    #     port_1 = 40102
+    #
+    #     node = MagicMock()
+    #     node.prv_addr = ip_1
+    #     node.prv_port = port_1
+    #
+    #     c.interpret_metadata(meta, ip_1, port_1, node)
+    #     c._unlock_datadir()
 
     def test_get_status(self):
         c = Client(datadir=self.path)
