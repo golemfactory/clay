@@ -6,7 +6,7 @@ from mock import Mock
 
 from gnr.gnrstartapp import config_logging, load_environments, start_client_process, \
     ProcessMonitor, start_gui_process, GUIApp
-from golem.client import create_client
+from golem.client import Client
 from golem.environments.environment import Environment
 from golem.rpc.websockets import WebSocketRPCServerFactory
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -115,10 +115,6 @@ class TestProcessMonitor(unittest.TestCase):
         assert not p2.is_alive()
 
 
-def mock_start_client(*args, **kwargs):
-    return create_client(*args, **kwargs)
-
-
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def test_config_logging(self):
@@ -131,9 +127,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         assert len(envs) > 2
 
     def test_start_client(self):
-        client = create_client(datadir=self.path,
-                               transaction_system=False,
-                               connect_to_known_hosts=False)
+        client = Client(datadir=self.path,
+                        transaction_system=False,
+                        connect_to_known_hosts=False)
 
         try:
             start_client_process(queue=Mock(),

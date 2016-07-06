@@ -21,15 +21,15 @@ class TestResourcesManager(TestDirFixture):
             ['test_dir.one.two', 'dir_file.one.two']
         ]
 
-        self.target_resources = [
-            os.path.join(*self.split_resources[0]),
-            os.path.join(*self.split_resources[1])
-        ]
-
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         test_file = os.path.join(res_path, 'test_file.one.two')
         test_dir = os.path.join(res_path, 'test_dir.one.two')
         test_dir_file = os.path.join(test_dir, 'dir_file.one.two')
+
+        self.target_resources = [
+            os.path.join(res_path, *self.split_resources[0]),
+            os.path.join(res_path, *self.split_resources[1])
+        ]
 
         open(test_file, 'w').close()
 
@@ -41,19 +41,22 @@ class TestResourcesManager(TestDirFixture):
 
     def testCopyResources(self):
         rm = IPFSResourceManager(self.dir_manager)
-        old_resource_dir = rm.get_resource_root_dir()
+        rm.clear_resources()
 
+        old_resource_dir = rm.get_root_dir()
         prev_list = os.listdir(old_resource_dir)
 
         self.dir_manager.node_name = "another" + self.node_name
         rm.copy_resources(old_resource_dir)
 
-        cur_list = os.listdir(rm.get_resource_root_dir())
+        cur_list = os.listdir(rm.get_root_dir())
 
         assert cur_list == prev_list
 
     def testCopyResource(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
         rm.add_task(resource_paths, self.task_id)
         new_task_id = str(uuid.uuid4())
@@ -73,23 +76,25 @@ class TestResourcesManager(TestDirFixture):
 
     def testNewIpfsClient(self):
         rm = IPFSResourceManager(self.dir_manager)
-        from golem.network.ipfs.client import IPFSClient
-        self.assertIsInstance(rm.new_ipfs_client(), IPFSClient)
+        rm.clear_resources()
 
-    def testInit(self):
-        rm = IPFSResourceManager(self.dir_manager)
-        self.assertIsNotNone(rm)
+        from golem.network.ipfs.client import IPFSClient
+        self.assertIsInstance(rm.new_client(), IPFSClient)
 
     def testGetResourceRootDir(self):
         rm = IPFSResourceManager(self.dir_manager)
-        dm_dir = self.dir_manager.get_task_resource_dir('').rstrip(os.path.sep)
-        rm_dir = rm.get_resource_root_dir().rstrip(os.path.sep)
+        rm.clear_resources()
+
+        dm_dir = self.dir_manager.get_node_dir().rstrip(os.path.sep)
+        rm_dir = rm.get_root_dir().rstrip(os.path.sep)
 
         self.assertEqual(dm_dir, rm_dir)
-        self.assertEqual(dm_dir, rm.get_resource_dir('').rstrip(os.path.sep))
+        self.assertEqual(dm_dir, rm.get_root_dir().rstrip(os.path.sep))
 
     def testGetResourceDir(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         res_dir = rm.get_resource_dir(self.task_id)
         self.assertTrue(os.path.isdir(res_dir))
         self.assertEqual(res_dir, self.dir_manager.get_task_resource_dir(self.task_id))
@@ -97,9 +102,11 @@ class TestResourcesManager(TestDirFixture):
 
     def testCheckResource(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
-        self.assertTrue(rm.check_resource(self.target_resources[1], self.task_id))
-        self.assertFalse(rm.check_resource(str(uuid.uuid4()), self.task_id))
+        assert rm.get_resource_entry(self.target_resources[1], self.task_id) is not None
+        assert rm.get_resource_entry(str(uuid.uuid4()), self.task_id) is None
 
     def testAddTask(self):
         rm = IPFSResourceManager(self.dir_manager)
@@ -121,12 +128,14 @@ class TestResourcesManager(TestDirFixture):
         rm.add_task(resource_paths, new_task)
         assert len(rm.list_resources(new_task)) == len(resources)
 
-        assert rm.check_task_entry(task_files[0], self.task_id)
-        assert not rm.check_task_entry((u'File path', u'Multihash'), self.task_id)
-        assert not rm.check_task_entry(task_files[0], str(uuid.uuid4()))
+        assert rm.task_entry_exists(task_files[0], self.task_id)
+        assert not rm.task_entry_exists((u'File path', u'Multihash'), self.task_id)
+        assert not rm.task_entry_exists(task_files[0], str(uuid.uuid4()))
 
     def testRemoveTask(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
         rm.add_task(resource_paths, self.task_id)
         rm.remove_task(self.task_id)
@@ -136,6 +145,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testListResources(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         rl = rm.list_resources(self.task_id)
 
@@ -143,6 +154,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testListSplitResources(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         rsl = rm.list_split_resources(self.task_id)
 
@@ -157,6 +170,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testJoinSplitResources(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         resource_paths = [rm.get_resource_path(f, self.task_id) for f in self.target_resources]
         rm.add_task(resource_paths, self.task_id)
 
@@ -173,6 +188,7 @@ class TestResourcesManager(TestDirFixture):
 
     def testAddResource(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         test_dir = os.path.join(res_path, 'test_dir.one.two')
@@ -186,6 +202,7 @@ class TestResourcesManager(TestDirFixture):
 
     def testAddResources(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
 
         res_path = self.dir_manager.get_task_resource_dir(self.task_id)
         test_dir = os.path.join(res_path, 'test_dir.one.two')
@@ -199,6 +216,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testGetCached(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         resources = rm.list_resources(self.task_id)
 
@@ -207,6 +226,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testPinResource(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         resources = rm.list_resources(self.task_id)
 
@@ -215,6 +236,8 @@ class TestResourcesManager(TestDirFixture):
 
     def testUnpinResource(self):
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         resources = rm.list_resources(self.task_id)
 
@@ -222,8 +245,9 @@ class TestResourcesManager(TestDirFixture):
         rm.unpin_resource(resources[0][1])
 
     def testPullResource(self):
-
         rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+
         rm.add_resources(self.target_resources, self.task_id)
         rls = rm.list_resources(self.task_id)
         rl = rls[0]
@@ -263,3 +287,8 @@ class TestResourcesManager(TestDirFixture):
                          success, error,
                          async=async)
         wait()
+
+    def testCommandFailed(self):
+        rm = IPFSResourceManager(self.dir_manager)
+        rm.clear_resources()
+        rm.command_failed(Exception('Unknown error'), rm.commands.id, str(uuid.uuid4()))

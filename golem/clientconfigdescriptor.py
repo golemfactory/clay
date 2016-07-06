@@ -31,6 +31,8 @@ class ClientConfigDescriptor(object):
         self.task_request_interval = 0.0
         self.use_waiting_for_task_timeout = 0
         self.waiting_for_task_timeout = 0.0
+        self.waiting_for_task_session_timeout = 0.0
+        self.forwarded_session_request_timeout = 0.0
         self.p2p_session_timeout = 0
         self.task_session_timeout = 0
         self.resource_session_timeout = 0

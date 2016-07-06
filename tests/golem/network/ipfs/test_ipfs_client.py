@@ -1,18 +1,25 @@
+import hashlib
 import os
 import unittest
 import uuid
 from types import FunctionType
 
-from golem.network.ipfs.client import IPFSClient, parse_response_entry, StreamFileObject, parse_response, IPFSAddress
+from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
 
-def first_valid_response(responses, abs_path=True):
-    for response in responses:
-        if response and 'Name' in response and 'Hash' in response:
-            if not abs_path or (abs_path and os.path.isabs(response['Name'])):
-                return response
+def first_response_hash(response):
+    if response:
+        for item in response:
+            if isinstance(item, dict):
+                if 'Hash' in item:
+                    return item['Hash']
+            else:
+                result = first_response_hash(item)
+                if result:
+                    return result
+    return None
 
 
 class TestIpfsClient(TestDirFixture):
@@ -40,24 +47,40 @@ class TestIpfsClient(TestDirFixture):
         client.add([self.test_dir_file])
 
     def testGetFile(self):
+        def md5sum(file_name):
+            hash_md5 = hashlib.md5()
+            with open(file_name, "rb") as f:
+                for chunk in iter(lambda: f.read(1024), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        os.remove(self.test_dir_file)
+        with open(self.test_dir_file, 'w') as f:
+            for i in xrange(0, 102400):
+                f.write(str(uuid.uuid4()) + "\n")
+                f.flush()
+
         client = IPFSClient()
         response = client.add([self.test_dir_file])
-
-        self.assertIsNotNone(response)
+        assert response
 
         tmp_filename = 'tmp_file'
 
-        client.get_file(first_valid_response(response)['Hash'],
-                        filepath=self.test_dir,
-                        filename=tmp_filename)
+        assert client.get_file(first_response_hash(response),
+                               filepath=self.test_dir,
+                               filename=tmp_filename)
+
+        tmp_file_path = os.path.join(self.test_dir, tmp_filename)
+
+        assert os.stat(tmp_file_path).st_size == os.stat(self.test_dir_file).st_size
+        assert md5sum(tmp_file_path) == md5sum(self.test_dir_file)
 
     def testPinAdd(self):
         client = IPFSClient()
         response = client.add([self.test_dir_file])
 
         self.assertIsNotNone(response)
-
-        client.pin_add(first_valid_response(response)['Hash'])
+        client.pin_add(first_response_hash(response))
 
     def testPinRm(self):
         client = IPFSClient()
@@ -65,10 +88,8 @@ class TestIpfsClient(TestDirFixture):
 
         self.assertIsNotNone(response)
 
-        resp = first_valid_response(response)
-
-        client.pin_add(resp['Hash'])
-        client.pin_rm(resp['Hash'])
+        client.pin_add(first_response_hash(response))
+        client.pin_rm(first_response_hash(response))
 
 
 class TestParseResponseEntry(unittest.TestCase):
@@ -92,54 +113,6 @@ class TestParseResponse(unittest.TestCase):
 
         self.assertEqual(response_obj, parsed)
         self.assertEqual(other_obj, parse_response(other_response))
-
-
-class MockIterator:
-    def __init__(self, src, chunk):
-        self.src = src
-        self.len = len(src)
-        self.chunk = chunk
-        self.pos = 0
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        prev_pos = self.pos
-        self.pos += self.chunk
-
-        if prev_pos > self.len:
-            raise StopIteration
-        else:
-            new_pos = max(prev_pos, self.len - self.pos)
-            return self.src[prev_pos:new_pos]
-
-
-class MockIterable:
-    def __init__(self, src):
-        self.iterator = None
-        self.src = src
-
-    def iter_content(self, chunk, *args):
-        if not self.iterator:
-            self.iterator = MockIterator(self.src, chunk)
-        return self.iterator
-
-
-class TestStreamFileObject(unittest.TestCase):
-
-    def test(self):
-        src = ''
-        for _ in xrange(1, 100):
-            src = str(uuid.uuid4())
-
-        iterable = MockIterable(src)
-        so = StreamFileObject(iterable)
-
-        try:
-            so.read(32)
-        except StopIteration:
-            pass
 
 
 class TestIPFSClientMetaclass(unittest.TestCase):
@@ -182,49 +155,39 @@ class TestChunkedHttpClient(TestDirFixture):
             f.write("test content 2")
 
     def testGetFile(self):
+        root_path = os.path.abspath(os.sep)
         client = IPFSClient()
 
         self.added_files = []
         self.added_files += client.add(self.test_dir_file_path)
         self.added_files += client.add(self.test_file_path)
 
-        for added in self.added_files:
-            name = added['Name']
-            hash = added['Hash'] if 'Hash' in added else None
+        for entries in self.added_files:
+            for added in entries:
+                name = added['Name']
+                if name.startswith(root_path) and 'Hash' in added:
+                    target_filename = 'downloaded_file'
 
-            if os.path.isabs(name) and name and hash:
-                target_filename = 'downloaded_file'
+                    result = client.get_file(added['Hash'],
+                                             filepath=self.target_dir,
+                                             filename=target_filename)
 
-                result = client.get_file(hash,
-                                         filepath=self.target_dir,
-                                         filename=target_filename,
-                                         compress=True,
-                                         archive=True)
+                    filename, multihash = result[0]
+                    filepath = os.path.join(self.target_dir, filename)
 
-                filename, multihash = result[0]
-                filepath = os.path.join(self.target_dir, filename)
-                assert filename == target_filename
-                assert os.path.exists(filepath)
+                    assert filename == target_filename
+                    assert os.path.exists(filepath)
+
+                    with self.assertRaises(Exception):
+                        client.get_file(added['Hash'],
+                                        filepath=self.target_dir,
+                                        filename=target_filename,
+                                        compress=False)
 
     def testGet(self):
         client = IPFSClient()
         with self.assertRaises(NotImplementedError):
             client.get("-")
-
-    def testWriteFile(self):
-        client = IPFSClient()
-        src = ''
-        for _ in xrange(1, 100):
-            src = str(uuid.uuid4())
-
-        filename = str(uuid.uuid4())
-        expected_path = os.path.join(self.test_dir, filename)
-
-        iterable = MockIterable(src)
-        client._client._write_file(iterable, self.test_dir,
-                                   filename, str(uuid.uuid4()))
-
-        assert os.path.exists(expected_path)
 
 
 class TestIPFSAddress(unittest.TestCase):

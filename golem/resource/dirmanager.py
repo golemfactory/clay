@@ -84,6 +84,14 @@ class DirManager(object):
             logger.error(err_msg)
             return ""
 
+    def get_node_dir(self, create=True):
+        """ Get node's directory
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_node_path()
+        return self.get_dir(full_path, create, "resource dir does not exist")
+
     def get_resource_dir(self, create=True):
         """ Get global resource directory
         :param bool create: *Default: True* should directory be created if it doesn't exist
@@ -157,6 +165,9 @@ class DirManager(object):
 
     def __get_out_path(self, task_id):
         return os.path.join(self.root_path, self.node_name, task_id, self.output)
+
+    def __get_node_path(self):
+        return os.path.join(self.root_path, self.node_name)
 
     def __get_global_resource_path(self):
         return os.path.join(self.root_path, self.global_resource)

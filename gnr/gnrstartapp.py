@@ -19,7 +19,7 @@ from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
-from golem.client import start_client
+from golem.client import Client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
@@ -161,7 +161,7 @@ def start_client_process(queue, start_ranking, datadir=None,
 
     if not client:
         try:
-            client = start_client(datadir, transaction_system)
+            client = Client(datadir=datadir, transaction_system=transaction_system)
         except Exception as exc:
             logger.error("Client process error: {}".format(exc))
             queue.put(exc)
