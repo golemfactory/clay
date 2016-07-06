@@ -1,0 +1,1 @@
+wscript.echo msgbox(WScript.Arguments(0),4,WScript.Arguments(1))
