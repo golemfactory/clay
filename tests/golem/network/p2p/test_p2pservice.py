@@ -61,8 +61,7 @@ class TestP2PService(DatabaseFixture):
         node.last_message_time = 0
         service.sync_network()
 
-        # DISABLED
-        assert len(service.peers) == 1
+        assert len(service.peers) == 0
 
         service.add_peer(node.key, node)
         service.peers[node.key].last_message_time = time.time() + 1000
@@ -102,7 +101,8 @@ class TestP2PService(DatabaseFixture):
         service.last_peers_request = 0
         service._peer_dbg_time_threshold = 0
         service.sync_network()
-        assert len(service.peers) == 1
+        # disabled
+        assert len(service.peers) == 2
 
     def test_redundant_peers(self):
         keys_auth = EllipticalKeysAuth()

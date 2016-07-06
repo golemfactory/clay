@@ -169,6 +169,7 @@ class P2PService(PendingConnectionsServer):
 
         self.__sync_free_peers()
         self.__remove_old_peers()
+        # self.__refresh_old_peers()
         self.__sync_peer_keeper()
         self._sync_pending()
 
@@ -815,16 +816,16 @@ class P2PService(PendingConnectionsServer):
                long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
+        for peer_id in self.peers.keys():
+            peer = self.peers[peer_id]
+            if time.time() - peer.last_message_time > self.last_message_time_threshold:
+                self.remove_peer(peer)
+                peer.disconnect(PeerSession.DCRTimeout)
+
+    def __refresh_old_peers(self):
         cur_time = time.time()
-
-        # for peer_id in self.peers.keys():
-        #     peer = self.peers[peer_id]
-        #     if cur_time - peer.last_message_time > self.last_message_time_threshold:
-        #         self.remove_peer(peer)
-        #         peer.disconnect(PeerSession.DCRTimeout)
-
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
-            self.last_refresh_peers = time.time()
+            self.last_refresh_peers = cur_time
             if len(self.peers) > 1:
                 peer_id = random.choice(self.peers.keys())
                 peer = self.peers[peer_id]

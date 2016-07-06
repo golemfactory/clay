@@ -66,7 +66,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_connections_helper.sync()
         self._sync_forwarded_session_requests()
         self.__remove_old_tasks()
-        self.__remove_old_sessions()
+        # self.__remove_old_sessions()
         self._remove_old_listenings()
 
     # This method chooses random task from the network to compute on our machine
@@ -320,9 +320,6 @@ class TaskServer(PendingConnectionsServer):
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         self.client.decrease_trust(account_info.key_id, RankingStats.wrong_computed, mod)
-        # args = {'key_id': account_info.key_id, 'subtask_id': subtask_id}
-        # self._add_pending_request(TaskConnTypes.ResultRejected, account_info.node_info, account_info.port,
-        #                           account_info.key_id, args)
 
     def unpack_delta(self, dest_dir, delta, task_id):
         self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
@@ -615,31 +612,31 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_start_session_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
         logger.info("Failed to start requested task session for node {}".format(key_id))
         self.final_conn_failure(conn_id)
-        # TODO CO w takiej sytuacji?
-        # if super_node_info is None:
-        #     logger.info("Permanently can't connect to node {}".format(key_id))
-        #     return
-        #
-        # if self.node.nat_type in TaskServer.supported_nat_types:
-        #     args = {
-        #         'super_node': super_node_info,
-        #         'asking_node': node_info,
-        #         'dest_node': self.node,
-        #         'ans_conn_id': ans_conn_id
-        #     }
-        #     self._add_pending_request(TaskConnTypes.NatPunch, super_node_info, super_node_info.prv_port,
-        #                               super_node_info.key,
-        #                               args)
-        # else:
-        #     args = {
-        #         'key_id': super_node_info.key,
-        #         'asking_node_info': node_info,
-        #         'self_node_info': self.node,
-        #         'ans_conn_id': ans_conn_id
-        #     }
-        #     self._add_pending_request(TaskConnTypes.Middleman, super_node_info, super_node_info.prv_port,
-        #                               super_node_info.key,
-        #                               args)
+        # self.__initiate_nat_traversal(key_id, node_info, super_node_info, ans_conn_id)
+
+    def __initiate_nat_traversal(self, key_id, node_info, super_node_info, ans_conn_id):
+        if super_node_info is None:
+            logger.info("Permanently can't connect to node {}".format(key_id))
+            return
+
+        if self.node.nat_type in TaskServer.supported_nat_types:
+            args = {
+                'super_node': super_node_info,
+                'asking_node': node_info,
+                'dest_node': self.node,
+                'ans_conn_id': ans_conn_id
+            }
+            self._add_pending_request(TaskConnTypes.NatPunch, super_node_info, super_node_info.prv_port,
+                                      super_node_info.key, args)
+        else:
+            args = {
+                'key_id': super_node_info.key,
+                'asking_node_info': node_info,
+                'self_node_info': self.node,
+                'ans_conn_id': ans_conn_id
+            }
+            self._add_pending_request(TaskConnTypes.Middleman, super_node_info, super_node_info.prv_port,
+                                      super_node_info.key, args)
 
     def __connection_for_nat_punch_established(self, session, conn_id, super_node, asking_node, dest_node, ans_conn_id):
         session.key_id = super_node.key
@@ -737,16 +734,15 @@ class TaskServer(PendingConnectionsServer):
             self.client.decrease_trust(node_id, RankingStats.computed)
 
     def __remove_old_sessions(self):
-        # cur_time = time.time()
-        # sessions_to_remove = []
-        # for subtask_id, session in self.task_sessions.iteritems():
-        #     if cur_time - session.last_message_time > self.last_message_time_threshold:
-        #         sessions_to_remove.append(subtask_id)
-        # for subtask_id in sessions_to_remove:
-        #     if self.task_sessions[subtask_id].task_computer is not None:
-        #         self.task_sessions[subtask_id].task_computer.session_timeout()
-        #     self.task_sessions[subtask_id].dropped()
-        pass
+        cur_time = time.time()
+        sessions_to_remove = []
+        for subtask_id, session in self.task_sessions.iteritems():
+            if cur_time - session.last_message_time > self.last_message_time_threshold:
+                sessions_to_remove.append(subtask_id)
+        for subtask_id in sessions_to_remove:
+            if self.task_sessions[subtask_id].task_computer is not None:
+                self.task_sessions[subtask_id].task_computer.session_timeout()
+            self.task_sessions[subtask_id].dropped()
 
     def __send_waiting_results(self):
         for subtask_id in self.results_to_send.keys():

@@ -127,9 +127,6 @@ class TaskComputer(object):
                                                   subtask.task_owner, self.node_name)
             self.session_closed()
 
-    def task_resource_failure(self, task_id, reason):
-        pass
-
     def wait_for_resources(self, task_id, delta):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
