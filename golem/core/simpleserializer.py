@@ -48,16 +48,6 @@ class SimpleSerializerRelease(object):
         return cPickle.loads(data)
 
 
-# class CBORSerializer(object):
-#     @classmethod
-#     def dumps(cls, obj):
-#         return cbor.dumps(obj)
-#
-#     @classmethod
-#     def loads(cls, data):
-#         return cbor.loads(data)
-
-
 class DILLSerializer(object):
     @classmethod
     def dumps(cls, obj):

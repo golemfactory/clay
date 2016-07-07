@@ -1,10 +1,8 @@
-import os
-import signal
-import time
 from multiprocessing import Process, Queue
 from os import path
-from threading import Thread
 
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from twisted.internet.defer import inlineCallbacks
 
 from gnr.application import GNRGui
@@ -16,11 +14,10 @@ from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
-from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 from golem.client import Client
 from golem.core.common import get_golem_path
+from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
@@ -45,6 +42,12 @@ def install_qt4_reactor():
     return reactor
 
 
+def stop_reactor():
+    from twisted.internet import reactor
+    if reactor.running:
+        reactor.stop()
+
+
 def load_environments():
     return [LuxRenderEnvironment(),
             BlenderEnvironment(),
@@ -56,45 +59,6 @@ def register_rendering_task_types(logic):
                                                                  BlenderRenderDialogCustomizer))
     logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
                                                            LuxRenderDialogCustomizer))
-
-
-class ProcessMonitor(Thread):
-
-    def __init__(self, *child_processes):
-        super(ProcessMonitor, self).__init__(target=self.start_monitoring)
-        self.child_processes = child_processes
-        self.working = False
-        self.stop_reactor = True
-
-    def start_monitoring(self):
-        self.working = True
-
-        while self.working:
-            for process in self.child_processes:
-                if not process.is_alive():
-                    self.exit()
-            time.sleep(1)
-
-    def exit(self):
-        self.kill_processes()
-        if self.stop_reactor:
-            from twisted.internet import reactor
-            if reactor.running:
-                reactor.stop()
-        self.working = False
-
-    def kill_processes(self, sig=signal.SIGTERM):
-        for process in self.child_processes:
-            self.kill_process(process, sig)
-
-    @staticmethod
-    def kill_process(process, sig=signal.SIGTERM):
-        if process.is_alive():
-            try:
-                os.kill(process.pid, sig)
-            except Exception as exc:
-                print "Error terminating process {}: {}".format(
-                    process, exc)
 
 
 class GUIApp(object):
@@ -162,6 +126,7 @@ def start_client_process(queue, start_ranking, datadir=None,
     if not client:
         try:
             client = Client(datadir=datadir, transaction_system=transaction_system)
+            client.start()
         except Exception as exc:
             logger.error("Client process error: {}".format(exc))
             queue.put(exc)
@@ -201,6 +166,7 @@ def start_app(datadir=None, rendering=False,
     client_process.start()
 
     process_monitor = ProcessMonitor(client_process)
+    process_monitor.add_shutdown_callback(stop_reactor)
     process_monitor.start()
 
     try:

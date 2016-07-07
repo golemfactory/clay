@@ -2,17 +2,15 @@ import os
 import time
 import uuid
 
-from mock import Mock, MagicMock, patch
-
+from mock import Mock, MagicMock
 from twisted.internet.defer import Deferred
 
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
-from golem.appconfig import CommonConfig
 from golem.client import Client
-from golem.rpc.service import RPCProxyClient, RPCServiceInfo, RPCAddress
+from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -81,18 +79,43 @@ class MockDeferred(Deferred):
         self.called = True
 
 
-class MockDeferredCall(MagicMock):
+class MockDeferredCallable(MagicMock):
     def __call__(self, *args, **kwargs):
         return MockDeferred(MagicMock())
 
 
-class MockRPCClient(RPCProxyClient):
-    def __init__(self, *args):
-        self.rpc = Mock()
-        self.methods = {}
+class MockRPCCallChain(object):
+    def __init__(self, parent):
+        self.parent = parent
+        self.results = []
+
+    def __getattribute__(self, item):
+        if item in ['call', 'parent', 'results'] or item.startswith('_'):
+            return object.__getattribute__(self, item)
+        return self
+
+    def __call__(self, *args, **kwargs):
+        self.results.append('value')
+        return self
+
+    def call(self):
+        return MockDeferred(self.results)
+
+
+class MockRPCClient(ServiceMethodNamesProxy):
+    def __init__(self, service):
+        self.methods = ServiceHelper.to_dict(service)
 
     def call_batch(self, batch):
         return MockDeferred(MagicMock())
+
+    def start_batch(self):
+        return MockRPCCallChain(self)
+
+    def wrap(self, name, _):
+        def return_deferred(*args, **kwargs):
+            return MockDeferred('value')
+        return return_deferred
 
 
 class MockService(object):
@@ -178,10 +201,22 @@ class TestGNRApplicationLogic(TestDirFixture):
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
 
     def test_inline_callbacks(self):
+
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
 
-        client = MockRPCClient()
+        golem_client = Client()
+        golem_client.task_server = Mock()
+        golem_client.p2pservice = Mock()
+        golem_client.resource_server = Mock()
+
+        golem_client.task_server.get_task_computer_root.return_value = MockDeferred(self.path)
+        golem_client.task_server.task_computer.get_progresses.return_value = {}
+        golem_client.p2pservice.peers = {}
+        golem_client.p2pservice.get_peers.return_value = {}
+        golem_client.resource_server.get_distributed_resource_root.return_value = self.path
+
+        client = MockRPCClient(golem_client)
         service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
 
         logic.register_client(client, service_info)
@@ -190,12 +225,11 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.get_status()
         logic.update_estimated_reputation()
         logic.update_stats()
-        logic.get_config()
         logic.get_keys_auth()
         logic.save_task('any', os.path.join(self.path, str(uuid.uuid4())))
         logic.recount_performance(1)
         logic.get_environments()
-        logic.task_status_changed('xyz')
         logic.get_payments()
         logic.get_incomes()
-        logic.get_max_price()
+
+        golem_client.quit()

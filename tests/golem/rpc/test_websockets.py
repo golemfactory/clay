@@ -1,7 +1,11 @@
 import time
+import unittest
 import uuid
 
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
+from mock import Mock
+
+from golem.core.simpleserializer import SimpleSerializer
+from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager
 from golem.tools.testwithreactor import TestWithReactor
 
 
@@ -97,3 +101,51 @@ class TestRPCClient(TestWithReactor):
         while result[1] is None:
             time.sleep(1)
 
+
+class TestSessionManager(unittest.TestCase):
+
+    def test_session_lifecycle(self):
+        peer = Mock()
+        host, port = '127.0.0.1', 10000
+        peer.host, peer.port = host, port
+
+        session = Mock()
+        session.transport.getPeer.return_value = peer
+
+        manager = SessionManager()
+
+        manager.add_session(session)
+        assert manager.has_session(session)
+        assert manager.get_session(host, port) is session
+        manager.remove_session(session)
+        assert manager.get_session(host, port) is None
+
+
+class TestMessageLedger(unittest.TestCase):
+
+    def test_add_clear_request(self):
+
+        ledger = MessageLedger()
+        ledger.serializer = SimpleSerializer()
+
+        peer = Mock()
+        peer.host, peer.port = '127.0.0.1', 10000
+
+        session = Mock()
+        session.transport.getPeer.return_value = peer
+
+        message = Mock()
+        message.id = 'message_id'
+
+        no_response = (None, None)
+
+        assert ledger.get_response(message) == no_response
+
+        ledger.add_request(message, session)
+        assert ledger.get_response(message) != no_response
+
+        message.id = 'message_id_2'
+        assert ledger.get_response(message) == no_response
+
+        ledger.clear_request(message)
+        assert ledger.get_response(message) == no_response

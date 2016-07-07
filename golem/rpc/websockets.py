@@ -96,29 +96,40 @@ class MessageParserMixin(KeyringMixin, SerializerMixin):
         return self.encrypt(self.serialize(message), session_id)
 
 
-class SessionManager(object):
+class SessionAwareMixin(object):
+
+    @staticmethod
+    def get_session_addr(session):
+        peer = session.transport.getPeer()
+        return peer.host, peer.port
+
+
+class SessionManager(SessionAwareMixin):
 
     def __init__(self):
         self.sessions = {}
 
     def add_session(self, session):
-        self.sessions[session.peer] = session
+        addr = self.get_session_addr(session)
+        self.sessions[addr] = session
 
     def remove_session(self, session):
-        self.sessions.pop(session.peer, None)
+        addr = self.get_session_addr(session)
+        self.sessions.pop(addr, None)
 
     def has_session(self, session):
-        return session.peer in self.sessions
+        addr = self.get_session_addr(session)
+        return addr in self.sessions
 
     def get_session(self, host, port):
         for _, session in self.sessions.iteritems():
-            peer = session.transport.getPeer()
-            if peer.host == host and peer.port == port:
+            addr = self.get_session_addr(session)
+            if addr == (host, port):
                 return session
         return None
 
 
-class MessageLedger(MessageParserMixin):
+class MessageLedger(MessageParserMixin, SessionAwareMixin):
 
     def __init__(self):
         self.requests = {}
@@ -173,15 +184,8 @@ class MessageLedger(MessageParserMixin):
             session_key = self._get_session_key(entry['session'])
             self.session_requests[session_key].pop(message_or_id, None)
 
-    @staticmethod
-    def get_session_addr(session):
-
-        peer = session.transport.getPeer()
-        return peer.host, peer.port
-
-    @classmethod
-    def _get_session_key(cls, session):
-        return cls.get_session_addr(session)
+    def _get_session_key(self, session):
+        return self.get_session_addr(session)
 
 
 class WebSocketRPCProtocol(object):
