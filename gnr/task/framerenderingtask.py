@@ -295,6 +295,9 @@ class FrameRenderingTask(RenderingTask):
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
 
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        pass
+
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
                      frame_num=1):
