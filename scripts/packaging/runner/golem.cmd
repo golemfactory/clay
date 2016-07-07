@@ -203,9 +203,9 @@ echo Starting Golem
 type .version >> "%LOG_PATH%"
 
 if "%*"=="" (
-    "%EXE_DIR%\%EXE_NAME%" --gui >> "%LOG_PATH%"
+    "%EXE_DIR%\%EXE_NAME%" --gui >> "%LOG_PATH%" 2>&1
 ) else (
-    "%EXE_DIR%\%EXE_NAME%" %* >> "%LOG_PATH%"
+    "%EXE_DIR%\%EXE_NAME%" %* >> "%LOG_PATH%" 2>&1
 )
 
 ::----------------------------------------------------------------------------------------------------------------------
@@ -271,9 +271,9 @@ set LOG_PATH="%LOG_PATH%"
 set SCRIPT="%UPDATED_SCRIPT%"
 
 if "%*"=="" (
-    start cmd /c "%SCRIPT% --gui >> %LOG_PATH%"
+    start cmd /c "%SCRIPT% --gui >> %LOG_PATH% 2>&1"
 ) else (
-    start cmd /c "%SCRIPT% %* >> %LOG_PATH%"
+    start cmd /c "%SCRIPT% %* >> %LOG_PATH% 2>&1"
 )
 
 copy /b/v/y "%UPDATED_SCRIPT%" "%~dp0\%~nx0"
