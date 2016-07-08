@@ -1,6 +1,8 @@
 import uuid
 
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, ANY
+
+from stun import FullCone
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -106,7 +108,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.min_price = 1.0
         ccd.use_distributed_resource_management = 10
         ccd.task_request_interval = 10
-        ccd.use_waiting_for_task_timeout = True
+        # ccd.use_waiting_ttl = True
         ccd.waiting_for_task_timeout = 19
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
         ccd2 = ClientConfigDescriptor()
@@ -114,16 +116,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd2.min_price = 0.0057
         ccd2.use_distributed_resource_management = 0
         ccd2.task_request_interval = 31
-        ccd2.use_waiting_for_task_timeout = False
-        ccd2.waiting_for_task_timeout = 24
+        # ccd2.use_waiting_ttl = False
+        ccd2.waiting_for_task_timeout = 90
         ts.change_config(ccd2)
         self.assertEqual(ts.config_desc, ccd2)
         self.assertEqual(ts.last_message_time_threshold, 124)
         self.assertEqual(ts.task_keeper.min_price, 0.0057)
         self.assertEqual(ts.task_manager.use_distributed_resources, False)
         self.assertEqual(ts.task_computer.task_request_frequency, 31)
-        self.assertEqual(ts.task_computer.waiting_for_task_timeout, 24)
-        self.assertEqual(ts.task_computer.use_waiting_ttl, False)
+        self.assertEqual(ts.task_computer.waiting_for_task_timeout, 90)
+        # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_sync(self):
         ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(), self.client)
@@ -139,11 +141,19 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 1000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
-        task_mock.query_extra_data.return_value.subtask_id = "xxyyzz"
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = "xyz"
+        extra_data.ctd.subtask_id = "xxyyzz"
+
+        task_mock.query_extra_data.return_value = extra_data
+
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
-        subtask, wrong_task = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+        subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
+                                                                     1000, 10,  5, 10, 2,
+                                                                     "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, 10310)
@@ -165,12 +175,19 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 1000
-        task_mock.query_extra_data.return_value.task_id = "xyz"
-        task_mock.query_extra_data.return_value.subtask_id = "xxyyzz"
+
+        extra_data = Mock()
+        extra_data.ctd = Mock()
+        extra_data.ctd.task_id = "xyz"
+        extra_data.ctd.subtask_id = "xxyyzz"
+
+        task_mock.query_extra_data.return_value = extra_data
+
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
-        subtask, wrong_task = ts.task_manager.get_next_subtask(
+        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         account_info = Mock()
         account_info.key_id = "key"
@@ -187,7 +204,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
 
-    def test_forwarded_sessions(self):
+    def test_forwarded_session_requests(self):
         ccd = ClientConfigDescriptor()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
         ts.network = Mock()
@@ -196,17 +213,17 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         conn_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
 
-        ts.add_forwarded_session(key_id, conn_id)
-        assert len(ts.forwarded_sessions) == 1
+        ts.add_forwarded_session_request(key_id, conn_id)
+        assert len(ts.forwarded_session_requests) == 1
 
-        ts.forwarded_sessions[key_id]['time'] = 0
-        ts._sync_forwarded_sessions()
-        assert len(ts.forwarded_sessions) == 0
+        ts.forwarded_session_requests[key_id]['time'] = 0
+        ts._sync_forwarded_session_requests()
+        assert len(ts.forwarded_session_requests) == 0
 
-        ts.add_forwarded_session(key_id, conn_id)
-        ts.forwarded_sessions[key_id] = None
-        ts._sync_forwarded_sessions()
-        assert len(ts.forwarded_sessions) == 0
+        ts.add_forwarded_session_request(key_id, conn_id)
+        ts.forwarded_session_requests[key_id] = None
+        ts._sync_forwarded_session_requests()
+        assert len(ts.forwarded_session_requests) == 0
 
         session = MagicMock()
         session.address = '127.0.0.1'
@@ -216,6 +233,118 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             session, conn_id, key_id, subtask_id, "None"
         )
         assert ts.task_sessions[subtask_id] == session
+
+    def test_retry_sending_task_result(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts.network = Mock()
+
+        subtask_id = 'xxyyzz'
+        wtr = Mock()
+        wtr.already_sending = True
+
+        ts.results_to_send[subtask_id] = wtr
+
+        ts.retry_sending_task_result(subtask_id)
+        assert not wtr.already_sending
+
+    def test_send_waiting_results(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, Mock(), self.client)
+        ts.network = Mock()
+        ts._mark_connected = Mock()
+        ts.task_computer = Mock()
+        ts.task_manager = Mock()
+        ts.task_manager.remove_old_tasks.return_value = []
+        ts.task_keeper = Mock()
+        ts.task_connections_helper = Mock()
+        ts._add_pending_request = Mock()
+
+        subtask_id = 'xxyyzz'
+
+        wtr = Mock()
+        ts.results_to_send[subtask_id] = wtr
+
+        wtr.already_sending = True
+        wtr.last_sending_trial = 0
+        wtr.delay_time = 0
+        wtr.subtask_id = subtask_id
+        wtr.address = '127.0.0.1'
+        wtr.port = 10000
+
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+
+        wtr.last_sending_trial = 0
+        ts.retry_sending_task_result(subtask_id)
+
+        ts.sync_network()
+        assert ts._add_pending_request.called
+
+        ts._add_pending_request.called = False
+        ts.task_sessions[subtask_id] = Mock()
+
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+
+        ts._add_pending_request.called = False
+        ts.results_to_send = dict()
+
+        wtf = wtr
+
+        ts.failures_to_send[subtask_id] = wtf
+        ts.sync_network()
+        assert not ts._add_pending_request.called
+        assert not ts.failures_to_send
+
+        ts._add_pending_request.called = False
+        ts.task_sessions.pop(subtask_id)
+
+        ts.failures_to_send[subtask_id] = wtf
+        ts.sync_network()
+        assert ts._add_pending_request.called
+        assert not ts.failures_to_send
+
+    def test_add_task_session(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, Mock(), self.client)
+        ts.network = Mock()
+
+        session = Mock()
+        subtask_id = 'xxyyzz'
+        ts.add_task_session(subtask_id, session)
+        assert ts.task_sessions[subtask_id]
+
+    def test_initiate_nat_traversal(self):
+        ccd = ClientConfigDescriptor()
+        node = Node()
+        node.nat_type = FullCone
+
+        ts = TaskServer(node, ccd, Mock(), self.client)
+        ts.network = Mock()
+        ts._add_pending_request = Mock()
+
+        initiate = ts._TaskServer__initiate_nat_traversal
+
+        key_id = 'key_id'
+        node_info = {}
+        super_node_info = Mock()
+        ans_conn_id = 'conn_id'
+
+        initiate(key_id, node_info, None, ans_conn_id)
+        assert not ts._add_pending_request.called
+
+        initiate(key_id, node_info, super_node_info, ans_conn_id)
+        ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
+                                                   ANY, ANY, ANY, ANY)
+
+        node.nat_type = None
+        initiate(key_id, node_info, super_node_info, ans_conn_id)
+        ts._add_pending_request.assert_called_with(TaskConnTypes.Middleman,
+                                                   ANY, ANY, ANY, ANY)
+
+
+
 
     @staticmethod
     def __get_example_task_header():

@@ -1,7 +1,7 @@
 import logging.config
 from os import path
 
-from golem.client import start_client
+from golem.client import Client
 from golem.core.common import get_golem_path
 from golem.environments.environment import Environment
 
@@ -53,12 +53,13 @@ def load_environments():
 
 def start_and_configure_client(logic, environments, datadir,
                                transaction_system=False):
-    client = start_client(datadir, transaction_system)
+    client = Client(datadir=datadir, transaction_system=transaction_system)
     for env in environments:
         client.environments_manager.add_environment(env)
 
     client.environments_manager.load_config(client.datadir)
 
+    client.start()
     logic.register_client(client)
     logic.start()
     logic.check_network_state()

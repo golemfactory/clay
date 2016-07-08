@@ -1,12 +1,13 @@
-import time
 import logging
+import time
 from math import ceil
 
 from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
+
+from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
@@ -52,8 +53,8 @@ class TaskManager(object):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
 
-        resource_manager = IPFSResourceManager(self.dir_manager,
-                                               resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
+                                                         resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.listeners = []
@@ -134,32 +135,42 @@ class TaskManager(object):
         :param max_memory_size:
         :param num_cores:
         :param address:
-        :return (ComputeTaskDef|None, bool): Function return a pair. First element is either ComputeTaskDef that
-        describe assigned subtask or None. The second element describes whether the task_id is a wrong task that isn't
-        in task manager register. If task with <task_id> it's a known task then second element of a pair is always
-        False (regardless new subtask was assigned or not).
+        :return (ComputeTaskDef|None, bool, bool): Function returns a triplet. First element is either ComputeTaskDef
+        that describe assigned subtask or None. The second element describes whether the task_id is a wrong task that
+        isn't in task manager register. If task with <task_id> it's a known task then second element of a pair is always
+        False (regardless new subtask was assigned or not). The third element describes whether we're waiting for
+        client's other task results.
         """
         if task_id in self.tasks:
             task = self.tasks[task_id]
             ts = self.tasks_states[task_id]
             th = task.header
+            should_wait = False
+
             if th.max_price < price:
-                return None, False
+                return None, False, should_wait
 
             if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
-                ctd = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
+                extra_data = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
+
+                should_wait = extra_data.should_wait
+                ctd = extra_data.ctd
+
                 if ctd is None or ctd.subtask_id is None:
-                    return None, False
+                    return None, False, should_wait
+
                 ctd.key_id = th.task_owner_key_id
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
                 self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.__notice_task_updated(task_id)
-                return ctd, False
+
+                return ctd, False, should_wait
+
             logger.info("Cannot get next task for estimated performance {}".format(estimated_performance))
-            return None, False
+            return None, False, should_wait
         else:
             logger.info("Cannot find task {} in my tasks".format(task_id))
-            return None, True
+            return None, True, False
 
     def get_tasks_headers(self):
         ret = []
@@ -274,6 +285,20 @@ class TaskManager(object):
         else:
             logger.error("It is not my task id {}".format(subtask_id))
             return False
+
+    def task_result_incoming(self, subtask_id):
+        node_id = self.get_node_id_for_subtask(subtask_id)
+
+        if node_id and subtask_id in self.subtask2task_mapping:
+            task_id = self.subtask2task_mapping[subtask_id]
+            if task_id in self.tasks:
+                task = self.tasks[task_id]
+                task.result_incoming(subtask_id)
+            else:
+                logger.error("Unknown task id: {}".format(task_id))
+        else:
+            logger.error("Node_id {} or subtask_id {} does not exist"
+                         .format(node_id, subtask_id))
 
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def remove_old_tasks(self):
