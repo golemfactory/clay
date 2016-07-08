@@ -183,7 +183,7 @@ class RenderingTask(GNRTask):
         failed_color = (255, 0, 0)
 
         tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
+        preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
 
@@ -193,7 +193,11 @@ class RenderingTask(GNRTask):
             if sub['status'] == SubtaskStatus.failure:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, "BMP")
+        img_task.save(preview_task_file_path, "BMP")
+        self._update_preview_task_file_path(preview_task_file_path)
+
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
         upper = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
