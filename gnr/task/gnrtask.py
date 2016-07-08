@@ -187,19 +187,16 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @handle_key_error
     def get_stderr(self, subtask_id):
-        err = self.stderr[subtask_id]
+        err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @handle_key_error
     def get_stdout(self, subtask_id):
-        out = self.stdout[subtask_id]
+        out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @handle_key_error
     def get_results(self, subtask_id):
-        return self.results[subtask_id]
+        return self.results.get(subtask_id, [])
 
     #########################
     # Specific task methods #
