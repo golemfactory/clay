@@ -25,12 +25,12 @@ from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFa
 LOG_NAME = "golem.log"
 
 
-def config_logging(logger, logname=LOG_NAME):
+def config_logging(logger_name, logname=LOG_NAME):
     """Config logger"""
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
-    return logging.getLogger(logger)
+    return logging.getLogger(logger_name)
 
 
 def install_qt4_reactor():

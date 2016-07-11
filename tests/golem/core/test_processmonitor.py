@@ -41,12 +41,13 @@ def wait_for_processes(timeout=10, *processes):
             time.sleep(0.5)
 
 
+def run_exit():
+    return
+
+
 class TestProcessMonitor(unittest.TestCase):
 
     def test_monitor(self):
-
-        def run_exit():
-            pass
 
         mp = MockProcess()
         p1 = Process(target=run_exit)

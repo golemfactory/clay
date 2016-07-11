@@ -18,7 +18,7 @@ class MockService(object):
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def test_config_logging(self):
-        config_logging()
+        config_logging("golem.test")
 
     def test_load_environments(self):
         envs = load_environments()
@@ -53,5 +53,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         reactor = self._get_reactor()
 
         start_gui_process(queue,
+                          datadir=self.path,
                           gui_app=gui_app,
                           reactor=reactor)

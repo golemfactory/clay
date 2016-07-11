@@ -1,20 +1,17 @@
-import multiprocessing
 import logging
+import multiprocessing
 import subprocess
-
 from PyQt4 import QtCore
-from PyQt4.QtGui import QMessageBox, QPalette
-from twisted.internet.defer import inlineCallbacks
 
+from PyQt4.QtGui import QMessageBox, QPalette
+
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
-from gnr.renderingtaskstate import RenderingTaskState
-from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
-from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
 logger = logging.getLogger("gnr.gui")
 

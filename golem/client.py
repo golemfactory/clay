@@ -143,6 +143,7 @@ class Client(object):
 
     def start(self):
         self.start_network()
+        self.do_work_task.start(0.1, False)
 
     def start_network(self):
         logger.info("Starting network ...")
@@ -177,8 +178,6 @@ class Client(object):
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.p2pservice.connect_to_network()
-
-        self.do_work_task.start(0.1, False)
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(
