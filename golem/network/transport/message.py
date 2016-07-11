@@ -1621,6 +1621,32 @@ class MessageWaitingForResults(Message):
         return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True}
 
 
+class MessageCannotComputeTask(Message):
+    Type = TASK_MSG_BASE + 26
+
+    REASON_STR = u"REASON"
+    SUBTASK_ID_STR = u"SUBTASK_ID"
+
+    def __init__(self, subtask_id=None, reason=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that the node is waiting for results
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageCannotComputeTask.Type, sig, timestamp)
+
+        self.reason = reason
+        self.subtask_id = subtask_id
+
+        if dict_repr:
+            self.reason = dict_repr[MessageCannotComputeTask.REASON_STR]
+            self.subtask_id = dict_repr[MessageCannotComputeTask.SUBTASK_ID_STR]
+
+    def dict_repr(self):
+        return {MessageCannotComputeTask.REASON_STR: self.reason,
+                MessageCannotComputeTask.SUBTASK_ID_STR: self.subtask_id}
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1833,6 +1859,7 @@ def init_messages():
 
     # Task messages
     MessageCannotAssignTask()
+    MessageCannotComputeTask()
     MessageTaskToCompute()
     MessageWantToComputeTask()
     MessageReportComputedTask()
