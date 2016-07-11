@@ -2,7 +2,6 @@ import logging
 import os
 import random
 import shutil
-import subprocess
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
