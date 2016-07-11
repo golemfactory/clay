@@ -75,10 +75,13 @@ class PreviewUpdater(object):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
                 img_current.save(self.preview_file_path, "BMP")
+                img_current.close()
             else:
                 img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
                 img_offset.paste(img, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
+                img_offset.close()
+            img.close()
 
         except Exception as err:
             import traceback
@@ -414,6 +417,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 img = Image.open(new_chunk_file_path)
             img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
             img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
