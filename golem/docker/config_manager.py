@@ -30,8 +30,8 @@ class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
-        # Note that this will fail if CPU affinity
-        # has been altered for this process
+        # Note that the number of cores is based on
+        # CPU affinity set for Golem's process
         try:
             process = psutil.Process()
             self.cpu_cores = process.cpu_affinity()
@@ -62,5 +62,5 @@ class DockerConfigManager(object):
     def _try(self):
         try:
             yield
-        except:
+        except Exception:
             pass
