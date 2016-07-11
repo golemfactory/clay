@@ -11,10 +11,8 @@ from golem.task.taskstate import SubtaskStatus
 from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-
 from gnr.task.gnrtask import GNROptions
 from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
-
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
@@ -88,6 +86,14 @@ class PreviewUpdater(object):
         
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
+
+    def restart(self):
+        self.chunks = {}
+        self.perfect_match_area_y = 0
+        self.perfectly_placed_subtasks = 0
+        if os.path.exists(self.preview_file_path):
+            img = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
+            img.save(self.preview_file_path, "BMP")
 
 
 def build_blender_renderer_info(dialog, customizer):
@@ -205,15 +211,13 @@ class BlenderRenderTask(FrameRenderingTask):
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
-        
-        tmp_dir = self._get_tmp_dir()
-        if not self.use_frames:
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-        else:
-            self.preview_file_path = []
-            for i in range(len(self.frames)):
-                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
-        
+
+        self.preview_updater = None
+        self.preview_updaters = None
+
+    def initialize(self, dir_manager):
+        super(BlenderRenderTask, self).initialize(dir_manager)
+
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
@@ -221,16 +225,19 @@ class BlenderRenderTask(FrameRenderingTask):
         expected_offsets = {}
         for i in range(1, parts + 1):
             _, expected_offset = self._get_min_max_y(i)
-            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
+            expected_offset = self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
-        
-        if self.use_frames:
-            self.preview_updaters = []
-            for i in range(0, len(self.frames)):
-                preview_path = self.preview_file_path[i]
-                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
-        else:
+
+        if not self.use_frames:
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        else:
+            self.preview_file_path = []
+            self.preview_updaters = []
+            for i in range(len(self.frames)):
+                preview_path = os.path.join(self.tmp_dir, "current_preview{}".format(i))
+                self.preview_file_path.append(preview_path)
+                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -283,6 +290,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
+        self.subtasks_given[hash]['verified'] = False
 
         if not self.use_frames:
             self._update_task_preview()
@@ -291,6 +299,16 @@ class BlenderRenderTask(FrameRenderingTask):
 
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
+
+    def restart(self):
+        super(BlenderRenderTask, self).restart()
+        if self.use_frames:
+            for preview in self.preview_updaters:
+                preview.restart()
+            self._update_frame_task_preview()
+        else:
+            self.preview_updater.restart()
+            self._update_task_preview()
 
     ###################
     # GNRTask methods #
@@ -416,12 +434,8 @@ class BlenderRenderTask(FrameRenderingTask):
             img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
-
-    def _get_output_name(self, frame_num, num_start):
-        num = str(frame_num)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
     
-    def _put_image_together(self, tmp_dir):
+    def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -430,7 +444,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+            self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
                        
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
@@ -453,8 +467,8 @@ class BlenderRenderTask(FrameRenderingTask):
                 for j in range(lower, upper):
                     img_task.putpixel((i, j), color)
                     
-    def _put_frame_together(self, tmp_dir, frame_num, num_start):
-        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+    def _put_frame_together(self, frame_num, num_start):
+        output_file_name = os.path.join(self.tmp_dir, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():

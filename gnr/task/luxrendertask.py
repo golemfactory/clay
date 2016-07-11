@@ -2,7 +2,6 @@ import logging
 import os
 import random
 import shutil
-import subprocess
 
 from collections import OrderedDict
 from PIL import Image, ImageChops
@@ -11,11 +10,13 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
+from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.task.imgrepr import load_img, blend
 from gnr.task.gnrtask import GNROptions
+
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from gnr.task.scenefileeditor import regenerate_lux_file
@@ -135,8 +136,6 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
-        self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -153,6 +152,13 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
+
+    def initialize(self, dir_manager):
+        super(LuxTask, self).initialize(dir_manager)
+        hold_flm = self.__get_test_flm(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path))
+        if os.path.isfile(hold_flm):
+            shutil.move(hold_flm, self.__get_test_flm())
+        self.undeletable.append(self.__get_test_flm())
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         verdict = self._accept_client(node_id)
@@ -203,46 +209,10 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash]['status'] = SubtaskStatus.starting
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
+        self.subtasks_given[hash]['verified'] = False
 
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
-
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
-        test_result_flm = self.__get_test_flm()
-
-        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
-        tr_files = self.results[subtask_id]
-
-        if len(tr_files) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            for tr_file in tr_files:
-                tr_file = os.path.normpath(tr_file)
-                if tr_file.upper().endswith('.FLM'):
-                    self.collected_file_names[num_start] = tr_file
-                    self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
-                    self.num_tasks_received += 1
-                    if self.advanceVerification:
-                        if not os.path.isfile(test_result_flm):
-                            logger.warning("Advanced verification set, but couldn't find test result!")
-                            logger.info("Skipping verification")
-                        else:
-                            if not self.merge_flm_files(tr_file, test_result_flm):
-                                logger.info("Subtask " + str(subtask_id) + " rejected.")
-                                self._mark_subtask_failed(subtask_id)
-                                self.num_tasks_received -= 1
-                            else:
-                                logger.info("Subtask " + str(subtask_id) + " successfully verified.")
-                elif not tr_file.upper().endswith('.LOG'):
-                    self.subtasks_given[subtask_id]['previewFile'] = tr_file
-                    self._update_preview(tr_file, num_start)
-        else:
-            self._mark_subtask_failed(subtask_id)
-        if self.num_tasks_received == self.total_tasks:
-            if self.advanceVerification and os.path.isfile(test_result_flm):
-                self.__generate_final_flm_advanced_verification()
-            else:
-                self.__generate_final_flm()
 
     ###################
     # GNRTask methods #
@@ -278,11 +248,12 @@ class LuxTask(RenderingTask):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
+        hold_results_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if flm is not None:
             try:
-                if not os.path.exists(self.tmp_dir):
-                    os.makedirs(self.tmp_dir)
-                shutil.copy(flm, self.__get_test_flm())
+                if not os.path.exists(hold_results_dir):
+                    os.makedirs(hold_results_dir)
+                shutil.copy(flm, self.__get_test_flm(hold_results_dir))
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
@@ -344,6 +315,55 @@ class LuxTask(RenderingTask):
         files = [os.path.basename(new_flm), os.path.basename(self.__get_test_flm())]
         return self.__get_merge_ctd(files)
 
+    def verify_results(self, subtask_id, task_result, result_type):
+        num_start = self.subtasks_given[subtask_id]['start_task']
+        test_result_flm = self.__get_test_flm()
+        self.interpret_task_results(subtask_id, task_result, result_type)
+        tr_files = [os.path.normpath(file_) for file_ in self.results[subtask_id]]
+        if len(tr_files) == 0:
+            return tr_files
+        flm_found = False
+        for tr_file in tr_files:
+            if tr_file.upper().endswith('.FLM'):
+                self.collected_file_names[num_start] = tr_file
+                if self.advanceVerification:
+                    if not os.path.isfile(test_result_flm):
+                        logger.warning("Advanced verification set, but couldn't find test result!")
+                        logger.info("Skipping verification")
+                        flm_found = True
+                    elif self.merge_flm_files(tr_file, test_result_flm):
+                        logger.info("Subtask " + str(subtask_id) + " successfully verified.")
+                        flm_found = True
+                    else:
+                        logger.info("Subtask " + str(subtask_id) + " rejected.")
+                        return tr_files
+                else:
+                    flm_found = True
+        if flm_found:
+            self.subtasks_given[subtask_id]['verified'] = True
+        return tr_files
+
+    def accept_results(self, subtask_id, tr_files):
+        super(LuxTask, self).accept_results(subtask_id, tr_files)
+        num_start = self.subtasks_given[subtask_id]['start_task']
+
+        for tr_file in tr_files:
+            if tr_file.upper().endswith('.FLM'):
+                self.collected_file_names[num_start] = tr_file
+                self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+                self.num_tasks_received += 1
+
+            elif not tr_file.upper().endswith('.LOG'):
+                self.subtasks_given[subtask_id]['previewFile'] = tr_file
+                self._update_preview(tr_file, num_start)
+
+        test_result_flm = self.__get_test_flm()
+        if self.num_tasks_received == self.total_tasks:
+            if self.advanceVerification and os.path.isfile(test_result_flm):
+                self.__generate_final_flm_advanced_verification()
+            else:
+                self.__generate_final_flm()
+
     def __get_merge_ctd(self, files):
         with open(find_task_script("docker_luxmerge.py")) as f:
             src_code = f.read()
@@ -382,6 +402,8 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
         for f in preview_files:
             self._update_preview(f, None)
+        if len(preview_files) == 0:
+            self._open_preview()
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
@@ -463,5 +485,8 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self):
-        return os.path.join(self.tmp_dir, "test_result.flm")
+    def __get_test_flm(self, dir_=None):
+        if dir_ is None:
+            dir_ = self.tmp_dir
+        return os.path.join(dir_, "test_result.flm")
+

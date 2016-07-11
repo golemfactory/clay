@@ -6,6 +6,7 @@ from random import randrange, shuffle
 import OpenEXR
 from PIL import Image
 
+from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 
@@ -45,6 +46,9 @@ class TestBlenderFrameTask(TempDirFixture):
                                compositing=False,
                                max_price=10)
 
+        dm = DirManager(self.path, "example-node-name")
+        bt.initialize(dm)
+
         assert len(bt.preview_file_path) == len(bt.frames)
         assert len(bt.preview_task_file_path) == len(bt.frames)
 
@@ -74,6 +78,9 @@ class TestBlenderTask(TempDirFixture):
                                     compositing=False,
                                     frames=[1],
                                     max_price=10)
+
+        dm = DirManager(self.path, "example-node-name")
+        self.bt.initialize(dm)
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
@@ -117,11 +124,16 @@ class TestBlenderTask(TempDirFixture):
                 exr.close()
                 self.bt.collected_file_names[i] = file1
             self.bt.res_y = res_y
-            self.bt._put_image_together(self.tempdir)
+            self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
             img = Image.open(self.bt.output_file)
             img_x, img_y = img.size
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
+
+        self.bt.restart()
+        assert self.bt.preview_updater.chunks == {}
+        assert self.bt.preview_updater.perfectly_placed_subtasks == 0
+        assert self.bt.preview_updater.perfect_match_area_y == 0
 
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:
@@ -137,7 +149,7 @@ class TestBlenderTask(TempDirFixture):
                     img.save(file1, output_format.upper())
                     self.bt.collected_file_names[i] = file1
                 self.bt.res_y = res_y
-                self.bt._put_image_together(self.tempdir)
+                self.bt._put_image_together()
                 self.assertTrue(path.isfile(self.bt.output_file))
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size
@@ -184,7 +196,12 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue(img.size == (10, 5))
         img = Image.open(file4)
         self.assertTrue(img.size == (10, 5))
-        
+
+        self.bt.restart()
+        for preview in self.bt.preview_updaters:
+            assert preview.chunks == {}
+            assert preview.perfect_match_area_y == 0
+            assert preview.perfectly_placed_subtasks == 0
 
     def test_mark_task_area(self):
         self.bt.use_frames = True

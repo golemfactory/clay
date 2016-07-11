@@ -14,7 +14,6 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
@@ -124,9 +123,6 @@ class RenderingTask(GNRTask):
 
     def restart(self):
         GNRTask.restart(self)
-        self.preview_file_path = None
-        self.preview_task_file_path = None
-
         self.collected_file_names = {}
 
     @GNRTask.handle_key_error
@@ -158,7 +154,7 @@ class RenderingTask(GNRTask):
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
-    def _update_preview(self, new_chunk_file_path):
+    def _update_preview(self, new_chunk_file_path, chunk_num=0):
 
         if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)
@@ -176,14 +172,15 @@ class RenderingTask(GNRTask):
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
+        print "MARKING {} WITH EMPTY COLOR".format(self.subtasks_given[subtask_id]['start_task'])
         img.save(self.preview_file_path, "BMP")
 
     def _update_task_preview(self):
+        print "UPDATE TASK PREVIEW"
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
+        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
 
@@ -191,10 +188,11 @@ class RenderingTask(GNRTask):
             if sub['status'] == SubtaskStatus.starting:
                 self._mark_task_area(sub, img_task, sent_color)
             if sub['status'] == SubtaskStatus.failure:
+                print "MARKING {} WITH FAILED COLOR".format(sub['start_task'])
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(preview_task_file_path, "BMP")
-        self._update_preview_task_file_path(preview_task_file_path)
+        img_task.save(self.preview_task_file_path, "BMP")
+        self._update_preview_task_file_path(self.preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         self.preview_task_file_path = preview_task_file_path
@@ -239,7 +237,7 @@ class RenderingTask(GNRTask):
             return start_task, end_task
         else:
             for sub in self.subtasks_given.values():
-                if sub['status'] == SubtaskStatus.failure:
+                if sub['status'] == SubtaskStatus.failure or sub['status'] == SubtaskStatus.restarted:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']
                     start_task = sub['start_task']
@@ -282,10 +280,8 @@ class RenderingTask(GNRTask):
         return verify_img(file_, res_x, res_y)
 
     def _open_preview(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.res_x, self.res_y))
             img.save(self.preview_file_path, "BMP")
 
