@@ -25,7 +25,7 @@ from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCusto
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
 from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class GNRMainWindowCustomizer(Customizer):

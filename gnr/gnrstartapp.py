@@ -22,13 +22,15 @@ from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 
+LOG_NAME = "golem.log"
 
-def config_logging():
+
+def config_logging(logger, logname=LOG_NAME):
     """Config logger"""
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, disable_existing_loggers=False)
-    return logging.getLogger(__name__)
+    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
+    return logging.getLogger(logger)
 
 
 def install_qt4_reactor():
@@ -82,9 +84,14 @@ class GUIApp(object):
         self.app.execute(True)
 
 
-def start_gui_process(queue, rendering=True, gui_app=None, reactor=None):
+def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
 
-    logger = config_logging()
+    logger_name = "gnr.app"
+    if datadir:
+        logger = config_logging(logger_name, path.join(datadir, LOG_NAME))
+    else:
+        logger = config_logging(logger_name)
+
     client_service_info = queue.get(True, 3600)
 
     if not isinstance(client_service_info, RPCServiceInfo):
@@ -120,7 +127,12 @@ def start_gui_process(queue, rendering=True, gui_app=None, reactor=None):
 def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
-    logger = config_logging()
+    logger_name = "golem.client"
+    if datadir:
+        logger = config_logging(logger_name, path.join(datadir, LOG_NAME))
+    else:
+        logger = config_logging(logger_name)
+
     environments = load_environments()
 
     if not client:
@@ -170,7 +182,7 @@ def start_app(datadir=None, rendering=False,
     process_monitor.start()
 
     try:
-        start_gui_process(queue, rendering)
+        start_gui_process(queue, datadir, rendering)
     except Exception as exc:
         print "Exception in GUI thread: {}".format(exc)
 

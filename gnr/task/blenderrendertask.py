@@ -21,7 +21,7 @@ from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class BlenderDefaults(RendererDefaults):

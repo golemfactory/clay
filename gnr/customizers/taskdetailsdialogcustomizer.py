@@ -13,7 +13,7 @@ from subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gnr.ui.subtasktableentry import SubtaskTableElem
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class TaskDetailsDialogCustomizer(Customizer):

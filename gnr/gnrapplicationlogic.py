@@ -22,7 +22,7 @@ from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class GNRClientEventListener(GolemClientEventListener):

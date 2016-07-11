@@ -20,7 +20,7 @@ from gnr.task.localcomputer import LocalComputer
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from gnr.task.scenefileeditor import regenerate_lux_file
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class LuxRenderDefaults(RendererDefaults):

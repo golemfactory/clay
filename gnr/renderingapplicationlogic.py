@@ -4,7 +4,7 @@ import os
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class AbsRenderingApplicationLogic(object):

@@ -16,7 +16,7 @@ from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class NewTaskDialogCustomizer(Customizer):
