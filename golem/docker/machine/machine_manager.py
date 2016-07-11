@@ -43,6 +43,8 @@ class DockerMachineManager(DockerConfigManager):
                  min_cpu_execution_cap=1,
                  min_cpu_count=1):
 
+        super(DockerMachineManager, self).__init__()
+
         self.ISession = None
         self.LockType = None
 
