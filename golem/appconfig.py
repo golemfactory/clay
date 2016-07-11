@@ -48,6 +48,7 @@ WAITING_FOR_TASK_TIMEOUT = 720  # 36000
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
 NODE_SNAPSHOT_INTERVAL = 4.0
+NETWORK_CHECK_INTERVAL = 1.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
@@ -134,6 +135,7 @@ class AppConfig:
                                  waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
                                  forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
                                  node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
+                                 network_check_interval=NETWORK_CHECK_INTERVAL,
                                  add_tasks=ADD_TASKS,
                                  max_results_sending_delay=MAX_SENDING_DELAY,
                                  requesting_trust=REQUESTING_TRUST,

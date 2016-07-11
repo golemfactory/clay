@@ -1,12 +1,12 @@
+import unittest
 from random import random
 
-from golem.appconfig import CommonConfig
 from mock import MagicMock
 
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID
+from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID, PeerSessionInfo
 from golem.network.transport.message import MessageHello
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -87,3 +87,20 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
+
+
+class TestPeerSessionInfo(unittest.TestCase):
+
+    def test(self):
+        attributes = PeerSessionInfo.attributes
+        session = MagicMock()
+
+        for attr in attributes:
+            setattr(session, attr, True)
+
+        session.unknown_property = False
+        session_info = PeerSessionInfo(session)
+
+        for attr in attributes:
+            assert hasattr(session_info, attr)
+        assert not hasattr(session_info, 'unknown_property')

@@ -4,6 +4,7 @@ import re
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import MagicMock
+from twisted.internet.defer import Deferred
 
 from gnr.application import GNRGui
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
@@ -55,8 +56,22 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         logic_mock.get_res_dirs.return_value = {'computing': os.getcwd(),
                                                 'distributed': os.getcwd(),
                                                 'received': os.getcwd()}
-        logic_mock.get_config.return_value.max_price = 10
-        logic_mock.get_config.return_value.min_price = 2
+
+        config_mock = MagicMock()
+        config_mock.max_price = 10
+        config_mock.min_price = 2
+
+        config_deferred = Deferred()
+        config_deferred.result = config_mock
+        config_deferred.called = True
+
+        res_dirs_deferred = Deferred()
+        res_dirs_deferred.result = MagicMock()
+        res_dirs_deferred.called = True
+
+        logic_mock.get_config.return_value = config_deferred
+        logic_mock.get_res_dirs.return_value = res_dirs_deferred
+
         customizer = ConfigurationDialogCustomizer(gnrgui.main_window, logic_mock)
         self.assertIsInstance(customizer, ConfigurationDialogCustomizer)
         self.assertEqual(int(customizer.gui.ui.maxPriceLineEdit.text()), 10)
