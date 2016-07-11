@@ -15,7 +15,7 @@ from memoryhelper import resource_size_to_display, translate_resource_index, dir
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):

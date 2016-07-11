@@ -71,7 +71,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
-        ctd = render_task.query_extra_data(1.0)
+
+        extra_data = render_task.query_extra_data(1.0)
+        ctd = extra_data.ctd
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node

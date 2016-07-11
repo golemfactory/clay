@@ -5,8 +5,18 @@ import re
 import subprocess
 import sys
 from os import path
-from setuptools import setup, find_packages
+
+import imp
+from setuptools import find_packages
+
 from setuptools.command.test import test as TestCommand
+
+try:
+    from cx_Freeze import setup
+    use_cx_Freeze = True
+except ImportError:
+    from setuptools import setup
+    use_cx_Freeze = False
 
 
 def generate_ui_files():
@@ -88,6 +98,17 @@ def parse_requirements(requirements_file):
             requirements.append(line)
     return requirements, dependency_links
 
+
+def find_required_packages():
+    if sys.platform.startswith('darwin'):
+        return find_packages(exclude=['examples'])
+    return find_packages(include=['golem*', 'gnr*'])
+
+
+def current_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+
 # TODO: Refer correct README file here
 # with open('README.rst') as readme_file:
 #     readme = readme_file.read()
@@ -97,11 +118,25 @@ def parse_requirements(requirements_file):
 #     history = history_file.read().replace('.. :changelog:', '')
 
 requirements, dependency_links = parse_requirements('requirements.txt')
+test_requirements = ['mock', 'pytest']
 
-test_requirements = [
-    'mock',
-    'pytest'
-]
+options = {}
+executables = []
+cmdclass = {'test': PyTest}
+packages = find_required_packages()
+
+if use_cx_Freeze:
+
+    package_creator = imp.load_source(
+        'package_creator',
+        os.path.join('scripts', 'packaging', 'package_creator.py')
+    )
+    package_creator.update_setup_config(
+        setup_dir=current_dir(),
+        options=options,
+        cmdclass=cmdclass,
+        executables=executables
+    )
 
 setup(
     name='golem',
@@ -112,7 +147,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=find_packages(include=['golem*', 'gnr*']),
+    packages=packages,
     entry_points={'console_scripts': ['golemapp = golemapp:start']},
     install_requires=requirements,
     include_package_data=True,
@@ -133,7 +168,9 @@ setup(
     #     'Programming Language :: Python :: 3.3',
     #     'Programming Language :: Python :: 3.4',
     # ],
+    cmdclass=cmdclass,
+    options=options,
+    executables=executables,
     test_suite='tests',
-    tests_require=test_requirements,
-    cmdclass={'test': PyTest}
+    tests_require=test_requirements
 )

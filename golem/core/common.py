@@ -54,3 +54,17 @@ def timeout_to_deadline(timeout):
     :return datetime:
     """
     return datetime.utcnow() + timedelta(seconds=timeout)
+
+
+class HandleKeyError(object):
+    def __init__(self, handle_error):
+        self.handle_error = handle_error
+
+    def __call__(self, func):
+        def func_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except KeyError:
+                return self.handle_error(*args, **kwargs)
+        return func_wrapper
+

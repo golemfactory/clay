@@ -3,6 +3,7 @@ import logging
 import os
 import struct
 import time
+import traceback
 
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
@@ -10,7 +11,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageResourceHashList, MessageTaskResultHash
+    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
@@ -19,6 +20,9 @@ from golem.task.taskbase import result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
+
+
+TASK_PROTOCOL_ID = 3
 
 
 class TaskSession(MiddlemanSafeSession):
@@ -181,8 +185,11 @@ class TaskSession(MiddlemanSafeSession):
         """
         result = extra_data.get('result')
         result_type = extra_data.get("result_type")
+        subtask_id = extra_data.get("subtask_id")
+
         if result_type is None:
             logger.error("No information about result_type for received data ")
+            self._reject_subtask_result(subtask_id)
             self.dropped()
             return
 
@@ -193,19 +200,24 @@ class TaskSession(MiddlemanSafeSession):
                 result = pickle.loads(result)
             except Exception as err:
                 logger.error("Can't unpickle result data {}".format(err))
+                self._reject_subtask_result(subtask_id)
                 self.dropped()
                 return
 
-        subtask_id = extra_data.get("subtask_id")
         if subtask_id:
             self.task_manager.computed_task_received(subtask_id, result, result_type)
             if self.task_manager.verify_subtask(subtask_id):
                 self.task_server.accept_result(subtask_id, self.result_owner)
+                self.send(MessageSubtaskResultAccepted(subtask_id))
             else:
-                self.task_server.reject_result(subtask_id, self.result_owner)
+                self._reject_subtask_result(subtask_id)
         else:
             logger.error("No task_id value in extra_data for received data ")
         self.dropped()
+
+    def _reject_subtask_result(self, subtask_id):
+        self.task_server.reject_result(subtask_id, self.result_owner)
+        self.send(MessageSubtaskResultRejected(subtask_id))
 
     def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
@@ -218,8 +230,8 @@ class TaskSession(MiddlemanSafeSession):
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, price, max_resource_size,
-                                           max_memory_size, num_cores))
+        self.send(MessageWantToComputeTask(node_name, task_id, performance_index, price,
+                                           max_resource_size, max_memory_size, num_cores))
 
     def request_resource(self, task_id, resource_header):
         """ Ask for a resources for a given task. Task owner should compare given resource header with
@@ -275,8 +287,14 @@ class TaskSession(MiddlemanSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.task_server.get_key_id(), rand_val=self.rand_val),
-                  send_unverified=True)
+        self.send(
+            MessageHello(
+                client_key_id=self.task_server.get_key_id(),
+                rand_val=self.rand_val,
+                proto_id=TASK_PROTOCOL_ID
+            ),
+            send_unverified=True
+        )
 
     def send_start_session_response(self, conn_id):
         """ Inform that this session was started as an answer for a request to start task session
@@ -321,52 +339,49 @@ class TaskSession(MiddlemanSafeSession):
         trust = self.task_server.get_computing_trust(self.key_id)
         logger.debug("Computing trust level: {}".format(trust))
         if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                 msg.perf_index, msg.price, msg.max_resource_size,
-                                                                 msg.max_memory_size, msg.num_cores, self.address)
+            ctd, wrong_task, wait = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
+                                                                       msg.perf_index, msg.price, msg.max_resource_size,
+                                                                       msg.max_memory_size, msg.num_cores, self.address)
         else:
-            ctd, wrong_task = None, False
+            ctd, wrong_task, wait = None, False, False
 
         if wrong_task:
             self.send(MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
-            self.send(MessageRemoveTask(msg.task_id))
+            self.dropped()
         elif ctd:
             self.send(MessageTaskToCompute(ctd))
+        elif wait:
+            self.send(MessageWaitingForResults())
         else:
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
+            self.dropped()
 
     def _react_to_task_to_compute(self, msg):
         if self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
+            self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd)
-        self.dropped()
+        else:
+            self.task_computer.session_closed()
+            self.dropped()
+
+    def _react_to_waiting_for_results(self, _):
+        self.task_computer.session_closed()
+        if not self.msgs_to_send:
+            self.disconnect(self.DCRNoMoreMessages)
 
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
         self.task_server.remove_task_header(msg.task_id)
+        self.task_computer.session_closed()
         self.dropped()
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
             self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
             delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
-
-            if delay == -1.0:
-                self.dropped()
-            elif delay == 0.0:
-                self.send(MessageGetTaskResult(msg.subtask_id, delay))
-                self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
-                                                   msg.eth_account)
-
-                # if msg.result_type == result_types['data']:
-                #     self.__receive_data_result(msg)
-                # elif msg.result_type == result_types['files']:
-                #     self.__receive_files_result(msg)
-                # else:
-                #     logger.error("Unknown result type {}".format(msg.result_type))
-                #     self.dropped()
-            else:
-                self.send(MessageGetTaskResult(msg.subtask_id, delay))
-                self.dropped()
+            self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
+                                               msg.eth_account)
+            self.send(MessageGetTaskResult(msg.subtask_id, delay))
         else:
             self.dropped()
 
@@ -388,11 +403,11 @@ class TaskSession(MiddlemanSafeSession):
         secret = msg.secret
         multihash = msg.multihash
         subtask_id = msg.subtask_id
-
+        client_options = msg.options
         task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
-        task_result_manager = self.task_manager.task_result_manager
 
-        logger.debug("IPFS: Task result hash received: {}".format(multihash))
+        logger.debug("IPFS: Task result hash received: {} from {}:{} (options: {})"
+                     .format(multihash, self.address, self.port, client_options))
 
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
@@ -400,18 +415,23 @@ class TaskSession(MiddlemanSafeSession):
                          .format(extracted_pkg.__dict__))
             self.result_received(extra_data, decrypt=False)
 
-        def on_error(*args, **kwargs):
+        def on_error(exc, *args, **kwargs):
             logger.error("IPFS: Task result error: {} ({})"
-                         .format(subtask_id, args or "unspecified"))
+                         .format(subtask_id, exc or "unspecified"))
             self.send(MessageSubtaskResultRejected(subtask_id))
+            self.task_server.reject_result(subtask_id, self.result_owner)
+            self.task_manager.task_computation_failure(subtask_id,
+                                                       'Error downloading task result')
+            self.dropped()
 
-        self.dropped()
-        task_result_manager.pull_package(multihash,
-                                         task_id,
-                                         subtask_id,
-                                         secret,
-                                         success=on_success,
-                                         error=on_error)
+        self.task_manager.task_result_incoming(subtask_id)
+        self.task_manager.task_result_manager.pull_package(multihash,
+                                                           task_id,
+                                                           subtask_id,
+                                                           secret,
+                                                           success=on_success,
+                                                           error=on_error,
+                                                           client_options=client_options)
 
     def _react_to_get_resource(self, msg):
         self.last_resource_msg = msg
@@ -430,7 +450,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource(self, msg):
         self.task_computer.resource_given(msg.subtask_id)
-        self.dropped()
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -448,15 +467,15 @@ class TaskSession(MiddlemanSafeSession):
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
         self.task_server.add_resource_peer(msg.node_name, msg.addr, msg.port, self.key_id, msg.node_info)
-        self.dropped()
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
         resources = resource_manager.join_split_resources(msg.resources)
+        client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
-        self.task_server.pull_resources(self.task_id, resources)
-        self.dropped()
+        self.task_server.pull_resources(self.task_id, resources,
+                                        client_options=client_options)
 
     def _react_to_resource_format(self, msg):
         if not msg.use_distributed_resource:
@@ -469,15 +488,25 @@ class TaskSession(MiddlemanSafeSession):
         self.__send_accept_resource_format()
 
     def _react_to_hello(self, msg):
+        send_hello = False
+
         if self.key_id == 0:
             self.key_id = msg.client_key_id
-            self.send_hello()
+            send_hello = True
 
         if not self.verify(msg):
             logger.error("Wrong signature for Hello msg")
             self.disconnect(TaskSession.DCRUnverified)
             return
 
+        if msg.proto_id != TASK_PROTOCOL_ID:
+            logger.error("Protocol version mismatch {} vs {} (local)"
+                         .format(msg.proto_id, TASK_PROTOCOL_ID))
+            self.disconnect(TaskSession.DCRProtocolVersion)
+            return
+
+        if send_hello:
+            self.send_hello()
         self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
@@ -563,9 +592,9 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
+        client_options = resource_manager.build_client_options(self.task_server.get_key_id())
         res = resource_manager.list_split_resources(msg.task_id)
-        self.send(MessageResourceHashList(res))
-        self.dropped()
+        self.send(MessageResourceList(res, options=client_options))
 
     def __send_resource_format(self, use_distributed_resource):
         self.send(MessageResourceFormat(use_distributed_resource))
@@ -584,17 +613,39 @@ class TaskSession(MiddlemanSafeSession):
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
+        resource_manager = task_result_manager.resource_manager
+        client_options = resource_manager.build_client_options(self.task_server.get_key_id())
 
+        subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
-        output = task_result_manager.create(self.task_server.node, res, secret)
+        output = None
+        errors = None
+        recoverable_error = False
+
+        try:
+            output = task_result_manager.create(self.task_server.node, res,
+                                                secret, client_options)
+        except EnvironmentError as exc:
+            errors = exc.message
+            recoverable_error = True
+        except Exception as exc:
+            errors = exc.message
+            logger.debug(traceback.format_exc())
 
         if output:
             file_name, multihash = output
-            logger.debug("IPFS: sending task result hash: %s (%s)" % (file_name, multihash))
-            self.send(MessageTaskResultHash(res.subtask_id, multihash, secret))
+            logger.debug("Task session: sending task result hash: {} ({}, options: {})"
+                         .format(file_name, multihash, client_options))
+            self.send(MessageTaskResultHash(subtask_id, multihash, secret, options=client_options))
         else:
-            logger.error("Couldn't create a task result package for subtask {}".format(res.subtask_id))
-        self.dropped()
+            logger.error("Couldn't create a task result package for subtask {}: {}"
+                         .format(res.subtask_id, errors))
+            if recoverable_error:
+                self.task_server.retry_sending_task_result(subtask_id)
+            else:
+                self.send(MessageTaskFailure(subtask_id, errors))
+                self.task_server.task_result_sent(subtask_id)
+            self.dropped()
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
@@ -622,7 +673,7 @@ class TaskSession(MiddlemanSafeSession):
             MessageGetResource.Type: self._react_to_get_resource,
             MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
             MessageResource.Type: self._react_to_resource,
-            MessageResourceHashList.Type: self._react_to_resource_list,
+            MessageResourceList.Type: self._react_to_resource_list,
             MessageSubtaskResultAccepted.Type: self._react_to_subtask_result_accepted,
             MessageSubtaskResultRejected.Type: self._react_to_subtask_result_rejected,
             MessageTaskFailure.Type: self._react_to_task_failure,
@@ -638,6 +689,7 @@ class TaskSession(MiddlemanSafeSession):
             MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
             MessageNatPunch.Type: self._react_to_nat_punch,
             MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
+            MessageWaitingForResults.Type: self._react_to_waiting_for_results,
         })
 
         # self.can_be_not_encrypted.append(MessageHello.Type)

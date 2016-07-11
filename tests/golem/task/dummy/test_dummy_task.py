@@ -5,14 +5,6 @@ import unittest
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
-    @classmethod
-    def setUpClass(cls):
-        super(TestDummyTask, cls).setUpClass()
-        runner.run_simulation(
-            num_computing_nodes=2, num_subtasks=3, timeout=12,
-            node_failure_times=[6]
-        )
-
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=120)
