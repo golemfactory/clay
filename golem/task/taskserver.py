@@ -25,7 +25,8 @@ class TaskServer(PendingConnectionsServer):
 
         self.performance = {"DEFAULT" : self.config_desc.estimated_performance,
                             "LUXRENDER" : self.config_desc.estimated_lux_performance,
-                            "BLENDER" : self.config_desc.estimated_blender_performance
+                            "BLENDER" : self.config_desc.estimated_blender_performance,
+                            "DUMMY" : self.config_desc.estimated_performance
                             }
 
         self.node = node
