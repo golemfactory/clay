@@ -48,5 +48,5 @@ class HandleKeyError(object):
             try:
                 return func(*args, **kwargs)
             except KeyError:
-                self.handle_error(*args, **kwargs)
+                return self.handle_error(*args, **kwargs)
         return func_wrapper

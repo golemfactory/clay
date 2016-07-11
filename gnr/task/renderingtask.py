@@ -24,7 +24,7 @@ from gnr.task.renderingtaskcollector import exr_to_pil
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 MAX_PENDING_CLIENT_RESULTS = 1

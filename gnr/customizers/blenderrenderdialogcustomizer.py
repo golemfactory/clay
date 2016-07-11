@@ -2,7 +2,7 @@ import logging
 
 from renderercustomizer import FrameRendererCustomizer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class BlenderRenderDialogCustomizer(FrameRendererCustomizer):

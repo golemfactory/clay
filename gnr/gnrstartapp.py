@@ -14,11 +14,13 @@ from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 
+LOG_NAME = "golem.log"
 
-def config_logging():
+
+def config_logging(logname=LOG_NAME):
     """Config logger"""
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, disable_existing_loggers=False)
+    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
 
 
 def install_reactor():
@@ -71,6 +73,11 @@ def run_ranking(client, reactor):
 
 def start_app(logic, app, gui, datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
+    if datadir:
+        config_logging(path.join(datadir, LOG_NAME))
+    else:
+        config_logging()
+
     reactor = install_reactor()
     register_gui(logic, app, gui)
     if rendering:

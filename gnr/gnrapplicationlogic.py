@@ -26,7 +26,7 @@ from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class GNRClientEventListener(GolemClientEventListener):

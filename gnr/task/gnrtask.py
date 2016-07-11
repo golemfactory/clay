@@ -14,7 +14,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 def log_key_error(*args, **kwargs):
@@ -187,17 +187,14 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @handle_key_error
     def get_stderr(self, subtask_id):
         err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @handle_key_error
     def get_stdout(self, subtask_id):
         out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @handle_key_error
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
