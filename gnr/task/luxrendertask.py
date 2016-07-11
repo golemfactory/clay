@@ -15,12 +15,13 @@ from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.task.imgrepr import load_img, blend
-from gnr.task.gnrtask import GNROptions, react_to_key_error
+from gnr.task.gnrtask import GNROptions
+
 from gnr.task.localcomputer import LocalComputer
-from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from gnr.task.scenefileeditor import regenerate_lux_file
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -160,14 +161,21 @@ class LuxTask(RenderingTask):
         self.undeletable.append(self.__get_test_flm())
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
-        if not self._accept_client(node_id):
-            logger.warning(" Client {} banned from this task ".format(node_name))
-            return None
+        verdict = self._accept_client(node_id)
+        if verdict != AcceptClientVerdict.ACCEPTED:
+
+            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+            if should_wait:
+                logger.warning("Waiting for client's {} task results".format(node_name))
+            else:
+                logger.warning("Client {} banned from this task".format(node_name))
+
+            return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             logger.error("Task already computed")
-            return None
+            return self.ExtraData()
 
         working_directory = self._get_working_directory()
         min_x = 0
@@ -203,7 +211,8 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['verified'] = False
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        return self.ExtraData(ctd=ctd)
 
     ###################
     # GNRTask methods #
@@ -382,7 +391,7 @@ class LuxTask(RenderingTask):
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
 
-    @react_to_key_error
+    @RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         preview_files = []
         for subId, task in self.subtasks_given.iteritems():
@@ -480,3 +489,4 @@ class LuxTask(RenderingTask):
         if dir_ is None:
             dir_ = self.tmp_dir
         return os.path.join(dir_, "test_result.flm")
+

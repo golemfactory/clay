@@ -4,13 +4,14 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from gnr.task.gnrtask import react_to_key_error
+
+from gnr.task.gnrtask import GNRTask
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from gnr.renderingdirmanager import get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
@@ -70,9 +71,6 @@ class FrameRenderingTask(RenderingTask):
 
     def restart(self):
         RenderingTask.restart(self)
-        # if self.use_frames:
-        #     self.preview_file_path = [None] * len(self.frames)
-        #     self.preview_task_file_path = [None] * len(self.frames)
 
     def verify_results(self, subtask_id, task_results, result_type):
         tr_files = super(FrameRenderingTask, self).verify_results(subtask_id, task_results, result_type)
@@ -114,6 +112,14 @@ class FrameRenderingTask(RenderingTask):
         else:
             self._update_frame_task_preview()
 
+
+    @GNRTask.handle_key_error
+    def computation_failed(self, subtask_id):
+        GNRTask.computation_failed(self, subtask_id)
+        if self.use_frames:
+            self._update_frame_task_preview()
+        else:
+            self._update_task_preview()
 
     #########################
     # Specific task methods #
@@ -196,7 +202,7 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @react_to_key_error
+    @RenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         if not self.use_frames or self.__full_frames():
             return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
@@ -289,6 +295,11 @@ class FrameRenderingTask(RenderingTask):
     def _get_output_name(self, frame_num, num_start):
         num = str(frame_num)
         return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
+
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        if not self.use_frames:
+            RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
+
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
                      frame_num=1):

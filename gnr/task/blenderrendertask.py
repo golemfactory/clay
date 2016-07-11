@@ -11,16 +11,15 @@ from golem.task.taskstate import SubtaskStatus
 from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.task.gnrtask import GNROptions, react_to_key_error
-from gnr.task.renderingtask import RenderingTask
+from gnr.task.gnrtask import GNROptions
+from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
     get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
-from gnr.task.imgrepr import load_img
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class BlenderDefaults(RendererDefaults):
@@ -218,6 +217,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
+
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
@@ -241,12 +241,18 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        if not self._accept_client(node_id):
-            logger.warning("Client {} banned from this task ".format(node_name))
-            return None
+        verdict = self._accept_client(node_id)
+        if verdict != AcceptClientVerdict.ACCEPTED:
+
+            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+            if should_wait:
+                logger.warning("Waiting for client's {} task results".format(node_name))
+            else:
+                logger.warning("Client {} banned from this task".format(node_name))
+
+            return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
-
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
 
@@ -291,7 +297,8 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        return self.ExtraData(ctd=ctd)
 
     def restart(self):
         super(BlenderRenderTask, self).restart()
@@ -389,12 +396,12 @@ class BlenderRenderTask(FrameRenderingTask):
                 res_y = ceiling_height
         return res_y
 
-    @react_to_key_error
+    @FrameRenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         x, y = self._get_part_size(subtask_id)
         return 0, 0, x, y
 
-    @react_to_key_error
+    @FrameRenderingTask.handle_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
         min_x = start_box[0] / float(self.res_x)

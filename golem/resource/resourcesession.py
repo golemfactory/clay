@@ -162,7 +162,7 @@ class ResourceSession(BasicSafeSession):
 
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
-        if self.resource_server.check_resource(msg.resource):
+        if self.resource_server.get_resource_entry(msg.resource):
             self.send_has_resource(msg.resource)
             if copies > 0:
                 self.resource_server.get_peers()
@@ -184,7 +184,7 @@ class ResourceSession(BasicSafeSession):
         self.conn.producer = EncryptFileProducer([self.resource_server.prepare_resource(msg.resource)], self)
 
     def _react_to_pull_resource(self, msg):
-        has_resource = self.resource_server.check_resource(msg.resource)
+        has_resource = self.resource_server.get_resource_entry(msg.resource)
         if not has_resource:
             self.resource_server.get_peers()
         self.send_pull_answer(msg.resource, has_resource)

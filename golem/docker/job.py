@@ -49,7 +49,7 @@ class DockerJob(object):
 
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
-                 host_config=None):
+                 host_config=None, container_log_level=None):
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -76,7 +76,8 @@ class DockerJob(object):
         self.container_log = None
         self.state = self.STATE_NEW
 
-        container_log_level = container_logger.getEffectiveLevel()
+        if container_log_level is None:
+            container_log_level = container_logger.getEffectiveLevel()
         self.log_std_streams = 0 < container_log_level <= logging.DEBUG
         self.logging_thread = None
 
@@ -107,6 +108,9 @@ class DockerJob(object):
                 return nt_path_to_posix_path(path)
             return path
 
+        container_config = dict(self.host_config)
+        cpuset = container_config.pop('cpuset', None)
+
         host_cfg = client.create_host_config(
             binds={
                 posix_path(self.work_dir): {
@@ -121,9 +125,9 @@ class DockerJob(object):
                     "bind": self.OUTPUT_DIR,
                     "mode": "rw"
                 }
-            }
+            },
+            **container_config
         )
-        host_cfg.update(self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
@@ -133,10 +137,11 @@ class DockerJob(object):
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR
+            # cpuset=cpuset
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
-                     .format(self.container_id, self.image.name, 
+                     .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
                      )
         assert self.container_id
@@ -158,7 +163,7 @@ class DockerJob(object):
         if self.logging_thread:
             self.logging_thread.join()
             self.logging_thread = None
-            
+
     def __enter__(self):
         self._prepare()
         return self

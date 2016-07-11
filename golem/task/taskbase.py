@@ -58,6 +58,14 @@ class ComputeTaskDef(object):
 
 class Task(object):
 
+    class ExtraData(object):
+        def __init__(self, should_wait=False, ctd=None, **kwargs):
+            self.should_wait = should_wait
+            self.ctd = ctd
+
+            for key, value in kwargs.iteritems():
+                setattr(self, key, value)
+
     @classmethod
     def build_task(cls, task_builder):
         assert isinstance(task_builder, TaskBuilder)
@@ -85,8 +93,7 @@ class Task(object):
         :param int num_cores: number of cores that current node declares
         :param None|str node_id: id of a node that wants to get a next subtask
         :param None|str node_name: name of a node that wants to get a next subtask
-        :return ComputeTaskDef | None: return ComputeTaskDef if a client with given id receives a subtask to compute
-        and None otherwise
+        :return ExtraData
         """
         return  # Implement in derived class
 
@@ -142,6 +149,8 @@ class Task(object):
         :return bool: True if task passed verification, False otherwise
         """
         return  # Implement in derived class
+
+
 
     @abc.abstractmethod
     def get_total_tasks(self):
@@ -252,6 +261,13 @@ class Task(object):
         :return list:
         """
         return []
+
+    def result_incoming(self, subtask_id):
+        """ Informs that a computed task result is being retrieved
+        :param subtask_id:
+        :return:
+        """
+        pass
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1, 'hashes': 2}

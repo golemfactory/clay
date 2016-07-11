@@ -9,7 +9,7 @@ from golem.resource.resource import TaskResourceHeader, decompress_dir
 
 from gnr.renderingdirmanager import get_test_task_path, get_test_task_tmp_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class LocalComputer(object):

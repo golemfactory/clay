@@ -1,52 +1,33 @@
 import os
 
-from mock import patch, Mock, MagicMock
+from mock import Mock, MagicMock
 
-from golem.client import create_client, Client
+from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.network.p2p.p2pservice import P2PService
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 
 
 class TestCreateClient(TestDirFixture):
 
-    @patch('golem.client.Client')
-    def test_config_default(self, mock_client):
-        create_client()
-        for name, args, kwargs in mock_client.mock_calls:
-            if name == "":  # __init__ call
-                config_desc = args[0]
-                self.assertIs(type(config_desc), ClientConfigDescriptor)
-                return
-        self.fail("__init__ call not found")
+    def test_config_override_valid(self):
+        assert hasattr(ClientConfigDescriptor(), "node_address")
+        c = Client(datadir=self.path, node_address='1.0.0.0')
+        assert c.config_desc.node_address == '1.0.0.0'
 
-    @patch('golem.client.Client')
-    def test_config_override_valid(self, mock_client):
-        self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
-        create_client(datadir=self.path, node_address='1.0.0.0')
-        for name, args, kwargs in mock_client.mock_calls:
-            if name == "":  # __init__ call
-                config_desc = args[0]
-                self.assertEqual(config_desc.node_address, '1.0.0.0')
-                return
-        self.fail("__init__ call not found")
-
-    @patch('golem.client.Client')
-    def test_config_override_invalid(self, mock_client):
-        """Test that create_client() does not allow to override properties
+    def test_config_override_invalid(self):
+        """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
-        self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
+        assert not hasattr(ClientConfigDescriptor(), "node_colour")
         with self.assertRaises(AttributeError):
-            create_client(datadir=self.path, node_colour='magenta')
+            Client(datadir=self.path, node_colour='magenta')
 
 
 class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path,
-                   transaction_system=True)
+        c = Client(datadir=self.path, transaction_system=True)
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
@@ -63,7 +44,7 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_remove_resources(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         c.start_network()
 
         d = c.get_computed_files_dir()
@@ -86,39 +67,43 @@ class TestClient(TestWithDatabase):
         c._unlock_datadir()
 
     def test_datadir_lock(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        # Let's use non existing dir as datadir here to check how the Client
+        # is able to cope with that.
+        datadir = os.path.join(self.path, "non-existing-dir")
+        c = Client(datadir=datadir)
+        assert c.config_desc.node_address == ''
         with self.assertRaises(IOError):
-            Client(ClientConfigDescriptor(), datadir=self.path)
+            Client(datadir=datadir)
         c._unlock_datadir()
 
     def test_metadata(self):
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
+        c = Client(datadir=self.path)
         meta = c.get_metadata()
         assert meta is not None
         assert not meta
         c._unlock_datadir()
 
-    def test_interpret_metadata(self):
-        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-        c = Client(ClientConfigDescriptor(), datadir=self.path)
-        c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
-        c.ipfs_manager = IPFSDaemonManager()
-        meta = c.get_metadata()
-        assert meta and meta['ipfs']
-
-        ip_1 = '127.0.0.1'
-        port_1 = 40102
-
-        node = MagicMock()
-        node.prv_addr = ip_1
-        node.prv_port = port_1
-
-        c.interpret_metadata(meta, ip_1, port_1, node)
-        c._unlock_datadir()
+    # IPFS metadata disabled
+    # def test_interpret_metadata(self):
+    #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+    #     c = Client(datadir=self.path)
+    #     c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
+    #     c.ipfs_manager = IPFSDaemonManager()
+    #     meta = c.get_metadata()
+    #     assert meta and meta['ipfs']
+    #
+    #     ip_1 = '127.0.0.1'
+    #     port_1 = 40102
+    #
+    #     node = MagicMock()
+    #     node.prv_addr = ip_1
+    #     node.prv_port = port_1
+    #
+    #     c.interpret_metadata(meta, ip_1, port_1, node)
+    #     c._unlock_datadir()
 
     def test_get_status(self):
-        ccd = ClientConfigDescriptor()
-        c = Client(ccd, datadir=self.path)
+        c = Client(datadir=self.path)
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
         c.p2pservice = MagicMock()
@@ -148,3 +133,4 @@ class TestClient(TestWithDatabase):
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
         assert "Not accepting tasks" in status
+        c._unlock_datadir()

@@ -3,7 +3,7 @@ import logging
 from renderercustomizer import RendererCustomizer
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class LuxRenderDialogCustomizer(RendererCustomizer):

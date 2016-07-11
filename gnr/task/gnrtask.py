@@ -1,26 +1,25 @@
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
-from golem.task.taskstate import SubtaskStatus
-from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
-from golem.environments.environment import Environment
-from golem.network.p2p.node import Node
-from golem.core.compress import decompress
-import os
+import copy
 import logging
 import pickle
-import copy
+import os
+import time
 
-logger = logging.getLogger(__name__)
+from golem.core.common import HandleKeyError
+from golem.core.compress import decompress
+from golem.environments.environment import Environment
+from golem.network.p2p.node import Node
+from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskstate import SubtaskStatus
+
+from gnr.renderingdirmanager import get_tmp_path
+
+logger = logging.getLogger("gnr.task")
 
 
-def react_to_key_error(func):
-    def func_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            logger.warning("This is not my subtask {}".format(args[1]))
-            return False
-
-    return func_wrapper
+def log_key_error(*args, **kwargs):
+    logger.warning("This is not my subtask {}".format(args[1]))
+    return False
 
 
 class GNRTaskBuilder(TaskBuilder):
@@ -52,6 +51,7 @@ class GNROptions(object):
 
 
 class GNRTask(Task):
+    handle_key_error = HandleKeyError(log_key_error)
 
     ################
     # Task methods #
@@ -117,7 +117,7 @@ class GNRTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    @react_to_key_error
+    @handle_key_error
     def verify_subtask(self, subtask_id):
         return self.subtasks_given[subtask_id]['verified']
 
@@ -137,7 +137,7 @@ class GNRTask(Task):
         for subtask_id in self.subtasks_given.keys():
             self.restart_subtask(subtask_id)
 
-    @react_to_key_error
+    @handle_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             was_failure_before = self.subtasks_given[subtask_id]['status'] == SubtaskStatus.failure
@@ -153,7 +153,7 @@ class GNRTask(Task):
     def abort(self):
         pass
 
-    @react_to_key_error
+    @handle_key_error
     def computation_finished(self, subtask_id, task_result, result_type=0):
         if not self.should_accept(subtask_id):
             if self.should_verify(subtask_id):
@@ -190,7 +190,7 @@ class GNRTask(Task):
     def update_task_state(self, task_state):
         pass
 
-    @react_to_key_error
+    @handle_key_error
     def get_trust_mod(self, subtask_id):
         return 1.0
 
@@ -225,6 +225,9 @@ class GNRTask(Task):
         self.stderr[subtask_id] = ""
         tr_files = self.load_task_results(task_results, result_type, subtask_id)
         self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+
+    def result_incoming(self, subtask_id):
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
 
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
@@ -272,13 +275,13 @@ class GNRTask(Task):
     def after_test(self, results, tmp_dir):
         pass
 
-    @react_to_key_error
+    @handle_key_error
     def should_accept(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
             return False
         return True
 
-    @react_to_key_error
+    @handle_key_error
     def should_verify(self, subtask_id):
         return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.restarted
 
@@ -311,10 +314,10 @@ class GNRTask(Task):
             logger.error("Can't read file {}: {}".format(f, err))
             return ""
 
-    @react_to_key_error
+    @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp):

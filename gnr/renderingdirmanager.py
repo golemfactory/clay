@@ -3,7 +3,7 @@ import logging
 
 from golem.core.common import get_golem_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 PREV_FILE = "ui/nopreview.png"
 

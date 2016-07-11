@@ -149,7 +149,7 @@ class DummyTask(Task):
         subtask_def.environment = self.header.environment
         subtask_def.return_address = self.header.task_owner_address
         subtask_def.return_port = self.header.task_owner_port
-        return subtask_def
+        return self.ExtraData(ctd=subtask_def)
 
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
