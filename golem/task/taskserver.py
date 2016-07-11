@@ -23,6 +23,11 @@ class TaskServer(PendingConnectionsServer):
         self.keys_auth = keys_auth
         self.config_desc = config_desc
 
+        self.performance = {"DEFAULT" : self.config_desc.estimated_performance,
+                            "LUXRENDER" : self.config_desc.estimated_lux_performance,
+                            "BLENDER" : self.config_desc.estimated_blender_performance
+                            }
+
         self.node = node
         self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
@@ -72,6 +77,8 @@ class TaskServer(PendingConnectionsServer):
         theader = self.task_keeper.get_task()
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
+            task_type = theader.environment
+            performance = self.performance[task_type]
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
@@ -79,7 +86,7 @@ class TaskServer(PendingConnectionsServer):
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
-                    'estimated_performance': self.config_desc.estimated_performance,
+                    'estimated_performance': performance,
                     'price': self.config_desc.min_price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
