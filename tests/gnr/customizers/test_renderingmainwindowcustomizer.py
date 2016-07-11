@@ -15,8 +15,8 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
     @patch('gnr.customizers.renderingmainwindowcustomizer.QtCore')
     @patch('gnr.customizers.gnrmainwindowcustomizer.QPalette')
     def test_preview(self, mock_palette, mock_core, mock_core2):
-            customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
-            self.assertTrue(os.path.isfile(customizer.preview_path))
+        customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
+        self.assertTrue(os.path.isfile(customizer.preview_path))
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])

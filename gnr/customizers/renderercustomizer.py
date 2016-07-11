@@ -75,6 +75,8 @@ class RendererCustomizer(Customizer):
             self.gui.ui.outputFileLineEdit.textChanged,
             self.gui.ui.outputFormatsComboBox.currentIndexChanged,
             self.gui.ui.outputFileLineEdit.textChanged,
+            self.gui.ui.framesLineEdit.textChanged,
+            self.gui.ui.framesCheckBox.stateChanged,
         ])
 
     def _connect_with_task_settings_changed(self, list_gui_el):
