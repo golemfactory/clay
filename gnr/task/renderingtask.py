@@ -168,6 +168,7 @@ class RenderingTask(GNRTask):
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
         img_current.save(self.preview_file_path, "BMP")
+        img.close()
 
     @GNRTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
@@ -288,6 +289,7 @@ class RenderingTask(GNRTask):
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.res_x, self.res_y))
             img.save(self.preview_file_path, "BMP")
+            img.close()
 
         return Image.open(self.preview_file_path)
 

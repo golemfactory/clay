@@ -157,6 +157,8 @@ class FrameRenderingTask(RenderingTask):
         if img:
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
+            
+        img.close()
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
