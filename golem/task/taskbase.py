@@ -43,6 +43,7 @@ class ComputeTaskDef(object):
     def __init__(self):
         self.task_id = ""
         self.subtask_id = ""
+        self.deadline = ""
         self.src_code = ""
         self.extra_data = {}
         self.short_description = ""

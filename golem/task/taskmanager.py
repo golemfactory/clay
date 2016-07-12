@@ -495,7 +495,7 @@ class TaskManager(object):
             ss.computer.ip_address = address
             ss.computer.price = price
             ss.time_started = time.time()
-            ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
+            ss.deadline = ctd.deadline
             # TODO: read node ip address
             ss.subtask_definition = ctd.short_description
             ss.subtask_id = ctd.subtask_id

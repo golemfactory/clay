@@ -1,5 +1,6 @@
 from mock import Mock
 
+from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
 from golem.task.taskclient import TaskClient
@@ -11,7 +12,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 class TestTaskManager(LogTestCase, TestDirFixture):
     @staticmethod
-    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz"):
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", subtask_timeout=120):
         task_mock = Mock()
         task_mock.header.task_id = task_id
         task_mock.header.resource_size = 2 * 1024
@@ -19,6 +20,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.max_price = 10000
         task_mock.query_extra_data.return_value.ctd.task_id = task_id
         task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        task_mock.query_extra_data.return_value.ctd.deadline = timeout_to_deadline(subtask_timeout)
         return task_mock
 
     def test_get_next_subtask(self):

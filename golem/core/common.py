@@ -1,8 +1,9 @@
 import os
+import errno
 import sys
+from datetime import datetime, timedelta
 from os import path
 
-import errno
 
 LOG_NAME = "golem.log"
 
@@ -42,6 +43,22 @@ def nt_path_to_posix_path(path):
     if len(parts) > 1:
         return "/" + parts[0].lower() + parts[1]
     return path
+
+
+def deadline_to_timeout(deadline):
+    """ Return number of seconds from now to deadline
+    :param datetime deadline: UTC datetime
+    :return float:
+    """
+    return (deadline - datetime.utcnow()).total_seconds()
+
+
+def timeout_to_deadline(timeout):
+    """ Return utctime <timeout> seconds from now
+    :param float timeout:
+    :return datetime:
+    """
+    return datetime.utcnow() + timedelta(seconds=timeout)
 
 
 class HandleKeyError(object):

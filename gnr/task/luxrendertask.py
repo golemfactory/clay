@@ -6,6 +6,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
+from golem.core.common import timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -21,6 +22,8 @@ from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptCl
 from gnr.task.scenefileeditor import regenerate_lux_file
 
 logger = logging.getLogger("gnr.task")
+
+MERGE_TIMEOUT = 7200
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -142,6 +145,7 @@ class LuxTask(RenderingTask):
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
+        self.merge_timeout = MERGE_TIMEOUT
 
         try:
             with open(main_scene_file) as f:
@@ -358,6 +362,7 @@ class LuxTask(RenderingTask):
         ctd.src_code = src_code
         ctd.working_directory = "."
         ctd.docker_images = self.header.docker_images
+        ctd.deadline = timeout_to_deadline(self.merge_timeout)
         return ctd
 
     def _short_extra_data_repr(self, perf_index, extra_data):
