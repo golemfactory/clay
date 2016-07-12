@@ -23,12 +23,6 @@ class TaskServer(PendingConnectionsServer):
         self.keys_auth = keys_auth
         self.config_desc = config_desc
 
-        self.performance = {"DEFAULT" : self.config_desc.estimated_performance,
-                            "LUXRENDER" : self.config_desc.estimated_lux_performance,
-                            "BLENDER" : self.config_desc.estimated_blender_performance,
-                            "DUMMY" : self.config_desc.estimated_performance
-                            }
-
         self.node = node
         self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
         self.task_manager = TaskManager(config_desc.node_name, self.node,
@@ -78,8 +72,12 @@ class TaskServer(PendingConnectionsServer):
         theader = self.task_keeper.get_task()
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
-            task_type = theader.environment
-            performance = self.performance[task_type]
+            env_id = theader.environment
+            env = self.task_keeper.environments_manager.get_environment_by_id(env_id)
+            if env is not None:
+                performance = env.get_performance(self.config_desc)
+            else:
+                performance = 0.0
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
