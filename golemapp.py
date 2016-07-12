@@ -18,7 +18,9 @@ from gnr.node import GNRNode  # TODO: This also configures the logging.
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=GNRNode.parse_task_file,
               help="Request task from file")
-def start(gui, payments, datadir, node_address, peer, task):
+@click.option('--multiprocessing-fork', nargs=1, default=None)
+def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork):
+
     freeze_support()
 
     if gui:
