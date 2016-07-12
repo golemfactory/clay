@@ -60,9 +60,13 @@ RESOURCE_SESSION_TIMEOUT = 600
 PLUGIN_PORT = 1111
 ETH_ACCOUNT_NAME = ""
 USE_IP6 = 0
-MIN_PRICE = 1
-MAX_PRICE = 1000
 ACCEPT_TASKS = 1
+
+# Default max price per hour -- 0.005 ETH ~ 0.05 USD
+MAX_PRICE = int(0.005 * 10**18)
+
+# Default min price per hour of computation to accept
+MIN_PRICE = MAX_PRICE // 10
 
 
 class NodeConfig:
@@ -187,5 +191,5 @@ class AppConfig:
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), self.config_file, refresh=True,
-                     check_uid=False)
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(),
+                     self.config_file, refresh=True, check_uid=False)
