@@ -50,7 +50,7 @@ class GNRClientRemoteEventListener(GolemClientRemoteEventListener):
         self.remote_client.check_network_state()
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
 class GNRApplicationLogic(QtCore.QObject):
