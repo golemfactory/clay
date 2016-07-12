@@ -1,9 +1,9 @@
-from golem.task.taskclient import TaskClient
-from golem.task.taskstate import TaskState, SubtaskStatus, SubtaskState
 from mock import Mock
 
 from golem.network.p2p.node import Node
+from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
+from golem.task.taskstate import TaskState, SubtaskStatus, SubtaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -16,8 +16,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
-        task_mock.query_extra_data.return_value.task_id = task_id
-        task_mock.query_extra_data.return_value.subtask_id = subtask_id
+        task_mock.query_extra_data.return_value.ctd.task_id = task_id
+        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
         return task_mock
 
     def test_get_next_subtask(self):
@@ -29,12 +29,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(wrong_task, True)
 
         task_mock = self._get_task_mock()
-
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-
-        task_mock.query_extra_data.return_value = extra_data
 
         # Task's initial state is set to 'waiting' (found in activeStatus)
         tm.add_new_task(task_mock)
@@ -72,13 +66,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         task_mock = self._get_task_mock()
 
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-
-        task_mock.query_extra_data.return_value = extra_data
-
         tm.add_new_task(task_mock)
         with self.assertLogs(logger, level=1) as l:
             tm.set_value("xyz", "xxyyzz", 13)
@@ -107,19 +94,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_id = "xyz"
 
         resources = ['first', 'second']
-        hash_resources = [['first', 'deadbeef01'], ['second', 'deadbeef02']]
 
         def get_resources(*args):
             return resources
 
         task_mock = self._get_task_mock()
         task_mock.get_resources = get_resources
-
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = task_id
-
-        task_mock.query_extra_data.return_value = extra_data
 
         tm.add_new_task(task_mock)
 
@@ -134,13 +114,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         task_mock = self._get_task_mock()
         task_mock.counting_nodes = {}
-
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = subtask_id
-
-        task_mock.query_extra_data.return_value = extra_data
 
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called

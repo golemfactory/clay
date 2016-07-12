@@ -205,7 +205,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
-        
+
         tmp_dir = self._get_tmp_dir()
         if not self.use_frames:
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
