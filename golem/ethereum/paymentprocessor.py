@@ -170,11 +170,12 @@ class PaymentProcessor(object):
             log.info("Checking {} transaction".format(hstr))
             info = self.__client.get_transaction_by_hash(hstr)
             assert info, "Transaction has been lost"
-            if info['blockHash']:
+            if info['blockNumber']:
                 block_hash = info['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
                 block_number = int(info['blockNumber'], 16)
-                log.info("{}: block {} ({})".format(hstr, block_hash, block_number))
+                log.info("Confirmed {}: block {} ({})".format(hstr, block_hash,
+                                                              block_number))
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
