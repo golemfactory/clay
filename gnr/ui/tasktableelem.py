@@ -1,3 +1,4 @@
+import inspect
 from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
 
 
@@ -64,31 +65,23 @@ class TaskTableElem:
 
 
 class ItemMap(object):
-    def __init__(self):
-        self.__index = ['name', 'id', 'status', 'time', 'cost', 'progress']
+    Name = 0
+    Id = 1
+    Status = 2
+    Time = 3
+    Cost = 4
+    Progress = 5
 
-    def index_of(self, name):
+    @staticmethod
+    def count():
         """
-        Get index of @name item
-        :param name: item name
-        :return: index of item
-        """
-        return self.__index.index(name)
-
-    def item_at(self, index):
-        """
-        Get item name for index
-        :param index: index of item
-        :return: item name
-        """
-        return self.__index[index]
-
-    def count(self):
-        """
-        Get total number of items
+        Return number of items in map
         :return: number of items
         """
-        return len(self.__index)
-
-
-ItemMap = ItemMap()
+        size = 0
+        for name in dir(ItemMap):
+            value = getattr(ItemMap, name)
+            if not name.startswith('__') and not inspect.ismethod(value):
+                if isinstance(value, int) and int(value) > size:
+                    size = int(value)
+        return size + 1
