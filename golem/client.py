@@ -78,7 +78,7 @@ class Client(object):
         self.config_desc.init_from_app_config(config)
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
-                self.quit()
+                self.quit()  # quit only closes underlying services (for now)
                 raise AttributeError(
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)

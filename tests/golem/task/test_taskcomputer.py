@@ -60,6 +60,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc2.last_checking = 10 ** 10
 
         tc2.run()
+        tc2.session_timeout()
 
     def test_resource_failure(self):
         task_server = MagicMock()
@@ -171,6 +172,25 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         time.sleep(0.5)
         if tt.is_alive():
             tt.join(timeout=5)
+
+    def test_change_config(self):
+        tc = TaskComputer("ABC", Mock(), use_docker_machine=False)
+        tc.docker_manager = Mock()
+
+        tc.use_docker_machine = False
+        tc.change_config(Mock(), in_background=False)
+        assert not tc.docker_manager.update_config.called
+
+        tc.use_docker_machine = True
+        tc.docker_manager.update_config = lambda x, y, z: x()
+
+        tc.counting_task = True
+        tc.change_config(Mock(), in_background=False)
+
+        tc.docker_manager.update_config = lambda x, y, z: y()
+
+        tc.counting_task = False
+        tc.change_config(Mock(), in_background=False)
 
     @staticmethod
     def __wait_for_tasks(tc):

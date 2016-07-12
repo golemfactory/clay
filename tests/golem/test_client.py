@@ -151,6 +151,11 @@ class TestClient(TestWithDatabase):
         assert "Not accepting tasks" in status
         c.quit()
 
+    def test_quit(self):
+        c = Client(datadir=self.path)
+        c.db = None
+        c.quit()
+
 
 class TestEventListener(unittest.TestCase):
 
