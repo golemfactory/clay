@@ -29,7 +29,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_client(self):
         client = Client(datadir=self.path,
                         transaction_system=False,
-                        connect_to_known_hosts=False)
+                        connect_to_known_hosts=False,
+                        docker_machine_manager=False)
 
         try:
             start_client_process(queue=Mock(),
@@ -52,7 +53,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         gui_app.listen = Mock()
         reactor = self._get_reactor()
 
-        start_gui_process(queue,
-                          datadir=self.path,
+        start_gui_process(queue, None,
                           gui_app=gui_app,
                           reactor=reactor)

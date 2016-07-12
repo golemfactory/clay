@@ -4,7 +4,7 @@ import time
 from mock import MagicMock, Mock
 
 from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -13,7 +13,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_init(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server)
+        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
@@ -23,7 +23,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc.waiting_for_task_timeout = 1
         task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server)
+        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
@@ -32,7 +32,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.request_task.assert_called_with()
         task_server.request_task = MagicMock()
         task_server.config_desc.accept_tasks = False
-        tc2 = TaskComputer("DEF", task_server)
+        tc2 = TaskComputer("DEF", task_server, use_docker_machine=False)
         tc2.counting_task = False
         tc2.current_computations = []
         tc2.waiting_for_task = None
@@ -63,7 +63,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_resource_failure(self):
         task_server = MagicMock()
-        tc = TaskComputer("ABC", task_server)
+        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
 
         task_id = 'xyz'
         subtask_id = 'xxyyzz'
@@ -82,7 +82,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_computation(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server)
+        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
@@ -169,6 +169,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
                                                         "key", "owner", "ABC")
         tt.end_comp()
         time.sleep(0.5)
+        if tt.is_alive():
+            tt.join(timeout=5)
 
     @staticmethod
     def __wait_for_tasks(tc):
@@ -178,7 +180,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
-        tc = TaskComputer("ABC", MagicMock())
+        tc = TaskComputer("ABC", MagicMock(), use_docker_machine=False)
         tc.counting_task = True
         tc.waiting_for_task = None
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},

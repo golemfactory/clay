@@ -52,7 +52,7 @@ def ip_networks(use_ipv6=False):
             continue
         for addrInfo in ip:
             addr = unicode(addrInfo.get('addr'))
-            mask = unicode(addrInfo.get('netmask'))
+            mask = unicode(addrInfo.get('netmask')) or u'255.255.255.0'
 
             try:
                 ip_addr = ipaddress.ip_network((addr, mask), strict=False)

@@ -3,6 +3,7 @@ The task simply computes hashes of some random data and requires
 no external tools. The amount of data processed (ie hashed) and computational
 difficulty is configurable, see comments in DummyTaskParameters.
 """
+import atexit
 import os
 import re
 import shutil
@@ -43,9 +44,12 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False)
+                    connect_to_known_hosts=False,
+                    docker_machine_manager=False)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
+
+    atexit.register(client.quit)
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
@@ -75,10 +79,13 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False)
+                    connect_to_known_hosts=False,
+                    docker_machine_manager=False)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
+
+    atexit.register(client.quit)
 
     class DummyEnvironment(Environment):
         @classmethod

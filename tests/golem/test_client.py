@@ -17,6 +17,7 @@ class TestCreateClient(TestDirFixture):
         assert hasattr(ClientConfigDescriptor(), "node_address")
         c = Client(datadir=self.path, node_address='1.0.0.0')
         assert c.config_desc.node_address == '1.0.0.0'
+        c.quit()
 
     def test_config_override_invalid(self):
         """Test that Client() does not allow to override properties
@@ -115,7 +116,7 @@ class TestClient(TestWithDatabase):
     #     node.prv_port = port_1
     #
     #     c.interpret_metadata(meta, ip_1, port_1, node)
-    #     c._unlock_datadir()
+    #     c.quit()
 
     def test_get_status(self):
         c = Client(datadir=self.path)
