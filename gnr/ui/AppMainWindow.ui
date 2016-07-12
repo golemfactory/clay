@@ -527,7 +527,7 @@
                  <string>Add this task</string>
                 </property>
                 <property name="text">
-                 <string>Start task</string>
+                 <string>Create task</string>
                 </property>
                </widget>
               </item>
