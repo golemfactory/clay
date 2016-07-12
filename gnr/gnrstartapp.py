@@ -172,18 +172,18 @@ def start_app(datadir=None, rendering=False,
 
     queue = Queue()
 
-    client_process = Process(target=start_client_process,
-                             args=(queue, start_ranking, datadir, transaction_system))
-    client_process.daemon = True
-    client_process.start()
+    gui_process = Process(target=start_gui_process,
+                          args=(queue, datadir, rendering))
+    gui_process.daemon = True
+    gui_process.start()
 
-    process_monitor = ProcessMonitor(client_process)
+    process_monitor = ProcessMonitor(gui_process)
     process_monitor.add_shutdown_callback(stop_reactor)
     process_monitor.start()
 
     try:
-        start_gui_process(queue, datadir, rendering)
+        start_client_process(queue, start_ranking, datadir, transaction_system)
     except Exception as exc:
-        print "Exception in GUI thread: {}".format(exc)
+        print "Exception in Client process: {}".format(exc)
 
     process_monitor.exit()
