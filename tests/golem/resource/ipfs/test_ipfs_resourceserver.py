@@ -2,10 +2,12 @@ import os
 import unittest
 import shutil
 import uuid
+from mock import patch
 
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.resource.base.resourceserver import TransferStatus
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourceserver import IPFSResourceServer, dummy_context, IPFSTransferStatus
+from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.tools.testdirfixture import TestDirFixture
 
 node_name = 'test_suite'
@@ -15,6 +17,7 @@ class MockClient:
 
     def __init__(self):
         self.downloaded = None
+        self.failed = None
         self.resource_peers = []
 
     def get_resource_peers(self, *args, **kwargs):
@@ -22,6 +25,9 @@ class MockClient:
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
+
+    def task_resource_failure(self, *args, **kwrags):
+        self.failed = True
 
 
 class MockConfig:
@@ -72,27 +78,24 @@ class TestResourceServer(TestDirFixture):
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
         rs.start_accepting()
 
-    def testChangeResourceDir(self):
+    @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
+    def testGetResources(self):
         rs = self.testAddTask()
         rm = rs.resource_manager
-        resources = rm.list_resources(self.task_id)
 
-        assert resources
+        rm.add_files_to_get([
+            (u'filename', u'multihash'),
+            (u'filename_2', u'multihash_2'),
+            (u'filename_2', u'')
+        ], 'xyz')
 
-        new_config_desc = MockConfig(self.path, node_name + "-new")
-        rs.change_resource_dir(new_config_desc)
-        new_resources = rm.list_resources(self.task_id)
-
-        assert len(resources) == len(new_resources)
-
-        for resource in resources:
-            assert resource in new_resources
+        rs.sync_network()
 
     def testGetDistributedResourceRoot(self):
         keys_auth = EllipticalKeysAuth()
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
-        resource_dir = self.dir_manager.get_task_resource_dir('')
+        resource_dir = self.dir_manager.get_node_dir()
 
         assert rs.get_distributed_resource_root() == resource_dir
 
@@ -110,12 +113,13 @@ class TestResourceServer(TestDirFixture):
     def testAddTask(self):
         keys_auth = EllipticalKeysAuth()
         client = MockClient()
-        new_config_desc = MockConfig(self.path, node_name + "-new")
+        new_config_desc = MockConfig(self.path, node_name)
         dir_manager = DirManager(new_config_desc.root_path,
                                  new_config_desc.node_name)
 
         rs = IPFSResourceServer(dir_manager, keys_auth, client)
         rm = rs.resource_manager
+        rm.clear_resources()
 
         assert not rm.list_resources(self.task_id)
 
@@ -134,6 +138,27 @@ class TestResourceServer(TestDirFixture):
 
         return rs
 
+    def testChangeResourceDir(self):
+        rs = self.testAddTask()
+        rm = rs.resource_manager
+        resources = rm.list_resources(self.task_id)
+
+        assert resources
+
+        new_path = self.path + '_' + str(uuid.uuid4())
+
+        new_config_desc = MockConfig(new_path, node_name + "-new")
+        rs.change_resource_dir(new_config_desc)
+        new_resources = rm.list_resources(self.task_id)
+
+        assert len(resources) == len(new_resources)
+
+        for resource in resources:
+            assert resource in new_resources
+
+        if os.path.exists(new_path):
+            shutil.rmtree(new_path)
+
     def testRemoveTask(self):
         rs = self.testAddTask()
         rm = rs.resource_manager
@@ -149,7 +174,7 @@ class TestResourceServer(TestDirFixture):
         keys_auth = EllipticalKeysAuth()
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
-
+        rs.resource_manager.clear_resources()
         rs.resource_manager.add_resources(self.target_resources, self.task_id)
         resources = rs.resource_manager.list_resources(self.task_id)
         resources_len = len(resources)
@@ -220,15 +245,7 @@ class TestResourceServer(TestDirFixture):
         rs, file_names = self.testAddFilesToGet()
 
         for entry in file_names:
-            rs.resource_download_error(entry[0], self.task_id)
+            rs.resource_download_error(Exception("Error " + entry[0]),
+                                       entry[0], entry[1], self.task_id)
 
-        assert len(file_names) == len(rs.resources_to_get)
-
-        for entry in rs.resources_to_get:
-            assert entry[-1] == IPFSTransferStatus.failed
-
-
-class TestDummyContext(unittest.TestCase):
-    def test(self):
-        with dummy_context():
-            pass
+        assert len(rs.resources_to_get) == 0

@@ -1,27 +1,58 @@
-from mock import patch, Mock, MagicMock
+from multiprocessing import Queue
 
-from gnr.gnrstartapp import config_logging, load_environments, start_and_configure_client
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
+from mock import Mock
+
+from gnr.gnrstartapp import config_logging, load_environments, start_client_process, \
+    start_gui_process, GUIApp
+from golem.client import Client
 from golem.environments.environment import Environment
-from golem.tools.testdirfixture import TestDirFixture
+from golem.rpc.websockets import WebSocketRPCServerFactory
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
-class TestStartAppFunc(TestDirFixture):
+class MockService(object):
+    def method(self):
+        return True
+
+
+class TestStartAppFunc(TestDirFixtureWithReactor):
+
     def test_config_logging(self):
-        config_logging()
+        config_logging("golem.test")
 
-    @patch("gnr.gnrstartapp.start_client")
-    def test_start_clients(self, mock_start):
+    def test_load_environments(self):
         envs = load_environments()
         for el in envs:
             assert isinstance(el, Environment)
         assert len(envs) > 2
 
-        client = MagicMock()
-        client.transaction_system = None
-        mock_start.return_value = client
+    def test_start_client(self):
+        client = Client(datadir=self.path,
+                        transaction_system=False,
+                        connect_to_known_hosts=False)
 
-        logic = RenderingApplicationLogic()
-        logic.customizer = Mock()
-        start_and_configure_client(logic, envs, self.path)
-        logic.stop()
+        try:
+            start_client_process(queue=Mock(),
+                                 client=client,
+                                 start_ranking=False)
+        except Exception as exc:
+            self.fail("Failed to start client process: {}".format(exc))
+        finally:
+            client.quit()
+
+    def test_start_gui(self):
+        queue = Queue()
+        rpc_server = WebSocketRPCServerFactory()
+        rpc_server.local_host = '127.0.0.1'
+
+        mock_service_info = rpc_server.add_service(MockService())
+        queue.put(mock_service_info)
+
+        gui_app = GUIApp(rendering=True)
+        gui_app.listen = Mock()
+        reactor = self._get_reactor()
+
+        start_gui_process(queue,
+                          datadir=self.path,
+                          gui_app=gui_app,
+                          reactor=reactor)

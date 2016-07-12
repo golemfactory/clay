@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.core.common import is_windows
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 def print_progress(i, total):

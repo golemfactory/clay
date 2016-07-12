@@ -4,13 +4,14 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from gnr.task.gnrtask import check_subtask_id_wrapper
+from gnr.task.gnrtask import GNRTask
+
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from gnr.renderingdirmanager import get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
@@ -70,7 +71,7 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
 
-    @check_subtask_id_wrapper
+    @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
         if not self.should_accept(subtask_id):
             return
@@ -106,7 +107,7 @@ class FrameRenderingTask(RenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
 
             for tr_file in tr_files:
 
@@ -124,6 +125,14 @@ class FrameRenderingTask(RenderingTask):
                 self._copy_frames()
             else:
                 self._put_image_together(tmp_dir)
+
+    @GNRTask.handle_key_error
+    def computation_failed(self, subtask_id):
+        GNRTask.computation_failed(self, subtask_id)
+        if self.use_frames:
+            self._update_frame_task_preview()
+        else:
+            self._update_task_preview()
 
     #########################
     # Specific task methods #
@@ -206,7 +215,7 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @check_subtask_id_wrapper
+    @RenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         if not self.use_frames or self.__full_frames():
             return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
@@ -295,6 +304,10 @@ class FrameRenderingTask(RenderingTask):
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
+
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        if not self.use_frames:
+            RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
 
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,

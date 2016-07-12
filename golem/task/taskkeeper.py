@@ -3,6 +3,7 @@ import random
 import time
 from math import ceil
 
+from golem.core.common import HandleKeyError
 from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -24,21 +25,18 @@ class CompSubtaskInfo(object):
         self.subtask_id = subtask_id
 
 
-def react_to_key_error(func):
-    def func_wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except KeyError:
-            if isinstance(args[1], ComputeTaskDef):
-                task_id = args[1].task_id
-            else:
-                task_id = args[1]
-            logger.warning("This is not my task {}".format(task_id))
-            return None
-    return func_wrapper
+def log_key_error(*args, **kwargs):
+    if isinstance(args[1], ComputeTaskDef):
+        task_id = args[1].task_id
+    else:
+        task_id = args[1]
+    logger.warning("This is not my task {}".format(task_id))
+    return None
 
 
 class CompTaskKeeper(object):
+    handle_key_error = HandleKeyError(log_key_error)
+
     def __init__(self):
         self.active_tasks = {}
         self.subtask_to_task = {}
@@ -50,11 +48,11 @@ class CompTaskKeeper(object):
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, price)
 
-    @react_to_key_error
+    @handle_key_error
     def get_subtask_ttl(self, task_id):
         return self.active_tasks[task_id].header.subtask_timeout
 
-    @react_to_key_error
+    @handle_key_error
     def receive_subtask(self, comp_task_def):
         task = self.active_tasks[comp_task_def.task_id]
         if task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:
@@ -66,21 +64,21 @@ class CompTaskKeeper(object):
     def get_task_id_for_subtask(self, subtask_id):
         return self.subtask_to_task.get(subtask_id)
 
-    @react_to_key_error
+    @handle_key_error
     def get_node_for_task_id(self, task_id):
         return self.active_tasks[task_id].header.task_owner_key_id
 
-    @react_to_key_error
+    @handle_key_error
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
         assert type(price) in (int, long)
         return int(ceil(price * computing_time))
 
-    @react_to_key_error
+    @handle_key_error
     def remove_task(self, task_id):
         del self.active_tasks[task_id]
 
-    @react_to_key_error
+    @handle_key_error
     def request_failure(self, task_id):
         self.active_tasks[task_id].requests -= 1
 
@@ -96,7 +94,7 @@ class TaskHeaderKeeper(object):
     to compute or will pass information to other nodes.
     """
 
-    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=240.0,
+    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=180,
                  verification_timeout=3600):
         self.task_headers = {}  # all computing tasks that this node now about
         self.supported_tasks = []  # ids of tasks that this node may try to compute

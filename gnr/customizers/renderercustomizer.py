@@ -8,7 +8,7 @@ from PyQt4.QtGui import QFileDialog
 from customizer import Customizer
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class RendererCustomizer(Customizer):

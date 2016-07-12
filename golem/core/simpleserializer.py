@@ -1,5 +1,7 @@
-import json   # debug version
 import cPickle  # release version
+import json   # debug version
+
+import dill
 
 IS_DEBUG = False  # True - json, False - pickle
 
@@ -45,6 +47,15 @@ class SimpleSerializerRelease(object):
         """
         return cPickle.loads(data)
 
+
+class DILLSerializer(object):
+    @classmethod
+    def dumps(cls, obj):
+        return dill.dumps(obj)
+
+    @classmethod
+    def loads(cls, data):
+        return dill.loads(data)
 
 if IS_DEBUG:
     SimpleSerializer = SimpleSerializerDebug

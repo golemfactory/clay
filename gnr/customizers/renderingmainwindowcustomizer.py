@@ -19,7 +19,7 @@ from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesD
 
 from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 frame_renderers = [u"3ds Max Renderer", u"VRay Standalone", u"Blender"]
 

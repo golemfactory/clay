@@ -13,6 +13,23 @@ from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
+P2P_PROTOCOL_ID = 4
+
+
+class PeerSessionInfo(object):
+
+    attributes = [
+        'address', 'port',
+        'verified', 'rand_val',
+        'degree', 'key_id',
+        'node_name', 'node_info',
+        'listen_port', 'conn_id'
+    ]
+
+    def __init__(self, session):
+        for attr in self.attributes:
+            setattr(self, attr, getattr(session, attr))
+
 
 class PeerSession(BasicSafeSession):
     """ Session for Golem P2P Network. """
@@ -253,6 +270,12 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRUnverified)
             return
 
+        if msg.proto_id != P2P_PROTOCOL_ID:
+            logger.error("Protocol version mismatch {} vs {} (local)"
+                         .format(msg.proto_id, P2P_PROTOCOL_ID))
+            self.disconnect(PeerSession.DCRProtocolVersion)
+            return
+
         redundant_peers = self.p2p_service.redundant_peers()
         p = self.p2p_service.find_peer(self.key_id)
         self.p2p_service.add_to_peer_keeper(self.node_info)
@@ -391,7 +414,7 @@ class PeerSession(BasicSafeSession):
         if self.solve_challenge:
             self.challenge = listen_params[7]
             self.difficulty = listen_params[8]
-        self.send(MessageHello(*listen_params), send_unverified=True)
+        self.send(MessageHello(*listen_params, proto_id=P2P_PROTOCOL_ID), send_unverified=True)
 
     def __send_ping(self):
         self.send(MessagePing())

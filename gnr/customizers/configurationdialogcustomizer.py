@@ -1,21 +1,19 @@
-import multiprocessing
 import logging
+import multiprocessing
 import subprocess
-
 from PyQt4 import QtCore
+
 from PyQt4.QtGui import QMessageBox, QPalette
 
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
-from gnr.renderingtaskstate import RenderingTaskState
-from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
-from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):
@@ -29,11 +27,13 @@ class ConfigurationDialogCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
-        config_desc = self.logic.get_config()
-        self.__load_basic_config(config_desc)
-        self.__load_advance_config(config_desc)
-        self.__load_resource_config()
-        self.__load_payment_config(config_desc)
+        def load(config_desc):
+            self.__load_basic_config(config_desc)
+            self.__load_advance_config(config_desc)
+            self.__load_resource_config()
+            self.__load_payment_config(config_desc)
+
+        self.logic.get_config().addCallback(load)
 
     @staticmethod
     def du(path):
@@ -196,12 +196,14 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__refresh_disk_received()
 
     def __refresh_disk_received(self):
-        res_dirs = self.logic.get_res_dirs()
-        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        def change(res_dirs):
+            self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        self.logic.get_res_dirs().addCallback(change)
 
     def __refresh_disk_computed(self):
-        res_dirs = self.logic.get_res_dirs()
-        self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        def change(res_dirs):
+            self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',

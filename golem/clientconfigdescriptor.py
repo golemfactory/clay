@@ -31,6 +31,8 @@ class ClientConfigDescriptor(object):
         self.task_request_interval = 0.0
         self.use_waiting_for_task_timeout = 0
         self.waiting_for_task_timeout = 0.0
+        self.waiting_for_task_session_timeout = 0.0
+        self.forwarded_session_request_timeout = 0.0
         self.p2p_session_timeout = 0
         self.task_session_timeout = 0
         self.resource_session_timeout = 0
@@ -39,6 +41,7 @@ class ClientConfigDescriptor(object):
         self.estimated_lux_performance = 0.0
         self.estimated_blender_performance = 0.0
         self.node_snapshot_interval = 0.0
+        self.network_check_interval = 0.0
         self.max_results_sending_delay = 0.0
         self.num_cores = 0
         self.max_resource_size = 0

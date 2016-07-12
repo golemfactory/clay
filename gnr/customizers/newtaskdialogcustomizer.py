@@ -5,6 +5,7 @@ from copy import deepcopy
 
 from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
+from twisted.internet.defer import inlineCallbacks
 
 from gnr.ui.dialog import AddTaskResourcesDialog
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
@@ -15,7 +16,7 @@ from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class NewTaskDialogCustomizer(Customizer):
@@ -80,8 +81,10 @@ class NewTaskDialogCustomizer(Customizer):
         for t in task_types.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
+    @inlineCallbacks
     def _set_max_price(self):
-        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(self.logic.get_max_price()))
+        max_price = yield self.logic.get_max_price()
+        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(max_price))
         self._set_new_pessimistic_cost()
 
     def _show_add_resource_dialog(self):

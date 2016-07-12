@@ -136,8 +136,8 @@ class DockerJob(object):
             volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
             host_config=host_cfg,
             command=[container_script_path],
-            working_dir=self.WORK_DIR
-            # cpuset=cpuset
+            working_dir=self.WORK_DIR,
+            cpuset=cpuset
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"

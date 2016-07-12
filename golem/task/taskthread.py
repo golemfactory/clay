@@ -32,6 +32,7 @@ class TaskThread(Thread):
         self.end_time = None
         self.use_timeout = timeout != 0
         self.task_timeout = timeout
+        self.time_to_compute = self.task_timeout
         self.last_time_checking = time.time()
 
     def check_timeout(self):
@@ -42,7 +43,7 @@ class TaskThread(Thread):
         self.last_time_checking = time_
         if self.task_timeout < 0:
             self.error = True
-            self.error_msg = "Timeout"
+            self.error_msg = "Task timed out {:.1f}s".format(self.time_to_compute)
             self.end_comp()
 
     def get_subtask_id(self):

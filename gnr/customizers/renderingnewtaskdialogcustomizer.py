@@ -13,7 +13,7 @@ from verificationparamshelper import read_advance_verification_params, set_verif
 
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):

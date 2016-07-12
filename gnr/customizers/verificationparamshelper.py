@@ -3,7 +3,7 @@ from PyQt4 import QtCore
 
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 def read_advance_verification_params(gui, definition):
