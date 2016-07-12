@@ -15,6 +15,8 @@ from memoryhelper import resource_size_to_display, translate_resource_index, dir
 
 logger = logging.getLogger("gnr.gui")
 
+ETH = 1 / float(10**18)
+
 
 class ConfigurationDialogCustomizer(Customizer):
     """ Customizer for gui with all golem configuration option that can be changed by user
@@ -127,10 +129,10 @@ class ConfigurationDialogCustomizer(Customizer):
         max_memory_size, index = resource_size_to_display(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
-        
+
     def __run_lux_benchmark_button_clicked(self):
         self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
-            
+
     def __run_blender_benchmark_button_clicked(self):
         self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
 
@@ -186,8 +188,10 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
-        self.gui.ui.minPriceLineEdit.setText(u"{}".format(config_desc.min_price))
-        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(config_desc.max_price))
+        min_price = config_desc.min_price * ETH
+        max_price = config_desc.max_price * ETH
+        self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
+        self.gui.ui.maxPriceLineEdit.setText(u"{:.6f}".format(max_price))
 
     def __load_resource_config(self):
         self.gui.ui.diskWidget.hide()
@@ -334,13 +338,15 @@ class ConfigurationDialogCustomizer(Customizer):
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
         try:
-            cfg_desc.min_price = int(self.gui.ui.minPriceLineEdit.text())
+            min_price = float(self.gui.ui.minPriceLineEdit.text())
+            cfg_desc.min_price = int(min_price / ETH)
         except ValueError as err:
-            logger.warning("Wrong min_payment value: {}".format(err))
+            logger.warning("Wrong min price value: {}".format(err))
         try:
-            cfg_desc.max_price = int(self.gui.ui.maxPriceLineEdit.text())
+            max_price = float(self.gui.ui.maxPriceLineEdit.text())
+            cfg_desc.max_price = int(max_price / ETH)
         except ValueError as err:
-            logger.warning("Wrong max_payment value: {}".format(err))
+            logger.warning("Wrong max price value: {}".format(err))
         self.__check_eth_account()
 
     def __set_account_error(self):
