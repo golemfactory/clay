@@ -1,14 +1,16 @@
 from gnr.customizers.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
+from twisted.internet.defer import inlineCallbacks
 
 
 class PaymentsDialogCustomizer(Customizer):
 
+    @inlineCallbacks
     def load_data(self):
-        payments = self.logic.get_payments()
+        payments = yield self.logic.get_payments()
         for payment in payments:
             self._add_payment(payment)
-        incomes = self.logic.get_incomes()
+        incomes = yield self.logic.get_incomes()
         for income in incomes:
             self._add_income(income)
 
