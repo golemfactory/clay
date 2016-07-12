@@ -184,6 +184,10 @@ class PaymentProcessor(object):
                         p.save()
                 confirmed.append(h)
         for h in confirmed:
+            # Reduced reserved balance here to minimize chance of double update.
+            self.__reserved -= self.__inprogress[h].value
+            assert self.__reserved >= 0
+            # Delete in progress entry.
             del self.__inprogress[h]
 
     def get_ethers_from_faucet(self):
