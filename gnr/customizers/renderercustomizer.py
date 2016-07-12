@@ -75,8 +75,6 @@ class RendererCustomizer(Customizer):
             self.gui.ui.outputFileLineEdit.textChanged,
             self.gui.ui.outputFormatsComboBox.currentIndexChanged,
             self.gui.ui.outputFileLineEdit.textChanged,
-            self.gui.ui.framesLineEdit.textChanged,
-            self.gui.ui.framesCheckBox.stateChanged,
         ])
 
     def _connect_with_task_settings_changed(self, list_gui_el):
@@ -131,12 +129,17 @@ class RendererCustomizer(Customizer):
         self.logic.change_verification_option(size_y_max=self.gui.ui.outputResYSpinBox.value())
         self.logic.task_settings_changed()
 
+    def _frames_changed(self):
+        self.logic.task_settings_changed()
+
 
 class FrameRendererCustomizer(RendererCustomizer):
     def _setup_connections(self):
         super(FrameRendererCustomizer, self)._setup_connections()
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                self._frames_check_box_changed)
+        self.gui.ui.framesLineEdit.textChanged.connect(self._frames_changed)
+        self.gui.ui.framesCheckBox.stateChanged.connect(self._frames_changed)
 
     def load_data(self):
         super(FrameRendererCustomizer, self).load_data()
