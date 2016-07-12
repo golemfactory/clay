@@ -188,6 +188,7 @@ class GNRMainWindowCustomizer(Customizer):
     def _start_task_button_clicked(self):
         if self.current_task_highlighted is None:
             return
+        self.gui.ui.startTaskButton.setEnabled(False)
         self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
     def _add_task(self, task_id, status):
