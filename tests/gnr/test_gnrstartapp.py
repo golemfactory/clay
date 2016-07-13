@@ -34,6 +34,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         try:
             start_client_process(queue=Mock(),
+                                 log_queue=Mock(),
                                  client=client,
                                  start_ranking=False)
         except Exception as exc:
@@ -54,6 +55,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         reactor = self._get_reactor()
 
         start_gui_process(queue,
+                          log_queue=Mock(),
                           datadir=self.path,
                           gui_app=gui_app,
                           reactor=reactor)
