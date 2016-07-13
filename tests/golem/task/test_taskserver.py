@@ -111,7 +111,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         # ccd.use_waiting_ttl = True
         ccd.waiting_for_task_timeout = 19
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client,
-                        docker_machine_manager=False)
+                        use_docker_machine_manager=False)
         ccd2 = ClientConfigDescriptor()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057

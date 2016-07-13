@@ -13,7 +13,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_init(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
@@ -23,7 +23,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc.waiting_for_task_timeout = 1
         task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.waiting_for_task)
@@ -32,7 +32,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.request_task.assert_called_with()
         task_server.request_task = MagicMock()
         task_server.config_desc.accept_tasks = False
-        tc2 = TaskComputer("DEF", task_server, use_docker_machine=False)
+        tc2 = TaskComputer("DEF", task_server, use_docker_machine_manager=False)
         tc2.counting_task = False
         tc2.current_computations = []
         tc2.waiting_for_task = None
@@ -64,7 +64,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_resource_failure(self):
         task_server = MagicMock()
-        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         task_id = 'xyz'
         subtask_id = 'xxyyzz'
@@ -83,7 +83,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_computation(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server, use_docker_machine=False)
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
@@ -174,14 +174,14 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
             tt.join(timeout=5)
 
     def test_change_config(self):
-        tc = TaskComputer("ABC", Mock(), use_docker_machine=False)
+        tc = TaskComputer("ABC", Mock(), use_docker_machine_manager=False)
         tc.docker_manager = Mock()
 
-        tc.use_docker_machine = False
+        tc.use_docker_machine_manager = False
         tc.change_config(Mock(), in_background=False)
         assert not tc.docker_manager.update_config.called
 
-        tc.use_docker_machine = True
+        tc.use_docker_machine_manager = True
         tc.docker_manager.update_config = lambda x, y, z: x()
 
         tc.counting_task = True
@@ -200,7 +200,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
-        tc = TaskComputer("ABC", MagicMock(), use_docker_machine=False)
+        tc = TaskComputer("ABC", MagicMock(), use_docker_machine_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},

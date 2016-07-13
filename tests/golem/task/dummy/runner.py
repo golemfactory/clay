@@ -45,7 +45,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
                     connect_to_known_hosts=False,
-                    docker_machine_manager=False)
+                    use_docker_machine_manager=False)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
@@ -80,7 +80,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
                     connect_to_known_hosts=False,
-                    docker_machine_manager=False)
+                    use_docker_machine_manager=False)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))

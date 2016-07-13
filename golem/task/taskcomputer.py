@@ -32,7 +32,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_machine=True):
+    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -58,7 +58,7 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerMachineManager()
-        self.use_docker_machine = use_docker_machine
+        self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
                            in_background=False)
 
@@ -217,7 +217,7 @@ class TaskComputer(object):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
-        if dm.docker_machine_available and self.use_docker_machine:
+        if dm.docker_machine_available and self.use_docker_machine_manager:
 
             def status_callback():
                 return self.counting_task

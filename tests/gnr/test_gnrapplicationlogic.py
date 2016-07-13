@@ -205,7 +205,7 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
 
-        golem_client = Client(transaction_system=False, connect_to_known_hosts=False, docker_machine_manager=False)
+        golem_client = Client(transaction_system=False, connect_to_known_hosts=False, use_docker_machine_manager=False)
         golem_client.task_server = Mock()
         golem_client.p2pservice = Mock()
         golem_client.resource_server = Mock()
