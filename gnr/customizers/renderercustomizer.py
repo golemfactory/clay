@@ -129,9 +129,6 @@ class RendererCustomizer(Customizer):
         self.logic.change_verification_option(size_y_max=self.gui.ui.outputResYSpinBox.value())
         self.logic.task_settings_changed()
 
-    def _frames_changed(self):
-        self.logic.task_settings_changed()
-
 
 class FrameRendererCustomizer(RendererCustomizer):
     def _setup_connections(self):
@@ -165,6 +162,9 @@ class FrameRendererCustomizer(RendererCustomizer):
                 self.show_error_window("Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
                 return
             self.renderer_options.frames = frames
+
+    def _frames_changed(self):
+        self.logic.task_settings_changed()
 
     def _frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
