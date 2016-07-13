@@ -111,6 +111,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         config = yield self.get_config()
         response = yield self.client.start_batch() \
+            .get_description() \
             .get_client_id() \
             .get_datadir()   \
             .get_node_name() \
@@ -119,8 +120,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = response.pop()
         self.datadir = response.pop()
         client_id = response.pop()
+        description = response.pop()
 
-        self.customizer.set_options(config, client_id, payment_address)
+        self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
             self.customizer.prompt_node_name(config)
 
@@ -259,6 +261,9 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_config(self):
         config = yield self.client.get_config()
         returnValue(config)
+
+    def change_description(self, description):
+        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()

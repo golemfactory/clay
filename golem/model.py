@@ -186,7 +186,8 @@ class KnownHosts(BaseModel):
 
 
 class Account(BaseModel):
-    description = TextField()
+    node_id = CharField(unique=True)
+    description = TextField(default="")
 
     class Meta:
         database = db

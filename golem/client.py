@@ -13,7 +13,7 @@ from golem.core.simpleauth import SimpleAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database
+from golem.model import Database, Account
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -375,6 +375,17 @@ class Client(object):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
+
+    def get_description(self):
+        try:
+            account = Account.get_or_create(node_id=self.get_client_id())
+            return account.description
+        except Exception as e:
+            return "An error has occured {}".format(e)
+
+    def change_description(self, description):
+        q = Account.update(description=description).where(Account.node_id == self.get_client_id())
+        q.execute()
 
     def use_ranking(self):
         return bool(self.ranking)
