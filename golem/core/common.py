@@ -4,6 +4,8 @@ from os import path
 
 LOG_NAME = "golem.log"
 
+ETH = 1 / float(10**18)
+
 
 def is_windows():
     """
