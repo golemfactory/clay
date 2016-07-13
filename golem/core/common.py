@@ -1,6 +1,9 @@
+import logging
 import os
 import sys
 from os import path
+
+from golem.tools.queuehandler import QueueHandler
 
 LOG_NAME = "golem.log"
 
@@ -53,6 +56,12 @@ class HandleKeyError(object):
             except KeyError:
                 return self.handle_error(*args, **kwargs)
         return func_wrapper
+
+
+def process_config_logging(queue):
+    h = QueueHandler(queue)
+    logger = logging.getLogger()
+    logger.addHandler(h)
 
 
 def config_logging(logname=LOG_NAME):
