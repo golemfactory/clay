@@ -41,7 +41,7 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts]
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
@@ -183,3 +183,10 @@ class KnownHosts(BaseModel):
         indexes = (
             (('ip_address', 'port'), True),  # unique index
         )
+
+
+class Account(BaseModel):
+    description = TextField()
+
+    class Meta:
+        database = db
