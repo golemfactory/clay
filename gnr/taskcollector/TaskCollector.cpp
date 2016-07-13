@@ -21,7 +21,7 @@ using bitmap_ptr = std::unique_ptr<FIBITMAP, Deleter>;
 @param flag Optional load flag constant
 @return Returns the loaded dib if successful, returns NULL otherwise
 */
-bitmap_ptr GenericLoader(const std::string& lpszPathName, int flag) {
+bitmap_ptr GenericLoader(const std::string& lpszPathName, int flag = 0) {
 	auto fif = FIF_UNKNOWN;
 
 	// check if file path is not empty
@@ -96,8 +96,8 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message) {
 class TaskCollector {
 
 protected:
-	std::vector<bitmap_ptr> chunks;
-	std::vector<bitmap_ptr> alphaChunks;
+	std::vector<std::string> chunks;
+	std::vector<std::string> alphaChunks;
 
 public:
 	TaskCollector() = default;
@@ -109,23 +109,17 @@ public:
 	}
 	~TaskCollector() = default;
 
-	bool addImgFile(std::string pathName, int flag = 0)  {
+	bool addImgFile(std::string pathName)  {
 		if (pathName.empty())
 			return false;
-		auto img = GenericLoader(pathName, flag);
-		if (!img)
-			return false;
-		chunks.emplace_back(std::move(img));
+		chunks.emplace_back(pathName);
 		return true;
 	};
 
-	bool addAlphaFile(std::string pathName, int flag = 0) {
+	bool addAlphaFile(std::string pathName) {
 		if (pathName.empty())
 			return false;
-		auto img = GenericLoader(pathName, flag);
-		if (!img)
-			return false;
-		alphaChunks.emplace_back(std::move(img));
+		alphaChunks.emplace_back(pathName);
 		return true;
 	};
 
@@ -153,17 +147,21 @@ public:
 		}
 
 		const auto it = chunks.begin();
-		const auto width = FreeImage_GetWidth(it->get());
-		const auto height = FreeImage_GetHeight(it->get());
-		const auto type = FreeImage_GetImageType(it->get());
+		
+		bitmap_ptr firstChunk = GenericLoader(*it);
+		
+		const auto width = FreeImage_GetWidth(firstChunk.get());
+		const auto height = FreeImage_GetHeight(firstChunk.get());
+		const auto type = FreeImage_GetImageType(firstChunk.get());
+		
+		bitmap_ptr finalImage(FreeImage_Copy(firstChunk.get(), 0, height, width, 0));
 
-		bitmap_ptr finalImage(FreeImage_Copy(it->get(), 0, height, width, 0));
-
-		auto RGBChunkWorker = [=, &finalImage](const bitmap_ptr& el)
+		auto RGBChunkWorker = [=, &finalImage](const std::string el)
 		{
-			auto chunkHeight = FreeImage_GetHeight(el.get());
+			bitmap_ptr chunk = GenericLoader(el);
+			auto chunkHeight = FreeImage_GetHeight(chunk.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(el.get(), y));
+				auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
 				for (unsigned int x = 0; x < width; ++x) {
@@ -174,11 +172,12 @@ public:
 			}
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage](const bitmap_ptr& el)
+		auto RGBAChunkWorker = [=, &finalImage](const std::string el)
 		{
-			auto chunkHeight = FreeImage_GetHeight(el.get());
+			bitmap_ptr chunk = GenericLoader(el);
+			auto chunkHeight = FreeImage_GetHeight(chunk.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(el.get(), y));
+				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
 				for (unsigned int x = 0; x < width; ++x) {
@@ -190,11 +189,12 @@ public:
 			}
 		};
 
-		auto alphaChunksWorker = [width, &finalImage](bitmap_ptr& el)
+		auto alphaChunksWorker = [width, &finalImage](const std::string el)
 		{
-			auto chunkHeight = FreeImage_GetHeight(el.get());
+			bitmap_ptr chunk = GenericLoader(el);
+			auto chunkHeight = FreeImage_GetHeight(chunk.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(el.get(), y));
+				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
 				for (unsigned int x = 0; x < width; ++x) {
@@ -223,24 +223,31 @@ public:
 		if (showProgress) {
 			std::cout << "Adding all accepted chunks to the final image\n";
 		}
+		
 		const auto it = chunks.begin();
-		const auto width = FreeImage_GetWidth(it->get());
+		bitmap_ptr firstChunk = GenericLoader(*it);
+		const auto width = FreeImage_GetWidth(firstChunk.get());
 		auto height = 0;
 		
-		for (auto i = chunks.begin(); i != chunks.end(); ++i)
-			height += FreeImage_GetHeight(i->get());
+		for (auto i = chunks.begin(); i != chunks.end(); ++i) {
+			bitmap_ptr chunk = GenericLoader(*i);
+			height += FreeImage_GetHeight(chunk.get());
+		}
 
 		auto currentHeight = 0;
 
-		const auto type = FreeImage_GetImageType(it->get());
-		const auto bpp = FreeImage_GetBPP(it->get());
+		const auto type = FreeImage_GetImageType(firstChunk.get());
+		
+		const auto bpp = FreeImage_GetBPP(firstChunk.get());
+		
 		bitmap_ptr finalImage(FreeImage_AllocateT(type, width, height, bpp));
 
-		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const bitmap_ptr& el)
+		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const std::string el)
 		{
-			auto chunkHeight = FreeImage_GetHeight(el.get());
+			bitmap_ptr chunk = GenericLoader(el);
+			auto chunkHeight = FreeImage_GetHeight(chunk.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(el.get(), y));
+				const auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(finalImage.get(), y + currentHeight));
 				for (unsigned int x = 0; x < width; ++x) {
 					dstbits[x].red = srcbits[x].red;
@@ -251,11 +258,12 @@ public:
 			currentHeight += chunkHeight;
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const bitmap_ptr& el)
+		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const std::string el)
 		{
-			auto chunkHeight = FreeImage_GetHeight(el.get());
+			bitmap_ptr chunk = GenericLoader(el);
+			auto chunkHeight = FreeImage_GetHeight(chunk.get());
 			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(el.get(), y));
+				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y + currentHeight));
 				for (unsigned int x = 0; x < width; ++x) {
 					dstbits[x].red = srcbits[x].red;
