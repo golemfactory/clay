@@ -5,7 +5,7 @@ import uuid
 from mock import Mock, MagicMock
 
 from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
-from golem.client import Client, GolemClientRemoteEventListener
+from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -172,3 +172,14 @@ class TestEventListener(unittest.TestCase):
 
         gnr_listener.check_network_state()
         assert gnr_listener.remote_client.check_network_state.called
+
+    def test_task_computer_event_listener(self):
+
+        client = Mock()
+        listener = ClientTaskComputerEventListener(client)
+
+        listener.toggle_config_dialog(True)
+        client.toggle_config_dialog.assert_called_with(True)
+
+        listener.toggle_config_dialog(False)
+        client.toggle_config_dialog.assert_called_with(False)

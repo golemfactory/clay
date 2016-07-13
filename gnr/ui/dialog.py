@@ -11,6 +11,7 @@ from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
 from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
+from gnr.ui.gen.ui_UpdatingConfigDialog import Ui_updatingConfigDialog
 
 
 class Dialog(object):
@@ -67,6 +68,11 @@ class GeneratingKeyWindow(Dialog):
 class SaveKeysDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_SaveKeysDialog)
+
+
+class UpdatingConfigDialog(Dialog):
+    def __init__(self, parent):
+        Dialog.__init__(self, parent, Ui_updatingConfigDialog)
 
 
 # ADDING TASK DIALOGS

@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from mock import Mock, MagicMock
 from twisted.internet.defer import Deferred
 
@@ -233,3 +234,19 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.get_incomes()
 
         golem_client.quit()
+
+    def test_updating_config_dialog(self):
+        logic = RenderingApplicationLogic()
+        app = GNRGui(logic, AppMainWindow)
+
+        logic.client = Mock()
+        logic.register_gui(app.get_main_window(),
+                           RenderingMainWindowCustomizer)
+
+        logic.toggle_config_dialog(True)
+        logic.toggle_config_dialog(True)
+        logic.toggle_config_dialog(False)
+        logic.toggle_config_dialog(False)
+
+        app.app.exit(0)
+        app.app.deleteLater()
