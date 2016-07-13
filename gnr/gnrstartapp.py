@@ -1,8 +1,7 @@
+import logging
 from multiprocessing import Process, Queue
 from os import path
 
-from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
-from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from twisted.internet.defer import inlineCallbacks
 
 from gnr.application import GNRGui
@@ -14,23 +13,15 @@ from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.ui.appmainwindow import AppMainWindow
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 from golem.client import Client
-from golem.core.common import get_golem_path
+from golem.core.common import LOG_NAME, config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
-
-LOG_NAME = "golem.log"
-
-
-def config_logging(logger_name, logname=LOG_NAME):
-    """Config logger"""
-    import logging.config
-    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
-    return logging.getLogger(logger_name)
 
 
 def install_qt4_reactor():
@@ -86,11 +77,12 @@ class GUIApp(object):
 
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
 
-    logger_name = "gnr.app"
     if datadir:
-        logger = config_logging(logger_name, path.join(datadir, LOG_NAME))
+        config_logging(path.join(datadir, LOG_NAME))
     else:
-        logger = config_logging(logger_name)
+        config_logging()
+
+    logger = logging.getLogger("gnr.app")
 
     client_service_info = queue.get(True, 3600)
 
@@ -127,11 +119,12 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
 def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
-    logger_name = "golem.client"
     if datadir:
-        logger = config_logging(logger_name, path.join(datadir, LOG_NAME))
+        config_logging(path.join(datadir, LOG_NAME))
     else:
-        logger = config_logging(logger_name)
+        config_logging()
+
+    logger = logging.getLogger("golem.client")
 
     environments = load_environments()
 
