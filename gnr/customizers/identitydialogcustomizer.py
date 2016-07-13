@@ -1,4 +1,5 @@
 from PyQt4.QtGui import QMessageBox, QFileDialog
+from twisted.internet.defer import inlineCallbacks
 
 from gnr.ui.dialog import SaveKeysDialog, GeneratingKeyWindow
 from customizer import Customizer
@@ -15,22 +16,24 @@ LOAD_NEW_WARNING = u"Are you sure that you want to load new keys? If you don't s
 
 class IdentityDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
-        self.keys_auth = None
         self.changed = False
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
-        self.keys_auth = self.logic.get_keys_auth()
         self.set_labels()
 
+    @inlineCallbacks
     def set_labels(self):
-        self.gui.ui.key_id_label.setText(u"Key id: {}".format(self.keys_auth.get_key_id()))
-        self.gui.ui.difficulty_label.setText(u"Difficulty: {}".format(self.keys_auth.get_difficulty()))
+        key_id = yield self.logic.get_key_id()
+        difficulty = yield self.logic.get_difficulty()
+        self.gui.ui.key_id_label.setText(u"Key id: {}".format(key_id))
+        self.gui.ui.difficulty_label.setText(u"Difficulty: {}".format(difficulty))
 
     def keys_changed(self):
         self.set_labels()
         self.changed = True
 
+    @inlineCallbacks
     def _load_from_file(self):
         reply = QMessageBox.warning(self.gui.window, "Warning!", LOAD_NEW_WARNING, QMessageBox.Yes | QMessageBox.No,
                                     defaultButton=QMessageBox.No)
@@ -39,12 +42,12 @@ class IdentityDialogCustomizer(Customizer):
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
                                  "Choose private key file"))
-        if file_name != "":
-            result = self.keys_auth.load_from_file(file_name)
-            if result:
-                self.keys_changed()
-            else:
-                IdentityDialogCustomizer.show_error_window("Can't load key from given file")
+
+        result = yield self.logic.load_keys_from_file(file_name)
+        if result:
+            self.keys_changed()
+        else:
+            IdentityDialogCustomizer.show_error_window("Can't load key from given file")
 
     def _save_in_file(self):
         save_keys_dialog = SaveKeysDialog(self.gui.window)
@@ -63,10 +66,10 @@ class IdentityDialogCustomizer(Customizer):
         if reply == QMessageBox.No:
             return
 
-        window = GeneratingKeyWindow(self.gui.window)
-        window_customizer = GenerateNewKeyWindowCustomizer(window, self)
-        window.show()
-        window_customizer.generate_key(difficulty)
+        # window = GeneratingKeyWindow(self.gui.window)
+        # window_customizer = GenerateNewKeyWindowCustomizer(window, self)
+        # window.show()
+        # window_customizer.generate_key(difficulty)
 
     def _setup_connections(self):
         self.gui.ui.ok_button.clicked.connect(lambda: self._close())

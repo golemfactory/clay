@@ -287,6 +287,17 @@ class Client(object):
     def get_keys_auth(self):
         return self.keys_auth
 
+    def load_keys_from_file(self, file_name):
+        if file_name != "":
+            return self.keys_auth.load_from_file(file_name)
+        return False
+
+    def get_key_id(self):
+        return self.get_client_id()
+
+    def get_difficulty(self):
+        return self.keys_auth.get_difficulty()
+
     def get_client_id(self):
         return self.keys_auth.get_key_id()
 

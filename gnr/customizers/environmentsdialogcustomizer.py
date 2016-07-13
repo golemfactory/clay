@@ -1,3 +1,5 @@
+from twisted.internet.defer import inlineCallbacks
+
 from gnr.customizers.customizer import Customizer
 
 from gnr.ui.envtableelem import EnvTableElem
@@ -13,9 +15,10 @@ class EnvironmentsDialogCustomizer(Customizer):
         self.environments = set()
         Customizer.__init__(self, gui, logic)
 
+    @inlineCallbacks
     def load_data(self):
         self.gui.ui.tableWidget.horizontalHeader().setStretchLastSection(True)
-        self.environments = self.logic.get_environments()
+        self.environments = yield self.logic.get_environments()
         for env in self.environments:
             current_row_count = self.gui.ui.tableWidget.rowCount()
             self.gui.ui.tableWidget.insertRow(current_row_count)
