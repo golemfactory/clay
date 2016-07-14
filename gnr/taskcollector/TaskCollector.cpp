@@ -156,7 +156,7 @@ public:
 		
 		bitmap_ptr finalImage(FreeImage_Copy(firstChunk.get(), 0, height, width, 0));
 
-		auto RGBChunkWorker = [=, &finalImage](const std::string el)
+		auto RGBChunkWorker = [=, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
