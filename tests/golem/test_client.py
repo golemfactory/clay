@@ -98,6 +98,15 @@ class TestClient(TestWithDatabase):
         assert not meta
         c.quit()
 
+    def test_description(self):
+        c = Client(datadir=self.path)
+        assert c.get_description() == ""
+        desc = u"ADVANCE DESCRIPTION\n\tSOME TEXT"
+        c.change_description(desc)
+        assert c.get_description() == desc
+        c.quit()
+
+
     # IPFS metadata disabled
     # def test_interpret_metadata(self):
     #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager

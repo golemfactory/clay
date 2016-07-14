@@ -261,3 +261,16 @@ class TestGNRApplicationLogic(TestDirFixture):
 
         app.app.exit(0)
         app.app.deleteLater()
+
+    def test_change_description(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        golem_client = Client()
+        client = MockRPCClient(golem_client)
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+        logic.register_client(client, service_info)
+        golem_client.change_description("NEW DESC")
+        time.sleep(1)
+        assert golem_client.get_description() == "NEW DESC"
+        golem_client.quit()
+
