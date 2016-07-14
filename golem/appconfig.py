@@ -192,4 +192,4 @@ class AppConfig:
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
         SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(),
-                     self.config_file, refresh=True, check_uid=False)
+                     self.config_file, refresh=True)

@@ -45,15 +45,17 @@ class GNRMainWindowCustomizer(Customizer):
         # Footer options
         self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
 
-        # Status options
-        self.gui.ui.nodeNameLabel.setText(u"{}".format(cfg_desc.node_name))
-
         # Account options
         self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
         self.gui.ui.golemIdLabel.setCursorPosition(0)
-        self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
 
+        self.set_name(cfg_desc.node_name)
+
+    def set_name(self, node_name):
+        # Status options
+        self.gui.ui.nodeNameLabel.setText(u"{}".format(node_name))
+        self.gui.ui.nameLabel.setText(u"{}".format(node_name))
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):

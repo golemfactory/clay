@@ -36,7 +36,6 @@ class BaseAbstractResourceManager(IClientHandler):
 
         self.current_downloads = 0
         self.dir_manager = dir_manager
-        self.node_name = dir_manager.node_name
 
         if resource_dir_method:
             self.resource_dir_method = resource_dir_method

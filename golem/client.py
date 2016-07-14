@@ -423,15 +423,15 @@ class Client(object):
         return self.resource_server.get_distributed_resource_root()
 
     def remove_computed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_computed_files_dir())
 
     def remove_distributed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_distributed_files_dir())
 
     def remove_received_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
