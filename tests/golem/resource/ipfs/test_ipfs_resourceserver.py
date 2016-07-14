@@ -44,8 +44,8 @@ class TestResourceServer(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
 
-        self.dir_manager = DirManager(self.path, node_name)
-        self.dir_manager_aux = DirManager(self.path, node_name + "-aux")
+        self.dir_manager = DirManager(self.path)
+        self.dir_manager_aux = DirManager(self.path)
         self.config_desc = MockConfig()
         self.target_resources = [
             'test_file',
@@ -114,8 +114,7 @@ class TestResourceServer(TestDirFixture):
         keys_auth = EllipticalKeysAuth()
         client = MockClient()
         new_config_desc = MockConfig(self.path, node_name)
-        dir_manager = DirManager(new_config_desc.root_path,
-                                 new_config_desc.node_name)
+        dir_manager = DirManager(new_config_desc.root_path)
 
         rs = IPFSResourceServer(dir_manager, keys_auth, client)
         rm = rs.resource_manager

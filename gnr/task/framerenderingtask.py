@@ -145,7 +145,7 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(new_chunk_file_path)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         if self.preview_file_path[num] is None:
             self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
         if self.preview_task_file_path[num] is None:
@@ -298,7 +298,7 @@ class FrameRenderingTask(RenderingTask):
         return self.total_tasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
         preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)

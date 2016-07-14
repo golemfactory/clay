@@ -8,7 +8,7 @@ class TestResourcesManager(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
-        self.dir_manager = DirManager(self.path, 'node2')
+        self.dir_manager = DirManager(self.path)
         res_path = self.dir_manager.get_task_resource_dir('task2')
 
         file1 = os.path.join(res_path, 'file1')

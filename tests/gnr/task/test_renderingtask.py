@@ -29,7 +29,7 @@ class TestRenderingTask(TestDirFixture):
     def test_remove_from_preview(self):
         rt = self._init_task()
         rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
-        tmp_dir = get_tmp_path(rt.header.node_name, rt.header.task_id, rt.root_path)
+        tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
         makedirs(tmp_dir)
         img = rt._open_preview()
         for i in range(rt.res_x):

@@ -118,6 +118,8 @@ class GNRApplicationLogic(QtCore.QObject):
         client_id = response.pop()
 
         self.customizer.set_options(config, client_id, payment_address)
+        if not self.node_name:
+            self.customizer.prompt_node_name(config)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -268,8 +270,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
+    @inlineCallbacks
     def change_config(self, cfg_desc):
-        self.client.change_config(cfg_desc)
+        yield self.client.change_config(cfg_desc)
+        self.node_name = yield self.client.get_node_name()
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     def _get_new_task_state(self):
         return GNRTaskState()

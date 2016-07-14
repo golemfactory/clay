@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -1504,16 +1504,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="8" column="0">
-                 <widget class="QLabel" name="estimatedRankLabel">
-                  <property name="toolTip">
-                   <string>Estimated rank of this machine. </string>
-                  </property>
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
                 <item row="7" column="0">
                  <widget class="QLabel" name="supportedTasksLabel">
                   <property name="text">
@@ -1523,6 +1513,16 @@
                 </item>
                 <item row="7" column="1">
                  <widget class="QLabel" name="supportedTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
+                 <widget class="QLabel" name="estimatedRankLabel">
+                  <property name="toolTip">
+                   <string>Estimated rank of this machine. </string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1552,7 +1552,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1826,6 +1826,16 @@
                     </item>
                     <item row="1" column="1">
                      <widget class="QLineEdit" name="hostIPLineEdit"/>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="nodeNameLabel_2">
+                      <property name="text">
+                       <string>Node name:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="nodeNameLineEdit"/>
                     </item>
                    </layout>
                   </item>
