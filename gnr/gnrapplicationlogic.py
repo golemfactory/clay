@@ -121,6 +121,8 @@ class GNRApplicationLogic(QtCore.QObject):
         client_id = response.pop()
 
         self.customizer.set_options(config, client_id, payment_address)
+        if not self.node_name:
+            self.customizer.prompt_node_name(config)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -271,8 +273,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
+    @inlineCallbacks
     def change_config(self, cfg_desc):
-        self.client.change_config(cfg_desc)
+        yield self.client.change_config(cfg_desc)
+        self.node_name = yield self.client.get_node_name()
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     def _get_new_task_state(self):
         return GNRTaskState()
@@ -338,6 +343,26 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_keys_auth(self):
         keys_auth = yield self.client.get_keys_auth()
         returnValue(keys_auth)
+
+    @inlineCallbacks
+    def get_key_id(self):
+        key_id = yield self.client.get_key_id()
+        returnValue(key_id)
+
+    @inlineCallbacks
+    def get_difficulty(self):
+        difficulty = yield self.client.get_difficulty()
+        returnValue(difficulty)
+
+    @inlineCallbacks
+    def load_keys_from_file(self, file_name):
+        result = yield self.client.load_keys_from_file(file_name)
+        returnValue(result)
+
+    @inlineCallbacks
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        result = yield self.client.save_keys_to_files(private_key_path, public_key_path)
+        returnValue(result)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:

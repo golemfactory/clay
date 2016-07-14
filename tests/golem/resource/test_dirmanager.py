@@ -10,7 +10,7 @@ class TestDirManager(TestDirFixture):
     node1 = 'node1'
 
     def testInit(self):
-        self.assertIsNotNone(DirManager(self.path, self.node1))
+        self.assertIsNotNone(DirManager(self.path))
 
     def testClearDir(self):
         file1 = os.path.join(self.path, 'file1')
@@ -36,7 +36,7 @@ class TestDirManager(TestDirFixture):
         self.assertTrue(os.path.isfile(file4))
         self.assertTrue(os.path.isdir(dir1))
         self.assertTrue(os.path.isdir(dir2))
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         dm.clear_dir(dm.root_path, undeletable)
         self.assertTrue(os.path.isfile(file1))
         self.assertTrue(os.path.isfile(file3))
@@ -50,17 +50,17 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isdir(dir1))
 
     def testGetTaskTemporaryDir(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '12345'
         tmp_dir = dm.get_task_temporary_dir(task_id)
-        expectedTmpDir = os.path.join(self.path, self.node1, task_id, 'tmp')
-        self.assertEquals(os.path.normpath(tmp_dir), expectedTmpDir)
+        expected_tmp_dir = os.path.join(self.path, task_id, 'tmp')
+        self.assertEquals(os.path.normpath(tmp_dir), expected_tmp_dir)
         self.assertTrue(os.path.isdir(tmp_dir))
         tmp_dir = dm.get_task_temporary_dir(task_id)
         self.assertTrue(os.path.isdir(tmp_dir))
         tmp_dir = dm.get_task_temporary_dir(task_id, create=False)
         self.assertTrue(os.path.isdir(tmp_dir))
-        self.assertEquals(os.path.normpath(tmp_dir), expectedTmpDir)
+        self.assertEquals(os.path.normpath(tmp_dir), expected_tmp_dir)
         shutil.rmtree(tmp_dir)
         tmp_dir = dm.get_task_temporary_dir(task_id, create=False)
         self.assertFalse(os.path.isdir(tmp_dir))
@@ -68,10 +68,10 @@ class TestDirManager(TestDirFixture):
         self.assertTrue(os.path.isdir(tmp_dir))
 
     def testGetTaskResourceDir(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '12345'
         resDir = dm.get_task_resource_dir(task_id)
-        expectedResDir = os.path.join(self.path, self.node1, task_id, 'resources')
+        expectedResDir = os.path.join(self.path, task_id, 'resources')
         self.assertEquals(os.path.normpath(resDir), expectedResDir)
         self.assertTrue(os.path.isdir(resDir))
         resDir = dm.get_task_resource_dir(task_id)
@@ -86,10 +86,10 @@ class TestDirManager(TestDirFixture):
         self.assertTrue(os.path.isdir(resDir))
 
     def testGetTaskOutputDir(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '12345'
         outDir = dm.get_task_output_dir(task_id)
-        expectedResDir = os.path.join(self.path, self.node1, task_id, 'output')
+        expectedResDir = os.path.join(self.path, task_id, 'output')
         self.assertEquals(os.path.normpath(outDir), expectedResDir)
         self.assertTrue(os.path.isdir(outDir))
         outDir = dm.get_task_output_dir(task_id)
@@ -104,7 +104,7 @@ class TestDirManager(TestDirFixture):
         self.assertTrue(os.path.isdir(outDir))
 
     def testClearTemporary(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '12345'
         tmp_dir = dm.get_task_temporary_dir(task_id)
         self.assertTrue(os.path.isdir(tmp_dir))
@@ -129,7 +129,7 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isdir(dir1))
 
     def testClearResource(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '67891'
         resDir = dm.get_task_resource_dir(task_id)
         self.assertTrue(os.path.isdir(resDir))
@@ -154,7 +154,7 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isdir(dir1))
 
     def testClearOutput(self):
-        dm = DirManager(self.path, self.node1)
+        dm = DirManager(self.path)
         task_id = '01112'
         outDir = dm.get_task_output_dir(task_id)
         self.assertTrue(os.path.isdir(outDir))

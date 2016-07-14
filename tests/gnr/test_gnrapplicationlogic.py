@@ -232,6 +232,10 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.get_environments()
         logic.get_payments()
         logic.get_incomes()
+        logic.get_key_id()
+        logic.get_difficulty()
+        logic.load_keys_from_file('invalid')
+        logic.save_keys_to_files(os.path.join(self.path, 'invalid_1'), os.path.join(self.path, 'invalid_2'))
 
         golem_client.quit()
 

@@ -5,6 +5,7 @@ from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
 from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
 from gen.ui_GeneratingKeyWindow import Ui_generating_key_window
 from gen.ui_IdentityDialog import Ui_identity_dialog
+from gen.ui_NodeNameDialog import Ui_NodeNameDialog
 from gen.ui_PaymentsDialog import Ui_PaymentsDialog
 from gen.ui_SaveKeysDialog import Ui_SaveKeysDialog
 from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
@@ -73,6 +74,11 @@ class SaveKeysDialog(Dialog):
 class UpdatingConfigDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_updatingConfigDialog)
+
+
+class NodeNameDialog(Dialog):
+    def __init__(self, parent):
+        Dialog.__init__(self, parent, Ui_NodeNameDialog)
 
 
 # ADDING TASK DIALOGS

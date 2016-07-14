@@ -88,15 +88,13 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, common_config, node_config, cfg_file, refresh=False, check_uid=True):
+    def __init__(self, common_config, node_config, cfg_file, refresh=False):
         """ Read existing configuration or creat new one if it doesn't exist or refresh option is set to True.
         :param common_config: configuration that is common for all nodes
         :param node_config: node specific configuration
         :param str cfg_file: configuration file name
         :param bool refresh: *Default: False*  if set to True, than configuration for given node should be written
         even if it already exists.
-        :param bool check_uid: *Default: True* if node configuration is rewritten and this option is set to True, then
-        new uuid for a node will be generated
         """
         self._common_config = common_config
         self._node_config = node_config
@@ -116,10 +114,10 @@ class SimpleConfig(object):
                     else:
                         self.__read_options(cfg)
 
-                        if not check_uid:
-                            write_config = False
-                        elif len(self._node_config.get_node_name()) > 0:
-                            write_config = False
+                        # if not check_uid:
+                        #     write_config = False
+                        # elif len(self._node_config.get_node_name()) > 0:
+                        #     write_config = False
                 else:
                     cfg.add_section(self._node_config.section())
 
@@ -130,12 +128,12 @@ class SimpleConfig(object):
 
             if write_config:
                 logger.info("Writing {}'s configuration to {}".format(self.get_node_config().section(), cfg_file))
-                self.__write_config(cfg, cfg_file, check_uid)
+                self.__write_config(cfg, cfg_file)
         except Exception as ex:
             logger.warning("{} ... failed with an exception: {}".format(logger_msg, str(ex)))
             # no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
             logger.info("Failed to write configuration file. Creating fresh config.")
-            self.__write_config(self.__create_fresh_config(), cfg_file, check_uid)
+            self.__write_config(self.__create_fresh_config(), cfg_file)
 
     def get_common_config(self):
         """ Return common configuration (common for all nodes) """
@@ -152,12 +150,12 @@ class SimpleConfig(object):
 
         return cfg
 
-    def __write_config(self, cfg, cfg_file, uuid):
-        if uuid:
-            logger_msg = "Generating fresh UUID for {} ->".format(self.get_node_config().section())
-            new_uuid = SimpleAuth.generate_uuid()
-            logger.info("{} {}".format(logger_msg, new_uuid.get_hex()))
-            self.get_node_config().set_node_name(new_uuid.get_hex())
+    def __write_config(self, cfg, cfg_file):
+        # if uuid:
+        #     logger_msg = "Generating fresh UUID for {} ->".format(self.get_node_config().section())
+        #     new_uuid = SimpleAuth.generate_uuid()
+        #     logger.info("{} {}".format(logger_msg, new_uuid.get_hex()))
+        #     self.get_node_config().set_node_name(new_uuid.get_hex())
 
         self.__write_options(cfg)
 

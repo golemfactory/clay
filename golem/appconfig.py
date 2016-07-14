@@ -16,7 +16,7 @@ START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
 MIN_MEMORY_SIZE = 1000 * 1024
-MAX_RESOURCE_SIZE = 250 * 1024
+MAX_RESOURCE_SIZE = 2 * 1024 * 1024
 MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
 NUM_CORES = 1
 DISTRIBUTED_RES_NUM = 2
@@ -192,4 +192,4 @@ class AppConfig:
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
         SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(),
-                     self.config_file, refresh=True, check_uid=False)
+                     self.config_file, refresh=True)

@@ -9,13 +9,12 @@ from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import ETH
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 
 logger = logging.getLogger("gnr.gui")
-
-ETH = 1 / float(10**18)
 
 
 class ConfigurationDialogCustomizer(Customizer):
@@ -90,6 +89,8 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
+        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(config_desc.node_name))
+
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
         self.__load_trust_config(config_desc)
@@ -292,6 +293,9 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc.max_memory_size = u"{}".format(self.__count_resource_size(max_memory_size, index))
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
+        cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
+        if not cfg_desc.node_name:
+            self.show_error_window("Empty node name")
 
     def __read_advance_config(self, cfg_desc):
         cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())

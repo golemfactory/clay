@@ -4,6 +4,7 @@ import click
 
 from gnr.gnrstartapp import start_app
 from gnr.node import GNRNode  # TODO: This also configures the logging.
+from golem.core.common import config_logging
 
 
 @click.command()
@@ -27,6 +28,8 @@ def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork
         start_app(datadir=datadir, rendering=True,
                   transaction_system=payments)
     else:
+        config_logging()
+
         node = GNRNode(datadir=datadir, node_address=node_address,
                        transaction_system=payments)
         node.initialize()

@@ -205,7 +205,7 @@ class TaskComputer(object):
         return ret
 
     def change_config(self, config_desc, in_background=True):
-        self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.node_name)
+        self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
