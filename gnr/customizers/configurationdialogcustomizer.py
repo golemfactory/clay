@@ -91,6 +91,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
         self.gui.ui.nodeNameLineEdit.setText(u"{}".format(config_desc.node_name))
+
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
         self.__load_trust_config(config_desc)
@@ -294,6 +295,8 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
         cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
+        if not cfg_desc.node_name:
+            self.show_error_window("Empty node name")
 
     def __read_advance_config(self, cfg_desc):
         cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
