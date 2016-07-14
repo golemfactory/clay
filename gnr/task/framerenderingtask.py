@@ -120,11 +120,8 @@ class FrameRenderingTask(RenderingTask):
 
             self.num_tasks_received += num_end - num_start + 1
 
-        if self.num_tasks_received == self.total_tasks:
-            if self.use_frames:
-                self._copy_frames()
-            else:
-                self._put_image_together(tmp_dir)
+        if self.num_tasks_received == self.total_tasks and not self.use_frames:
+            self._put_image_together(tmp_dir)
 
     @GNRTask.handle_key_error
     def computation_failed(self, subtask_id):
@@ -250,8 +247,9 @@ class FrameRenderingTask(RenderingTask):
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
 
-    def _put_frame_together(self, tmp_dir, frame_num, num_start):
-        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+    def _put_frame_together(self, frame_num, num_start):
+        directory = os.path.dirname(self.output_file)
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -277,7 +275,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _collect_frames(self, num_start, tr_file, frames_list, tmp_dir):
         self.frames_given[frames_list[0]][0] = tr_file
-        self._put_frame_together(tmp_dir, frames_list[0], num_start)
+        self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
 
     def _collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
@@ -289,7 +287,7 @@ class FrameRenderingTask(RenderingTask):
         self._update_frame_preview(tr_file, frame_num, part)
 
         if len(self.frames_given[frame_num]) == parts:
-            self._put_frame_together(tmp_dir, frame_num, num_start)
+            self._put_frame_together(frame_num, num_start)
 
     def _count_part(self, start_num, parts):
         return ((start_num - 1) % parts) + 1
