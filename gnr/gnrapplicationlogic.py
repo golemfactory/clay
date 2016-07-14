@@ -401,8 +401,8 @@ class GNRApplicationLogic(QtCore.QObject):
         return estimated_perf
 
     def toggle_config_dialog(self, on=True):
-        self.customizer.gui.setEnabled('new_task', on)
-        self.customizer.gui.setEnabled('settings', on)  # disable 'change' and 'cancel' buttons
+        self.customizer.gui.setEnabled('new_task', not on)
+        self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
 
         if on:
             if not self.config_dialog_customizer:

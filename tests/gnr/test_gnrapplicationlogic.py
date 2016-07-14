@@ -244,9 +244,16 @@ class TestGNRApplicationLogic(TestDirFixture):
                            RenderingMainWindowCustomizer)
 
         logic.toggle_config_dialog(True)
+
+        assert not logic.customizer.gui.ui.settingsOkButton.isEnabled()
+        assert not logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+
         logic.toggle_config_dialog(True)
         logic.toggle_config_dialog(False)
         logic.toggle_config_dialog(False)
+
+        assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
+        assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
 
         app.app.exit(0)
         app.app.deleteLater()
