@@ -26,14 +26,12 @@ class TestTransactionSystem(TestWithDatabase):
 
     def test_get_income(self):
         e = TransactionSystem()
-        old_budget = e.budget
         e.add_to_waiting_payments("xyz", "DEF", 15)
         income = e.get_incomes_list()[0]
         self.assertEqual(income["value"], 0)
         self.assertEqual(income["expected_value"], 15)
         self.assertEqual(income["state"], IncomesState.waiting)
         e.get_income("DEF", 10)
-        self.assertEqual(old_budget + 10, e.budget)
         income = e.get_incomes_list()[0]
         self.assertEqual(income["value"], 10)
         self.assertEqual(income["expected_value"], 15)
@@ -42,7 +40,6 @@ class TestTransactionSystem(TestWithDatabase):
         income = e.get_incomes_list()[0]
         self.assertEqual(income["value"], 10)
         self.assertEqual(income["expected_value"], 15)
-        self.assertEqual(old_budget + 41, e.budget)
         self.assertEqual(income["state"], IncomesState.waiting)
         e.get_income("DEF", 2)
         income = e.get_incomes_list()[0]

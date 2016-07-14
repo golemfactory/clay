@@ -569,8 +569,6 @@ class Client(object):
         peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
-        if self.transaction_system:
-            msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
     def __lock_datadir(self):
