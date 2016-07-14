@@ -341,6 +341,26 @@ class GNRApplicationLogic(QtCore.QObject):
         keys_auth = yield self.client.get_keys_auth()
         returnValue(keys_auth)
 
+    @inlineCallbacks
+    def get_key_id(self):
+        key_id = yield self.client.get_key_id()
+        returnValue(key_id)
+
+    @inlineCallbacks
+    def get_difficulty(self):
+        difficulty = yield self.client.get_difficulty()
+        returnValue(difficulty)
+
+    @inlineCallbacks
+    def load_keys_from_file(self, file_name):
+        result = yield self.client.load_keys_from_file(file_name)
+        returnValue(result)
+
+    @inlineCallbacks
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        result = yield self.client.save_keys_to_files(private_key_path, public_key_path)
+        returnValue(result)
+
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
