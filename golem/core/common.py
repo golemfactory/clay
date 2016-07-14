@@ -1,5 +1,8 @@
-import sys
 import os
+import sys
+from os import path
+
+LOG_NAME = "golem.log"
 
 
 def is_windows():
@@ -50,3 +53,10 @@ class HandleKeyError(object):
             except KeyError:
                 return self.handle_error(*args, **kwargs)
         return func_wrapper
+
+
+def config_logging(logname=LOG_NAME):
+    """Config logger"""
+    import logging.config
+    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
+    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)

@@ -285,6 +285,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(ts)
         t = Task.build_task(tb)
+        ts.task_state.status = TaskStatus.starting
+        self.customizer.update_tasks(self.tasks)
 
         self.client.enqueue_new_task(t)
 

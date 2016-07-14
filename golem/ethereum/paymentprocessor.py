@@ -119,7 +119,8 @@ class PaymentProcessor(object):
         value = payment.value
         assert type(value) in (int, long)
         balance = self.available_balance()
-        log.info("Payment to {} ({})".format(payment.payee, value))
+        log.info("Payment to {} ({})".format(payment.payee.encode('hex'),
+                                             value))
         if value > balance:
             log.warning("Not enough money: {}".format(balance))
             return False
@@ -169,11 +170,12 @@ class PaymentProcessor(object):
             log.info("Checking {} transaction".format(hstr))
             info = self.__client.get_transaction_by_hash(hstr)
             assert info, "Transaction has been lost"
-            if info['blockHash']:
+            if info['blockNumber']:
                 block_hash = info['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
                 block_number = int(info['blockNumber'], 16)
-                log.info("{}: block {} ({})".format(hstr, block_hash, block_number))
+                log.info("Confirmed {}: block {} ({})".format(hstr, block_hash,
+                                                              block_number))
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
@@ -182,6 +184,10 @@ class PaymentProcessor(object):
                         p.save()
                 confirmed.append(h)
         for h in confirmed:
+            # Reduced reserved balance here to minimize chance of double update.
+            self.__reserved -= self.__inprogress[h].value
+            assert self.__reserved >= 0
+            # Delete in progress entry.
             del self.__inprogress[h]
 
     def get_ethers_from_faucet(self):

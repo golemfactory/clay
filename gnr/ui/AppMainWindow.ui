@@ -536,7 +536,7 @@
                  <string>Add this task</string>
                 </property>
                 <property name="text">
-                 <string>Start task</string>
+                 <string>Create task</string>
                 </property>
                </widget>
               </item>
@@ -693,12 +693,29 @@
                   <item row="5" column="0">
                    <widget class="QLabel" name="label_56">
                     <property name="toolTip">
-                     <string>Maximal price of a single subtask you are ready to pay</string>
+                     <string>Price for an hour of computation</string>
                     </property>
                     <property name="text">
-                     <string>Max price</string>
+                     <string>Price</string>
                     </property>
                    </widget>
+                  </item>
+                  <item row="4" column="1">
+                   <layout class="QHBoxLayout" name="horizontalLayout_21">
+                    <item>
+                     <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="label_57">
+                      <property name="toolTip">
+                       <string>ETH per an hour of computation</string>
+                      </property>
+                      <property name="text">
+                       <string>ETH/h</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                   <item row="5" column="1">
                    <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
@@ -1934,10 +1951,10 @@
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_29">
                       <property name="toolTip">
-                       <string>Minimal price of task you agree to compute</string>
+                       <string>Minimal price of a task you agree to compute</string>
                       </property>
                       <property name="text">
-                       <string>Min price(ask)</string>
+                       <string>Min price (ask)</string>
                       </property>
                      </widget>
                     </item>
@@ -1948,8 +1965,11 @@
                       </item>
                       <item>
                        <widget class="QLabel" name="label_31">
+                        <property name="toolTip">
+                         <string>ETH per an hour of computation</string>
+                        </property>
                         <property name="text">
-                         <string>WEI / ETH</string>
+                         <string>ETH/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2433,8 +2453,11 @@
                       </item>
                       <item>
                        <widget class="QLabel" name="label_33">
+                        <property name="toolTip">
+                         <string>ETH per an hour of computation</string>
+                        </property>
                         <property name="text">
-                         <string>WEI / ETH</string>
+                         <string>ETH/h</string>
                         </property>
                        </widget>
                       </item>

@@ -58,8 +58,8 @@ class TestConfigurationDialogCustomizer(LogTestCase):
                                                 'received': os.getcwd()}
 
         config_mock = MagicMock()
-        config_mock.max_price = 10
-        config_mock.min_price = 2
+        config_mock.max_price = int(2.01 * 10**18)
+        config_mock.min_price = int(2.0 * 10**18)
 
         config_deferred = Deferred()
         config_deferred.result = config_mock
@@ -74,19 +74,19 @@ class TestConfigurationDialogCustomizer(LogTestCase):
 
         customizer = ConfigurationDialogCustomizer(gnrgui.main_window, logic_mock)
         self.assertIsInstance(customizer, ConfigurationDialogCustomizer)
-        self.assertEqual(int(customizer.gui.ui.maxPriceLineEdit.text()), 10)
-        self.assertEqual(int(customizer.gui.ui.minPriceLineEdit.text()), 2)
-        customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(11))
-        customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(1))
+        self.assertEqual(float(customizer.gui.ui.maxPriceLineEdit.text()), 2.01)
+        self.assertEqual(float(customizer.gui.ui.minPriceLineEdit.text()), 2.0)
+        customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(1))
+        customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(0.0011))
         self.__click_ok(customizer)
         ccd = logic_mock.change_config.call_args_list[0][0][0]
-        self.assertEqual(ccd.min_price, 1)
-        self.assertEqual(ccd.max_price, 11)
+        self.assertEqual(ccd.min_price, int(0.0011 * 10**18))
+        self.assertEqual(round(float(ccd.max_price) / 10**18), 1)
         customizer.gui.ui.maxPriceLineEdit.setText(u"ABCDEF")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
         customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(0.3))
-        customizer.gui.ui.minPriceLineEdit.setText(u"XYZ")
+        customizer.gui.ui.minPriceLineEdit.setText(u"0.1 ETH")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
         gnrgui.app.exit(0)
