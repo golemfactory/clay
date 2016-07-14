@@ -14,5 +14,8 @@ class NodeNameDialogCustomizer(Customizer):
 
     def _save_node_name(self):
         self.cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
-        self.logic.change_config(self.cfg_desc)
-        self.gui.window.close()
+        if self.cfg_desc.node_name == "":
+            self.show_error_window("Empty name")
+        else:
+            self.logic.change_config(self.cfg_desc)
+            self.gui.window.close()
