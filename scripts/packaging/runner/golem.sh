@@ -176,7 +176,7 @@ fi
 now=$(date)
 host=$(hostname)
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 ]]; then
     ARGS="--nogui"
 else
     ARGS=$@
