@@ -17,11 +17,15 @@ from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 from golem.client import Client
-from golem.core.common import LOG_NAME, config_logging
+from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
+
+
+GUI_LOG_NAME = "golem_gui.log"
+CLIENT_LOG_NAME = "golem_client.log"
 
 
 def install_qt4_reactor():
@@ -78,9 +82,9 @@ class GUIApp(object):
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
 
     if datadir:
-        config_logging(path.join(datadir, LOG_NAME))
+        config_logging(path.join(datadir, GUI_LOG_NAME))
     else:
-        config_logging()
+        config_logging(GUI_LOG_NAME)
 
     logger = logging.getLogger("gnr.app")
 
@@ -120,9 +124,9 @@ def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
     if datadir:
-        config_logging(path.join(datadir, LOG_NAME))
+        config_logging(path.join(datadir, CLIENT_LOG_NAME))
     else:
-        config_logging()
+        config_logging(CLIENT_LOG_NAME)
 
     logger = logging.getLogger("golem.client")
 
