@@ -118,6 +118,8 @@ class GNRApplicationLogic(QtCore.QObject):
         client_id = response.pop()
 
         self.customizer.set_options(config, client_id, payment_address)
+        if not self.node_name:
+            self.customizer.prompt_node_name(config)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func

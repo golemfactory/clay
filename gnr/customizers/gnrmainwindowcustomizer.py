@@ -9,13 +9,14 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-                          EnvironmentsDialog, IdentityDialog
+                          EnvironmentsDialog, IdentityDialog, NodeNameDialog
 
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from gnr.customizers.nodenamedialogcustomizer import NodeNameDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
 from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
@@ -56,6 +57,8 @@ class GNRMainWindowCustomizer(Customizer):
         # Status options
         self.gui.ui.nodeNameLabel.setText(u"{}".format(node_name))
         self.gui.ui.nameLabel.setText(u"{}".format(node_name))
+        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(node_name))
+
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
@@ -134,6 +137,11 @@ class GNRMainWindowCustomizer(Customizer):
         if not current:
             current = previous
         self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
+
+    def prompt_node_name(self, config):
+        node_name_dialog = NodeNameDialog(self.gui.window)
+        NodeNameDialogCustomizer(node_name_dialog, self.logic, config)
+        node_name_dialog.show()
 
     def _setup_connections(self):
         self._setup_basic_task_connections()
