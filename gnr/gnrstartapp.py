@@ -17,7 +17,7 @@ from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
 from golem.client import Client
-from golem.core.common import LOG_NAME, config_logging
+from golem.core.common import LOG_NAME, config_logging, process_config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
@@ -75,13 +75,9 @@ class GUIApp(object):
         self.app.execute(True)
 
 
-def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
+def start_gui_process(queue, log_queue, datadir, rendering=True, gui_app=None, reactor=None):
 
-    if datadir:
-        config_logging(path.join(datadir, LOG_NAME))
-    else:
-        config_logging()
-
+    process_config_logging(log_queue)
     logger = logging.getLogger("gnr.app")
 
     client_service_info = queue.get(True, 3600)
@@ -116,14 +112,10 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         reactor.run()
 
 
-def start_client_process(queue, start_ranking, datadir=None,
+def start_client_process(queue, log_queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
-    if datadir:
-        config_logging(path.join(datadir, LOG_NAME))
-    else:
-        config_logging()
-
+    process_config_logging(log_queue)
     logger = logging.getLogger("golem.client")
 
     environments = load_environments()
@@ -160,13 +152,39 @@ def start_client_process(queue, start_ranking, datadir=None,
         reactor.run()
 
 
+def listener_log_config(datadir):
+    if datadir:
+        config_logging(path.join(datadir, LOG_NAME))
+    else:
+        config_logging()
+
+
+def log_listener_process(queue, datadir):
+    listener_log_config(datadir)
+    while True:
+        try:
+            record = queue.get()
+            if record is None:
+                break
+            logger = logging.getLogger(record.name)
+            logger.handle(record)
+        except Exception:
+            import sys, traceback
+            print "Error with log listener: "
+            traceback.print_exc(file=sys.stderr)
+
+
 def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
 
     queue = Queue()
+    log_queue = Queue()
+
+    log_listener = Process(target=log_listener_process, args=(log_queue, datadir))
+    log_listener.start()
 
     gui_process = Process(target=start_gui_process,
-                          args=(queue, datadir, rendering))
+                          args=(queue, log_queue, datadir, rendering))
     gui_process.daemon = True
     gui_process.start()
 
@@ -175,8 +193,10 @@ def start_app(datadir=None, rendering=False,
     process_monitor.start()
 
     try:
-        start_client_process(queue, start_ranking, datadir, transaction_system)
+        start_client_process(queue, log_queue, start_ranking, datadir, transaction_system)
     except Exception as exc:
         print "Exception in Client process: {}".format(exc)
 
     process_monitor.exit()
+    log_queue.put(None, False)
+    log_listener.join()
