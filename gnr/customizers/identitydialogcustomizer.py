@@ -68,6 +68,9 @@ class IdentityDialogCustomizer(Customizer):
         if reply == QMessageBox.No:
             return
 
+        self._generate_keys(difficulty)
+
+    def _generate_keys(self, difficulty):
         window = GeneratingKeyWindow(self.gui.window)
         window_customizer = GenerateNewKeyWindowCustomizer(window, self)
         window.show()
