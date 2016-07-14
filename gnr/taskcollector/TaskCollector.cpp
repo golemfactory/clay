@@ -172,7 +172,7 @@ public:
 			}
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage](const std::string el)
+		auto RGBAChunkWorker = [=, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -189,7 +189,7 @@ public:
 			}
 		};
 
-		auto alphaChunksWorker = [width, &finalImage](const std::string el)
+		auto alphaChunksWorker = [width, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -242,7 +242,7 @@ public:
 		
 		bitmap_ptr finalImage(FreeImage_AllocateT(type, width, height, bpp));
 
-		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const std::string el)
+		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -258,7 +258,7 @@ public:
 			currentHeight += chunkHeight;
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const std::string el)
+		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
