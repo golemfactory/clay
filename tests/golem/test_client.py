@@ -124,24 +124,20 @@ class TestClient(TestWithDatabase):
         c.p2pservice = MagicMock()
         c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
         c.transaction_system = MagicMock()
-        c.transaction_system.budget = "1341"
         status = c.get_status()
         assert "Waiting for tasks" in status
         assert "Active peers in network: 2" in status
-        assert "1341" in status
         mock1 = MagicMock()
         mock1.get_progress.return_value = 0.25
         mock2 = MagicMock()
         mock2.get_progress.return_value = 0.33
         c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
         c.p2pservice.get_peers.return_value = []
-        c.transaction_system.budget = 31
         status = c.get_status()
         assert "Computing 2 subtask(s)" in status
         assert "id1 (25.0%)" in status
         assert "id2 (33.0%)" in status
         assert "Active peers in network: 0" in status
-        assert "31" in status
         c.config_desc.accept_tasks = 0
         status = c.get_status()
         assert "Computing 2 subtask(s)" in status
