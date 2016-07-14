@@ -127,7 +127,6 @@ class TestClient(TestWithDatabase):
         status = c.get_status()
         assert "Waiting for tasks" in status
         assert "Active peers in network: 2" in status
-        assert "1341" in status
         mock1 = MagicMock()
         mock1.get_progress.return_value = 0.25
         mock2 = MagicMock()
@@ -139,7 +138,6 @@ class TestClient(TestWithDatabase):
         assert "id1 (25.0%)" in status
         assert "id2 (33.0%)" in status
         assert "Active peers in network: 0" in status
-        assert "31" in status
         c.config_desc.accept_tasks = 0
         status = c.get_status()
         assert "Computing 2 subtask(s)" in status
