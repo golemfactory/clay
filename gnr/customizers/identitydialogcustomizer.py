@@ -18,6 +18,8 @@ class IdentityDialogCustomizer(Customizer):
     def __init__(self, gui, logic):
         self.changed = False
         Customizer.__init__(self, gui, logic)
+        # FIXME: this button is bound to a deprecated key pair generation method
+        self.gui.ui.generate_new_button.setEnabled(False)
 
     def load_data(self):
         self.set_labels()
@@ -66,10 +68,10 @@ class IdentityDialogCustomizer(Customizer):
         if reply == QMessageBox.No:
             return
 
-        # window = GeneratingKeyWindow(self.gui.window)
-        # window_customizer = GenerateNewKeyWindowCustomizer(window, self)
-        # window.show()
-        # window_customizer.generate_key(difficulty)
+        window = GeneratingKeyWindow(self.gui.window)
+        window_customizer = GenerateNewKeyWindowCustomizer(window, self)
+        window.show()
+        window_customizer.generate_key(difficulty)
 
     def _setup_connections(self):
         self.gui.ui.ok_button.clicked.connect(lambda: self._close())
@@ -104,10 +106,11 @@ class SaveKeysDialogCustomizer(Customizer):
         if file_name != "":
             self.gui.ui.public_key_line_edit.setText(u"{}".format(file_name))
 
+    @inlineCallbacks
     def _save_keys(self):
         private_key_path = u"{}".format(self.gui.ui.private_key_line_edit.text())
         public_key_path = u"{}".format(self.gui.ui.public_key_line_edit.text())
-        res = self.logic.keys_auth.save_to_files(private_key_path, public_key_path)
+        res = yield self.logic.save_keys_to_files(private_key_path, public_key_path)
         if res:
             self.gui.window.close()
         else:

@@ -292,6 +292,9 @@ class Client(object):
             return self.keys_auth.load_from_file(file_name)
         return False
 
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        return self.keys_auth.save_to_files(private_key_path, public_key_path)
+
     def get_key_id(self):
         return self.get_client_id()
 

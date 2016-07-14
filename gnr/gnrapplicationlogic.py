@@ -351,6 +351,11 @@ class GNRApplicationLogic(QtCore.QObject):
         result = yield self.client.load_keys_from_file(file_name)
         returnValue(result)
 
+    @inlineCallbacks
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        result = yield self.client.save_keys_to_files(private_key_path, public_key_path)
+        returnValue(result)
+
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
             task = self.tasks[task_id]
