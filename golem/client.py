@@ -61,6 +61,14 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
             l.task_updated(task_id)
 
 
+class ClientTaskComputerEventListener(object):
+    def __init__(self, client):
+        self.client = client
+
+    def toggle_config_dialog(self, on=True):
+        self.client.toggle_config_dialog(on)
+
+
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False,
                  connect_to_known_hosts=True, **config_overrides):
@@ -177,6 +185,7 @@ class Client(object):
 
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
@@ -490,6 +499,10 @@ class Client(object):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
+
+    def toggle_config_dialog(self, on=True):
+        for rpc_client in self.rpc_clients:
+            rpc_client.toggle_config_dialog(on)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:

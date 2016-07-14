@@ -55,3 +55,6 @@ class TestSaveKeysDialogCustomizer(TestWithReactor):
 
         customizer._save_keys()
         assert dialog.window.close.called
+
+        gnrgui.app.exit(0)
+        gnrgui.app.deleteLater()

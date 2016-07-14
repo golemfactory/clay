@@ -43,11 +43,16 @@ class AppMainWindow(object):
         :param tab_name: Tab name. Available values: 'new_task' and 'recount'
         :param enable: enable if True, disable otherwise
         """
-        if tab_name.lower() == 'new_task':
+        tab_name = tab_name.lower()
+
+        if tab_name == 'new_task':
             self.__set_enabled(self.__new_task_buttons, enable)
             if enable and self.__style_sheet is not None:
                 self.ui.startTaskButton.setStyleSheet(self.__style_sheet)
-        elif tab_name.lower() == 'recount':
+        elif tab_name == 'settings':
+            self.ui.settingsOkButton.setEnabled(enable)
+            self.ui.settingsCancelButton.setEnabled(enable)
+        elif tab_name == 'recount':
             self.__set_enabled(self.__recount_buttons, enable)
 
     def __set_enabled(self, elements, enable):

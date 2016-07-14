@@ -11,10 +11,11 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
-from gnr.ui.dialog import TestingTaskProgressDialog
+from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
@@ -65,6 +66,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client = None
         self.progress_dialog = None
         self.progress_dialog_customizer = None
+        self.config_dialog = None
+        self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
         self.datadir = None
         self.res_dirs = None
@@ -421,6 +424,21 @@ class GNRApplicationLogic(QtCore.QObject):
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
+
+    def toggle_config_dialog(self, on=True):
+        self.customizer.gui.setEnabled('new_task', not on)
+        self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
+
+        if on:
+            if not self.config_dialog_customizer:
+                self.config_dialog = UpdatingConfigDialog(self.customizer.gui.window)
+                self.config_dialog_customizer = UpdatingConfigDialogCustomizer(self.config_dialog, self)
+                self.config_dialog.show()
+        else:
+            if self.config_dialog_customizer:
+                self.config_dialog_customizer.close()
+                self.config_dialog_customizer = None
+                self.config_dialog = None
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
