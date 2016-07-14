@@ -2,6 +2,8 @@ from gnr.customizers.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
 
+from golem.core.common import ETH
+
 
 class PaymentsDialogCustomizer(Customizer):
 
@@ -49,7 +51,7 @@ class PaymentTableElem(object):
         self.node_item.setText(self.node.encode('hex'))
 
         self.value_item = QTableWidgetItem()
-        self.value_item.setText("{:f} ETH".format(float(self.value) / 10**18))
+        self.value_item.setText("{:f} ETH".format(float(self.value) * ETH))
 
         self.state_item = QTableWidgetItem()
         self.state_item.setText(str(self.state).replace("PaymentStatus.", ""))

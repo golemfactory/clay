@@ -9,13 +9,12 @@ from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import ETH
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 
 logger = logging.getLogger("gnr.gui")
-
-ETH = 1 / float(10**18)
 
 
 class ConfigurationDialogCustomizer(Customizer):
