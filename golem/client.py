@@ -384,6 +384,7 @@ class Client(object):
             return "An error has occured {}".format(e)
 
     def change_description(self, description):
+        self.get_description()
         q = Account.update(description=description).where(Account.node_id == self.get_client_id())
         q.execute()
 

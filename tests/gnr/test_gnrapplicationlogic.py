@@ -13,7 +13,7 @@ from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import DatabaseFixture
 
 
 class TTask(Task):
@@ -124,7 +124,7 @@ class MockService(object):
         return 1
 
 
-class TestGNRApplicationLogic(TestDirFixture):
+class TestGNRApplicationLogic(DatabaseFixture):
 
     def test_root_path(self):
         logic = GNRApplicationLogic()
@@ -265,12 +265,12 @@ class TestGNRApplicationLogic(TestDirFixture):
     def test_change_description(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
-        golem_client = Client()
+        golem_client = Client(datadir=self.path)
         client = MockRPCClient(golem_client)
         service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
         logic.register_client(client, service_info)
         golem_client.change_description("NEW DESC")
-        time.sleep(1)
+        time.sleep(0.5)
         assert golem_client.get_description() == "NEW DESC"
         golem_client.quit()
 
