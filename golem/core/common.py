@@ -2,6 +2,8 @@ import os
 import sys
 from os import path
 
+import errno
+
 LOG_NAME = "golem.log"
 
 ETH = 1 / float(10**18)
@@ -57,8 +59,16 @@ class HandleKeyError(object):
         return func_wrapper
 
 
-def config_logging(logname=LOG_NAME):
+def config_logging(logname=LOG_NAME, datadir=None):
     """Config logger"""
+    if datadir:
+        try:
+            os.makedirs(datadir)
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
+

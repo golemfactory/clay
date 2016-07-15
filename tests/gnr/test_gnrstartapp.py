@@ -1,3 +1,4 @@
+import os
 from multiprocessing import Queue
 
 from mock import Mock
@@ -19,7 +20,11 @@ class MockService(object):
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def test_config_logging(self):
-        config_logging("golem.test")
+        directory = os.path.join(self.path, 'subdir1', 'subdir2')
+        log_name = "golem.test"
+        config_logging(log_name, datadir=directory)
+        config_logging(log_name, datadir=directory)
+        config_logging(log_name)
 
     def test_load_environments(self):
         envs = load_environments()

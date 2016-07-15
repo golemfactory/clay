@@ -82,10 +82,11 @@ class GUIApp(object):
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
 
     if datadir:
-        config_logging(path.join(datadir, GUI_LOG_NAME))
+        log_name = path.join(datadir, GUI_LOG_NAME)
     else:
-        config_logging(GUI_LOG_NAME)
+        log_name = GUI_LOG_NAME
 
+    config_logging(log_name, datadir=datadir)
     logger = logging.getLogger("gnr.app")
 
     client_service_info = queue.get(True, 3600)
@@ -124,10 +125,11 @@ def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
     if datadir:
-        config_logging(path.join(datadir, CLIENT_LOG_NAME))
+        log_name = path.join(datadir, CLIENT_LOG_NAME)
     else:
-        config_logging(CLIENT_LOG_NAME)
+        log_name = CLIENT_LOG_NAME
 
+    config_logging(log_name, datadir=datadir)
     logger = logging.getLogger("golem.client")
 
     environments = load_environments()
