@@ -524,6 +524,11 @@ class Client(object):
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
                                                    self.get_computed_task_count(), self.get_error_task_count(),
                                                    self.get_timeout_task_count())
+                    self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
+                                                           self.task_server.task_computer.counting_task,
+                                                           self.task_server.task_computer.task_requested,
+                                                           self.task_server.task_computer.compute_tasks,
+                                                           self.task_server.task_computer.assigned_subtasks.keys())
                 # with self.snapshot_lock:
                 #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
