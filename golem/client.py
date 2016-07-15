@@ -323,6 +323,17 @@ class Client(object):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    def get_payments_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task as array
+        """
+        subtasks = self.task_server.get_subtasks_for_task_id(task_id)
+        if subtasks is None:
+            return []
+        return [self.transaction_system.get_payment_for_subtasks(subtasks)]
+
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()

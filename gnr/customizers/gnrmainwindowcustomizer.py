@@ -78,9 +78,17 @@ class GNRMainWindowCustomizer(Customizer):
                 if self.task_details_dialog_customizer:
                     if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
                         self.task_details_dialog_customizer.update_view(tasks[task_id].task_state)
+                self.__update_payment(task_id, i)
 
             else:
                 assert False, "Update task for unknown task."
+
+    def __update_payment(self, task_id, i):
+        price = yield self.logic.get_cost_for_task_id(task_id)
+        cost = 0.0
+        for p in price:
+            cost += float(p)
+        self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText(str(cost))
 
     def update_time(self):
         with self.lock:

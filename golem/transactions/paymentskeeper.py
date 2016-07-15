@@ -80,6 +80,11 @@ class PaymentsKeeper(object):
                  "state": payment.status} for
                 payment in self.db.get_newest_payment()]
 
+    def get_payment(self, task_id):
+        for payment in self.db.get_newest_payment():
+            if payment.subtask == task_id:
+                return float(payment.value)
+
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask

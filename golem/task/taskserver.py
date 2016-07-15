@@ -220,6 +220,17 @@ class TaskServer(PendingConnectionsServer):
     def get_resource_addr(self):
         return self.client.node.prv_addr
 
+    def get_subtasks_for_task_id(self, task_id):
+        """
+        Get all subtasks related with given task id
+        :param task_id: task id
+        :return: list of all subtasks related with @task_id
+        """
+        subtasks = self.task_manager.get_subtasks(task_id)
+        if subtasks is None:
+            return ()
+        return subtasks
+
     def get_resource_port(self):
         return self.client.resource_port
 

@@ -369,6 +369,19 @@ class TaskManager(object):
         else:
             logger.error("Task {} not in the active tasks queue ".format(task_id))
 
+    def get_subtasks(self, task_id):
+        """
+        Get all subtasks related with given task id
+        :param task_id: task id
+        :return: list of all subtasks related with @task_id or None if @task_id is not known
+        """
+        if task_id not in self.tasks_states:
+            return None
+        subtasks = ()
+        for sub in self.tasks_states[task_id].subtask_states.values():
+            subtasks.append(sub.subtask_id)
+        return subtasks
+
     def restart_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
             logger.error("Subtask {} not in subtasks queue".format(subtask_id))
