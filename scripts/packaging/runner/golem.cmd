@@ -34,6 +34,9 @@ SET IPFS_VER=v0.4.2
 SET IPFS_URL=%IPFS_DIST_SRV%/go-ipfs/%IPFS_VER%/go-ipfs_%IPFS_VER%_windows-%IPFS_ARCH%.zip
 SET IPFS_DIR=go-ipfs
 
+SET GETH_URL=http://52.40.149.24:9999/Geth-Win64-20160524084915-1.4.5-a269a71.zip
+SET GETH_DIR=geth
+
 ::----------------------------------------------------------------------------------------------------------------------
 setlocal enabledelayedexpansion
 ::----------------------------------------------------------------------------------------------------------------------
@@ -47,7 +50,7 @@ set "i="
 for /f "tokens=2 delims==" %%I in ('wmic os get localdatetime /format:list') do set datetime=%%I
 set datetime=%datetime:~0,4%-%datetime:~4,2%-%datetime:~6,2%_%datetime:~8,2%-%datetime:~10,2%-%datetime:~12,2%
 
-SET PATH=%~dp0;%~dp0\%IPFS_DIR%;%PATH%
+SET PATH=%~dp0;%~dp0\%IPFS_DIR%;%~dp0\%GETH_DIR%;%PATH%
 SET IPFS_PATH=%~dp0/.ipfs
 SET IPFS_LOG_PATH=%~dp0/ipfs.log
 SET LOG_PATH=%~dp0/golem_%HOSTNAME%_%datetime%.log
@@ -163,6 +166,21 @@ if "%DOCKER_HOST%"=="" (
 ::     GOTO END
 :: )
 
+:CHECK_GETH
+
+if not exist %GETH_DIR% (
+    ECHO Downloading Geth
+    cscript.exe //B "%~dp0\utils\download.vbs" "%GETH_URL%" "%~dp0\geth.zip"
+    cscript.exe //B "%~dp0\utils\unzip.vbs" geth.zip
+    mkdir %GETH_DIR%
+    move geth.exe "%GETH_DIR%/geth.exe"
+    del geth.zip
+)
+
+IF not exist %GETH_DIR% (
+    cscript.exe "%~dp0\utils\notify.vbs" "Error downloading geth"
+    GOTO END
+)
 
 ::----------------------------------------------------------------------------------------------------------------------
 :START_IPFS
