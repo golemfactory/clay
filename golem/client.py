@@ -378,7 +378,7 @@ class Client(object):
 
     def get_description(self):
         try:
-            account = Account.get_or_create(node_id=self.get_client_id())
+            account, _ = Account.get_or_create(node_id=self.get_client_id())
             return account.description
         except Exception as e:
             return "An error has occured {}".format(e)
