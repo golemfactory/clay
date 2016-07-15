@@ -21,7 +21,6 @@ MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE
 NUM_CORES = 1
 DISTRIBUTED_RES_NUM = 2
 
-
 logger = logging.getLogger(__name__)
 
 

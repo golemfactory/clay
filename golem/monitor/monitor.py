@@ -1,11 +1,41 @@
+import threading
+import Queue
+
 from model.nodemetadatamodel import NodeMetadataModel
 from model.loginlogoutmodel import LoginModel, LogoutModel
 from model.statssnapshotmodel import StatsSnapshotModel
 from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from model.paymentmodel import PaymentModel, IncomeModel
+from transport.sender import DefaultJSONSender as Sender
 
-from async.sender_thread import SenderThread
 from config import MONITOR_SENDER_THREAD_TIMEOUT, MONITOR_HOST, MONITOR_REQUEST_TIMEOUT, MONITOR_PROTO_VERSION
+
+
+class SenderThread(threading.Thread):
+
+    def __init__(self, meta_data):
+        super(SenderThread, self).__init__()
+        self.queue = Queue.Queue()
+        self.stop_request = threading.Event()
+        self.meta_data = meta_data
+        self.sender = Sender(MONITOR_HOST, MONITOR_REQUEST_TIMEOUT, MONITOR_PROTO_VERSION)
+
+    def send(self, o):
+        self.queue.put(o)
+
+    def run(self):
+
+        while not self.stop_request.isSet():
+            try:
+                msg = self.queue.get(True, MONITOR_SENDER_THREAD_TIMEOUT)
+                self.sender.send(msg)
+            except Queue.Empty:
+                # send ping message
+                self.sender.send(self.meta_data)
+
+    def join(self, timeout=None):
+        self.stop_request.set()
+        super(SenderThread, self).join(timeout)
 
 
 class SystemMonitor(object):
@@ -34,8 +64,7 @@ class SystemMonitor(object):
     # Initialization
 
     def start(self):
-        self.sender_thread = SenderThread(self.meta_data, MONITOR_SENDER_THREAD_TIMEOUT, MONITOR_HOST,
-                                          MONITOR_REQUEST_TIMEOUT, MONITOR_PROTO_VERSION)
+        self.sender_thread = SenderThread(self.meta_data)
         self.sender_thread.start()
 
     def shut_down(self):

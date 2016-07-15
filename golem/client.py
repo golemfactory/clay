@@ -191,7 +191,7 @@ class Client(object):
             self.monitor.on_login()
 
     def init_monitor(self):
-        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION)
+        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION, self.config_desc)
         self.monitor = SystemMonitor(metadata)
         self.monitor.start()
 
