@@ -1,5 +1,6 @@
-import os
 import logging
+import os
+import time
 
 from copy import deepcopy
 
@@ -149,7 +150,9 @@ class NewTaskDialogCustomizer(Customizer):
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
-        self.gui.ui.taskNameLineEdit.setText(definition.task_name)
+        name = "{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")) \
+            if not definition.task_name else definition.task_name
+        self.gui.ui.taskNameLineEdit.setText(name)
 
         self._load_options(definition)
 

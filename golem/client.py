@@ -331,8 +331,8 @@ class Client(object):
         """
         subtasks = self.task_server.get_subtasks_for_task_id(task_id)
         if subtasks is None:
-            return []
-        return [self.transaction_system.get_payment_for_subtasks(subtasks)]
+            return 0.0
+        return self.transaction_system.get_payment_for_subtasks(subtasks)
 
     def get_balance(self):
         if self.use_transaction_system():

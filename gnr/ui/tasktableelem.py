@@ -41,7 +41,7 @@ class TaskTableElem:
         self.timer_item.setText('00:00:00')
 
         self.cost_item = QTableWidgetItem()
-        self.cost_item.setText('0,000000')
+        self.cost_item.setText('0.000000')
 
     def setProgress(self, val):
         if 0.0 <= val <= 1.0:

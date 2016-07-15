@@ -1,4 +1,6 @@
 import os
+import time
+
 from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
@@ -21,6 +23,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __init__(self, gui, logic):
         NewTaskDialogCustomizer.__init__(self, gui, logic)
         self.logic.renderer_options = None
+        self.gui.ui.taskNameLineEdit.setText(
+            "{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
 
     def _setup_connections(self):
         NewTaskDialogCustomizer._setup_connections(self)
@@ -120,6 +124,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         self._change_finish_state(False)
 
+        self.gui.ui.taskNameLineEdit.setText(
+            "{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
         self.gui.ui.totalSpinBox.setRange(dr.defaults.min_subtasks, dr.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(dr.defaults.default_subtasks)
         self.gui.ui.totalSpinBox.setEnabled(True)
@@ -192,7 +198,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _load_basic_task_params(self, definition):
         r = self.logic.get_renderer(definition.renderer)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
-        self.gui.ui.taskNameLineEdit.setText(definition.task_name)
+        name = "{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")) \
+            if not definition.task_name else definition.task_name
+        self.gui.ui.taskNameLineEdit.setText(name)
         NewTaskDialogCustomizer._load_basic_task_params(self, definition)
 
     def _load_resources(self, definition):

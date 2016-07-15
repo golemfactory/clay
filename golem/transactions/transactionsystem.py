@@ -46,7 +46,7 @@ class TransactionSystem(object):
         cost = 0.0
         if self.payments_keeper is not None:
             for subtask in subtasks:
-                cost += self.payments_keeper.get_payment(subtask)
+                cost += float(self.payments_keeper.get_payment(subtask))
         return cost
 
     def get_incomes_list(self):

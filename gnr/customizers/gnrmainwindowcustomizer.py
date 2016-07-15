@@ -1,8 +1,8 @@
 import cPickle
 import logging
 import os
-import time
 from threading import Lock
+from twisted.internet.defer import inlineCallbacks
 
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
@@ -83,12 +83,11 @@ class GNRMainWindowCustomizer(Customizer):
             else:
                 assert False, "Update task for unknown task."
 
+    @inlineCallbacks
     def __update_payment(self, task_id, i):
         price = yield self.logic.get_cost_for_task_id(task_id)
-        cost = 0.0
-        for p in price:
-            cost += float(p)
-        self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText(str(cost))
+        if price:
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText(str(price))
 
     def update_time(self):
         with self.lock:
@@ -104,9 +103,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     # Add task information in gui
     def add_task(self, task):
-        name = "{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")) \
-            if not task.definition.task_name else task.definition.task_name
-        self._add_task(task.definition.task_id, task.status, name)
+        self._add_task(task.definition.task_id, task.status, task.definition.task_name)
 
     def update_task_additional_info(self, t):
         self.current_task_highlighted = t

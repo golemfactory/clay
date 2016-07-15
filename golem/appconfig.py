@@ -152,7 +152,6 @@ class AppConfig:
                                  eth_account=ETH_ACCOUNT_NAME,
                                  min_price=MIN_PRICE,
                                  max_price=MAX_PRICE,
-                                 task_name="",
                                  use_ipv6=USE_IP6,
                                  accept_tasks=ACCEPT_TASKS,
                                  node_name="",
