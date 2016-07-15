@@ -520,8 +520,12 @@ class Client(object):
             self.check_payments()
 
             if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
-                with self.snapshot_lock:
-                    self.__make_node_state_snapshot()
+                if self.monitor:
+                    self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
+                                                   self.get_computed_task_count(), self.get_error_task_count(),
+                                                   self.get_timeout_task_count())
+                # with self.snapshot_lock:
+                #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
