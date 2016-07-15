@@ -1,5 +1,7 @@
 include golemapp.py
 include requirements.txt
+include golem/ethereum/genesis_golem.json
+include golem/ethereum/mine_pending_transactions.js
 include gnr/logging.ini
 include gnr/ui/nopreview.png
 include gnr/ui/img/*

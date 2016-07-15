@@ -304,8 +304,7 @@ class GNRTask(Task):
         return os.path.dirname(prefix)
 
     def _get_tmp_dir(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
-                               self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         return tmp_dir

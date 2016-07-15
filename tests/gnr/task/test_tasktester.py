@@ -1,11 +1,9 @@
-import os
 from mock import Mock
 
 from gnr.task.tasktester import TaskTester, logger
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import Task
-from gnr.renderingdirmanager import get_tmp_path
 
 
 class TaskThread:

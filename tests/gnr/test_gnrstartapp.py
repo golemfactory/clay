@@ -2,9 +2,10 @@ from multiprocessing import Queue
 
 from mock import Mock
 
-from gnr.gnrstartapp import config_logging, load_environments, start_client_process, \
+from gnr.gnrstartapp import load_environments, start_client_process, \
     start_gui_process, GUIApp
 from golem.client import Client
+from golem.core.common import config_logging
 from golem.environments.environment import Environment
 from golem.rpc.websockets import WebSocketRPCServerFactory
 from golem.tools.testwithreactor import TestDirFixtureWithReactor

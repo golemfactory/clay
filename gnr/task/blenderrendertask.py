@@ -75,10 +75,13 @@ class PreviewUpdater(object):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
                 img_current.save(self.preview_file_path, "BMP")
+                img_current.close()
             else:
                 img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
                 img_offset.paste(img, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
+                img_offset.close()
+            img.close()
 
         except Exception as err:
             import traceback
@@ -414,6 +417,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 img = Image.open(new_chunk_file_path)
             img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
             img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
@@ -453,8 +457,9 @@ class BlenderRenderTask(FrameRenderingTask):
                 for j in range(lower, upper):
                     img_task.putpixel((i, j), color)
                     
-    def _put_frame_together(self, tmp_dir, frame_num, num_start):
-        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+    def _put_frame_together(self, frame_num, num_start):
+        directory = os.path.dirname(self.output_file)
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():

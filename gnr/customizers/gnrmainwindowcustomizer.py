@@ -9,13 +9,14 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-                          EnvironmentsDialog, IdentityDialog
+                          EnvironmentsDialog, IdentityDialog, NodeNameDialog
 
 from gnr.ui.tasktableelem import TaskTableElem
 
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from gnr.customizers.nodenamedialogcustomizer import NodeNameDialogCustomizer
 from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
 from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
 from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
@@ -45,14 +46,18 @@ class GNRMainWindowCustomizer(Customizer):
         # Footer options
         self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
 
-        # Status options
-        self.gui.ui.nodeNameLabel.setText(u"{}".format(cfg_desc.node_name))
-
         # Account options
         self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
         self.gui.ui.golemIdLabel.setCursorPosition(0)
-        self.gui.ui.nameLabel.setText(u"{}".format(cfg_desc.node_name))
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
+
+        self.set_name(cfg_desc.node_name)
+
+    def set_name(self, node_name):
+        # Status options
+        self.gui.ui.nodeNameLabel.setText(u"{}".format(node_name))
+        self.gui.ui.nameLabel.setText(u"{}".format(node_name))
+        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(node_name))
 
 
     # Add new task to golem client
@@ -133,6 +138,11 @@ class GNRMainWindowCustomizer(Customizer):
             current = previous
         self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
 
+    def prompt_node_name(self, config):
+        node_name_dialog = NodeNameDialog(self.gui.window)
+        NodeNameDialogCustomizer(node_name_dialog, self.logic, config)
+        node_name_dialog.show()
+
     def _setup_connections(self):
         self._setup_basic_task_connections()
         self._setup_basic_app_connections()
@@ -188,6 +198,7 @@ class GNRMainWindowCustomizer(Customizer):
     def _start_task_button_clicked(self):
         if self.current_task_highlighted is None:
             return
+        self.gui.ui.startTaskButton.setEnabled(False)
         self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
     def _add_task(self, task_id, status):

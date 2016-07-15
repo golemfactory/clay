@@ -11,10 +11,11 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
-from gnr.ui.dialog import TestingTaskProgressDialog
+from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
@@ -50,7 +51,7 @@ class GNRClientRemoteEventListener(GolemClientRemoteEventListener):
         self.remote_client.check_network_state()
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
 class GNRApplicationLogic(QtCore.QObject):
@@ -65,6 +66,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client = None
         self.progress_dialog = None
         self.progress_dialog_customizer = None
+        self.config_dialog = None
+        self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
         self.datadir = None
         self.res_dirs = None
@@ -118,6 +121,8 @@ class GNRApplicationLogic(QtCore.QObject):
         client_id = response.pop()
 
         self.customizer.set_options(config, client_id, payment_address)
+        if not self.node_name:
+            self.customizer.prompt_node_name(config)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -268,8 +273,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
+    @inlineCallbacks
     def change_config(self, cfg_desc):
-        self.client.change_config(cfg_desc)
+        yield self.client.change_config(cfg_desc)
+        self.node_name = yield self.client.get_node_name()
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     def _get_new_task_state(self):
         return GNRTaskState()
@@ -285,6 +293,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(ts)
         t = Task.build_task(tb)
+        ts.task_state.status = TaskStatus.starting
+        self.customizer.update_tasks(self.tasks)
 
         self.client.enqueue_new_task(t)
 
@@ -333,6 +343,26 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_keys_auth(self):
         keys_auth = yield self.client.get_keys_auth()
         returnValue(keys_auth)
+
+    @inlineCallbacks
+    def get_key_id(self):
+        key_id = yield self.client.get_key_id()
+        returnValue(key_id)
+
+    @inlineCallbacks
+    def get_difficulty(self):
+        difficulty = yield self.client.get_difficulty()
+        returnValue(difficulty)
+
+    @inlineCallbacks
+    def load_keys_from_file(self, file_name):
+        result = yield self.client.load_keys_from_file(file_name)
+        returnValue(result)
+
+    @inlineCallbacks
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        result = yield self.client.save_keys_to_files(private_key_path, public_key_path)
+        returnValue(result)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
@@ -394,6 +424,21 @@ class GNRApplicationLogic(QtCore.QObject):
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
+
+    def toggle_config_dialog(self, on=True):
+        self.customizer.gui.setEnabled('new_task', not on)
+        self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
+
+        if on:
+            if not self.config_dialog_customizer:
+                self.config_dialog = UpdatingConfigDialog(self.customizer.gui.window)
+                self.config_dialog_customizer = UpdatingConfigDialogCustomizer(self.config_dialog, self)
+                self.config_dialog.show()
+        else:
+            if self.config_dialog_customizer:
+                self.config_dialog_customizer.close()
+                self.config_dialog_customizer = None
+                self.config_dialog = None
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):

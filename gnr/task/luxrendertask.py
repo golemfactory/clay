@@ -134,7 +134,7 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
-        self.tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        self.tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
@@ -388,6 +388,8 @@ class LuxTask(RenderingTask):
         img_current = self._open_preview()
         img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
         img_current.save(self.preview_file_path, "BMP")
+        img.close()
+        img_current.close()
 
     def __update_preview_from_exr(self, new_chunk_file):
         if self.preview_exr is None:
@@ -398,6 +400,8 @@ class LuxTask(RenderingTask):
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
         img.save(self.preview_file_path, "BMP")
+        img.close()
+        img_current.close()
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,

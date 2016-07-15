@@ -11,6 +11,7 @@ from gnr.ui.dialog import AddTaskResourcesDialog
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.gnrtaskstate import GNRTaskDefinition
+from golem.core.common import ETH
 from golem.task.taskstate import TaskStatus
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
@@ -84,7 +85,8 @@ class NewTaskDialogCustomizer(Customizer):
     @inlineCallbacks
     def _set_max_price(self):
         max_price = yield self.logic.get_max_price()
-        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(max_price))
+        max_price = float(max_price) * ETH
+        self.gui.ui.taskMaxPriceLineEdit.setText(u"{:.6f}".format(max_price))
         self._set_new_pessimistic_cost()
 
     def _show_add_resource_dialog(self):
@@ -171,7 +173,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
 
     def _load_payment_params(self, definition):
-        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(definition.max_price))
+        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(definition.max_price * ETH))
         self._set_new_pessimistic_cost()
 
     def _finish_button_clicked(self):
@@ -228,7 +230,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _read_price_params(self, definition):
         try:
-            definition.max_price = int(self.gui.ui.taskMaxPriceLineEdit.text())
+            definition.max_price = float(self.gui.ui.taskMaxPriceLineEdit.text()) / ETH
         except ValueError:
             logger.warning("Wrong price value")
 
@@ -264,7 +266,8 @@ class NewTaskDialogCustomizer(Customizer):
                 self.gui.ui.pessimisticCostLabel.setText("unknown")
             else:
                 time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
-                self.gui.ui.pessimisticCostLabel.setText(u"{}".format(price * time_))
+                cost = price * time_
+                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} ETH".format(cost))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
 

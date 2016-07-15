@@ -98,7 +98,7 @@ class ConfigApprover(object):
     def _init_actions(self):
         dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
-                           'use_ipv6', 'eth_account', 'accept_tasks']
+                           'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
         to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
                       'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
                       'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', 'min_price',

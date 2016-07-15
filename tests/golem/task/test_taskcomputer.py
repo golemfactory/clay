@@ -1,6 +1,7 @@
 import os
 import time
 
+from golem.client import ClientTaskComputerEventListener
 from mock import MagicMock, Mock
 
 from golem.task.taskbase import ComputeTaskDef
@@ -191,6 +192,23 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         tc.counting_task = False
         tc.change_config(Mock(), in_background=False)
+
+    def test_event_listeners(self):
+        client = Mock()
+        task_server = MagicMock()
+        tc = TaskComputer("ABC", task_server)
+
+        tc.toggle_config_dialog(True)
+        tc.toggle_config_dialog(False)
+
+        listener = ClientTaskComputerEventListener(client)
+        tc.register_listener(listener)
+
+        tc.toggle_config_dialog(True)
+        client.toggle_config_dialog.assert_called_with(True)
+
+        tc.toggle_config_dialog(False)
+        client.toggle_config_dialog.assert_called_with(False)
 
     @staticmethod
     def __wait_for_tasks(tc):
