@@ -183,7 +183,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -588,7 +588,7 @@
                   <property name="fieldGrowthPolicy">
                    <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
                   </property>
-                  <item row="3" column="0">
+                  <item row="4" column="0">
                    <widget class="QLabel" name="label_46">
                     <property name="toolTip">
                      <string>How long can you wait for a final result</string>
@@ -598,7 +598,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="3" column="1">
+                  <item row="4" column="1">
                    <layout class="QHBoxLayout" name="horizontalLayout_18">
                     <item>
                      <widget class="QSpinBox" name="fullTaskTimeoutHourSpinBox"/>
@@ -657,7 +657,7 @@
                     </item>
                    </layout>
                   </item>
-                  <item row="4" column="0">
+                  <item row="5" column="0">
                    <widget class="QLabel" name="label_55">
                     <property name="toolTip">
                      <string>Into how many subtasks you want to split the task</string>
@@ -667,7 +667,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="1">
+                  <item row="5" column="1">
                    <layout class="QHBoxLayout" name="horizontalLayout_20">
                     <item>
                      <widget class="QSpinBox" name="totalSpinBox"/>
@@ -690,7 +690,7 @@
                     </item>
                    </layout>
                   </item>
-                  <item row="5" column="0">
+                  <item row="6" column="0">
                    <widget class="QLabel" name="label_56">
                     <property name="toolTip">
                      <string>Price for an hour of computation</string>
@@ -700,27 +700,10 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="1">
-                   <layout class="QHBoxLayout" name="horizontalLayout_21">
-                    <item>
-                     <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="label_57">
-                      <property name="toolTip">
-                       <string>ETH per an hour of computation</string>
-                      </property>
-                      <property name="text">
-                       <string>ETH/h</string>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                  <item row="5" column="1">
+                  <item row="6" column="1">
                    <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
                   </item>
-                  <item row="6" column="0">
+                  <item row="7" column="0">
                    <widget class="QLabel" name="pessimisticCostConst">
                     <property name="toolTip">
                      <string>How much will the whole task cost pessimistically. This can't be estimated if &quot;optimize&quot; is checked.</string>
@@ -730,14 +713,14 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="6" column="1">
+                  <item row="7" column="1">
                    <widget class="QLabel" name="pessimisticCostLabel">
                     <property name="text">
                      <string/>
                     </property>
                    </widget>
                   </item>
-                  <item row="7" column="1">
+                  <item row="8" column="1">
                    <layout class="QHBoxLayout" name="horizontalLayout_25">
                     <item>
                      <widget class="QLabel" name="resourceFilesLabel">
@@ -758,13 +741,30 @@
                     </item>
                    </layout>
                   </item>
-                  <item row="7" column="0">
+                  <item row="8" column="0">
                    <widget class="QLabel" name="label_15">
                     <property name="toolTip">
                      <string>Additional data needed to compute the task</string>
                     </property>
                     <property name="text">
                      <string>Resources</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QLineEdit" name="taskNameLineEdit">
+                    <property name="locale">
+                     <locale language="English" country="UnitedKingdom"/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="label_57">
+                    <property name="toolTip">
+                     <string>ETH per an hour of computation</string>
+                    </property>
+                    <property name="text">
+                     <string>ETH/h</string>
                     </property>
                    </widget>
                   </item>
@@ -778,12 +778,8 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="1">
-                   <widget class="QLineEdit" name="taskNameLineEdit">
-                    <property name="locale">
-                     <locale language="English" country="UnitedKingdom"/>
-                    </property>
-                   </widget>
+                  <item row="3" column="1">
+                   <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
                   </item>
                  </layout>
                 </item>
