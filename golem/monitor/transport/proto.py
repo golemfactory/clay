@@ -1,4 +1,4 @@
-from golem.monitor.serialization.defaultserializer import DefaultJSONSerializer
+from golem.monitor.serialization.defaultserializer import dict2json
 
 
 class DefaultProto(object):
@@ -8,4 +8,4 @@ class DefaultProto(object):
     def prepare_json_message(self, d):
         json_dict = {'proto_ver': self.proto_version, 'data': d}
 
-        return DefaultJSONSerializer.dict2json(json_dict)
+        return dict2json(json_dict)
