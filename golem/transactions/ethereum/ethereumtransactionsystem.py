@@ -51,3 +51,10 @@ class EthereumTransactionSystem(TransactionSystem):
         :param dict payments: all payments group by ethereum address
         """
         pass
+
+    def get_incoming_payments(self):
+        return [{'status': payment.status,
+                 'payer': payment.payer,
+                 'value': payment.value,
+                 'block_number': payment.extra['block_number']
+                 } for payment in self.__monitor.get_incoming_payments()]

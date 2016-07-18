@@ -357,8 +357,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        #if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):
