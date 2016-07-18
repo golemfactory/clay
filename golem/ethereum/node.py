@@ -126,7 +126,7 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__ps = psutil.Popen(args)
+        self.__ps = psutil.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.01
         wait_time = 0
