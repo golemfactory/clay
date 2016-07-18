@@ -253,11 +253,12 @@ class Client:
         assert isinstance(listener, GolemClientEventListener)
         self.listeners.append(listener)
 
-    def change_config(self, new_config_desc):
+    def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
-        self.task_server.change_config(self.config_desc)
+        if self.task_server:
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client

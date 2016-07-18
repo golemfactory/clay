@@ -205,8 +205,8 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
-    def change_config(self, cfg_desc):
-        self.client.change_config(cfg_desc)
+    def change_config(self, cfg_desc, run_benchmarks=False):
+        self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
 
     def _get_new_task_state(self):
         return GNRTaskState()

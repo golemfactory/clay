@@ -3,8 +3,6 @@ import time
 
 from gnr.task.localcomputer import LocalComputer
 
-from golem.task.taskcomputer import PyTestTaskThread
-
 
 logger = logging.getLogger(__name__)
 
