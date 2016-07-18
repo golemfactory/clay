@@ -57,7 +57,7 @@ class NodeProcess(object):
         program = find_program('geth')
         output, _ = subprocess.Popen(['geth', 'version'],
                                      stdout=subprocess.PIPE).communicate()
-        ver = StrictVersion(re.search("Version: (\d\.\d\.\d)", output).group(1))
+        ver = StrictVersion(re.search("Version: (\d\.\d{1,2}\.\d{1,2})", output).group(1))
         assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
         log.info("geth version {}".format(ver))
 
@@ -126,7 +126,7 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__ps = psutil.Popen(args)
+        self.__ps = psutil.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.01
         wait_time = 0
