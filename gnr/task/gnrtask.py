@@ -14,7 +14,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 def log_key_error(*args, **kwargs):
@@ -187,17 +187,14 @@ class GNRTask(Task):
     def add_resources(self, res_files):
         self.res_files = res_files
 
-    @handle_key_error
     def get_stderr(self, subtask_id):
         err = self.stderr.get(subtask_id)
         return self._interpret_log(err)
 
-    @handle_key_error
     def get_stdout(self, subtask_id):
         out = self.stdout.get(subtask_id)
         return self._interpret_log(out)
 
-    @handle_key_error
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
@@ -219,6 +216,9 @@ class GNRTask(Task):
         self.stderr[subtask_id] = ""
         tr_files = self.load_task_results(task_results, result_type, tmp_dir, subtask_id)
         self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+
+    def result_incoming(self, subtask_id):
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
 
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
@@ -290,7 +290,7 @@ class GNRTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = -1
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, tmp_dir):
@@ -304,8 +304,7 @@ class GNRTask(Task):
         return os.path.dirname(prefix)
 
     def _get_tmp_dir(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id,
-                               self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         if not os.path.exists(tmp_dir):
             os.makedirs(tmp_dir)
         return tmp_dir

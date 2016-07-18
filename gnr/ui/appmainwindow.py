@@ -18,6 +18,22 @@ class AppMainWindow(object):
         self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
 
+        self.__new_task_buttons = [
+                self.ui.showAdvanceNewTaskButton,
+                self.ui.addResourceButton,
+                self.ui.saveButton,
+                self.ui.loadButton,
+                self.ui.taskTypeComboBox,
+            ]
+        self.__recount_buttons = [
+                self.ui.recountBlenderButton,
+                self.ui.recountButton,
+                self.ui.recountLuxButton,
+                self.ui.settingsOkButton,
+                self.ui.settingsCancelButton,
+            ]
+        self.__style_sheet = "color: black"
+
     def show(self):
         self.window.show()
 
@@ -27,16 +43,25 @@ class AppMainWindow(object):
         :param tab_name: Tab name. Available values: 'new_task' and 'recount'
         :param enable: enable if True, disable otherwise
         """
-        if tab_name.lower() == 'new_task':
-            self.ui.testTaskButton.setEnabled(enable)
-            self.ui.showAdvanceNewTaskButton.setEnabled(enable)
-            self.ui.addResourceButton.setEnabled(enable)
-            self.ui.saveButton.setEnabled(enable)
-            self.ui.loadButton.setEnabled(enable)
-            self.ui.taskTypeComboBox.setEnabled(enable)
-        elif tab_name.lower() == 'recount':
-            self.ui.recountBlenderButton.setEnabled(enable)
-            self.ui.recountButton.setEnabled(enable)
-            self.ui.recountLuxButton.setEnabled(enable)
+        tab_name = tab_name.lower()
+
+        if tab_name == 'new_task':
+            self.__set_enabled(self.__new_task_buttons, enable)
+            if enable and self.__style_sheet is not None:
+                self.ui.startTaskButton.setStyleSheet(self.__style_sheet)
+        elif tab_name == 'settings':
             self.ui.settingsOkButton.setEnabled(enable)
             self.ui.settingsCancelButton.setEnabled(enable)
+        elif tab_name == 'recount':
+            self.__set_enabled(self.__recount_buttons, enable)
+
+    def __set_enabled(self, elements, enable):
+        """
+        Enable or disable buttons
+        :param elements: UI elements to be enabled or disabled
+        :param enable: enable if True, disable otherwise
+        """
+        for element in elements:
+            element.setEnabled(enable)
+            if enable and self.__style_sheet is not None:
+                element.setStyleSheet(self.__style_sheet)

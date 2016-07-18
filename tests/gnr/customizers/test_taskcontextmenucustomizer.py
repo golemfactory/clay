@@ -13,7 +13,7 @@ class TestTaskContextMenuCustomizer(TestCase):
         ts.task_state = TaskState()
         status = [TaskStatus.notStarted, TaskStatus.sending, TaskStatus.waiting,
                   TaskStatus.starting, TaskStatus.computing, TaskStatus.finished,
-                  TaskStatus.finished, TaskStatus.aborted, TaskStatus.failure,
+                  TaskStatus.finished, TaskStatus.aborted, TaskStatus.timeout,
                   TaskStatus.paused]
         for st in status:
             ts.task_state.status = st

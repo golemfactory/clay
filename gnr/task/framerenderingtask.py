@@ -4,12 +4,14 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
+from gnr.task.gnrtask import GNRTask
+
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from gnr.renderingdirmanager import get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
@@ -105,7 +107,7 @@ class FrameRenderingTask(RenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
 
             for tr_file in tr_files:
 
@@ -118,11 +120,16 @@ class FrameRenderingTask(RenderingTask):
 
             self.num_tasks_received += num_end - num_start + 1
 
-        if self.num_tasks_received == self.total_tasks:
-            if self.use_frames:
-                self._copy_frames()
-            else:
-                self._put_image_together(tmp_dir)
+        if self.num_tasks_received == self.total_tasks and not self.use_frames:
+            self._put_image_together(tmp_dir)
+
+    @GNRTask.handle_key_error
+    def computation_failed(self, subtask_id):
+        GNRTask.computation_failed(self, subtask_id)
+        if self.use_frames:
+            self._update_frame_task_preview()
+        else:
+            self._update_task_preview()
 
     #########################
     # Specific task methods #
@@ -135,7 +142,7 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(new_chunk_file_path)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         if self.preview_file_path[num] is None:
             self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
         if self.preview_task_file_path[num] is None:
@@ -147,6 +154,8 @@ class FrameRenderingTask(RenderingTask):
         if img:
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
+            
+        img.close()
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
@@ -238,8 +247,9 @@ class FrameRenderingTask(RenderingTask):
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
 
-    def _put_frame_together(self, tmp_dir, frame_num, num_start):
-        output_file_name = os.path.join(tmp_dir, self._get_output_name(frame_num, num_start))
+    def _put_frame_together(self, frame_num, num_start):
+        directory = os.path.dirname(self.output_file)
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -265,7 +275,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _collect_frames(self, num_start, tr_file, frames_list, tmp_dir):
         self.frames_given[frames_list[0]][0] = tr_file
-        self._put_frame_together(tmp_dir, frames_list[0], num_start)
+        self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
 
     def _collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
@@ -277,7 +287,7 @@ class FrameRenderingTask(RenderingTask):
         self._update_frame_preview(tr_file, frame_num, part)
 
         if len(self.frames_given[frame_num]) == parts:
-            self._put_frame_together(tmp_dir, frame_num, num_start)
+            self._put_frame_together(frame_num, num_start)
 
     def _count_part(self, start_num, parts):
         return ((start_num - 1) % parts) + 1
@@ -286,7 +296,7 @@ class FrameRenderingTask(RenderingTask):
         return self.total_tasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
         preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
@@ -294,6 +304,10 @@ class FrameRenderingTask(RenderingTask):
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
+
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        if not self.use_frames:
+            RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
 
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,

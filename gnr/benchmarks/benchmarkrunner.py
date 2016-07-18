@@ -4,7 +4,7 @@ import time
 from gnr.task.localcomputer import LocalComputer
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.benchmarks")
 
 
 class BenchmarkRunner(LocalComputer):
@@ -14,7 +14,7 @@ class BenchmarkRunner(LocalComputer):
     def __init__(self, task, root_path, success_callback, error_callback, benchmark):
         LocalComputer.__init__(self, task, root_path, success_callback, error_callback,
                                # ugly lambda, should think of something prettier
-                               lambda: task.query_extra_data(10000), 
+                               lambda: task.query_extra_data(10000).ctd,
                                True, BenchmarkRunner.RUNNER_WARNING,
                                BenchmarkRunner.RUNNER_SUCCESS)
         # probably this could be done differently
@@ -48,4 +48,3 @@ class BenchmarkRunner(LocalComputer):
             logger_msg += " " + task_thread.error_msg
         logger.warning(logger_msg)
         self.error_callback(task_thread.error_msg)
-    

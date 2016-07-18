@@ -22,7 +22,7 @@ class ResourceServer(PendingConnectionsServer):
         self.resources_to_get = []
         self.res_send_it = 0
         self.peers_it = 0
-        self.dir_manager = DirManager(client.datadir, config_desc.node_name)
+        self.dir_manager = DirManager(client.datadir)
         self.resource_manager = DistributedResourceManager(self.dir_manager.get_resource_dir())
         self.use_ipv6 = use_ipv6
         network = TCPNetwork(ProtocolFactory(FilesProtocol, self, SessionFactory(ResourceSession)), use_ipv6)

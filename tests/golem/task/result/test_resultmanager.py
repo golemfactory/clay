@@ -75,7 +75,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, self.node_name)
+        self.dir_manager = DirManager(self.path)
         self.resource_manager = IPFSResourceManager(self.dir_manager,
                                                     resource_dir_method=self.dir_manager.get_task_output_dir)
 
@@ -124,11 +124,10 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         def success(*args, **kwargs):
             pass
 
-        def error(*args, **kwargs):
-            self.fail("Error downloading package: {}".format(args[0]))
+        def error(exc, *args, **kwargs):
+            self.fail("Error downloading package: {}".format(exc))
 
-        node_name = self.dir_manager.node_name + "2"
-        dir_manager = DirManager(self.path, node_name)
+        dir_manager = DirManager(self.path)
         resource_manager = IPFSResourceManager(dir_manager,
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 

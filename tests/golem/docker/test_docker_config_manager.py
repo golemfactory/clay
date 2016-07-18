@@ -1,7 +1,6 @@
 import unittest
 
 from golem.docker.config_manager import DockerConfigManager
-from golem.docker.task_thread import DockerTaskThread
 
 
 class TestDockerConfigManager(unittest.TestCase):
@@ -26,7 +25,20 @@ class TestDockerConfigManager(unittest.TestCase):
         cm.build_config(config)
 
         assert len(cm.container_host_config) > len(config.to_dict())
-        assert DockerTaskThread.container_host_config == cm.container_host_config
+        assert cm.container_host_config == cm.container_host_config
+
+        assert cm.cpu_cores
+        assert cm.container_host_config['cpuset']
+
+    def test_failing_build_config(self):
+
+        cm = DockerConfigManager()
+        cm.cpu_cores = None
+        cm.build_config(None)
+
+        assert not cm.cpu_cores
+        assert 'cpuset' not in cm.container_host_config
+        assert 'mem_limit' not in cm.container_host_config
 
     def test_try(self):
         cm = DockerConfigManager()

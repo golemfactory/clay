@@ -19,9 +19,6 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.header.max_price, 100)
 
         subtask_id = "xxyyzz"
-        self.assertEqual(task.get_stdout(subtask_id), "")
-        self.assertEqual(task.get_stderr(subtask_id), "")
-        self.assertEqual(task.get_results(subtask_id), [])
 
         task.subtasks_given[subtask_id] = Mock()
         self.assertEqual(task.get_stdout(subtask_id), "")
@@ -88,9 +85,3 @@ class TestGNRTask(LogTestCase, TestDirFixture):
     def __compress_and_pickle_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
         return pickle.dumps((os.path.basename(file_name), file_data))
-
-
-
-
-
-

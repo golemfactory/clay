@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 
 from golem.core.common import is_windows
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
 
 
 def print_progress(i, total):
@@ -102,6 +102,7 @@ def compose_final_image(open_exr_files):
     for i, rgbf in enumerate(rgbfs):
         rgb8_im = convert_rgbf_images_to_rgb8_image(rgbf, lightest, darkest)
         rgb8_images.append(rgb8_im)
+        rgb8_im.close()
 
         print_progress(i, len(rgbfs))
 
@@ -133,6 +134,8 @@ def test_it():
     out = ImageChops.add(img, wmark)
 
     out.save("result.png", "PNG")
+    wmark.close()
+    img.close()
 
 
 def exr_to_pil(exr_file):
@@ -238,7 +241,9 @@ class RenderingTaskCollector:
             if not self.width or not self.height:
                 self.width, self.height = final_img.size
                 self.height *= len(self.accepted_img_files)
-            final_img = self._paste_image(Image.new('RGB', (self.width, self.height)), final_img, 0)
+            img = Image.new('RGB', (self.width, self.height))
+            final_img = self._paste_image(img, final_img, 0)
+            img.close()
 
         for i in range(1, len(self.accepted_img_files)):
             rgb8_im = convert_rgbf_images_to_rgb8_image(open_exr_as_rgbf_images(self.accepted_img_files[i]),
@@ -247,7 +252,9 @@ class RenderingTaskCollector:
                 final_img = ImageChops.add(final_img, rgb8_im)
             else:
                 final_img = self._paste_image(final_img, rgb8_im, i)
-
+                
+            rgb8_im.close()
+            
             if show_progress:
                 print_progress(i, len(self.accepted_img_files))
         return final_img
@@ -261,10 +268,13 @@ class RenderingTaskCollector:
             img = Image.open(name)
             res_x, img_y = img.size
             res_y += img_y
+            img.close()
         
         self.width = res_x
         self.height = res_y
-        bands = Image.open(self.accepted_img_files[0]).getbands()
+        img = Image.open(self.accepted_img_files[0])
+        bands = img.getbands()
+        img.close()
         band = ""
         for b in bands:
             band += b
@@ -279,6 +289,7 @@ class RenderingTaskCollector:
                 final_img.paste(img, (0, offset))
                 _, img_y = img.size
                 offset += img_y
+                img.close()
             if show_progress:
                 print_progress(i, len(self.accepted_img_files))        
         return final_img

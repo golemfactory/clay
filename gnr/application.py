@@ -7,7 +7,7 @@ from PyQt4.QtGui import QApplication, QIcon
 
 from golem.core.common import get_golem_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class GNRGui:
@@ -25,6 +25,7 @@ class GNRGui:
 
     def execute(self, using_qt4_reactor=True):
         self.main_window.show()
+
         if not using_qt4_reactor:
             res = self.app.exec_()
             try:

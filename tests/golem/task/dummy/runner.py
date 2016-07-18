@@ -15,7 +15,7 @@ from threading import Thread
 
 from twisted.internet import reactor
 
-import golem.client
+from golem.client import Client
 from golem.environments.environment import Environment
 from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
@@ -42,8 +42,9 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = golem.client.start_client(datadir, transaction_system=False,
-                                       connect_to_known_hosts=False)
+    client = Client(datadir=datadir, transaction_system=False,
+                    connect_to_known_hosts=False)
+    client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
@@ -73,8 +74,9 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = golem.client.start_client(datadir, transaction_system=False,
-                                       connect_to_known_hosts=False)
+    client = Client(datadir=datadir, transaction_system=False,
+                    connect_to_known_hosts=False)
+    client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
 

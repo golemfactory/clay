@@ -72,7 +72,7 @@ class CompTaskKeeper(object):
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
         assert type(price) in (int, long)
-        return int(ceil(price * computing_time))
+        return int(ceil(price * computing_time / 3600.0))
 
     @handle_key_error
     def remove_task(self, task_id):
@@ -94,7 +94,7 @@ class TaskHeaderKeeper(object):
     to compute or will pass information to other nodes.
     """
 
-    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=240.0,
+    def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=180,
                  verification_timeout=3600):
         self.task_headers = {}  # all computing tasks that this node now about
         self.supported_tasks = []  # ids of tasks that this node may try to compute

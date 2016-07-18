@@ -1,10 +1,9 @@
 """GNR Compute Node"""
 
 import cPickle as pickle
-import logging.config
+import logging
 import sys
 import uuid
-from os import path
 
 import click
 import jsonpickle
@@ -13,20 +12,9 @@ from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from golem.client import create_client
-from golem.core.common import get_golem_path
+from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
-
-
-def config_logging():
-    """Config logger"""
-    config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
-    logging.config.fileConfig(config_file, disable_existing_loggers=False)
-
-
-config_logging()
-logger = logging.getLogger(__name__)
 
 
 class Node(object):
@@ -37,13 +25,14 @@ class Node(object):
 
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
-        self.client = create_client(datadir,
-                                    transaction_system=transaction_system,
-                                    **config_overrides)
+
+        self.client = Client(datadir=datadir,
+                             transaction_system=transaction_system,
+                             **config_overrides)
 
     def initialize(self):
-        self.client.start_network()
         self.load_environments(self.default_environments)
+        self.client.start()
 
     def load_environments(self, environments):
         for env in environments:
@@ -68,6 +57,7 @@ class Node(object):
             from twisted.internet import reactor
             reactor.run()
         except Exception as ex:
+            logger = logging.getLogger("gnr.app")
             logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()

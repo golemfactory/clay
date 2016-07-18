@@ -3,7 +3,7 @@ import logging
 from golem.docker.image import DockerImage
 from golem.docker.environment import DockerEnvironment
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class BlenderEnvironment(DockerEnvironment):

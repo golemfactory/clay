@@ -63,7 +63,7 @@ class TaskStatus(object):
     computing = "Computing"
     finished = "Finished"
     aborted = "Aborted"
-    failure = "Failure"
+    timeout = "Timeout"
     paused = "Paused"
 
 
