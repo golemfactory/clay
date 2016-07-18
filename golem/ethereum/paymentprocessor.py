@@ -206,5 +206,5 @@ class PaymentProcessor(object):
 
     def run(self):
         if self.synchronized() and self.get_ethers_from_faucet():
-            self.sendout()
             self.monitor_progress()
+            self.sendout()
