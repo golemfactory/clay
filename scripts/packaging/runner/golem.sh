@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-SCRIPT=`basename "$0"`
+CWD="$(pwd)"
+
+SCRIPT=$(basename "$0")
+SCRIPT_DIR=$(readlink -f $(cd $(dirname "${BASH_SOURCE[0]}") && pwd))
+
+cd "${SCRIPT_DIR}"
 # ----------------------------------------------------------------------------------------------------------------------
 
 if [[ "${OSTYPE}" == "darwin"* ]]; then
@@ -8,10 +13,16 @@ else
     OS="linux"
 fi
 
-IPFS_DIST_SRV="http://dist.ipfs.io"
 IPFS_VER="v0.4.2"
 IPFS_OS="${OS}-amd64"
-IPFS_URL="${IPFS_DIST_SRV}/go-ipfs/${IPFS_VER}/go-ipfs_${IPFS_VER}_${IPFS_OS}.tar.gz"
+IPFS_URL="http://dist.ipfs.io/go-ipfs/${IPFS_VER}/go-ipfs_${IPFS_VER}_${IPFS_OS}.tar.gz"
+IPFS_TAG="ipfs"
+IPFS_LOG="/tmp/ipfs-daemon.log"
+IPFS_DIR="./${IPFS_TAG}"
+
+GETH_URL="https://github.com/ethereum/go-ethereum/releases/download/v1.4.5/geth-Linux64-20160524084000-1.4.5-a269a71.tar.bz2"
+GETH_TAG="geth"
+GETH_DIR="./${GETH_TAG}"
 
 UPDATE_SERVER="http://52.40.149.24:9999"
 UPDATE_URL="${UPDATE_SERVER}/golem/"
@@ -27,16 +38,12 @@ EXEC_DIR=$(readlink -f $(find . -name "exe.*" -type d -print -quit))
 UTILS_DIR="utils"
 SCRIPTS_DIR="scripts"
 EXEC_NAME="golemapp"
-PATH=$IPFS_DIR:$EXEC_DIR:$PATH
+
+PATH="${GETH_DIR}:${IPFS_DIR}:${EXEC_DIR}:${PATH}"
 
 # ----------------------------------------------------------------------------------------------------------------------
 
 set -e
-
-CWD="$(pwd)"
-SCRIPT_DIR=$(readlink -f $(cd $(dirname "${BASH_SOURCE[0]}") && pwd))
-
-cd "${SCRIPT_DIR}"
 
 function download {
     URL=$1
@@ -59,7 +66,31 @@ function download {
     echo "Extracting ${TAG}"
     tar -xf "${FILE}"
     rm "${FILE}"
-    mv -f *${TAG}* "${DIR}"
+
+    OUTPUT=$(ls *${TAG}*)
+    if [ -f "${OUTPUT}" ]; then
+        TMP=".${OUTPUT}.tmp"
+        mv "${OUTPUT}" "${TMP}"
+        mkdir -p "${DIR}"
+        mv "${TMP}" "${DIR}/${OUTPUT}"
+    else
+        mv -f "${OUTPUT}" "${DIR}"
+    fi
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
+
+function backup {
+    LIB=$1
+    BACKUP_DIR="${SCRIPT_DIR}/.backup"
+    mkdir -p "${BACKUP_DIR}"
+
+    for FILENAME in "${EXEC_DIR}"/* ; do
+        if [[ "${FILENAME}" == *"${LIB}"* ]]; then
+            echo "Removing local library ${FILENAME}"
+            mv -f "${FILENAME}" "${BACKUP_DIR}"
+        fi
+    done
 }
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -80,8 +111,6 @@ function update {
     rm -f "${ZIP}"
 
     if [ -d "${UPDATE_DIR}" ]; then
-        # find . -maxdepth 1 ! -name "${UPDATE_DIR}" ! -name "." ! -name ".." -exec rm -rf {} +
-
         rm -rf "${EXEC_DIR}"
         rm -rf "${SCRIPTS_DIR}"
         rm -rf "${UTILS_DIR}"
@@ -137,35 +166,34 @@ done
 
 # ----------------------------------------------------------------------------------------------------------------------
 
-IPFS_TAG="ipfs"
-IPFS_DIR="${CWD}/${IPFS_TAG}"
-IPFS_PATH="${CWD}/.ipfs"
-IPFS_LOG="/tmp/ipfs-daemon.log"
-
 # if [[ ! -d $IPFS_DIR ]]; then
 #     download $IPFS_URL $IPFS_DIR $IPFS_TAG
 # fi
 
-set +e
+# ----------------------------------------------------------------------------------------------------------------------
 
+if [[ ! -d $GETH_DIR ]]; then
+    download $GETH_URL $GETH_DIR $GETH_TAG
+fi
+
+set +e
 # ----------------------------------------------------------------------------------------------------------------------
 
 QT_PRESENT=$(ldconfig -v 2>/dev/null | grep QtCore.so.4)
 
 if [[ ${QT_PRESENT} != "" ]]; then
-    BACKUP_DIR="${SCRIPT_DIR}/.backup"
-    mkdir -p "${BACKUP_DIR}"
+    backup "libQt"
+fi
 
-    for FILENAME in "${EXEC_DIR}"/* ; do
-        if [[ "${FILENAME}" == *"libQt"* ]]; then
-            echo "Backing up and removing library ${FILENAME}"
-            mv -f "${FILENAME}" "${BACKUP_DIR}"
-        fi
-    done
+KRB_PRESENT=$(ldconfig -v 2>/dev/null | grep libgssapi_krb5.so.2)
+
+if [[ ${KRB_PRESENT} != "" ]]; then
+    backup "libgssapi_krb5"
 fi
 
 # ----------------------------------------------------------------------------------------------------------------------
 
+# IPFS_PATH="${CWD}/.ipfs"
 # killall ipfs > /dev/null 2>&1
 # ipfs init > /dev/null 2>&1
 # ipfs daemon > $IPFS_LOG &
@@ -176,7 +204,7 @@ fi
 now=$(date)
 host=$(hostname)
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 ]]; then
     ARGS="--nogui"
 else
     ARGS=$@
@@ -185,4 +213,5 @@ fi
 "$EXEC_DIR/$EXEC_NAME" $ARGS >> "golem ${hostname} ${now}.log" 2>&1
 
 # killall ipfs
+
 cd "${CWD}"

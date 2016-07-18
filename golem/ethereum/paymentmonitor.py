@@ -21,10 +21,14 @@ class PaymentMonitor(object):
         self.__filter = None
         self.__payments = []
 
-        scheduler = LoopingCall(self.get_incoming_payments)
-        scheduler.start(10)  # FIXME: Use single scheduler for all payments.
+        scheduler = LoopingCall(self.process_incoming_payments)
+        scheduler.start(30)  # FIXME: Use single scheduler for all payments.
 
     def get_incoming_payments(self):
+        """Return cached incoming payments fetch from blockchain."""
+        return self.__payments
+
+    def process_incoming_payments(self):
         if not self.__filter:
             # solidity Transfer() log id
             # FIXME: Take it from contract ABI

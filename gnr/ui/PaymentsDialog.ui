@@ -69,7 +69,7 @@
            </attribute>
            <column>
             <property name="text">
-             <string>Task</string>
+             <string>Subtask</string>
             </property>
             <property name="toolTip">
              <string>Subtask identificator</string>
@@ -77,15 +77,15 @@
            </column>
            <column>
             <property name="text">
-             <string>Node</string>
+             <string>Recipient</string>
             </property>
             <property name="toolTip">
-             <string>Name of the computing node</string>
+             <string>Ethereum address of the payment recipient</string>
             </property>
            </column>
            <column>
             <property name="text">
-             <string>State</string>
+             <string>Status</string>
             </property>
             <property name="toolTip">
              <string>Current status of the payment: awaiting, sent or confirmed</string>
@@ -96,15 +96,15 @@
              <string>Value</string>
             </property>
             <property name="toolTip">
-             <string>How much should you pay</string>
+             <string>How much should be payed</string>
             </property>
            </column>
            <column>
             <property name="text">
-             <string>Transaction</string>
+             <string>Network fee</string>
             </property>
             <property name="toolTip">
-             <string>Ethereum transaction reference</string>
+             <string>Ethereum network fee for confirmed payments</string>
             </property>
            </column>
           </widget>

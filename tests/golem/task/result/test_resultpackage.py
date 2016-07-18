@@ -80,7 +80,7 @@ class TestZipPackager(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, node_name)
+        self.dir_manager = DirManager(self.path)
         MockDirContents.populate(self, self.dir_manager, self.task_id)
 
     def testCreate(self):
@@ -105,7 +105,7 @@ class TestEncryptingPackager(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, node_name)
+        self.dir_manager = DirManager(self.path)
         self.secret = FileEncryptor.gen_secret(10, 20)
         MockDirContents.populate(self, self.dir_manager, self.task_id)
 
@@ -131,7 +131,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, node_name)
+        self.dir_manager = DirManager(self.path)
         self.secret = FileEncryptor.gen_secret(10, 20)
         MockDirContents.populate(self, self.dir_manager, self.task_id)
 
@@ -176,7 +176,7 @@ class TestExtractedPackage(TestDirFixture):
         TestDirFixture.setUp(self)
 
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, node_name)
+        self.dir_manager = DirManager(self.path)
         self.secret = FileEncryptor.gen_secret(10, 20)
         MockDirContents.populate(self, self.dir_manager, self.task_id)
 
