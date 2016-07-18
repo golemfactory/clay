@@ -224,3 +224,51 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_peer_count.return_value = 2
         self.client.is_syncing.return_value = syncing_status
         assert not pp.synchronized()
+
+    def test_monitor_progress(self):
+        a1 = urandom(20)
+
+        inprogress = self.pp._PaymentProcessor__inprogress
+
+        def reserved():
+            return self.pp._PaymentProcessor__reserved
+
+        self.client.get_balance.return_value = 99 * 10**18
+
+        assert reserved() == 0
+
+        v = 10**17
+        p = Payment.create(subtask="p1", payee=a1, value=v)
+        assert self.pp.add(p)
+        assert reserved() == v
+
+        self.pp.sendout()
+        assert self.client.send.call_count == 1
+        tx = self.client.send.call_args[0][0]
+        assert tx.value == v
+        assert len(tx.data) == 4 + 2*32 + 32  # Id + array abi + bytes32[1]
+
+        assert len(inprogress) == 1
+        assert tx.hash in inprogress
+        assert inprogress[tx.hash] == [p]
+
+        # Check payment status in the Blockchain
+        txinfo = {'blockNumber': None, 'blockHash': None}
+        self.client.get_transaction_by_hash.return_value = txinfo
+        self.pp.monitor_progress()
+        assert len(inprogress) == 1
+        assert reserved() == v
+
+        txinfo['blockHash'] = '0x' + 64*'0'  # geth sometimes returns "null" hash.
+        self.pp.monitor_progress()
+        assert len(inprogress) == 1
+        assert reserved() == v
+
+        txinfo['blockNumber'] = '0x2016'
+        txinfo['blockHash'] = '0x' + 64*'f'
+        self.pp.monitor_progress()
+        assert len(inprogress) == 0
+        assert p.status == PaymentStatus.confirmed
+        assert p.details['block_number'] == 8214
+        assert p.details['block_hash'] == 64*'f'
+        assert reserved() == 0
