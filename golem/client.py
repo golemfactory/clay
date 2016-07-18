@@ -61,6 +61,14 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
             l.task_updated(task_id)
 
 
+class ClientTaskComputerEventListener(object):
+    def __init__(self, client):
+        self.client = client
+
+    def toggle_config_dialog(self, on=True):
+        self.client.toggle_config_dialog(on)
+
+
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False,
                  connect_to_known_hosts=True, **config_overrides):
@@ -177,6 +185,7 @@ class Client(object):
 
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
@@ -286,6 +295,20 @@ class Client(object):
     # TODO: simplify
     def get_keys_auth(self):
         return self.keys_auth
+
+    def load_keys_from_file(self, file_name):
+        if file_name != "":
+            return self.keys_auth.load_from_file(file_name)
+        return False
+
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        return self.keys_auth.save_to_files(private_key_path, public_key_path)
+
+    def get_key_id(self):
+        return self.get_client_id()
+
+    def get_difficulty(self):
+        return self.keys_auth.get_difficulty()
 
     def get_client_id(self):
         return self.keys_auth.get_key_id()
@@ -423,15 +446,15 @@ class Client(object):
         return self.resource_server.get_distributed_resource_root()
 
     def remove_computed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_computed_files_dir())
 
     def remove_distributed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_distributed_files_dir())
 
     def remove_received_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
@@ -476,6 +499,10 @@ class Client(object):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
+
+    def toggle_config_dialog(self, on=True):
+        for rpc_client in self.rpc_clients:
+            rpc_client.toggle_config_dialog(on)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
@@ -569,8 +596,6 @@ class Client(object):
         peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
-        if self.transaction_system:
-            msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
     def __lock_datadir(self):
