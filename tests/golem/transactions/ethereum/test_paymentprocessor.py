@@ -253,22 +253,21 @@ class PaymentProcessorTest(DatabaseFixture):
         assert inprogress[tx.hash] == [p]
 
         # Check payment status in the Blockchain
-        txinfo = {'blockNumber': None, 'blockHash': None}
-        self.client.get_transaction_by_hash.return_value = txinfo
+        self.client.get_transaction_receipt.return_value = None
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert reserved() == v
 
-        txinfo['blockHash'] = '0x' + 64*'0'  # geth sometimes returns "null" hash.
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert reserved() == v
 
-        txinfo['blockNumber'] = '0x2016'
-        txinfo['blockHash'] = '0x' + 64*'f'
+        receipt = {'blockNumber': '0x2016', 'blockHash': '0x' + 64*'f', 'gasUsed': '0xd6d9'}
+        self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         assert len(inprogress) == 0
         assert p.status == PaymentStatus.confirmed
         assert p.details['block_number'] == 8214
         assert p.details['block_hash'] == 64*'f'
+        assert p.details['fee'] == 55001 * self.pp.GAS_PRICE
         assert reserved() == 0
