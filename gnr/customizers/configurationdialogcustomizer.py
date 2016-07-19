@@ -65,9 +65,7 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__recount_performance)
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__docker_config_changed)
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__docker_config_changed)      
-        
+               
         QtCore.QObject.connect(self.gui.ui.maxMemoryUsageComboBox, QtCore.SIGNAL("currentIndexChanged(QString)"),
                                self.__docker_config_changed)
         QtCore.QObject.connect(self.gui.ui.maxMemoryUsageSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
