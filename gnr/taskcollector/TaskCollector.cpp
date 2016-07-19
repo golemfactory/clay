@@ -253,7 +253,7 @@ public:
 			currentHeight += chunkHeight;
 		};
 
-		std::for_each(chunks.rbegin(), chunks.rend(), RGBChunkWorker);
+		std::for_each(chunks.begin(), chunks.end(), RGBChunkWorker);
 		return finalImage;
 	}
 };
