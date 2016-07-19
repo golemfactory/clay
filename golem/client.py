@@ -354,10 +354,13 @@ class Client(object):
         :param task_id: Task ID
         :return: Cost of the task as array
         """
-        subtasks = self.task_server.get_subtasks_for_task_id(task_id)
-        if subtasks is None:
-            return 0.0
-        return self.transaction_system.get_payment_for_subtasks(subtasks)
+        subtasks_list = self.task_server.get_subtasks_for_task_id(task_id)
+        subtasks_cost = 0.0
+        if self.transaction_system:
+            subtasks_cost = self.transaction_system.get_payment_for_subtasks(subtasks_list)
+        else:
+            logger.info("Transaction system is turned off")
+        return subtasks_cost
 
     def get_balance(self):
         if self.use_transaction_system():

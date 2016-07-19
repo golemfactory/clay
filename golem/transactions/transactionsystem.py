@@ -1,3 +1,4 @@
+from golem.core.common import ETH
 from golem.model import Payment
 
 from paymentskeeper import PaymentsKeeper
@@ -45,7 +46,7 @@ class TransactionSystem(object):
         if self.payments_keeper is not None:
             for subtask in subtasks:
                 cost += float(self.payments_keeper.get_payment(subtask))
-        return cost
+        return cost * ETH
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes

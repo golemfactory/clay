@@ -377,7 +377,7 @@ class TaskManager(object):
         """
         if task_id not in self.tasks_states:
             return None
-        subtasks = ()
+        subtasks = []
         for sub in self.tasks_states[task_id].subtask_states.values():
             subtasks.append(sub.subtask_id)
         return subtasks

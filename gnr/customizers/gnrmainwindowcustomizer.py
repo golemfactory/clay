@@ -94,7 +94,7 @@ class GNRMainWindowCustomizer(Customizer):
     def __update_payment(self, task_id, i):
         price = yield self.logic.get_cost_for_task_id(task_id)
         if price:
-            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText(str(price))
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price))
 
     def update_time(self):
         with self.lock:

@@ -228,7 +228,7 @@ class TaskServer(PendingConnectionsServer):
         """
         subtasks = self.task_manager.get_subtasks(task_id)
         if subtasks is None:
-            return ()
+            return []
         return subtasks
 
     def get_resource_port(self):
