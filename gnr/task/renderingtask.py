@@ -214,7 +214,7 @@ class RenderingTask(GNRTask):
         else:
             task_collector_path = os.path.normpath(
                 os.path.join(get_golem_path(), "gnr/taskcollector/Release/taskcollector"))
-        cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(output_file_name)] + files
+        cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(self.res_x), "{}".format(self.res_y), "{}".format(output_file_name)] + files
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
