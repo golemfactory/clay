@@ -168,24 +168,27 @@ class PaymentProcessor(object):
         for h, payments in self.__inprogress.iteritems():
             hstr = h.encode('hex')
             log.info("Checking {} transaction".format(hstr))
-            info = self.__client.get_transaction_by_hash(hstr)
-            assert info, "Transaction has been lost"
-            if info['blockNumber']:
-                block_hash = info['blockHash'][2:]
+            receipt = self.__client.get_transaction_receipt(hstr)
+            if receipt:
+                block_hash = receipt['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
-                block_number = int(info['blockNumber'], 16)
-                log.info("Confirmed {}: block {} ({})".format(hstr, block_hash,
-                                                              block_number))
+                block_number = int(receipt['blockNumber'], 16)
+                gas_used = int(receipt['gasUsed'], 16)
+                log.info("Confirmed {}: block {} ({}), gas {}"
+                         .format(hstr, block_hash, block_number, gas_used))
+                total_fee = gas_used * self.GAS_PRICE
+                fee = total_fee // len(payments)
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
                         p.details['block_number'] = block_number
                         p.details['block_hash'] = block_hash
+                        p.details['fee'] = fee
                         p.save()
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.
-            self.__reserved -= self.__inprogress[h].value
+            self.__reserved -= sum(p.value for p in self.__inprogress[h])
             assert self.__reserved >= 0
             # Delete in progress entry.
             del self.__inprogress[h]
@@ -206,5 +209,5 @@ class PaymentProcessor(object):
 
     def run(self):
         if self.synchronized() and self.get_ethers_from_faucet():
-            self.sendout()
             self.monitor_progress()
+            self.sendout()

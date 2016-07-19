@@ -51,7 +51,7 @@ class TaskManager(object):
         self.key_id = key_id
 
         self.root_path = root_path
-        self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
+        self.dir_manager = DirManager(self.get_task_manager_root())
 
         resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
                                                          resource_dir_method=self.dir_manager.get_task_temporary_dir)
@@ -461,7 +461,7 @@ class TaskManager(object):
             assert False, "Should never be here!"
 
     def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path, self.node_name)
+        self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):

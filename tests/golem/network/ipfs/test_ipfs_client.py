@@ -30,7 +30,7 @@ class TestIpfsClient(TestDirFixture):
         task_id = str(uuid.uuid4())
 
         self.node_name = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, self.node_name)
+        self.dir_manager = DirManager(self.path)
 
         res_path = self.dir_manager.get_task_resource_dir(task_id)
         self.test_dir = os.path.join(res_path, 'test_dir')

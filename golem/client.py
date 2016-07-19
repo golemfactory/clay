@@ -9,10 +9,11 @@ from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.simpleauth import SimpleAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database
+from golem.model import Database, Account
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -59,6 +60,14 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
     def task_status_updated(self, task_id):
         for l in self.client.listeners:
             l.task_updated(task_id)
+
+
+class ClientTaskComputerEventListener(object):
+    def __init__(self, client):
+        self.client = client
+
+    def toggle_config_dialog(self, on=True):
+        self.client.toggle_config_dialog(on)
 
 
 class Client(object):
@@ -140,6 +149,7 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.session_id = SimpleAuth.generate_uuid().get_hex()
 
     def start(self):
         self.start_network()
@@ -177,6 +187,7 @@ class Client(object):
 
         self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
+        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
     def connect(self, socket_address):
@@ -287,6 +298,20 @@ class Client(object):
     def get_keys_auth(self):
         return self.keys_auth
 
+    def load_keys_from_file(self, file_name):
+        if file_name != "":
+            return self.keys_auth.load_from_file(file_name)
+        return False
+
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        return self.keys_auth.save_to_files(private_key_path, public_key_path)
+
+    def get_key_id(self):
+        return self.get_client_id()
+
+    def get_difficulty(self):
+        return self.keys_auth.get_difficulty()
+
     def get_client_id(self):
         return self.keys_auth.get_key_id()
 
@@ -345,8 +370,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        #if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):
@@ -361,6 +389,18 @@ class Client(object):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
+
+    def get_description(self):
+        try:
+            account, _ = Account.get_or_create(node_id=self.get_client_id())
+            return account.description
+        except Exception as e:
+            return "An error has occured {}".format(e)
+
+    def change_description(self, description):
+        self.get_description()
+        q = Account.update(description=description).where(Account.node_id == self.get_client_id())
+        q.execute()
 
     def use_ranking(self):
         return bool(self.ranking)
@@ -434,15 +474,15 @@ class Client(object):
         return self.resource_server.get_distributed_resource_root()
 
     def remove_computed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_computed_files_dir())
 
     def remove_distributed_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_distributed_files_dir())
 
     def remove_received_files(self):
-        dir_manager = DirManager(self.datadir, self.config_desc.node_name)
+        dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
@@ -487,6 +527,10 @@ class Client(object):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
+
+    def toggle_config_dialog(self, on=True):
+        for rpc_client in self.rpc_clients:
+            rpc_client.toggle_config_dialog(on)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
@@ -580,8 +624,6 @@ class Client(object):
         peers = self.p2pservice.get_peers()
 
         msg += "Active peers in network: {}\n".format(len(peers))
-        if self.transaction_system:
-            msg += "Budget: {}\n".format(self.transaction_system.budget)
         return msg
 
     def __lock_datadir(self):

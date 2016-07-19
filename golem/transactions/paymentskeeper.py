@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from golem.model import db, Payment, PaymentStatus
+from golem.model import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -12,8 +12,9 @@ class PaymentsDatabase(object):
 
     def get_payment_value(self, payment_info):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
-        :param PaymentInfo payment_info: payment structure from which the database should retrieve information about
-         computing node and task id.
+        :param PaymentInfo payment_info: payment structure from which the
+               database should retrieve information about computing node and
+               task id.
         :return int: value of a previous similiar payment or 0 if there is no such payment in database
         """
         try:
@@ -74,10 +75,11 @@ class PaymentsKeeper(object):
         # This data is used by UI.
         # TODO: Update the UI to reflect Payment changes.
         # FIXME: Do not prepare data for UI. UI should do it itself.
-        return [{"task": payment.subtask,
-                 "node": payment.payee,
+        return [{"subtask": payment.subtask,
+                 "payee": payment.payee,
                  "value": payment.value,
-                 "state": payment.status} for
+                 "status": payment.status,
+                 "fee": payment.details.get('fee')} for
                 payment in self.db.get_newest_payment()]
 
     def get_payment(self, task_id):

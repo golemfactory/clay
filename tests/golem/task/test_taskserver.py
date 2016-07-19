@@ -60,7 +60,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
         ts.client.transaction_system.add_to_waiting_payments.assert_called_with(
-            "xyz", "key", 440)
+            "xyz", "key", 1)
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")

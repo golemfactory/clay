@@ -2,6 +2,7 @@ import os
 import time
 import uuid
 
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from mock import Mock, MagicMock
 from twisted.internet.defer import Deferred
 
@@ -12,7 +13,7 @@ from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import DatabaseFixture
 
 
 class TTask(Task):
@@ -123,7 +124,7 @@ class MockService(object):
         return 1
 
 
-class TestGNRApplicationLogic(TestDirFixture):
+class TestGNRApplicationLogic(DatabaseFixture):
 
     def test_root_path(self):
         logic = GNRApplicationLogic()
@@ -231,5 +232,45 @@ class TestGNRApplicationLogic(TestDirFixture):
         logic.get_environments()
         logic.get_payments()
         logic.get_incomes()
+        logic.get_key_id()
+        logic.get_difficulty()
+        logic.load_keys_from_file('invalid')
+        logic.save_keys_to_files(os.path.join(self.path, 'invalid_1'), os.path.join(self.path, 'invalid_2'))
 
         golem_client.quit()
+
+    def test_updating_config_dialog(self):
+        logic = RenderingApplicationLogic()
+        app = GNRGui(logic, AppMainWindow)
+
+        logic.client = Mock()
+        logic.register_gui(app.get_main_window(),
+                           RenderingMainWindowCustomizer)
+
+        logic.toggle_config_dialog(True)
+
+        assert not logic.customizer.gui.ui.settingsOkButton.isEnabled()
+        assert not logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+
+        logic.toggle_config_dialog(True)
+        logic.toggle_config_dialog(False)
+        logic.toggle_config_dialog(False)
+
+        assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
+        assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+
+        app.app.exit(0)
+        app.app.deleteLater()
+
+    def test_change_description(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        golem_client = Client(datadir=self.path)
+        client = MockRPCClient(golem_client)
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+        logic.register_client(client, service_info)
+        golem_client.change_description("NEW DESC")
+        time.sleep(0.5)
+        assert golem_client.get_description() == "NEW DESC"
+        golem_client.quit()
+
