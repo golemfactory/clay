@@ -134,10 +134,10 @@ public:
 		auto img = finalize();
 		return GenericWriter(img, outputPath, EXR_FLOAT);
 	};
-	void set_width(int w) {
+	void set_width(unsigned int w) {
 		width = w;
 	};
-	void set_height(int h) {
+	void set_height(unsigned int h) {
 		height = h;
 	};
 
@@ -161,9 +161,8 @@ public:
 		const auto type = FreeImage_GetImageType(firstChunk.get());
 		
 		bitmap_ptr finalImage(FreeImage_Copy(firstChunk.get(), 0, height, width, 0));
-		unsigned int res_x = width;
 
-		auto RGBChunkWorker = [=, &finalImage, &res_x](const std::string& el)
+		auto RGBChunkWorker = [=, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -171,7 +170,7 @@ public:
 				auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
-				for (unsigned int x = 0; x < res_x; ++x) {
+				for (unsigned int x = 0; x < this->width; ++x) {
 					dstbits[x].red += srcbits[x].red;
 					dstbits[x].blue += srcbits[x].blue;
 					dstbits[x].green += srcbits[x].green;
@@ -179,7 +178,7 @@ public:
 			}
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage, &res_x](const std::string& el)
+		auto RGBAChunkWorker = [=, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -187,7 +186,7 @@ public:
 				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
-				for (unsigned int x = 0; x < res_x; ++x) {
+				for (unsigned int x = 0; x < this->width; ++x) {
 					dstbits[x].red += srcbits[x].red;
 					dstbits[x].blue += srcbits[x].blue;
 					dstbits[x].green += srcbits[x].green;
@@ -196,7 +195,7 @@ public:
 			}
 		};
 
-		auto alphaChunksWorker = [&finalImage, &res_x](const std::string& el)
+		auto alphaChunksWorker = [this, &finalImage](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
@@ -204,7 +203,7 @@ public:
 				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
 				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y));
 
-				for (unsigned int x = 0; x < res_x; ++x) {
+				for (unsigned int x = 0; x < this->width; ++x) {
 					dstbits[x].alpha += srcbits[x].red + srcbits[x].blue + srcbits[x].green;
 				}
 			}
@@ -241,13 +240,12 @@ public:
 		const auto bpp = FreeImage_GetBPP(firstChunk.get());
 		
 		bitmap_ptr finalImage(FreeImage_AllocateT(type, width, height, bpp));
-		unsigned int res_x = width;
 
-		auto RGBChunkWorker = [=, &finalImage, &currentHeight, &res_x](const std::string& el)
+		auto RGBChunkWorker = [=, &finalImage, &currentHeight](const std::string& el)
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
-			auto chunk_img = FreeImage_Copy(chunk.get(), 0, 0, res_x, chunkHeight);
+			auto chunk_img = FreeImage_Copy(chunk.get(), 0, 0, this->width, chunkHeight);
 			if (chunk_img) {
 				FreeImage_Paste(finalImage.get(), chunk_img, 0, currentHeight, 256);
 			}
