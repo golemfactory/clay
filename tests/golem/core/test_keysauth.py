@@ -1,7 +1,7 @@
 from os import path
 from random import random
 
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
@@ -16,6 +16,10 @@ class KeysAuthTest(TestWithKeysAuth):
     def test_keys_dir_default2(self):
         self.assertEqual(KeysAuth(self.path).get_keys_dir(), KeysAuth(self.path).get_keys_dir())
 
+    def test_keys_dir_default3(self):
+        KeysAuth.get_keys_dir()
+        assert path.isdir(KeysAuth._keys_dir)
+
     def test_keys_dir_setter(self):
         km = KeysAuth(self.path)
         d = path.join(self.path, "blablabla")
@@ -27,6 +31,22 @@ class KeysAuthTest(TestWithKeysAuth):
         with self.assertRaises(AssertionError):
             km = KeysAuth(self.path)
             km.set_keys_dir(file_)
+
+
+class TestRSAKeysAuth(TestWithKeysAuth):
+    # FIXME Fix this test and add encrypt decrypt
+    def test_sign_verify(self):
+        km = RSAKeysAuth(self.path)
+    #
+    #     data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
+    #     signature = km.sign(data)
+    #     assert km.verify(signature, data)
+    #     assert km.verify(signature, data, km.key_id)
+    #     km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
+    #     assert km2.verify(signature, data, km.key_id)
+    #     data2 = "ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
+    #     signature2 = km2.sign(data2)
+    #     assert km.verify(signature2, data2, km2.key_id)
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):
