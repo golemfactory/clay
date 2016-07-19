@@ -8,6 +8,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import (EthAccountInfo, 
                                                                 logger)
 from golem.transactions.paymentskeeper import PaymentInfo
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.network.p2p.node import Node
@@ -47,9 +48,9 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
         e.finished_subtasks(pi)
 
 
-class TestEthAccountInfo(unittest.TestCase):
+class TestEthAccountInfo(TempDirFixture):
     def test_comparison(self):
-        k = EllipticalKeysAuth()
+        k = EllipticalKeysAuth(self.path)
         addr1 = "0x09197b95a57ad20ee68b53e0843fb1d218db6a78"
         a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), addr1)
         b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), addr1)
