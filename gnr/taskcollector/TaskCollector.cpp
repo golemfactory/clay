@@ -112,14 +112,14 @@ public:
 	bool addImgFile(std::string pathName)  {
 		if (pathName.empty())
 			return false;
-		chunks.emplace_back(pathName);
+		chunks.emplace_back(std::move(pathName));
 		return true;
 	};
 
 	bool addAlphaFile(std::string pathName) {
 		if (pathName.empty())
 			return false;
-		alphaChunks.emplace_back(pathName);
+		alphaChunks.emplace_back(std::move(pathName));
 		return true;
 	};
 
@@ -229,9 +229,9 @@ public:
 		const auto width = FreeImage_GetWidth(firstChunk.get());
 		auto height = 0;
 		
-		for (auto i = chunks.begin(); i != chunks.end(); ++i) {
-			bitmap_ptr chunk = GenericLoader(*i);
-			height += FreeImage_GetHeight(chunk.get());
+		for (auto& chunk : chunks) {
+			bitmap_ptr img = GenericLoader(chunk);
+			height += FreeImage_GetHeight(img.get());
 		}
 
 		auto currentHeight = 0;
@@ -246,39 +246,14 @@ public:
 		{
 			bitmap_ptr chunk = GenericLoader(el);
 			auto chunkHeight = FreeImage_GetHeight(chunk.get());
-			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(chunk.get(), y));
-				auto dstbits = reinterpret_cast<FIRGBF *>(FreeImage_GetScanLine(finalImage.get(), y + currentHeight));
-				for (unsigned int x = 0; x < width; ++x) {
-					dstbits[x].red = srcbits[x].red;
-					dstbits[x].blue = srcbits[x].blue;
-					dstbits[x].green = srcbits[x].green;
-				}
+			auto chunk_img = FreeImage_Copy(chunk.get(), 0, 0, width, chunkHeight);
+			if (chunk_img) {
+				FreeImage_Paste(finalImage.get(), chunk_img, 0, currentHeight, 256);
 			}
 			currentHeight += chunkHeight;
 		};
 
-		auto RGBAChunkWorker = [=, &finalImage, &currentHeight](const std::string& el)
-		{
-			bitmap_ptr chunk = GenericLoader(el);
-			auto chunkHeight = FreeImage_GetHeight(chunk.get());
-			for (unsigned int y = 0; y < chunkHeight; ++y) {
-				const auto srcbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(chunk.get(), y));
-				auto dstbits = reinterpret_cast<FIRGBAF *>(FreeImage_GetScanLine(finalImage.get(), y + currentHeight));
-				for (unsigned int x = 0; x < width; ++x) {
-					dstbits[x].red = srcbits[x].red;
-					dstbits[x].blue = srcbits[x].blue;
-					dstbits[x].green = srcbits[x].green;
-					dstbits[x].alpha = srcbits[x].alpha;
-				}
-			}
-			currentHeight += chunkHeight;
-		};
-
- 		if (type == FIT_RGBF)
- 			std::for_each(chunks.rbegin(), chunks.rend(), RGBChunkWorker);
-		else if (type == FIT_RGBAF)
-			std::for_each(chunks.rbegin(), chunks.rend(), RGBAChunkWorker);
+		std::for_each(chunks.rbegin(), chunks.rend(), RGBChunkWorker);
 		return finalImage;
 	}
 };
