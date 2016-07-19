@@ -156,7 +156,6 @@ class Client(object):
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
 
-
     def start(self):
         self.init_monitor()
         self.start_network()
@@ -201,7 +200,8 @@ class Client(object):
             self.monitor.on_login()
 
     def init_monitor(self):
-        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION, self.config_desc)
+        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
+                                     self.get_description(), self.config_desc)
         self.monitor = SystemMonitor(metadata)
         self.monitor.start()
 
