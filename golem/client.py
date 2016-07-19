@@ -91,7 +91,7 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK

@@ -22,9 +22,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         ps = PeerSession(MagicMock())
         ps2 = PeerSession(MagicMock())
 
-        EllipticalKeysAuth._keys_dir = self.path
-        ek = EllipticalKeysAuth(random())
-        ek2 = EllipticalKeysAuth(random())
+        ek = EllipticalKeysAuth(self.path, "RANDOMPRIV", "RANDOMPUB")
+        ek2 = EllipticalKeysAuth(self.path, "RANDOMPRIV2", "RANDOMPUB2")
         ps.p2p_service.encrypt = ek.encrypt
         ps.p2p_service.decrypt = ek.decrypt
         ps.key_id = ek2.key_id
@@ -45,7 +44,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         conf = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 
