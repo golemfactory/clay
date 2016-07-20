@@ -14,6 +14,9 @@ class ClientConfigDescriptor(object):
         self.end_port = 0
         self.manager_address = ""
         self.manager_port = 0
+        self.monitor_host = ""
+        self.monitor_request_timeout = 0
+        self.monitor_sender_thread_timeout = 0
         self.opt_peer_num = 0
         self.send_pings = 0
         self.pings_interval = 0.0
