@@ -362,7 +362,7 @@ class Client(object):
         if self.transaction_system:
             return self.transaction_system.get_incoming_payments()
         # FIXME use method that connect payment with expected payments
-        #if self.use_transaction_system():
+        # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
         return ()
 
@@ -486,17 +486,11 @@ class Client(object):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)
 
-    def get_computing_trust(self, node_id):
-        return self.ranking.get_computing_trust(node_id)
-
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
 
     def send_stop_gossip(self):
         return self.p2pservice.send_stop_gossip()
-
-    def get_requesting_trust(self, node_id):
-        return self.ranking.get_requesting_trust(node_id)
 
     def collect_gossip(self):
         return self.p2pservice.pop_gossip()

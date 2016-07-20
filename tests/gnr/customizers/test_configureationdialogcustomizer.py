@@ -3,7 +3,7 @@ import re
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
-from mock import MagicMock, Mock
+from mock import MagicMock
 from twisted.internet.defer import Deferred
 from ethereum.utils import denoms
 
