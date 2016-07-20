@@ -64,20 +64,18 @@ class DILLSerializer(object):
 class CBORCoder(object):
 
     tag = 0xff
+    cls_key = '_cls'
+    builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
     def encode(cls, encoder, value, fp):
-        if value:
+        if value is not None:
             obj_dict = cls._object_to_dict(value)
-        else:
-            obj_dict = dict()
-        obj_dict['_cls'] = cls._module_and_class(value)
-        encoder.encode_semantic(cls.tag, obj_dict, fp)
+            encoder.encode_semantic(cls.tag, obj_dict, fp)
 
     @classmethod
     def decode(cls, decoder, value, fp, shareable_index=None):
-        obj_class = value.pop('_cls')
-        obj = cls._dict_to_object(value, obj_class)
+        obj = cls._dict_to_object(value)
         # As instructed in cbor2.CBORDecoder
         if shareable_index is not None:
             decoder.shareables[shareable_index] = obj
@@ -87,24 +85,36 @@ class CBORCoder(object):
     def _object_to_dict(cls, obj):
         """Stores object's public properties in a dictionary. Does not support cyclic references"""
         result = dict()
+        result[cls.cls_key] = cls._module_and_class(obj)
 
         for k, v in obj.__dict__.iteritems():
-            if isinstance(v, types.InstanceType):
+            if k.startswith('_') or callable(v):
+                continue
+            elif not cls._is_builtin(v):
                 result[k] = cls._object_to_dict(v)
-            elif not (callable(v) or k.startswith('_')):
+            else:
                 result[k] = v
 
         return result
 
-    @staticmethod
-    def _dict_to_object(dictionary, module_cls):
-        module_name, cls_name = module_cls
+    @classmethod
+    def _dict_to_object(cls, dictionary):
+        module_name, cls_name = dictionary.pop(cls.cls_key)
         module = sys.modules[module_name]
-        cls = getattr(module, cls_name)
-        obj = cls.__new__(cls)
+
+        sub_cls = getattr(module, cls_name)
+        obj = sub_cls.__new__(sub_cls)
+
         for k, v in dictionary.iteritems():
-            setattr(obj, k, v)
+            if isinstance(v, dict) and cls.cls_key in v:
+                setattr(obj, k, cls._dict_to_object(v))
+            else:
+                setattr(obj, k, v)
         return obj
+
+    @classmethod
+    def _is_builtin(cls, obj):
+        return type(obj) in cls.builtin_types and not isinstance(obj, types.InstanceType)
 
     @staticmethod
     def _module_and_class(obj):

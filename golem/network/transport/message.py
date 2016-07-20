@@ -37,8 +37,8 @@ class Message:
     def get_short_hash(self):
         """ Return short message representation for signature
         :return str: short hash of serialized and sorted message dictionary representation """
-        sorted = self._sort_obj(self.dict_repr())
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted))
+        sorted_dict = self._sort_obj(self.dict_repr())
+        return SimpleHash.hash(SimpleSerializer.dumps(sorted_dict))
 
     def _sort_obj(self, v):
         if isinstance(v, dict):
