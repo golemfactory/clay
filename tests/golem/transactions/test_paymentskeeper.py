@@ -6,6 +6,7 @@ from os import urandom
 from golem.network.p2p.node import Node
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.model import PaymentStatus
+from golem.testutils import TempDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, logger, \
@@ -148,9 +149,9 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.assertEqual(len(all_payments), 6)
 
 
-class TestAccountInfo(unittest.TestCase):
+class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
-        k = EllipticalKeysAuth()
+        k = EllipticalKeysAuth(self.path)
         e = urandom(20)
         a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)
         b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)

@@ -91,7 +91,7 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK
@@ -351,7 +351,7 @@ class Client(object):
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()
-        return None, None
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -359,8 +359,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        #if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):

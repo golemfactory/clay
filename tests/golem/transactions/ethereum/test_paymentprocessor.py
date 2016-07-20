@@ -145,6 +145,7 @@ class PaymentProcessorTest(DatabaseFixture):
         a3 = urandom(20)
 
         self.client.get_balance.return_value = 100 * 10**18
+        self.client.call.return_value = '0x' + 64*'0'
 
         assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
         assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
@@ -234,6 +235,7 @@ class PaymentProcessorTest(DatabaseFixture):
             return self.pp._PaymentProcessor__reserved
 
         self.client.get_balance.return_value = 99 * 10**18
+        self.client.call.return_value = '0x' + 64*'0'
 
         assert reserved() == 0
 

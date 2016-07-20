@@ -35,8 +35,7 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        EllipticalKeysAuth.set_keys_dir(self.path)
-        self.ek = EllipticalKeysAuth()
+        self.ek = EllipticalKeysAuth(self.path)
         for args in datas:
             self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
                                           data_consumer_cls=DecryptDataConsumer,
@@ -99,8 +98,7 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
-        EllipticalKeysAuth.set_keys_dir(self.path)
-        self.ek = EllipticalKeysAuth()
+        self.ek = EllipticalKeysAuth(self.path)
         self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
                                       session=self.__make_encrypted_session_mock())
         self.__producer_consumer_test([self.tmp_file1], file_producer_cls=EncryptFileProducer,
