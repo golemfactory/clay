@@ -1,5 +1,7 @@
 import logging
+import sys
 import time
+import uuid
 from os import path, makedirs
 from threading import Lock
 
@@ -9,11 +11,13 @@ from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.core.simpleauth import SimpleAuth
 from golem.core.simpleenv import get_local_datadir
+from golem.core.variables import APP_VERSION
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
+from golem.monitor.monitor import SystemMonitor
+from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -149,9 +153,11 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
-        self.session_id = SimpleAuth.generate_uuid().get_hex()
+        self.monitor = None
+        self.session_id = uuid.uuid4().get_hex()
 
     def start(self):
+        self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -190,6 +196,15 @@ class Client(object):
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
+        if self.monitor:
+            self.monitor.on_login()
+
+    def init_monitor(self):
+        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
+                                     self.get_description(), self.config_desc)
+        self.monitor = SystemMonitor(metadata)
+        self.monitor.start()
+
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(
                      socket_address.address, socket_address.port))
@@ -200,6 +215,9 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.monitor:
+            self.monitor.on_logout()
+            self.monitor.shut_down()
         self._unlock_datadir()
 
     def key_changed(self):
@@ -545,8 +563,17 @@ class Client(object):
             self.check_payments()
 
             if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
-                with self.snapshot_lock:
-                    self.__make_node_state_snapshot()
+                if self.monitor:
+                    self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
+                                                   self.get_computed_task_count(), self.get_error_task_count(),
+                                                   self.get_timeout_task_count())
+                    self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
+                                                           self.task_server.task_computer.counting_task,
+                                                           self.task_server.task_computer.task_requested,
+                                                           self.task_server.task_computer.compute_tasks,
+                                                           self.task_server.task_computer.assigned_subtasks.keys())
+                # with self.snapshot_lock:
+                #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
