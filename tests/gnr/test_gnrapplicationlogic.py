@@ -6,6 +6,8 @@ from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from mock import Mock, MagicMock
 from twisted.internet.defer import Deferred
 
+from ethereum.utils import denoms
+
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
@@ -187,10 +189,10 @@ class TestGNRApplicationLogic(DatabaseFixture):
         logic = GNRApplicationLogic()
         logic.client = Mock()
         logic.customizer = Mock()
-        eth = 10**18
+        ether = denoms.ether
 
         balance_deferred = Deferred()
-        balance_deferred.result = (3 * eth, 1 * eth, 0.3 * eth)
+        balance_deferred.result = (3 * ether, 1 * ether, 0.3 * ether)
         balance_deferred.called = True
 
         logic.client.get_balance.return_value = balance_deferred
