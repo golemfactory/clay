@@ -10,9 +10,19 @@ from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestGNRMainWindowCustomizer(TestCase):
+
+    def setUp(self):
+        super(TestGNRMainWindowCustomizer, self).setUp()
+        self.logic = MagicMock()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestGNRMainWindowCustomizer, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
     def test_description(self):
-        gnrgui = GNRGui(MagicMock(), AppMainWindow)
-        customizer = GNRMainWindowCustomizer(gnrgui.get_main_window(), MagicMock())
+        customizer = GNRMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         assert isinstance(customizer, GNRMainWindowCustomizer)
         customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC1")
         assert customizer.gui.ui.descriptionTextEdit.toPlainText() == "DESC1"
