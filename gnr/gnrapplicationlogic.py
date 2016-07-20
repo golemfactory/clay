@@ -199,7 +199,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _update_payments_view(self, result_tuple):
         b, ab, deposit = result_tuple
-        if not (b and ab):
+        if not (b and ab and deposit):
             return
 
         rb = b - ab
