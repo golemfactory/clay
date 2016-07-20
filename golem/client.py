@@ -348,6 +348,20 @@ class Client(object):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    def get_payments_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task as array
+        """
+        subtasks_list = self.task_server.get_subtasks_for_task_id(task_id)
+        subtasks_cost = 0.0
+        if self.transaction_system:
+            subtasks_cost = self.transaction_system.get_payment_for_subtasks(subtasks_list)
+        else:
+            logger.info("Transaction system is turned off")
+        return subtasks_cost
+
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()

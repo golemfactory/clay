@@ -1,3 +1,4 @@
+from golem.core.common import ETH
 from golem.model import Payment
 
 from paymentskeeper import PaymentsKeeper
@@ -39,6 +40,13 @@ class TransactionSystem(object):
         :return list: list of dictionaries describing payments
         """
         return self.payments_keeper.get_list_of_all_payments()
+
+    def get_payment_for_subtasks(self, subtasks):
+        cost = 0.0
+        if self.payments_keeper is not None:
+            for subtask in subtasks:
+                cost += float(self.payments_keeper.get_payment(subtask))
+        return cost * ETH
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes

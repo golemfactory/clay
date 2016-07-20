@@ -418,6 +418,12 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def save_task(task_state, file_path):
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if path.endswith("."):
+                file_path += "gt"
+            else:
+                file_path += ".gt"
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
@@ -561,6 +567,11 @@ class GNRApplicationLogic(QtCore.QObject):
         """
         config = yield self.get_config()
         returnValue(config.max_price)
+
+    @inlineCallbacks
+    def get_cost_for_task_id(self, task_id):
+        cost = yield self.client.get_payments_for_task_id(task_id)
+        returnValue(cost)
 
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
