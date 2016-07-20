@@ -88,6 +88,17 @@ class PaymentsKeeper(object):
         """
         self.db.add_payment(payment_info)
 
+    def get_payment(self, subtask_id):
+        """
+        Get cost of subtasks defined by @subtask_id
+        :param subtask_id: Subtask ID
+        :return: Cost of the @subtask_id
+        """
+        for payment in self.db.get_newest_payment(100):
+            if payment.subtask == subtask_id:
+                return float(payment.value)
+        return 0.0
+
 
 class PaymentInfo(object):
     """ Full information about payment for a subtask. Include task id, subtask payment information and

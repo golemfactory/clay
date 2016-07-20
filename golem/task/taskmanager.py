@@ -439,6 +439,19 @@ class TaskManager(object):
         else:
             assert False, "Should never be here!"
 
+    def get_subtasks(self, task_id):
+        """
+        Get all subtasks related with given task id
+        :param task_id: Task ID
+        :return: list of all subtasks related with @task_id or None if @task_id is not known
+        """
+        if task_id not in self.tasks_states:
+            return None
+        subtasks = []
+        for sub in self.tasks_states[task_id].subtask_states.values():
+            subtasks.append(sub.subtask_id)
+        return subtasks
+
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management

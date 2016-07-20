@@ -401,6 +401,23 @@ class Client(object):
         #    return self.transaction_system.get_incomes_list()
         return ()
 
+    def get_payment_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        subtasks_cost = 0.0
+        subtasks_list = self.task_server.get_subtasks_for_task_id(task_id)
+        if subtasks_list:
+            if self.transaction_system:
+                subtasks_cost = self.transaction_system.get_payment_for_subtasks(subtasks_list)
+            else:
+                logger.info("Transaction system is turned off")
+        else:
+            logger.info("Subtasks list is empty")
+        return subtasks_cost
+
     def use_transaction_system(self):
         return bool(self.transaction_system)
 
