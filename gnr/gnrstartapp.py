@@ -86,7 +86,7 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
     else:
         log_name = GUI_LOG_NAME
 
-    config_logging(log_name, datadir=datadir)
+    config_logging(log_name)
     logger = logging.getLogger("gnr.app")
 
     client_service_info = queue.get(True, 3600)
@@ -129,7 +129,7 @@ def start_client_process(queue, start_ranking, datadir=None,
     else:
         log_name = CLIENT_LOG_NAME
 
-    config_logging(log_name, datadir=datadir)
+    config_logging(log_name)
     logger = logging.getLogger("golem.client")
 
     environments = load_environments()

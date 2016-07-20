@@ -28,7 +28,7 @@ def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork
         start_app(datadir=datadir, rendering=True,
                   transaction_system=payments)
     else:
-        config_logging(datadir=datadir)
+        config_logging()
 
         node = GNRNode(datadir=datadir, node_address=node_address,
                        transaction_system=payments)

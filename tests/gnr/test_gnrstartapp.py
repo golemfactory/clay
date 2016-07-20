@@ -20,11 +20,10 @@ class MockService(object):
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def test_config_logging(self):
-        directory = os.path.join(self.path, 'subdir1', 'subdir2')
         log_name = "golem.test"
-        config_logging(log_name, datadir=directory)
-        config_logging(log_name, datadir=directory)
+        path = os.path.join(self.path, 'subdir1', 'subdir2', log_name)
         config_logging(log_name)
+        config_logging(path)
 
     def test_load_environments(self):
         envs = load_environments()
@@ -58,7 +57,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         gui_app.listen = Mock()
         reactor = self._get_reactor()
 
-        start_gui_process(queue,
-                          datadir=self.path,
+        start_gui_process(queue, self.path,
                           gui_app=gui_app,
                           reactor=reactor)

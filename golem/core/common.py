@@ -59,11 +59,13 @@ class HandleKeyError(object):
         return func_wrapper
 
 
-def config_logging(logname=LOG_NAME, datadir=None):
+def config_logging(logname=LOG_NAME):
     """Config logger"""
-    if datadir:
+
+    directory = os.path.dirname(logname)
+    if directory:
         try:
-            os.makedirs(datadir)
+            os.makedirs(directory)
         except OSError as exc:
             if exc.errno != errno.EEXIST:
                 raise
