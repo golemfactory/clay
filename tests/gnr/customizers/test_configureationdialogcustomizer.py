@@ -3,7 +3,7 @@ import re
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
-from mock import MagicMock
+from mock import MagicMock, Mock
 from twisted.internet.defer import Deferred
 
 from gnr.application import GNRGui
@@ -50,10 +50,19 @@ class TestDu(TestDirFixture):
 
 
 class TestConfigurationDialogCustomizer(LogTestCase):
+
+    def setUp(self):
+        super(TestConfigurationDialogCustomizer, self).setUp()
+        self.logic = MagicMock()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestConfigurationDialogCustomizer, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
     def test_min_max_price(self):
-        logic_mock = MagicMock()
-        gnrgui = GNRGui(MagicMock(), AppMainWindow)
-        logic_mock.get_res_dirs.return_value = {'computing': os.getcwd(),
+        self.logic.get_res_dirs.return_value = {'computing': os.getcwd(),
                                                 'distributed': os.getcwd(),
                                                 'received': os.getcwd()}
 
@@ -69,17 +78,17 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         res_dirs_deferred.result = MagicMock()
         res_dirs_deferred.called = True
 
-        logic_mock.get_config.return_value = config_deferred
-        logic_mock.get_res_dirs.return_value = res_dirs_deferred
+        self.logic.get_config.return_value = config_deferred
+        self.logic.get_res_dirs.return_value = res_dirs_deferred
 
-        customizer = ConfigurationDialogCustomizer(gnrgui.main_window, logic_mock)
+        customizer = ConfigurationDialogCustomizer(self.gnrgui.main_window, self.logic)
         self.assertIsInstance(customizer, ConfigurationDialogCustomizer)
         self.assertEqual(float(customizer.gui.ui.maxPriceLineEdit.text()), 2.01)
         self.assertEqual(float(customizer.gui.ui.minPriceLineEdit.text()), 2.0)
         customizer.gui.ui.maxPriceLineEdit.setText(u"{}".format(1))
         customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(0.0011))
         self.__click_ok(customizer)
-        ccd = logic_mock.change_config.call_args_list[0][0][0]
+        ccd = self.logic.change_config.call_args_list[0][0][0]
         self.assertEqual(ccd.min_price, int(0.0011 * 10**18))
         self.assertEqual(round(float(ccd.max_price) / 10**18), 1)
         customizer.gui.ui.maxPriceLineEdit.setText(u"ABCDEF")
@@ -89,8 +98,6 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"0.1 ETH")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()
 
     def __click_ok(self, customizer):
         QTest.mouseClick(customizer.gui.ui.settingsOkButton, Qt.LeftButton)
