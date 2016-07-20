@@ -36,39 +36,29 @@ class PaymentsDialogCustomizer(Customizer):
 
 class PaymentTableElem(object):
     def __init__(self, payment_info):
-        self.task = payment_info["task"]
-        self.node = payment_info["node"]
-        self.value = payment_info["value"]
-        self.state = payment_info["state"]
-        self.cols = []
-        self._build_row()
+        fee = payment_info["fee"]
+        value = payment_info["value"]
+        fee = "{:.1f}%".format(float(fee * 100) / value) if fee else ""
 
-    def _build_row(self):
-        self.task_item = QTableWidgetItem()
-        self.task_item.setText(self.task)
-
-        self.node_item = QTableWidgetItem()
-        self.node_item.setText(self.node.encode('hex'))
-
-        self.value_item = QTableWidgetItem()
-        self.value_item.setText("{:f} ETH".format(float(self.value) * ETH))
-
-        self.state_item = QTableWidgetItem()
-        self.state_item.setText(str(self.state).replace("PaymentStatus.", ""))
-
-        self.cols = [self.task_item, self.node_item, self.state_item, self.value_item]
+        subtask = QTableWidgetItem(payment_info["subtask"])
+        payee = QTableWidgetItem(payment_info["payee"].encode('hex'))
+        value = QTableWidgetItem("{:.6f} ETH".format(float(value) * ETH))
+        status = QTableWidgetItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
+        fee = QTableWidgetItem(fee)
+        self.cols = [subtask, payee, status, value, fee]
 
     def get_column_item(self, col):
         return self.cols[col]
 
 
-class IncomeTableElem(PaymentTableElem):
+class IncomeTableElem(object):
     def __init__(self, income_info):
-        self.expected_value = income_info["expected_value"]
-        PaymentTableElem.__init__(self, income_info)
+        value = income_info["value"]
+        payer = QTableWidgetItem(income_info["payer"].encode('hex'))
+        status = QTableWidgetItem(str(income_info["status"]).replace("PaymentStatus.", ""))
+        value = QTableWidgetItem("{:.6f} ETH".format(float(value) * ETH))
+        block_number = QTableWidgetItem(str(income_info["block_number"]))
+        self.cols = [payer, status, value, block_number]
 
-    def _build_row(self):
-        PaymentTableElem._build_row(self)
-        self.expected_value_item = QTableWidgetItem()
-        self.expected_value_item.setText(str(self.expected_value))
-        self.cols += [self.expected_value_item]
+    def get_column_item(self, col):
+        return self.cols[col]

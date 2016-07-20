@@ -54,6 +54,7 @@ class PaymentProcessor(object):
         self.__client = client
         self.__privkey = privkey
         self.__balance = None
+        self.__deposit = None
         self.__reserved = 0
         self.__awaiting = []    # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
@@ -109,6 +110,21 @@ class PaymentProcessor(object):
             log.info("Balance: {}".format(self.__balance / float(10**18)))
         return self.__balance
 
+    def deposit_balance(self, refresh=False):
+        if self.__deposit is None or refresh:
+            data = bank_contract.encode('balance', ())
+            addr = keys.privtoaddr(self.__privkey)
+            r = self.__client.call(_from=addr.encode('hex'),
+                                   to=self.BANK_ADDR.encode('hex'),
+                                   data=data.encode('hex'),
+                                   block='pending')
+            if r is None or r == '0x':
+                self.__deposit = 0
+            else:
+                self.__deposit = int(r, 16)
+            log.info("Deposit: {}".format(self.__deposit / float(10**18)))
+        return self.__deposit
+
     def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
         available = self.balance(refresh) - self.__reserved - fee_reservation
@@ -139,13 +155,17 @@ class PaymentProcessor(object):
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count(addr.encode('hex'))
         p, value = _encode_payments(payments)
+        deposit = self.deposit_balance(refresh=True)
+        # First use ether from deposit, so transfer only missing amount.
+        transfer_value = max(value - deposit, 0)
         data = bank_contract.encode('transfer', [p])
         gas = 21000 + len(p) * 30000
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.BANK_ADDR,
-                         value=value, data=data)
+                         value=transfer_value, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
-        log.info("Batch payments: {}".format(h.encode('hex')))
+        log.info("Batch payments: {}, value: {}, transfer: {}"
+                 .format(h.encode('hex'), value, transfer_value))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -168,19 +188,22 @@ class PaymentProcessor(object):
         for h, payments in self.__inprogress.iteritems():
             hstr = h.encode('hex')
             log.info("Checking {} transaction".format(hstr))
-            info = self.__client.get_transaction_by_hash(hstr)
-            assert info, "Transaction has been lost"
-            if info['blockNumber']:
-                block_hash = info['blockHash'][2:]
+            receipt = self.__client.get_transaction_receipt(hstr)
+            if receipt:
+                block_hash = receipt['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
-                block_number = int(info['blockNumber'], 16)
-                log.info("Confirmed {}: block {} ({})".format(hstr, block_hash,
-                                                              block_number))
+                block_number = int(receipt['blockNumber'], 16)
+                gas_used = int(receipt['gasUsed'], 16)
+                log.info("Confirmed {}: block {} ({}), gas {}"
+                         .format(hstr, block_hash, block_number, gas_used))
+                total_fee = gas_used * self.GAS_PRICE
+                fee = total_fee // len(payments)
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
                         p.details['block_number'] = block_number
                         p.details['block_hash'] = block_hash
+                        p.details['fee'] = fee
                         p.save()
                 confirmed.append(h)
         for h in confirmed:
@@ -206,5 +229,6 @@ class PaymentProcessor(object):
 
     def run(self):
         if self.synchronized() and self.get_ethers_from_faucet():
-            self.sendout()
+            self.deposit_balance(refresh=True)
             self.monitor_progress()
+            self.sendout()

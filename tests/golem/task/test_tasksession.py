@@ -10,10 +10,11 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
 from golem.task.taskbase import result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase):
+class TestTaskSession(LogTestCase, TempDirFixture):
     def test_init(self):
         ts = TaskSession(Mock())
         self.assertIsInstance(ts, TaskSession)
@@ -133,7 +134,7 @@ class TestTaskSession(LogTestCase):
         conn = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 

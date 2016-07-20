@@ -13,7 +13,7 @@ from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import DatabaseFixture
 
 
 class TTask(Task):
@@ -124,7 +124,7 @@ class MockService(object):
         return 1
 
 
-class TestGNRApplicationLogic(TestDirFixture):
+class TestGNRApplicationLogic(DatabaseFixture):
 
     def test_root_path(self):
         logic = GNRApplicationLogic()
@@ -190,7 +190,7 @@ class TestGNRApplicationLogic(TestDirFixture):
         eth = 10**18
 
         balance_deferred = Deferred()
-        balance_deferred.result = (3 * eth, 1 * eth)
+        balance_deferred.result = (3 * eth, 1 * eth, 0.3 * eth)
         balance_deferred.called = True
 
         logic.client.get_balance.return_value = balance_deferred
@@ -200,6 +200,7 @@ class TestGNRApplicationLogic(TestDirFixture):
         ui.localBalanceLabel.setText.assert_called_once_with("3.000000 ETH")
         ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
+        ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
 
     def test_inline_callbacks(self):
 
@@ -261,3 +262,15 @@ class TestGNRApplicationLogic(TestDirFixture):
 
         app.app.exit(0)
         app.app.deleteLater()
+
+    def test_change_description(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        golem_client = Client(datadir=self.path)
+        client = MockRPCClient(golem_client)
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+        logic.register_client(client, service_info)
+        golem_client.change_description("NEW DESC")
+        time.sleep(0.5)
+        assert golem_client.get_description() == "NEW DESC"
+        golem_client.quit()

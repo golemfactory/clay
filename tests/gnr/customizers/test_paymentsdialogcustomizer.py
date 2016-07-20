@@ -1,4 +1,5 @@
 import unittest
+from golem.model import PaymentStatus
 from gnr.customizers.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem
 from PyQt4.QtGui import QTableWidgetItem
 
@@ -7,8 +8,9 @@ class TestTableElem(unittest.TestCase):
     def test_payment_table_elem(self):
         ethereum_address_hex = "aabbccddeeffaabbccddeeffaabbccddeeff0011"
         ethereum_address = ethereum_address_hex.decode('hex')
-        a = PaymentTableElem({"state": "STATE1", "node": ethereum_address,
-                              "task": "ABC", "value": 209*10**15})
+        a = PaymentTableElem({"status": "STATE1", "payee": ethereum_address,
+                              "subtask": "ABC", "value": 209*10**15,
+                              "fee": None})
         for i in range(len(a.cols)):
             self.assertIsInstance(a.get_column_item(i), QTableWidgetItem)
         self.assertEqual(a.get_column_item(0).text(), "ABC")
@@ -19,12 +21,12 @@ class TestTableElem(unittest.TestCase):
     def test_income_table_elem(self):
         ethereum_address_hex = "ffbbccddeeffaabbccddeeffaabbccddeeff0088"
         ethereum_address = ethereum_address_hex.decode('hex')
-        b = IncomeTableElem({"state": "STATE2", "expected_value": 20,
-                             "node": ethereum_address, "task": "ABB", "value": 0})
+        b = IncomeTableElem({"status": PaymentStatus.confirmed, "value": 211 * 10**16,
+                             "payer": ethereum_address, "block_number": "ABB"})
         for i in range(len(b.cols)):
             self.assertIsInstance(b.get_column_item(i), QTableWidgetItem)
-        self.assertEqual(b.get_column_item(0).text(), "ABB")
-        self.assertEqual(b.get_column_item(1).text(), ethereum_address_hex)
-        self.assertEqual(b.get_column_item(2).text(), "STATE2")
-        self.assertEqual(b.get_column_item(3).text(), "0.000000 ETH")
-        self.assertEqual(b.get_column_item(4).text(), "20")
+        self.assertEqual(b.get_column_item(0).text(), ethereum_address_hex)
+        self.assertEqual(b.get_column_item(1).text(), "confirmed")
+        self.assertEqual(b.get_column_item(2).text(), "2.110000 ETH")
+        self.assertEqual(b.get_column_item(3).text(), "ABB")
+

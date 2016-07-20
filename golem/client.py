@@ -9,10 +9,11 @@ from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.simpleauth import SimpleAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database
+from golem.model import Database, Account
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -90,7 +91,7 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK
@@ -148,6 +149,7 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.session_id = SimpleAuth.generate_uuid().get_hex()
 
     def start(self):
         self.start_network()
@@ -349,7 +351,7 @@ class Client(object):
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()
-        return None, None
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -357,8 +359,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        #if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):
@@ -373,6 +378,18 @@ class Client(object):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
+
+    def get_description(self):
+        try:
+            account, _ = Account.get_or_create(node_id=self.get_client_id())
+            return account.description
+        except Exception as e:
+            return "An error has occured {}".format(e)
+
+    def change_description(self, description):
+        self.get_description()
+        q = Account.update(description=description).where(Account.node_id == self.get_client_id())
+        q.execute()
 
     def use_ranking(self):
         return bool(self.ranking)
