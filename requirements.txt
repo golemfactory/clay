@@ -24,6 +24,7 @@ cffi>=1.1.2
 ethereum>=1.1.0
 autobahn>=0.14.1
 dill>=0.2.5
+cbor2
 multihash
 base58
 ndg-httpsclient

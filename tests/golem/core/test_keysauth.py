@@ -1,7 +1,12 @@
+import time
 from os import path
 from random import random
 
+from devp2p.crypto import ECCx
+
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth
+from golem.core.simpleserializer import SimpleSerializer
+from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
@@ -68,6 +73,62 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         data2 = "23103"
         sig = ek2.sign(data2)
         self.assertTrue(ek.verify(sig, data2, ek2.key_id))
+
+    def test_fixed_sign_verify(self):
+        public_key = "cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb07ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934263cc00ed03f9a781444"
+        private_key = "1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee3b4ac6ef078"
+        expected_result = "0ae053b8fac524150e75bb00efc9a4268b770b6208708e2600cabbc0792432d9654ed4e9e6dd50e51148766412582f0817290bbf988e0afc7815e9f722d114e401"
+
+        EllipticalKeysAuth.set_keys_dir(self.path)
+        ek = EllipticalKeysAuth(self.path)
+
+        ek.public_key = public_key.decode('hex')
+        ek._private_key = private_key.decode('hex')
+        ek.key_id = ek.cnt_key_id(ek.public_key)
+        ek.ecc = ECCx(None, ek._private_key)
+
+        msg = MessageWantToComputeTask(node_name='node_name',
+                                       task_id='task_id',
+                                       perf_index=2200,
+                                       price=5 * 10 ** 18,
+                                       max_resource_size=250000000,
+                                       max_memory_size=300000000,
+                                       num_cores=4,
+                                       timestamp=time.time())
+
+        data = msg.get_short_hash()
+        signature = ek.sign(data)
+
+        dumped_s = SimpleSerializer.dumps(signature)
+        loaded_s = SimpleSerializer.loads(dumped_s)
+
+        assert signature == loaded_s
+
+        dumped_d = SimpleSerializer.dumps(data)
+        loaded_d = SimpleSerializer.loads(dumped_d)
+
+        assert data == loaded_d
+
+        dumped_k = SimpleSerializer.dumps(ek.key_id)
+        loaded_k = SimpleSerializer.loads(dumped_k)
+
+        assert ek.key_id == loaded_k
+        assert ek.verify(loaded_s, loaded_d, ek.key_id)
+
+        src = [1000, signature, time.time(), msg.dict_repr()]
+        dumped_l = SimpleSerializer.dumps(src)
+        loaded_l = SimpleSerializer.loads(dumped_l)
+
+        assert src == loaded_l
+        assert signature == loaded_l[1]
+
+        msg_2 = MessageWantToComputeTask(dict_repr=loaded_l[3])
+
+        assert msg.get_short_hash() == msg_2.get_short_hash()
+        assert ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id)
+
+        assert type(loaded_l[1]) == type(expected_result)
+        assert loaded_l[1] == expected_result.decode('hex')
 
     def test_encrypt_decrypt(self):
         ek = EllipticalKeysAuth(path.join(self.path, str(random())))
