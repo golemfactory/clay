@@ -2,6 +2,7 @@ import os
 import unittest
 import uuid
 
+from ethereum.utils import denoms
 from mock import Mock, MagicMock
 
 from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
@@ -47,15 +48,15 @@ class TestClient(TestWithDatabase):
         c.check_payments()
 
         assert c.get_incomes_list() == []
-        payment = IncomingPayment("0x00003", 30 * (10 ** 18))
+        payment = IncomingPayment("0x00003", 30 * denoms.ether)
         payment.extra = {'block_number': 311,
                          'block_hash': "hash1",
-                         'tx_hash': "hash2" }
+                         'tx_hash': "hash2"}
         c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
         incomes = c.get_incomes_list()
         assert len(incomes) == 1
         assert incomes[0]['block_number'] == 311
-        assert incomes[0]['value'] == 30 * (10 ** 18)
+        assert incomes[0]['value'] == 30 * denoms.ether
         assert incomes[0]['payer'] == "0x00003"
 
         c.quit()
@@ -120,8 +121,7 @@ class TestClient(TestWithDatabase):
         assert c.get_description() == desc
         c.quit()
 
-
-    # IPFS metadata disabled
+    # FIXME: IPFS metadata disabled
     # def test_interpret_metadata(self):
     #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
     #     c = Client(datadir=self.path)

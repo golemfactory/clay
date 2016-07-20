@@ -5,6 +5,7 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import MagicMock, Mock
 from twisted.internet.defer import Deferred
+from ethereum.utils import denoms
 
 from gnr.application import GNRGui
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
@@ -67,8 +68,8 @@ class TestConfigurationDialogCustomizer(LogTestCase):
                                                 'received': os.getcwd()}
 
         config_mock = MagicMock()
-        config_mock.max_price = int(2.01 * 10**18)
-        config_mock.min_price = int(2.0 * 10**18)
+        config_mock.max_price = int(2.01 * denoms.ether)
+        config_mock.min_price = int(2.0 * denoms.ether)
 
         config_deferred = Deferred()
         config_deferred.result = config_mock
@@ -89,8 +90,8 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"{}".format(0.0011))
         self.__click_ok(customizer)
         ccd = self.logic.change_config.call_args_list[0][0][0]
-        self.assertEqual(ccd.min_price, int(0.0011 * 10**18))
-        self.assertEqual(round(float(ccd.max_price) / 10**18), 1)
+        self.assertEqual(ccd.min_price, int(0.0011 * denoms.ether))
+        self.assertEqual(round(float(ccd.max_price) / denoms.ether), 1)
         customizer.gui.ui.maxPriceLineEdit.setText(u"ABCDEF")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)

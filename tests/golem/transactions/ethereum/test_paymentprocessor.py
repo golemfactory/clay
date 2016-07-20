@@ -5,6 +5,7 @@ import unittest
 from os import urandom
 
 from ethereum.keys import privtoaddr
+from ethereum.utils import denoms
 
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet
@@ -132,11 +133,11 @@ class PaymentProcessorTest(DatabaseFixture):
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
         assert tx.nonce == self.nonce
-        assert tx.value == 100 * 10**18
+        assert tx.value == 100 * denoms.ether
 
     def test_faucet_gimme_money(self):
         assert self.pp.balance() == 0
-        value = 12 * 10**18
+        value = 12 * denoms.ether
         Faucet.gimme_money(self.client, self.addr, value)
 
     def test_payment_aggregation(self):
@@ -144,7 +145,7 @@ class PaymentProcessorTest(DatabaseFixture):
         a2 = urandom(20)
         a3 = urandom(20)
 
-        self.client.get_balance.return_value = 100 * 10**18
+        self.client.get_balance.return_value = 100 * denoms.ether
         self.client.call.return_value = '0x' + 64*'0'
 
         assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
@@ -234,7 +235,7 @@ class PaymentProcessorTest(DatabaseFixture):
         def reserved():
             return self.pp._PaymentProcessor__reserved
 
-        self.client.get_balance.return_value = 99 * 10**18
+        self.client.get_balance.return_value = 99 * denoms.ether
         self.client.call.return_value = '0x' + 64*'0'
 
         assert reserved() == 0

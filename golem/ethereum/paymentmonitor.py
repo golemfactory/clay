@@ -1,4 +1,6 @@
-from ethereum.utils import zpad
+from __future__ import division
+
+from ethereum.utils import denoms, zpad
 from twisted.internet.task import LoopingCall
 
 from golem.model import PaymentStatus
@@ -63,6 +65,6 @@ class PaymentMonitor(object):
                              'tx_hash': tx_hash}
             self.__payments.append(payment)
             log.info("Incoming payment: {} -> ({} ETH)".format(
-                     payer.encode('hex'), value / float(10**18)))
+                     payer.encode('hex'), value / denoms.ether))
 
         return self.__payments
