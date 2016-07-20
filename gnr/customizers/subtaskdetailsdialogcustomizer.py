@@ -1,3 +1,5 @@
+from golem.core.common import ETH
+
 from customizer import Customizer
 
 
@@ -25,7 +27,7 @@ class SubtaskDetailsDialogCustomizer(Customizer):
         self.gui.ui.subtaskDefinitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
         self.gui.ui.subtaskOutputLogTextEdit.setPlainText(self.subtask_state.stdout)
         self.gui.ui.subtaskErrorLogTextEdit.setPlainText(self.subtask_state.stderr)
-        self.gui.ui.priceLabel.setText(str(self.subtask_state.value))
+        self.gui.ui.priceLabel.setText(u"{:.6f} ETH".format(self.subtask_state.value * ETH))
         self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)
         self.__update_results()
 
