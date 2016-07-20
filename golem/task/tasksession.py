@@ -22,7 +22,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 4
+TASK_PROTOCOL_ID = 5
 
 
 class TaskSession(MiddlemanSafeSession):
@@ -124,8 +124,7 @@ class TaskSession(MiddlemanSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        verify = self.task_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
-        return verify
+        return self.task_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
 
     #######################
     # FileSession methods #

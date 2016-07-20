@@ -1,7 +1,8 @@
+import cPickle
+
 from mock import Mock, MagicMock
 
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import SimpleSerializer
 from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
@@ -174,7 +175,8 @@ class TestTaskSession(LogTestCase):
         ts.task_manager.verify_subtask.return_value = True
 
         extra_data = dict(
-            result=SimpleSerializer.dumps({'stdout': 'xyz'}),
+            # the result is explicitly serialized using cPickle
+            result=cPickle.dumps({'stdout': 'xyz'}),
             result_type=None,
             subtask_id='xxyyzz'
         )

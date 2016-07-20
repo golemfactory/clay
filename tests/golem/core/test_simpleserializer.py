@@ -1,5 +1,6 @@
 import unittest
-from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer
+
+from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer, CBORSerializer
 
 
 class Example:
@@ -23,7 +24,7 @@ class Example:
 
 class TestSimpleSerializer(unittest.TestCase):
     def testSerializer(self):
-        self.assertTrue(isinstance(SimpleSerializer(), SimpleSerializerRelease))
+        self.assertTrue(isinstance(SimpleSerializer(), CBORSerializer))
 
 
 class TestSimpleSerializerDebug(unittest.TestCase):
