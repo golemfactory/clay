@@ -92,7 +92,8 @@ class DataBuffer:
         """
         ret_str = None
 
-        if self.data_size() > LONG_STANDARD_SIZE and self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE):
+        if (self.data_size() > LONG_STANDARD_SIZE and
+                self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE)):
             num_chars = self.read_ulong()
             ret_str = self.read_string(num_chars)
 
@@ -100,7 +101,8 @@ class DataBuffer:
 
     def get_len_prefixed_string(self):
         """Generator function that return from buffer strings preceded with their length (long) """
-        while self.data_size() > LONG_STANDARD_SIZE and self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE):
+        while (self.data_size() > LONG_STANDARD_SIZE and
+               self.data_size() >= (self.peek_ulong() + LONG_STANDARD_SIZE)):
             num_chars = self.read_ulong()
             yield self.read_string(num_chars)
 
@@ -114,52 +116,3 @@ class DataBuffer:
     def clear_buffer(self):
         """ Remove all data from the buffer """
         self.buffered_data = ""
-
-if __name__ == "__main__":
-
-    db = DataBuffer()
-
-    val__ = 1512
-    db.append_ulong(val__)
-    print "Written {} Buffer len {}".format(val__, db.data_size())
-
-    val__ = 27815
-    db.append_ulong(val__)
-    print "Written {} Buffer len {}".format(val__, db.data_size())
-
-    val__ = "string0"
-    s1l = len(val__)
-    db.append_string(val__)
-    print "Written '{}' Buffer len {}".format(val__, db.data_size())
-
-    val__ = "stringofsizegreaterthan1"
-    s2l = len(val__)
-    db.append_string(val__)
-    print "Buffer '{}' len {}".format(val__, db.data_size())
-
-    val__ = db.read_ulong()
-    print "Read uint {} len remaining {}".format(val__, db.data_size())
-
-    val__ = db.read_ulong()
-    print "Read uint {} len remaining {}".format(val__, db.data_size())
-
-    val__ = db.read_string(s1l)
-    print "Read string '{}' len remaining {}".format(val__, db.data_size())
-
-    val__ = db.read_string(s2l)
-    print "Read string '{}' len remaining {}".format(val__, db.data_size())
-
-    print "{}".format(db.read_string(0))
-    # expected to fail on assert
-    # print "{}".format(db.read_ulong())
-
-    s3 = "test string 3"
-    s4 = "not a very test string"
-
-    db.append_len_prefixed_string(s3)
-    db.append_len_prefixed_string(s4)
-
-    print db.read_len_prefixed_string()
-    print db.data_size()
-    print db.read_len_prefixed_string()
-    print db.data_size()

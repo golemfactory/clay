@@ -190,7 +190,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
         eth = 10**18
 
         balance_deferred = Deferred()
-        balance_deferred.result = (3 * eth, 1 * eth)
+        balance_deferred.result = (3 * eth, 1 * eth, 0.3 * eth)
         balance_deferred.called = True
 
         logic.client.get_balance.return_value = balance_deferred
@@ -200,6 +200,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.localBalanceLabel.setText.assert_called_once_with("3.000000 ETH")
         ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
+        ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
 
     def test_inline_callbacks(self):
 
@@ -273,4 +274,3 @@ class TestGNRApplicationLogic(DatabaseFixture):
         time.sleep(0.5)
         assert golem_client.get_description() == "NEW DESC"
         golem_client.quit()
-

@@ -198,12 +198,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.get_balance().addCallback(self._update_payments_view)
 
     def _update_payments_view(self, result_tuple):
-        b, ab = result_tuple
-        if not (b and ab):
+        b, ab, deposit = result_tuple
+        if not (b and ab and deposit):
             return
 
         rb = b - ab
-        deposit = 0  # TODO: Get current deposit value.
         total = deposit + b
         ether = 1.0 / 10 ** 18
         fmt = "{:.6f} ETH"

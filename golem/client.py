@@ -351,7 +351,7 @@ class Client(object):
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()
-        return None, None
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():

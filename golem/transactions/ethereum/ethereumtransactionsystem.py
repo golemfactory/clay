@@ -43,7 +43,8 @@ class EthereumTransactionSystem(TransactionSystem):
     def get_balance(self):
         b = self.__proc.balance()
         ab = self.__proc.available_balance()
-        return b, ab
+        d = self.__proc.deposit_balance()
+        return b, ab, d
 
     def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
