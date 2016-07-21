@@ -556,7 +556,7 @@ class Client(object):
 
             self.check_payments()
 
-            if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
+            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
                                                    self.get_computed_task_count(), self.get_error_task_count(),
