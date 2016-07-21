@@ -82,16 +82,16 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                     content_started = True
 
 
-def api_retry(method):
+def api_translate_exceptions(method):
     def wrapper(*args, **kwargs):
-        retries = 0
-        while retries < MAX_API_RETRIES:
-            try:
-                return method(*args, **kwargs)
-            except requests.exceptions.HTTPError:
-                retries += 1
-                if retries >= MAX_API_RETRIES:
-                    raise
+        try:
+            return method(*args, **kwargs)
+        except (ovh.exceptions.HTTPError,
+                ovh.exceptions.NetworkError,
+                ovh.exceptions.InvalidResponse) as exc:
+            raise requests.exceptions.HTTPError(exc)
+        except:
+            raise
     return wrapper
 
 
@@ -119,7 +119,7 @@ class OpenStackSwiftAPI(object):
         return oss.token and oss.regions
 
     @staticmethod
-    @api_retry
+    @api_translate_exceptions
     def update_token():
         oss = OpenStackSwiftAPI
         response_json = oss.ovh_client.get('/cloud/project/{}/storage/access'
