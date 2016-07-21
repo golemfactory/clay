@@ -2,13 +2,13 @@ import time
 import unittest
 import uuid
 
+from mock import Mock
 from twisted.internet.defer import Deferred
 from twisted.internet.task import Clock
-
-from golem.rpc.service import RPC, RPCAddress, CONNECTION_MAX_RETRIES
-from mock import Mock
+from twisted.python import failure
 
 from golem.core.simpleserializer import SimpleSerializer
+from golem.rpc.service import RPC, RPCAddress
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager
 from golem.tools.testwithreactor import TestWithReactor
 
@@ -114,7 +114,7 @@ class TestRPCClient(TestWithReactor):
     def test_retries(self):
         deferred = Deferred()
         deferred.called = True
-        deferred.result = True
+        deferred.result = failure.Failure(False)
 
         rpc_address = RPCAddress('127.0.0.1', 9876)
         ws_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
@@ -126,16 +126,46 @@ class TestRPCClient(TestWithReactor):
         clock = Clock()
         rpc = RPC(ws_client, rpc_address, conn_timeout=0, retry_timeout=0)
         rpc.reactor = clock
-        rpc.get_session()
+
+        result = [None]
+
+        def on_success(*args, **kwargs):
+            result[0] = True
+
+        def on_failure(*args):
+            result[0] = False
+
+        rpc.get_session().addCallbacks(on_success, on_failure)
 
         started = time.time()
         while time.time() - started < 10:
             clock.advance(10)
-            if rpc.conn_retries >= CONNECTION_MAX_RETRIES - 1:
-                return
-            print rpc.conn_retries
+            if result[0]:
+                self.fail("Invalid response")
+            elif result[0] is False:
+                break
             time.sleep(0.2)
-        self.fail("Test timeout")
+
+        if result[0] is None:
+            self.fail("Test timeout")
+
+        deferred.result = True
+        ws_client.connect.return_value = deferred
+        result[0] = None
+
+        rpc.get_session().addCallbacks(on_success, on_failure)
+
+        started = time.time()
+        while time.time() - started < 10:
+            clock.advance(10)
+            if result[0] is False:
+                self.fail("Invalid response")
+            elif result[0]:
+                break
+            time.sleep(0.2)
+
+        if result[0] is None:
+            self.fail("Test timeout")
 
 
 class TestSessionManager(unittest.TestCase):

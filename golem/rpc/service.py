@@ -1,5 +1,5 @@
 from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
 from golem.rpc.exceptions import RPCSessionException
 from golem.rpc.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
@@ -169,7 +169,6 @@ class RPC(object):
         self.retry_timeout = retry_timeout
         self.conn_timeout = conn_timeout
         self.conn_max_retries = conn_max_retries
-        self.conn_retries = 0
 
     @inlineCallbacks
     def call(self, callee, is_batch, *args, **kwargs):
@@ -189,15 +188,28 @@ class RPC(object):
     @inlineCallbacks
     def get_session(self):
         session = self.factory.get_session(self.host, self.port)
-        if session:
-            self.conn_retries = 0
-            returnValue(session)
+        if not session:
+            session = yield self._new_session()
+        returnValue(session)
 
-        if self.conn_retries >= self.conn_max_retries:
-            raise RPCSessionException("RPC: no session established with {}"
-                                      .format(self.rpc_address))
+    def _new_session(self):
+        conn_retries = [0]
+        deferred = Deferred()
 
-        self.conn_retries += 1
-        yield task.deferLater(self.reactor, self.retry_timeout,
-                              self.factory.connect, timeout=self.conn_timeout)
-        returnValue(self.get_session())
+        def on_success(*args, **kwargs):
+            deferred.callback(*args, **kwargs)
+
+        def on_failure(*_):
+            if conn_retries >= self.conn_max_retries:
+                deferred.errback(RPCSessionException("RPC: no session established with {}"
+                                                     .format(self.rpc_address)))
+            conn_retries[0] += 1
+            reconnect()
+
+        def reconnect():
+            conn_deferred = task.deferLater(self.reactor, self.retry_timeout,
+                                            self.factory.connect, timeout=self.conn_timeout)
+            conn_deferred.addCallbacks(on_success, on_failure)
+
+        reconnect()
+        return deferred
