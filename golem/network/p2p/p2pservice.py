@@ -8,7 +8,7 @@ from golem.core.simplechallenge import create_challenge, accept_challenge, solve
 
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
-from golem.network.p2p.peersession import PeerSession
+from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
@@ -181,10 +181,12 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
                 self.connect_to_seeds()
 
     def get_diagnostics(self, output_format):
-        data = dict(
-            peers=self.peers
-        )
-        return self._format_diagnostics(data, output_format)
+        peer_data = []
+        for peer in self.peers.values():
+            peer = PeerSessionInfo(peer).__dict__
+            del peer['node_info']
+            peer_data.append(peer)
+        return self._format_diagnostics(peer_data, output_format)
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection

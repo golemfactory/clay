@@ -22,4 +22,4 @@ class VMSnapshotModel(BasicModel):
 class P2PSnapshotModel(BasicModel):
     def __init__(self, cliid, sessid, p2p_snapshot):
         super(P2PSnapshotModel, self).__init__("P2PSnapshot", cliid, sessid)
-        self.vm_snapshot = p2p_snapshot
+        self.p2p_snapshot = p2p_snapshot
