@@ -3,7 +3,7 @@ import Queue
 
 from model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
 from model.loginlogoutmodel import LoginModel, LogoutModel
-from model.statssnapshotmodel import StatsSnapshotModel
+from model.statssnapshotmodel import StatsSnapshotModel, VMSnapshotModel, P2PSnapshotModel
 from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from model.paymentmodel import PaymentModel, IncomeModel
 from transport.sender import DefaultJSONSender as Sender
@@ -88,9 +88,11 @@ class SystemMonitor(object):
         return self._send_with_args(StatsSnapshotModel, self.meta_data.cliid, self.meta_data.sessid, known_tasks,
                                     supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout)
 
-    def on_peer_snapshot(self, peer_sess_info):
-        # TODO: implement
-        pass
+    def on_vm_snapshot(self, vm_data):
+        return self._send_with_args(VMSnapshotModel, self.meta_data.cliid, self.meta_data.sessid, vm_data)
+
+    def on_peer_snapshot(self, p2p_data):
+        return self._send_with_args(P2PSnapshotModel, self.meta_data.cliid, self.meta_data.sessid, p2p_data)
 
     def on_task_computer_snapshot(self, waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks):
         return self._send_with_args(TaskComputerSnapshotModel, self.meta_data.cliid, self.meta_data.sessid,

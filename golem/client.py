@@ -13,6 +13,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import APP_VERSION
+from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
+from golem.diag.vm import VMDiagnosticsProvider
 from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
@@ -199,6 +201,7 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
+        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
 
         if self.monitor:
             self.monitor.on_login()
@@ -208,10 +211,8 @@ class Client(object):
                                      self.get_description(), self.config_desc)
         self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
-
-        self.diag_service = DiagnosticsService()
-        self.diag_service.register(VMDiagnosticsProvider())
-        self.diag_service.register(self.p2pservice)
+        self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
+        self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
         self.diag_service.start_looping_call()
 
     def connect(self, socket_address):

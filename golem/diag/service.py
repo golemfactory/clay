@@ -18,6 +18,7 @@ class DiagnosticsOutputFormat(object):
     string = 0
     json = 1
     pickle = 2
+    data = 3
 
 
 class DiagnosticsProvider(object):
@@ -37,6 +38,8 @@ class DiagnosticsProvider(object):
             return json.dumps(data)
         elif output_format == DiagnosticsOutputFormat.pickle:
             return cPickle.dumps(data)
+        elif output_format == DiagnosticsOutputFormat.data:
+            return data
         raise ValueError("Unknown output format")
 
 
@@ -46,19 +49,20 @@ class DiagnosticsService(object):
         self._output_format = output_format or DiagnosticsOutputFormat.string
         self._looping_call = None
 
-    def register(self, provider):
+    def register(self, provider, method=None):
         if isinstance(provider, DiagnosticsProvider):
             self._providers[hash(provider)] = dict(
                 provider=provider,
                 cls=provider.__class__,
-                cls_name=provider.__class__.__name__
+                cls_name=provider.__class__.__name__,
+                method=method
             )
 
     def unregister(self, provider):
         if provider:
             self._providers.pop(hash(provider), None)
 
-    def start_looping_call(self, interval=300):
+    def start_looping_call(self, interval=3):
         if not self._looping_call:
             self._looping_call = LoopingCall(self.log_diagnostics)
             self._looping_call.start(interval)
@@ -69,9 +73,13 @@ class DiagnosticsService(object):
 
     def log_diagnostics(self):
         for v in self._providers.itervalues():
-            cls_name = v['cls_name']
+            method = v['method']
             data = v['provider'].get_diagnostics(self._output_format)
 
-            logger.debug("Diagnostics: {}\n{}\n".format(
-                cls_name, data
-            ))
+            if method:
+                method(data)
+            else:
+                cls_name = v['cls_name']
+                logger.debug("Diagnostics: {}\n{}\n".format(
+                    cls_name, data
+                ))
