@@ -13,7 +13,8 @@ from gnr.ui.appmainwindow import AppMainWindow
 class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
     def setUp(self):
         super(TestRenderingNewTaskDialogCustomizer, self).setUp()
-        self.gnrgui = GNRGui(Mock(), AppMainWindow)
+        self.logic = RenderingApplicationLogic()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
         super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
@@ -21,10 +22,9 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         self.gnrgui.app.deleteLater()
 
     def test_customizer(self):
-        logic = RenderingApplicationLogic()
-        logic.client = Mock()
-        register_rendering_task_types(logic)
-        customizer = RenderingNewTaskDialogCustomizer(self.gnrgui.main_window, logic)
+        self.logic.client = Mock()
+        register_rendering_task_types(self.logic)
+        customizer = RenderingNewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
         self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)
 
         definition = RenderingTaskDefinition()
@@ -38,8 +38,8 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         resources = self.additional_dir_content([3])
         definition.renderer_options.remove_from_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)
-        logic.customizer = Mock()
-        logic.renderers[renderer.name] = renderer
+        self.logic.customizer = Mock()
+        self.logic.renderers[renderer.name] = renderer
         customizer.load_task_definition(definition)
         assert len(definition.resources) == 3
 

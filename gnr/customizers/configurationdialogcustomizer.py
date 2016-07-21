@@ -1,15 +1,16 @@
+from __future__ import division
 import logging
 import multiprocessing
 import subprocess
-from PyQt4 import QtCore
 
+from ethereum.utils import denoms
+from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
 
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import ETH
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
@@ -189,8 +190,8 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
-        min_price = config_desc.min_price * ETH
-        max_price = config_desc.max_price * ETH
+        min_price = config_desc.min_price / denoms.ether
+        max_price = config_desc.max_price / denoms.ether
         self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
         self.gui.ui.maxPriceLineEdit.setText(u"{:.6f}".format(max_price))
 
@@ -343,12 +344,12 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
         try:
             min_price = float(self.gui.ui.minPriceLineEdit.text())
-            cfg_desc.min_price = int(min_price / ETH)
+            cfg_desc.min_price = int(min_price * denoms.ether)
         except ValueError as err:
             logger.warning("Wrong min price value: {}".format(err))
         try:
             max_price = float(self.gui.ui.maxPriceLineEdit.text())
-            cfg_desc.max_price = int(max_price / ETH)
+            cfg_desc.max_price = int(max_price * denoms.ether)
         except ValueError as err:
             logger.warning("Wrong max price value: {}".format(err))
         self.__check_eth_account()

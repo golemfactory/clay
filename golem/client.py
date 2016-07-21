@@ -100,7 +100,7 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK
@@ -379,7 +379,7 @@ class Client(object):
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()
-        return None, None
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -387,8 +387,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        # if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):
@@ -511,17 +514,11 @@ class Client(object):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)
 
-    def get_computing_trust(self, node_id):
-        return self.ranking.get_computing_trust(node_id)
-
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
 
     def send_stop_gossip(self):
         return self.p2pservice.send_stop_gossip()
-
-    def get_requesting_trust(self, node_id):
-        return self.ranking.get_requesting_trust(node_id)
 
     def collect_gossip(self):
         return self.p2pservice.pop_gossip()
@@ -569,7 +566,7 @@ class Client(object):
 
             self.check_payments()
 
-            if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
+            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
                                                    self.get_computed_task_count(), self.get_error_task_count(),

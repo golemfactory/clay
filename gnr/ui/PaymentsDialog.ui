@@ -147,50 +147,22 @@
            </attribute>
            <column>
             <property name="text">
-             <string>Task</string>
-            </property>
-            <property name="toolTip">
-             <string>Subtask identificator</string>
+             <string>Payer</string>
             </property>
            </column>
            <column>
             <property name="text">
-             <string>Node</string>
-            </property>
-            <property name="toolTip">
-             <string>Who was the requestor</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>State</string>
-            </property>
-            <property name="toolTip">
-             <string>Current status of the payment: awaiting, sent or confirmed</string>
+             <string>Status</string>
             </property>
            </column>
            <column>
             <property name="text">
              <string>Value</string>
             </property>
-            <property name="toolTip">
-             <string>How much did you get for this subtask</string>
-            </property>
            </column>
            <column>
             <property name="text">
-             <string>Expected Value</string>
-            </property>
-            <property name="toolTip">
-             <string>How much should you get for this subtask</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>Transaction</string>
-            </property>
-            <property name="toolTip">
-             <string>Ethereum transaction reference</string>
+             <string>Block number</string>
             </property>
            </column>
           </widget>

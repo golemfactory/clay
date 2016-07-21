@@ -1,8 +1,9 @@
+from __future__ import division
+
 from gnr.customizers.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
-
-from golem.core.common import ETH
+from ethereum.utils import denoms
 
 
 class PaymentsDialogCustomizer(Customizer):
@@ -27,7 +28,6 @@ class PaymentsDialogCustomizer(Customizer):
             self.gui.ui.paymentsTable.setItem(current_row_count, col, payment_table_elem.get_column_item(col))
 
     def _add_income(self, income_info):
-        return  # FIXME: Display useful data.
         current_row_count = self.gui.ui.incomesTable.rowCount()
         self.gui.ui.incomesTable.insertRow(current_row_count)
         income_table_elem = IncomeTableElem(income_info)
@@ -43,7 +43,7 @@ class PaymentTableElem(object):
 
         subtask = QTableWidgetItem(payment_info["subtask"])
         payee = QTableWidgetItem(payment_info["payee"].encode('hex'))
-        value = QTableWidgetItem("{:.6f} ETH".format(float(value) * ETH))
+        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
         status = QTableWidgetItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
         fee = QTableWidgetItem(fee)
         self.cols = [subtask, payee, status, value, fee]
@@ -52,13 +52,14 @@ class PaymentTableElem(object):
         return self.cols[col]
 
 
-class IncomeTableElem(PaymentTableElem):
+class IncomeTableElem(object):
     def __init__(self, income_info):
-        self.expected_value = income_info["expected_value"]
-        PaymentTableElem.__init__(self, income_info)
+        value = income_info["value"]
+        payer = QTableWidgetItem(income_info["payer"].encode('hex'))
+        status = QTableWidgetItem(str(income_info["status"]).replace("PaymentStatus.", ""))
+        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
+        block_number = QTableWidgetItem(str(income_info["block_number"]))
+        self.cols = [payer, status, value, block_number]
 
-    def _build_row(self):
-        PaymentTableElem._build_row(self)
-        self.expected_value_item = QTableWidgetItem()
-        self.expected_value_item.setText(str(self.expected_value))
-        self.cols += [self.expected_value_item]
+    def get_column_item(self, col):
+        return self.cols[col]

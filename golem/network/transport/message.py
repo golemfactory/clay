@@ -1,11 +1,11 @@
-import time
 import abc
-import copy
+import collections
+import logging
+import time
 
-from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
-import logging
+from golem.core.simpleserializer import SimpleSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,27 @@ class Message:
     def get_short_hash(self):
         """ Return short message representation for signature
         :return str: short hash of serialized and sorted message dictionary representation """
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted(self.dict_repr().items())))
+        sorted_dict = self._sort_obj(self.dict_repr())
+        return SimpleHash.hash(SimpleSerializer.dumps(sorted_dict))
+
+    def _sort_obj(self, v):
+        if isinstance(v, dict):
+            return self._sort_dict(v)
+        # treat objects as dictionaries
+        elif hasattr(v, '__dict__'):
+            return self._sort_dict(v.__dict__)
+        # strings are iterable (see the case below)
+        elif isinstance(v, basestring):
+            return v
+        elif isinstance(v, collections.Iterable):
+            return [self._sort_obj(_v) for _v in v]
+        return v
+
+    def _sort_dict(self, dictionary):
+        result = dict()
+        for k, v in dictionary.iteritems():
+            result[k] = self._sort_obj(v)
+        return sorted(result.items())
 
     def serialize(self):
         """ Return serialized message
@@ -118,13 +138,15 @@ class Message:
         """
         msg_repr = SimpleSerializer.loads(msg_)
 
-        msg_type = msg_repr[0]
-        msg_sig = msg_repr[1]
-        msg_timestamp = msg_repr[2]
-        d_repr = msg_repr[3]
+        if isinstance(msg_repr, list) and len(msg_repr) >= 4:
 
-        if msg_type in cls.registered_message_types:
-            return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
+            msg_type = msg_repr[0]
+            msg_sig = msg_repr[1]
+            msg_timestamp = msg_repr[2]
+            d_repr = msg_repr[3]
+
+            if msg_type in cls.registered_message_types:
+                return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
 
         return None
 
@@ -393,8 +415,7 @@ class MessagePeers(Message):
         return {MessagePeers.PEERS_STR: self.peers_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(
-                    SimpleSerializer.dumps([sorted(peer["node"].__dict__.values()) for peer in self.peers_array]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.peers_array)))
 
 
 class MessageGetTasks(Message):
@@ -444,11 +465,7 @@ class MessageTasks(Message):
         return {MessageTasks.TASKS_STR: self.tasks_array}
 
     def get_short_hash(self):
-        tasks_array_copy = copy.deepcopy(self.tasks_array)
-        for task in tasks_array_copy:
-            task['task_owner'] = task['task_owner'].__dict__.values()
-
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in tasks_array_copy]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.tasks_array)))
 
 
 class MessageRemoveTask(Message):
@@ -523,8 +540,7 @@ class MessageResourcePeers(Message):
         return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(
-            [sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.resource_peers)))
 
 
 class MessageDegree(Message):
@@ -907,8 +923,7 @@ class MessageTaskToCompute(Message):
         return {MessageTaskToCompute.COMPUTE_TASK_DEF_STR: self.ctd}
 
     def get_short_hash(self):
-        return SimpleHash.hash(
-            SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != "extra_data"])))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.ctd)))
 
 
 class MessageCannotAssignTask(Message):

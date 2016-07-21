@@ -2,11 +2,13 @@ import os
 import unittest
 import uuid
 
+from ethereum.utils import denoms
 from mock import Mock, MagicMock
 
 from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
 from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 
@@ -44,6 +46,19 @@ class TestClient(TestWithDatabase):
         c.transaction_system.check_payments = Mock()
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
         c.check_payments()
+
+        assert c.get_incomes_list() == []
+        payment = IncomingPayment("0x00003", 30 * denoms.ether)
+        payment.extra = {'block_number': 311,
+                         'block_hash': "hash1",
+                         'tx_hash': "hash2"}
+        c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
+        incomes = c.get_incomes_list()
+        assert len(incomes) == 1
+        assert incomes[0]['block_number'] == 311
+        assert incomes[0]['value'] == 30 * denoms.ether
+        assert incomes[0]['payer'] == "0x00003"
+
         c.quit()
 
     def test_remove_resources(self):
@@ -106,8 +121,7 @@ class TestClient(TestWithDatabase):
         assert c.get_description() == desc
         c.quit()
 
-
-    # IPFS metadata disabled
+    # FIXME: IPFS metadata disabled
     # def test_interpret_metadata(self):
     #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
     #     c = Client(datadir=self.path)

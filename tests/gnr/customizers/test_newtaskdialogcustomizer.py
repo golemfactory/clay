@@ -15,12 +15,22 @@ from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestNewTaskDialogCustomizer(TestCase):
+
+    def setUp(self):
+        super(TestNewTaskDialogCustomizer, self).setUp()
+        self.logic = RenderingApplicationLogic()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestNewTaskDialogCustomizer, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
     def test_customizer(self):
-        gnrgui = GNRGui(Mock(), AppMainWindow)
-        logic = RenderingApplicationLogic()
-        logic.client = Mock()
-        register_rendering_task_types(logic)
-        customizer = NewTaskDialogCustomizer(gnrgui.main_window, logic)
+
+        self.logic.client = Mock()
+        register_rendering_task_types(self.logic)
+        customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
         assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]
         assert not customizer.gui.ui.advanceNewTaskWidget.isVisible()
@@ -44,7 +54,3 @@ class TestNewTaskDialogCustomizer(TestCase):
             assert td.resources == win_norm_resources
         else:
             assert td.resources == oth_norm_resources
-
-
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()

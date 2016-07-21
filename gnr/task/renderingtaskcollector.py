@@ -225,8 +225,10 @@ class RenderingTaskCollector:
                 l_im = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[i]),
                                                       self.lightest, self.darkest)
                 final_alpha = ImageChops.add(final_alpha, l_im)
+                l_im.close()
 
             final_img.putalpha(final_alpha)
+            final_alpha.close()
 
         return final_img
 
