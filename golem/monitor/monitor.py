@@ -65,10 +65,10 @@ class SystemMonitor(object):
     # Initialization
 
     def start(self):
-        host = self.config.monitor_host
-        request_timeout = self.config.monitor_request_timeout
-        sender_thread_timeout = self.config.monitor_sender_thread_timeout
-        proto_ver = self.config.monitor_proto_version
+        host = self.config.monitor_host()
+        request_timeout = self.config.monitor_request_timeout()
+        sender_thread_timeout = self.config.monitor_sender_thread_timeout()
+        proto_ver = self.config.monitor_proto_version()
 
         self.sender_thread = SenderThread(self.node_info, host, request_timeout, sender_thread_timeout, proto_ver)
         self.sender_thread.start()
@@ -85,17 +85,19 @@ class SystemMonitor(object):
         return self._send_with_args(LogoutModel, self.meta_data)
 
     def on_stats_snapshot(self, known_tasks, supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout):
-        return self._send_with_args(StatsSnapshotModel, known_tasks, supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout)
+        return self._send_with_args(StatsSnapshotModel, self.meta_data.cliid, self.meta_data.sessid, known_tasks,
+                                    supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout)
 
     def on_peer_snapshot(self, peer_sess_info):
         # TODO: implement
         pass
 
     def on_task_computer_snapshot(self, waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks):
-        return self._send_with_args(TaskComputerSnapshotModel, waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks)
+        return self._send_with_args(TaskComputerSnapshotModel, self.meta_data.cliid, self.meta_data.sessid,
+                                    waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks)
 
     def on_payment(self, payment_infos):
-        return self._send_with_args(PaymentModel, payment_infos)
+        return self._send_with_args(PaymentModel, self.meta_data.cliid, self.meta_data.sessid, payment_infos)
 
     def on_income(self, addr, value):
-        return self._send_with_args(IncomeModel, addr, value)
+        return self._send_with_args(IncomeModel, self.meta_data.cliid, self.meta_data.sessid, addr, value)
