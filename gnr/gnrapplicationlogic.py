@@ -1,8 +1,10 @@
+from __future__ import division
 import cPickle
 import logging
 import os
-from PyQt4 import QtCore
 
+from ethereum.utils import denoms
+from PyQt4 import QtCore
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
@@ -111,6 +113,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         config = yield self.get_config()
         response = yield self.client.start_batch() \
+            .get_description() \
             .get_client_id() \
             .get_datadir()   \
             .get_node_name() \
@@ -119,8 +122,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = response.pop()
         self.datadir = response.pop()
         client_id = response.pop()
+        description = response.pop()
 
-        self.customizer.set_options(config, client_id, payment_address)
+        self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
             self.customizer.prompt_node_name(config)
 
@@ -196,21 +200,19 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.get_balance().addCallback(self._update_payments_view)
 
     def _update_payments_view(self, result_tuple):
-        b, ab = result_tuple
-        if not (b and ab):
+        if any(b is None for b in result_tuple):
             return
+        b, ab, deposit = result_tuple
 
         rb = b - ab
-        deposit = 0  # TODO: Get current deposit value.
         total = deposit + b
-        ether = 1.0 / 10 ** 18
         fmt = "{:.6f} ETH"
         ui = self.customizer.gui.ui
-        ui.localBalanceLabel.setText(fmt.format(b * ether))
-        ui.availableBalanceLabel.setText(fmt.format(ab * ether))
-        ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
-        ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
-        ui.totalBalanceLabel.setText(fmt.format(total * ether))
+        ui.localBalanceLabel.setText(fmt.format(b / denoms.ether))
+        ui.availableBalanceLabel.setText(fmt.format(ab / denoms.ether))
+        ui.reservedBalanceLabel.setText(fmt.format(rb / denoms.ether))
+        ui.depositBalanceLabel.setText(fmt.format(deposit / denoms.ether))
+        ui.totalBalanceLabel.setText(fmt.format(total / denoms.ether))
 
     @inlineCallbacks
     def update_estimated_reputation(self):
@@ -259,6 +261,9 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_config(self):
         config = yield self.client.get_config()
         returnValue(config)
+
+    def change_description(self, description):
+        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()

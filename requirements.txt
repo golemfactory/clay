@@ -8,7 +8,7 @@ ipfs-api
 jsonpickle
 netifaces==0.10.4
 OpenEXR==1.2.0
-peewee>=2.4.7
+peewee>=2.8.1
 Pillow==3.0.0
 psutil
 pyelliptic==1.5.7
@@ -24,6 +24,7 @@ cffi>=1.1.2
 ethereum>=1.1.0
 autobahn>=0.14.1
 dill>=0.2.5
+cbor2
 multihash
 base58
 ndg-httpsclient

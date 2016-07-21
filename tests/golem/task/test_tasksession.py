@@ -1,7 +1,8 @@
+import cPickle
+
 from mock import Mock, MagicMock
 
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import SimpleSerializer
 from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
@@ -10,10 +11,11 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
 from golem.task.taskbase import result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase):
+class TestTaskSession(LogTestCase, TempDirFixture):
     def test_init(self):
         ts = TaskSession(Mock())
         self.assertIsInstance(ts, TaskSession)
@@ -133,7 +135,7 @@ class TestTaskSession(LogTestCase):
         conn = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 
@@ -174,7 +176,8 @@ class TestTaskSession(LogTestCase):
         ts.task_manager.verify_subtask.return_value = True
 
         extra_data = dict(
-            result=SimpleSerializer.dumps({'stdout': 'xyz'}),
+            # the result is explicitly serialized using cPickle
+            result=cPickle.dumps({'stdout': 'xyz'}),
             result_type=None,
             subtask_id='xxyyzz'
         )

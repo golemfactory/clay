@@ -1,3 +1,5 @@
+from __future__ import division
+
 import atexit
 import json
 import logging
@@ -13,7 +15,7 @@ import psutil
 from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address
+from ethereum.utils import normalize_address, denoms
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -35,7 +37,7 @@ class Faucet(object):
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
-        log.info("Faucet --({} ETH)--> {} ({})".format(float(value) / 10**18,
+        log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
                                                        addr.encode('hex'), h))
         h = h[2:].decode('hex')
         assert h == tx.hash
@@ -57,7 +59,7 @@ class NodeProcess(object):
         program = find_program('geth')
         output, _ = subprocess.Popen(['geth', 'version'],
                                      stdout=subprocess.PIPE).communicate()
-        ver = StrictVersion(re.search("Version: (\d\.\d\.\d)", output).group(1))
+        ver = StrictVersion(re.search("Version: (\d+\.\d+\.\d+)", output).group(1))
         assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
         log.info("geth version {}".format(ver))
 
@@ -126,7 +128,7 @@ class NodeProcess(object):
                 'js', mining_script,
             ]
 
-        self.__ps = psutil.Popen(args)
+        self.__ps = psutil.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.01
         wait_time = 0

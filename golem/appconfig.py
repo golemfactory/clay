@@ -1,6 +1,8 @@
+from __future__ import absolute_import
 import logging
 from os import path
 
+from ethereum.utils import denoms
 from psutil import virtual_memory
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -63,7 +65,7 @@ USE_IP6 = 0
 ACCEPT_TASKS = 1
 
 # Default max price per hour -- 0.005 ETH ~ 0.05 USD
-MAX_PRICE = int(0.005 * 10**18)
+MAX_PRICE = int(0.005 * denoms.ether)
 
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
