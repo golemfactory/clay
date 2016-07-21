@@ -49,20 +49,23 @@ class DiagnosticsService(object):
         self._output_format = output_format or DiagnosticsOutputFormat.string
         self._looping_call = None
 
-    def register(self, provider, method=None):
+    def register(self, provider, method=None, output_format=None):
         if isinstance(provider, DiagnosticsProvider):
+            if output_format is None:
+                output_format = self._output_format
             self._providers[hash(provider)] = dict(
                 provider=provider,
                 cls=provider.__class__,
                 cls_name=provider.__class__.__name__,
-                method=method
+                method=method,
+                output_format=output_format
             )
 
     def unregister(self, provider):
         if provider:
             self._providers.pop(hash(provider), None)
 
-    def start_looping_call(self, interval=3):
+    def start_looping_call(self, interval=300):
         if not self._looping_call:
             self._looping_call = LoopingCall(self.log_diagnostics)
             self._looping_call.start(interval)
@@ -74,7 +77,7 @@ class DiagnosticsService(object):
     def log_diagnostics(self):
         for v in self._providers.itervalues():
             method = v['method']
-            data = v['provider'].get_diagnostics(self._output_format)
+            data = v['provider'].get_diagnostics(v["output_format"])
 
             if method:
                 method(data)

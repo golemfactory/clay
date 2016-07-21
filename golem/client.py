@@ -201,7 +201,7 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
-        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot, DiagnosticsOutputFormat.string)
 
         if self.monitor:
             self.monitor.on_login()

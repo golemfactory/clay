@@ -1,11 +1,8 @@
 # ###### Monitoring part ######
-# MONITOR_HOST = "http://94.23.17.170:8881/"
 
 
 class MonitorConfig:
-
-    MONITOR_HOST = "http://10.30.10.217:8080/stats/update"
-
+    MONITOR_HOST = "http://94.23.17.170:8881/"
     MONITOR_REQUEST_TIMEOUT = 10
     MONITOR_SENDER_THREAD_TIMEOUT = max(12, MONITOR_REQUEST_TIMEOUT)  # so that the queue does not get filled up
 
