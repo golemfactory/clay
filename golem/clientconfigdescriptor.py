@@ -99,13 +99,11 @@ class ConfigApprover(object):
         dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                            'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
                            'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
-        to_int_opt = ['seed_port', 'manager_port', 'num_cores', 'opt_peer_num', 'dist_res_num',
-                      'waiting_for_task_timeout', 'p2p_session_timeout', 'task_session_timeout',
-                      'resource_session_timeout', 'pings_interval', 'max_results_sending_delay', 'min_price',
-                      'max_price']
+        to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num', 'waiting_for_task_timeout', 'p2p_session_timeout',
+                      'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
+                      'min_price', 'max_price']
         to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
-                        'getting_peers_interval', 'getting_tasks_interval', 'node_snapshot_interval',
-                        'computing_trust', 'requesting_trust']
+                        'getting_peers_interval', 'getting_tasks_interval', 'computing_trust', 'requesting_trust']
         self._opts_to_change = dont_change_opt + to_int_opt + to_float_opt
         for opt in dont_change_opt:
             self._actions[opt] = ConfigApprover._empty_action
