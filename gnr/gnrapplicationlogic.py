@@ -200,9 +200,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.get_balance().addCallback(self._update_payments_view)
 
     def _update_payments_view(self, result_tuple):
-        b, ab, deposit = result_tuple
-        if not (b and ab and deposit):
+        if any(b is None for b in result_tuple):
             return
+        b, ab, deposit = result_tuple
 
         rb = b - ab
         total = deposit + b
