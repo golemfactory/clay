@@ -39,12 +39,8 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.current_task_highlighted.definition.resources = tmp_files
         customizer.gui.ui.showResourceButton.click()
 
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
-
     def test_update_preview(self):
-        gnrgui = GNRGui(MagicMock(), AppMainWindow)
-        customizer = RenderingMainWindowCustomizer(gnrgui.get_main_window(), MagicMock())
+        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         rts = RenderingTaskState()
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
@@ -80,6 +76,3 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         rts.definition.renderer_options.frames = range(10)
         rts.task_state.extra_data = {"resultPreview": [img_path]}
         customizer.update_task_additional_info(rts)
-
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()
