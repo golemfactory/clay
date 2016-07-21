@@ -114,6 +114,7 @@ class Client(object):
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
 
         self.p2pservice = None
+        self.diag_service = None
 
         self.task_server = None
         self.last_nss_time = time.time()
@@ -207,6 +208,11 @@ class Client(object):
                                      self.get_description(), self.config_desc)
         self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
+
+        self.diag_service = DiagnosticsService()
+        self.diag_service.register(VMDiagnosticsProvider())
+        self.diag_service.register(self.p2pservice)
+        self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(

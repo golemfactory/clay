@@ -1,9 +1,13 @@
 import cPickle  # release version
 import json   # debug version
+import logging
 
 import dill
 
+
 IS_DEBUG = False  # True - json, False - pickle
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleSerializerDebug(object):
