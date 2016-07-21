@@ -1,7 +1,11 @@
 import os
+import unittest
 import uuid
 
+import requests
+
 from golem.resource.client import file_multihash
+from golem.resource.swift.api import api_retry, MAX_API_RETRIES
 
 from golem.resource.swift.resourcemanager import OpenStackSwiftClient
 from golem.testutils import TempDirFixture
@@ -45,4 +49,16 @@ class TestSwiftClient(TempDirFixture):
                       client_options=options)
 
 
+class TestRetries(unittest.TestCase):
 
+    def test(self):
+        n_calls = [0]
+
+        @api_retry
+        def method():
+            n_calls[0] += 1
+            if n_calls[0] < MAX_API_RETRIES - 1:
+                raise requests.exceptions.HTTPError()
+
+        method()
+        assert n_calls[0] == MAX_API_RETRIES - 1

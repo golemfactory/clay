@@ -18,6 +18,9 @@ APPLICATION_KEY = "YeXUvlivqiEhzSIb"
 APPLICATION_SECRET = "uR3diYfs2cBqY96CR47n23JEMRmC9fxC"
 
 
+MAX_API_RETRIES = 5
+
+
 class PatchedDownloadFileRequest(DownloadFileRequest):
 
     def __init__(self, file_hash, file_path,
@@ -79,6 +82,19 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                     content_started = True
 
 
+def api_retry(method):
+    def wrapper(*args, **kwargs):
+        retries = 0
+        while retries < MAX_API_RETRIES:
+            try:
+                return method(*args, **kwargs)
+            except requests.exceptions.HTTPError:
+                retries += 1
+                if retries >= MAX_API_RETRIES:
+                    raise
+    return wrapper
+
+
 class OpenStackSwiftAPI(object):
 
     api_lock = Lock()
@@ -103,6 +119,7 @@ class OpenStackSwiftAPI(object):
         return oss.token and oss.regions
 
     @staticmethod
+    @api_retry
     def update_token():
         oss = OpenStackSwiftAPI
         response_json = oss.ovh_client.get('/cloud/project/{}/storage/access'

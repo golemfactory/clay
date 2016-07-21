@@ -2,6 +2,10 @@ import time
 import unittest
 import uuid
 
+from twisted.internet.defer import Deferred
+from twisted.internet.task import Clock
+
+from golem.rpc.service import RPC, RPCAddress, CONNECTION_MAX_RETRIES
 from mock import Mock
 
 from golem.core.simpleserializer import SimpleSerializer
@@ -68,8 +72,11 @@ class TestRPCClient(TestWithReactor):
 
         ws_client.connect().addCallbacks(on_success, on_error)
 
+        started = time.time()
         while result[1] is None:
-            time.sleep(1)
+            time.sleep(0.2)
+            if time.time() - started > 5:
+                self.fail("Test timeout")
 
     def test_batch(self):
 
@@ -98,8 +105,37 @@ class TestRPCClient(TestWithReactor):
 
         ws_client.connect().addCallbacks(on_success, on_error)
 
+        started = time.time()
         while result[1] is None:
-            time.sleep(1)
+            time.sleep(0.2)
+            if time.time() - started > 5:
+                self.fail("Test timeout")
+
+    def test_retries(self):
+        deferred = Deferred()
+        deferred.called = True
+        deferred.result = True
+
+        rpc_address = RPCAddress('127.0.0.1', 9876)
+        ws_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
+        ws_client.connect = Mock()
+        ws_client.connect.return_value = deferred
+        ws_client.get_session = Mock()
+        ws_client.get_session.return_value = None
+
+        clock = Clock()
+        rpc = RPC(ws_client, rpc_address, conn_timeout=0, retry_timeout=0)
+        rpc.reactor = clock
+        rpc.get_session()
+
+        started = time.time()
+        while time.time() - started < 10:
+            clock.advance(10)
+            if rpc.conn_retries >= CONNECTION_MAX_RETRIES - 1:
+                return
+            print rpc.conn_retries
+            time.sleep(0.2)
+        self.fail("Test timeout")
 
 
 class TestSessionManager(unittest.TestCase):

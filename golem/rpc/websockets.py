@@ -295,7 +295,7 @@ class WebSocketRPCFactory(MessageLedger, SessionManager):
         return RPCServiceInfo(service, ws_address)
 
     def build_client(self, service_info, timeout=None):
-        rpc = RPC(self, service_info.rpc_address, timeout=timeout)
+        rpc = RPC(self, service_info.rpc_address, conn_timeout=timeout)
 
         return RPCProxyClient(rpc, service_info.method_names)
 
@@ -349,28 +349,32 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         self.serializer = serializer or DILLSerializer
         self.keyring = keyring
 
-        self.status = Deferred()
-        self.status.addCallback(self.client_connected)
+        self._deferred = None
 
-    def connect(self):
+    def connect(self, timeout=None):
         from twisted.internet import reactor
 
-        self.connector = reactor.connectTCP(self.remote_host, self.remote_port, self)
+        self._deferred = Deferred()
+        self._deferred.addCallback(self.client_connected)
+
+        self.connector = reactor.connectTCP(self.remote_host, self.remote_port,
+                                            self, timeout=timeout)
         ws_address = WebSocketAddress(self.remote_host, self.remote_port)
 
         logger.info("WebSocket RPC client connecting to {}"
                     .format(ws_address))
-        return self.status
+
+        return self._deferred
 
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
-        self.status.callback(session)
+        self._deferred.callback(session)
 
-    # def clientConnectionLost(self, connector, reason):
-    #     self.remove_session()
+    def clientConnectionLost(self, connector, reason):
+        pass
 
     def clientConnectionFailed(self, connector, reason):
-        self.status.errback(reason)
+        self._deferred.errback(reason)
 
     def client_connected(self, *args):
         addr = self.connector.transport.socket.getsockname()
