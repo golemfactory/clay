@@ -8,17 +8,15 @@ from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from model.paymentmodel import PaymentModel, IncomeModel
 from transport.sender import DefaultJSONSender as Sender
 
-from config import MONITOR_PROTO_VERSION
-
 
 class SenderThread(threading.Thread):
 
-    def __init__(self, node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout):
+    def __init__(self, node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout, proto_ver):
         super(SenderThread, self).__init__()
         self.queue = Queue.Queue()
         self.stop_request = threading.Event()
         self.node_info = node_info
-        self.sender = Sender(monitor_host, monitor_request_timeout, MONITOR_PROTO_VERSION)
+        self.sender = Sender(monitor_host, monitor_request_timeout, proto_ver)
         self.monitor_sender_thread_timeout = monitor_sender_thread_timeout
 
     def send(self, o):
@@ -41,11 +39,12 @@ class SenderThread(threading.Thread):
 
 class SystemMonitor(object):
 
-    def __init__(self, meta_data):
+    def __init__(self, meta_data, monitor_config):
         assert isinstance(meta_data, NodeMetadataModel)
 
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
+        self.config = monitor_config
         self.queue = None
         self.sender_thread = None
 
@@ -65,8 +64,13 @@ class SystemMonitor(object):
 
     # Initialization
 
-    def start(self, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout):
-        self.sender_thread = SenderThread(self.node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout)
+    def start(self):
+        host = self.config.monitor_host
+        request_timeout = self.config.monitor_request_timeout
+        sender_thread_timeout = self.config.monitor_sender_thread_timeout
+        proto_ver = self.config.monitor_proto_version
+
+        self.sender_thread = SenderThread(self.node_info, host, request_timeout, sender_thread_timeout, proto_ver)
         self.sender_thread.start()
 
     def shut_down(self):

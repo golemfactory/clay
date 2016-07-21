@@ -21,11 +21,6 @@ MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE
 NUM_CORES = 1
 DISTRIBUTED_RES_NUM = 2
 
-# ###### Monitoring part ######
-MONITOR_HOST = "http://94.23.17.170:8881/"
-MONITOR_REQUEST_TIMEOUT = 4
-MONITOR_SENDER_THREAD_TIMEOUT = max(6, MONITOR_REQUEST_TIMEOUT)  # so that the queue does not get filled up
-
 logger = logging.getLogger(__name__)
 
 
@@ -126,10 +121,7 @@ class AppConfig:
                                      start_port=START_PORT,
                                      end_port=END_PORT,
                                      opt_peer_num=OPTIMAL_PEER_NUM,
-                                     dist_res_num=DISTRIBUTED_RES_NUM,
-                                     monitor_host=MONITOR_HOST,
-                                     monitor_request_timeout=MONITOR_REQUEST_TIMEOUT,
-                                     monitor_sender_thread_timeout=MONITOR_SENDER_THREAD_TIMEOUT)
+                                     dist_res_num=DISTRIBUTED_RES_NUM)
 
         node_config = NodeConfig(node_address="",
                                  seed_host="",

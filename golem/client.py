@@ -13,6 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import APP_VERSION
+from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
@@ -59,6 +60,7 @@ class GolemClientRemoteEventListener(GolemClientEventListener):
 
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
+        TaskManagerEventListener.__init__(self)
         self.client = client
 
     def task_status_updated(self, task_id):
@@ -83,6 +85,7 @@ class Client(object):
 
         if not datadir:
             datadir = get_local_datadir('default')
+
         self.datadir = datadir
         self.__lock_datadir()
 
@@ -157,9 +160,7 @@ class Client(object):
         self.session_id = uuid.uuid4().get_hex()
 
     def start(self):
-        desc = self.config_desc
-
-        self.init_monitor(desc.monitor_host, desc.monitor_request_timeout, desc.monitor_sender_thread_timeout)
+        self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -201,11 +202,11 @@ class Client(object):
         if self.monitor:
             self.monitor.on_login()
 
-    def init_monitor(self, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout):
+    def init_monitor(self):
         metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
                                      self.get_description(), self.config_desc)
-        self.monitor = SystemMonitor(metadata)
-        self.monitor.start(monitor_host, monitor_request_timeout, monitor_sender_thread_timeout)
+        self.monitor = SystemMonitor(metadata, monitor_config)
+        self.monitor.start()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(
