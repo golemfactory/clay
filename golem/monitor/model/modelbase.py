@@ -13,9 +13,11 @@ class ModelBase(object):
 
 class BasicModel(ModelBase):
 
-    def __init__(self, type_str_repr):
+    def __init__(self, type_str_repr, cliid, sessid):
         self.type = type_str_repr
         self.timestamp = time.time()
+        self.cliid = cliid
+        self.sessid = sessid
 
     def dict_repr(self):
         return self.__dict__

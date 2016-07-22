@@ -4,7 +4,7 @@ from modelbase import BasicModel
 class LoginModel(BasicModel):
 
     def __init__(self, metadata):
-        super(LoginModel, self).__init__("Login")
+        super(LoginModel, self).__init__("Login", metadata.cliid, metadata.sessid)
 
         self.metadata = metadata.dict_repr()
 
@@ -12,6 +12,6 @@ class LoginModel(BasicModel):
 class LogoutModel(BasicModel):
 
     def __init__(self, metadata):
-        super(LogoutModel, self).__init__("Logout")
+        super(LogoutModel, self).__init__("Logout", metadata.cliid, metadata.sessid)
 
         self.metadata = metadata.dict_repr()
