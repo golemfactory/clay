@@ -62,7 +62,11 @@ class Message:
     def serialize(self):
         """ Return serialized message
         :return str: serialized message """
-        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        try:
+            return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        except Exception as exc:
+            logger.error("Error serializing message: {}".format(exc))
+            raise
 
     def serialize_to_buffer(self, db_):
         """
@@ -136,7 +140,11 @@ class Message:
         :param str msg_: serialized message
         :return Message|None: deserialized message or none if this message type is unknown
         """
-        msg_repr = SimpleSerializer.loads(msg_)
+        try:
+            msg_repr = SimpleSerializer.loads(msg_)
+        except Exception as exc:
+            logger.error("Error deserializing message: {}".format(exc))
+            msg_repr = None
 
         if isinstance(msg_repr, list) and len(msg_repr) >= 4:
 
