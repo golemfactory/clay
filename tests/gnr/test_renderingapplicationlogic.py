@@ -3,6 +3,7 @@ from mock import Mock
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
+from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -34,3 +35,8 @@ class TestRenderingApplicationLogic(TestDirFixture):
         logic.change_verification_option(size_y_max=3190, size_x_max=134)
         assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 134
         assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == 3190
+
+    def test_error_messages(self):
+        logic = self.logic
+        rts = RenderingTaskState()
+        logic._validate_task_state(rts)
