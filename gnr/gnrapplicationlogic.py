@@ -486,7 +486,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.br.run()
 
     def _benchmark_computation_success(self, performance, label):
-        self.progress_dialog_customizer.show_message("Recounted")
+        self.progress_dialog_customizer.show_message(u"Recounted")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
@@ -496,7 +496,7 @@ class GNRApplicationLogic(QtCore.QObject):
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
-        self.progress_dialog_customizer.show_message("Recounting failed: " + error)
+        self.progress_dialog_customizer.show_message(u"Recounting failed: " + error)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
@@ -509,16 +509,16 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
     def test_task_computation_success(self, results, est_mem):
-        self.progress_dialog_customizer.show_message("Test task computation success!")
+        self.progress_dialog_customizer.show_message(u"Test task computation success!")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
     def test_task_computation_error(self, error):
-        err_msg = "Task test computation failure. "
+        err_msg = u"Task test computation failure. "
         if error:
-            err_msg += error
+            err_msg += u"{}".format(error)
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
@@ -565,13 +565,13 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+            self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
