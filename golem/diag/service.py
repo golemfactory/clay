@@ -65,6 +65,9 @@ class DiagnosticsService(object):
         if provider:
             self._providers.pop(hash(provider), None)
 
+    def unregister_all(self):
+        self._providers = {}
+
     def start_looping_call(self, interval=300):
         if not self._looping_call:
             self._looping_call = LoopingCall(self.log_diagnostics)

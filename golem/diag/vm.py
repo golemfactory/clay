@@ -6,7 +6,7 @@ from golem.core.common import is_windows
 from golem.diag.service import DiagnosticsProvider
 
 
-class VMDiagnosticsProvider(DiagnosticsProvider, object):
+class VMDiagnosticsProvider(DiagnosticsProvider):
     def __init__(self):
         self.process = psutil.Process(os.getpid())
         self.attrs = [

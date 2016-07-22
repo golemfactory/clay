@@ -225,6 +225,8 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.diag_service:
+            self.diag_service.unregister_all()
         if self.monitor:
             self.monitor.on_logout()
             self.monitor.shut_down()
