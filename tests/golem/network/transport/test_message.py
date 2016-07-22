@@ -56,3 +56,8 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(m.eth_account, m2.eth_account)
         self.assertEqual(m.node_info, m2.node_info)
         self.assertEqual(m.get_type(), m2.get_type())
+
+    def test_message_hash(self):
+        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
+                                      extra_data=MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3))
+        assert m.get_short_hash()
