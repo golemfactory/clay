@@ -57,7 +57,11 @@ class MockSerializationInnerSubject(object):
         self.property_1 = random.randrange(1, 1 * 10 ** 18)
         self._property_2 = True
         self.property_3 = "string"
-        self.property_4 = ['list', 'of', ('items',)]
+        self.property_4 = ['list', 'of', ('items',), [
+                              random.randrange(1, 10000),
+                              random.randrange(1, 10000),
+                              random.randrange(1, 10000)
+                          ]]
 
     def method(self):
         pass
@@ -114,7 +118,6 @@ class TestCBORSerializer(unittest.TestCase):
         assert inner.property_1 == obj.property_2.property_1
         assert isinstance(inner.property_3, basestring)
         assert isinstance(inner.property_4, list)
-        assert '_property_2' not in inner.__dict__
 
     def testSerialization(self):
         obj = MockSerializationSubject()

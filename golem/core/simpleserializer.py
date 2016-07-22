@@ -64,21 +64,23 @@ class DILLSerializer(object):
 
 class CBORCoder(object):
 
-    tag = 0xff
+    tag = 0xef
     cls_key = '_cls'
+    disable_value_sharing = True
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
     def encode(cls, encoder, value, fp):
         if value is not None:
             obj_dict = cls._obj_to_dict(value)
-            encoder.encode_semantic(cls.tag, obj_dict, fp)
+            encoder.encode_semantic(cls.tag, obj_dict, fp,
+                                    disable_value_sharing=cls.disable_value_sharing)
 
     @classmethod
     def decode(cls, decoder, value, fp, shareable_index=None):
         obj = cls._obj_from_dict(value)
         # As instructed in cbor2.CBORDecoder
-        if shareable_index is not None:
+        if shareable_index is not None and not cls.disable_value_sharing:
             decoder.shareables[shareable_index] = obj
         return obj
 
@@ -121,8 +123,6 @@ class CBORCoder(object):
             return obj
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._to_dict_traverse_obj(o) for o in obj])
-        elif not cls._is_builtin(obj):
-            return cls._obj_to_dict(obj)
         return obj
 
     @classmethod
@@ -142,8 +142,7 @@ class CBORCoder(object):
             return obj
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
-        else:
-            return obj
+        return obj
 
     @classmethod
     def _is_class(cls, obj):
