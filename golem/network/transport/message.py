@@ -45,17 +45,20 @@ class Message:
             return self._sort_dict(v)
         # treat objects as dictionaries
         elif hasattr(v, '__dict__'):
-            return self._sort_dict(v.__dict__)
+            return self._sort_dict(v.__dict__,
+                                   filter_properties=True)
         # strings are iterable (see the case below)
         elif isinstance(v, basestring):
             return v
         elif isinstance(v, collections.Iterable):
-            return [self._sort_obj(_v) for _v in v]
+            return v.__class__([self._sort_obj(_v) for _v in v])
         return v
 
-    def _sort_dict(self, dictionary):
+    def _sort_dict(self, dictionary, filter_properties=False):
         result = dict()
         for k, v in dictionary.iteritems():
+            if filter_properties and (k.startswith('_') or callable(v)):
+                continue
             result[k] = self._sort_obj(v)
         return sorted(result.items())
 
