@@ -1,7 +1,16 @@
 import unittest
 
+from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message
 
-from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask
+
+class FailingMessage(Message):
+    def __init__(self):
+        Message.__init__(self, 0)
+
+    def dict_repr(self):
+        raise Exception()
+
+
 
 
 class TestMessages(unittest.TestCase):
@@ -61,3 +70,17 @@ class TestMessages(unittest.TestCase):
         m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
                                       extra_data=MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3))
         assert m.get_short_hash()
+
+    def test_serialization(self):
+        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
+        assert m.serialize()
+
+        m = FailingMessage()
+        serialized = None
+
+        try:
+            serialized = m.serialize()
+        except:
+            pass
+        assert not serialized
+        assert not Message.deserialize_message(None)
