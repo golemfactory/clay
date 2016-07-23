@@ -1,4 +1,5 @@
 import cPickle  # release version
+import collections
 import json   # debug version
 
 import types
@@ -66,42 +67,35 @@ class DILLSerializer(object):
 
 class CBORCoder(object):
 
-    tag = 0xff
+    tag = 0xef
     cls_key = '_cls'
+    disable_value_sharing = True
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
     def encode(cls, encoder, value, fp):
         if value is not None:
-            obj_dict = cls._object_to_dict(value)
-            encoder.encode_semantic(cls.tag, obj_dict, fp)
+            obj_dict = cls._obj_to_dict(value)
+            encoder.encode_semantic(cls.tag, obj_dict, fp,
+                                    disable_value_sharing=cls.disable_value_sharing)
 
     @classmethod
     def decode(cls, decoder, value, fp, shareable_index=None):
-        obj = cls._dict_to_object(value)
+        obj = cls._obj_from_dict(value)
         # As instructed in cbor2.CBORDecoder
-        if shareable_index is not None:
+        if shareable_index is not None and not cls.disable_value_sharing:
             decoder.shareables[shareable_index] = obj
         return obj
 
     @classmethod
-    def _object_to_dict(cls, obj):
+    def _obj_to_dict(cls, obj):
         """Stores object's public properties in a dictionary. Does not support cyclic references"""
-        result = dict()
+        result = cls._to_dict_traverse_dict(obj.__dict__)
         result[cls.cls_key] = cls._module_and_class(obj)
-
-        for k, v in obj.__dict__.iteritems():
-            if k.startswith('_') or callable(v):
-                continue
-            elif not cls._is_builtin(v):
-                result[k] = cls._object_to_dict(v)
-            else:
-                result[k] = v
-
         return result
 
     @classmethod
-    def _dict_to_object(cls, dictionary):
+    def _obj_from_dict(cls, dictionary):
         module_name, cls_name = dictionary.pop(cls.cls_key)
         module = sys.modules[module_name]
 
@@ -109,11 +103,53 @@ class CBORCoder(object):
         obj = sub_cls.__new__(sub_cls)
 
         for k, v in dictionary.iteritems():
-            if isinstance(v, dict) and cls.cls_key in v:
-                setattr(obj, k, cls._dict_to_object(v))
+            if cls._is_class(v):
+                setattr(obj, k, cls._obj_from_dict(v))
             else:
-                setattr(obj, k, v)
+                setattr(obj, k, cls._from_dict_traverse_obj(v))
         return obj
+
+    @classmethod
+    def _to_dict_traverse_dict(cls, dictionary):
+        result = dict()
+        for k, v in dictionary.iteritems():
+            if k.startswith('_') or callable(v):
+                continue
+            result[k] = cls._to_dict_traverse_obj(v)
+        return result
+
+    @classmethod
+    def _to_dict_traverse_obj(cls, obj):
+        if isinstance(obj, dict):
+            return cls._to_dict_traverse_dict(obj)
+        elif isinstance(obj, basestring):
+            return obj
+        elif isinstance(obj, collections.Iterable):
+            return obj.__class__([cls._to_dict_traverse_obj(o) for o in obj])
+        return obj
+
+    @classmethod
+    def _from_dict_traverse_dict(cls, dictionary):
+        result = dict()
+        for k, v in dictionary.iteritems():
+            result[k] = cls._from_dict_traverse_obj(v)
+        return result
+
+    @classmethod
+    def _from_dict_traverse_obj(cls, obj):
+        if isinstance(obj, dict):
+            if cls._is_class(obj):
+                return cls._obj_from_dict(obj)
+            return cls._from_dict_traverse_dict(obj)
+        elif isinstance(obj, basestring):
+            return obj
+        elif isinstance(obj, collections.Iterable):
+            return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
+        return obj
+
+    @classmethod
+    def _is_class(cls, obj):
+        return isinstance(obj, dict) and cls.cls_key in obj
 
     @classmethod
     def _is_builtin(cls, obj):

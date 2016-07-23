@@ -236,7 +236,8 @@ class BasicSafeSession(BasicSession, SafeSession):
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.error("Failed to verify message signature")
+            logger.error("Failed to verify message signature ({} from {}:{})"
+                         .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)
             return False
 
