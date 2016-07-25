@@ -1,8 +1,9 @@
+from __future__ import division
+
 from gnr.customizers.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
-
-from golem.core.common import ETH
+from ethereum.utils import denoms
 
 
 class PaymentsDialogCustomizer(Customizer):
@@ -42,7 +43,7 @@ class PaymentTableElem(object):
 
         subtask = QTableWidgetItem(payment_info["subtask"])
         payee = QTableWidgetItem(payment_info["payee"].encode('hex'))
-        value = QTableWidgetItem("{:.6f} ETH".format(float(value) * ETH))
+        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
         status = QTableWidgetItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
         fee = QTableWidgetItem(fee)
         self.cols = [subtask, payee, status, value, fee]
@@ -56,7 +57,7 @@ class IncomeTableElem(object):
         value = income_info["value"]
         payer = QTableWidgetItem(income_info["payer"].encode('hex'))
         status = QTableWidgetItem(str(income_info["status"]).replace("PaymentStatus.", ""))
-        value = QTableWidgetItem("{:.6f} ETH".format(float(value) * ETH))
+        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
         block_number = QTableWidgetItem(str(income_info["block_number"]))
         self.cols = [payer, status, value, block_number]
 

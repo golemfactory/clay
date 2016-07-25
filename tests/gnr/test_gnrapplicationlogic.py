@@ -6,6 +6,8 @@ from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from mock import Mock, MagicMock
 from twisted.internet.defer import Deferred
 
+from ethereum.utils import denoms
+
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
@@ -187,10 +189,10 @@ class TestGNRApplicationLogic(DatabaseFixture):
         logic = GNRApplicationLogic()
         logic.client = Mock()
         logic.customizer = Mock()
-        eth = 10**18
+        ether = denoms.ether
 
         balance_deferred = Deferred()
-        balance_deferred.result = (3 * eth, 1 * eth, 0.3 * eth)
+        balance_deferred.result = (3 * ether, 1 * ether, 0.3 * ether)
         balance_deferred.called = True
 
         logic.client.get_balance.return_value = balance_deferred
@@ -240,10 +242,34 @@ class TestGNRApplicationLogic(DatabaseFixture):
 
         golem_client.quit()
 
-    def test_updating_config_dialog(self):
-        logic = RenderingApplicationLogic()
-        app = GNRGui(logic, AppMainWindow)
+    def test_change_description(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        golem_client = Client(datadir=self.path)
+        client = MockRPCClient(golem_client)
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+        logic.register_client(client, service_info)
+        golem_client.change_description("NEW DESC")
+        time.sleep(0.5)
+        assert golem_client.get_description() == "NEW DESC"
+        golem_client.quit()
 
+
+class TestConfigDialog(DatabaseFixture):
+
+    def setUp(self):
+        super(TestConfigDialog, self).setUp()
+        self.logic = RenderingApplicationLogic()
+        self.app = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestConfigDialog, self).tearDown()
+        self.app.app.exit(0)
+        self.app.app.deleteLater()
+
+    def test_updating_config_dialog(self):
+        logic = self.logic
+        app = self.app
         logic.client = Mock()
         logic.register_gui(app.get_main_window(),
                            RenderingMainWindowCustomizer)
@@ -259,18 +285,3 @@ class TestGNRApplicationLogic(DatabaseFixture):
 
         assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
-
-        app.app.exit(0)
-        app.app.deleteLater()
-
-    def test_change_description(self):
-        logic = GNRApplicationLogic()
-        logic.customizer = Mock()
-        golem_client = Client(datadir=self.path)
-        client = MockRPCClient(golem_client)
-        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
-        logic.register_client(client, service_info)
-        golem_client.change_description("NEW DESC")
-        time.sleep(0.5)
-        assert golem_client.get_description() == "NEW DESC"
-        golem_client.quit()

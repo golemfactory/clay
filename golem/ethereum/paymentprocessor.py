@@ -1,8 +1,11 @@
+from __future__ import division
+
 import logging
 import time
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
+from ethereum.utils import denoms
 from twisted.internet.task import LoopingCall
 
 from golem.model import Payment, PaymentStatus
@@ -107,7 +110,7 @@ class PaymentProcessor(object):
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
             self.__balance = self.__client.get_balance(addr.encode('hex'))
-            log.info("Balance: {}".format(self.__balance / float(10**18)))
+            log.info("Balance: {}".format(self.__balance / denoms.ether))
         return self.__balance
 
     def deposit_balance(self, refresh=False):
@@ -122,7 +125,7 @@ class PaymentProcessor(object):
                 self.__deposit = 0
             else:
                 self.__deposit = int(r, 16)
-            log.info("Deposit: {}".format(self.__deposit / float(10**18)))
+            log.info("Deposit: {}".format(self.__deposit / denoms.ether))
         return self.__deposit
 
     def available_balance(self, refresh=False):
@@ -222,7 +225,7 @@ class PaymentProcessor(object):
             value = 100
             log.info("Requesting {} ETH from Golem Faucet".format(value))
             addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(self.__client, addr, value * 10**18)
+            Faucet.gimme_money(self.__client, addr, value * denoms.ether)
             self.__faucet_request_ttl = 10
             return False
         return True

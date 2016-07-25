@@ -45,24 +45,31 @@ class Message:
             return self._sort_dict(v)
         # treat objects as dictionaries
         elif hasattr(v, '__dict__'):
-            return self._sort_dict(v.__dict__)
+            return self._sort_dict(v.__dict__,
+                                   filter_properties=True)
         # strings are iterable (see the case below)
         elif isinstance(v, basestring):
             return v
         elif isinstance(v, collections.Iterable):
-            return [self._sort_obj(_v) for _v in v]
+            return v.__class__([self._sort_obj(_v) for _v in v])
         return v
 
-    def _sort_dict(self, dictionary):
+    def _sort_dict(self, dictionary, filter_properties=False):
         result = dict()
         for k, v in dictionary.iteritems():
+            if filter_properties and (k.startswith('_') or callable(v)):
+                continue
             result[k] = self._sort_obj(v)
         return sorted(result.items())
 
     def serialize(self):
         """ Return serialized message
         :return str: serialized message """
-        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        try:
+            return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        except Exception as exc:
+            logger.error("Error serializing message: {}".format(exc))
+            raise
 
     def serialize_to_buffer(self, db_):
         """
@@ -136,7 +143,11 @@ class Message:
         :param str msg_: serialized message
         :return Message|None: deserialized message or none if this message type is unknown
         """
-        msg_repr = SimpleSerializer.loads(msg_)
+        try:
+            msg_repr = SimpleSerializer.loads(msg_)
+        except Exception as exc:
+            logger.error("Error deserializing message: {}".format(exc))
+            msg_repr = None
 
         if isinstance(msg_repr, list) and len(msg_repr) >= 4:
 

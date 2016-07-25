@@ -13,6 +13,9 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import APP_VERSION
+from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
+from golem.diag.vm import VMDiagnosticsProvider
+from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
@@ -59,6 +62,7 @@ class GolemClientRemoteEventListener(GolemClientEventListener):
 
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
+        TaskManagerEventListener.__init__(self)
         self.client = client
 
     def task_status_updated(self, task_id):
@@ -83,6 +87,7 @@ class Client(object):
 
         if not datadir:
             datadir = get_local_datadir('default')
+
         self.datadir = datadir
         self.__lock_datadir()
 
@@ -111,6 +116,7 @@ class Client(object):
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
 
         self.p2pservice = None
+        self.diag_service = None
 
         self.task_server = None
         self.last_nss_time = time.time()
@@ -195,6 +201,7 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
+        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
 
         if self.monitor:
             self.monitor.on_login()
@@ -202,8 +209,11 @@ class Client(object):
     def init_monitor(self):
         metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
                                      self.get_description(), self.config_desc)
-        self.monitor = SystemMonitor(metadata)
+        self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
+        self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
+        self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
+        self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(
@@ -215,6 +225,8 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.diag_service:
+            self.diag_service.unregister_all()
         if self.monitor:
             self.monitor.on_logout()
             self.monitor.shut_down()
@@ -380,7 +392,7 @@ class Client(object):
         if self.transaction_system:
             return self.transaction_system.get_incoming_payments()
         # FIXME use method that connect payment with expected payments
-        #if self.use_transaction_system():
+        # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
         return ()
 
@@ -504,17 +516,11 @@ class Client(object):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)
 
-    def get_computing_trust(self, node_id):
-        return self.ranking.get_computing_trust(node_id)
-
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
 
     def send_stop_gossip(self):
         return self.p2pservice.send_stop_gossip()
-
-    def get_requesting_trust(self, node_id):
-        return self.ranking.get_requesting_trust(node_id)
 
     def collect_gossip(self):
         return self.p2pservice.pop_gossip()
@@ -562,7 +568,7 @@ class Client(object):
 
             self.check_payments()
 
-            if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
+            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
                                                    self.get_computed_task_count(), self.get_error_task_count(),

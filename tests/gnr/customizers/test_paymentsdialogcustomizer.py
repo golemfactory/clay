@@ -29,4 +29,3 @@ class TestTableElem(unittest.TestCase):
         self.assertEqual(b.get_column_item(1).text(), "confirmed")
         self.assertEqual(b.get_column_item(2).text(), "2.110000 ETH")
         self.assertEqual(b.get_column_item(3).text(), "ABB")
-

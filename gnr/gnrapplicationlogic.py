@@ -1,8 +1,10 @@
+from __future__ import division
 import cPickle
 import logging
 import os
-from PyQt4 import QtCore
 
+from ethereum.utils import denoms
+from PyQt4 import QtCore
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
@@ -198,20 +200,19 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.get_balance().addCallback(self._update_payments_view)
 
     def _update_payments_view(self, result_tuple):
-        b, ab, deposit = result_tuple
-        if not (b and ab and deposit):
+        if any(b is None for b in result_tuple):
             return
+        b, ab, deposit = result_tuple
 
         rb = b - ab
         total = deposit + b
-        ether = 1.0 / 10 ** 18
         fmt = "{:.6f} ETH"
         ui = self.customizer.gui.ui
-        ui.localBalanceLabel.setText(fmt.format(b * ether))
-        ui.availableBalanceLabel.setText(fmt.format(ab * ether))
-        ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
-        ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
-        ui.totalBalanceLabel.setText(fmt.format(total * ether))
+        ui.localBalanceLabel.setText(fmt.format(b / denoms.ether))
+        ui.availableBalanceLabel.setText(fmt.format(ab / denoms.ether))
+        ui.reservedBalanceLabel.setText(fmt.format(rb / denoms.ether))
+        ui.depositBalanceLabel.setText(fmt.format(deposit / denoms.ether))
+        ui.totalBalanceLabel.setText(fmt.format(total / denoms.ether))
 
     @inlineCallbacks
     def update_estimated_reputation(self):
