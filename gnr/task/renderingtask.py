@@ -5,7 +5,7 @@ import random
 import uuid
 from copy import deepcopy, copy
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
@@ -69,7 +69,7 @@ class RenderingTask(GNRTask):
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, max_price, docker_images=None,
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS, preview_x=300, preview_y=200):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -113,6 +113,11 @@ class RenderingTask(GNRTask):
 
         self.verified_clients = set()
         self.max_pending_client_results = max_pending_client_results
+        
+        if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
+            self.scale_factor = float(preview_x) / float(self.res_x)
+        else:
+            self.scale_factor = float(preview_y) / float(self.res_y)
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -164,7 +169,8 @@ class RenderingTask(GNRTask):
             img = exr_to_pil(new_chunk_file_path)
         else:
             img = Image.open(new_chunk_file_path)
-
+        img_x, img_y = img.size
+        img = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
         img_current.save(self.preview_file_path, "BMP")
@@ -201,9 +207,9 @@ class RenderingTask(GNRTask):
         self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
-        upper = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
-        lower = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
-        for i in range(0, self.res_x):
+        upper = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
+        lower = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
+        for i in range(0, int(self.scale_factor * self.res_x)):
             for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
 
@@ -287,7 +293,7 @@ class RenderingTask(GNRTask):
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-            img = Image.new("RGB", (self.res_x, self.res_y))
+            img = Image.new("RGB", (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)))
             img.save(self.preview_file_path, "BMP")
             img.close()
 
