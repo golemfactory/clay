@@ -91,14 +91,19 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 class TestPeerSessionInfo(unittest.TestCase):
 
     def test(self):
-        attributes = PeerSessionInfo.attributes
-        session = MagicMock()
 
-        for attr in attributes:
-            setattr(session, attr, True)
+        session = PeerSession(MagicMock())
 
         session.unknown_property = False
         session_info = PeerSessionInfo(session)
+
+        attributes = [
+            'address', 'port',
+            'verified', 'rand_val',
+            'degree', 'key_id',
+            'node_name', 'node_info',
+            'listen_port', 'conn_id'
+        ]
 
         for attr in attributes:
             assert hasattr(session_info, attr)

@@ -6,9 +6,11 @@ from mock import MagicMock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
 
@@ -250,6 +252,24 @@ class TestP2PService(DatabaseFixture):
 
         service.want_to_start_task_session(key_id, node_info, conn_id)
 
+    def test_get_diagnostic(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        m = MagicMock()
+        m.transport.getPeer.return_value.port = "10432"
+        m.transport.getPeer.return_value.host = "10.10.10.10"
+        ps1 = PeerSession(m)
+        ps1.key_id = keys_auth.key_id
+        service.add_peer(keys_auth.key_id, ps1)
+        m2 = MagicMock()
+        m2.transport.getPeer.return_value.port = "11432"
+        m2.transport.getPeer.return_value.host = "127.0.0.1"
+        ps2 = PeerSession(m2)
+        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        ps2.key_id = keys_auth2.key_id
+        service.add_peer(keys_auth2.key_id, ps2)
+        service.get_diagnostics(DiagnosticsOutputFormat.json)
 
 
 

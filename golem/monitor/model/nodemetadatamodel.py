@@ -5,10 +5,8 @@ from golem.monitor.serialization.defaultserializer import DefaultSerializer
 class NodeMetadataModel(BasicModel):
 
     def __init__(self, cliid, sessid, os, ver, description, settings):
-        super(NodeMetadataModel, self).__init__("NodeMetadata")
+        super(NodeMetadataModel, self).__init__("NodeMetadata", cliid, sessid)
 
-        self.cliid = cliid
-        self.sessid = sessid
         self.os = os
         self.version = ver
         self.description = description
@@ -17,6 +15,4 @@ class NodeMetadataModel(BasicModel):
 
 class NodeInfoModel(BasicModel):
     def __init__(self, cliid, sessid):
-        super(NodeInfoModel, self).__init__("NodeInfo")
-        self.cliid = cliid
-        self.sessid = sessid
+        super(NodeInfoModel, self).__init__("NodeInfo", cliid, sessid)
