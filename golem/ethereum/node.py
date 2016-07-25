@@ -74,13 +74,14 @@ class NodeProcess(object):
             nodes_file = path.join(datadir, 'static-nodes.json')
             json.dump(nodes, open(nodes_file, 'w'))
 
-        # Init the ethereum node with genesis block information
-        if not path.exists(path.join(datadir, 'chaindata')):
-            genesis_file = path.join(path.dirname(__file__),
-                                     'genesis_golem.json')
-            init_args = [self.__prog, '--datadir', datadir, 'init', genesis_file]
-            subprocess.check_call(init_args)
-            log.info("geth init: {}".format(' '.join(init_args)))
+        # Init the ethereum node with genesis block information.
+        # Do it always to overwrite invalid genesis block information
+        # (e.g. genesis of main Ethereum network)
+        genesis_file = path.join(path.dirname(__file__),
+                                 'genesis_golem.json')
+        init_args = [self.__prog, '--datadir', datadir, 'init', genesis_file]
+        subprocess.check_call(init_args)
+        log.info("geth init: {}".format(' '.join(init_args)))
 
         self.datadir = datadir
         self.__ps = None
