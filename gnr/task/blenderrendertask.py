@@ -424,9 +424,12 @@ class BlenderRenderTask(FrameRenderingTask):
                 img = exr_to_pil(new_chunk_file_path)
             else:   
                 img = Image.open(new_chunk_file_path)
-            img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
-            img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            img_x, img_y = img.size
+            scaled = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
+            scaled.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+            scaled.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
             img.close()
+            scaled.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
@@ -463,7 +466,7 @@ class BlenderRenderTask(FrameRenderingTask):
             else:
                 upper = pu.get_offset(part + 1)
             for i in range(0, int(self.scale_factor * self.res_x)):
-                for j in range(int(self.scale_factor * lower), upper):
+                for j in range(int(lower), int(upper)):
                     img_task.putpixel((i, j), color)
                     
     def _put_frame_together(self, frame_num, num_start):

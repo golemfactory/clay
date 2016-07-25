@@ -4,7 +4,7 @@ import random
 import shutil
 
 from collections import OrderedDict
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
@@ -384,11 +384,13 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
-
-        img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
-        img_current.save(self.preview_file_path, "BMP")
+        scaled = ImageOps.fit(img, (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)))
         img.close()
+        
+        img_current = self._open_preview()
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.numAdd))
+        img_current.save(self.preview_file_path, "BMP")
+        scaled.close()
         img_current.close()
 
     def __update_preview_from_exr(self, new_chunk_file):
@@ -399,8 +401,10 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
-        img.save(self.preview_file_path, "BMP")
+        scaled = ImageOps.fit(img, (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)))
+        scaled.save(self.preview_file_path, "BMP")
         img.close()
+        scaled.close()
         img_current.close()
 
     def __generate_final_file(self, flm):
