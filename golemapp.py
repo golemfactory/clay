@@ -9,7 +9,7 @@ from golem.core.common import config_logging
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
-@click.option('--payments/--nopayments', default=False)
+@click.option('--payments/--nopayments', default=True)
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=GNRNode.parse_node_addr,
