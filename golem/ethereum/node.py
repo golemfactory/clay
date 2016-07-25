@@ -53,14 +53,18 @@ class Faucet(object):
 
 
 class NodeProcess(object):
-    MINIMAL_GETH_VERSION_REQUIRED = '1.4.5'
+    MIN_GETH_VERSION = '1.4.5'
+    MAX_GETH_VERSION = '1.4.999'
 
     def __init__(self, nodes, datadir):
-        program = find_program('geth')
-        output, _ = subprocess.Popen(['geth', 'version'],
+        self.__prog = find_program('geth')
+        if not self.__prog:
+            raise OSError("Ethereum client 'geth' not found")
+        output, _ = subprocess.Popen([self.__prog, 'version'],
                                      stdout=subprocess.PIPE).communicate()
         ver = StrictVersion(re.search("Version: (\d+\.\d+\.\d+)", output).group(1))
-        assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
+        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
+            raise OSError("Incompatible Ethereum client 'geth' version: {}".format(ver))
         log.info("geth version {}".format(ver))
 
         if not path.exists(datadir):
@@ -74,7 +78,7 @@ class NodeProcess(object):
         if not path.exists(path.join(datadir, 'chaindata')):
             genesis_file = path.join(path.dirname(__file__),
                                      'genesis_golem.json')
-            init_args = [program, '--datadir', datadir, 'init', genesis_file]
+            init_args = [self.__prog, '--datadir', datadir, 'init', genesis_file]
             subprocess.check_call(init_args)
             log.info("geth init: {}".format(' '.join(init_args)))
 
@@ -88,16 +92,13 @@ class NodeProcess(object):
     def start(self, rpc, mining=False, nodekey=None, port=None):
         if self.__ps:
             return
-
         assert not self.rpcport
-        program = find_program('geth')
-        assert program  # TODO: Replace with a nice exception
 
         if not port:
             port = find_free_net_port()
         self.port = port
         args = [
-            program,
+            self.__prog,
             '--datadir', self.datadir,
             '--networkid', '9',
             '--port', str(self.port),
