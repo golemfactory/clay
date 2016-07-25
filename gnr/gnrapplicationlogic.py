@@ -496,7 +496,7 @@ class GNRApplicationLogic(QtCore.QObject):
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
-        self.progress_dialog_customizer.show_message(u"Recounting failed: " + error)
+        self.progress_dialog_customizer.show_message(u"Recounting failed: {}".format(error))
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 

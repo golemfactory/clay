@@ -1,5 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+from os import path
+
 from mock import Mock
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
@@ -66,5 +68,10 @@ class TestRenderingApplicationLogic(TestDirFixture):
         broken_benchmark.task_definition.main_program_file = u'Bździągwa'
         logic.show_error_window = Mock()
         logic.run_benchmark(broken_benchmark, m)
-        logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
+
+        broken_benchmark = BlenderBenchmark()
+        broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
+        logic.run_benchmark(broken_benchmark, m)
+        logic.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
+
