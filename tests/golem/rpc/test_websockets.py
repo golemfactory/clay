@@ -75,7 +75,7 @@ class TestRPCClient(TestWithReactor):
         started = time.time()
         while result[1] is None:
             time.sleep(0.2)
-            if time.time() - started > 5:
+            if time.time() - started > 10:
                 self.fail("Test timeout")
 
     def test_batch(self):
@@ -108,64 +108,41 @@ class TestRPCClient(TestWithReactor):
         started = time.time()
         while result[1] is None:
             time.sleep(0.2)
-            if time.time() - started > 5:
+            if time.time() - started > 10:
                 self.fail("Test timeout")
 
-    def test_retries(self):
-        deferred = Deferred()
-        deferred.called = True
-        deferred.result = failure.Failure(False)
+    def test_reconnect(self):
 
-        rpc_address = RPCAddress('127.0.0.1', 9876)
-        ws_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
-        ws_client.connect = Mock()
-        ws_client.connect.return_value = deferred
-        ws_client.get_session = Mock()
-        ws_client.get_session.return_value = None
-
-        clock = Clock()
-        rpc = RPC(ws_client, rpc_address, conn_timeout=0, retry_timeout=0)
-        rpc.reactor = clock
-
-        result = [None]
+        ws_client, ws_server, service_info = _build()
+        client = ws_client.build_client(service_info)
+        result = [None, None]
+        reconnect = [True]
 
         def on_success(*args, **kwargs):
-            result[0] = True
+            if reconnect[0]:
+                reconnect[0] = False
+                ws_client.connector.disconnect()
 
-        def on_failure(*args):
-            result[0] = False
+            def on_result(value):
+                result[0] = value
+                result[1] = True
+                assert result[0] == self.big_chunk
 
-        rpc.get_session().addCallbacks(on_success, on_failure)
+            deferred = client.method_1(self.big_chunk)
+            deferred.addCallback(on_result)
 
-        started = time.time()
-        while time.time() - started < 10:
-            clock.advance(10)
-            if result[0]:
-                self.fail("Invalid response")
-            elif result[0] is False:
-                break
-            time.sleep(0.2)
+        def on_error(*args, **kwargs):
+            result[0] = None
+            result[1] = False
+            self.fail("Error occurred {}".format(args))
 
-        if result[0] is None:
-            self.fail("Test timeout")
-
-        deferred.result = True
-        ws_client.connect.return_value = deferred
-        result[0] = None
-
-        rpc.get_session().addCallbacks(on_success, on_failure)
+        ws_client.connect().addCallbacks(on_success, on_error)
 
         started = time.time()
-        while time.time() - started < 10:
-            clock.advance(10)
-            if result[0] is False:
-                self.fail("Invalid response")
-            elif result[0]:
-                break
+        while result[1] is None:
             time.sleep(0.2)
-
-        if result[0] is None:
-            self.fail("Test timeout")
+            if time.time() - started > 15:
+                self.fail("Test timed out")
 
 
 class TestSessionManager(unittest.TestCase):
@@ -213,5 +190,5 @@ class TestMessageLedger(unittest.TestCase):
         message.id = 'message_id_2'
         assert ledger.get_response(message) == no_response
 
-        ledger.clear_request(message)
+        ledger.remove_request(message)
         assert ledger.get_response(message) == no_response

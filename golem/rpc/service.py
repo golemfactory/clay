@@ -1,12 +1,10 @@
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
-from golem.rpc.exceptions import RPCSessionException
 from golem.rpc.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
 
-CONNECTION_MAX_RETRIES = 10
-CONNECTION_RETRY_TIMEOUT = 0.1
-CONNECTION_TIMEOUT = 10
+CONNECTION_RETRY_TIMEOUT = 0.1  # s
+CONNECTION_TIMEOUT = 1  # s
 
 
 class ServiceHelper(object):
@@ -154,8 +152,7 @@ class RPC(object):
 
     def __init__(self, factory, rpc_address,
                  conn_timeout=CONNECTION_TIMEOUT,
-                 retry_timeout=CONNECTION_RETRY_TIMEOUT,
-                 conn_max_retries=CONNECTION_MAX_RETRIES):
+                 retry_timeout=CONNECTION_RETRY_TIMEOUT):
 
         from twisted.internet import reactor
 
@@ -168,7 +165,6 @@ class RPC(object):
 
         self.retry_timeout = retry_timeout
         self.conn_timeout = conn_timeout
-        self.conn_max_retries = conn_max_retries
 
     @inlineCallbacks
     def call(self, callee, is_batch, *args, **kwargs):
@@ -189,27 +185,23 @@ class RPC(object):
     def get_session(self):
         session = self.factory.get_session(self.host, self.port)
         if not session:
-            session = yield self._new_session()
+            session = yield self._wait_for_session(self.host, self.port)
         returnValue(session)
 
-    def _new_session(self):
-        conn_retries = [0]
+    def _wait_for_session(self, host, port):
         deferred = Deferred()
 
-        def on_success(*args, **kwargs):
-            deferred.callback(*args, **kwargs)
+        def on_success(result):
+            if result:
+                deferred.callback(result)
+            else:
+                retry()
 
-        def on_failure(*_):
-            if conn_retries >= self.conn_max_retries:
-                deferred.errback(RPCSessionException("RPC: no session established with {}"
-                                                     .format(self.rpc_address)))
-            conn_retries[0] += 1
-            reconnect()
-
-        def reconnect():
+        def retry(*_):
             conn_deferred = task.deferLater(self.reactor, self.retry_timeout,
-                                            self.factory.connect, timeout=self.conn_timeout)
-            conn_deferred.addCallbacks(on_success, on_failure)
+                                            self.factory.get_session, host, port,
+                                            timeout=self.conn_timeout)
+            conn_deferred.addCallbacks(on_success, retry)
 
-        reconnect()
+        retry()
         return deferred
