@@ -2,6 +2,7 @@ import time
 import unittest
 import uuid
 
+from golem.rpc.messages import RPCRequestMessage
 from mock import Mock
 from twisted.internet.defer import Deferred
 from twisted.internet.task import Clock
@@ -9,7 +10,8 @@ from twisted.python import failure
 
 from golem.core.simpleserializer import SimpleSerializer
 from golem.rpc.service import RPC, RPCAddress
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager
+from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager, \
+    WebSocketRPCProtocol
 from golem.tools.testwithreactor import TestWithReactor
 
 
@@ -111,6 +113,23 @@ class TestRPCClient(TestWithReactor):
             if time.time() - started > 10:
                 self.fail("Test timeout")
 
+    def test_wait_for_session(self):
+        rpc = RPC.__new__(RPC)
+        rpc.reactor = self.reactor_thread.reactor
+        rpc.retry_timeout = 0.1
+        rpc.conn_timeout = 0.1
+        rpc.factory = Mock()
+        rpc.factory.get_session.return_value = None
+
+        def fail(*args):
+            self.fail("Invalid callback")
+
+        deferred = rpc._wait_for_session('localhost', 1234)
+        deferred.addCallback(fail)
+
+        deferred = rpc.factory.get_session.return_value = Mock()
+        deferred.addErrback(fail)
+
     def test_reconnect(self):
 
         ws_client, ws_server, service_info = _build()
@@ -143,6 +162,9 @@ class TestRPCClient(TestWithReactor):
             time.sleep(0.2)
             if time.time() - started > 15:
                 self.fail("Test timed out")
+
+        ws_client._deferred = Deferred()
+        ws_client.clientConnectionFailed(Mock(), Mock())
 
 
 class TestSessionManager(unittest.TestCase):
@@ -187,8 +209,46 @@ class TestMessageLedger(unittest.TestCase):
         ledger.add_request(message, session)
         assert ledger.get_response(message) != no_response
 
+        ledger.remove_request(message)
+        assert ledger.get_response(message) == no_response
+
+        ledger.add_request(message, session)
         message.id = 'message_id_2'
         assert ledger.get_response(message) == no_response
 
-        ledger.remove_request(message)
-        assert ledger.get_response(message) == no_response
+
+class TestProtocol(unittest.TestCase):
+
+    def test_send_message(self):
+
+        def failing_func(*args, **kwargs):
+            raise Exception()
+
+        factory = WebSocketRPCClientFactory('localhost', 1234)
+        factory.perform_request = Mock()
+
+        protocol = WebSocketRPCProtocol()
+        protocol.transport = Mock()
+        protocol.factory = factory
+        protocol.sendMessage = Mock()
+
+        message = RPCRequestMessage('test', [], {})
+
+        protocol.send_message(message, new_request=False)
+        assert message.id not in factory.requests
+
+        protocol.send_message(message, new_request=True)
+        assert message.id in factory.requests
+
+        factory.remove_request(message)
+        assert message.id not in factory.requests
+
+        factory.prepare_message = failing_func
+
+        protocol.send_message(message, new_request=False)
+        assert message.id not in factory.requests
+
+        protocol.send_message(message, new_request=True)
+        assert message.id not in factory.requests
+
+
