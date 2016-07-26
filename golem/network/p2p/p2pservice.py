@@ -181,8 +181,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
 
     def get_diagnostics(self, output_format):
         peer_data = []
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             peer = PeerSessionInfo(peer).__dict__
             del peer['node_info']
             peer_data.append(peer)
@@ -192,8 +191,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Send ping to all peers with whom this peer has open connection
         :param int interval: will send ping only if time from last ping was longer than interval
         """
-        peers = dict(self.peers)
-        for p in peers.itervalues():
+        for p in self.peers.values():
             p.ping(interval)
 
     def find_peer(self, key_id):
@@ -352,8 +350,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             if peer.port == self.config_desc.seed_port and peer.address == self.config_desc.seed_host:
                 return
 
@@ -426,8 +423,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Return peers degree level
         :return dict: dictionary where peers ids are keys and their degrees are values
         """
-        peers = dict(self.peers)
-        return {peer.key_id: peer.degree for peer in peers.itervalues()}
+        return {peer.key_id: peer.degree for peer in self.peers.values()}
 
     def get_key_id(self):
         """ Return node public key in a form of an id """
@@ -438,8 +434,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         restart peer keeper and connect to the network with new key id.
         """
         self.peer_keeper.restart(self.keys_auth.get_key_id())
-        peers = dict(self.peers)
-        for p in peers.itervalues():
+        for p in self.peers.values():
             p.dropped()
 
         try:
@@ -558,8 +553,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
 
     def send_get_resource_peers(self):
         """ Request information about resource peers from peers"""
-        peers = dict(self.peers)
-        for p in peers.itervalues():
+        for p in self.peers.values():
             p.send_get_resource_peers()
 
     def get_resource_peers(self):
@@ -615,8 +609,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Ask all peers to remove information about given task
         :param str task_id: id of a task that should be removed
         """
-        peers = dict(self.peers)
-        for p in peers.itervalues():
+        for p in self.peers.values():
             p.send_remove_task(task_id)
 
     def want_to_start_task_session(self, key_id, node_info, conn_id, super_node_info=None):
@@ -731,8 +724,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def send_stop_gossip(self):
         """ Send stop gossip message to all peers
         """
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             peer.send_stop_gossip()
 
     def stop_gossip(self, id_):
@@ -753,8 +745,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :param list loc_rank: opinion about this node
         :return:
         """
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             peer.send_loc_rank(node_id, loc_rank)
 
     def safe_neighbour_loc_rank(self, neigh_id, about_id, rank):
@@ -803,15 +794,13 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def __send_get_peers(self):
         if time.time() - self.last_peers_request > 2:
             self.last_peers_request = time.time()
-            peers = dict(self.peers)
-            for p in peers.itervalues():
+            for p in self.peers.values():
                 p.send_get_peers()
 
     def __send_message_get_tasks(self):
         if time.time() - self.last_tasks_request > 2:
             self.last_tasks_request = time.time()
-            peers = dict(self.peers)
-            for p in peers.itervalues():
+            for p in self.peers.values():
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
@@ -860,9 +849,8 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
 
     # TODO: throttle the tx rate of MessageDegree
     def __send_degree(self):
-        peers = dict(self.peers)
-        degree = len(peers)
-        for p in peers.itervalues():
+        degree = len(self.peers)
+        for p in self.peers.values():
             p.send_degree(degree)
 
     def __sync_free_peers(self):
