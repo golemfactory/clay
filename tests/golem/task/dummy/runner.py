@@ -207,7 +207,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
         for proc in all_procs:
             if proc.poll() is None:
-                proc.kill()
+                proc.terminate()
+                proc.wait()
 
         shutil.rmtree(datadir)
 
