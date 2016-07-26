@@ -7,6 +7,8 @@ import jsonpickle
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
+
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
@@ -69,6 +71,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         node_name = "0123456789abcdef"
         task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
         render_task = task_builder.build()
+        dir_manager = DirManager(self.path)
+        render_task.initialize(dir_manager)
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
@@ -130,6 +134,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
+        dir_manager = DirManager(self.path)
+        task.initialize(dir_manager)
         test_file = task._LuxTask__get_test_flm()
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())

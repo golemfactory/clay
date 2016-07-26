@@ -5,16 +5,24 @@ import cPickle as pickle
 
 from mock import Mock
 
-from gnr.task.gnrtask import GNRTask, logger
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
+from gnr.task.gnrtask import GNRTask, logger
+
 
 class TestGNRTask(LogTestCase, TestDirFixture):
-    def test_gnr_task(self):
+    def _get_gnr_task(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
                        "environment", 3000, 30, 1024, 1024, 100)
+        dm = DirManager(self.path)
+        task.initialize(dm)
+        return task
+
+    def test_gnr_task(self):
+        task = self._get_gnr_task()
         self.assertIsInstance(task, GNRTask)
         self.assertEqual(task.header.max_price, 100)
 
@@ -46,8 +54,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stderr(subtask_id), files[1])
 
     def test_interpret_task_results(self):
-        task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
-                       "environment", 3000, 30, 1024, 1024, 100)
+        task = self._get_gnr_task()
 
         files = self.additional_dir_content([5])
         shutil.move(files[2], files[2]+".log")
@@ -55,7 +62,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3]+".err.log")
         files[3] += ".err.log"
         subtask_id = "xxyyzz"
-        task.interpret_task_results(subtask_id, files, result_types["files"], self.path)
+        task.interpret_task_results(subtask_id, files, result_types["files"])
         files[2] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[2]))
         files[3] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[3]))
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
@@ -72,16 +79,19 @@ class TestGNRTask(LogTestCase, TestDirFixture):
                self.__compress_and_pickle_file(files[3], "errlog"),
                self.__compress_and_pickle_file(files[4], "ghi")]
         subtask_id = "aabbcc"
-        task.interpret_task_results(subtask_id, res, result_types["data"], self.path)
+        task.interpret_task_results(subtask_id, res, result_types["data"])
         files[2] = os.path.join(self.path, "aabbcc" + os.path.basename(files[2]))
         files[3] = os.path.join(self.path, "aabbcc" + os.path.basename(files[3]))
-        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
-        self.assertEqual(task.stderr[subtask_id], files[3])
-        self.assertEqual(task.stdout[subtask_id], files[2])
+
+        self.assertEqual(task.results[subtask_id], [os.path.join(task.tmp_dir, os.path.basename(files[0])),
+                                                    os.path.join(task.tmp_dir, os.path.basename(files[1])),
+                                                    os.path.join(task.tmp_dir, os.path.basename(files[4]))])
+        self.assertEqual(task.stderr[subtask_id], os.path.join(task.tmp_dir, os.path.basename(files[3])))
+        self.assertEqual(task.stdout[subtask_id], os.path.join(task.tmp_dir, os.path.basename(files[2])))
         for f in files:
-            self.assertTrue(os.path.isfile(f))
+            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, os.path.basename(f))))
         subtask_id = "112233"
-        task.interpret_task_results(subtask_id, res, 58, self.path)
+        task.interpret_task_results(subtask_id, res, 58)
         self.assertEqual(task.results[subtask_id], [])
         self.assertEqual(task.stderr[subtask_id], "[GOLEM] Task result 58 not supported")
         self.assertEqual(task.stdout[subtask_id], "")

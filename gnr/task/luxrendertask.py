@@ -10,6 +10,7 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
@@ -153,6 +154,13 @@ class LuxTask(RenderingTask):
 
         self.preview_exr = None
 
+    def initialize(self, dir_manager):
+        super(LuxTask, self).initialize(dir_manager)
+        hold_flm = self.__get_test_flm(get_tmp_path(self.header.task_id, self.root_path))
+        if os.path.isfile(hold_flm):
+            shutil.move(hold_flm, self.__get_test_flm())
+        self.undeletable.append(self.__get_test_flm())
+
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
@@ -206,7 +214,7 @@ class LuxTask(RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
 
         self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
@@ -277,11 +285,12 @@ class LuxTask(RenderingTask):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
+        hold_results_dir = get_tmp_path(self.header.task_id, self.root_path)
         if flm is not None:
             try:
-                if not os.path.exists(self.tmp_dir):
-                    os.makedirs(self.tmp_dir)
-                shutil.copy(flm, self.__get_test_flm())
+                if not os.path.exists(hold_results_dir):
+                    os.makedirs(hold_results_dir)
+                shutil.copy(flm, self.__get_test_flm(hold_results_dir))
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
@@ -466,5 +475,7 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self):
-        return os.path.join(self.tmp_dir, "test_result.flm")
+    def __get_test_flm(self, dir_=None):
+        if dir_ is None:
+            dir_ = self.tmp_dir
+        return os.path.join(dir_, "test_result.flm")

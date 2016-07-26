@@ -48,6 +48,9 @@ class TestBlenderFrameTask(TempDirFixture):
                                compositing=False,
                                max_price=10)
 
+        dm = DirManager(self.path)
+        bt.initialize(dm)
+
         assert len(bt.preview_file_path) == len(bt.frames)
         assert len(bt.preview_task_file_path) == len(bt.frames)
 
@@ -77,7 +80,10 @@ class TestBlenderTask(TempDirFixture):
                                     compositing=False,
                                     frames=[1],
                                     max_price=10)
-        
+
+        dm = DirManager(self.path)
+        self.bt.initialize(dm)
+
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
         
@@ -96,7 +102,7 @@ class TestBlenderTask(TempDirFixture):
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
         self.assertTrue(ctd.extra_data['frames'] == [1])
-    
+
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertTrue(self.bt.main_scene_file == path.join(self.path, "example.blend"))
