@@ -152,7 +152,7 @@ class FrameRenderingTask(RenderingTask):
 
         if img:
             img_x, img_y = img.size
-            img = ImageChops.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
+            img = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
             
@@ -160,7 +160,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
-            img_offset = Image.new("RGB", (self.res_x * self.scale_factor, self.res_y * self.scale_factor))
+            img_offset = Image.new("RGB", (int(self.res_x * self.scale_factor), int(self.res_y * self.scale_factor)))
             offset = int(math.floor(self.scale_factor * (chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:

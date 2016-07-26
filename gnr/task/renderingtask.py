@@ -69,7 +69,8 @@ class RenderingTask(GNRTask):
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, max_price, docker_images=None,
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS, preview_x=300, preview_y=200):
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS, 
+                 preview_x=300, preview_y=200):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -114,11 +115,14 @@ class RenderingTask(GNRTask):
         self.verified_clients = set()
         self.max_pending_client_results = max_pending_client_results
         
-        if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
-            self.scale_factor = float(preview_x) / float(self.res_x)
+        if self.res_x != 0 and self.res_y != 0:
+            if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
+                self.scale_factor = float(preview_x) / float(self.res_x)
+            else:
+                self.scale_factor = float(preview_y) / float(self.res_y)
+            self.scale_factor = min(1.0, self.scale_factor)
         else:
-            self.scale_factor = float(preview_y) / float(self.res_y)
-
+            self.scale_factor = 1.0
         if is_windows():
             self.__get_path = self.__get_path_windows
 

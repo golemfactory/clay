@@ -53,10 +53,14 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         
-        if self.scene_res_x / self.scene_res_y > self.preview_x / self.preview_y:
-            self.scale_factor = float(self.preview_x) / float(self.scene_res_x)
+        if self.scene_res_x != 0 and self.scene_res_y != 0:
+            if float(self.scene_res_x) / float(self.scene_res_y) > float(self.preview_x) / float(self.preview_y):
+                self.scale_factor = float(self.preview_x) / float(self.scene_res_x)
+            else:
+                self.scale_factor = float(self.preview_y) / float(self.scene_res_y)
+            self.scale_factor = min(1.0, self.scale_factor)
         else:
-            self.scale_factor = float(self.preview_y) / float(self.scene_res_y)
+            self.scale_factor = 1.0
         
     def get_offset(self, subtask_number):
         if subtask_number == self.perfectly_placed_subtasks + 1:
