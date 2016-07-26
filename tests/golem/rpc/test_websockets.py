@@ -130,6 +130,21 @@ class TestRPCClient(TestWithReactor):
         deferred = rpc.factory.get_session.return_value = Mock()
         deferred.addErrback(fail)
 
+    def test_add_session(self):
+        peer = Mock()
+        peer.host, peer.port = '127.0.0.1', 10000
+
+        factory = WebSocketRPCClientFactory(peer.host, peer.port)
+        factory._deferred = Deferred()
+
+        session = Mock()
+        session.transport.getPeer.return_value = peer
+
+        factory.add_session(session)
+        assert factory._deferred.called
+        # deferred raises an exception on second cb call
+        factory.add_session(session)
+
     def test_reconnect(self):
 
         ws_client, ws_server, service_info = _build()
@@ -215,6 +230,32 @@ class TestMessageLedger(unittest.TestCase):
         ledger.add_request(message, session)
         message.id = 'message_id_2'
         assert ledger.get_response(message) == no_response
+
+    def test_add_response(self):
+
+        ledger = MessageLedger()
+        ledger.serializer = SimpleSerializer()
+
+        peer = Mock()
+        peer.host, peer.port = '127.0.0.1', 10000
+
+        session = Mock()
+        session.transport.getPeer.return_value = peer
+
+        message = Mock()
+        message.id = 'message_id'
+
+        response = Mock()
+        response.id = 'response_id'
+        response.request_id = message.id
+
+        ledger.add_request(message, session)
+
+        deferred, _ = ledger.get_response(message)
+
+        ledger.add_response(response)
+        assert deferred.called
+        ledger.add_response(response)
 
 
 class TestProtocol(unittest.TestCase):
