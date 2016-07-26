@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 RECONNECT_TIMEOUT = 0.5  # s
 REQUEST_RETRY_INTERVAL = 1  # s
-REQUEST_RETRY_TIMEOUT = 3  # s
+REQUEST_RETRY_TIMEOUT = 5  # s
 REQUEST_REMOVE_TIMEOUT = 30  # s
 
 
@@ -170,7 +170,10 @@ class MessageLedger(MessageParserMixin, SessionAwareMixin):
             ))
 
             deferred = request_dict['deferred']
-            deferred.callback(message)
+            if deferred.called:
+                logger.warn("WebSocket RPC: second call on deferred")
+            else:
+                deferred.callback(message)
 
     def get_response(self, message):
 
@@ -407,7 +410,10 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
-        self._deferred.callback(session)
+        if self._deferred.called:
+            logger.warn("WebSocket RPC: second call on deferred")
+        else:
+            self._deferred.callback(session)
 
     def _reconnect(self):
         logger.warn("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
