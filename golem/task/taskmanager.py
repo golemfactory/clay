@@ -1,7 +1,5 @@
-from __future__ import division
 import logging
 import time
-from math import ceil
 
 from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
@@ -10,7 +8,7 @@ from golem.resource.dirmanager import DirManager
 
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
 
@@ -483,11 +481,8 @@ class TaskManager(object):
         task_id = self.subtask2task_mapping[subtask_id]
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.computation_time = computation_time
-        ss.value = self.compute_subtask_value(ss.computer.price, computation_time)
+        ss.value = compute_subtask_value(ss.computer.price, computation_time)
 
-    @staticmethod
-    def compute_subtask_value(price, computation_time):
-        return int(ceil(price * computation_time / 3600))
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
