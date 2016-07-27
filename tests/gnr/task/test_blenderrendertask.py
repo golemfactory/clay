@@ -145,7 +145,7 @@ class TestBlenderTask(TempDirFixture):
                 exr.close()
                 self.bt.collected_file_names[i] = file1
             self.bt.res_y = res_y
-            self.bt._put_image_together(self.tempdir)
+            self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
             img = Image.open(self.bt.output_file)
             img_x, img_y = img.size
@@ -165,7 +165,7 @@ class TestBlenderTask(TempDirFixture):
                     img.save(file1, output_format.upper())
                     self.bt.collected_file_names[i] = file1
                 self.bt.res_y = res_y
-                self.bt._put_image_together(self.tempdir)
+                self.bt._put_image_together()
                 self.assertTrue(path.isfile(self.bt.output_file))
                 img = Image.open(self.bt.output_file)
                 img_x, img_y = img.size

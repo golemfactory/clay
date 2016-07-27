@@ -217,7 +217,7 @@ class LuxTask(RenderingTask):
     def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
 
-        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
+        self.interpret_task_results(subtask_id, task_result, result_type)
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
