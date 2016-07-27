@@ -1,4 +1,5 @@
-from golem.core.common import ETH
+from ethereum.utlis import denoms
+
 from golem.model import Payment
 
 from paymentskeeper import PaymentsKeeper
@@ -79,4 +80,4 @@ class TransactionSystem(object):
         if self.payments_keeper:
             for subtask in subtasks:
                 cost += self.payments_keeper.get_payment(subtask)
-        return cost * ETH
+        return cost / denoms.ether
