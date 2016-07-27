@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import time
 from math import ceil
@@ -486,7 +487,7 @@ class TaskManager(object):
 
     @staticmethod
     def compute_subtask_value(price, computation_time):
-        return int(ceil(price * computation_time))
+        return int(ceil(price * computation_time / 3600))
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
