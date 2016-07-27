@@ -1,4 +1,4 @@
-from ethereum.utlis import denoms
+from ethereum.utils import denoms
 
 from golem.model import Payment
 
