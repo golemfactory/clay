@@ -38,6 +38,9 @@ def report(msg):
 
 
 def run_requesting_node(datadir, num_subtasks=3):
+    client = None
+    atexit.register(lambda: client and client.quit())
+
     global node_kind
     node_kind = "REQUESTER"
 
@@ -48,8 +51,6 @@ def run_requesting_node(datadir, num_subtasks=3):
                     use_docker_machine_manager=False)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
-
-    atexit.register(client.quit)
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
@@ -73,6 +74,9 @@ def run_requesting_node(datadir, num_subtasks=3):
 
 
 def run_computing_node(datadir, peer_address, fail_after=None):
+    client = None
+    atexit.register(lambda: client and client.quit())
+
     global node_kind
     node_kind = "COMPUTER "
 
@@ -84,8 +88,6 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
-
-    atexit.register(client.quit)
 
     class DummyEnvironment(Environment):
         @classmethod
@@ -106,6 +108,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
                 reactor.callFromThread(reactor.stop)
+                client.quit()
                 return
             time.sleep(1)
 
@@ -208,8 +211,10 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         for proc in all_procs:
             if proc.poll() is None:
                 proc.terminate()
+                # wait for termination
                 proc.wait()
 
+        time.sleep(1)
         shutil.rmtree(datadir)
 
 
