@@ -75,3 +75,12 @@ class TestRenderingApplicationLogic(TestDirFixture):
         logic.run_benchmark(broken_benchmark, m)
         logic.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
 
+        broken_benchmark = BlenderBenchmark()
+        broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
+        logic.run_benchmark(broken_benchmark, m)
+        logic.show_error_window.assert_called_with(u"Main scene file is not properly set")
+
+        logic.test_task_computation_error(u"Bździągwa")
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"
+        logic.test_task_computation_success([], 10000)
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"
