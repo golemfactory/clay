@@ -2,7 +2,7 @@ import time
 import uuid
 
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from mock import MagicMock
+from mock import MagicMock, Mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
@@ -251,6 +251,7 @@ class TestP2PService(DatabaseFixture):
         service.node = node_info
 
         service.want_to_start_task_session(key_id, node_info, conn_id)
+        service.want_to_start_task_session(peer.key_id, node_info, conn_id)
 
     def test_get_diagnostic(self):
         keys_auth = EllipticalKeysAuth(self.path)
@@ -271,7 +272,62 @@ class TestP2PService(DatabaseFixture):
         service.add_peer(keys_auth2.key_id, ps2)
         service.get_diagnostics(DiagnosticsOutputFormat.json)
 
+    def test(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        service.task_server = Mock()
+        service.peer_keeper = Mock()
+        service.peer_keeper.sync.return_value = dict()
+        service.connect = Mock()
+        service.last_tasks_request = 0
 
+        p = Mock()
+        p.key_id = 'deadbeef'
+        p.degree = 1
+        p.last_message_time = 0
 
+        p2 = Mock()
+        p2.key_id = 'deadbeef02'
+        p2.degree = 1
+        p2.last_message_time = 0
 
+        service.peers[p.key_id] = p
+        service.peers['deadbeef02'] = p2
+        service.resource_peers['deadbeef02'] = [1, 2, 3, 4]
+        service.peer_order = [p.key_id, p2.key_id]
+        service.peer_keeper.sessions_to_end = [p2]
 
+        service.ping_peers(1)
+        assert p.ping.called
+
+        service.key_changed()
+        assert p.dropped.called
+
+        degrees = service.get_peers_degree()
+        assert len(degrees) == 2
+        assert p.key_id in degrees
+
+        service.send_get_resource_peers()
+        assert p.send_get_resource_peers.called
+
+        resource_peers = service.get_resource_peers()
+        assert len(resource_peers) == 1
+
+        service.remove_task('task_id')
+        assert p.send_remove_task.called
+
+        service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id', 'conn_id')
+        assert p.send_inform_about_nat_traverse_failure.called
+
+        service.send_nat_traverse_failure(p.key_id, 'conn_id')
+        assert p.send_nat_traverse_failure.called
+
+        service.send_stop_gossip()
+        assert p.send_stop_gossip.called
+
+        service.sync_network()
+        assert p.send_get_tasks.called
+
+        service.remove_peer(p)
+        assert p.key_id not in service.peers

@@ -306,6 +306,8 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if self.use_frames:
             frames = [self.frames[0]]
+            if len(self.frames) > 1:
+                frames.append(max(self.frames))
         else:
             frames = [1]
 
