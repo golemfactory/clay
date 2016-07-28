@@ -69,7 +69,7 @@ class TestRPCClient(TestWithReactor):
         ws_client.connect().addCallbacks(on_success, on_error)
 
         while result[1] is None:
-            time.sleep(1)
+            time.sleep(0.1)
 
     def test_batch(self):
 
@@ -99,7 +99,7 @@ class TestRPCClient(TestWithReactor):
         ws_client.connect().addCallbacks(on_success, on_error)
 
         while result[1] is None:
-            time.sleep(1)
+            time.sleep(0.1)
 
 
 class TestSessionManager(unittest.TestCase):
