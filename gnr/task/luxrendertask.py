@@ -57,8 +57,8 @@ def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, nu
         scale_factor = 1.0
     boarder = []
     
-    x = int(res_x * scale_factor)
-    y = int(res_y * scale_factor)
+    x = int(round(res_x * scale_factor))
+    y = int(round(res_y * scale_factor))
     
     for i in range(0, y):
         boarder.append((0, i))
@@ -399,7 +399,7 @@ class LuxTask(RenderingTask):
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
         scaled = ImageOps.fit(img, 
-                              (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)),
+                              (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
                               method=Image.BILINEAR)
         img.close()
         
@@ -418,7 +418,7 @@ class LuxTask(RenderingTask):
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
         scaled = ImageOps.fit(img, 
-                              (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)),
+                              (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
                               method=Image.BILINEAR)
         scaled.save(self.preview_file_path, "BMP")
         img.close()

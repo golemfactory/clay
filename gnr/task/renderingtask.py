@@ -175,7 +175,7 @@ class RenderingTask(GNRTask):
             img = Image.open(new_chunk_file_path)
         img_x, img_y = img.size
         img = ImageOps.fit(img, 
-                           (int(self.scale_factor * img_x), int(self.scale_factor * img_y)),
+                           (int(round(self.scale_factor * img_x)), int(math.ceil(self.scale_factor * img_y))),
                            method=Image.BILINEAR)
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
@@ -215,7 +215,7 @@ class RenderingTask(GNRTask):
     def _mark_task_area(self, subtask, img_task, color):
         upper = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
         lower = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
-        for i in range(0, int(self.scale_factor * self.res_x)):
+        for i in range(0, int(round(self.scale_factor * self.res_x))):
             for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
 
@@ -299,7 +299,7 @@ class RenderingTask(GNRTask):
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-            img = Image.new("RGB", (int(self.scale_factor * self.res_x), int(self.scale_factor * self.res_y)))
+            img = Image.new("RGB", (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))))
             img.save(self.preview_file_path, "BMP")
             img.close()
 
