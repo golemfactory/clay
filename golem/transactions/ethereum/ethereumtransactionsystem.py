@@ -1,4 +1,5 @@
 import logging
+from __future__ import division
 from os import path
 
 from ethereum import keys
