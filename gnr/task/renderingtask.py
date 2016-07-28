@@ -174,7 +174,9 @@ class RenderingTask(GNRTask):
         else:
             img = Image.open(new_chunk_file_path)
         img_x, img_y = img.size
-        img = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
+        img = ImageOps.fit(img, 
+                           (int(self.scale_factor * img_x), int(self.scale_factor * img_y)),
+                           method=Image.BILINEAR)
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
         img_current.save(self.preview_file_path, "BMP")

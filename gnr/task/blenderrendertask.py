@@ -76,7 +76,10 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
-            scaled = ImageOps.fit(img, (int(self.scale_factor * self.scene_res_x), int(self.scale_factor * img.size[1])))
+            scaled = ImageOps.fit(img, 
+                                  (int(self.scale_factor * self.scene_res_x), int(self.scale_factor * img.size[1])), 
+                                  method=Image.BILINEAR)
+            
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
                 _, img_y = scaled.size
@@ -429,7 +432,9 @@ class BlenderRenderTask(FrameRenderingTask):
             else:   
                 img = Image.open(new_chunk_file_path)
             img_x, img_y = img.size
-            scaled = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
+            scaled = ImageOps.fit(img, 
+                                  (int(self.scale_factor * img_x), int(self.scale_factor * img_y)),
+                                  Image.BILINEAR)
             scaled.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
             scaled.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
             img.close()

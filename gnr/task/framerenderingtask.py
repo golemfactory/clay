@@ -152,7 +152,9 @@ class FrameRenderingTask(RenderingTask):
 
         if img:
             img_x, img_y = img.size
-            img = ImageOps.fit(img, (int(self.scale_factor * img_x), int(self.scale_factor * img_y)))
+            img = ImageOps.fit(img, 
+                               (int(self.scale_factor * img_x), int(self.scale_factor * img_y)),
+                               method=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
             
@@ -337,9 +339,20 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_fr
 
 
 def __get_boarder(start_task, end_task, parts, res_x, res_y):
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    
     boarder = []
-    upper = int(math.floor(float(res_y) / float(parts) * (start_task - 1)))
-    lower = int(math.floor(float(res_y) / float(parts) * end_task))
+    upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
+    lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
     for i in range(upper, lower):
         boarder.append((0, i))
         boarder.append((res_x, i))
