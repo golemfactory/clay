@@ -292,7 +292,10 @@ class AbsRenderingMainWindowCustomizer(object):
         self.__update_img(pixmap)
 
     def __update_img(self, img):
-        self.gui.ui.previewLabel.setPixmap(img)
+        size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
+        pic = img.scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        self.gui.ui.previewLabel.setScaledContents(False)
+        self.gui.ui.previewLabel.setPixmap(pic)
         QPixmapCache.clear()
 
 
