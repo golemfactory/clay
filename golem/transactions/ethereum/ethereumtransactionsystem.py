@@ -1,5 +1,5 @@
-import logging
 from __future__ import division
+import logging
 from os import path
 
 from ethereum import keys
