@@ -60,9 +60,12 @@ def async_scope(a, idx=0):
 
 
 def get_port():
-    t = time.time() * 10 ** 6
-    base = t % (65535 - 10000 - 1000)
-    return int(base) + 10000
+    min_port = 10000
+    max_port = 65535
+    test_port_range = 1000
+    t = int(time.time() * 10 ** 6)
+    base = t % (max_port - min_port - test_port_range)
+    return base + min_port
 
 
 class TestNetwork(TestWithReactor):
