@@ -348,7 +348,7 @@ class RenderingTask(GNRTask):
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id):
         extra_data, new_start_box = self._change_scope(subtask_id, start_box, tr_file)
-        cmp_file = self._run_task(self.src_code, extra_data)
+        cmp_file = self._run_task(extra_data)
         return cmp_file, new_start_box
 
     def _get_box_start(self, x0, y0, x1, y1):
@@ -367,7 +367,7 @@ class RenderingTask(GNRTask):
             os.mkdir(extra_data['tmp_path'])
         return extra_data, start_box
 
-    def _run_task(self, src_code, extra_data):
+    def _run_task(self, extra_data):
         computer = LocalComputer(self, self.root_path,
                                  self.__box_rendered,
                                  self.__box_render_error,
