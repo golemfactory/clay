@@ -74,9 +74,9 @@ class TestRPCClient(TestWithReactor):
 
         started = time.time()
         while result[1] is None:
-            time.sleep(0.2)
             if time.time() - started > 10:
                 self.fail("Test timeout")
+            time.sleep(0.1)
 
     def test_batch(self):
 
@@ -172,9 +172,10 @@ class TestRPCClient(TestWithReactor):
 
         started = time.time()
         while result[1] is None:
-            time.sleep(0.2)
             if time.time() - started > 15:
                 self.fail("Test timed out")
+
+            time.sleep(0.1)
 
         ws_client._deferred = Deferred()
         ws_client.clientConnectionFailed(Mock(), Mock())

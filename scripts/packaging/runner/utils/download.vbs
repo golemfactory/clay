@@ -2,7 +2,7 @@ strFileURL = WScript.Arguments.Item(0)
 strHDLocation = WScript.Arguments.Item(1)
 
 ' Fetch the file
-Set objXMLHTTP = CreateObject("MSXML2.XMLHTTP")
+Set objXMLHTTP = CreateObject("WINHTTP.WinHTTPRequest.5.1")
 
 objXMLHTTP.open "GET", strFileURL, false
 objXMLHTTP.send()
