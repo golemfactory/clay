@@ -25,7 +25,7 @@ class EthereumClientTest(unittest.TestCase):
 
         # Read first 6 lines searching for "started".
         started = False
-        for _ in range(10):
+        for _ in range(20):
             log = proc.stdout.readline()
             print log
             if "started" in log:

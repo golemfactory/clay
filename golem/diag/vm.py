@@ -19,7 +19,7 @@ class VMDiagnosticsProvider(DiagnosticsProvider):
         if is_windows():
             self.attrs += ['num_handles']
         else:
-            self.attrs += ['uids', 'num_fds', 'memory_full_info', 'memory_info_ex']
+            self.attrs += ['uids', 'num_fds']
 
     def get_diagnostics(self, output_format):
         data = self.process.as_dict(attrs=self.attrs)

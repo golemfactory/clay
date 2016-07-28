@@ -138,14 +138,17 @@ class PaymentProcessor(object):
         value = payment.value
         assert type(value) in (int, long)
         balance = self.available_balance()
-        log.info("Payment to {} ({})".format(payment.payee.encode('hex'),
-                                             value))
+        log.info("Payment {:.6} to {:.6} ({:.6f})".format(
+                 payment.subtask,
+                 payment.payee.encode('hex'),
+                 value / denoms.ether))
         if value > balance:
-            log.warning("Not enough money: {}".format(balance))
+            log.warning("Low balance: {:.6f}".format(balance / denoms.ether))
             return False
         self.__awaiting.append(payment)
         self.__reserved += value
-        log.info("Balance: {}, reserved {}".format(balance, self.__reserved))
+        log.info("Balance: {:.6f}, reserved {:.6f}".format(
+                 balance / denoms.ether, self.__reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -167,8 +170,9 @@ class PaymentProcessor(object):
                          value=transfer_value, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
-        log.info("Batch payments: {}, value: {}, transfer: {}"
-                 .format(h.encode('hex'), value, transfer_value))
+        log.info("Batch payments: {:.6}, value: {:.6f}, transfer: {:.6f}"
+                 .format(h.encode('hex'), value / denoms.ether,
+                         transfer_value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -180,6 +184,10 @@ class PaymentProcessor(object):
                 payment.status = PaymentStatus.sent
                 payment.details['tx'] = h.encode('hex')
                 payment.save()
+                log.debug("- {} send to {} ({:.6f})".format(
+                          payment.subtask,
+                          payment.payee.encode('hex'),
+                          payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
@@ -190,17 +198,17 @@ class PaymentProcessor(object):
         confirmed = []
         for h, payments in self.__inprogress.iteritems():
             hstr = h.encode('hex')
-            log.info("Checking {} transaction".format(hstr))
+            log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
                 block_hash = receipt['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
                 block_number = int(receipt['blockNumber'], 16)
                 gas_used = int(receipt['gasUsed'], 16)
-                log.info("Confirmed {}: block {} ({}), gas {}"
-                         .format(hstr, block_hash, block_number, gas_used))
                 total_fee = gas_used * self.GAS_PRICE
                 fee = total_fee // len(payments)
+                log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
+                         .format(hstr, block_hash, block_number, gas_used, fee))
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
@@ -208,6 +216,8 @@ class PaymentProcessor(object):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
+                        log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
+                                  fee / denoms.ether))
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.

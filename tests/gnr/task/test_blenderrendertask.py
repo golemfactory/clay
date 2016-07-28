@@ -7,6 +7,7 @@ import OpenEXR
 from PIL import Image
 
 from golem.task.taskstate import SubtaskStatus
+from golem.task.taskbase import ComputeTaskDef
 from golem.testutils import TempDirFixture
 
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
@@ -86,6 +87,26 @@ class TestBlenderTask(TempDirFixture):
         output_file = self.temp_file_name('output')
         self.bt = self.build_bt(2, 300, 7)
         
+        
+    def test_query_extra_data_for_test_task(self):
+        self.bt.use_frames = True
+        
+        self.bt.frames = [1, 2, 3, 5, 7, 11, 13]
+        ctd = self.bt.query_extra_data_for_test_task()
+        self.assertIsInstance(ctd, ComputeTaskDef)
+        self.assertTrue(ctd.extra_data['frames'] == [1, 13])
+        
+        self.bt.frames = [2]
+        ctd = self.bt.query_extra_data_for_test_task()
+        self.assertIsInstance(ctd, ComputeTaskDef)
+        self.assertTrue(ctd.extra_data['frames'] == [2])
+        
+        self.bt.use_frames = False
+        self.bt.frames = [1]
+        ctd = self.bt.query_extra_data_for_test_task()
+        self.assertIsInstance(ctd, ComputeTaskDef)
+        self.assertTrue(ctd.extra_data['frames'] == [1])
+    
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertTrue(self.bt.main_scene_file == path.join(self.path, "example.blend"))
