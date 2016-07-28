@@ -333,6 +333,11 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
 
+    def query_extra_data_for_advance_verification(self, extra_data):
+        ctd = self.query_extra_data_for_test_task()
+        ctd.extra_data = extra_data
+        return ctd
+
     def _get_min_max_y(self, start_task):
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)

@@ -8,6 +8,7 @@ from copy import deepcopy, copy
 from PIL import Image, ImageChops
 
 from golem.core.common import get_golem_path
+from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
@@ -18,6 +19,7 @@ from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
+from gnr.task.localcomputer import LocalComputer
 from gnr.task.renderingtaskcollector import exr_to_pil
 
 
@@ -365,12 +367,27 @@ class RenderingTask(GNRTask):
             os.mkdir(extra_data['tmp_path'])
         return extra_data, start_box
 
-    def _run_task(self, src_code, scope):
-        exec src_code in scope
-        if len(scope['output']) > 0:
-            return self.load_task_results(scope['output']['data'], scope['output']['result_type'], self.tmp_dir)[0]
-        else:
-            return None
+    def _run_task(self, src_code, extra_data):
+        computer = LocalComputer(self, self.root_path,
+                                 self.__box_rendered,
+                                 self.__box_render_error,
+                                 lambda: self.query_extra_data_for_advance_verification(extra_data),
+                                 additional_resources=[])
+        computer.run()
+        computer.tt.join()
+        results = computer.tt.result.get("data")
+        if results:
+            commonprefix = os.path.commonprefix(results)
+            img = find_file_with_ext(commonprefix, ["." + self.output_format])
+            if img is None:
+                logger.error("No image file created")
+            return img
+
+    def __box_rendered(self, results):
+        logger.info("Box for advance verification created")
+
+    def __box_render_error(self, error):
+        logger.error("Cannot verify img: {}".format(error))
 
     @GNRTask.handle_key_error
     def __use_adv_verification(self, subtask_id):
