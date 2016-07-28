@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import random
 import time
@@ -9,6 +10,10 @@ from golem.core.variables import APP_VERSION
 from .taskbase import TaskHeader, ComputeTaskDef
 
 logger = logging.getLogger(__name__)
+
+
+def compute_subtask_value(price, computation_time):
+    return int(ceil(price * computation_time / 3600))
 
 
 class CompTaskInfo(object):
@@ -72,7 +77,7 @@ class CompTaskKeeper(object):
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
         assert type(price) in (int, long)
-        return int(ceil(price * computing_time / 3600.0))
+        return compute_subtask_value(price, computing_time)
 
     @handle_key_error
     def remove_task(self, task_id):

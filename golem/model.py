@@ -111,7 +111,13 @@ class Payment(BaseModel):
     status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = IntegerField()
-    details = JsonField(default={})
+    details = JsonField()
+
+    def __init__(self, *args, **kwargs):
+        super(Payment, self).__init__(*args, **kwargs)
+        # For convenience always have .details as a dictionary
+        if self.details is None:
+            self.details = {}
 
 
 class ReceivedPayment(BaseModel):
