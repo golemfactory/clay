@@ -52,6 +52,7 @@ class Benchmark(object):
             traceback.print_exc()
             return False
         img_size = image.size
+        image.close()
         expected = self.task_definition.resolution
         if img_size[0] == expected[0] and img_size[1] == expected[1]:
             return True

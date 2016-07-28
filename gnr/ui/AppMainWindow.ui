@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>4</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -527,7 +527,7 @@
                  <string>Add this task</string>
                 </property>
                 <property name="text">
-                 <string>Start task</string>
+                 <string>Create task</string>
                 </property>
                </widget>
               </item>
@@ -684,15 +684,29 @@
                   <item row="4" column="0">
                    <widget class="QLabel" name="label_56">
                     <property name="toolTip">
-                     <string>Maximal price of a single subtask you are ready to pay</string>
+                     <string>Price for an hour of computation</string>
                     </property>
                     <property name="text">
-                     <string>Max price</string>
+                     <string>Price</string>
                     </property>
                    </widget>
                   </item>
                   <item row="4" column="1">
-                   <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
+                   <layout class="QHBoxLayout" name="horizontalLayout_21">
+                    <item>
+                     <widget class="QLineEdit" name="taskMaxPriceLineEdit"/>
+                    </item>
+                    <item>
+                     <widget class="QLabel" name="label_57">
+                      <property name="toolTip">
+                       <string>ETH per an hour of computation</string>
+                      </property>
+                      <property name="text">
+                       <string>ETH/h</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
                   </item>
                   <item row="5" column="0">
                    <widget class="QLabel" name="pessimisticCostConst">
@@ -1490,16 +1504,6 @@
                   </property>
                  </widget>
                 </item>
-                <item row="8" column="0">
-                 <widget class="QLabel" name="estimatedRankLabel">
-                  <property name="toolTip">
-                   <string>Estimated rank of this machine. </string>
-                  </property>
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
                 <item row="7" column="0">
                  <widget class="QLabel" name="supportedTasksLabel">
                   <property name="text">
@@ -1509,6 +1513,16 @@
                 </item>
                 <item row="7" column="1">
                  <widget class="QLabel" name="supportedTasks">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="8" column="0">
+                 <widget class="QLabel" name="estimatedRankLabel">
+                  <property name="toolTip">
+                   <string>Estimated rank of this machine. </string>
+                  </property>
                   <property name="text">
                    <string/>
                   </property>
@@ -1538,7 +1552,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1813,6 +1827,16 @@
                     <item row="1" column="1">
                      <widget class="QLineEdit" name="hostIPLineEdit"/>
                     </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="nodeNameLabel_2">
+                      <property name="text">
+                       <string>Node name:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="nodeNameLineEdit"/>
+                    </item>
                    </layout>
                   </item>
                  </layout>
@@ -1854,10 +1878,10 @@
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_29">
                       <property name="toolTip">
-                       <string>Minimal price of task you agree to compute</string>
+                       <string>Minimal price of a task you agree to compute</string>
                       </property>
                       <property name="text">
-                       <string>Min price(ask)</string>
+                       <string>Min price (ask)</string>
                       </property>
                      </widget>
                     </item>
@@ -1868,8 +1892,11 @@
                       </item>
                       <item>
                        <widget class="QLabel" name="label_31">
+                        <property name="toolTip">
+                         <string>ETH per an hour of computation</string>
+                        </property>
                         <property name="text">
-                         <string>WEI / ETH</string>
+                         <string>ETH/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2353,8 +2380,11 @@
                       </item>
                       <item>
                        <widget class="QLabel" name="label_33">
+                        <property name="toolTip">
+                         <string>ETH per an hour of computation</string>
+                        </property>
                         <property name="text">
-                         <string>WEI / ETH</string>
+                         <string>ETH/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2488,6 +2518,30 @@
                 </property>
                 <property name="text">
                  <string>Requestor reputation</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLabel" name="estimatedRequestorReputation">
+                <property name="text">
+                 <string/>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="estimatedProviderReputationLabel">
+                <property name="toolTip">
+                 <string>Estimated reputation that this node has in network as a providor.</string>
+                </property>
+                <property name="text">
+                 <string>Provider reputation</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLabel" name="estimatedProviderReputation">
+                <property name="text">
+                 <string/>
                 </property>
                </widget>
               </item>
@@ -2645,29 +2699,50 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
-               <widget class="QLabel" name="estimatedProviderReputationLabel">
+              <item row="13" column="0">
+               <widget class="QLabel" name="descriptionLabel">
                 <property name="toolTip">
-                 <string>Estimated reputation that this node has in network as a providor.</string>
+                 <string>Additional description of your node that you can send with Golem Stats</string>
                 </property>
                 <property name="text">
-                 <string>Provider reputation</string>
+                 <string>Description</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="QLabel" name="estimatedRequestorReputation">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="1">
-               <widget class="QLabel" name="estimatedProviderReputation">
-                <property name="text">
-                 <string/>
-                </property>
-               </widget>
+              <item row="13" column="1">
+               <layout class="QHBoxLayout" name="horizontalLayout_26">
+                <item>
+                 <widget class="QPlainTextEdit" name="descriptionTextEdit">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_6">
+                  <item>
+                   <widget class="QPushButton" name="editDescriptionButton">
+                    <property name="enabled">
+                     <bool>true</bool>
+                    </property>
+                    <property name="text">
+                     <string>Edit</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="saveDescriptionButton">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>Save</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
               </item>
              </layout>
             </item>

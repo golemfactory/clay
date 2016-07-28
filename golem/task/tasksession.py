@@ -7,11 +7,11 @@ import traceback
 
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
-    MessageGetTaskResult, MessageRemoveTask, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
+    MessageGetTaskResult, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults
+    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
@@ -22,7 +22,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 3
+TASK_PROTOCOL_ID = 6
 
 
 class TaskSession(MiddlemanSafeSession):
@@ -47,7 +47,7 @@ class TaskSession(MiddlemanSafeSession):
 
         self.msgs_to_send = []  # messages waiting to be send (because connection hasn't been verified yet)
 
-        self.last_resource_msg = None  # last message about resource
+        # self.last_resource_msg = None  # last message about resource
 
         self.result_owner = None  # information about user that should be rewarded (or punished) for the result
 
@@ -124,8 +124,7 @@ class TaskSession(MiddlemanSafeSession):
         :param Message msg: message to be verified
         :return boolean: True if message was signed with key_id from this connection
         """
-        verify = self.task_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
-        return verify
+        return self.task_server.verify_sig(msg.sig, msg.get_short_hash(), self.key_id)
 
     #######################
     # FileSession methods #
@@ -361,6 +360,7 @@ class TaskSession(MiddlemanSafeSession):
             self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd)
         else:
+            self.send(MessageCannotComputeTask(msg.ctd.subtask_id))
             self.task_computer.session_closed()
             self.dropped()
 
@@ -368,6 +368,12 @@ class TaskSession(MiddlemanSafeSession):
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(self.DCRNoMoreMessages)
+
+    def _react_to_cannot_compute_task(self, msg):
+        if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:
+            self.task_manager.task_computation_failure(msg.subtask_id,
+                                                       'Task computation rejected: {}'.format(msg.reason))
+        self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
@@ -434,8 +440,9 @@ class TaskSession(MiddlemanSafeSession):
                                                            client_options=client_options)
 
     def _react_to_get_resource(self, msg):
-        self.last_resource_msg = msg
-        self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
+        # self.last_resource_msg = msg
+        # self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
+        self.__send_resource_list(msg)
 
     def _react_to_accept_resource_format(self, msg):
         if self.last_resource_msg is not None:
@@ -667,6 +674,7 @@ class TaskSession(MiddlemanSafeSession):
             MessageWantToComputeTask.Type: self._react_to_want_to_compute_task,
             MessageTaskToCompute.Type: self._react_to_task_to_compute,
             MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
+            MessageCannotComputeTask.Type: self._react_to_cannot_compute_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
             MessageTaskResultHash.Type: self._react_to_task_result_hash,

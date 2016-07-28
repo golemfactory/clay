@@ -14,14 +14,12 @@ class TransactionSystem(object):
         """
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
-        self.budget = 10000  # TODO Add method that set proper budget value
 
     def get_income(self, addr_info, value):
         """ Increase information about budget with reward
         :param str addr_info: return information about address of a node that send this payment
         :param int value: value of the payment
         """
-        self.budget += value
         self.incomes_keeper.get_income(addr_info, value)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):

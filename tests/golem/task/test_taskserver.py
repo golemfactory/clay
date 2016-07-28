@@ -1,5 +1,7 @@
+from __future__ import division
 import uuid
 
+from math import ceil
 from mock import Mock, MagicMock, ANY
 
 from stun import FullCone
@@ -20,7 +22,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = Node()
-        ka = EllipticalKeysAuth()
+        ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         self.assertIsInstance(ts, TaskServer)
@@ -37,7 +39,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 11
         n = Node()
-        ka = EllipticalKeysAuth()
+        ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         results = {"data": "", "result_type": 0}
@@ -62,7 +64,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
         ts.client.transaction_system.add_to_waiting_payments.assert_called_with(
-            "xyz", "key", 440)
+            "xyz", "key", 1)
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
@@ -90,7 +92,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 11
         n = Node()
-        ka = EllipticalKeysAuth()
+        ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client)
         session = Mock()
         session.address = "10.10.10.10"
@@ -112,7 +114,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.task_request_interval = 10
         # ccd.use_waiting_ttl = True
         ccd.waiting_for_task_timeout = 19
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ccd2 = ClientConfigDescriptor()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
@@ -130,13 +132,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_sync(self):
-        ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(self.path), self.client)
         ts.sync_network()
 
     def test_results(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
@@ -158,19 +160,20 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                                                                      "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
-        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, 10310)
+        expected_value = ceil(1031 * 10 / 3600)
+        assert ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value == expected_value
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = ts.client.increase_trust.call_count
         ts.accept_result("xxyyzz", account_info)
-        ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", 10310, account_info)
+        ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
         self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
 
     def test_results_no_payment_addr(self):
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
@@ -200,7 +203,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_traverse_nat(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ts.network = Mock()
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
@@ -208,7 +211,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_forwarded_session_requests(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ts.network = Mock()
 
         key_id = str(uuid.uuid4())
@@ -238,7 +241,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_retry_sending_task_result(self):
         ccd = ClientConfigDescriptor()
-        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(), self.client)
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client)
         ts.network = Mock()
 
         subtask_id = 'xxyyzz'

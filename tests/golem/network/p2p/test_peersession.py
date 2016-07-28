@@ -1,12 +1,12 @@
+import unittest
 from random import random
 
-from golem.appconfig import CommonConfig
 from mock import MagicMock
 
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID
+from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID, PeerSessionInfo
 from golem.network.transport.message import MessageHello
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -22,9 +22,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         ps = PeerSession(MagicMock())
         ps2 = PeerSession(MagicMock())
 
-        EllipticalKeysAuth._keys_dir = self.path
-        ek = EllipticalKeysAuth(random())
-        ek2 = EllipticalKeysAuth(random())
+        ek = EllipticalKeysAuth(self.path, "RANDOMPRIV", "RANDOMPUB")
+        ek2 = EllipticalKeysAuth(self.path, "RANDOMPRIV2", "RANDOMPUB2")
         ps.p2p_service.encrypt = ek.encrypt
         ps.p2p_service.decrypt = ek.decrypt
         ps.key_id = ek2.key_id
@@ -45,7 +44,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         conf = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 
@@ -87,3 +86,25 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
+
+
+class TestPeerSessionInfo(unittest.TestCase):
+
+    def test(self):
+
+        session = PeerSession(MagicMock())
+
+        session.unknown_property = False
+        session_info = PeerSessionInfo(session)
+
+        attributes = [
+            'address', 'port',
+            'verified', 'rand_val',
+            'degree', 'key_id',
+            'node_name', 'node_info',
+            'listen_port', 'conn_id'
+        ]
+
+        for attr in attributes:
+            assert hasattr(session_info, attr)
+        assert not hasattr(session_info, 'unknown_property')

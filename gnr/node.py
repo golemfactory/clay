@@ -1,7 +1,7 @@
 """GNR Compute Node"""
 
 import cPickle as pickle
-import logging.config
+import logging
 import sys
 import uuid
 
@@ -17,9 +17,6 @@ from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
 
 
-logger = logging.getLogger("gnr.app")
-
-
 class Node(object):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
@@ -28,13 +25,14 @@ class Node(object):
 
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
+
         self.client = Client(datadir=datadir,
                              transaction_system=transaction_system,
                              **config_overrides)
 
     def initialize(self):
-        self.client.start_network()
         self.load_environments(self.default_environments)
+        self.client.start()
 
     def load_environments(self, environments):
         for env in environments:
@@ -59,6 +57,7 @@ class Node(object):
             from twisted.internet import reactor
             reactor.run()
         except Exception as ex:
+            logger = logging.getLogger("gnr.app")
             logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()

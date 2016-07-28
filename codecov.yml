@@ -13,5 +13,10 @@ coverage:
       default:
         target: auto
     changes: false
+  ignore:
+    - "tests/*"
+    - "scripts/*"
+    - "save/*"
+    - "gnr/taskcollector/*"
 comment:
   layout: header, diff, changes, sunburst, uncovered

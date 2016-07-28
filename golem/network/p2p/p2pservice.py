@@ -5,13 +5,14 @@ import time
 from ipaddress import AddressValueError
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+
+from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
-from golem.network.p2p.peersession import PeerSession
+from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.ranking.gossipkeeper import GossipKeeper
-from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
 
 
-class P2PService(PendingConnectionsServer):
+class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def __init__(self, node, config_desc, keys_auth, connect_to_known_hosts=True):
         """ Create new P2P Server. Listen on port for connections and connect to other peers. Keeps
         up-to-date list of peers information and optimal number of open connections.
@@ -178,6 +179,14 @@ class P2PService(PendingConnectionsServer):
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
 
+    def get_diagnostics(self, output_format):
+        peer_data = []
+        for peer in self.peers.values():
+            peer = PeerSessionInfo(peer).__dict__
+            del peer['node_info']
+            peer_data.append(peer)
+        return self._format_diagnostics(peer_data, output_format)
+
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
         :param int interval: will send ping only if time from last ping was longer than interval
@@ -262,8 +271,8 @@ class P2PService(PendingConnectionsServer):
 
         for p in self.peers.keys():
             if self.peers[p] == peer_session:
-                del self.peers[p]
                 self.peer_order.remove(p)
+                self.peers.pop(p, None)
                 self.incoming_peers.pop(p, None)
                 self.suggested_address.pop(p, None)
                 self.suggested_conn_reverse.pop(p, None)
@@ -552,7 +561,8 @@ class P2PService(PendingConnectionsServer):
         :return list: list of resource peers information
         """
         resource_peers_info = []
-        for key_id, [addr, port, node_name, node_info] in self.resource_peers.iteritems():
+        resource_peers = dict(self.resource_peers)
+        for key_id, [addr, port, node_name, node_info] in resource_peers.iteritems():
             resource_peers_info.append({'node_name': node_name, 'addr': addr, 'port': port, 'key_id': key_id,
                                         'node': node_info})
 
@@ -620,15 +630,17 @@ class P2PService(PendingConnectionsServer):
             super_node_info = self.node
 
         logger.debug("Try to start task session {}".format(key_id))
+        peers = dict(self.peers)
         msg_snd = False
-        for peer in self.peers.itervalues():
+
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 if node_info.key == self.node.key:
                     self.set_suggested_conn_reverse(key_id)
                 peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
                 return
 
-        for peer in self.peers.itervalues():
+        for peer in peers.itervalues():
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
@@ -651,7 +663,8 @@ class P2PService(PendingConnectionsServer):
         :return:
         """
         logger.debug("Nat hole ready {}:{}".format(addr, port))
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
                 return
@@ -660,12 +673,14 @@ class P2PService(PendingConnectionsServer):
         self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
 
     def send_nat_traverse_failure(self, key_id, conn_id):
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_nat_traverse_failure(conn_id)
 

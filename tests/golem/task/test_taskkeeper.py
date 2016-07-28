@@ -155,14 +155,21 @@ class TestCompTaskKeeper(LogTestCase):
                             header["environment"], header["task_owner"], header["deadline"], header["subtask_timeout"],
                             1024, 1.0, 1000)
         header.task_id = "xyz"
-        ctk.add_request(header, 5)
+        ctk.add_request(header, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        self.assertEqual(ctk.active_tasks["xyz"].price, 5)
+        self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
-        self.assertEqual(ctk.active_tasks["xyz"].price, 5)
+        self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
+        assert ctk.get_value("xyz", 1) == 2
+        header.task_id = "xyz2"
+        ctk.add_request(header, 25000)
+        self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)
+        assert ctk.get_value("xyz2", 4.5) == 32
+        header.task_id = "xyz"
+
         self.assertIsNone(ctk.get_subtask_ttl("abc"))
         ctd = ComputeTaskDef()
         with self.assertLogs(logger, level="WARNING"):

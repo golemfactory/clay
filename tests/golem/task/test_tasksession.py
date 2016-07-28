@@ -1,19 +1,21 @@
+import cPickle
+
 from mock import Mock, MagicMock
 
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import SimpleSerializer
 from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
-                                             MessageRemoveTask, MessageReportComputedTask, MessageHello,
+                                             MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
-                                             MessageTaskResultHash, MessageGetTaskResult)
+                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask)
 from golem.task.taskbase import result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase):
+class TestTaskSession(LogTestCase, TempDirFixture):
     def test_init(self):
         ts = TaskSession(Mock())
         self.assertIsInstance(ts, TaskSession)
@@ -92,6 +94,13 @@ class TestTaskSession(LogTestCase):
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
+        ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
+        ts2._react_to_cannot_compute_task(MessageCannotComputeTask("CTD"))
+        assert ts2.task_manager.task_computation_failure.called
+        ts2.task_manager.task_computation_failure.called = False
+        ts2.task_manager.get_node_id_for_subtask.return_value = "___"
+        ts2._react_to_cannot_compute_task(MessageCannotComputeTask("CTD"))
+        assert not ts2.task_manager.task_computation_failure.called
 
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
@@ -126,7 +135,7 @@ class TestTaskSession(LogTestCase):
         conn = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 
@@ -167,7 +176,8 @@ class TestTaskSession(LogTestCase):
         ts.task_manager.verify_subtask.return_value = True
 
         extra_data = dict(
-            result=SimpleSerializer.dumps({'stdout': 'xyz'}),
+            # the result is explicitly serialized using cPickle
+            result=cPickle.dumps({'stdout': 'xyz'}),
             result_type=None,
             subtask_id='xxyyzz'
         )
