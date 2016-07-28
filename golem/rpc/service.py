@@ -4,7 +4,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 from golem.rpc.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
 
 CONNECTION_RETRY_TIMEOUT = 0.1  # s
-CONNECTION_TIMEOUT = 1  # s
+CONNECTION_TIMEOUT = 3  # s
 
 
 class ServiceHelper(object):
@@ -175,10 +175,7 @@ class RPC(object):
         else:
             rpc_request = RPCRequestMessage(callee, args, kwargs)
 
-        session.send_message(rpc_request)
-        deferred, _ = session.get_response(rpc_request)
-        response = yield deferred
-
+        response = yield session.send_message(rpc_request)
         returnValue(response.result)
 
     @inlineCallbacks

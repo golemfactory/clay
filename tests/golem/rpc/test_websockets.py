@@ -1,15 +1,13 @@
 import time
 import unittest
 import uuid
-
-from golem.rpc.messages import RPCRequestMessage
 from mock import Mock
+
 from twisted.internet.defer import Deferred
-from twisted.internet.task import Clock
-from twisted.python import failure
 
 from golem.core.simpleserializer import SimpleSerializer
-from golem.rpc.service import RPC, RPCAddress
+from golem.rpc.messages import RPCRequestMessage
+from golem.rpc.service import RPC
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager, \
     WebSocketRPCProtocol
 from golem.tools.testwithreactor import TestWithReactor
@@ -217,7 +215,7 @@ class TestMessageLedger(unittest.TestCase):
         message = Mock()
         message.id = 'message_id'
 
-        no_response = (None, None)
+        no_response = None
 
         assert ledger.get_response(message) == no_response
 
@@ -251,7 +249,8 @@ class TestMessageLedger(unittest.TestCase):
 
         ledger.add_request(message, session)
 
-        deferred, _ = ledger.get_response(message)
+        entry = ledger.get_response(message)
+        deferred = entry['deferred']
 
         ledger.add_response(response)
         assert deferred.called

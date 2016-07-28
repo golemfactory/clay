@@ -15,14 +15,13 @@ from golem.rpc.exceptions import RPCNotConnected, RPCServiceError, RPCProtocolEr
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION, RPCBatchRequestMessage
 from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo
 
-
 logger = logging.getLogger(__name__)
 
 
 RECONNECT_TIMEOUT = 0.5  # s
 REQUEST_RETRY_INTERVAL = 1  # s
-REQUEST_RETRY_TIMEOUT = 5  # s
-REQUEST_REMOVE_TIMEOUT = 30  # s
+REQUEST_RETRY_TIMEOUT = 2  # s
+REQUEST_REMOVE_TIMEOUT = 5  # s
 
 
 class WebSocketAddress(RPCAddress):
@@ -140,61 +139,38 @@ class MessageLedger(MessageParserMixin, SessionAwareMixin):
 
     def __init__(self):
         self.requests = {}
-        self.session_requests = {}
 
     def add_request(self, message, session):
-
         session_key = self._get_session_key(session)
+        deferred = Deferred()
+
         entry = dict(
-            responded=False,
-            response=None,
             message=message,
             session_key=session_key,
-            deferred=Deferred(),
-            created=time.time()
+            deferred=deferred,
+            retried=0,
+            created=time.time(),
         )
 
         self.requests[message.id] = entry
-
-        if session_key not in self.session_requests:
-            self.session_requests[session_key] = {}
-        self.session_requests[session_key][message.id] = entry
-
-    def add_response(self, message):
-
-        if message.request_id in self.requests:
-            request_dict = self.requests[message.request_id]
-            request_dict.update(dict(
-                responded=True,
-                response=message
-            ))
-
-            deferred = request_dict['deferred']
-            if deferred.called:
-                logger.warn("WebSocket RPC: second call on deferred")
-            else:
-                deferred.callback(message)
-
-    def get_response(self, message):
-
-        message_id = message.id
-
-        if message_id in self.requests:
-            entry = self.requests[message_id]
-            return entry['deferred'], entry
-
-        return None, None
+        return deferred
 
     def remove_request(self, message_or_id):
-
         if not isinstance(message_or_id, basestring):
             message_or_id = message_or_id.id
 
-        entry = self.requests.pop(message_or_id, None)
+        return self.requests.pop(message_or_id, None)
+
+    def add_response(self, message):
+        entry = self.remove_request(message.request_id)
+
         if entry:
-            session_key = entry['session_key']
-            if session_key in self.session_requests:
-                self.session_requests[session_key].pop(message_or_id, None)
+            deferred = entry['deferred']
+            if not deferred.called:
+                deferred.callback(message)
+
+    def get_response(self, message):
+        return self.requests.get(message.id, None)
 
     def _get_session_key(self, session):
         return self.get_session_addr(session)
@@ -202,11 +178,18 @@ class MessageLedger(MessageParserMixin, SessionAwareMixin):
 
 class WebSocketRPCProtocol(object):
 
+    def __init__(self):
+        self._requests_task = task.LoopingCall(self._remove_old_requests)
+
     def onOpen(self):
         self.factory.add_session(self)
+        if not self._requests_task.running:
+            self._requests_task.start(REQUEST_RETRY_INTERVAL)
 
     def onClose(self, was_clean, code, reason):
         self.factory.remove_session(self)
+        if self._requests_task.running:
+            self._requests_task.stop()
 
     def onMessage(self, payload, isBinary):
 
@@ -257,11 +240,12 @@ class WebSocketRPCProtocol(object):
         self.send_message(response, new_request=False)
 
     def send_message(self, message, new_request=True):
+        deferred = None
+
         try:
             if new_request:
-                self.factory.add_request(message, self)
+                deferred = self.factory.add_request(message, self)
             prepared = self.factory.prepare_message(message, id(self))
-
         except Exception as exc:
 
             if new_request and message:
@@ -272,46 +256,30 @@ class WebSocketRPCProtocol(object):
         else:
             self.sendMessage(prepared, isBinary=True)
 
-    def get_response(self, message):
-        return self.factory.get_response(message)
+        return deferred
 
-    def get_sessions(self):
-        return self.factory.sessions
+    def _remove_old_requests(self):
+        now = time.time()
+        for request in self.factory.requests.values():
+            dt = now - request['created']
+            if dt >= REQUEST_REMOVE_TIMEOUT:
+                self.factory.remove_request(request['message'])
+            elif dt >= REQUEST_RETRY_TIMEOUT:
+                if now - request['retried'] >= REQUEST_RETRY_TIMEOUT:
+                    request['retried'] = now
+                    self.send_message(request['message'], new_request=False)
 
 
 class WebSocketRPCServerProtocol(WebSocketRPCProtocol, WebSocketServerProtocol):
-    pass
+    def __init__(self):
+        WebSocketServerProtocol.__init__(self)
+        WebSocketRPCProtocol.__init__(self)
 
 
 class WebSocketRPCClientProtocol(WebSocketRPCProtocol, WebSocketClientProtocol):
     def __init__(self):
-        WebSocketRPCProtocol.__init__(self)
         WebSocketClientProtocol.__init__(self)
-        self._requests_task = task.LoopingCall(self._retry_requests)
-
-    def onOpen(self):
-        WebSocketRPCProtocol.onOpen(self)
-        if not self._requests_task.running:
-            self._requests_task.start(REQUEST_RETRY_INTERVAL)
-
-    def onClose(self, was_clean, code, reason):
-        WebSocketRPCProtocol.onClose(self, was_clean, code, reason)
-        if self._requests_task.running:
-            self._requests_task.stop()
-
-    def _retry_requests(self):
-        now = time.time()
-
-        for request in self.factory.requests.values():
-            dt = now - request['created']
-
-            if dt >= REQUEST_REMOVE_TIMEOUT:
-                self.factory.remove_request(request['message'])
-            elif request['responded']:
-                continue
-            elif dt >= REQUEST_RETRY_TIMEOUT:
-                request['created'] = now
-                self.send_message(request['message'], new_request=False)
+        WebSocketRPCProtocol.__init__(self)
 
 
 class WebSocketRPCFactory(MessageLedger, SessionManager):
@@ -341,7 +309,12 @@ class WebSocketRPCFactory(MessageLedger, SessionManager):
     def perform_request(self, method, args, kwargs):
         for server in self.services:
             if server.supports(method):
-                return server.call(method, *args, **kwargs)
+                result = server.call(method, *args, **kwargs)
+                # Prevent serialization of Deferred, which *will* cause problems on the receiving side,
+                # as results of Deferred type in Deferred callbacks are not allowed
+                if isinstance(result, Deferred):
+                    return None
+                return result
 
         raise RPCServiceError("Local service call not supported: {}"
                               .format(method))
