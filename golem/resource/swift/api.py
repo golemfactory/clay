@@ -18,15 +18,13 @@ APPLICATION_KEY = "YeXUvlivqiEhzSIb"
 APPLICATION_SECRET = "uR3diYfs2cBqY96CR47n23JEMRmC9fxC"
 
 
-MAX_API_RETRIES = 5
-
-
 class PatchedDownloadFileRequest(DownloadFileRequest):
 
     def __init__(self, file_hash, file_path,
                  stream=True, chunk_size=4096, **kwargs):
 
         super(PatchedDownloadFileRequest, self).__init__(file_hash, file_path, stream, **kwargs)
+        self.postfix_len = len('--') + ChunkStream.short_sep_len * 2
         self.chunk_size = chunk_size
 
     def run(self, url, headers=None, **kwargs):
@@ -71,8 +69,7 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                     content_idx += ChunkStream.long_sep_list_len
                     sep_end_idx = buf.find(ChunkStream.short_sep)
 
-                    data_size -= len(buf[:sep_end_idx]) + len('--') + \
-                                 ChunkStream.short_sep_len * 2
+                    data_size -= len(buf[:sep_end_idx]) + self.postfix_len
 
                     if len(buf) >= content_length:
                         f.write(buf[content_idx:data_size])
@@ -88,7 +85,9 @@ def api_translate_exceptions(method):
             return method(*args, **kwargs)
         except (ovh.exceptions.HTTPError,
                 ovh.exceptions.NetworkError,
-                ovh.exceptions.InvalidResponse) as exc:
+                ovh.exceptions.InvalidResponse,
+                ovh.exceptions.InvalidCredential,
+                ovh.exceptions.InvalidKey) as exc:
             raise requests.exceptions.HTTPError(exc)
         except:
             raise
@@ -146,9 +145,9 @@ def api_access(method):
     oss = OpenStackSwiftAPI
 
     def wrapper(*args, **kwargs):
+        if not oss.is_initialized():
+            oss.update_token()
         try:
-            if not oss.is_initialized():
-                oss.update_token()
             return method(*args, **kwargs)
         except requests.exceptions.HTTPError as exc:
             if exc.response.status_code == 401:

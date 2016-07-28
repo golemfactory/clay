@@ -56,7 +56,9 @@ class TestTranslateExceptions(unittest.TestCase):
 
         excs_to_translate = [ovh.exceptions.HTTPError,
                              ovh.exceptions.NetworkError,
-                             ovh.exceptions.InvalidResponse]
+                             ovh.exceptions.InvalidResponse,
+                             ovh.exceptions.InvalidCredential,
+                             ovh.exceptions.InvalidKey]
 
         excs_to_skip = [c for n, c in inspect.getmembers(ovh.exceptions)
                         if inspect.isclass(c) and c not in excs_to_translate]
