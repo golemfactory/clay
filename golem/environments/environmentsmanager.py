@@ -54,6 +54,12 @@ class EnvironmentsManager(object):
         :return set:
         """
         return self.environments
+    
+    def get_environment_by_id(self, env_id):
+        for env in self.environments:
+            if env.get_id() == env_id:
+                return env
+        return None
 
     def get_environments_to_config(self):
         envs = {}
