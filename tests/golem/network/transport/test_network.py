@@ -59,6 +59,15 @@ def async_scope(a, idx=0):
         time.sleep(0.5)
 
 
+def get_port():
+    min_port = 10000
+    max_port = 65535
+    test_port_range = 1000
+    t = int(time.time() * 10 ** 6)
+    base = t % (max_port - min_port - test_port_range)
+    return base + min_port
+
+
 class TestNetwork(TestWithReactor):
     reactor_thread = None
     prev_reactor = None
@@ -95,34 +104,38 @@ class TestNetwork(TestWithReactor):
             self.__stop_listening_failure(**kwargs)
             async_ready[0] = True
 
-        listen_info = TCPListenInfo(11101,
+        port = get_port()
+
+        listen_info = TCPListenInfo(port,
                                     established_callback=_conn_success,
                                     failure_callback=_conn_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, 11101)
+        self.assertEquals(self.port, port)
 
-        listen_info = TCPListenInfo(11101,
+        listen_info = TCPListenInfo(port,
                                     established_callback=_conn_success,
                                     failure_callback=_conn_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
         self.assertEquals(self.port, None)
 
-        listen_info = TCPListenInfo(11101, 11111,
+        port = max(1000, port - 1000)
+
+        listen_info = TCPListenInfo(port, port + 1000,
                                     established_callback=_conn_success,
                                     failure_callback=_conn_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, 11102)
+        self.assertEquals(self.port, port)
 
         with async_scope(async_ready):
             self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
-        self.assertEquals(self.port, 11103)
+        self.assertEquals(self.port, port + 1)
         self.assertEquals(len(self.network.active_listeners), 3)
         self.assertEquals(self.kwargs_len, 5)
 
-        listening_info = TCPListeningInfo(11102,
+        listening_info = TCPListeningInfo(port + 1,
                                           stopped_callback=_stop_success,
                                           stopped_errback=_stop_failure)
         with async_scope(async_ready):
@@ -132,7 +145,7 @@ class TestNetwork(TestWithReactor):
         self.assertTrue(d.called)
         self.assertTrue(self.stop_listening_success)
 
-        listening_info = TCPListeningInfo(11102,
+        listening_info = TCPListeningInfo(port + 1,
                                           stopped_callback=_stop_success,
                                           stopped_errback=_stop_failure)
         with async_scope(async_ready):
@@ -140,12 +153,12 @@ class TestNetwork(TestWithReactor):
         self.assertEquals(len(self.network.active_listeners), 2)
         self.assertFalse(self.stop_listening_success)
 
-        listen_info = TCPListenInfo(11101, 11105,
+        listen_info = TCPListenInfo(port, port + 4,
                                     established_callback=_conn_success,
                                     failure_callback=_conn_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, 11102)
+        self.assertEquals(self.port, port + 1)
 
     def test_connect(self):
 
@@ -171,26 +184,29 @@ class TestNetwork(TestWithReactor):
             self.__listen_failure(*args, **kwargs)
             async_ready[0] = True
 
-        listen_info = TCPListenInfo(21111,
+        port_1 = get_port()
+        port_2 = get_port()
+
+        listen_info = TCPListenInfo(port_1,
                                     established_callback=_listen_success,
                                     failure_callback=_listen_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
 
-        listen_info = TCPListenInfo(21112,
+        listen_info = TCPListenInfo(port_2,
                                     established_callback=_listen_success,
                                     failure_callback=_listen_failure)
         with async_scope(async_ready):
             self.network.listen(listen_info)
 
-        address = SocketAddress('127.0.0.1', 21111)
+        address = SocketAddress('127.0.0.1', port_1)
         connect_info = TCPConnectInfo([address], _success_fn(0), _failure_fn(0))
 
         with async_scope(async_ready, 0):
             self.network.connect(connect_info)
         self.assertTrue(self.connect_success)
 
-        address2 = SocketAddress('127.0.0.1', 21112)
+        address2 = SocketAddress('127.0.0.1', port_2)
         connect_info_2 = TCPConnectInfo([address2], _success_fn(1), _failure_fn(1))
 
         with async_scope(async_ready, 1):

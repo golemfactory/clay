@@ -1,5 +1,7 @@
+from __future__ import division
 import uuid
 
+from math import ceil
 from mock import Mock, MagicMock, ANY
 
 from stun import FullCone
@@ -159,12 +161,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                                                                      "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
-        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, 10310)
+        expected_value = ceil(1031 * 10 / 3600)
+        assert ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value == expected_value
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = ts.client.increase_trust.call_count
         ts.accept_result("xxyyzz", account_info)
-        ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", 10310, account_info)
+        ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
         self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
 
     def test_results_no_payment_addr(self):

@@ -80,8 +80,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
         self.assertEqual(tm.get_value("xxyyzz"), 13)
 
-        tm.set_computation_time("xxyyzz", 12)
-        self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 120)
+        tm.set_computation_time("xxyyzz", 3601)
+        self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 11)
 
     def test_change_config(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)

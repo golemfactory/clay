@@ -3,9 +3,6 @@ import time
 import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, MagicMock
-from twisted.internet.defer import Deferred
-
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
@@ -14,6 +11,8 @@ from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
+from mock import Mock, MagicMock
+from twisted.internet.defer import Deferred
 
 
 class TTask(Task):

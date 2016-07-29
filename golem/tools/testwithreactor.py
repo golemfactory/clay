@@ -86,7 +86,7 @@ class MockReactorThread(Thread):
         while self.working:
             try:
                 self.reactor.runUntilCurrent()
-                self.reactor.doIteration(self.reactor.timeout() or 0)
+                self.reactor.doIteration(0)
             except Exception as e:
                 print "Unexpected error in main loop:", e.message
         self.done = True

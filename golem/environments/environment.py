@@ -39,6 +39,12 @@ class Environment(object):
         :return bool:
         """
         return self.accept_tasks
+    
+    def get_performance(self, cfg_desc):
+        """ Return performance index associated with the environment
+        :return float:
+        """
+        return cfg_desc.estimated_performance
 
     def description(self):
         """ Return long description of this environment
