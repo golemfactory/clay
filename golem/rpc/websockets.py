@@ -384,7 +384,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
         if self._deferred.called:
-            logger.warn("WebSocket RPC: second call on deferred")
+            logger.debug("WebSocket RPC: second call on deferred")
         else:
             self._deferred.callback(session)
 
