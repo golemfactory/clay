@@ -48,7 +48,6 @@ class FrameRenderingTask(RenderingTask):
     ################
     # Task methods #
     ################
-
     def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
@@ -152,6 +151,10 @@ class FrameRenderingTask(RenderingTask):
             img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
 
         if img:
+            img_x, img_y = img.size
+            img = ImageOps.fit(img, 
+                               (int(round(self.scale_factor * img_x)), int(math.ceil(self.scale_factor * img_y))),
+                               method=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
             
@@ -159,8 +162,8 @@ class FrameRenderingTask(RenderingTask):
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
-            img_offset = Image.new("RGB", (self.res_x, self.res_y))
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
+            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
+            offset = int(math.floor(self.scale_factor * (chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
@@ -192,9 +195,8 @@ class FrameRenderingTask(RenderingTask):
                     self.__mark_sub_frame(sub, frame, failed_color)
 
     def _open_frame_preview(self, preview_file_path):
-
         if not os.path.exists(preview_file_path):
-            img = Image.new("RGB", (self.res_x, self.res_y))
+            img = Image.new("RGB", (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))))
             img.save(preview_file_path, "BMP")
 
         return Image.open(preview_file_path)
@@ -203,17 +205,17 @@ class FrameRenderingTask(RenderingTask):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.__full_frames():
-            for i in range(0, self.res_x):
-                for j in range(0, self.res_y):
+            for i in range(0, int(round(self.scale_factor * self.res_x))):
+                for j in range(0, int(round(self.scale_factor * self.res_y))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
-            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
-            for i in range(0, self.res_x):
+            upper = int(math.floor(self.scale_factor * float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
+            lower = int(math.floor(self.scale_factor * float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
+            for i in range(0, int(round(self.scale_factor * self.res_x))):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
-
+    
     @RenderingTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         if not self.use_frames or self.__full_frames():
@@ -337,9 +339,20 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_fr
 
 
 def __get_boarder(start_task, end_task, parts, res_x, res_y):
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    
     boarder = []
-    upper = int(math.floor(float(res_y) / float(parts) * (start_task - 1)))
-    lower = int(math.floor(float(res_y) / float(parts) * end_task))
+    upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
+    lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
     for i in range(upper, lower):
         boarder.append((0, i))
         boarder.append((res_x, i))

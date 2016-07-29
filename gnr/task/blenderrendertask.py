@@ -4,7 +4,7 @@ import os
 import math
 from collections import OrderedDict
 
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.task.taskstate import SubtaskStatus
 
@@ -43,6 +43,9 @@ class PreviewUpdater(object):
         self.scene_res_y = scene_res_y
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
+        # preview resolution
+        self.preview_x = 300
+        self.preview_y = 200
         
         # where the match ends - since the chunks have unexpectable sizes, we 
         # don't know where to paste new chunk unless all of the above are in 
@@ -50,10 +53,19 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         
+        if self.scene_res_x != 0 and self.scene_res_y != 0:
+            if float(self.scene_res_x) / float(self.scene_res_y) > float(self.preview_x) / float(self.preview_y):
+                self.scale_factor = float(self.preview_x) / float(self.scene_res_x)
+            else:
+                self.scale_factor = float(self.preview_y) / float(self.scene_res_y)
+            self.scale_factor = min(1.0, self.scale_factor)
+        else:
+            self.scale_factor = 1.0
+        
     def get_offset(self, subtask_number):
         if subtask_number == self.perfectly_placed_subtasks + 1:
             return self.perfect_match_area_y
-        return self.expected_offsets[subtask_number]
+        return int(round((self.expected_offsets[subtask_number] * self.scale_factor)))
         
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
@@ -64,24 +76,28 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
-                
+            scaled = ImageOps.fit(img, 
+                                  (int(round(self.scale_factor * self.scene_res_x)), int(math.ceil(self.scale_factor * img.size[1]))), 
+                                  method=Image.BILINEAR)
+            
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
-                _, img_y = img.size
+                _, img_y = scaled.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
 
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
-                img_current.paste(img, (0, offset))
+                img_current.paste(scaled, (0, offset))
                 img_current.save(self.preview_file_path, "BMP")
                 img_current.close()
             else:
-                img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
-                img_offset.paste(img, (0, offset))
+                img_offset = Image.new("RGB", (int(round(self.scale_factor * self.scene_res_x)), int(round(self.scale_factor * self.scene_res_y))))
+                img_offset.paste(scaled, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
                 img_offset.close()
             img.close()
+            scaled.close()
 
         except Exception as err:
             import traceback
@@ -417,9 +433,14 @@ class BlenderRenderTask(FrameRenderingTask):
                 img = exr_to_pil(new_chunk_file_path)
             else:   
                 img = Image.open(new_chunk_file_path)
-            img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
-            img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            img_x, img_y = img.size
+            scaled = ImageOps.fit(img, 
+                                  (int(round(self.scale_factor * img_x)), int(math.ceil(self.scale_factor * img_y))),
+                                  Image.BILINEAR)
+            scaled.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+            scaled.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
             img.close()
+            scaled.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
 
@@ -443,8 +464,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.total_tasks <= len(self.frames):
-            for i in range(0, self.res_x):
-                for j in range(0, self.res_y):
+            for i in range(0, int(round(self.scale_factor * self.res_x))):
+                for j in range(0, int(round(self.scale_factor * self.res_y))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
@@ -452,10 +473,10 @@ class BlenderRenderTask(FrameRenderingTask):
             part = (subtask['start_task'] - 1) % parts + 1
             lower = pu.get_offset(part)
             if part == parts:
-                upper = self.res_y
+                upper = int(round(self.res_y * self.scale_factor))
             else:
                 upper = pu.get_offset(part + 1)
-            for i in range(0, self.res_x):
+            for i in range(0, int(self.scale_factor * self.res_x)):
                 for j in range(lower, upper):
                     img_task.putpixel((i, j), color)
                     
