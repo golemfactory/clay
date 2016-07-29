@@ -4,6 +4,7 @@ no external tools. The amount of data processed (ie hashed) and computational
 difficulty is configurable, see comments in DummyTaskParameters.
 """
 import atexit
+import logging
 import os
 import re
 import shutil
@@ -33,13 +34,16 @@ node_kind = ""
 
 
 def report(msg):
-    global node_kind
     print format_msg(node_kind, os.getpid(), msg)
 
 
 def run_requesting_node(datadir, num_subtasks=3):
     client = None
-    atexit.register(lambda: client and client.quit())
+
+    def shutdown():
+        client and client.quit()
+        logging.shutdown()
+    atexit.register(shutdown)
 
     global node_kind
     node_kind = "REQUESTER"
@@ -75,7 +79,11 @@ def run_requesting_node(datadir, num_subtasks=3):
 
 def run_computing_node(datadir, peer_address, fail_after=None):
     client = None
-    atexit.register(lambda: client and client.quit())
+
+    def shutdown():
+        client and client.quit()
+        logging.shutdown()
+    atexit.register(shutdown)
 
     global node_kind
     node_kind = "COMPUTER "
@@ -108,7 +116,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
                 reactor.callFromThread(reactor.stop)
-                client.quit()
+                shutdown()
                 return
             time.sleep(1)
 

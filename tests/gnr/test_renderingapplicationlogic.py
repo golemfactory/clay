@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from os import path
+import os
+import uuid
 
 from mock import Mock
 from PyQt4.QtCore import Qt
@@ -77,6 +78,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
+        broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
         logic.run_benchmark(broken_benchmark, m)
         logic.show_error_window.assert_called_with(u"Main scene file is not properly set")
 

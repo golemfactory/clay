@@ -140,7 +140,8 @@ class TestNetwork(TestWithReactor):
                                           stopped_errback=_stop_failure)
         with async_scope(async_ready):
             d = self.network.stop_listening(listening_info)
-            time.sleep(5)
+
+        time.sleep(5)
         self.assertEquals(len(self.network.active_listeners), 2)
         self.assertTrue(d.called)
         self.assertTrue(self.stop_listening_success)

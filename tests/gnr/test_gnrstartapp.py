@@ -23,9 +23,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_config_logging_1(self):
         path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
         config_logging(path)
-        logging.shutdown()
-
-    def test_config_logging_2(self):
         config_logging(os.path.join(self.path, "golem.test"))
         logging.shutdown()
 
@@ -36,6 +33,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         assert len(envs) > 2
 
     def test_start_client(self):
+        client = None
         try:
             client = Client(datadir=self.path,
                             transaction_system=False,
@@ -48,7 +46,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         except Exception as exc:
             self.fail("Failed to start client process: {}".format(exc))
         finally:
-            client.quit()
+            if client:
+                client.quit()
 
     def test_start_gui(self):
         queue = Queue()

@@ -172,10 +172,9 @@ class TestRPCClient(TestWithReactor):
 
         started = time.time()
         while result[1] is None:
-            if time.time() - started > 15:
+            time.sleep(0.2)
+            if time.time() - started > 20:
                 self.fail("Test timed out")
-
-            time.sleep(0.1)
 
         ws_client._deferred = Deferred()
         ws_client.clientConnectionFailed(Mock(), Mock())
