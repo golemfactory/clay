@@ -1,4 +1,3 @@
-import logging
 import shutil
 from os import makedirs, path
 
@@ -18,9 +17,6 @@ from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
 from test_docker_image import DockerTestCase
 
-# Make peewee logging less verbose
-logging.getLogger("peewee").setLevel("INFO")
-
 
 class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
@@ -35,10 +31,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
-        if self.node:
-            self.node.client._unlock_datadir()
-        if not db.is_closed():
-            db.close()
+        if self.node and self.node.client:
+            self.node.client.quit()
         for dir in self.dirs_to_remove:
             shutil.rmtree(dir)
         TaskServer.send_task_failed = self.task_computer_send_task_failed

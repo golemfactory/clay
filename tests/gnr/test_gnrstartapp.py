@@ -1,3 +1,4 @@
+import logging
 import os
 from multiprocessing import Queue
 
@@ -19,11 +20,14 @@ class MockService(object):
 
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
-    def test_config_logging(self):
-        log_name = "golem.test"
-        path = os.path.join(self.path, 'subdir1', 'subdir2', log_name)
-        config_logging(log_name)
+    def test_config_logging_1(self):
+        path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
         config_logging(path)
+        logging.shutdown()
+
+    def test_config_logging_2(self):
+        config_logging(os.path.join(self.path, "golem.test"))
+        logging.shutdown()
 
     def test_load_environments(self):
         envs = load_environments()
@@ -32,12 +36,12 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         assert len(envs) > 2
 
     def test_start_client(self):
-        client = Client(datadir=self.path,
-                        transaction_system=False,
-                        connect_to_known_hosts=False,
-                        use_docker_machine_manager=False)
-
         try:
+            client = Client(datadir=self.path,
+                            transaction_system=False,
+                            connect_to_known_hosts=False,
+                            use_docker_machine_manager=False)
+
             start_client_process(queue=Mock(),
                                  client=client,
                                  start_ranking=False)
@@ -61,3 +65,4 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         start_gui_process(queue, self.path,
                           gui_app=gui_app,
                           reactor=reactor)
+        logging.shutdown()

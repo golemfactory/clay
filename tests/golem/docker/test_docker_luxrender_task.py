@@ -35,10 +35,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.task_computer_send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
-        if self.node:
-            self.node.client._unlock_datadir()
-        if not db.is_closed():
-            db.close()
+        if self.node and self.node.client:
+            self.node.client.quit()
         for f in self.files_to_remove:
             if path.isfile(f):
                 remove(f)

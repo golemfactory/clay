@@ -4,13 +4,11 @@ from golem.network.transport.message import MessageWantToComputeTask, MessageRep
 
 
 class FailingMessage(Message):
-    def __init__(self):
-        Message.__init__(self, 0)
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
 
     def dict_repr(self):
         raise Exception()
-
-
 
 
 class TestMessages(unittest.TestCase):
@@ -75,7 +73,7 @@ class TestMessages(unittest.TestCase):
         m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         assert m.serialize()
 
-        m = FailingMessage()
+        m = FailingMessage(-1)
         serialized = None
 
         try:
