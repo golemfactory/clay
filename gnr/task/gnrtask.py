@@ -188,12 +188,10 @@ class GNRTask(Task):
         self.res_files = res_files
 
     def get_stderr(self, subtask_id):
-        err = self.stderr.get(subtask_id)
-        return self._interpret_log(err)
+        return self.stderr.get(subtask_id, "")
 
     def get_stdout(self, subtask_id):
-        out = self.stdout.get(subtask_id)
-        return self._interpret_log(out)
+        return self.stdout.get(subtask_id, "")
 
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
@@ -256,9 +254,13 @@ class GNRTask(Task):
         filtered_task_results = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
-                self.stderr[subtask_id] = tr
+                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
+                os.rename(tr, new_tr)
+                self.stderr[subtask_id] = new_tr
             elif tr.endswith(log_ext):
-                self.stdout[subtask_id] = tr
+                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
+                os.rename(tr, new_tr)
+                self.stdout[subtask_id] = new_tr
             else:
                 filtered_task_results.append(tr)
 

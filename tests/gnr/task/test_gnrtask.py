@@ -42,8 +42,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         task.stdout[subtask_id] = files[0]
         task.stderr[subtask_id] = files[1]
 
-        self.assertEqual(task.get_stdout(subtask_id), "stdout in file")
-        self.assertEqual(task.get_stderr(subtask_id), "stderr in file")
+        self.assertEqual(task.get_stdout(subtask_id), files[0])
+        self.assertEqual(task.get_stderr(subtask_id), files[1])
 
     def test_interpret_task_results(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
@@ -56,6 +56,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         files[3] += ".err.log"
         subtask_id = "xxyyzz"
         task.interpret_task_results(subtask_id, files, result_types["files"], self.path)
+        files[2] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[2]))
+        files[3] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[3]))
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
@@ -71,6 +73,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
                self.__compress_and_pickle_file(files[4], "ghi")]
         subtask_id = "aabbcc"
         task.interpret_task_results(subtask_id, res, result_types["data"], self.path)
+        files[2] = os.path.join(self.path, "aabbcc" + os.path.basename(files[2]))
+        files[3] = os.path.join(self.path, "aabbcc" + os.path.basename(files[3]))
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
