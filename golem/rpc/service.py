@@ -1,7 +1,10 @@
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
-from golem.rpc.exceptions import RPCSessionException
 from golem.rpc.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
+
+CONNECTION_RETRY_TIMEOUT = 0.1  # s
+CONNECTION_TIMEOUT = 3  # s
 
 
 class ServiceHelper(object):
@@ -147,36 +150,55 @@ class RPCProxyClient(ServiceMethodNamesProxy):
 
 class RPC(object):
 
-    def __init__(self, factory, rpc_address, timeout=None):
+    def __init__(self, factory, rpc_address,
+                 conn_timeout=CONNECTION_TIMEOUT,
+                 retry_timeout=CONNECTION_RETRY_TIMEOUT):
+
         from twisted.internet import reactor
 
         self.reactor = reactor
         self.factory = factory
-        self.timeout = timeout or 10
 
         self.rpc_address = rpc_address
         self.host = rpc_address.host
         self.port = rpc_address.port
 
+        self.retry_timeout = retry_timeout
+        self.conn_timeout = conn_timeout
+
     @inlineCallbacks
     def call(self, callee, is_batch, *args, **kwargs):
-        session = self.get_session()
+        session = yield self.get_session()
 
         if is_batch:
             rpc_request = RPCBatchRequestMessage(requests=callee)
         else:
             rpc_request = RPCRequestMessage(callee, args, kwargs)
 
-        session.send_message(rpc_request)
-        deferred, entry = session.get_response(rpc_request)
-        response = yield deferred
-
+        response = yield session.send_message(rpc_request)
         returnValue(response.result)
 
+    @inlineCallbacks
     def get_session(self):
         session = self.factory.get_session(self.host, self.port)
-        if session:
-            return session
+        if not session:
+            session = yield self._wait_for_session(self.host, self.port)
+        returnValue(session)
 
-        raise RPCSessionException("RPC: no session established with {}"
-                                  .format(self.rpc_address))
+    def _wait_for_session(self, host, port):
+        deferred = Deferred()
+
+        def on_success(result):
+            if result:
+                deferred.callback(result)
+            else:
+                retry()
+
+        def retry(*_):
+            conn_deferred = task.deferLater(self.reactor, self.retry_timeout,
+                                            self.factory.get_session, host, port,
+                                            timeout=self.conn_timeout)
+            conn_deferred.addCallbacks(on_success, retry)
+
+        retry()
+        return deferred
