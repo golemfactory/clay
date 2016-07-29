@@ -23,7 +23,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-b", "{}".format(scene_file),
         "-y", # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}_{}".format(OUTPUT_DIR, outfilebasename, start_task, '#'*padding),
+        "-o", "{}/{}{}_{}".format(OUTPUT_DIR, outfilebasename, start_task, '#'*padding),
         "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
