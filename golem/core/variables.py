@@ -6,8 +6,8 @@ LONG_STANDARD_SIZE = 4
 ############################
 APP_NAME = "Brass Golem"
 APP_VERSION = "0.2"
-PRIVATE_KEY_PREF = "golem_private_key"
-PUBLIC_KEY_PREF = "golem_public_key"
+PRIVATE_KEY = "golem_private_key.peb"
+PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
 

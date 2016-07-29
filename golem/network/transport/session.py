@@ -56,8 +56,10 @@ class BasicSession(FileSession):
     """
 
     # Disconnect reasons
+    DCRProtocolVersion = "Protocol version"
     DCRBadProtocol = "Bad protocol"
     DCRTimeout = "Timeout"
+    DCRNoMoreMessages = "No more messages"
 
     def __init__(self, conn):
         """
@@ -234,7 +236,8 @@ class BasicSafeSession(BasicSession, SafeSession):
             return False
 
         if (type_ not in self.can_be_unsigned) and (not self.verify(msg)):
-            logger.error("Failed to verify message signature")
+            logger.error("Failed to verify message signature ({} from {}:{})"
+                         .format(msg, self.address, self.port))
             self.disconnect(BasicSafeSession.DCRUnverified)
             return False
 

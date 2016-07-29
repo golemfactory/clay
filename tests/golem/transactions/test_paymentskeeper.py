@@ -6,6 +6,7 @@ from os import urandom
 from golem.network.p2p.node import Node
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.model import PaymentStatus
+from golem.testutils import TempDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, logger, \
@@ -130,27 +131,27 @@ class TestPaymentsKeeper(TestWithDatabase):
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 5)
-        self.assertEqual(all_payments[0]["task"], "xxxxxx")
-        self.assertEqual(all_payments[0]["node"], addr)
+        self.assertEqual(all_payments[0]["subtask"], "xxxxxx")
+        self.assertEqual(all_payments[0]["payee"], addr)
         self.assertEqual(all_payments[0]["value"], 10)
-        self.assertEqual(all_payments[0]["state"], PaymentStatus.awaiting)
-        self.assertEqual(all_payments[1]["task"], "zzzzzz")
-        self.assertEqual(all_payments[1]["node"], addr)
+        self.assertEqual(all_payments[0]["status"], PaymentStatus.awaiting)
+        self.assertEqual(all_payments[1]["subtask"], "zzzzzz")
+        self.assertEqual(all_payments[1]["payee"], addr)
         self.assertEqual(all_payments[1]["value"], 10)
-        self.assertEqual(all_payments[1]["state"], PaymentStatus.awaiting)
-        self.assertEqual(all_payments[2]["task"], "xxxyyy")
-        self.assertEqual(all_payments[2]["node"], addr2)
+        self.assertEqual(all_payments[1]["status"], PaymentStatus.awaiting)
+        self.assertEqual(all_payments[2]["subtask"], "xxxyyy")
+        self.assertEqual(all_payments[2]["payee"], addr2)
         self.assertEqual(all_payments[2]["value"], 20)
-        self.assertEqual(all_payments[2]["state"], PaymentStatus.awaiting)
+        self.assertEqual(all_payments[2]["status"], PaymentStatus.awaiting)
         pi3.subtask_id = "whaooa!"
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 6)
 
 
-class TestAccountInfo(unittest.TestCase):
+class TestAccountInfo(TempDirFixture):
     def test_comparison(self):
-        k = EllipticalKeysAuth()
+        k = EllipticalKeysAuth(self.path)
         e = urandom(20)
         a = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)
         b = EthAccountInfo(k.get_key_id(), 5111, "10.0.0.1", "test-test-test", Node(), e)

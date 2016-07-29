@@ -11,11 +11,12 @@ from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
-from gnr.task.gnrtask import GNRTask, GNRTaskBuilder, check_subtask_id_wrapper
+from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.renderingtaskcollector import exr_to_pil
 
@@ -23,7 +24,10 @@ from gnr.task.renderingtaskcollector import exr_to_pil
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.task")
+
+
+MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class RenderingTaskBuilder(GNRTaskBuilder):
@@ -49,6 +53,12 @@ class RenderingTaskBuilder(GNRTaskBuilder):
         return new_task
 
 
+class AcceptClientVerdict(object):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class RenderingTask(GNRTask):
 
     ################
@@ -58,7 +68,8 @@ class RenderingTask(GNRTask):
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
                  subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, max_price, docker_images=None):
+                 estimated_memory, max_price, docker_images=None,
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
 
         try:
             with open(main_program_file, "r") as src_file:
@@ -99,12 +110,14 @@ class RenderingTask(GNRTask):
         self.collected_file_names = {}
 
         self.advanceVerification = False
+
         self.verified_clients = set()
+        self.max_pending_client_results = max_pending_client_results
 
         if is_windows():
             self.__get_path = self.__get_path_windows
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def computation_failed(self, subtask_id):
         GNRTask.computation_failed(self, subtask_id)
         self._update_task_preview()
@@ -116,7 +129,7 @@ class RenderingTask(GNRTask):
 
         self.collected_file_names = {}
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
@@ -139,7 +152,7 @@ class RenderingTask(GNRTask):
     def _get_part_size(self, subtask_id):
         return self.res_x, self.res_y
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         num_task = self.subtasks_given[subtask_id]['start_task']
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
@@ -155,8 +168,9 @@ class RenderingTask(GNRTask):
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
         img_current.save(self.preview_file_path, "BMP")
+        img.close()
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
         if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
@@ -169,8 +183,8 @@ class RenderingTask(GNRTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
-        self.preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
+        preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
 
@@ -180,7 +194,11 @@ class RenderingTask(GNRTask):
             if sub['status'] == SubtaskStatus.failure:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, "BMP")
+        img_task.save(preview_task_file_path, "BMP")
+        self._update_preview_task_file_path(preview_task_file_path)
+
+    def _update_preview_task_file_path(self, preview_task_file_path):
+        self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
         upper = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
@@ -196,7 +214,7 @@ class RenderingTask(GNRTask):
         else:
             task_collector_path = os.path.normpath(
                 os.path.join(get_golem_path(), "gnr/taskcollector/Release/taskcollector"))
-        cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(output_file_name)] + files
+        cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(self.res_x), "{}".format(self.res_y), "{}".format(output_file_name)] + files
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
@@ -265,12 +283,13 @@ class RenderingTask(GNRTask):
         return verify_img(file_, res_x, res_y)
 
     def _open_preview(self):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
+        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.res_x, self.res_y))
             img.save(self.preview_file_path, "BMP")
+            img.close()
 
         return Image.open(self.preview_file_path)
 
@@ -281,19 +300,19 @@ class RenderingTask(GNRTask):
         return False
 
     def _accept_client(self, node_id):
-        if node_id in self.counting_nodes:
-            if self.counting_nodes[node_id] > 0:  # client with accepted task
-                return True
-            elif self.counting_nodes[node_id] == 0:  # client took task but hasn't return result yet
-                self.counting_nodes[node_id] = -1
-                return True
-            else:
-                self.counting_nodes[node_id] = -1
-                # client with failed task or client that took more than one task without returning any results
-                return False
-        else:
-            self.counting_nodes[node_id] = 0
-            return True  # new node
+        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        finishing = client.finishing()
+        max_finishing = self.max_pending_client_results
+
+        # if client.rejected():
+        #     return AcceptClientVerdict.REJECTED
+        # elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
+
+        if finishing >= max_finishing or client.started() - finishing >= max_finishing:
+            return AcceptClientVerdict.SHOULD_WAIT
+
+        client.start()
+        return AcceptClientVerdict.ACCEPTED
 
     def _choose_adv_ver_file(self, tr_files, subtask_id):
         adv_test_file = None
@@ -302,7 +321,7 @@ class RenderingTask(GNRTask):
                 adv_test_file = random.sample(tr_files, 1)
         return adv_test_file
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _verify_imgs(self, subtask_id, tr_files):
         res_x, res_y = self._get_part_size(subtask_id)
 
@@ -337,7 +356,7 @@ class RenderingTask(GNRTask):
         start_y = random.randint(y0, y1 - ver_y)
         return start_x, start_y
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data = copy(self.subtasks_given[subtask_id])
         extra_data['outfilebasename'] = str(uuid.uuid4())
@@ -353,7 +372,7 @@ class RenderingTask(GNRTask):
         else:
             return None
 
-    @check_subtask_id_wrapper
+    @GNRTask.handle_key_error
     def __use_adv_verification(self, subtask_id):
         if self.verification_options.type == 'forAll':
             return True

@@ -3,7 +3,7 @@ import logging
 
 from golem.core.common import get_golem_path
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 PREV_FILE = "ui/nopreview.png"
 
@@ -37,6 +37,6 @@ def get_test_task_tmp_path(root_path):
     return path.join(root_path, "task_tmp")
 
 
-def get_tmp_path(node_name, task_id, root_path):
+def get_tmp_path(task_id, root_path):
     # TODO: Is node name still needed?
-    return path.join(root_path, "task", node_name, task_id, "tmp")
+    return path.join(root_path, "task", task_id, "tmp")

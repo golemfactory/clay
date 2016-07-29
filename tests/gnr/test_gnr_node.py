@@ -41,26 +41,6 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('golem.client.Client')
-    @patch('twisted.internet.reactor')
-    def test_node_address_none(self, mock_reactor, mock_client):
-        """Test that without '--node-address' arg the client is started with
-        a 'config_desc' arg such that 'config_desc.node_address' is ''.
-        """
-
-        runner = CliRunner()
-        return_value = runner.invoke(start, self.args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
-        mock_reactor.run.assert_called_with()
-        assert mock_client.called
-
-        assert len(mock_client.mock_calls) > 0
-        init_call = mock_client.mock_calls[0]
-        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
-        (config_desc, ) = init_call[1]
-        self.assertTrue(hasattr(config_desc, 'node_address'))
-        self.assertEqual(config_desc.node_address, '')
-
     @patch('golemapp.GNRNode')
     @patch('twisted.internet.reactor')
     def test_node_address_valid(self, mock_reactor, mock_node):
@@ -79,7 +59,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
-    @patch('golem.client.Client')
+    @patch('gnr.node.Client')
     @patch('twisted.internet.reactor')
     def test_node_address_passed_to_client(self, mock_reactor, mock_client):
         """Test that with '--node-address <addr>' arg the client is started with
@@ -92,12 +72,9 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEquals(return_value.exit_code, 0)
 
-        self.assertGreater(len(mock_client.mock_calls), 0)
-        init_call = mock_client.mock_calls[0]
-        self.assertEqual(init_call[0], '')  # call name == '' for __init__ call
-        (config_desc, ) = init_call[1]
-        self.assertTrue(hasattr(config_desc, 'node_address'))
-        self.assertEqual(config_desc.node_address, node_address)
+        mock_client.assert_called_with(datadir=self.path,
+                                       node_address=node_address,
+                                       transaction_system=True)
 
     def test_node_address_invalid(self):
         runner = CliRunner()

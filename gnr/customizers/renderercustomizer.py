@@ -8,7 +8,7 @@ from PyQt4.QtGui import QFileDialog
 from customizer import Customizer
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class RendererCustomizer(Customizer):
@@ -135,6 +135,8 @@ class FrameRendererCustomizer(RendererCustomizer):
         super(FrameRendererCustomizer, self)._setup_connections()
         QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
                                self._frames_check_box_changed)
+        self.gui.ui.framesLineEdit.textChanged.connect(self._frames_changed)
+        self.gui.ui.framesCheckBox.stateChanged.connect(self._frames_changed)
 
     def load_data(self):
         super(FrameRendererCustomizer, self).load_data()
@@ -157,9 +159,12 @@ class FrameRendererCustomizer(RendererCustomizer):
         if self.renderer_options.use_frames:
             frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())
             if not frames:
-                self.show_error_window("Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
+                self.show_error_window(u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
                 return
             self.renderer_options.frames = frames
+
+    def _frames_changed(self):
+        self.logic.task_settings_changed()
 
     def _frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())

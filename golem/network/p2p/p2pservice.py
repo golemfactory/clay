@@ -5,13 +5,14 @@ import time
 from ipaddress import AddressValueError
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+
+from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
-from golem.network.p2p.peersession import PeerSession
+from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
 from golem.ranking.gossipkeeper import GossipKeeper
-from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -22,10 +23,10 @@ RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try s
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 
-SEEDS = [('52.37.205.43', 40102)]
+SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
 
 
-class P2PService(PendingConnectionsServer):
+class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def __init__(self, node, config_desc, keys_auth, connect_to_known_hosts=True):
         """ Create new P2P Server. Listen on port for connections and connect to other peers. Keeps
         up-to-date list of peers information and optimal number of open connections.
@@ -39,7 +40,6 @@ class P2PService(PendingConnectionsServer):
         self.node = node
         self.keys_auth = keys_auth
         self.peer_keeper = PeerKeeper(keys_auth.get_key_id())
-        self.task_connections_helper = TaskConnectionsHelper()
         self.task_server = None
         self.resource_server = None
         self.metadata_manager = None
@@ -154,7 +154,6 @@ class P2PService(PendingConnectionsServer):
         :param TaskServer task_server: task server instance
         """
         self.task_server = task_server
-        self.task_connections_helper.task_server = task_server
 
     def set_metadata_manager(self, metadata_manager):
         self.metadata_manager = metadata_manager
@@ -171,14 +170,22 @@ class P2PService(PendingConnectionsServer):
 
         self.__sync_free_peers()
         self.__remove_old_peers()
+        # self.__refresh_old_peers()
         self.__sync_peer_keeper()
         self._sync_pending()
-        self.task_connections_helper.sync()
 
         self.__send_get_peers()
         if len(self.peers) == 0:
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
+
+    def get_diagnostics(self, output_format):
+        peer_data = []
+        for peer in self.peers.values():
+            peer = PeerSessionInfo(peer).__dict__
+            del peer['node_info']
+            peer_data.append(peer)
+        return self._format_diagnostics(peer_data, output_format)
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -264,8 +271,8 @@ class P2PService(PendingConnectionsServer):
 
         for p in self.peers.keys():
             if self.peers[p] == peer_session:
-                del self.peers[p]
                 self.peer_order.remove(p)
+                self.peers.pop(p, None)
                 self.incoming_peers.pop(p, None)
                 self.suggested_address.pop(p, None)
                 self.suggested_conn_reverse.pop(p, None)
@@ -532,7 +539,7 @@ class P2PService(PendingConnectionsServer):
     #############################
     def set_resource_server(self, resource_server):
         """ Set resource server
-        :param ResourceServer resource_server: resource server instance
+        :param BaseResourceServer resource_server: resource server instance
         """
         self.resource_server = resource_server
 
@@ -554,7 +561,8 @@ class P2PService(PendingConnectionsServer):
         :return list: list of resource peers information
         """
         resource_peers_info = []
-        for key_id, [addr, port, node_name, node_info] in self.resource_peers.iteritems():
+        resource_peers = dict(self.resource_peers)
+        for key_id, [addr, port, node_name, node_info] in resource_peers.iteritems():
             resource_peers_info.append({'node_name': node_name, 'addr': addr, 'port': port, 'key_id': key_id,
                                         'node': node_info})
 
@@ -614,33 +622,36 @@ class P2PService(PendingConnectionsServer):
         :param Node|None super_node_info: *Default: None* information about node with public ip that took part
         in message transport
         """
-        if not self.task_connections_helper.is_new_conn_request(conn_id, key_id, node_info, super_node_info):
+        if not self.task_server.task_connections_helper.is_new_conn_request(
+                conn_id, key_id, node_info, super_node_info):
             return
 
         if super_node_info is None and self.node.is_super_node():
             super_node_info = self.node
 
         logger.debug("Try to start task session {}".format(key_id))
+        peers = dict(self.peers)
         msg_snd = False
-        for peer in self.peers.itervalues():
+
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 if node_info.key == self.node.key:
                     self.set_suggested_conn_reverse(key_id)
                 peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
                 return
 
-        for peer in self.peers.itervalues():
+        for peer in peers.itervalues():
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
 
         if msg_snd and node_info.key == self.node.key:
-            self.task_server.add_forwarded_session(key_id, conn_id)
+            self.task_server.add_forwarded_session_request(key_id, conn_id)
 
         # TODO This method should be only sent to supernodes or nodes that are closer to the target node
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_connections_helper.cannot_pass_conn_request(conn_id)
+            self.task_server.task_connections_helper.cannot_pass_conn_request(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
@@ -652,7 +663,8 @@ class P2PService(PendingConnectionsServer):
         :return:
         """
         logger.debug("Nat hole ready {}:{}".format(addr, port))
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
                 return
@@ -661,12 +673,14 @@ class P2PService(PendingConnectionsServer):
         self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
 
     def send_nat_traverse_failure(self, key_id, conn_id):
-        for peer in self.peers.itervalues():
+        peers = dict(self.peers)
+        for peer in peers.itervalues():
             if peer.key_id == key_id:
                 peer.send_nat_traverse_failure(conn_id)
 
@@ -679,7 +693,8 @@ class P2PService(PendingConnectionsServer):
         :param Node|None super_node_info: information about supernode that has passed this information
         :param conn_id: connection id
         """
-        self.task_connections_helper.want_to_start(conn_id, node_info, super_node_info)
+        # self.task_server.task_connections_helper.want_to_start(conn_id, node_info, super_node_info)
+        self.task_server.start_task_session(node_info, super_node_info, conn_id)
 
     #############################
     # RANKING FUNCTIONS         #
@@ -816,16 +831,16 @@ class P2PService(PendingConnectionsServer):
                long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
-        cur_time = time.time()
-
         for peer_id in self.peers.keys():
             peer = self.peers[peer_id]
-            if cur_time - peer.last_message_time > self.last_message_time_threshold:
+            if time.time() - peer.last_message_time > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(PeerSession.DCRTimeout)
 
+    def __refresh_old_peers(self):
+        cur_time = time.time()
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
-            self.last_refresh_peers = time.time()
+            self.last_refresh_peers = cur_time
             if len(self.peers) > 1:
                 peer_id = random.choice(self.peers.keys())
                 peer = self.peers[peer_id]

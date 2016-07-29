@@ -4,7 +4,7 @@ import os
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class AbsRenderingApplicationLogic(object):
@@ -46,9 +46,9 @@ class AbsRenderingApplicationLogic(object):
         return RenderingTaskState()
 
     def _get_builder(self, task_state):
-        return self.renderers[task_state.definition.renderer].task_builder_type(self.client.get_node_name(),
+        return self.renderers[task_state.definition.renderer].task_builder_type(self.node_name,
                                                                                 task_state.definition,
-                                                                                self.client.datadir)
+                                                                                self.datadir)
 
     def _validate_task_state(self, task_state):
 
@@ -56,14 +56,14 @@ class AbsRenderingApplicationLogic(object):
         if td.renderer in self.renderers:
 
             if not os.path.exists(td.main_program_file):
-                self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+                self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
                 return False
 
             if not self.__check_output_file(td.output_file):
                 return False
 
             if not os.path.exists(td.main_scene_file):
-                self.show_error_window("Main scene file is not properly set")
+                self.show_error_window(u"Main scene file is not properly set")
                 return False
         else:
             return False
@@ -80,10 +80,10 @@ class AbsRenderingApplicationLogic(object):
                 os.remove(output_file)
             return True
         except IOError:
-            self.show_error_window("Cannot open output file: {}".format(output_file))
+            self.show_error_window(u"Cannot open output file: {}".format(output_file))
             return False
         except (OSError, TypeError) as err:
-            self.show_error_window("Output file {} is not properly set: {}".format(output_file, err))
+            self.show_error_window(u"Output file {} is not properly set: {}".format(output_file, err))
             return False
 
 

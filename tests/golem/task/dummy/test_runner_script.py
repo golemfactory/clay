@@ -76,7 +76,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         tasks = client.task_server.task_manager.tasks
         self.assertEqual(len(tasks), 1)
         self.assertIsInstance(tasks.values()[0], task.DummyTask)
-        client._unlock_datadir()
+        client.quit()
 
     @mock.patch("runner.reactor")
     def test_run_computing_node(self, mock_reactor):
@@ -85,7 +85,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         environments = list(client.environments_manager.environments)
         self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
                             for env in environments))
-        client._unlock_datadir()
+        client.quit()
 
     @mock.patch("subprocess.Popen")
     def test_run_simulation(self, mock_popen):

@@ -1,6 +1,8 @@
+from __future__ import absolute_import
 import logging
 from os import path
 
+from ethereum.utils import denoms
 from psutil import virtual_memory
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -16,7 +18,7 @@ START_PORT = 40102
 END_PORT = 60102
 OPTIMAL_PEER_NUM = 10
 MIN_MEMORY_SIZE = 1000 * 1024
-MAX_RESOURCE_SIZE = 250 * 1024
+MAX_RESOURCE_SIZE = 2 * 1024 * 1024
 MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
 NUM_CORES = 1
 DISTRIBUTED_RES_NUM = 2
@@ -43,9 +45,12 @@ PINGS_INTERVALS = 120
 GETTING_PEERS_INTERVAL = 4.0
 GETTING_TASKS_INTERVAL = 4.0
 TASK_REQUEST_INTERVAL = 5.0
-USE_WAITING_FOR_TASK_TIMEOUT = 0
-WAITING_FOR_TASK_TIMEOUT = 36000
+USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
+WAITING_FOR_TASK_TIMEOUT = 720  # 36000
+WAITING_FOR_TASK_SESSION_TIMEOUT = 20
+FORWARDED_SESSION_REQUEST_TIMEOUT = 30
 NODE_SNAPSHOT_INTERVAL = 4.0
+NETWORK_CHECK_INTERVAL = 1.0
 ADD_TASKS = 0
 MAX_SENDING_DELAY = 360
 USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
@@ -57,9 +62,13 @@ RESOURCE_SESSION_TIMEOUT = 600
 PLUGIN_PORT = 1111
 ETH_ACCOUNT_NAME = ""
 USE_IP6 = 0
-MIN_PRICE = 1
-MAX_PRICE = 1000
 ACCEPT_TASKS = 1
+
+# Default max price per hour -- 0.005 ETH ~ 0.05 USD
+MAX_PRICE = int(0.005 * denoms.ether)
+
+# Default min price per hour of computation to accept
+MIN_PRICE = MAX_PRICE // 10
 
 
 class NodeConfig:
@@ -129,7 +138,10 @@ class AppConfig:
                                  task_request_interval=TASK_REQUEST_INTERVAL,
                                  use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
                                  waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
+                                 waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
+                                 forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
                                  node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
+                                 network_check_interval=NETWORK_CHECK_INTERVAL,
                                  add_tasks=ADD_TASKS,
                                  max_results_sending_delay=MAX_SENDING_DELAY,
                                  requesting_trust=REQUESTING_TRUST,
@@ -181,5 +193,5 @@ class AppConfig:
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(), self.config_file, refresh=True,
-                     check_uid=False)
+        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(),
+                     self.config_file, refresh=True)

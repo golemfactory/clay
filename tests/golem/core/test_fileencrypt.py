@@ -11,7 +11,7 @@ class TestAESFileEncryptor(TestDirFixture):
     def setUp(self):
         TestDirFixture.setUp(self)
 
-        self.dir_manager = DirManager(self.path, 'node')
+        self.dir_manager = DirManager(self.path)
         self.res_dir = self.dir_manager.get_task_temporary_dir('test_task')
         self.test_file_path = os.path.join(self.res_dir, 'test_file')
         self.enc_file_path = os.path.join(self.res_dir, 'test_file.enc')
@@ -89,7 +89,7 @@ class TestFileHelper(TestDirFixture):
 
     def setUp(self):
         TestDirFixture.setUp(self)
-        self.dir_manager = DirManager(self.path, 'node')
+        self.dir_manager = DirManager(self.path)
         self.res_dir = self.dir_manager.get_task_temporary_dir('test_task')
         self.test_file_path = os.path.join(self.res_dir, 'test_file')
         open(self.test_file_path, 'w').close()

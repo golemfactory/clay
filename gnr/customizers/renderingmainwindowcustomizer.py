@@ -3,7 +3,7 @@ import datetime
 import time
 import logging
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon
+from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QPixmapCache
 from golem.task.taskstate import SubtaskStatus
 from golem.core.common import get_golem_path
 
@@ -19,7 +19,7 @@ from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesD
 
 from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 frame_renderers = [u"3ds Max Renderer", u"VRay Standalone", u"Blender"]
 
@@ -296,6 +296,7 @@ class AbsRenderingMainWindowCustomizer(object):
         pic = img.scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.gui.ui.previewLabel.setScaledContents(False)
         self.gui.ui.previewLabel.setPixmap(pic)
+        QPixmapCache.clear()
 
 
 class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWindowCustomizer):

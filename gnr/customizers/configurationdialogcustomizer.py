@@ -1,21 +1,21 @@
-import multiprocessing
+from __future__ import division
 import logging
+import multiprocessing
 import subprocess
 
+from ethereum.utils import denoms
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
 
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
-from gnr.renderingtaskstate import RenderingTaskState
-from golem.task.taskstate import TaskStatus
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
-from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):
@@ -29,11 +29,13 @@ class ConfigurationDialogCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
-        config_desc = self.logic.get_config()
-        self.__load_basic_config(config_desc)
-        self.__load_advance_config(config_desc)
-        self.__load_resource_config()
-        self.__load_payment_config(config_desc)
+        def load(config_desc):
+            self.__load_basic_config(config_desc)
+            self.__load_advance_config(config_desc)
+            self.__load_resource_config()
+            self.__load_payment_config(config_desc)
+
+        self.logic.get_config().addCallback(load)
 
     @staticmethod
     def du(path):
@@ -88,6 +90,8 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
         self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
+        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(config_desc.node_name))
+
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
         self.__load_trust_config(config_desc)
@@ -127,10 +131,10 @@ class ConfigurationDialogCustomizer(Customizer):
         max_memory_size, index = resource_size_to_display(max_memory_size)
         self.gui.ui.maxMemoryUsageComboBox.setCurrentIndex(index)
         self.gui.ui.maxMemoryUsageSpinBox.setValue(max_memory_size)
-        
+
     def __run_lux_benchmark_button_clicked(self):
         self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
-            
+
     def __run_blender_benchmark_button_clicked(self):
         self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
 
@@ -186,8 +190,10 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
         self.__check_eth_account()
-        self.gui.ui.minPriceLineEdit.setText(u"{}".format(config_desc.min_price))
-        self.gui.ui.maxPriceLineEdit.setText(u"{}".format(config_desc.max_price))
+        min_price = config_desc.min_price / denoms.ether
+        max_price = config_desc.max_price / denoms.ether
+        self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
+        self.gui.ui.maxPriceLineEdit.setText(u"{:.6f}".format(max_price))
 
     def __load_resource_config(self):
         self.gui.ui.diskWidget.hide()
@@ -196,12 +202,14 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__refresh_disk_received()
 
     def __refresh_disk_received(self):
-        res_dirs = self.logic.get_res_dirs()
-        self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        def change(res_dirs):
+            self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+        self.logic.get_res_dirs().addCallback(change)
 
     def __refresh_disk_computed(self):
-        res_dirs = self.logic.get_res_dirs()
-        self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        def change(res_dirs):
+            self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+        self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
         reply = QMessageBox.question(self.gui.window, 'Golem Message',
@@ -286,6 +294,9 @@ class ConfigurationDialogCustomizer(Customizer):
         cfg_desc.max_memory_size = u"{}".format(self.__count_resource_size(max_memory_size, index))
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
+        cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
+        if not cfg_desc.node_name:
+            self.show_error_window(u"Empty node name")
 
     def __read_advance_config(self, cfg_desc):
         cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
@@ -332,13 +343,15 @@ class ConfigurationDialogCustomizer(Customizer):
     def __read_payment_config(self, cfg_desc):
         cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
         try:
-            cfg_desc.min_price = int(self.gui.ui.minPriceLineEdit.text())
+            min_price = float(self.gui.ui.minPriceLineEdit.text())
+            cfg_desc.min_price = int(min_price * denoms.ether)
         except ValueError as err:
-            logger.warning("Wrong min_payment value: {}".format(err))
+            logger.warning("Wrong min price value: {}".format(err))
         try:
-            cfg_desc.max_price = int(self.gui.ui.maxPriceLineEdit.text())
+            max_price = float(self.gui.ui.maxPriceLineEdit.text())
+            cfg_desc.max_price = int(max_price * denoms.ether)
         except ValueError as err:
-            logger.warning("Wrong max_payment value: {}".format(err))
+            logger.warning("Wrong max price value: {}".format(err))
         self.__check_eth_account()
 
     def __set_account_error(self):

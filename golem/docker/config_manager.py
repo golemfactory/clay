@@ -1,8 +1,12 @@
+import logging
+
+import psutil
 from contextlib import contextmanager
 
 from golem.docker.task_thread import DockerTaskThread
 
 __all__ = ['DockerConfigManager']
+logger = logging.getLogger(__name__)
 
 DEFAULT_HOST_CONFIG = dict(
     privileged=False,
@@ -24,7 +28,16 @@ DEFAULT_HOST_CONFIG = dict(
 
 class DockerConfigManager(object):
 
-    container_host_config = dict(DEFAULT_HOST_CONFIG)
+    def __init__(self):
+        self.container_host_config = dict(DEFAULT_HOST_CONFIG)
+        # Note that the number of cores is based on
+        # CPU affinity set for Golem's process
+        try:
+            process = psutil.Process()
+            self.cpu_cores = process.cpu_affinity()
+        except Exception as exc:
+            logger.error("Couldn't read CPU affinity: {}".format(exc))
+            self.cpu_cores = None
 
     def build_config(self, config_desc):
         host_config = dict()
@@ -35,8 +48,9 @@ class DockerConfigManager(object):
             max_resource_size = config_desc.max_resource_size
 
             with self._try():
-                cores = [str(c) for c in range(0, int(num_cores))]
-                host_config['cpuset'] = ','.join(cores)
+                max_cpus = min(len(self.cpu_cores), int(num_cores) or 1)
+                cpu_set = [str(c) for c in self.cpu_cores[:max_cpus]]
+                host_config['cpuset'] = ','.join(cpu_set)
 
             with self._try():
                 host_config['mem_limit'] = int(max_memory_size) * 1000
@@ -48,5 +62,5 @@ class DockerConfigManager(object):
     def _try(self):
         try:
             yield
-        except:
+        except Exception:
             pass

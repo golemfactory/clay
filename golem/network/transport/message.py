@@ -1,11 +1,11 @@
-import time
 import abc
-import copy
+import collections
+import logging
+import time
 
-from golem.core.simpleserializer import SimpleSerializer
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
-import logging
+from golem.core.simpleserializer import SimpleSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,39 @@ class Message:
     def get_short_hash(self):
         """ Return short message representation for signature
         :return str: short hash of serialized and sorted message dictionary representation """
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted(self.dict_repr().items())))
+        sorted_dict = self._sort_obj(self.dict_repr())
+        return SimpleHash.hash(SimpleSerializer.dumps(sorted_dict))
+
+    def _sort_obj(self, v):
+        if isinstance(v, dict):
+            return self._sort_dict(v)
+        # treat objects as dictionaries
+        elif hasattr(v, '__dict__'):
+            return self._sort_dict(v.__dict__,
+                                   filter_properties=True)
+        # strings are iterable (see the case below)
+        elif isinstance(v, basestring):
+            return v
+        elif isinstance(v, collections.Iterable):
+            return v.__class__([self._sort_obj(_v) for _v in v])
+        return v
+
+    def _sort_dict(self, dictionary, filter_properties=False):
+        result = dict()
+        for k, v in dictionary.iteritems():
+            if filter_properties and (k.startswith('_') or callable(v)):
+                continue
+            result[k] = self._sort_obj(v)
+        return sorted(result.items())
 
     def serialize(self):
         """ Return serialized message
         :return str: serialized message """
-        return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        try:
+            return SimpleSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
+        except Exception as exc:
+            logger.error("Error serializing message: {}".format(exc))
+            raise
 
     def serialize_to_buffer(self, db_):
         """
@@ -116,15 +143,21 @@ class Message:
         :param str msg_: serialized message
         :return Message|None: deserialized message or none if this message type is unknown
         """
-        msg_repr = SimpleSerializer.loads(msg_)
+        try:
+            msg_repr = SimpleSerializer.loads(msg_)
+        except Exception as exc:
+            logger.error("Error deserializing message: {}".format(exc))
+            msg_repr = None
 
-        msg_type = msg_repr[0]
-        msg_sig = msg_repr[1]
-        msg_timestamp = msg_repr[2]
-        d_repr = msg_repr[3]
+        if isinstance(msg_repr, list) and len(msg_repr) >= 4:
 
-        if msg_type in cls.registered_message_types:
-            return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
+            msg_type = msg_repr[0]
+            msg_sig = msg_repr[1]
+            msg_timestamp = msg_repr[2]
+            d_repr = msg_repr[3]
+
+            if msg_type in cls.registered_message_types:
+                return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
 
         return None
 
@@ -393,8 +426,7 @@ class MessagePeers(Message):
         return {MessagePeers.PEERS_STR: self.peers_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(
-                    SimpleSerializer.dumps([sorted(peer["node"].__dict__.values()) for peer in self.peers_array]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.peers_array)))
 
 
 class MessageGetTasks(Message):
@@ -444,11 +476,7 @@ class MessageTasks(Message):
         return {MessageTasks.TASKS_STR: self.tasks_array}
 
     def get_short_hash(self):
-        tasks_array_copy = copy.deepcopy(self.tasks_array)
-        for task in tasks_array_copy:
-            task['task_owner'] = task['task_owner'].__dict__.values()
-
-        return SimpleHash.hash(SimpleSerializer.dumps([sorted(task.items()) for task in tasks_array_copy]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.tasks_array)))
 
 
 class MessageRemoveTask(Message):
@@ -523,8 +551,7 @@ class MessageResourcePeers(Message):
         return {MessageResourcePeers.RESOURCE_PEERS_STR: self.resource_peers}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(
-            [sorted(peer['node'].__dict__.values()) for peer in self.resource_peers]))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.resource_peers)))
 
 
 class MessageDegree(Message):
@@ -907,8 +934,7 @@ class MessageTaskToCompute(Message):
         return {MessageTaskToCompute.COMPUTE_TASK_DEF_STR: self.ctd}
 
     def get_short_hash(self):
-        return SimpleHash.hash(
-            SimpleSerializer.dumps(sorted([(k, v) for k, v in self.ctd.__dict__.items() if k != "extra_data"])))
+        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.ctd)))
 
 
 class MessageCannotAssignTask(Message):
@@ -1078,24 +1104,28 @@ class MessageTaskResultHash(Message):
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     MULTIHASH_STR = u"MULTIHASH"
     SECRET_STR = u"SECRET"
+    OPTIONS_STR = u"OPTIONS"
 
-    def __init__(self, subtask_id=0, multihash="", secret="", sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id=0, multihash="", secret="", options=None, sig="", timestamp=None, dict_repr=None):
 
         Message.__init__(self, MessageTaskResultHash.Type, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.multihash = multihash
         self.secret = secret
+        self.options = options
 
         if dict_repr:
             self.subtask_id = dict_repr[MessageTaskResultHash.SUB_TASK_ID_STR]
             self.multihash = dict_repr[MessageTaskResultHash.MULTIHASH_STR]
             self.secret = dict_repr[MessageTaskResultHash.SECRET_STR]
+            self.options = dict_repr[MessageTaskResultHash.OPTIONS_STR]
 
     def dict_repr(self):
         return {MessageTaskResultHash.SUB_TASK_ID_STR: self.subtask_id,
                 MessageTaskResultHash.MULTIHASH_STR: self.multihash,
-                MessageTaskResultHash.SECRET_STR: self.secret}
+                MessageTaskResultHash.SECRET_STR: self.secret,
+                MessageTaskResultHash.OPTIONS_STR: self.options}
 
 
 class MessageGetResource(Message):
@@ -1596,6 +1626,53 @@ class MessageNatPunchFailure(Message):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
 
 
+class MessageWaitingForResults(Message):
+    Type = TASK_MSG_BASE + 25
+
+    WAITING_FOR_RESULTS_STR = u"WAITING_FOR_RESULTS"
+
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that the node is waiting for results
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageWaitingForResults.Type, sig, timestamp)
+
+        if dict_repr:
+            assert dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR)
+
+    def dict_repr(self):
+        return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True}
+
+
+class MessageCannotComputeTask(Message):
+    Type = TASK_MSG_BASE + 26
+
+    REASON_STR = u"REASON"
+    SUBTASK_ID_STR = u"SUBTASK_ID"
+
+    def __init__(self, subtask_id=None, reason=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that the node is waiting for results
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageCannotComputeTask.Type, sig, timestamp)
+
+        self.reason = reason
+        self.subtask_id = subtask_id
+
+        if dict_repr:
+            self.reason = dict_repr[MessageCannotComputeTask.REASON_STR]
+            self.subtask_id = dict_repr[MessageCannotComputeTask.SUBTASK_ID_STR]
+
+    def dict_repr(self):
+        return {MessageCannotComputeTask.REASON_STR: self.reason,
+                MessageCannotComputeTask.SUBTASK_ID_STR: self.subtask_id}
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1749,12 +1826,13 @@ class MessageSendResource(Message):
         return {MessageSendResource.RESOURCE_STR: self.resource}
 
 
-class MessageResourceHashList(Message):
+class MessageResourceList(Message):
     Type = RESOURCE_MSG_BASE + 7
 
     RESOURCES_STR = u"resources"
+    OPTIONS_STR = u"options"
 
-    def __init__(self, resources=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, resources=None, options=None, sig="", timestamp=None, dict_repr=None):
         """
         Create message with resource request
         :param str resources: resource list
@@ -1762,14 +1840,17 @@ class MessageResourceHashList(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResourceHashList.Type, sig, timestamp)
+        Message.__init__(self, MessageResourceList.Type, sig, timestamp)
         self.resources = resources
+        self.options = options
 
         if dict_repr:
-            self.resources = dict_repr[MessageResourceHashList.RESOURCES_STR]
+            self.resources = dict_repr[MessageResourceList.RESOURCES_STR]
+            self.options = dict_repr[MessageResourceList.OPTIONS_STR]
 
     def dict_repr(self):
-        return {MessageResourceHashList.RESOURCES_STR: self.resources}
+        return {MessageResourceList.RESOURCES_STR: self.resources,
+                MessageResourceList.OPTIONS_STR: self.options}
 
 
 def init_messages():
@@ -1804,6 +1885,7 @@ def init_messages():
 
     # Task messages
     MessageCannotAssignTask()
+    MessageCannotComputeTask()
     MessageTaskToCompute()
     MessageWantToComputeTask()
     MessageReportComputedTask()
@@ -1820,6 +1902,7 @@ def init_messages():
     MessageNatPunch()
     MessageWaitForNatTraverse()
     MessageNatPunchFailure()
+    MessageWaitingForResults()
     MessageSubtaskResultAccepted()
     MessageSubtaskResultRejected()
     MessageDeltaParts()
@@ -1835,4 +1918,4 @@ def init_messages():
     MessagePullResource()
     MessagePullAnswer()
     MessageSendResource()
-    MessageResourceHashList()
+    MessageResourceList()

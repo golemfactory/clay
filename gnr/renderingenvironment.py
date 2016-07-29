@@ -3,7 +3,7 @@ import logging
 from golem.docker.image import DockerImage
 from golem.docker.environment import DockerEnvironment
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("gnr.app")
 
 
 class BlenderEnvironment(DockerEnvironment):
@@ -20,7 +20,9 @@ class BlenderEnvironment(DockerEnvironment):
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "Blender (www.blender.org)"
-
+    
+    def get_performance(self, cfg_desc):
+        return cfg_desc.estimated_blender_performance
 
 class LuxRenderEnvironment(DockerEnvironment):
 
@@ -36,3 +38,6 @@ class LuxRenderEnvironment(DockerEnvironment):
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "LuxRender (www.luxrender.net)"
+        
+    def get_performance(self, cfg_desc):
+        return cfg_desc.estimated_lux_performance
