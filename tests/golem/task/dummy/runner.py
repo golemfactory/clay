@@ -18,6 +18,7 @@ from threading import Thread
 from twisted.internet import reactor
 
 from golem.client import Client
+from golem.core.common import is_windows
 from golem.environments.environment import Environment
 from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
@@ -218,9 +219,11 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
         for proc in all_procs:
             if proc.poll() is None:
-                proc.terminate()
-                # wait for termination
-                proc.wait()
+                if is_windows():
+                    proc.terminate()
+                    proc.wait()
+                else:
+                    proc.kill()
 
         time.sleep(1)
         shutil.rmtree(datadir)
