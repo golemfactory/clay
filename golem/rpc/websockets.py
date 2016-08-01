@@ -19,9 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 RECONNECT_TIMEOUT = 0.5  # s
-REQUEST_RETRY_INTERVAL = 1  # s
-REQUEST_RETRY_TIMEOUT = 2  # s
-REQUEST_REMOVE_TIMEOUT = 5  # s
+REQUEST_REMOVE_INTERVAL = 1  # s
+REQUEST_REMOVE_TIMEOUT = 90  # s
 
 
 class WebSocketAddress(RPCAddress):
@@ -128,9 +127,8 @@ class SessionManager(SessionAwareMixin):
         return addr in self.sessions
 
     def get_session(self, host, port):
-        for _, session in self.sessions.iteritems():
-            addr = self.get_session_addr(session)
-            if addr == (host, port):
+        for session_key, session in self.sessions.items():
+            if session_key == (host, port):
                 return session
         return None
 
@@ -184,7 +182,8 @@ class WebSocketRPCProtocol(object):
     def onOpen(self):
         self.factory.add_session(self)
         if not self._requests_task.running:
-            self._requests_task.start(REQUEST_RETRY_INTERVAL)
+            self._requests_task.start(REQUEST_REMOVE_INTERVAL)
+        self._retry_requests()
 
     def onClose(self, was_clean, code, reason):
         self.factory.remove_session(self)
@@ -258,16 +257,15 @@ class WebSocketRPCProtocol(object):
 
         return deferred
 
+    def _retry_requests(self):
+        for request in self.factory.requests.values():
+            self.send_message(request['message'], new_request=False)
+
     def _remove_old_requests(self):
         now = time.time()
         for request in self.factory.requests.values():
-            dt = now - request['created']
-            if dt >= REQUEST_REMOVE_TIMEOUT:
+            if now - request['created'] >= REQUEST_REMOVE_TIMEOUT:
                 self.factory.remove_request(request['message'])
-            elif dt >= REQUEST_RETRY_TIMEOUT:
-                if now - request['retried'] >= REQUEST_RETRY_TIMEOUT:
-                    request['retried'] = now
-                    self.send_message(request['message'], new_request=False)
 
 
 class WebSocketRPCServerProtocol(WebSocketRPCProtocol, WebSocketServerProtocol):
@@ -383,9 +381,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
-        if self._deferred.called:
-            logger.debug("WebSocket RPC: second call on deferred")
-        else:
+        if not self._deferred.called:
             self._deferred.callback(session)
 
     def _reconnect(self):

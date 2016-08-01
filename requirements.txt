@@ -30,3 +30,4 @@ base58
 ndg-httpsclient
 ovh
 certifi
+weakreflist
