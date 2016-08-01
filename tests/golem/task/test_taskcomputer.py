@@ -196,7 +196,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_event_listeners(self):
         client = Mock()
         task_server = MagicMock()
-        tc = TaskComputer("ABC", task_server)
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         tc.toggle_config_dialog(True)
         tc.toggle_config_dialog(False)

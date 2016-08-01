@@ -7,7 +7,7 @@ from golem.testutils import TempDirFixture
 from gnr.ui.appmainwindow import AppMainWindow
 
 from gnr.application import GNRGui
-from mock import Mock
+from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer, SaveKeysDialogCustomizer
@@ -27,11 +27,13 @@ class TestIdentityDialogCustomizer(TempDirFixture):
         self.gnrgui.app.deleteLater()
         super(TestIdentityDialogCustomizer, self).tearDown()
 
-    def test(self):
+    @patch('gnr.ui.dialog.GeneratingKeyWindow.show')
+    def test(self, *_):
         self.gnrgui.show = Mock()
         self.gnrgui.main_window.show = Mock()
 
         identity_dialog = IdentityDialog(self.gnrgui.main_window.window)
+        identity_dialog.window.show = Mock()
         customizer = IdentityDialogCustomizer(identity_dialog, self.logic)
         customizer.keys_auth = Mock()
         customizer._generate_keys(difficulty=1)
@@ -50,11 +52,13 @@ class TestSaveKeysDialogCustomizer(TestWithReactor):
         super(TestSaveKeysDialogCustomizer, self).tearDown()
 
     def test(self):
-        self.gnrgui.show = Mock()
         self.gnrgui.main_window.show = Mock()
 
         dialog = SaveKeysDialog(self.gnrgui.main_window.window)
+        dialog.window.show = Mock()
+        dialog.window.close = Mock()
         customizer = SaveKeysDialogCustomizer(dialog, self.logic)
+        customizer.show_error_window = Mock()
 
         d = Deferred()
         d.result = False

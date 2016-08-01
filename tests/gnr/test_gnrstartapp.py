@@ -24,7 +24,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
         config_logging(path)
         assert os.path.exists(os.path.dirname(path))
-        logging.shutdown()
 
     def test_load_environments(self):
         envs = load_environments()
@@ -32,8 +31,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             assert isinstance(el, Environment)
         assert len(envs) > 2
 
-    @patch('golem.core.common.config_logging')
-    def test_start_client(self, _):
+    @patch('logging.config.fileConfig')
+    def test_start_client(self, *_):
         client = None
 
         try:
@@ -51,8 +50,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             if client:
                 client.quit()
 
-    @patch('golem.core.common.config_logging')
-    def test_start_gui(self, _):
+    @patch('logging.config.fileConfig')
+    def test_start_gui(self, *_):
         queue = Queue()
 
         rpc_server = WebSocketRPCServerFactory()

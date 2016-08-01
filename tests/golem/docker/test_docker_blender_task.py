@@ -1,20 +1,18 @@
 import shutil
 from os import makedirs, path
 
-import jsonpickle
-from mock import Mock
-
 import gnr.node
+import jsonpickle
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
-from golem.model import db
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
+from mock import Mock
 from test_docker_image import DockerTestCase
 
 
@@ -24,19 +22,25 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
 
     def setUp(self):
-        super(TestDockerBlenderTask, self).setUp()
+        TempDirFixture.setUp(self)
+        DockerTestCase.setUp(self)
+
         self.error_msg = None
         self.dirs_to_remove = []
         self.node = None
-        self.task_computer_send_task_failed = TaskServer.send_task_failed
+
+        self._send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
         if self.node and self.node.client:
             self.node.client.quit()
         for dir in self.dirs_to_remove:
             shutil.rmtree(dir)
-        TaskServer.send_task_failed = self.task_computer_send_task_failed
-        super(TestDockerBlenderTask, self).tearDown()
+
+        TaskServer.send_task_failed = self._send_task_failed
+
+        DockerTestCase.tearDown(self)
+        TempDirFixture.tearDown(self)
 
     def _load_test_task_definition(self, task_file):
         task_file = path.join(path.dirname(__file__), task_file)
@@ -69,9 +73,13 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.client.start = Mock()
         self.node.initialize()
 
-        task_computer = self.node.client.task_server.task_computer
+        task_server = TaskServer(Mock(), Mock(), Mock(), self.node.client,
+                                 use_docker_machine_manager=False)
+        task_computer = task_server.task_computer
+
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
         self.dirs_to_remove.append(resource_dir)
@@ -109,6 +117,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         if task_thread:
             task_thread.join(60.0)
+            task_thread.end_comp()
 
         return task_thread, self.error_msg, temp_dir
 

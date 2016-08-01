@@ -17,9 +17,9 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
+        super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
 
     def test_customizer(self):
         self.logic.client = Mock()

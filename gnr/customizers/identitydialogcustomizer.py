@@ -117,4 +117,4 @@ class SaveKeysDialogCustomizer(Customizer):
         if res:
             self.gui.window.close()
         else:
-            SaveKeysDialogCustomizer.show_error_window(u"Can't save keys in given files")
+            self.show_error_window(u"Can't save keys in given files")
