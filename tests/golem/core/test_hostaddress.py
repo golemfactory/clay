@@ -1,5 +1,5 @@
 import unittest
-from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ip_networks
+from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks
 
 
 class TestHostAddress(unittest.TestCase):
@@ -12,8 +12,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertEqual(get_host_address('10.30.10.217'), '10.30.10.216')
 
     def testGetIPNetworks(self):
-        ip_networks()
-        ip_networks(use_ipv6=True)
+        ipv4_networks()
 
     def testIpAddressPrivate(self):
         assert ip_address_private('::1')
