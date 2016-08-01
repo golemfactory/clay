@@ -49,6 +49,10 @@ class Database:
             Database._set_user_version(Database.SCHEMA_VERSION)
         db.create_tables(tables, safe=True)
 
+    def close(self):
+        if not self.db.is_closed():
+            self.db.close()
+
 
 class BaseModel(Model):
     class Meta:

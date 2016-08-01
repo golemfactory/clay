@@ -19,6 +19,7 @@ class TestCreateClient(TestDirFixture):
         assert hasattr(ClientConfigDescriptor(), "node_address")
         c = Client(datadir=self.path, node_address='1.0.0.0')
         assert c.config_desc.node_address == '1.0.0.0'
+        c.quit()
 
     def test_config_override_invalid(self):
         """Test that Client() does not allow to override properties
@@ -138,7 +139,7 @@ class TestClient(TestWithDatabase):
     #     node.prv_port = port_1
     #
     #     c.interpret_metadata(meta, ip_1, port_1, node)
-    #     c._unlock_datadir()
+    #     c.quit()
 
     def test_get_status(self):
         c = Client(datadir=self.path)
@@ -167,6 +168,11 @@ class TestClient(TestWithDatabase):
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
         assert "Not accepting tasks" in status
+        c.quit()
+
+    def test_quit(self):
+        c = Client(datadir=self.path)
+        c.db = None
         c.quit()
 
 

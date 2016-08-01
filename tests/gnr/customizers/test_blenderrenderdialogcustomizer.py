@@ -66,6 +66,9 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
+        self.logic.client.config_desc.use_ipv6 = False
+        self.logic.client.config_desc.max_price = 0
+        self.logic.client.get_config.return_value = self.logic.client.config_desc
         self.logic.client.get_res_dirs.return_value = {'computing': self.path, 'received': self.path}
         self.logic.customizer.init_config()
         customizer = self.logic.customizer.new_task_dialog_customizer.task_customizer
@@ -82,5 +85,5 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
         customizer._change_renderer_options()
         assert customizer.renderer_options.frames == [1, 3] + range(5, 13)
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                                        u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
+                                           u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
 

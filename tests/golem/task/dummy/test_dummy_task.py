@@ -11,7 +11,7 @@ class TestDummyTask(unittest.TestCase):
         self.assertIsNone(error_msg)
 
     def test_dummy_task_computation_timeout(self, *mocks):
-        error_msg = runner.run_simulation(timeout=1)
+        error_msg = runner.run_simulation(timeout=5)
         self.assertEqual(error_msg, "Computation timed out")
 
     def test_dummy_task_computation_subprocess_error(self, *mocks):
