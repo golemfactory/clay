@@ -245,6 +245,7 @@ class AbsRenderingMainWindowCustomizer(object):
             
             x = (x - margin_left)
             y = (y - margin_top)
+            print "X, Y: {} {}".format(int(round(x)), int(round(y)))
             task_id = definition.task_id
             task = self.logic.get_task(task_id)
             renderer = self.logic.get_renderer(definition.renderer)
