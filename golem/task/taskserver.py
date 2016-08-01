@@ -12,6 +12,7 @@ from taskcomputer import TaskComputer
 from taskkeeper import TaskHeaderKeeper
 from taskmanager import TaskManager
 from tasksession import TaskSession
+from weakreflist.weakreflist import WeakList
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
-        self.task_sessions_incoming = []
+        self.task_sessions_incoming = WeakList()
 
         self.max_trust = 1.0
         self.min_trust = 0.0
