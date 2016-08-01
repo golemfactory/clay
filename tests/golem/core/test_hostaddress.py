@@ -20,6 +20,10 @@ def mock_ifaddresses(*args):
             addr='8.8.8.8',
             netmask='255.255.255.255'
         ),
+        dict(
+            addr='invalid',
+            netmask='invalid'
+        ),
     ]
     return addrs
 
