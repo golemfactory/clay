@@ -24,35 +24,66 @@ class TestBlenderDefaults(unittest.TestCase):
 
 
 class TestBlenderFrameTask(TempDirFixture):
-    def test_init_preview(self):
+    def setUp(self):
+        super(TestBlenderFrameTask, self).setUp()
         program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
-        bt = BlenderRenderTask(node_name="example-node-name",
-                               task_id="example-task-id",
-                               main_scene_dir=self.tempdir,
-                               main_scene_file="example.blend",
-                               main_program_file=program_file,
-                               total_tasks=7,
-                               res_x=2,
-                               res_y=300,
-                               outfilebasename="example_out",
-                               output_file=output_file,
-                               output_format="PNG",
-                               full_task_timeout=1,
-                               subtask_timeout=1,
-                               task_resources=[],
-                               estimated_memory=123,
-                               root_path=self.tempdir,
-                               use_frames=True,
-                               frames=[10],
-                               compositing=False,
-                               max_price=10)
+        self.bt = BlenderRenderTask(node_name="example-node-name",
+                                    task_id="example-task-id",
+                                    main_scene_dir=self.tempdir,
+                                    main_scene_file=self.temp_file_name("example.blend"),
+                                    main_program_file=program_file,
+                                    total_tasks=6,
+                                    res_x=2,
+                                    res_y=300,
+                                    outfilebasename="example_out",
+                                    output_file=output_file,
+                                    output_format="PNG",
+                                    full_task_timeout=1,
+                                    subtask_timeout=1,
+                                    task_resources=[],
+                                    estimated_memory=123,
+                                    root_path=self.tempdir,
+                                    use_frames=True,
+                                    frames=[7, 8, 10],
+                                    compositing=False,
+                                    max_price=10)
 
         dm = DirManager(self.path)
-        bt.initialize(dm)
+        self.bt.initialize(dm)
 
-        assert len(bt.preview_file_path) == len(bt.frames)
-        assert len(bt.preview_task_file_path) == len(bt.frames)
+    def test_init_preview(self):
+        assert len(self.bt.preview_file_path) == len(self.bt.frames)
+        assert len(self.bt.preview_task_file_path) == len(self.bt.frames)
+
+    def test_computation_failed_or_finished(self):
+        assert self.bt.total_tasks == 6
+        extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        assert extra_data.ctd is not None
+        extra_data2 = self.bt.query_extra_data(1000, 2, "DEF", "def")
+        assert extra_data2.ctd is not None
+        self.bt.computation_failed(extra_data.ctd.subtask_id)
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [], 0)
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.failure
+
+        extra_data = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
+        assert extra_data.ctd is not None
+        file1 = path.join(self.bt.tmp_dir, 'result1')
+        img = Image.new("RGB", (self.bt.res_x, self.bt.res_y / 2))
+        img.save(file1, "PNG")
+        file2 = path.join(self.bt.tmp_dir, 'result1')
+        img.save(file2, "PNG")
+        img.close()
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
+        extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
+        assert extra_data.ctd is not None
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
+        str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
+        print str_
+        assert path.isfile(str_)
+
 
 
 class TestBlenderTask(TempDirFixture):
