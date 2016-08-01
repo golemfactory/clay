@@ -21,6 +21,7 @@ from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
@@ -471,6 +472,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(task_state)
         t = Task.build_task(tb)
+        t.initialize(DirManager(self.datadir))
 
         self.br = BenchmarkRunner(t, self.datadir,
                                   lambda p: self._benchmark_computation_success(performance=p, label=label),
