@@ -33,6 +33,9 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
+        self.logic.client.config_desc.use_ipv6 = False
+        self.logic.client.config_desc.max_price = 0
+        self.logic.client.get_config.return_value = self.logic.client.config_desc
         self.logic.client.get_res_dirs.return_value = {'computing': self.path, 'received': self.path}
         self.logic.customizer.init_config()
         lux_customizer = self.logic.customizer.new_task_dialog_customizer.task_customizer

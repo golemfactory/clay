@@ -1,8 +1,7 @@
 import logging
 import os
+from mock import Mock, patch
 from multiprocessing import Queue
-
-from mock import Mock
 
 from gnr.gnrstartapp import load_environments, start_client_process, \
     start_gui_process, GUIApp
@@ -20,10 +19,11 @@ class MockService(object):
 
 class TestStartAppFunc(TestDirFixtureWithReactor):
 
-    def test_config_logging_1(self):
+    @patch('logging.config.fileConfig')
+    def test_config_logging(self, _):
         path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
         config_logging(path)
-        config_logging(os.path.join(self.path, "golem.test"))
+        assert os.path.exists(os.path.dirname(path))
         logging.shutdown()
 
     def test_load_environments(self):
@@ -32,8 +32,10 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             assert isinstance(el, Environment)
         assert len(envs) > 2
 
-    def test_start_client(self):
+    @patch('golem.core.common.config_logging')
+    def test_start_client(self, _):
         client = None
+
         try:
             client = Client(datadir=self.path,
                             transaction_system=False,
@@ -44,24 +46,34 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                                  client=client,
                                  start_ranking=False)
         except Exception as exc:
-            self.fail("Failed to start client process: {}".format(exc))
+            self.fail("Cannot start client process: {}".format(exc))
         finally:
             if client:
                 client.quit()
 
-    def test_start_gui(self):
+    @patch('golem.core.common.config_logging')
+    def test_start_gui(self, _):
         queue = Queue()
+
         rpc_server = WebSocketRPCServerFactory()
         rpc_server.local_host = '127.0.0.1'
 
         mock_service_info = rpc_server.add_service(MockService())
         queue.put(mock_service_info)
 
-        gui_app = GUIApp(rendering=True)
-        gui_app.listen = Mock()
-        reactor = self._get_reactor()
+        gui_app = None
 
-        start_gui_process(queue, self.path,
-                          gui_app=gui_app,
-                          reactor=reactor)
-        logging.shutdown()
+        try:
+            gui_app = GUIApp(rendering=True)
+            gui_app.listen = Mock()
+            reactor = self._get_reactor()
+
+            start_gui_process(queue, self.path,
+                              gui_app=gui_app,
+                              reactor=reactor)
+        except Exception as exc:
+            self.fail("Cannot start gui process: {}".format(exc))
+        finally:
+            if gui_app and gui_app.app and gui_app.app.app:
+                gui_app.app.app.exit(0)
+                gui_app.app.app.deleteLater()

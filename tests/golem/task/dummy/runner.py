@@ -66,12 +66,12 @@ def run_requesting_node(datadir, num_subtasks=3):
     report("Listening on {}".format(requester_addr))
 
     def report_status():
-        finished = False
         while True:
             time.sleep(1)
-            if not finished and task.finished_computation():
+            if task.finished_computation():
                 report("Task finished")
-                finished = True
+                shutdown()
+                return
 
     reactor.callInThread(report_status)
     reactor.run()
@@ -221,9 +221,10 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             if proc.poll() is None:
                 if is_windows():
                     proc.terminate()
-                    proc.wait()
                 else:
                     proc.kill()
+                proc.wait()
+                del proc
 
         time.sleep(1)
         shutil.rmtree(datadir)

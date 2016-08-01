@@ -1,20 +1,10 @@
-import logging
 import unittest
 
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import config_logging
 
 
 class BlenderEnvTest(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        config_logging()
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.shutdown()
 
     def test_blender(self):
         env = BlenderEnvironment()
@@ -30,14 +20,6 @@ class BlenderEnvTest(unittest.TestCase):
         
 
 class TestLuxRenderEnvironment(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        config_logging()
-
-    @classmethod
-    def tearDownClass(cls):
-        logging.shutdown()
 
     def test_lux(self):
         env = LuxRenderEnvironment()
