@@ -17,7 +17,9 @@ class TestCreateClient(TestDirFixture):
 
     def test_config_override_valid(self):
         assert hasattr(ClientConfigDescriptor(), "node_address")
-        c = Client(datadir=self.path, node_address='1.0.0.0')
+        c = Client(datadir=self.path, node_address='1.0.0.0',
+                   transaction_system=False, connect_to_known_hosts=False,
+                   use_docker_machine_manager=False)
         assert c.config_desc.node_address == '1.0.0.0'
         c.quit()
 
@@ -27,13 +29,16 @@ class TestCreateClient(TestDirFixture):
         """
         assert not hasattr(ClientConfigDescriptor(), "node_colour")
         with self.assertRaises(AttributeError):
-            Client(datadir=self.path, node_colour='magenta')
+            Client(datadir=self.path, node_colour='magenta',
+                   transaction_system=False, connect_to_known_hosts=False,
+                   use_docker_machine_manager=False)
 
 
 class TestClient(TestWithDatabase):
 
     def test_payment_func(self):
-        c = Client(datadir=self.path, transaction_system=True)
+        c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                   use_docker_machine_manager=False)
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
@@ -63,7 +68,8 @@ class TestClient(TestWithDatabase):
         c.quit()
 
     def test_remove_resources(self):
-        c = Client(datadir=self.path)
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False)
 
         def unique_dir():
             d = os.path.join(self.path, str(uuid.uuid4()))
@@ -101,21 +107,24 @@ class TestClient(TestWithDatabase):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
         datadir = os.path.join(self.path, "non-existing-dir")
-        c = Client(datadir=datadir)
+        c = Client(datadir=datadir, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False)
         assert c.config_desc.node_address == ''
         with self.assertRaises(IOError):
             Client(datadir=datadir)
         c.quit()
 
     def test_metadata(self):
-        c = Client(datadir=self.path)
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False)
         meta = c.get_metadata()
         assert meta is not None
         assert not meta
         c.quit()
 
     def test_description(self):
-        c = Client(datadir=self.path)
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False)
         assert c.get_description() == ""
         desc = u"ADVANCE DESCRIPTION\n\tSOME TEXT"
         c.change_description(desc)
@@ -125,7 +134,8 @@ class TestClient(TestWithDatabase):
     # FIXME: IPFS metadata disabled
     # def test_interpret_metadata(self):
     #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-    #     c = Client(datadir=self.path)
+    #     c = Client(datadir=self.path, transaction_system=False,
+    #                connect_to_known_hosts=False, use_docker_machine_manager=False)
     #     c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
     #     c.ipfs_manager = IPFSDaemonManager()
     #     meta = c.get_metadata()
@@ -142,7 +152,8 @@ class TestClient(TestWithDatabase):
     #     c.quit()
 
     def test_get_status(self):
-        c = Client(datadir=self.path)
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False)
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
         c.p2pservice = MagicMock()
