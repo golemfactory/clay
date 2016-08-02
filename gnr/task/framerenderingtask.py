@@ -351,8 +351,8 @@ def __get_boarder(start_task, end_task, parts, res_x, res_y):
         scale_factor = 1.0
     
     boarder = []
-    upper = int(round(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
-    lower = int(round(float(res_y) * scale_factor / float(parts) * end_task))
+    upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
+    lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
     for i in range(upper, lower):
         boarder.append((0, i))
         boarder.append((res_x, i))
@@ -363,4 +363,8 @@ def __get_boarder(start_task, end_task, parts, res_x, res_y):
 
 
 def __num_from_pixel(p_y, res_y, tasks):
-    return int(round(p_y / round(float(res_y) / float(tasks)))) + 1
+    #return int(math.floor(p_y / math.floor(float(res_y) / float(tasks)))) + 1
+    num = int(math.ceil(float(tasks) * float(p_y) / float(res_y)))
+    num = max(num, 1)
+    num = min(num, tasks)
+    return num
