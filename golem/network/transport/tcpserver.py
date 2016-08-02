@@ -5,7 +5,7 @@ import time
 from stun import FullCone, OpenInternet
 from collections import deque
 
-from golem.core.hostaddress import ip_address_private, ip_network_contains, ip_networks
+from golem.core.hostaddress import ip_address_private, ip_network_contains, ipv4_networks
 from server import Server
 from tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
@@ -25,11 +25,7 @@ class TCPServer(Server):
         Server.__init__(self, config_desc, network)
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
-        self.ipv4_networks = ip_networks()
-        if self.use_ipv6:
-            self.ipv6_networks = ip_networks(use_ipv6=True)
-        else:
-            self.ipv6_networks = []
+        self.ipv4_networks = ipv4_networks()
 
     def change_config(self, config_desc):
         """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
@@ -161,17 +157,11 @@ class PendingConnectionsServer(TCPServer):
         """
         if not socket_addr:
             return False
-
-        use_ipv6 = self.use_ipv6
-        is_ipv6 = socket_addr.ipv6
-
-        if is_ipv6 and not use_ipv6:
-            return False
+        elif socket_addr.ipv6:
+            return self.use_ipv6
 
         addr = socket_addr.address
         if ip_address_private(addr):
-            if is_ipv6:
-                return self._is_address_in_network(addr, self.ipv6_networks)
             return self._is_address_in_network(addr, self.ipv4_networks)
         return True
 
