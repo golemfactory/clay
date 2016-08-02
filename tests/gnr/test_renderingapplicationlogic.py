@@ -14,6 +14,7 @@ from gnr.gnrstartapp import register_rendering_task_types
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
+from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -25,6 +26,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         self.logic.datadir = self.path
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.dir_manager = DirManager(self.path)
 
     def tearDown(self):
         super(TestRenderingApplicationLogic, self).tearDown()
