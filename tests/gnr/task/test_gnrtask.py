@@ -52,8 +52,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         files = self.additional_dir_content([5])
         shutil.move(files[2], files[2]+".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+".err.log")
-        files[3] += ".err.log"
+        shutil.move(files[3], files[3]+"err.log")
+        files[3] += "err.log"
         subtask_id = "xxyyzz"
         task.interpret_task_results(subtask_id, files, result_types["files"], self.path)
         files[2] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[2]))

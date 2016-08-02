@@ -240,7 +240,7 @@ class GNRTask(Task):
             self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(result_type)
             return []
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext=".err.log"):
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
         """ From a list of files received in task_results, return only files that don't have extension
         <log_ext> or <err_log_ext>. File with log_ext is saved as stdout for this subtask (only one file
         is currently supported). File with err_log_ext is save as stderr for this subtask (only one file is
