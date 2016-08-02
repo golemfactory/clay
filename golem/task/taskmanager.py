@@ -92,7 +92,6 @@ class TaskManager(object):
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
-        task.initialize(self.dir_manager)
         task.notify_update_task = self.__notice_task_updated
         self.tasks[task.header.task_id] = task
 

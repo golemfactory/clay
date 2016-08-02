@@ -77,6 +77,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = None
         self.br = None
         self.__looping_calls = None
+        self.dir_manager = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
@@ -128,6 +129,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
             self.customizer.prompt_node_name(config)
+        self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -311,7 +313,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
                                                                                      task_state.definition,
-                                                                                     self.datadir)
+                                                                                     self.datadir, self.dir_manager)
         return builder
 
     def restart_task(self, task_id):
@@ -472,7 +474,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(task_state)
         t = Task.build_task(tb)
-        t.initialize(DirManager(self.datadir))
 
         self.br = BenchmarkRunner(t, self.datadir,
                                   lambda p: self._benchmark_computation_success(performance=p, label=label),

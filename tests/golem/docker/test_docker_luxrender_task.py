@@ -69,10 +69,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _test_task(self):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
-        render_task = task_builder.build()
         dir_manager = DirManager(self.path)
-        render_task.initialize(dir_manager)
+        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
@@ -134,8 +133,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
-        dir_manager = DirManager(self.path)
-        task.initialize(dir_manager)
         test_file = task._LuxTask__get_test_flm()
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())

@@ -95,7 +95,9 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            docker_images=self.task_definition.docker_images
                            )
 
-        return self._set_verification_options(lux_task)
+        self._set_verification_options(lux_task)
+        lux_task.initialize(self.dir_manager)
+        return lux_task
 
 
 class LuxTask(RenderingTask):
@@ -153,13 +155,6 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
-
-    def initialize(self, dir_manager):
-        super(LuxTask, self).initialize(dir_manager)
-        hold_flm = self.__get_test_flm(get_tmp_path(self.header.task_id, self.root_path))
-        if os.path.isfile(hold_flm):
-            shutil.move(hold_flm, self.__get_test_flm())
-        self.undeletable.append(self.__get_test_flm())
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         verdict = self._accept_client(node_id)
@@ -285,12 +280,9 @@ class LuxTask(RenderingTask):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
-        hold_results_dir = get_tmp_path(self.header.task_id, self.root_path)
         if flm is not None:
             try:
-                if not os.path.exists(hold_results_dir):
-                    os.makedirs(hold_results_dir)
-                shutil.copy(flm, self.__get_test_flm(hold_results_dir))
+                shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:

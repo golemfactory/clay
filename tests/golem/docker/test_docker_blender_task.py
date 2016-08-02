@@ -62,10 +62,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
         task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
-        task_builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir)
-        render_task = task_builder.build()
         dir_manager = DirManager(self.path)
-        render_task.initialize(dir_manager)
+        task_builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 

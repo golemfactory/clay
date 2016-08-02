@@ -308,10 +308,10 @@ class TestBlenderTask(TempDirFixture):
         bb = BlenderBenchmark()
         bb.task_definition.verification_options = AdvanceRenderingVerificationOptions()
         bb.task_definition.verification_options.type = 'forAll'
-        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=bb.task_definition, root_path=self.tempdir)
-        task = builder.build()
         dm = DirManager(self.tempdir)
-        task.initialize(dm)
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=bb.task_definition, root_path=self.tempdir,
+                                           dir_manager=dm)
+        task = builder.build()
         tmpdir = dm.get_task_temporary_dir(task.header.task_id, True)
         ed = task.query_extra_data(1000, 4, "NODE_ID", "NODE_NAME")
         file_ = path.join(tmpdir, 'preview.bmp')
@@ -350,7 +350,8 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.renderer_options = BlenderRendererOptions()
-        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition, root_path=self.tempdir)
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition, root_path=self.tempdir,
+                                           dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
 

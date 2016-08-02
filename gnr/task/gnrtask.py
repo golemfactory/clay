@@ -23,10 +23,12 @@ def log_key_error(*args, **kwargs):
 
 
 class GNRTaskBuilder(TaskBuilder):
-    def __init__(self, node_name, task_definition, root_path):
+    def __init__(self, node_name, task_definition, root_path, dir_manager):
+        super(GNRTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.node_name = node_name
         self.root_path = root_path
+        self.dir_manager = dir_manager
 
     def build(self):
         pass

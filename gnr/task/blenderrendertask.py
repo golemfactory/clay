@@ -144,7 +144,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
-        return self._set_verification_options(blender_task)
+        self._set_verification_options(blender_task)
+        blender_task.initialize(self.dir_manager)
+        return blender_task
 
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
