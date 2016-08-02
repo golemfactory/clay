@@ -212,9 +212,10 @@ class RenderingTask(GNRTask):
     def _update_preview_task_file_path(self, preview_task_file_path):
         self.preview_task_file_path = preview_task_file_path
 
-    def _mark_task_area(self, subtask, img_task, color):
-        upper = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
-        lower = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
+    def _mark_task_area(self, subtask, img_task, color, delta=0):
+        upper = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1))) + delta
+        lower = int(math.floor(self.scale_factor * float(self.res_y) / float(self.total_tasks) * (subtask['end_task']))) + delta
+        lower = min(lower, int(math.floor(self.scale_factor * float(self.res_y))))
         for i in range(0, int(round(self.scale_factor * self.res_x))):
             for j in range(upper, lower):
                 img_task.putpixel((i, j), color)

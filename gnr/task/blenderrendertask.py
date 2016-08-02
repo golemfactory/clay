@@ -43,6 +43,7 @@ class PreviewUpdater(object):
         self.scene_res_y = scene_res_y
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
+        self.delta = 0
         # preview resolution
         self.preview_x = 300
         self.preview_y = 200
@@ -76,16 +77,25 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
+
             scaled = ImageOps.fit(img, 
-                                  (int(round(self.scale_factor * self.scene_res_x)), int(math.ceil(self.scale_factor * img.size[1]))), 
+                                  (int(round(self.scale_factor * self.scene_res_x)), int(round(self.scale_factor * img.size[1]))), 
                                   method=Image.BILINEAR)
             
             offset = self.get_offset(subtask_number)
+            img_x, img_y = scaled.size
+            print "SCALED SIZE: {} {}".format(img_x, img_y)
+            delta_changed = False
             if subtask_number == self.perfectly_placed_subtasks + 1:
                 _, img_y = scaled.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
-
+                expected = int(round((self.expected_offsets[subtask_number] * self.scale_factor)))
+                if self.delta != offset - expected:
+                    self.delta = offset - expected
+                    delta_changed = True
+            else:
+                offset += self.delta
             if os.path.exists(self.preview_file_path):
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(scaled, (0, offset))
@@ -107,6 +117,18 @@ class PreviewUpdater(object):
         
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
+        if delta_changed:
+            background = Image.new("RGB", (int(round(self.scale_factor * self.scene_res_x)), int(round(self.scale_factor * self.scene_res_y)) - self.perfect_match_area_y))
+            img_current = Image.open(self.preview_file_path)
+            img_current.paste(background, (0, self.perfect_match_area_y + 1))
+            img_current.save(self.preview_file_path, "BMP")
+            img_current.close()
+            prev_subtask = -1
+            for subtask in sorted(self.chunks.keys()):
+                if subtask > self.perfectly_placed_subtasks and subtask != prev_subtask + 1:
+                    self.update_preview(self.chunks[subtask], subtask)
+                prev_subtask = subtask
+                    
 
 
 def build_blender_renderer_info(dialog, customizer):
@@ -462,7 +484,7 @@ class BlenderRenderTask(FrameRenderingTask):
                        
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
-            RenderingTask._mark_task_area(self, subtask, img_task, color)
+            RenderingTask._mark_task_area(self, subtask, img_task, color, delta=self.preview_updater.delta)
         elif self.total_tasks <= len(self.frames):
             for i in range(0, int(round(self.scale_factor * self.res_x))):
                 for j in range(0, int(round(self.scale_factor * self.res_y))):

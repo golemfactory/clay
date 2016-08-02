@@ -309,7 +309,7 @@ class AbsRenderingMainWindowCustomizer(object):
         pixmap = QPixmap(self.last_preview_path)
         p = QPainter(pixmap)
         pen = QPen(QColor(0, 0, 0))
-        pen.setWidth(3)
+        pen.setWidth(2)
         p.setPen(pen)
         for (x, y) in border:
             p.drawPoint(x, y)
