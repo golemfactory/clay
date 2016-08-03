@@ -253,11 +253,15 @@ class AsyncRequestExecutor(object):
     """ Execute a deferred job in a separate thread (Twisted) """
 
     @staticmethod
-    def run(deferred_call, success, error):
+    def run(deferred_call, success=None, error=None):
         deferred = threads.deferToThread(deferred_call.method,
                                          *deferred_call.args,
                                          **deferred_call.kwargs)
-        deferred.addCallbacks(success, error)
+        if success:
+            deferred.addCallback(success)
+        if error:
+            deferred.addErrback(error)
+        return deferred
 
 
 SHA1_BLOCK_SIZE = 65536

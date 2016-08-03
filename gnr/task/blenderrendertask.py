@@ -3,6 +3,7 @@ import random
 import os
 import math
 from collections import OrderedDict
+from threading import Lock
 
 from PIL import Image, ImageChops
 
@@ -49,6 +50,7 @@ class PreviewUpdater(object):
         # their correct places
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
+        self.__lock = Lock()
         
     def get_offset(self, subtask_number):
         if subtask_number == self.perfectly_placed_subtasks + 1:
@@ -64,23 +66,24 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
-                
-            offset = self.get_offset(subtask_number)
-            if subtask_number == self.perfectly_placed_subtasks + 1:
-                _, img_y = img.size
-                self.perfect_match_area_y += img_y
-                self.perfectly_placed_subtasks += 1
 
-            if os.path.exists(self.preview_file_path):
-                img_current = Image.open(self.preview_file_path)
-                img_current.paste(img, (0, offset))
-                img_current.save(self.preview_file_path, "BMP")
-                img_current.close()
-            else:
-                img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
-                img_offset.paste(img, (0, offset))
-                img_offset.save(self.preview_file_path, "BMP")
-                img_offset.close()
+            with self.__lock:
+                offset = self.get_offset(subtask_number)
+                if subtask_number == self.perfectly_placed_subtasks + 1:
+                    _, img_y = img.size
+                    self.perfect_match_area_y += img_y
+                    self.perfectly_placed_subtasks += 1
+
+                if os.path.exists(self.preview_file_path):
+                    img_current = Image.open(self.preview_file_path)
+                    img_current.paste(img, (0, offset))
+                    img_current.save(self.preview_file_path, "BMP")
+                    img_current.close()
+                else:
+                    img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
+                    img_offset.paste(img, (0, offset))
+                    img_offset.save(self.preview_file_path, "BMP")
+                    img_offset.close()
             img.close()
 
         except Exception as err:

@@ -251,17 +251,16 @@ class GNRTask(Task):
         :param str err_log_ext: extension that stderr files have
         :return:
         """
+
         filtered_task_results = []
         for tr in task_results:
+            new_tr = os.path.join(subtask_id, tr)
             if tr.endswith(err_log_ext):
-                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
-                os.rename(tr, new_tr)
                 self.stderr[subtask_id] = new_tr
             elif tr.endswith(log_ext):
-                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
-                os.rename(tr, new_tr)
                 self.stdout[subtask_id] = new_tr
             else:
+                os.rename(new_tr, tr)
                 filtered_task_results.append(tr)
 
         return filtered_task_results
