@@ -118,7 +118,7 @@ class PreviewUpdater(object):
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
         if delta_changed:
-            background = Image.new("RGB", (int(round(self.scale_factor * self.scene_res_x)), int(round(self.scale_factor * self.scene_res_y)) - self.perfect_match_area_y))
+            background = Image.new("RGB", (int(round(self.scale_factor * self.scene_res_x)), max(0, int(round(self.scale_factor * self.scene_res_y)) - self.perfect_match_area_y)))
             img_current = Image.open(self.preview_file_path)
             img_current.paste(background, (0, self.perfect_match_area_y + 1))
             img_current.save(self.preview_file_path, "BMP")
