@@ -1,6 +1,7 @@
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import Mock, patch
+import os
 
 from gnr.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
@@ -53,5 +54,5 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         QTest.mouseClick(lux_customizer.gui.ui.chooseMainSceneFileButton, Qt.LeftButton)
         mock_file_dialog.getOpenFileName.assert_called_with(lux_customizer.gui,
                                                             "Choose main scene file",
-                                                            u"",
+                                                            os.path.expanduser("~"),
                                                             u"Scene files (*.LXS *.lxs)")
