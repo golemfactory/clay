@@ -530,7 +530,8 @@ class GNRApplicationLogic(QtCore.QObject):
         if not error_msg:
             return u"Unknown error"
         if any(code in error_msg for code in ['246', '247', '500']):
-            return u"RAM limit is too low. Consider increasing max memory usage"
+            return u"[{}] There is a chance that you RAM limit is too low. Consider increasing max memory usage".format(
+                error_msg)
         return u"{}".format(error_msg)
 
     @inlineCallbacks

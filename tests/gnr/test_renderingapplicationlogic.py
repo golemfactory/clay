@@ -92,7 +92,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"
         logic.test_task_computation_error(u"500 server error")
         logic.progress_dialog_customizer.gui.ui.message.text() ==\
-        u"Task test computation failure. RAM limit is too low. Consider increasing max memory usage"
+        u"Task test computation failure. [500 server error] There is a chance that you RAM limit is too low. Consider increasing max memory usage"
         logic.test_task_computation_error(None)
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Unknown error"
         logic.test_task_computation_success([], 10000)
