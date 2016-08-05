@@ -7,7 +7,6 @@ from collections import OrderedDict
 from PIL import Image, ImageChops
 
 from golem.core.fileshelper import find_file_with_ext
-from golem.core.threads import QueueExecutor
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
@@ -153,7 +152,6 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
-        self.job_executor = QueueExecutor(queue_name='luxrender-task')
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         verdict = self._accept_client(node_id)
@@ -228,28 +226,17 @@ class LuxTask(RenderingTask):
                             logger.warning("Advanced verification set, but couldn't find test result!")
                             logger.info("Skipping verification")
                         else:
-                            self.job_executor.push(self._process_computed_subtask, subtask_id, tr_file)
+                            if not self.merge_flm_files(tr_file, test_result_flm):
+                                logger.info("Subtask " + str(subtask_id) + " rejected.")
+                                self._mark_subtask_failed(subtask_id)
+                                self.num_tasks_received -= 1
+                            else:
+                                logger.info("Subtask " + str(subtask_id) + " successfully verified.")
                 elif not tr_file.upper().endswith('.LOG'):
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
         else:
             self._mark_subtask_failed(subtask_id)
-
-        self.job_executor.push(self._completion_check)
-
-    def _process_computed_subtask(self, subtask_id, tr_file):
-        test_result_flm = self.__get_test_flm()
-
-        if not self.merge_flm_files(tr_file, test_result_flm):
-            logger.info("Subtask " + str(subtask_id) + " rejected.")
-            self._mark_subtask_failed(subtask_id)
-            self.num_tasks_received -= 1
-        else:
-            logger.info("Subtask " + str(subtask_id) + " successfully verified.")
-
-    def _completion_check(self):
-        test_result_flm = self.__get_test_flm()
-
         if self.num_tasks_received == self.total_tasks:
             if self.advanceVerification and os.path.isfile(test_result_flm):
                 self.__generate_final_flm_advanced_verification()

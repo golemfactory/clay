@@ -283,9 +283,9 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['parts'] = parts
 
         if not self.use_frames:
-            self.job_executor.push(self._update_task_preview)
+            self._update_task_preview()
         else:
-            self.job_executor.push(self._update_frame_task_preview)
+            self._update_frame_task_preview()
 
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)

@@ -265,10 +265,3 @@ class AsyncRequestExecutor(object):
         if error:
             deferred.addErrback(error)
         return deferred
-
-
-def async_execution(f):
-    def wrapper(*args, **kwargs):
-        request = AsyncRequest(f, *args, **kwargs)
-        return AsyncRequestExecutor.run(request)
-    return wrapper

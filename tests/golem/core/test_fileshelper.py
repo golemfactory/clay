@@ -5,7 +5,7 @@ import os
 import shutil
 
 from golem.core.common import get_golem_path, is_windows
-from golem.core.fileshelper import get_dir_size, common_dir
+from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -46,6 +46,13 @@ class TestDirSize(TestDirFixture):
             get_dir_size(self.testdir, report_error=errors.append)
             self.assertEqual(len(errors), 1)
             self.assertIs(type(errors[0]), OSError)
+
+    def testOuterInnerDir(self):
+        path = os.path.join('dir', 'subdir', 'file')
+        assert outer_dir_path(path) == os.path.join('dir', 'file')
+        assert outer_dir_path('file') == 'file'
+        assert outer_dir_path('') == ''
+        assert inner_dir_path(path, 'inner') == os.path.join('dir', 'subdir', 'inner', 'file')
 
     def testCommonDir(self):
         paths = {

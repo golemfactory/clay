@@ -1,6 +1,7 @@
 import cPickle
 
 from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
 
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
@@ -246,7 +247,14 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         assert ts.task_manager.task_computation_failure.called
 
     @patch('golem.resource.client.AsyncRequestExecutor')
-    def test_react_to_get_task_result(self, *_):
+    def test_react_to_get_task_result(self, executor):
+
+        def executor_run(req):
+            d = Deferred()
+            d.called = True
+            d.result = req.method(*req.args, **req.kwargs)
+
+        executor.run = executor_run
 
         conn = Mock()
         ts = TaskSession(conn)
@@ -273,17 +281,32 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         msg = MessageGetTaskResult(subtask_id=subtask_id)
 
         trm.create = create
-        ts._react_to_get_task_result(msg)
-        assert ts.send.called
-        assert not ts.task_server.task_result_sent.called
+        d = ts._react_to_get_task_result(msg)
+
+        def cb1(*args):
+            if ts.task_server.task_result_sent.called:
+                self.fail("task_result_sent called")
+
+        assert isinstance(d, Deferred)
+        d.addCallbacks(cb1, cb1)
+
+        def cb2(*args):
+            if not ts.task_server.retry_sending_task_result.called:
+                self.fail("retry_sending_task_result not called")
 
         trm.create = create_raise_env
-        ts._react_to_get_task_result(msg)
-        assert ts.task_server.retry_sending_task_result.called
+        d = ts._react_to_get_task_result(msg)
+        assert isinstance(d, Deferred)
+        d.addCallbacks(cb2, cb2)
+
+        def cb3(*args):
+            if not ts.task_server.task_result_sent.called:
+                self.fail("task_result_sent not called")
 
         trm.create = create_raise
-        ts._react_to_get_task_result(msg)
-        assert ts.task_server.task_result_sent.called
+        d = ts._react_to_get_task_result(msg)
+        assert isinstance(d, Deferred)
+        d.addCallbacks(cb3, cb3)
 
         ts.task_server.get_waiting_task_result.return_value = None
-        assert ts.dropped.called
+        assert not ts._react_to_get_task_result(msg)

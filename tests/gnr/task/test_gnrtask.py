@@ -5,7 +5,7 @@ import cPickle as pickle
 
 from mock import Mock
 
-from gnr.task.gnrtask import GNRTask, logger
+from gnr.task.gnrtask import GNRTask
 from golem.core.fileshelper import outer_dir_path
 from golem.task.taskbase import result_types
 from golem.tools.assertlogs import LogTestCase

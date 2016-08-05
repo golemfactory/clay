@@ -23,7 +23,7 @@ class QueueExecutor(Thread):
         self.max_size = None
 
         self.sleep_idle = 0.5
-        self.sleep_job = 0.1
+        self.sleep_job = 0.01
 
         self._working = False
         self._stop_if_empty = False
@@ -84,9 +84,9 @@ class QueueExecutor(Thread):
                 else:
                     time.sleep(self.sleep_job)
 
+            elif self._stop_if_empty:
+                self.stop()
             else:
-                if self._stop_if_empty:
-                    return
                 time.sleep(self.sleep_idle)
 
     @classmethod
@@ -105,13 +105,14 @@ class QueueExecutor(Thread):
 
 class ThreadQueueExecutor(QueueExecutor):
 
-    def __init__(self, queue_name=None):
+    def __init__(self, queue_name=None, max_size=2):
 
         super(ThreadQueueExecutor, self).__init__(queue_name=queue_name)
-        self.max_size = 2
+        self.max_size = max_size
 
     @classmethod
     def _to_job(cls, source, *args, **kwargs):
+        assert isinstance(source, Thread)
         return source
 
     @classmethod

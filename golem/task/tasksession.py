@@ -398,7 +398,7 @@ class TaskSession(MiddlemanSafeSession):
 
         if msg.delay <= 0.0:
             res.already_sending = True
-            self.__send_result_hash(res)
+            return self.__send_result_hash(res)
         else:
             res.last_sending_trial = time.time()
             res.delay_time = msg.delay
@@ -649,7 +649,7 @@ class TaskSession(MiddlemanSafeSession):
                                client_options=client_options,
                                key_or_secret=secret)
 
-        AsyncRequestExecutor.run(request, success=success, error=error)
+        return AsyncRequestExecutor.run(request, success=success, error=error)
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}

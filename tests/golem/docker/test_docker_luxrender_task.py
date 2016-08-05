@@ -146,7 +146,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
 
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        task.job_executor.finish()
         assert task.verify_subtask(ctd.subtask_id)
 
         extra_data = task.query_extra_data(10000, node_id="Bla")
@@ -155,7 +154,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         bad_file = path.join(path.dirname(test_file), "badfile.flm")
         open(bad_file, "w").close()
         task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
-        task.job_executor.finish()
         assert not task.verify_subtask(ctd.subtask_id)
 
         extra_data = task.query_extra_data(10000)
@@ -163,7 +161,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        task.job_executor.finish()
         assert task.verify_subtask(ctd.subtask_id)
         shutil.move(test_file + "copy", test_file)
 
@@ -172,7 +169,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
         assert task.num_tasks_received == 2
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        task.job_executor.finish()
         assert task.verify_subtask(ctd.subtask_id)
         assert task.verify_task()
         outfile = task.output_file + "." + task.output_format
@@ -192,7 +188,6 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        task.job_executor.finish()
         assert task.verify_subtask(ctd.subtask_id)
         assert task.verify_task()
         assert path.isfile(outfile)
