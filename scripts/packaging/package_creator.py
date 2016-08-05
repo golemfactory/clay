@@ -859,6 +859,7 @@ build_options = {
                 '_cffi_backend.so',
                 'libraw.so.*',
                 'libgmp.so.*',
+                'libpng12.so.0',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
