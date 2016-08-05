@@ -159,8 +159,8 @@ class FrameRenderingTask(RenderingTask):
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
-            img_offset = Image.new("RGB", (self.res_x, self.res_y))
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
+            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
+            offset = int(math.floor((chunk_num - 1) * float(self.res_y) * self.scale_factor / float(all_chunks_num)))
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
@@ -194,7 +194,8 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            img = Image.new("RGB", (self.res_x, self.res_y))
+            img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
+                                    int(round(self.res_y * self.scale_factor))))
             img.save(preview_file_path, "BMP")
 
         return Image.open(preview_file_path)
@@ -208,8 +209,8 @@ class FrameRenderingTask(RenderingTask):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
-            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
+            upper = int(math.floor(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts))
+            lower = int(math.floor(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts + 1))
             for i in range(0, self.res_x):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)

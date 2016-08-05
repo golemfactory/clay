@@ -220,6 +220,31 @@ class AbsRenderingMainWindowCustomizer(object):
 
         if t.definition.renderer:
             definition = t.definition
+            res_x, res_y = definition.resolution
+            if res_x != 0 and res_y != 0:
+                if float(res_x) / float(res_y) > 300. / 200.:
+                    scale_factor = 300. / float(res_x)
+                else:
+                    scale_factor = 200. / float(res_y)
+                scale_factor = min(1.0, scale_factor)
+            else:
+                scale_factor = 1.0
+            
+            scaled_x = res_x * scale_factor
+            scaled_y = res_y * scale_factor
+            
+            
+            margin_left = (300. - scaled_x) / 2.
+            margin_right = 300. - margin_left
+            
+            margin_top = (200. - scaled_y) / 2.
+            margin_bottom = 200. - margin_top
+            
+            if x <= margin_left or x >= margin_right or y <= margin_top or y >= margin_bottom:
+                return
+            
+            x = (x - margin_left)
+            y = (y - margin_top) + 1
             task_id = definition.task_id
             task = self.logic.get_task(task_id)
             renderer = self.logic.get_renderer(definition.renderer)
@@ -229,7 +254,7 @@ class AbsRenderingMainWindowCustomizer(object):
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, frames=frames,
-                                                            frame_num=frame_num)
+                                                            frame_num=frame_num, res_y = scaled_y)
                 else:
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks)
         return num

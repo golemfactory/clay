@@ -35,12 +35,12 @@ class BlenderDefaults(RendererDefaults):
 
 
 class PreviewUpdater(object):
-    def __init__(self, preview_file_path, scene_res_x, scene_res_y, expected_offsets):
+    def __init__(self, preview_file_path, preview_res_x, preview_res_y, expected_offsets):
         # pairs of (subtask_number, its_image_filepath)
         # careful: chunks' numbers start from 1
         self.chunks = {}
-        self.scene_res_x = scene_res_x
-        self.scene_res_y = scene_res_y
+        self.preview_res_x = preview_res_x
+        self.preview_res_y = preview_res_y
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
         
@@ -51,8 +51,6 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         
     def get_offset(self, subtask_number):
-        if subtask_number == self.perfectly_placed_subtasks + 1:
-            return self.perfect_match_area_y
         return self.expected_offsets[subtask_number]
         
     def update_preview(self, subtask_path, subtask_number):
@@ -64,23 +62,30 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
-                
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
                 _, img_y = img.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
-
-            if os.path.exists(self.preview_file_path):
+                
+            # this is the last task
+            if subtask_number + 1 not in self.expected_offsets.keys():
+                height = self.preview_res_y - self.expected_offsets[subtask_number]
+            else:
+                height = self.expected_offsets[subtask_number + 1] - self.expected_offsets[subtask_number]
+            
+            img = img.resize((self.preview_res_x, height), resample=Image.BILINEAR)
+            print "SUBTASK: {}, RESIZED IMAGE: {}, OFFSET: {}".format(subtask_number, img.size, offset)
+            if not os.path.exists(self.preview_file_path) or len(self.chunks) == 1:
+                img_offset = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
+                img_offset.paste(img, (0, offset))
+                img_offset.save(self.preview_file_path, "BMP")
+                img_offset.close()
+            else:
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
                 img_current.save(self.preview_file_path, "BMP")
                 img_current.close()
-            else:
-                img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
-                img_offset.paste(img, (0, offset))
-                img_offset.save(self.preview_file_path, "BMP")
-                img_offset.close()
             img.close()
 
         except Exception as err:
@@ -221,19 +226,34 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
-        expected_offsets = {}
+        self.expected_offsets = {}
+        previous_end = 0
+        print "SCALE FACTOR: {}".format(self.scale_factor)
         for i in range(1, parts + 1):
-            _, expected_offset = self._get_min_max_y(i)
-            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
-            expected_offsets[i] = expected_offset
+            low, high = self._get_min_max_y(i) 
+            low *= self.scale_factor * self.res_y
+            high *=  self.scale_factor * self.res_y
+            height = int(round(high - low))
+            self.expected_offsets[i] = previous_end
+            print "EXPECTED OFFSETS INItIALIZATION: SUBTASK {}, OFFSET {}, PREVIOUS END {}".format(i, self.expected_offsets[i], previous_end)
+            print "LOW, HIGH: {} {}".format(low, high)
+            previous_end += height
+        
+        preview_y = previous_end
         
         if self.use_frames:
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
                 preview_path = self.preview_file_path[i]
-                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
+                self.preview_updaters.append(PreviewUpdater(preview_path, 
+                                                            int(round(self.res_x * self.scale_factor)),
+                                                            preview_y, 
+                                                            self.expected_offsets))
         else:
-            self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+            self.preview_updater = PreviewUpdater(self.preview_file_path, 
+                                                  int(round(self.res_x * self.scale_factor)), 
+                                                  preview_y, 
+                                                  self.expected_offsets)
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -422,6 +442,8 @@ class BlenderRenderTask(FrameRenderingTask):
                 img = exr_to_pil(new_chunk_file_path)
             else:   
                 img = Image.open(new_chunk_file_path)
+            scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))), 
+                                resample=PIL.Image.BILINEAR)
             img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
             img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
             img.close()
@@ -448,8 +470,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.total_tasks <= len(self.frames):
-            for i in range(0, self.res_x):
-                for j in range(0, self.res_y):
+            for i in range(0, int(round(self.res_x * self.scale_factor))):
+                for j in range(0, int(round(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
@@ -457,10 +479,10 @@ class BlenderRenderTask(FrameRenderingTask):
             part = (subtask['start_task'] - 1) % parts + 1
             lower = pu.get_offset(part)
             if part == parts:
-                upper = self.res_y
+                upper = int(round(self.scale_factor * self.res_y))
             else:
                 upper = pu.get_offset(part + 1)
-            for i in range(0, self.res_x):
+            for i in range(0, int(round(self.res_x * self.scale_factor))):
                 for j in range(lower, upper):
                     img_task.putpixel((i, j), color)
                     
