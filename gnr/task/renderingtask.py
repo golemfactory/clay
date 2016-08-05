@@ -15,7 +15,6 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
@@ -185,8 +184,7 @@ class RenderingTask(GNRTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
-        preview_task_file_path = "{}".format(os.path.join(tmp_dir, "current_task_preview"))
+        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir, "current_task_preview"))
 
         img_task = self._open_preview()
 
@@ -196,8 +194,8 @@ class RenderingTask(GNRTask):
             if sub['status'] == SubtaskStatus.failure:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(preview_task_file_path, "BMP")
-        self._update_preview_task_file_path(preview_task_file_path)
+        img_task.save(self.preview_task_file_path, "BMP")
+        self._update_preview_task_file_path(self.preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         self.preview_task_file_path = preview_task_file_path
@@ -285,10 +283,9 @@ class RenderingTask(GNRTask):
         return verify_img(file_, res_x, res_y)
 
     def _open_preview(self):
-        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             img = Image.new("RGB", (self.res_x, self.res_y))
             img.save(self.preview_file_path, "BMP")
             img.close()

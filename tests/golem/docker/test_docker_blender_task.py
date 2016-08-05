@@ -8,6 +8,7 @@ from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
@@ -61,7 +62,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _create_test_task(self, task_file=CYCLES_TASK_FILE):
         task_def = self._load_test_task_definition(task_file)
         node_name = "0123456789abcdef"
-        task_builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir)
+        dir_manager = DirManager(self.path)
+        task_builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task

@@ -21,6 +21,7 @@ from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
@@ -76,6 +77,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = None
         self.br = None
         self.__looping_calls = None
+        self.dir_manager = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
@@ -127,6 +129,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
             self.customizer.prompt_node_name(config)
+        self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -310,7 +313,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
                                                                                      task_state.definition,
-                                                                                     self.datadir)
+                                                                                     self.datadir, self.dir_manager)
         return builder
 
     def restart_task(self, task_id):
