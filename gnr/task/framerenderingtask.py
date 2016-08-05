@@ -132,11 +132,10 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(new_chunk_file_path)
 
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if self.preview_file_path[num] is None:
-            self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
+            self.preview_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), num)
         if self.preview_task_file_path[num] is None:
-            self.preview_task_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), num)
+            self.preview_task_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), num)
 
         if not final:
             img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
@@ -144,6 +143,8 @@ class FrameRenderingTask(RenderingTask):
         if img:
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
+            
+        img.close()
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
@@ -223,7 +224,7 @@ class FrameRenderingTask(RenderingTask):
             parts = total_tasks / len(frames)
             return [frames[(start_task - 1) / parts]], parts
 
-    def _put_image_together(self, tmp_dir):
+    def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -232,11 +233,12 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+            self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
 
     def _put_frame_together(self, frame_num, num_start):
-        output_file_name = os.path.join(self.tmp_dir, self._get_output_name(frame_num, num_start))
+        directory = os.path.dirname(self.output_file)
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -283,10 +285,9 @@ class FrameRenderingTask(RenderingTask):
         return self.total_tasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
-        preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
-        preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
+        preview_task_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), idx)
+        preview_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), idx)
         img_task = self._open_frame_preview(preview_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")

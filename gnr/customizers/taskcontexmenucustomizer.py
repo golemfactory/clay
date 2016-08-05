@@ -15,13 +15,13 @@ class TaskContextMenuCustomizer:
 
         enabled_actions = self.__get_enabled_actions(self.gnr_task_state.task_state.status)
 
-        self.__build_and_connect_action("Abort Task", self.__abort_task_triggered, enabled_actions)
-        self.__build_and_connect_action("Restart", self.__restart_task_triggered, enabled_actions)
-        self.__build_and_connect_action("Delete", self.__delete_task_triggered, enabled_actions)
-        self.__build_and_connect_action("Clone Task", self.__new_task_triggered, enabled_actions)
         self.__build_and_connect_action("Start Task", self.__start_task_triggered, enabled_actions)
         self.__build_and_connect_action("Pause", self.__pause_task_triggered, enabled_actions)
         self.__build_and_connect_action("Resume", self.__resume_task_triggered, enabled_actions)
+        self.__build_and_connect_action("Clone Task", self.__new_task_triggered, enabled_actions)
+        self.__build_and_connect_action("Abort Task", self.__abort_task_triggered, enabled_actions)
+        self.__build_and_connect_action("Restart", self.__restart_task_triggered, enabled_actions)
+        self.__build_and_connect_action("Delete", self.__delete_task_triggered, enabled_actions)
         self.__build_and_connect_action("Change Timeouts", self.__change_task_triggered, enabled_actions)
         self.__build_and_connect_action("Show Details", self.__show_task_details_triggered, enabled_actions)
         self.__build_and_connect_action("Show Result", self.__show_result_triggered, enabled_actions)
@@ -140,7 +140,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
-        if task_status == TaskStatus.failure:
+        if task_status == TaskStatus.timeout:
             enabled["Abort Task"] = False
             enabled["Restart"] = True
             enabled["Start Task"] = False

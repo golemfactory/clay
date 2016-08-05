@@ -1,6 +1,7 @@
 import random
 from os import path
 
+from golem.appconfig import MIN_PRICE
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
@@ -63,7 +64,7 @@ class DummyTask(Task):
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=1000000)
+            max_price=MIN_PRICE)
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
@@ -175,8 +176,7 @@ class DummyTask(Task):
         return computation.check_pow(long(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
-                             result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
 
         self.subtask_results[subtask_id] = task_result
         if not self.verify_subtask(subtask_id):

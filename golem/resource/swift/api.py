@@ -24,6 +24,7 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                  stream=True, chunk_size=4096, **kwargs):
 
         super(PatchedDownloadFileRequest, self).__init__(file_hash, file_path, stream, **kwargs)
+        self.postfix_len = len('--') + ChunkStream.short_sep_len * 2
         self.chunk_size = chunk_size
 
     def run(self, url, headers=None, **kwargs):
@@ -68,8 +69,7 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                     content_idx += ChunkStream.long_sep_list_len
                     sep_end_idx = buf.find(ChunkStream.short_sep)
 
-                    data_size -= len(buf[:sep_end_idx]) + len('--') + \
-                                 ChunkStream.short_sep_len * 2
+                    data_size -= len(buf[:sep_end_idx]) + self.postfix_len
 
                     if len(buf) >= content_length:
                         f.write(buf[content_idx:data_size])
@@ -77,6 +77,21 @@ class PatchedDownloadFileRequest(DownloadFileRequest):
                         f.write(buf[content_idx:])
 
                     content_started = True
+
+
+def api_translate_exceptions(method):
+    def wrapper(*args, **kwargs):
+        try:
+            return method(*args, **kwargs)
+        except (ovh.exceptions.HTTPError,
+                ovh.exceptions.NetworkError,
+                ovh.exceptions.InvalidResponse,
+                ovh.exceptions.InvalidCredential,
+                ovh.exceptions.InvalidKey) as exc:
+            raise requests.exceptions.HTTPError(exc)
+        except:
+            raise
+    return wrapper
 
 
 class OpenStackSwiftAPI(object):
@@ -103,6 +118,7 @@ class OpenStackSwiftAPI(object):
         return oss.token and oss.regions
 
     @staticmethod
+    @api_translate_exceptions
     def update_token():
         oss = OpenStackSwiftAPI
         response_json = oss.ovh_client.get('/cloud/project/{}/storage/access'
@@ -129,9 +145,9 @@ def api_access(method):
     oss = OpenStackSwiftAPI
 
     def wrapper(*args, **kwargs):
+        if not oss.is_initialized():
+            oss.update_token()
         try:
-            if not oss.is_initialized():
-                oss.update_token()
             return method(*args, **kwargs)
         except requests.exceptions.HTTPError as exc:
             if exc.response.status_code == 401:

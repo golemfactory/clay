@@ -32,7 +32,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server):
+    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -44,6 +44,7 @@ class TaskComputer(object):
         self.counting_task = False
         self.task_requested = False
         self.runnable = True
+        self.listeners = []
         self.current_computations = []
         self.last_task_request = time.time()
 
@@ -58,6 +59,7 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerMachineManager()
+        self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
                            in_background=False)
 
@@ -204,7 +206,7 @@ class TaskComputer(object):
         return ret
 
     def change_config(self, config_desc, in_background=True):
-        self.dir_manager = DirManager(self.task_server.get_task_computer_root(), self.node_name)
+        self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
@@ -216,20 +218,29 @@ class TaskComputer(object):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
-        if not dm.docker_machine_available:
-            return
+        if dm.docker_machine_available and self.use_docker_machine_manager:
 
-        def status_callback():
-            return self.counting_task
+            self.toggle_config_dialog(True)
 
-        def done_callback():
-            logger.debug("Resuming new task computation")
-            self.runnable = True
+            def status_callback():
+                return self.counting_task
 
-        self.runnable = False
-        dm.update_config(status_callback,
-                         done_callback,
-                         in_background)
+            def done_callback():
+                logger.debug("Resuming new task computation")
+                self.toggle_config_dialog(False)
+                self.runnable = True
+
+            self.runnable = False
+            dm.update_config(status_callback,
+                             done_callback,
+                             in_background)
+
+    def register_listener(self, listener):
+        self.listeners.append(listener)
+
+    def toggle_config_dialog(self, on=True):
+        for l in self.listeners:
+            l.toggle_config_dialog(on)
 
     def session_timeout(self):
         self.session_closed()

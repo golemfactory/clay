@@ -23,10 +23,12 @@ def log_key_error(*args, **kwargs):
 
 
 class GNRTaskBuilder(TaskBuilder):
-    def __init__(self, node_name, task_definition, root_path):
+    def __init__(self, node_name, task_definition, root_path, dir_manager):
+        super(GNRTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.node_name = node_name
         self.root_path = root_path
+        self.dir_manager = dir_manager
 
     def build(self):
         pass
@@ -198,12 +200,10 @@ class GNRTask(Task):
         self.res_files = res_files
 
     def get_stderr(self, subtask_id):
-        err = self.stderr.get(subtask_id)
-        return self._interpret_log(err)
+        return self.stderr.get(subtask_id, "")
 
     def get_stdout(self, subtask_id):
-        out = self.stdout.get(subtask_id)
-        return self._interpret_log(out)
+        return self.stdout.get(subtask_id, "")
 
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
@@ -250,7 +250,7 @@ class GNRTask(Task):
             self.stderr[subtask_id] = "[GOLEM] Task result {} not supported".format(result_type)
             return []
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext=".err.log"):
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
         """ From a list of files received in task_results, return only files that don't have extension
         <log_ext> or <err_log_ext>. File with log_ext is saved as stdout for this subtask (only one file
         is currently supported). File with err_log_ext is save as stderr for this subtask (only one file is
@@ -264,9 +264,13 @@ class GNRTask(Task):
         filtered_task_results = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
-                self.stderr[subtask_id] = tr
+                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
+                os.rename(tr, new_tr)
+                self.stderr[subtask_id] = new_tr
             elif tr.endswith(log_ext):
-                self.stdout[subtask_id] = tr
+                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
+                os.rename(tr, new_tr)
+                self.stdout[subtask_id] = new_tr
             else:
                 filtered_task_results.append(tr)
 

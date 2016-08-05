@@ -1,30 +1,30 @@
-import os
-import logging
+from __future__ import division
 import cPickle
+import logging
+import os
 
+from ethereum.utils import denoms
 from PyQt4 import QtCore
-
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
-
-from golem.task.taskstate import TaskStatus
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskState
-from golem.core.common import get_golem_path
-from golem.core.simpleenv import SimpleEnv
-from golem.client import GolemClientEventListener
-
-from gnr.ui.dialog import TestingTaskProgressDialog
-from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gnr.renderingdirmanager import get_benchmarks_path
-from gnr.gnrtaskstate import GNRTaskState
-from gnr.task.tasktester import TaskTester
-from gnr.renderingtaskstate import RenderingTaskState
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
-
 from gnr.benchmarks.minilight.src.minilight import makePerfTest
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.renderingdirmanager import get_benchmarks_path
+from gnr.renderingtaskstate import RenderingTaskState
+from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
+from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
+from golem.core.common import get_golem_path
+from golem.core.simpleenv import SimpleEnv
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger("gnr.app")
 
@@ -41,7 +41,20 @@ class GNRClientEventListener(GolemClientEventListener):
         self.logic.check_network_state()
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.failure, TaskStatus.finished, TaskStatus.paused]
+class GNRClientRemoteEventListener(GolemClientRemoteEventListener):
+    def __init__(self, service_info):
+        GolemClientRemoteEventListener.__init__(self, service_info)
+
+    def task_updated(self, task_id):
+        assert self.remote_client
+        self.remote_client.task_status_changed(task_id)
+
+    def check_network_state(self):
+        assert self.remote_client
+        self.remote_client.check_network_state()
+
+
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
 class GNRApplicationLogic(QtCore.QObject):
@@ -54,14 +67,21 @@ class GNRApplicationLogic(QtCore.QObject):
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
         self.nodes_manager_client = None
         self.client = None
-        self.tt = None
         self.progress_dialog = None
         self.progress_dialog_customizer = None
+        self.config_dialog = None
+        self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
+        self.datadir = None
+        self.res_dirs = None
+        self.node_name = None
+        self.br = None
+        self.__looping_calls = None
+        self.dir_manager = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
-        task_peers = task.LoopingCall(self.get_peers)
+        task_peers = task.LoopingCall(self.update_peers_view)
         task_payments = task.LoopingCall(self.update_payments_view)
         task_computing_stats = task.LoopingCall(self.update_stats)
         task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
@@ -79,21 +99,45 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_gui(self, gui, customizer_class):
         self.customizer = customizer_class(gui, self)
 
-    def register_client(self, client):
+    @inlineCallbacks
+    def register_client(self, client, logic_service_info):
+        event_listener = GNRClientRemoteEventListener(logic_service_info)
+
         self.client = client
-        self.client.register_listener(GNRClientEventListener(self))
+        self.client.register_listener(event_listener)
         self.customizer.init_config()
-        payment_address = ""
-        if client.transaction_system:
-            payment_address = client.transaction_system.get_payment_address()
-        self.customizer.set_options(self.get_config(), client.keys_auth.get_key_id(),
-                                    payment_address)
+
+        use_transaction_system = yield client.use_transaction_system()
+        if use_transaction_system:
+            payment_address = yield client.get_payment_address()
+        else:
+            payment_address = ""
+
+        config = yield self.get_config()
+        response = yield self.client.start_batch() \
+            .get_description() \
+            .get_client_id() \
+            .get_datadir()   \
+            .get_node_name() \
+            .call()
+
+        self.node_name = response.pop()
+        self.datadir = response.pop()
+        client_id = response.pop()
+        description = response.pop()
+
+        self.customizer.set_options(config, client_id, payment_address, description)
+        if not self.node_name:
+            self.customizer.prompt_node_name(config)
+        self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
 
+    @inlineCallbacks
     def get_res_dirs(self):
-        return self.client.get_res_dirs()
+        dirs = yield self.client.get_res_dirs()
+        returnValue(dirs)
 
     def remove_computed_files(self):
         self.client.remove_computed_files()
@@ -104,16 +148,20 @@ class GNRApplicationLogic(QtCore.QObject):
     def remove_received_files(self):
         self.client.remove_received_files()
 
+    @inlineCallbacks
     def check_network_state(self):
-        listen_port = self.client.p2pservice.cur_port
-        task_server_port = self.client.task_server.cur_port
+        listen_port = yield self.client.get_p2p_port()
+        task_server_port = yield self.client.get_task_server_port()
         if listen_port == 0 or task_server_port == 0:
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
-            return
-        peers_num = len(self.client.p2pservice.peers)
+            returnValue(None)
+
+        peer_info = yield self.client.get_peer_info()
+        peers_num = len(peer_info)
+
         if peers_num == 0:
             self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
-            return
+            returnValue(None)
 
         self.customizer.gui.ui.errorLabel.setText("")
 
@@ -125,19 +173,22 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_task_types(self):
         return self.task_types
 
+    @inlineCallbacks
     def get_status(self):
-        self.customizer.gui.ui.statusTextBrowser.setText(self.client.get_status())
+        client_status = yield self.client.get_status()
+        self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
-    def get_peers(self):
+    def update_peers_view(self):
+        self.client.get_peer_info().addCallback(self._update_peers_view)
+
+    def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable
-        peers = self.client.get_peers()
-
         row_count = table.rowCount() if isinstance(table, QObject) else 0
         new_row_count = len(peers)
 
         if new_row_count < row_count:
             for i in xrange(row_count, new_row_count, -1):
-                table.removeRow(i-1)
+                table.removeRow(i - 1)
         elif new_row_count > row_count:
             for i in xrange(row_count, new_row_count):
                 table.insertRow(i)
@@ -149,48 +200,73 @@ class GNRApplicationLogic(QtCore.QObject):
             table.setItem(i, 3, QTableWidgetItem(peer.node_name))
 
     def update_payments_view(self):
-        ts = self.client.transaction_system
-        if ts:
-            b, ab = ts.get_balance()
-            rb = b - ab
-            deposit = 0  # TODO: Get current deposit value.
-            total = deposit + b
-            ether = 1.0 / 10**18
-            fmt = "{:.6f} ETH"
-            ui = self.customizer.gui.ui
-            ui.localBalanceLabel.setText(fmt.format(b * ether))
-            ui.availableBalanceLabel.setText(fmt.format(ab * ether))
-            ui.reservedBalanceLabel.setText(fmt.format(rb * ether))
-            ui.depositBalanceLabel.setText(fmt.format(deposit * ether))
-            ui.totalBalanceLabel.setText(fmt.format(total * ether))
+        self.client.get_balance().addCallback(self._update_payments_view)
 
+    def _update_payments_view(self, result_tuple):
+        if any(b is None for b in result_tuple):
+            return
+        b, ab, deposit = result_tuple
+
+        rb = b - ab
+        total = deposit + b
+        fmt = "{:.6f} ETH"
+        ui = self.customizer.gui.ui
+        ui.localBalanceLabel.setText(fmt.format(b / denoms.ether))
+        ui.availableBalanceLabel.setText(fmt.format(ab / denoms.ether))
+        ui.reservedBalanceLabel.setText(fmt.format(rb / denoms.ether))
+        ui.depositBalanceLabel.setText(fmt.format(deposit / denoms.ether))
+        ui.totalBalanceLabel.setText(fmt.format(total / denoms.ether))
+
+    @inlineCallbacks
     def update_estimated_reputation(self):
-        ranking = self.client.ranking
-        if ranking:
+        use_ranking = yield self.client.use_ranking()
+        if use_ranking:
             ui = self.customizer.gui.ui
-            pro_rep = int(ranking.get_computing_trust(self.client.node.key) * 100)
+
+            client_key = yield self.client.get_node_key()
+            computing_trust = yield self.client.get_computing_trust(client_key)
+            requesting_trust = yield self.client.get_requesting_trust(client_key)
+
+            pro_rep = int(computing_trust * 100)
+            req_rep = int(requesting_trust * 100)
+
             ui.estimatedProviderReputation.setText("{}%".format(pro_rep))
-            req_rep = int(ranking.get_requesting_trust(self.client.node.key) * 100)
             ui.estimatedRequestorReputation.setText("{}%".format(req_rep))
         else:
             message = "Ranking system off"
             self.customizer.gui.ui.estimatedRequestorReputation.setText(message)
             self.customizer.gui.ui.estimatedProviderReputation.setText(message)
 
+    @inlineCallbacks
     def update_stats(self):
-        known_tasks = len(self.client.task_server.task_keeper.get_all_tasks())
-        supported = len(self.client.task_server.task_keeper.supported_tasks)
+
+        response = yield self.client.start_batch() \
+            .get_task_count() \
+            .get_supported_task_count() \
+            .get_computed_task_count() \
+            .get_error_task_count() \
+            .get_timeout_task_count() \
+            .call()
+
+        tasks_with_timeout = response.pop()
+        tasks_with_errors = response.pop()
+        computed_tasks = response.pop()
+        supported = response.pop()
+        known_tasks = response.pop()
+
         self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
         self.customizer.gui.ui.supportedTasks.setText(str(supported))
-        computed_tasks = self.client.task_server.task_computer.stats.computed_tasks
-        tasks_with_timeout = self.client.task_server.task_computer.stats.tasks_with_timeout
-        tasks_with_errors = self.client.task_server.task_computer.stats.tasks_with_errors
         self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
         self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
         self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
 
+    @inlineCallbacks
     def get_config(self):
-        return self.client.config_desc
+        config = yield self.client.get_config()
+        returnValue(config)
+
+    def change_description(self, description):
+        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()
@@ -205,8 +281,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
+    @inlineCallbacks
     def change_config(self, cfg_desc):
-        self.client.change_config(cfg_desc)
+        yield self.client.change_config(cfg_desc)
+        self.node_name = yield self.client.get_node_name()
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     def _get_new_task_state(self):
         return GNRTaskState()
@@ -221,8 +300,9 @@ class GNRApplicationLogic(QtCore.QObject):
             return
 
         tb = self._get_builder(ts)
-
         t = Task.build_task(tb)
+        ts.task_state.status = TaskStatus.starting
+        self.customizer.update_tasks(self.tasks)
 
         self.client.enqueue_new_task(t)
 
@@ -231,9 +311,10 @@ class GNRApplicationLogic(QtCore.QObject):
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
 
-        return self.task_types[task_state.definition.task_type].task_builder_type(self.client.get_node_name(),
-                                                                                  task_state.definition,
-                                                                                  self.client.datadir)
+        builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
+                                                                                     task_state.definition,
+                                                                                     self.datadir, self.dir_manager)
+        return builder
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -266,8 +347,30 @@ class GNRApplicationLogic(QtCore.QObject):
     def show_task_result(self, task_id):
         self.customizer.show_task_result(task_id)
 
+    @inlineCallbacks
     def get_keys_auth(self):
-        return self.client.keys_auth
+        keys_auth = yield self.client.get_keys_auth()
+        returnValue(keys_auth)
+
+    @inlineCallbacks
+    def get_key_id(self):
+        key_id = yield self.client.get_key_id()
+        returnValue(key_id)
+
+    @inlineCallbacks
+    def get_difficulty(self):
+        difficulty = yield self.client.get_difficulty()
+        returnValue(difficulty)
+
+    @inlineCallbacks
+    def load_keys_from_file(self, file_name):
+        result = yield self.client.load_keys_from_file(file_name)
+        returnValue(result)
+
+    @inlineCallbacks
+    def save_keys_to_files(self, private_key_path, public_key_path):
+        result = yield self.client.save_keys_to_files(private_key_path, public_key_path)
+        returnValue(result)
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         if task_id in self.tasks:
@@ -317,39 +420,50 @@ class GNRApplicationLogic(QtCore.QObject):
         else:
             assert False, "Test task {} already registered".format(test_task_info.name)
 
-    def save_task(self, task_state, file_path):
+    @staticmethod
+    def save_task(task_state, file_path):
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
 
-    def recount_performance(self, num_cores):
+    @staticmethod
+    def recount_performance(num_cores):
         test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
+    def toggle_config_dialog(self, on=True):
+        self.customizer.gui.setEnabled('new_task', not on)
+        self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
+
+        if on:
+            if not self.config_dialog_customizer:
+                self.config_dialog = UpdatingConfigDialog(self.customizer.gui.window)
+                self.config_dialog_customizer = UpdatingConfigDialogCustomizer(self.config_dialog, self)
+                self.config_dialog.show()
+        else:
+            if self.config_dialog_customizer:
+                self.config_dialog_customizer.close()
+                self.config_dialog_customizer = None
+                self.config_dialog = None
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
-            tb = self._get_builder(task_state)
-
-            t = Task.build_task(tb)
-
-            self.tt = TaskTester(t, self.client.datadir, self._test_task_computation_success,
-                                 self._test_task_computation_error)
-
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
-            self.customizer.gui.setEnabled('new_task', False)       # disable everything on 'new task' tab
+            self.progress_dialog_customizer.button_enable(False)  # disable 'ok' button
+            self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            self.tt.run()
+            tb = self._get_builder(task_state)
+            t = Task.build_task(tb)
+            self.client.run_test_task(t)
 
             return True
-        else:
-            return False
+
+        return False
 
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label):
@@ -357,12 +471,14 @@ class GNRApplicationLogic(QtCore.QObject):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
-        tb = self._get_builder(task_state)
 
+        tb = self._get_builder(task_state)
         t = Task.build_task(tb)
 
-        self.br = BenchmarkRunner(t, self.client.datadir, lambda p: self._benchmark_computation_success(performance=p, label=label),
-                                self._benchmark_computation_error, benchmark)
+        self.br = BenchmarkRunner(t, self.datadir,
+                                  lambda p: self._benchmark_computation_success(performance=p, label=label),
+                                  self._benchmark_computation_error,
+                                  benchmark)
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
@@ -373,7 +489,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.br.run()
 
     def _benchmark_computation_success(self, performance, label):
-        self.progress_dialog_customizer.show_message("Recounted")
+        self.progress_dialog_customizer.show_message(u"Recounted")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
@@ -383,43 +499,46 @@ class GNRApplicationLogic(QtCore.QObject):
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
-        self.progress_dialog_customizer.show_message("Recounting failed: " + error)
+        self.progress_dialog_customizer.show_message(u"Recounting failed: {}".format(error))
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
+    @inlineCallbacks
     def get_environments(self):
-        return self.client.get_environments()
+        environments = yield self.client.get_environments()
+        returnValue(environments)
 
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def _test_task_computation_success(self, results, est_mem):
-        self.progress_dialog_customizer.show_message("Test task computation success!")
+    def test_task_computation_success(self, results, est_mem):
+        self.progress_dialog_customizer.show_message(u"Test task computation success!")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
-    def _test_task_computation_error(self, error):
-        err_msg = "Task test computation failure. "
+    def test_task_computation_error(self, error):
+        err_msg = u"Task test computation failure. "
         if error:
-            err_msg += error
+            err_msg += u"{}".format(error)
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
 
+    @inlineCallbacks
     def task_status_changed(self, task_id):
 
         if task_id in self.tasks:
-            ts = self.client.query_task_state(task_id)
+            ts = yield self.client.query_task_state(task_id)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
             if ts.status in task_to_remove_status:
-                self.client.task_server.remove_task_header(task_id)
-                self.client.p2pservice.remove_task(task_id)
+                self.client.remove_task_header(task_id)
+                self.client.remove_task(task_id)
         else:
             assert False, "Should never be here!"
 
@@ -429,31 +548,33 @@ class GNRApplicationLogic(QtCore.QObject):
     def key_changed(self):
         self.client.key_changed()
 
+    @inlineCallbacks
     def get_payments(self):
-        if self.client.transaction_system:
-            return self.client.transaction_system.get_payments_list()
-        return ()
+        payments_list = yield self.client.get_payments_list()
+        returnValue(payments_list)
 
+    @inlineCallbacks
     def get_incomes(self):
-        if self.client.transaction_system:
-            return self.client.transaction_system.get_incomes_list()
-        return ()
+        incomes_list = yield self.client.get_incomes_list()
+        returnValue(incomes_list)
 
+    @inlineCallbacks
     def get_max_price(self):
         """ Return suggested max price per hour of computation
         :return:
         """
-        return self.get_config().max_price
+        config = yield self.get_config()
+        returnValue(config.max_price)
 
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+            self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True

@@ -25,6 +25,7 @@ class GNRGui:
 
     def execute(self, using_qt4_reactor=True):
         self.main_window.show()
+
         if not using_qt4_reactor:
             res = self.app.exec_()
             try:

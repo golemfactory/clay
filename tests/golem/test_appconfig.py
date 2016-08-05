@@ -85,7 +85,6 @@ class TestAppConfig(TestDirFixture):
         cfg1 = AppConfig.load_config(dir1, "test.ini")
         cfg2 = AppConfig.load_config(dir2, "test.ini")
 
-        assert cfg1.get_node_name() != cfg2.get_node_name()
         assert cfg1.config_file == path.join(dir1, "test.ini")
         assert cfg2.config_file == path.join(dir2, "test.ini")
 

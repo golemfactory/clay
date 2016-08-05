@@ -14,7 +14,7 @@ class TestResourcesManager(TestDirFixture):
 
         self.node_name = str(uuid.uuid4())
         self.task_id = str(uuid.uuid4())
-        self.dir_manager = DirManager(self.path, self.node_name)
+        self.dir_manager = DirManager(self.path)
 
         self.split_resources = [
             ['test_file.one.two'],

@@ -44,8 +44,8 @@ class TestResourceServer(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
 
-        self.dir_manager = DirManager(self.path, node_name)
-        self.dir_manager_aux = DirManager(self.path, node_name + "-aux")
+        self.dir_manager = DirManager(self.path)
+        self.dir_manager_aux = DirManager(self.path)
         self.config_desc = MockConfig()
         self.target_resources = [
             'test_file',
@@ -73,7 +73,7 @@ class TestResourceServer(TestDirFixture):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
     def testStartAccepting(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
         rs.start_accepting()
@@ -92,7 +92,7 @@ class TestResourceServer(TestDirFixture):
         rs.sync_network()
 
     def testGetDistributedResourceRoot(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
         resource_dir = self.dir_manager.get_node_dir()
@@ -100,7 +100,7 @@ class TestResourceServer(TestDirFixture):
         assert rs.get_distributed_resource_root() == resource_dir
 
     def testDecrypt(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
 
@@ -111,11 +111,10 @@ class TestResourceServer(TestDirFixture):
         self.assertEqual(decrypted, to_encrypt)
 
     def testAddTask(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         new_config_desc = MockConfig(self.path, node_name)
-        dir_manager = DirManager(new_config_desc.root_path,
-                                 new_config_desc.node_name)
+        dir_manager = DirManager(new_config_desc.root_path)
 
         rs = IPFSResourceServer(dir_manager, keys_auth, client)
         rm = rs.resource_manager
@@ -171,7 +170,7 @@ class TestResourceServer(TestDirFixture):
         assert not resources
 
     def testGetResources(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
         rs.resource_manager.clear_resources()
@@ -207,7 +206,7 @@ class TestResourceServer(TestDirFixture):
         assert client.downloaded
 
     def testVerifySig(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
 
@@ -216,7 +215,7 @@ class TestResourceServer(TestDirFixture):
         self.assertTrue(rs.verify_sig(sig, test_str, keys_auth.get_public_key()))
 
     def testAddFilesToGet(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
 

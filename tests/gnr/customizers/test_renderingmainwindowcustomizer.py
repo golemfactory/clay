@@ -15,17 +15,27 @@ from gnr.ui.appmainwindow import AppMainWindow
 
 
 class TestRenderingMainWindowCustomizer(TestDirFixture):
+
+    def setUp(self):
+        super(TestRenderingMainWindowCustomizer, self).setUp()
+        self.logic = MagicMock()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestRenderingMainWindowCustomizer, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
     @patch('gnr.customizers.gnrmainwindowcustomizer.QtCore')
     @patch('gnr.customizers.renderingmainwindowcustomizer.QtCore')
     @patch('gnr.customizers.gnrmainwindowcustomizer.QPalette')
     def test_preview(self, mock_palette, mock_core, mock_core2):
-            customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
-            self.assertTrue(os.path.isfile(customizer.preview_path))
+        customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
+        self.assertTrue(os.path.isfile(customizer.preview_path))
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
-        gnrgui = GNRGui(MagicMock(), AppMainWindow)
-        customizer = RenderingMainWindowCustomizer(gnrgui.get_main_window(), MagicMock())
+        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
 
         customizer.gui.ui.showResourceButton.click()
         customizer.current_task_highlighted = MagicMock()
@@ -33,12 +43,8 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.current_task_highlighted.definition.resources = tmp_files
         customizer.gui.ui.showResourceButton.click()
 
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()
-
     def test_update_preview(self):
-        gnrgui = GNRGui(MagicMock(), AppMainWindow)
-        customizer = RenderingMainWindowCustomizer(gnrgui.get_main_window(), MagicMock())
+        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         rts = RenderingTaskState()
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
@@ -75,9 +81,6 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         rts.task_state.extra_data = {"resultPreview": [img_path]}
         customizer.update_task_additional_info(rts)
 
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()
-
 
 class TestPriorites(TestCase):
     def test_subtask_priority(self):
@@ -98,4 +101,3 @@ class TestPriorites(TestCase):
         assert subtasks_priority(s_rsd) > subtasks_priority(s_fin)
         assert subtasks_priority(s_fin) > subtasks_priority(s_sta)
         assert subtasks_priority(s_fin) > subtasks_priority(s_wai)
-

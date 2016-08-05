@@ -1,21 +1,20 @@
-import unittest
+import logging
 import math
 import os
 import struct
 
-from mock import MagicMock
-
+from golem.core.common import config_logging
+from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.variables import BUFF_SIZE
+from golem.network.transport.message import MessageDisconnect
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
                                                 EncryptFileProducer, DecryptFileConsumer,
                                                 EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
                                                 logger)
-from golem.network.transport.message import MessageDisconnect
-
-from golem.core.variables import BUFF_SIZE
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
-from golem.tools.assertlogs import LogTestCase
+from mock import MagicMock
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -35,8 +34,7 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         for args in datas:
             self.__producer_consumer_test(*args, session=MagicMock())
 
-        EllipticalKeysAuth.set_keys_dir(self.path)
-        self.ek = EllipticalKeysAuth()
+        self.ek = EllipticalKeysAuth(self.path)
         for args in datas:
             self.__producer_consumer_test(*args, data_producer_cls=EncryptDataProducer,
                                           data_consumer_cls=DecryptDataConsumer,
@@ -81,6 +79,15 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
 
 
 class TestFileProducerAndConsumer(TestWithKeysAuth):
+
+    @classmethod
+    def setUpClass(cls):
+        config_logging()
+
+    @classmethod
+    def tearDownClass(cls):
+        logging.shutdown()
+
     def setUp(self):
         TestWithKeysAuth.setUp(self)
         self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])
@@ -99,8 +106,7 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
         self.__producer_consumer_test([self.tmp_file2], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file3], session=MagicMock())
         self.__producer_consumer_test([self.tmp_file1, self.tmp_file2, self.tmp_file3], 32, session=MagicMock())
-        EllipticalKeysAuth.set_keys_dir(self.path)
-        self.ek = EllipticalKeysAuth()
+        self.ek = EllipticalKeysAuth(self.path)
         self.__producer_consumer_test([], file_producer_cls=EncryptFileProducer, file_consumer_cls=DecryptFileConsumer,
                                       session=self.__make_encrypted_session_mock())
         self.__producer_consumer_test([self.tmp_file1], file_producer_cls=EncryptFileProducer,

@@ -32,10 +32,12 @@ class EthereumAddress(object):
 
     def __init__(self, address):
         self.address = None
-        try:
-            self.address = self.__parse(address)
-        except Exception as err:
-            logger.warning("Can't set Ethereum address, {} is not a proper value: {}".format(address, err))
+        if address:  # Try parsing address only if not null
+            try:
+                self.address = self.__parse(address)
+            except Exception as err:
+                logger.warning("Invalid Ethereum address '{}', parse error: {}"
+                               .format(address, err))
 
     def get_str_addr(self):
         if self.address:

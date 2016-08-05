@@ -1,11 +1,12 @@
-from golem.task.taskclient import TaskClient
-from golem.task.taskstate import TaskState, SubtaskStatus, SubtaskState
 from mock import Mock
 
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
+
+from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
-from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
+
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -18,8 +19,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
-        task_mock.query_extra_data.return_value.task_id = task_id
-        task_mock.query_extra_data.return_value.subtask_id = subtask_id
+        task_mock.query_extra_data.return_value.ctd.task_id = task_id
+        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
         return task_mock
 
     def test_get_next_subtask(self):
@@ -31,12 +32,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(wrong_task, True)
 
         task_mock = self._get_task_mock()
-
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-
-        task_mock.query_extra_data.return_value = extra_data
 
         # Task's initial state is set to 'waiting' (found in activeStatus)
         tm.add_new_task(task_mock)
@@ -74,13 +69,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         task_mock = self._get_task_mock()
 
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-
-        task_mock.query_extra_data.return_value = extra_data
-
         tm.add_new_task(task_mock)
         with self.assertLogs(logger, level=1) as l:
             tm.set_value("xyz", "xxyyzz", 13)
@@ -95,8 +83,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
         self.assertEqual(tm.get_value("xxyyzz"), 13)
 
-        tm.set_computation_time("xxyyzz", 12)
-        self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 120)
+        tm.set_computation_time("xxyyzz", 3601)
+        self.assertEqual(tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 11)
 
     def test_change_config(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
@@ -109,19 +97,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_id = "xyz"
 
         resources = ['first', 'second']
-        hash_resources = [['first', 'deadbeef01'], ['second', 'deadbeef02']]
 
         def get_resources(*args):
             return resources
 
         task_mock = self._get_task_mock()
         task_mock.get_resources = get_resources
-
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = task_id
-
-        task_mock.query_extra_data.return_value = extra_data
 
         tm.add_new_task(task_mock)
 
@@ -184,6 +165,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_rem_time == 0.0
         assert ss.subtask_status == SubtaskStatus.finished
         assert tm.tasks_states["xyz"].status == TaskStatus.finished
+
         th.task_id = "abc"
 
         t2 = TestTask(th, "print 'Hello world'", ["aabbcc"])
@@ -229,13 +211,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock = self._get_task_mock()
         task_mock.counting_nodes = {}
 
-        extra_data = Mock()
-        extra_data.ctd = Mock()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = subtask_id
-
-        task_mock.query_extra_data.return_value = extra_data
-
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called
 
@@ -264,3 +239,4 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called
+

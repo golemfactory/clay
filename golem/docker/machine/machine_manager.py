@@ -43,6 +43,8 @@ class DockerMachineManager(DockerConfigManager):
                  min_cpu_execution_cap=1,
                  min_cpu_count=1):
 
+        super(DockerMachineManager, self).__init__()
+
         self.ISession = None
         self.LockType = None
 
@@ -93,7 +95,7 @@ class DockerMachineManager(DockerConfigManager):
 
             self.docker_machine_available = True
         except Exception as e:
-            logger.warn("DockerMachine: not available: {}".format(e.message))
+            logger.warn("DockerMachine: not available: {}".format(e))
             self.docker_machine_available = False
 
         if self.docker_machine_available and not self._threads.isAlive():
@@ -105,7 +107,6 @@ class DockerMachineManager(DockerConfigManager):
             self.check_environment()
 
         def wait_for_tasks():
-            logger.debug("DockerMachine: updating configuration")
             while status_callback():
                 time.sleep(0.5)
             self.constrain(self.docker_machine)
@@ -122,7 +123,7 @@ class DockerMachineManager(DockerConfigManager):
         try:
             return self.virtual_box.find_machine(name_or_id)
         except Exception as e:
-            logger.warn("VirtualBox: not available: {}".format(e.message))
+            logger.warn("VirtualBox: not available: {}".format(e))
 
     def start_vm(self, mixed):
         """
@@ -154,19 +155,16 @@ class DockerMachineManager(DockerConfigManager):
 
         except Exception as e:
             logger.error("VirtualBox: error reading VM's constraints: {}"
-                         .format(e.message))
+                         .format(e))
 
     def constrain(self, name_or_id_or_machine, **kwargs):
         constraints = kwargs or self.virtual_box_config
-
-        logger.debug("VirtualBox: starting reconfiguration of '{}'"
-                     .format(name_or_id_or_machine))
 
         try:
             self.__constrain(name_or_id_or_machine, **constraints)
         except Exception as e:
             logger.error("VirtualBox: error setting '{}' VM's constraints: {}"
-                         .format(name_or_id_or_machine, e.message))
+                         .format(name_or_id_or_machine, e))
 
     def constrain_all(self, images=None, **kwargs):
         try:
@@ -174,7 +172,7 @@ class DockerMachineManager(DockerConfigManager):
                 self.constrain(image_name, **kwargs)
         except Exception as e:
             logger.error("VirtualBox: error constraining images: {}"
-                         .format(e.message))
+                         .format(e))
 
     def build_config(self, config_desc):
         super(DockerMachineManager, self).build_config(config_desc)
@@ -231,7 +229,7 @@ class DockerMachineManager(DockerConfigManager):
 
         if exception:
             logger.error("DockerMachine: restart context error: {}"
-                         .format(exception.message))
+                         .format(exception))
 
     def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
         command = self.docker_machine_commands.get(key, None)
@@ -261,7 +259,7 @@ class DockerMachineManager(DockerConfigManager):
             return status == 'Running'
         except Exception as e:
             logger.error("DockerMachine: failed to check docker-machine status: {}"
-                         .format(e.message))
+                         .format(e))
         return False
 
     def _start_docker_machine(self):
@@ -272,7 +270,7 @@ class DockerMachineManager(DockerConfigManager):
                                         check_output=False)
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
-                         .format(e.message))
+                         .format(e))
         else:
             try:
                 docker_images = self.docker_machine_images()
@@ -280,7 +278,7 @@ class DockerMachineManager(DockerConfigManager):
                     self.docker_images = docker_images
             except Exception as e:
                 logger.error("DockerMachine: failed to update VM list: {}"
-                             .format(e.message))
+                             .format(e))
 
     def _stop_docker_machine(self):
         logger.debug("DockerMachine: stopping '{}'".format(self.docker_machine))
@@ -290,7 +288,7 @@ class DockerMachineManager(DockerConfigManager):
             return True
         except Exception as e:
             logger.warn("DockerMachine: failed to stop the VM: {}"
-                        .format(e.message))
+                        .format(e))
         return False
 
     def _power_up_vm(self, vm_or_session, lock_type=None):
@@ -306,7 +304,7 @@ class DockerMachineManager(DockerConfigManager):
 
         except Exception as e:
             logger.error("VirtualBox: error starting a VM: '{}'"
-                         .format(e.message))
+                         .format(e))
         return None
 
     def _power_down_vm(self, vm_or_session, lock_type=None):
@@ -322,7 +320,7 @@ class DockerMachineManager(DockerConfigManager):
 
         except Exception as e:
             logger.error("VirtualBox: error stopping a VM: '{}'"
-                         .format(e.message))
+                         .format(e))
         return None
 
     def __constrain(self, machine_obj, **kwargs):
@@ -375,7 +373,7 @@ class DockerMachineManager(DockerConfigManager):
                 setattr(vm, name, cur_val)
             except Exception as e:
                 logger.error('VirtualBox: error setting {} to {}: {}'
-                             .format(name, value, e.message))
+                             .format(name, value, e))
                 success = False
 
         if success:
@@ -397,7 +395,7 @@ class DockerMachineManager(DockerConfigManager):
                 return self.find_vm(machine_obj)
             except Exception as e:
                 logger.error('VirtualBox: machine {} not found: {}'
-                             .format(machine_obj, e.message))
+                             .format(machine_obj, e))
                 return None
         return machine_obj
 
@@ -410,7 +408,7 @@ class DockerMachineManager(DockerConfigManager):
             self.ISession = ISession
             self.LockType = LockType
 
-        except ImportError as e:
+        except Exception as e:
 
             self.docker_machine_available = False
-            logger.warn("Couldn't import virtualbox: {}".format(e.message))
+            logger.warn("Couldn't import virtualbox: {}".format(e))

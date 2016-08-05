@@ -30,7 +30,7 @@ class TaskHeader(object):
         self.max_price = max_price
 
 
-class TaskBuilder:
+class TaskBuilder(object):
     def __init__(self):
         pass
 

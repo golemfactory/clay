@@ -16,23 +16,35 @@ from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestLuxRenderDialogCustomizer(TestDirFixture):
+
+    def setUp(self):
+        super(TestLuxRenderDialogCustomizer, self).setUp()
+        self.logic = RenderingApplicationLogic()
+        self.gnrgui = GNRGui(Mock(), AppMainWindow)
+
+    def tearDown(self):
+        super(TestLuxRenderDialogCustomizer, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
     @patch("gnr.customizers.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
-        gnrgui = GNRGui(Mock(), AppMainWindow)
-        logic = RenderingApplicationLogic()
-        logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
-        logic.client = Mock()
-        logic.client.config_desc = ClientConfigDescriptor()
-        logic.client.get_res_dirs.return_value = {'computing': self.path, 'received': self.path}
-        logic.customizer.init_config()
-        lux_customizer = logic.customizer.new_task_dialog_customizer.task_customizer
+        self.logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
+        self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.client = Mock()
+        self.logic.client.config_desc = ClientConfigDescriptor()
+        self.logic.client.config_desc.use_ipv6 = False
+        self.logic.client.config_desc.max_price = 0
+        self.logic.client.get_config.return_value = self.logic.client.config_desc
+        self.logic.client.get_res_dirs.return_value = {'computing': self.path, 'received': self.path}
+        self.logic.customizer.init_config()
+        lux_customizer = self.logic.customizer.new_task_dialog_customizer.task_customizer
         assert isinstance(lux_customizer, LuxRenderDialogCustomizer)
         assert lux_customizer.get_task_name() == "LuxRender"
 
-        logic.customizer.gui.ui.resourceFilesLabel.setText("124")
-        QTest.mouseClick(logic.customizer.gui.ui.resetToDefaultButton, Qt.LeftButton)
-        assert logic.customizer.gui.ui.resourceFilesLabel.text() == "0"
+        self.logic.customizer.gui.ui.resourceFilesLabel.setText("124")
+        QTest.mouseClick(self.logic.customizer.gui.ui.resetToDefaultButton, Qt.LeftButton)
+        assert self.logic.customizer.gui.ui.resourceFilesLabel.text() == "0"
 
         definition = RenderingTaskDefinition()
         lux_customizer.get_task_specific_options(definition)
@@ -43,5 +55,3 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
                                                             "Choose main scene file",
                                                             u"",
                                                             u"Scene files (*.LXS *.lxs)")
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()

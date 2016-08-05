@@ -74,7 +74,7 @@ class TestNode(TestWithDatabase):
 
         mock_client.assert_called_with(datadir=self.path,
                                        node_address=node_address,
-                                       transaction_system=False)
+                                       transaction_system=True)
 
     def test_node_address_invalid(self):
         runner = CliRunner()

@@ -96,7 +96,9 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            docker_images=self.task_definition.docker_images
                            )
 
-        return self._set_verification_options(lux_task)
+        self._set_verification_options(lux_task)
+        lux_task.initialize(self.dir_manager)
+        return lux_task
 
 
 class LuxTask(RenderingTask):
@@ -136,6 +138,8 @@ class LuxTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                root_path, estimated_memory, max_price, docker_images)
 
+        self.tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
+        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -155,7 +159,7 @@ class LuxTask(RenderingTask):
 
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
-        hold_flm = self.__get_test_flm(get_tmp_path(self.header.node_name, self.header.task_id, self.root_path))
+        hold_flm = self.__get_test_flm(get_tmp_path(self.header.node_name, self.header.task_id))
         if os.path.isfile(hold_flm):
             shutil.move(hold_flm, self.__get_test_flm())
         self.undeletable.append(self.__get_test_flm())
@@ -248,12 +252,9 @@ class LuxTask(RenderingTask):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
-        hold_results_dir = get_tmp_path(self.header.node_name, self.header.task_id, self.root_path)
         if flm is not None:
             try:
-                if not os.path.exists(hold_results_dir):
-                    os.makedirs(hold_results_dir)
-                shutil.copy(flm, self.__get_test_flm(hold_results_dir))
+                shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
@@ -411,6 +412,8 @@ class LuxTask(RenderingTask):
         img_current = self._open_preview()
         img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
         img_current.save(self.preview_file_path, "BMP")
+        img.close()
+        img_current.close()
 
     def __update_preview_from_exr(self, new_chunk_file):
         if self.preview_exr is None:
@@ -421,6 +424,8 @@ class LuxTask(RenderingTask):
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
         img.save(self.preview_file_path, "BMP")
+        img.close()
+        img_current.close()
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(self, self.root_path, self.__final_img_ready, self.__final_img_error,

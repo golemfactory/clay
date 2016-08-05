@@ -3,6 +3,7 @@ import os
 from mock import Mock
 
 from gnr.task.renderingtask import AcceptClientVerdict
+
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -24,7 +25,8 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         td.renderer_options = lro
-        lb = LuxRenderTaskBuilder("ABC", td, self.path)
+        dm = DirManager(self.path)
+        lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         luxtask = lb.build()
         self.__after_test_errors(luxtask)
         self.__queries(luxtask)
@@ -33,7 +35,8 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         td.renderer_options = lro
-        lb = LuxRenderTaskBuilder("ABC", td, self.path)
+        dm = DirManager(self.path)
+        lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         luxtask = lb.build()
         luxtask._get_scene_file_rel_path = Mock()
         luxtask._get_scene_file_rel_path.return_value = os.path.join(self.path, 'scene')
@@ -67,9 +70,8 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         luxtask.root_path = "/dev/null/:errors?"
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
-        luxtask.root_path = prev_dir
-        dir_manager = DirManager("ABC", self.path, tmp="luxtmp")
-        luxtask.initialize(dir_manager)
+
+        luxtask.tmp_dir = prev_tmp_dir
         assert os.path.isfile(os.path.join(luxtask.tmp_dir, "test_result.flm"))
 
     def __queries(self, luxtask):

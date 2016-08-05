@@ -1,5 +1,11 @@
+import random
 import unittest
-from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer
+
+from cbor2 import CBOREncoder, CBORDecoder
+from io import BytesIO
+
+from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer, CBORSerializer, \
+    CBORCoder
 
 
 class Example:
@@ -23,7 +29,7 @@ class Example:
 
 class TestSimpleSerializer(unittest.TestCase):
     def testSerializer(self):
-        self.assertTrue(isinstance(SimpleSerializer(), SimpleSerializerRelease))
+        self.assertTrue(isinstance(SimpleSerializer(), CBORSerializer))
 
 
 class TestSimpleSerializerDebug(unittest.TestCase):
@@ -44,3 +50,90 @@ class TestSimpleSerializerRelease(unittest.TestCase):
         data2 = SimpleSerializerRelease.loads(ser)
         self.assertTrue(isinstance(data2, Example))
         self.assertEqual(data, data2)
+
+
+class MockSerializationInnerSubject(object):
+    def __init__(self):
+        self.property_1 = random.randrange(1, 1 * 10 ** 18)
+        self._property_2 = True
+        self.property_3 = "string"
+        self.property_4 = ['list', 'of', ('items',), [
+                              random.randrange(1, 10000),
+                              random.randrange(1, 10000),
+                              random.randrange(1, 10000)
+                          ]]
+
+    def method(self):
+        pass
+
+    def __eq__(self, other):
+        return self.property_1 == other.property_1 and \
+            self.property_3 == other.property_3 and \
+            self.property_4 == other.property_4
+
+
+class MockSerializationSubject(object):
+    def __init__(self):
+        self.property_1 = dict(k='v', u=MockSerializationInnerSubject())
+        self.property_2 = MockSerializationInnerSubject()
+        self._property_3 = None
+        self.property_4 = ['v', 1, (1, 2, 3), MockSerializationInnerSubject()]
+
+    def method_1(self):
+        pass
+
+    def _method_2(self):
+        pass
+
+    def __eq__(self, other):
+        return self.property_1 == other.property_1 and \
+            self.property_2 == other.property_2 and \
+            self.property_4 == other.property_4
+
+
+class TestCBORSerializer(unittest.TestCase):
+
+    def testConversion(self):
+        obj = MockSerializationSubject()
+        dict_repr = CBORCoder._obj_to_dict(obj)
+
+        assert 'property_1' in dict_repr
+        assert 'property_2' in dict_repr
+        assert '_property_3' not in dict_repr
+        assert 'method_1' not in dict_repr
+        assert '_method_2' not in dict_repr
+
+        reconstructed = CBORCoder._obj_from_dict(dict_repr)
+
+        assert reconstructed.__class__ == obj.__class__
+        assert reconstructed.property_1 == obj.property_1
+        assert reconstructed.property_2.__class__ == obj.property_2.__class__
+        assert reconstructed.property_2 == obj.property_2
+        assert reconstructed.property_4 == obj.property_4
+        assert reconstructed.property_2.__class__ == MockSerializationInnerSubject
+
+        inner = reconstructed.property_2
+
+        assert inner.property_1
+        assert inner.property_1 == obj.property_2.property_1
+        assert isinstance(inner.property_3, basestring)
+        assert isinstance(inner.property_4, list)
+
+    def testSerialization(self):
+        obj = MockSerializationSubject()
+
+        decoders = CBORSerializer.decoders
+        encoders = CBORSerializer.encoders
+
+        # encode
+        buf = BytesIO()
+        CBOREncoder(encoders=encoders).encode(obj, buf)
+        serialized = buf.getvalue()
+
+        # decode
+        buf = BytesIO(serialized)
+        decoder = CBORDecoder(semantic_decoders=decoders)
+        deserialized = decoder.decode(buf)
+
+        assert deserialized.__class__ == obj.__class__
+        assert CBORSerializer.loads(CBORSerializer.dumps(obj)).__class__ == obj.__class__

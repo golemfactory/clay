@@ -13,8 +13,22 @@ from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
+P2P_PROTOCOL_ID = 6
 
-P2P_PROTOCOL_ID = 3
+
+class PeerSessionInfo(object):
+
+    def __init__(self, session):
+        attributes = [
+            'address', 'port',
+            'verified', 'rand_val',
+            'degree', 'key_id',
+            'node_name', 'node_info',
+            'listen_port', 'conn_id'
+        ]
+
+        for attr in attributes:
+            setattr(self, attr, getattr(session, attr))
 
 
 class PeerSession(BasicSafeSession):

@@ -1,6 +1,5 @@
 import logging
 import time
-from math import ceil
 
 from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
@@ -9,7 +8,7 @@ from golem.resource.dirmanager import DirManager
 
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
 
@@ -51,7 +50,7 @@ class TaskManager(object):
         self.key_id = key_id
 
         self.root_path = root_path
-        self.dir_manager = DirManager(self.get_task_manager_root(), self.node_name)
+        self.dir_manager = DirManager(self.get_task_manager_root())
 
         resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
                                                          resource_dir_method=self.dir_manager.get_task_temporary_dir)
@@ -93,7 +92,6 @@ class TaskManager(object):
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
-        task.initialize(self.dir_manager)
         task.notify_update_task = self.__notice_task_updated
         self.tasks[task.header.task_id] = task
 
@@ -443,7 +441,7 @@ class TaskManager(object):
             assert False, "Should never be here!"
 
     def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path, self.node_name)
+        self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
@@ -477,11 +475,8 @@ class TaskManager(object):
         task_id = self.subtask2task_mapping[subtask_id]
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.computation_time = computation_time
-        ss.value = self.compute_subtask_value(ss.computer.price, computation_time)
+        ss.value = compute_subtask_value(ss.computer.price, computation_time)
 
-    @staticmethod
-    def compute_subtask_value(price, computation_time):
-        return int(ceil(price * computation_time))
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """

@@ -17,8 +17,9 @@ from gnr.task.gnrtask import GNRTask, logger
 class TestGNRTask(LogTestCase, TestDirFixture):
     def _get_gnr_task(self):
         task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
-                        "environment", 3000, 30, 1024, 1024, 100)
-        dm = DirManager(self.path, "ABC")
+                       "environment", 3000, 30, 1024, 1024, 100)
+        dm = DirManager(self.path)
+
         task.initialize(dm)
         return task
 
@@ -51,8 +52,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         task.stdout[subtask_id] = files[0]
         task.stderr[subtask_id] = files[1]
 
-        self.assertEqual(task.get_stdout(subtask_id), "stdout in file")
-        self.assertEqual(task.get_stderr(subtask_id), "stderr in file")
+        self.assertEqual(task.get_stdout(subtask_id), files[0])
+        self.assertEqual(task.get_stderr(subtask_id), files[1])
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()
@@ -60,10 +61,12 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         files = self.additional_dir_content([5])
         shutil.move(files[2], files[2]+".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+".err.log")
-        files[3] += ".err.log"
+        shutil.move(files[3], files[3]+"err.log")
+        files[3] += "err.log"
         subtask_id = "xxyyzz"
         task.interpret_task_results(subtask_id, files, result_types["files"])
+        files[2] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[2]))
+        files[3] = os.path.join(self.path, "xxyyzz" + os.path.basename(files[3]))
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
@@ -79,6 +82,9 @@ class TestGNRTask(LogTestCase, TestDirFixture):
                self.__compress_and_pickle_file(files[4], "ghi")]
         subtask_id = "aabbcc"
         task.interpret_task_results(subtask_id, res, result_types["data"])
+        files[2] = os.path.join(self.path, "aabbcc" + os.path.basename(files[2]))
+        files[3] = os.path.join(self.path, "aabbcc" + os.path.basename(files[3]))
+
         self.assertEqual(task.results[subtask_id], [os.path.join(task.tmp_dir, os.path.basename(files[0])),
                                                     os.path.join(task.tmp_dir, os.path.basename(files[1])),
                                                     os.path.join(task.tmp_dir, os.path.basename(files[4]))])
