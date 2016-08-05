@@ -57,13 +57,12 @@ class LocalComputer(object):
             with self.lock:
                 if self.tt.get_error():
                     logger.warning(self.comp_failed_warning)
-                    self.error_callback(self.tt.error_msg)
-                    return 0
+                    return 0.0
                 return self.tt.get_progress()
         return None
 
     def task_computed(self, task_thread):
-        if task_thread.result and task_thread.result.get("data"):
+        if not task_thread.error and task_thread.result and task_thread.result.get("data"):
             self.success_callback(task_thread.result)
         else:
             logger_msg = self.comp_failed_warning
