@@ -1,14 +1,15 @@
-import os
 import logging
 import math
+import os
 import shutil
 from collections import OrderedDict
-from PIL import Image, ImageChops
-from gnr.task.gnrtask import GNRTask
 
+from PIL import Image, ImageChops
+from gnr.renderingdirmanager import get_tmp_path
+from gnr.task.gnrtask import GNRTask
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
-from gnr.renderingdirmanager import get_tmp_path
+from golem.core.threads import QueueExecutor
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.task")
@@ -58,6 +59,7 @@ class FrameRenderingTask(RenderingTask):
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                                estimated_memory, max_price, docker_images)
 
+        self.job_executor = QueueExecutor(queue_name='frame-rendering-task')
         self.use_frames = use_frames
         self.frames = frames
 
@@ -78,28 +80,25 @@ class FrameRenderingTask(RenderingTask):
 
         tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
         self.tmp_dir = tmp_dir
-
         self.interpret_task_results(subtask_id, task_results, result_type, tmp_dir)
+
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_end = self.subtasks_given[subtask_id]['end_task']
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            frames_list = []
+            self.job_executor.push(self._process_computed_subtask, subtask_id, tr_files, tmp_dir)
+        self.job_executor.push(self._completion_check, tmp_dir)
 
-            if self.use_frames and self.total_tasks <= len(self.frames):
-                frames_list = self.subtasks_given[subtask_id]['frames']
-                if len(tr_files) < len(frames_list):
-                    self._mark_subtask_failed(subtask_id)
-                    if not self.use_frames:
-                        self._update_task_preview()
-                    else:
-                        self._update_frame_task_preview()
-                    return
+    def _process_computed_subtask(self, subtask_id, tr_files, tmp_dir):
+        num_start = self.subtasks_given[subtask_id]['start_task']
+        num_end = self.subtasks_given[subtask_id]['end_task']
+        parts = self.subtasks_given[subtask_id]['parts']
 
-            if not self._verify_imgs(subtask_id, tr_files):
+        frames_list = []
+
+        if self.use_frames and self.total_tasks <= len(self.frames):
+            frames_list = self.subtasks_given[subtask_id]['frames']
+            if len(tr_files) < len(frames_list):
                 self._mark_subtask_failed(subtask_id)
                 if not self.use_frames:
                     self._update_task_preview()
@@ -107,19 +106,28 @@ class FrameRenderingTask(RenderingTask):
                     self._update_frame_task_preview()
                 return
 
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
+        if not self._verify_imgs(subtask_id, tr_files):
+            self._mark_subtask_failed(subtask_id)
+            if not self.use_frames:
+                self._update_task_preview()
+            else:
+                self._update_frame_task_preview()
+            return
 
-            for tr_file in tr_files:
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
 
-                if not self.use_frames:
-                    self._collect_image_part(num_start, tr_file)
-                elif self.total_tasks <= len(self.frames):
-                    frames_list = self._collect_frames(num_start, tr_file, frames_list, tmp_dir)
-                else:
-                    self._collect_frame_part(num_start, tr_file, parts, tmp_dir)
+        for tr_file in tr_files:
 
-            self.num_tasks_received += num_end - num_start + 1
+            if not self.use_frames:
+                self._collect_image_part(num_start, tr_file)
+            elif self.total_tasks <= len(self.frames):
+                frames_list = self._collect_frames(num_start, tr_file, frames_list, tmp_dir)
+            else:
+                self._collect_frame_part(num_start, tr_file, parts, tmp_dir)
 
+        self.num_tasks_received += num_end - num_start + 1
+
+    def _completion_check(self, tmp_dir):
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together(tmp_dir)
 
@@ -310,17 +318,17 @@ class FrameRenderingTask(RenderingTask):
             RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                     frame_num=1):
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
+                    frame_num=1):
     if not use_frames:
-        boarder = __get_boarder(start_task, end_task, total_tasks, res_x, res_y)
+        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
     elif total_tasks > frames:
         parts = total_tasks / frames
-        boarder = __get_boarder((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
     else:
-        boarder = []
+        border = []
 
-    return boarder
+    return border
 
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
@@ -336,17 +344,17 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_fr
     return num
 
 
-def __get_boarder(start_task, end_task, parts, res_x, res_y):
-    boarder = []
+def __get_border(start_task, end_task, parts, res_x, res_y):
+    border = []
     upper = int(math.floor(float(res_y) / float(parts) * (start_task - 1)))
     lower = int(math.floor(float(res_y) / float(parts) * end_task))
     for i in range(upper, lower):
-        boarder.append((0, i))
-        boarder.append((res_x, i))
+        border.append((0, i))
+        border.append((res_x, i))
     for i in range(0, res_x):
-        boarder.append((i, upper))
-        boarder.append((i, lower))
-    return boarder
+        border.append((i, upper))
+        border.append((i, lower))
+    return border
 
 
 def __num_from_pixel(p_y, res_y, tasks):

@@ -4,6 +4,8 @@ from os import path
 from random import randrange, shuffle
 
 import OpenEXR
+
+import time
 from PIL import Image
 
 from golem.resource.dirmanager import DirManager
@@ -107,6 +109,7 @@ class TestBlenderTask(TempDirFixture):
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
         assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
+        self.bt.job_executor.finish()
 
     def test_get_min_max_y(self):
         self.assertTrue(self.bt.res_x == 2)
@@ -261,10 +264,12 @@ class TestBlenderTask(TempDirFixture):
 
     def test_query_extra_data(self):
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        self.bt.job_executor.finish()
         assert extra_data.ctd
         assert not extra_data.should_wait
 
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        self.bt.job_executor.finish()
         assert extra_data.should_wait
 
     def test_advance_verification(self):
@@ -281,6 +286,7 @@ class TestBlenderTask(TempDirFixture):
         img = Image.new("RGB", (task.res_x, task.res_y))
         img.save(file_, "BMP")
         task.computation_finished(ed.ctd.subtask_id, [file_], dm, 1)
+        task.job_executor.finish()
         assert task.subtasks_given[ed.ctd.subtask_id]['status'] == SubtaskStatus.failure
 
 

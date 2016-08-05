@@ -18,6 +18,9 @@ from twisted.internet import threads
 logger = logging.getLogger(__name__)
 
 
+SHA1_BLOCK_SIZE = 65536
+
+
 def file_sha_256(file_path):
     sha = hashlib.sha256()
 
@@ -264,4 +267,8 @@ class AsyncRequestExecutor(object):
         return deferred
 
 
-SHA1_BLOCK_SIZE = 65536
+def async_execution(f):
+    def wrapper(*args, **kwargs):
+        request = AsyncRequest(f, *args, **kwargs)
+        return AsyncRequestExecutor.run(request)
+    return wrapper

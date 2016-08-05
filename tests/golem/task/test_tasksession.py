@@ -1,6 +1,6 @@
 import cPickle
 
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, patch
 
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
@@ -245,7 +245,8 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         assert ts.task_server.reject_result.called
         assert ts.task_manager.task_computation_failure.called
 
-    def test_react_to_get_task_result(self):
+    @patch('golem.resource.client.AsyncRequestExecutor')
+    def test_react_to_get_task_result(self, *_):
 
         conn = Mock()
         ts = TaskSession(conn)

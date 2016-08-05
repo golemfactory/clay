@@ -3,9 +3,6 @@ import logging
 import os
 import struct
 import time
-import traceback
-
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
@@ -180,7 +177,6 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = None
         self.dropped()
 
-    @inlineCallbacks
     def result_received(self, extra_data, decrypt=True):
         """ Inform server about received result
         :param dict extra_data: dictionary with information about received result
@@ -194,7 +190,7 @@ class TaskSession(MiddlemanSafeSession):
             logger.error("No information about result_type for received data ")
             self._reject_subtask_result(subtask_id)
             self.dropped()
-            returnValue(None)
+            return
 
         if result_type == result_types['data']:
             try:
@@ -205,10 +201,10 @@ class TaskSession(MiddlemanSafeSession):
                 logger.error("Can't unpickle result data {}".format(err))
                 self._reject_subtask_result(subtask_id)
                 self.dropped()
-                returnValue(None)
+                return
 
         if subtask_id:
-            yield self._computed_task_received(subtask_id, result, result_type)
+            self.task_manager.computed_task_received(subtask_id, result, result_type)
             if self.task_manager.verify_subtask(subtask_id):
                 self.task_server.accept_result(subtask_id, self.result_owner)
                 self.send(MessageSubtaskResultAccepted(subtask_id))
@@ -217,11 +213,6 @@ class TaskSession(MiddlemanSafeSession):
         else:
             logger.error("No task_id value in extra_data for received data ")
         self.dropped()
-
-    def _computed_task_received(self, subtask_id, result, result_type):
-        request = AsyncRequest(self.task_manager.computed_task_received,
-                               subtask_id, result, result_type)
-        return AsyncRequestExecutor.run(request)
 
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)

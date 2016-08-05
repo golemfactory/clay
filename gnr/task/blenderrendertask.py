@@ -1,26 +1,20 @@
 import logging
-import random
-import os
 import math
+import os
+import random
 from collections import OrderedDict
-from threading import Lock
 
 from PIL import Image, ImageChops
-
-from golem.task.taskstate import SubtaskStatus
-
-from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
+from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_border, \
+    get_task_num_from_pixels
 from gnr.task.gnrtask import GNROptions
 from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
-
-from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
-    get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
-
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.task")
 
@@ -50,13 +44,12 @@ class PreviewUpdater(object):
         # their correct places
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
-        self.__lock = Lock()
-        
+
     def get_offset(self, subtask_number):
         if subtask_number == self.perfectly_placed_subtasks + 1:
             return self.perfect_match_area_y
         return self.expected_offsets[subtask_number]
-        
+
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
@@ -67,23 +60,22 @@ class PreviewUpdater(object):
             else:
                 img = Image.open(subtask_path)
 
-            with self.__lock:
-                offset = self.get_offset(subtask_number)
-                if subtask_number == self.perfectly_placed_subtasks + 1:
-                    _, img_y = img.size
-                    self.perfect_match_area_y += img_y
-                    self.perfectly_placed_subtasks += 1
+            offset = self.get_offset(subtask_number)
+            if subtask_number == self.perfectly_placed_subtasks + 1:
+                _, img_y = img.size
+                self.perfect_match_area_y += img_y
+                self.perfectly_placed_subtasks += 1
 
-                if os.path.exists(self.preview_file_path):
-                    img_current = Image.open(self.preview_file_path)
-                    img_current.paste(img, (0, offset))
-                    img_current.save(self.preview_file_path, "BMP")
-                    img_current.close()
-                else:
-                    img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
-                    img_offset.paste(img, (0, offset))
-                    img_offset.save(self.preview_file_path, "BMP")
-                    img_offset.close()
+            if os.path.exists(self.preview_file_path):
+                img_current = Image.open(self.preview_file_path)
+                img_current.paste(img, (0, offset))
+                img_current.save(self.preview_file_path, "BMP")
+                img_current.close()
+            else:
+                img_offset = Image.new("RGB", (self.scene_res_x, self.scene_res_y))
+                img_offset.paste(img, (0, offset))
+                img_offset.save(self.preview_file_path, "BMP")
+                img_offset.close()
             img.close()
 
         except Exception as err:
@@ -104,7 +96,7 @@ def build_blender_renderer_info(dialog, customizer):
     renderer.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
     renderer.scene_file_ext = ["blend"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
-    renderer.get_task_boarder = get_task_boarder
+    renderer.get_task_border = get_task_border
 
     return renderer
 
@@ -291,9 +283,9 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['parts'] = parts
 
         if not self.use_frames:
-            self._update_task_preview()
+            self.job_executor.push(self._update_task_preview)
         else:
-            self._update_frame_task_preview()
+            self.job_executor.push(self._update_frame_task_preview)
 
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
@@ -499,4 +491,3 @@ class CustomCollector(RenderingTaskCollector):
         result = ImageChops.add(final_img, img_offset)
         img_offset.close()
         return result
-    

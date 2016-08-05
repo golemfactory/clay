@@ -2,8 +2,9 @@ import unittest
 
 import time
 import threading
+from mock import Mock
 
-from golem.core.threads import ThreadQueueExecutor
+from golem.core.threads import ThreadQueueExecutor, QueueExecutor
 
 
 class Thread(threading.Thread):
@@ -28,11 +29,41 @@ class Thread(threading.Thread):
                 break
 
 
+class TestQueueExecutor(unittest.TestCase):
+
+    def test_queue(self):
+
+        method_1 = Mock()
+        method_2 = Mock()
+
+        executor = QueueExecutor()
+
+        executor.push(method_1, 0, 1, kw_arg=0)
+        executor.push(method_2)
+
+        time.sleep(1)
+
+        method_1.assert_called_once_with(0, 1, kw_arg=0)
+        method_2.assert_called_once_with()
+
+        inner_mock = Mock()
+
+        def method_3():
+            inner_mock()
+            raise Exception()
+
+        executor.push(method_3)
+
+        time.sleep(1)
+
+        assert inner_mock.called
+
+
 class TestThreadExecutor(unittest.TestCase):
 
     def test_queue(self):
         executor = ThreadQueueExecutor()
-        executor.start()
+        executor.start = Mock()
 
         j1 = Thread(30)
         j2 = Thread(30)
@@ -44,16 +75,11 @@ class TestThreadExecutor(unittest.TestCase):
         assert len(executor._queue) == 2
         executor.push(j3)
         assert len(executor._queue) == 2
-        assert j2 not in executor._queue
 
-        j1.working = False
-        j2.working = False
-        j3.working = False
-        executor.shutdown()
+        assert j2 not in executor._queue
 
     def test_order(self):
         executor = ThreadQueueExecutor()
-        executor.start()
 
         j1 = Thread(0)
         j2 = Thread(0)
@@ -61,7 +87,7 @@ class TestThreadExecutor(unittest.TestCase):
         executor.push(j1)
         executor.push(j2)
 
-        time.sleep(2)
+        time.sleep(1)
 
         assert j1.called
         assert j2.called
@@ -69,4 +95,4 @@ class TestThreadExecutor(unittest.TestCase):
 
         j1.working = False
         j2.working = False
-        executor.shutdown()
+        executor.stop()

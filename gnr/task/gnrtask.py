@@ -6,6 +6,7 @@ import time
 
 from golem.core.common import HandleKeyError
 from golem.core.compress import decompress
+from golem.core.fileshelper import outer_dir_path
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
@@ -231,6 +232,8 @@ class GNRTask(Task):
         :param str subtask_id:
         :return:
         """
+        tmp_dir = os.path.join(tmp_dir, subtask_id)
+
         if result_type == result_types['data']:
             return [self._unpack_task_result(trp, tmp_dir) for trp in task_result]
         elif result_type == result_types['files']:
@@ -254,14 +257,14 @@ class GNRTask(Task):
 
         filtered_task_results = []
         for tr in task_results:
-            new_tr = os.path.join(subtask_id, tr)
             if tr.endswith(err_log_ext):
-                self.stderr[subtask_id] = new_tr
+                self.stderr[subtask_id] = tr
             elif tr.endswith(log_ext):
-                self.stdout[subtask_id] = new_tr
+                self.stdout[subtask_id] = tr
             else:
-                os.rename(new_tr, tr)
-                filtered_task_results.append(tr)
+                new_tr = outer_dir_path(tr)
+                filtered_task_results.append(new_tr)
+                os.rename(tr, new_tr)
 
         return filtered_task_results
 

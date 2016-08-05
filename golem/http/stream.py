@@ -301,7 +301,7 @@ class ChunkStream:
         try:
             logger.debug("Disconnecting socket")
             # shut down socket writes
-            self.sock.shutdown(socket.SHUT_WR)
+            self.sock.stop(socket.SHUT_WR)
             # read remaining data
             try:
                 self.__read(drain=True)
@@ -414,7 +414,7 @@ class StreamMonitor(object):
     @classmethod
     def _close_socket(cls, sock):
         try:
-            sock.shutdown(socket.SHUT_RDWR)
+            sock.stop(socket.SHUT_RDWR)
             sock.close()
         except Exception as exc:
             logger.warn("Error closing socket: {}"

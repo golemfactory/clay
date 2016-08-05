@@ -55,7 +55,7 @@ class TempDirFixture(unittest.TestCase):
     def temp_file_name(self, name):
         return path.join(self.tempdir, name)
 
-    def additional_dir_content(self, file_num_list, dir_=None, results=None):
+    def additional_dir_content(self, file_num_list, dir_=None, results=None, sub_dir=None):
         """ Create recursively additional temporary files in directories in given directory
         For example file_num_list in format [5, [2], [4, []]] will create 5 files in self.tempdir directory,
         and 2 subdirectories - first one will contain 2 tempfiles, second will contain 4 tempfiles and
@@ -68,6 +68,10 @@ class TempDirFixture(unittest.TestCase):
         """
         if dir_ is None:
             dir_ = self.tempdir
+        if sub_dir:
+            dir_ = os.path.join(dir_, sub_dir)
+            if not os.path.exists(dir_):
+                os.makedirs(dir_)
         if results is None:
             results = []
         for el in file_num_list:
