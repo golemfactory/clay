@@ -1,4 +1,7 @@
+import unittest
 from os import makedirs
+
+from gnr.task.framerenderingtask import FrameRenderingTask, get_task_border
 
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -46,3 +49,15 @@ class TestRenderingTask(TestDirFixture):
         assert img.getpixel((400, 16)) == (1, 255, 255)
         img.close()
 
+
+class TestGetTaskBorder(unittest.TestCase):
+
+    def test(self):
+        border = get_task_border(0, 1, 1, use_frames=False)
+        assert len(border) == 1400
+
+        border = get_task_border(0, 1, 1, use_frames=True)
+        assert not border
+
+        border = get_task_border(0, 1000, 1000, use_frames=True)
+        assert len(border) == 640

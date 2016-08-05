@@ -41,7 +41,7 @@ class TestQueueExecutor(unittest.TestCase):
         executor.push(method_1, 0, 1, kw_arg=0)
         executor.push(method_2)
 
-        time.sleep(1)
+        executor.finish()
 
         method_1.assert_called_once_with(0, 1, kw_arg=0)
         method_2.assert_called_once_with()
@@ -54,7 +54,7 @@ class TestQueueExecutor(unittest.TestCase):
 
         executor.push(method_3)
 
-        time.sleep(1)
+        executor.finish()
 
         assert inner_mock.called
 
@@ -87,7 +87,7 @@ class TestThreadExecutor(unittest.TestCase):
         executor.push(j1)
         executor.push(j2)
 
-        time.sleep(1)
+        executor.finish()
 
         assert j1.called
         assert j2.called
