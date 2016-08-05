@@ -518,12 +518,20 @@ class GNRApplicationLogic(QtCore.QObject):
     def test_task_computation_error(self, error):
         err_msg = u"Task test computation failure. "
         if error:
-            err_msg += u"{}".format(error)
+            err_msg += self.__parse_error_message(error)
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
+
+    @staticmethod
+    def __parse_error_message(error_msg):
+        if not error_msg:
+            return u"Unknown error"
+        if any(code in error_msg for code in ['246', '247', '500']):
+            return u"RAM limit is too low. Consider increasing max memory usage"
+        return u"{}".format(error_msg)
 
     @inlineCallbacks
     def task_status_changed(self, task_id):
