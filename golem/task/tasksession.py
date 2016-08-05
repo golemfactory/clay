@@ -410,7 +410,14 @@ class TaskSession(MiddlemanSafeSession):
         multihash = msg.multihash
         subtask_id = msg.subtask_id
         client_options = msg.options
-        task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
+
+        task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
+        task = self.task_manager.tasks.get(task_id, None)
+        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+
+        if not task:
+            logger.error("Task result received with unknown subtask_id: {}".format(subtask_id))
+            return
 
         logger.debug("Task result hash received: {} from {}:{} (options: {})"
                      .format(multihash, self.address, self.port, client_options))
@@ -431,13 +438,12 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
         self.task_manager.task_result_incoming(subtask_id)
-        self.task_manager.task_result_manager.pull_package(multihash,
-                                                           task_id,
-                                                           subtask_id,
+        self.task_manager.task_result_manager.pull_package(multihash, task_id, subtask_id,
                                                            secret,
                                                            success=on_success,
                                                            error=on_error,
-                                                           client_options=client_options)
+                                                           client_options=client_options,
+                                                           output_dir=output_dir)
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg

@@ -1,20 +1,19 @@
+import OpenEXR
 import array
+import os
 import unittest
 from os import path
 from random import randrange, shuffle
 
-import OpenEXR
 from PIL import Image
-
-from golem.resource.dirmanager import DirManager
-from golem.task.taskstate import SubtaskStatus
-from golem.task.taskbase import ComputeTaskDef
-from golem.testutils import TempDirFixture
-
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.renderingtaskstate import RenderingTaskDefinition, AdvanceRenderingVerificationOptions
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
-from gnr.renderingtaskstate import RenderingTaskDefinition, AdvanceRenderingVerificationOptions
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
+from golem.testutils import TempDirFixture
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -68,16 +67,24 @@ class TestBlenderFrameTask(TempDirFixture):
 
         extra_data = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
         assert extra_data.ctd is not None
-        file1 = path.join(self.bt.tmp_dir, 'result1')
+
+        file_dir = path.join(self.bt.tmp_dir, extra_data.ctd.subtask_id)
+        if not path.exists(file_dir):
+            os.makedirs(file_dir)
+
+        file1 = path.join(file_dir, 'result1')
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y / 2))
         img.save(file1, "PNG")
-        file2 = path.join(self.bt.tmp_dir, 'result1')
-        img.save(file2, "PNG")
-        img.close()
+
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
         extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
         assert extra_data.ctd is not None
+
+        file2 = path.join(file_dir, 'result2')
+        img.save(file2, "PNG")
+        img.close()
+
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'

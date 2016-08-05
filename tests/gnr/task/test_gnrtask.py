@@ -58,7 +58,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         task = self._get_gnr_task()
 
         subtask_id = "xxyyzz"
-        files = self.additional_dir_content([5], sub_dir=subtask_id)
+        files_dir = os.path.join(task.tmp_dir, subtask_id)
+        files = self.additional_dir_content([5], sub_dir=files_dir)
 
         shutil.move(files[2], files[2]+".log")
         files[2] += ".log"
@@ -80,7 +81,9 @@ class TestGNRTask(LogTestCase, TestDirFixture):
             self.assertFalse(os.path.isfile(f))
 
         subtask_id = "aabbcc"
-        files = self.additional_dir_content([5], sub_dir=subtask_id)
+        files_dir = os.path.join(task.tmp_dir, subtask_id)
+        files = self.additional_dir_content([5], sub_dir=files_dir)
+
         shutil.move(files[2], files[2]+".log")
         files[2] += ".log"
         shutil.move(files[3], files[3]+"err.log")
@@ -98,12 +101,18 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         files[1] = outer_dir_path(files[1])
         files[4] = outer_dir_path(files[4])
 
+        print task.results[subtask_id], files
+
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
-        for f in files:
+        for f in [files[0], files[1], files[4]]:
             self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, os.path.basename(f))))
+
+        for f in [files[2], files[3]]:
+            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, subtask_id, os.path.basename(f))))
+
         subtask_id = "112233"
         task.interpret_task_results(subtask_id, res, 58)
         self.assertEqual(task.results[subtask_id], [])

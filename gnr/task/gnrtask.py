@@ -232,10 +232,11 @@ class GNRTask(Task):
         :param str subtask_id:
         :return:
         """
-        tmp_dir = os.path.join(tmp_dir, subtask_id)
-
         if result_type == result_types['data']:
-            return [self._unpack_task_result(trp) for trp in task_result]
+            output_dir = os.path.join(self.tmp_dir, subtask_id)
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            return [self._unpack_task_result(trp, output_dir) for trp in task_result]
         elif result_type == result_types['files']:
             return task_result
         else:
@@ -297,11 +298,11 @@ class GNRTask(Task):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
-    def _unpack_task_result(self, trp):
+    def _unpack_task_result(self, trp, output_dir):
         tr = pickle.loads(trp)
-        with open(os.path.join(self.tmp_dir, tr[0]), "wb") as fh:
+        with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
-        return os.path.join(self.tmp_dir, tr[0])
+        return os.path.join(output_dir, tr[0])
 
     def _get_resources_root_dir(self):
         prefix = os.path.commonprefix(self.task_resources)

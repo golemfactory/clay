@@ -40,12 +40,11 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
     # Using a temp path
     def pull_package(self, multihash, task_id, subtask_id, key_or_secret,
-                     success, error, async=True, client_options=None):
+                     success, error, async=True, client_options=None, output_dir=None):
 
         filename = str(uuid.uuid4())
         path = self.resource_manager.get_resource_path(filename, task_id)
-        input_dir = os.path.dirname(path)
-        output_dir = os.path.join(input_dir, subtask_id)
+        output_dir = os.path.join(output_dir or os.path.dirname(path), subtask_id)
 
         def package_downloaded(*args, **kwargs):
             request = AsyncRequest(self.extract,
