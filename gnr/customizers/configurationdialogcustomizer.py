@@ -288,8 +288,8 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc, run_benchmarks=self.docker_config_changed)
-        if self.docker_config_changed:
-            self.load_data()
+        self.load_data()
+        self.docker_config_changed = False
         
 
 
