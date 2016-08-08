@@ -221,18 +221,11 @@ class AbsRenderingMainWindowCustomizer(object):
 
         if t.definition.renderer:
             definition = t.definition
-            res_x, res_y = definition.resolution
-            if res_x != 0 and res_y != 0:
-                if float(res_x) / float(res_y) > 300. / 200.:
-                    scale_factor = 300. / float(res_x)
-                else:
-                    scale_factor = 200. / float(res_y)
-                scale_factor = min(1.0, scale_factor)
-            else:
-                scale_factor = 1.0
             
-            scaled_x = res_x * scale_factor
-            scaled_y = res_y * scale_factor
+            scaled_size = QPixmap(self.last_preview_path).size()
+            
+            scaled_x = scaled_size.width()
+            scaled_y = scaled_size.height()
             
             
             margin_left = (300. - scaled_x) / 2.
