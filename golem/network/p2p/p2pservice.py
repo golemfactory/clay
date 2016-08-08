@@ -265,19 +265,18 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Remove given peer session
         :param PeerSession peer_session: remove peer session
         """
-        pc = self.pending_connections.get(peer_session.conn_id)
-        if pc:
-            pc.status = PenConnStatus.Failure
+        self.remove_pending_conn(peer_session.conn_id)
 
         for p in self.peers.keys():
-            if self.peers[p] == peer_session:
-                self.peer_order.remove(p)
+            if self.peers.get(p, None) == peer_session:
                 self.peers.pop(p, None)
                 self.incoming_peers.pop(p, None)
                 self.suggested_address.pop(p, None)
                 self.suggested_conn_reverse.pop(p, None)
                 if p in self.free_peers:
                     self.free_peers.remove(p)
+                if p in self.peer_order:
+                    self.peer_order.remove(p)
                 break
 
         self.__send_degree()
@@ -623,7 +622,10 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         in message transport
         """
         if not self.task_server.task_connections_helper.is_new_conn_request(
-                conn_id, key_id, node_info, super_node_info):
+                conn_id, key_id, node_info, super_node_info) or self.node.key == key_id:
+            # fixme
+            self.task_server.remove_pending_conn(conn_id)
+            self.task_server.remove_responses(conn_id)
             return
 
         if super_node_info is None and self.node.is_super_node():
@@ -651,7 +653,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         # TODO This method should be only sent to supernodes or nodes that are closer to the target node
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_server.task_connections_helper.cannot_pass_conn_request(conn_id)
+            self.task_server.task_connections_helper.cannot_start_task_session(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
@@ -831,8 +833,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
                long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
-        for peer_id in self.peers.keys():
-            peer = self.peers[peer_id]
+        for peer in self.peers.values():
             if time.time() - peer.last_message_time > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(PeerSession.DCRTimeout)

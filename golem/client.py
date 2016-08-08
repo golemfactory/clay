@@ -168,6 +168,8 @@ class Client(object):
         self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
+        # from dowser import launch_memory_usage_server
+        # launch_memory_usage_server(9000)
 
     def start_network(self):
         logger.info("Starting network ...")

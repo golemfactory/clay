@@ -172,7 +172,8 @@ class TaskServer(PendingConnectionsServer):
     def add_task_header(self, th_dict_repr):
         try:
             id_ = th_dict_repr["id"]
-            if id_ not in self.task_manager.tasks.keys():  # It is not my task id
+            key_id = th_dict_repr["key_id"]
+            if id_ not in self.task_manager.tasks.keys() and key_id != self.node.key:  # not my current / previous task
                 self.task_keeper.add_task_header(th_dict_repr)
             return True
         except Exception as err:
@@ -186,9 +187,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_sessions[subtask_id] = session
 
     def remove_task_session(self, task_session):
-        pc = self.pending_connections.get(task_session.conn_id)
-        if pc:
-            pc.status = PenConnStatus.Failure
+        self.remove_pending_conn(task_session.conn_id)
+        self.remove_responses(task_session.conn_id)
 
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:
@@ -350,8 +350,9 @@ class TaskServer(PendingConnectionsServer):
             session.dropped()
             return
 
-        res = responses.popleft()
-        res(session)
+        while responses:
+            res = responses.popleft()
+            res(session)
 
     def respond_to_middleman(self, key_id, session, conn_id, dest_key_id):
         if conn_id in self.response_list:
@@ -408,6 +409,13 @@ class TaskServer(PendingConnectionsServer):
 
     def receive_subtask_computation_time(self, subtask_id, computation_time):
         self.task_manager.set_computation_time(subtask_id, computation_time)
+
+    def remove_responses(self, conn_id):
+        self.response_list.pop(conn_id, None)
+
+    def final_conn_failure(self, conn_id):
+        self.remove_responses(conn_id)
+        super(TaskServer, self).final_conn_failure(conn_id)
 
     # TODO: extend to multiple sessions
     def add_forwarded_session_request(self, key_id, conn_id):
@@ -471,7 +479,6 @@ class TaskServer(PendingConnectionsServer):
                                                   estimated_performance, price, max_resource_size, max_memory_size,
                                                   num_cores):
         self.remove_forwarded_session_request(key_id)
-        self.task_connections_helper.remove_conn_to_start(conn_id)
         session.task_id = task_id
         session.key_id = key_id
         session.conn_id = conn_id
@@ -483,6 +490,10 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance, price,
                                               max_resource_size, max_memory_size, num_cores, *args):
 
+        if key_id == self.node.key:
+            self.final_conn_failure(conn_id)
+            return
+
         response = lambda session: self.__connection_for_task_request_established(session, conn_id, node_name, key_id,
                                                                                   task_id, estimated_performance, price,
                                                                                   max_resource_size, max_memory_size,
@@ -493,11 +504,8 @@ class TaskServer(PendingConnectionsServer):
             self.response_list[conn_id] = deque([response])
 
         self.client.want_to_start_task_session(key_id, self.node, conn_id)
-
-        pc = self.pending_connections.get(conn_id)
-        if pc:
-            pc.status = PenConnStatus.WaitingAlt
-            pc.time = time.time()
+        # current conn_id will only be used as a key in response_list dict
+        self.remove_pending_conn(conn_id)
 
     def __connection_for_task_result_established(self, session, conn_id, key_id, waiting_task_result):
         self.remove_forwarded_session_request(key_id)
@@ -533,7 +541,6 @@ class TaskServer(PendingConnectionsServer):
 
     def __connection_for_task_failure_established(self, session, conn_id, key_id, subtask_id, err_msg):
         self.remove_forwarded_session_request(key_id)
-        self.task_connections_helper.remove_conn_to_start(conn_id)
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
@@ -545,7 +552,6 @@ class TaskServer(PendingConnectionsServer):
 
         response = lambda session: self.__connection_for_task_failure_established(session, conn_id, key_id, subtask_id,
                                                                                   err_msg)
-        self.task_connections_helper.remove_conn_to_start(conn_id)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
@@ -570,6 +576,10 @@ class TaskServer(PendingConnectionsServer):
         session.request_resource(subtask_id, resource_header)
 
     def __connection_for_resource_request_failure(self, conn_id, key_id, subtask_id, resource_header):
+
+        if key_id == self.node.key:
+            self.final_conn_failure(conn_id)
+            return
 
         response = lambda session: self.__connection_for_resource_request_established(session, conn_id, key_id,
                                                                                       subtask_id, resource_header)
@@ -621,6 +631,7 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_start_session_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
         logger.info("Failed to start requested task session for node {}".format(key_id))
         self.final_conn_failure(conn_id)
+        self.final_conn_failure(ans_conn_id)
         # self.__initiate_nat_traversal(key_id, node_info, super_node_info, ans_conn_id)
 
     def __initiate_nat_traversal(self, key_id, node_info, super_node_info, ans_conn_id):
@@ -702,6 +713,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_computer.task_request_rejected(task_id, "Connection failed")
         self.task_keeper.request_failure(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
 
     def __connection_for_resource_request_final_failure(self, conn_id, key_id, subtask_id, resource_header):
         logger.warning("Cannot connect to task {} owner".format(subtask_id))
@@ -709,9 +722,13 @@ class TaskServer(PendingConnectionsServer):
 
         self.task_computer.resource_request_rejected(subtask_id, "Connection failed")
         self.remove_task_header(subtask_id)
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
 
     def __connection_for_result_rejected_final_failure(self, conn_id, key_id, subtask_id):
         logger.warning("Cannot connect to deliver information about rejected result for task {}".format(subtask_id))
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
 
     def __connection_for_task_result_final_failure(self, conn_id, key_id, waiting_task_result):
         logger.warning("Cannot connect to task {} owner".format(waiting_task_result.subtask_id))
@@ -719,14 +736,22 @@ class TaskServer(PendingConnectionsServer):
         waiting_task_result.lastSendingTrial = time.time()
         waiting_task_result.delayTime = self.config_desc.max_results_sending_delay
         waiting_task_result.alreadySending = False
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
 
     def __connection_for_task_failure_final_failure(self, conn_id, key_id, subtask_id, err_msg):
         logger.warning("Cannot connect to task {} owner".format(subtask_id))
         self.task_computer.session_timeout()
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
 
     def __connection_for_start_session_final_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
-        logger.warning("Starting session for {} impossible".format(key_id))
+        logger.warning("Impossible to start session with {}".format(node_info))
         self.task_computer.session_timeout()
+        self.remove_pending_conn(conn_id)
+        self.remove_responses(conn_id)
+        self.remove_pending_conn(ans_conn_id)
+        self.remove_responses(ans_conn_id)
 
     def __connection_for_middleman_final_failure(self, *args, **kwargs):
         pass

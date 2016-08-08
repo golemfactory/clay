@@ -182,9 +182,9 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = random.random()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [MessageDisconnect]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [MessageDisconnect]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [MessageDisconnect]  # React to message even if it's not encrypted.
+        self.can_be_unverified = [MessageDisconnect.Type]  # React to message even if it's self.verified is set to False
+        self.can_be_unsigned = [MessageDisconnect.Type]  # React to message even if it's not signed.
+        self.can_be_not_encrypted = [MessageDisconnect.Type]  # React to message even if it's not encrypted.
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
