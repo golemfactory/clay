@@ -257,7 +257,7 @@ class AbsRenderingMainWindowCustomizer(object):
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, frames=frames,
                                                             frame_num=frame_num, res_y = scaled_y)
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks)
+                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, res_y=scaled_y)
         return num
 
     def __get_subtask(self, num):

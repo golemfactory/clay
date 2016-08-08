@@ -441,9 +441,10 @@ class BlenderRenderTask(FrameRenderingTask):
             else:   
                 img = Image.open(new_chunk_file_path)
             scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))), 
-                                resample=PIL.Image.BILINEAR)
-            img.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
-            img.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+                                resample=Image.BILINEAR)
+            scaled.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
+            scaled.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            scaled.close()
             img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
@@ -475,7 +476,6 @@ class BlenderRenderTask(FrameRenderingTask):
                        
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
-            #RenderingTask._mark_task_area(self, subtask, img_task, color)
             self.mark_part_on_preview(subtask['start_task'], img_task, color, self.preview_updater)
         elif self.total_tasks <= len(self.frames):
             for i in range(0, int(round(self.res_x * self.scale_factor))):
