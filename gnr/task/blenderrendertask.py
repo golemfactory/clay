@@ -51,7 +51,9 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         
     def get_offset(self, subtask_number):
-        return self.expected_offsets[subtask_number]
+        if subtask_number in self.expected_offsets.keys():
+            return self.expected_offsets[subtask_number]
+        return self.preview_res_y
         
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
@@ -75,7 +77,6 @@ class PreviewUpdater(object):
                 height = self.expected_offsets[subtask_number + 1] - self.expected_offsets[subtask_number]
             
             img = img.resize((self.preview_res_x, height), resample=Image.BILINEAR)
-            print "SUBTASK: {}, RESIZED IMAGE: {}, OFFSET: {}".format(subtask_number, img.size, offset)
             if not os.path.exists(self.preview_file_path) or len(self.chunks) == 1:
                 img_offset = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
                 img_offset.paste(img, (0, offset))
@@ -228,15 +229,12 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks
         self.expected_offsets = {}
         previous_end = 0
-        print "SCALE FACTOR: {}".format(self.scale_factor)
         for i in range(1, parts + 1):
             low, high = self._get_min_max_y(i) 
             low *= self.scale_factor * self.res_y
             high *=  self.scale_factor * self.res_y
             height = int(round(high - low))
             self.expected_offsets[i] = previous_end
-            print "EXPECTED OFFSETS INItIALIZATION: SUBTASK {}, OFFSET {}, PREVIOUS END {}".format(i, self.expected_offsets[i], previous_end)
-            print "LOW, HIGH: {} {}".format(low, high)
             previous_end += height
         
         preview_y = previous_end
@@ -465,10 +463,20 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
+            
+    def mark_part_on_preview(self, part, img_task, color, preview_updater, frame_index=0):
+        lower = preview_updater.get_offset(part)
+        upper = preview_updater.get_offset(part + 1)
+        res_x = preview_updater.preview_res_x
+        for i in range(0, res_x):
+                for j in range(lower, upper):
+                    img_task.putpixel((i, j), color)
+        
                        
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
-            RenderingTask._mark_task_area(self, subtask, img_task, color)
+            #RenderingTask._mark_task_area(self, subtask, img_task, color)
+            self.mark_part_on_preview(subtask['start_task'], img_task, color, self.preview_updater)
         elif self.total_tasks <= len(self.frames):
             for i in range(0, int(round(self.res_x * self.scale_factor))):
                 for j in range(0, int(round(self.res_y * self.scale_factor))):
@@ -477,14 +485,8 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks / len(self.frames)
             pu = self.preview_updaters[frame_index]
             part = (subtask['start_task'] - 1) % parts + 1
-            lower = pu.get_offset(part)
-            if part == parts:
-                upper = int(round(self.scale_factor * self.res_y))
-            else:
-                upper = pu.get_offset(part + 1)
-            for i in range(0, int(round(self.res_x * self.scale_factor))):
-                for j in range(lower, upper):
-                    img_task.putpixel((i, j), color)
+            self.mark_part_on_preview(part, img_task, color, pu)
+
                     
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
