@@ -150,7 +150,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
-        return self._set_verification_options(blender_task)
+        self._set_verification_options(blender_task)
+        blender_task.initialize(self.dir_manager)
+        return blender_task
 
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
@@ -215,14 +217,12 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[frame] = {}
 
-        tmp_dir = self._get_tmp_dir()
-        if not self.use_frames:
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-        else:
-            self.preview_file_path = []
-            for i in range(len(self.frames)):
-                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
-        
+        self.preview_updater = None
+        self.preview_updaters = None
+
+    def initialize(self, dir_manager):
+        super(BlenderRenderTask, self).initialize(dir_manager)
+
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
@@ -238,16 +238,19 @@ class BlenderRenderTask(FrameRenderingTask):
             previous_end += height
         
         preview_y = previous_end
-        
+
         if self.use_frames:
+            self.preview_file_path = []
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
-                preview_path = self.preview_file_path[i]
+                preview_path = os.path.join(self.tmp_dir, "current_preview{}".format(i))
+                self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
                                                             int(round(self.res_x * self.scale_factor)),
                                                             preview_y, 
                                                             self.expected_offsets))
         else:
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             self.preview_updater = PreviewUpdater(self.preview_file_path, 
                                                   int(round(self.res_x * self.scale_factor)), 
                                                   preview_y, 
@@ -448,12 +451,8 @@ class BlenderRenderTask(FrameRenderingTask):
             img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
-
-    def _get_output_name(self, frame_num, num_start):
-        num = str(frame_num)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
     
-    def _put_image_together(self, tmp_dir):
+    def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -462,7 +461,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+            self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
             
     def mark_part_on_preview(self, part, img_task, color, preview_updater, frame_index=0):

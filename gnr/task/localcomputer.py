@@ -40,8 +40,8 @@ class LocalComputer(object):
 
     def run(self):
         try:
-            self.__prepare_resources()
             self.__prepare_tmp_dir()
+            self.__prepare_resources()
 
             ctd = self.get_compute_task_def()
 
@@ -57,13 +57,12 @@ class LocalComputer(object):
             with self.lock:
                 if self.tt.get_error():
                     logger.warning(self.comp_failed_warning)
-                    self.error_callback(self.tt.error_msg)
-                    return 0
+                    return 0.0
                 return self.tt.get_progress()
         return None
 
     def task_computed(self, task_thread):
-        if task_thread.result and task_thread.result.get("data"):
+        if not task_thread.error and task_thread.result and task_thread.result.get("data"):
             self.success_callback(task_thread.result)
         else:
             logger_msg = self.comp_failed_warning
@@ -84,7 +83,7 @@ class LocalComputer(object):
         self.test_task_res_dir = get_test_task_path(self.root_path)
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"])
+            res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"], self.tmp_dir)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)

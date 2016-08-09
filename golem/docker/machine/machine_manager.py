@@ -408,7 +408,7 @@ class DockerMachineManager(DockerConfigManager):
             self.ISession = ISession
             self.LockType = LockType
 
-        except ImportError as e:
+        except Exception as e:
 
             self.docker_machine_available = False
             logger.warn("Couldn't import virtualbox: {}".format(e))
