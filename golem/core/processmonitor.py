@@ -27,7 +27,6 @@ class ProcessMonitor(Thread):
         self.working = False
 
     def exit(self):
-        self.stop()
         for callback in self.shutdown_callbacks:
             callback()
 
@@ -43,7 +42,6 @@ class ProcessMonitor(Thread):
         if process.is_alive():
             try:
                 os.kill(process.pid, sig)
-                os.waitpid(process.pid, 0)
             except Exception as exc:
                 print "Error terminating process {}: {}".format(
                     process, exc)

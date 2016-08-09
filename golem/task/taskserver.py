@@ -342,17 +342,15 @@ class TaskServer(PendingConnectionsServer):
         self._add_pending_request(TaskConnTypes.StartSession, node_info, node_info.prv_port, node_info.key, args)
 
     def respond_to(self, key_id, session, conn_id):
-        if conn_id in self.pending_connections:
-            del self.pending_connections[conn_id]
+        self.remove_pending_conn(conn_id)
+        responses = self.response_list.get(conn_id, None)
 
-        responses = self.response_list.get(conn_id)
-        if responses is None or len(responses) == 0:
+        if responses:
+            while responses:
+                res = responses.popleft()
+                res(session)
+        else:
             session.dropped()
-            return
-
-        while responses:
-            res = responses.popleft()
-            res(session)
 
     def respond_to_middleman(self, key_id, session, conn_id, dest_key_id):
         if conn_id in self.response_list:
@@ -504,8 +502,11 @@ class TaskServer(PendingConnectionsServer):
             self.response_list[conn_id] = deque([response])
 
         self.client.want_to_start_task_session(key_id, self.node, conn_id)
-        # current conn_id will only be used as a key in response_list dict
-        self.remove_pending_conn(conn_id)
+
+        pc = self.pending_connections.get(conn_id)
+        if pc:
+            pc.status = PenConnStatus.WaitingAlt
+            pc.time = time.time()
 
     def __connection_for_task_result_established(self, session, conn_id, key_id, waiting_task_result):
         self.remove_forwarded_session_request(key_id)
