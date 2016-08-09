@@ -70,8 +70,13 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerMachineManager()
-        lux_perf = float(task_server.config_desc.estimated_lux_performance)
-        blender_perf = float(task_server.config_desc.estimated_blender_performance)
+        try:
+            lux_perf = float(task_server.config_desc.estimated_lux_performance)
+            blender_perf = float(task_server.config_desc.estimated_blender_performance)
+        except:
+            lux_perf = 0
+            blender_perf = 0
+        
         if int(lux_perf) == 0 or int(blender_perf) == 0:
             run_benchmarks = True
         else:
