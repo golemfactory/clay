@@ -6,13 +6,15 @@ from random import randrange, shuffle
 import OpenEXR
 from PIL import Image
 
+from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskbase import ComputeTaskDef
 from golem.testutils import TempDirFixture
 
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -257,6 +259,22 @@ class TestBlenderTask(TempDirFixture):
 
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
         assert extra_data.should_wait
+    
+    def test_advanced_verification(self):
+        bb = BlenderBenchmark()
+        bb.task_definition.verification_options = AdvanceRenderingVerificationOptions()
+        bb.task_definition.verification_options.type = 'forAll'
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=bb.task_definition, root_path=self.tempdir)
+        task = builder.build()
+        task.tmp_dir = self.path
+        ed = task.query_extra_data(1000, 4, "NODE_ID", "NODE_NAME")
+        dm = DirManager(self.tempdir)
+        tmpdir = dm.get_task_temporary_dir(task.header.task_id, True)
+        file_ = path.join(tmpdir, 'preview.bmp')
+        img = Image.new("RGB", (task.res_x, task.res_y))
+        img.save(file_, "BMP")
+        task.computation_finished(ed.ctd.subtask_id, [file_], dm, 1)
+        assert task.subtasks_given[ed.ctd.subtask_id]['status'] == SubtaskStatus.failure
 
 
 class TestPreviewUpdater(TempDirFixture):
