@@ -152,6 +152,8 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _setup_basic_task_connections(self):
         self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
+        selection_model = self.gui.ui.taskTableWidget.selectionModel()
+        selection_model.selectionChanged.connect(self._task_table_item_changed)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
                                self._task_table_row_clicked)
         QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
@@ -245,6 +247,11 @@ class GNRMainWindowCustomizer(Customizer):
             task_id = "{}".format(task_id)
             t = self.logic.get_task(task_id)
             self.update_task_additional_info(t)
+
+    def _task_table_item_changed(self):
+        index = self.gui.ui.taskTableWidget.selectedIndexes()[0]
+        if index:
+            self._task_table_row_clicked(index.row(), 0)
 
     def _task_table_row_double_clicked(self, m):
         row = m.row()
