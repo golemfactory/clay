@@ -99,40 +99,33 @@ class RendererCustomizer(Customizer):
         output_file_types = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
         filter_ = u"Scene files ({})".format(output_file_types)
 
-        if not self._last_scene_path:
-            path = os.path.dirname(u"{}".format(self.gui.ui.mainSceneFileLineEdit.text()))
-            if path:
-                self._last_scene_path = path
-            else:
-                self._last_scene_path = os.path.expanduser("~")
+        settings = QtCore.QSettings()
+        path = u"{}".format(settings.value('main_scene_path', os.path.expanduser('~')).toString())
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui,
                                                              "Choose main scene file",
-                                                             self._last_scene_path,
+                                                             path,
                                                              filter_))
 
         if file_name != '':
-            self._last_scene_path = os.path.dirname(file_name)
+            settings.setValue('main_scene_path', os.path.dirname(file_name))
+            settings.sync()
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
     def _choose_output_file_button_clicked(self):
         output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
         filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
 
-        if not self._last_output_path:
-            path = os.path.dirname(u"{}".format(self.gui.ui.outputFileLineEdit.text()))
-            if path:
-                self._last_output_path = path
-            else:
-                self._last_output_path = os.path.expanduser("~")
+        settings = QtCore.QSettings()
+        path = u"{}".format(settings.value('output_file_path', os.path.expanduser('~')).toString())
 
         file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui,
                                                              "Choose output file",
-                                                             self._last_output_path,
+                                                             path,
                                                              filter_))
 
         if file_name != '':
-            self._last_output_path = os.path.dirname(file_name)
+            settings.setValue('output_file_path', os.path.dirname(file_name))
             self.gui.ui.outputFileLineEdit.setText(file_name)
             self.logic.task_settings_changed()
 

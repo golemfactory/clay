@@ -1,6 +1,7 @@
 import logging
 from multiprocessing import Process, Queue
 from os import path
+from PyQt4.GtCore import QCoreApplication
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -170,6 +171,10 @@ def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
 
     queue = Queue()
+
+    QCoreApplication.setOrganizationName('imapp')
+    QCoreApplication.setOrganizationDomain('imapp.pl')
+    QCoreApplication.setApplicationName('golem')
 
     gui_process = Process(target=start_gui_process,
                           args=(queue, datadir, rendering))
