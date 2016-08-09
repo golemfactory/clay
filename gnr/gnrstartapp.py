@@ -1,7 +1,7 @@
 import logging
 from multiprocessing import Process, Queue
 from os import path
-from PyQt4.GtCore import QCoreApplication
+from PyQt4.QtCore import QCoreApplication
 
 from twisted.internet.defer import inlineCallbacks
 
