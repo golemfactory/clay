@@ -1,4 +1,4 @@
-from datetime import datetime
+from golem.core.common import get_current_time
 
 
 class TaskChunkStateSnapshot:
@@ -61,7 +61,7 @@ class NodeStateSnapshot:
         if ltss is None:
             ltss = {}
         self.uid = uid
-        self.timestamp = datetime.utcnow()
+        self.timestamp = get_current_time()
         self.endpoint_addr = endpoint_addr
         self.endpoint_port = endpoint_port
         self.peers_num = peers_num

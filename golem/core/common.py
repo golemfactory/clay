@@ -1,4 +1,5 @@
 import os
+import pytz
 import sys
 from datetime import datetime, timedelta
 from os import path
@@ -45,12 +46,16 @@ def nt_path_to_posix_path(path):
     return path
 
 
+def get_current_time():
+    return datetime.now(pytz.utc)
+
+
 def deadline_to_timeout(deadline):
     """ Return number of seconds from now to deadline
     :param datetime deadline: UTC datetime
     :return float:
     """
-    return (deadline - datetime.utcnow()).total_seconds()
+    return (deadline - get_current_time()).total_seconds()
 
 
 def timeout_to_deadline(timeout):
@@ -58,8 +63,7 @@ def timeout_to_deadline(timeout):
     :param float timeout:
     :return datetime:
     """
-    return datetime.utcnow() + timedelta(seconds=timeout)
-
+    return get_current_time() + timedelta(seconds=timeout)
 
 class HandleKeyError(object):
     def __init__(self, handle_error):

@@ -1,9 +1,7 @@
 import logging
 import time
-from datetime import datetime
 
-
-from golem.core.common import HandleKeyError, timeout_to_deadline
+from golem.core.common import HandleKeyError, timeout_to_deadline, get_current_time
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -301,7 +299,7 @@ class TaskManager(object):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = datetime.utcnow()
+            cur_time = get_current_time()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
                 t.task_status = TaskStatus.timeout
