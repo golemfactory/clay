@@ -2,10 +2,12 @@ from unittest import TestCase
 
 import time
 
+from golem.testutils import TempDirFixture
+
 from gnr.ui.appmainwindow import AppMainWindow
 
 from gnr.application import GNRGui
-from mock import Mock
+from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
 from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer, SaveKeysDialogCustomizer
@@ -13,7 +15,7 @@ from gnr.ui.dialog import IdentityDialog, SaveKeysDialog
 from golem.tools.testwithreactor import TestWithReactor
 
 
-class TestIdentityDialogCustomizer(TestCase):
+class TestIdentityDialogCustomizer(TempDirFixture):
 
     def setUp(self):
         super(TestIdentityDialogCustomizer, self).setUp()
@@ -21,15 +23,17 @@ class TestIdentityDialogCustomizer(TestCase):
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestIdentityDialogCustomizer, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
+        super(TestIdentityDialogCustomizer, self).tearDown()
 
-    def test(self):
+    @patch('gnr.ui.dialog.GeneratingKeyWindow.show')
+    def test(self, *_):
         self.gnrgui.show = Mock()
         self.gnrgui.main_window.show = Mock()
 
         identity_dialog = IdentityDialog(self.gnrgui.main_window.window)
+        identity_dialog.window.show = Mock()
         customizer = IdentityDialogCustomizer(identity_dialog, self.logic)
         customizer.keys_auth = Mock()
         customizer._generate_keys(difficulty=1)
@@ -43,16 +47,18 @@ class TestSaveKeysDialogCustomizer(TestWithReactor):
         self.gnrgui = GNRGui(Mock(), AppMainWindow)
 
     def tearDown(self):
-        super(TestSaveKeysDialogCustomizer, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
+        super(TestSaveKeysDialogCustomizer, self).tearDown()
 
     def test(self):
-        self.gnrgui.show = Mock()
         self.gnrgui.main_window.show = Mock()
 
         dialog = SaveKeysDialog(self.gnrgui.main_window.window)
+        dialog.window.show = Mock()
+        dialog.window.close = Mock()
         customizer = SaveKeysDialogCustomizer(dialog, self.logic)
+        customizer.show_error_window = Mock()
 
         d = Deferred()
         d.result = False

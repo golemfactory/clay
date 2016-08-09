@@ -179,8 +179,7 @@ class DummyTask(Task):
         return computation.check_pow(long(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
-                             dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
 
         self.subtask_results[subtask_id] = task_result
         if not self.verify_subtask(subtask_id):

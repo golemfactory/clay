@@ -4,9 +4,10 @@ from mock import Mock
 
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
-from golem.task.taskstate import TaskStatus, TaskState, SubtaskStatus, SubtaskState
+from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -138,6 +139,78 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.remove_old_tasks()
         assert tm.tasks_states["mno"].status == TaskStatus.timeout
         assert tm.tasks_states["mno"].subtask_states["mmnnoo"].subtask_status == SubtaskStatus.failure
+
+    def test_computed_task_received(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        th = TaskHeader("ABC", "xyz", "10.10.10.10", 1024, "key_id", "DEFAULT")
+        th.max_price = 50
+
+        class TestTask(Task):
+            def __init__(self, header, src_code, subtasks_id):
+                super(TestTask, self).__init__(header, src_code)
+                self.finished = {k: False for k in subtasks_id}
+                self.restarted = {k: False for k in subtasks_id}
+                self.subtasks_id = subtasks_id
+
+            def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
+
+                ctd = ComputeTaskDef()
+                ctd.task_id = self.header.task_id
+                ctd.subtask_id = self.subtasks_id[0]
+                self.subtasks_id = self.subtasks_id[1:]
+                e = self.ExtraData(False, ctd)
+                return e
+
+            def needs_computation(self):
+                return sum(self.finished.values()) != len(self.finished)
+
+            def computation_finished(self, subtask_id, task_result, result_type=0):
+                if not self.restarted[subtask_id]:
+                    self.finished[subtask_id] = True
+
+            def verify_subtask(self, subtask_id):
+                return self.finished[subtask_id]
+
+            def finished_computation(self):
+                return not self.needs_computation()
+
+            def verify_task(self):
+                return self.finished_computation()
+
+            def restart_subtask(self, subtask_id):
+                self.restarted[subtask_id] = True
+
+        t = TestTask(th, "print 'Hello world'", ["xxyyzz"])
+        tm.add_new_task(t)
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000, 10000, 10000)
+        assert not wrong_task
+        assert ctd.subtask_id == "xxyyzz"
+        assert not should_wait
+        task_id = tm.subtask2task_mapping["xxyyzz"]
+        assert task_id == "xyz"
+        ss = tm.tasks_states["xyz"].subtask_states["xxyyzz"]
+        assert ss.subtask_status == SubtaskStatus.starting
+        assert tm.computed_task_received("xxyyzz", [], 0)
+        assert t.finished["xxyyzz"]
+        assert ss.subtask_progress == 1.0
+        assert ss.subtask_rem_time == 0.0
+        assert ss.subtask_status == SubtaskStatus.finished
+        assert tm.tasks_states["xyz"].status == TaskStatus.finished
+
+        th.task_id = "qwe"
+        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"])
+        tm.add_new_task(t3)
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
+        assert not wrong_task
+        assert ctd.subtask_id == "qqwwee"
+        tm.task_computation_failure("qqwwee", "something went wrong")
+        ss = tm.tasks_states["qwe"].subtask_states["qqwwee"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert ss.subtask_progress == 1.0
+        assert ss.subtask_rem_time == 0.0
+        assert ss.stderr == "something went wrong"
+        with self.assertLogs(logger, level="WARNING"):
+            assert not tm.computed_task_received("qqwwee", [], 0)
 
     def test_task_result_incoming(self):
         subtask_id = "xxyyzz"

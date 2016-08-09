@@ -159,7 +159,7 @@ class FrameRendererCustomizer(RendererCustomizer):
         if self.renderer_options.use_frames:
             frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())
             if not frames:
-                self.show_error_window("Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
+                self.show_error_window(u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
                 return
             self.renderer_options.frames = frames
 

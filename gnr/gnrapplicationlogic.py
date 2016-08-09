@@ -21,6 +21,7 @@ from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
@@ -76,6 +77,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = None
         self.br = None
         self.__looping_calls = None
+        self.dir_manager = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
@@ -127,6 +129,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
             self.customizer.prompt_node_name(config)
+        self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -310,7 +313,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
                                                                                      task_state.definition,
-                                                                                     self.datadir)
+                                                                                     self.datadir, self.dir_manager)
         return builder
 
     def restart_task(self, task_id):
@@ -486,7 +489,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.br.run()
 
     def _benchmark_computation_success(self, performance, label):
-        self.progress_dialog_customizer.show_message("Recounted")
+        self.progress_dialog_customizer.show_message(u"Recounted")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
@@ -496,7 +499,7 @@ class GNRApplicationLogic(QtCore.QObject):
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
-        self.progress_dialog_customizer.show_message("Recounting failed: " + error)
+        self.progress_dialog_customizer.show_message(u"Recounting failed: {}".format(error))
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
@@ -509,16 +512,16 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
     def test_task_computation_success(self, results, est_mem):
-        self.progress_dialog_customizer.show_message("Test task computation success!")
+        self.progress_dialog_customizer.show_message(u"Test task computation success!")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
     def test_task_computation_error(self, error):
-        err_msg = "Task test computation failure. "
+        err_msg = u"Task test computation failure. "
         if error:
-            err_msg += error
+            err_msg += u"{}".format(error)
         self.progress_dialog_customizer.show_message(err_msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
@@ -565,13 +568,13 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
-            self.show_error_window("Main program file does not exist: {}".format(td.main_program_file))
+            self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True

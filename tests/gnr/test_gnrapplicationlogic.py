@@ -2,12 +2,7 @@ import os
 import time
 import uuid
 
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from mock import Mock, MagicMock
-from twisted.internet.defer import Deferred
-
 from ethereum.utils import denoms
-
 from gnr.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
@@ -16,6 +11,8 @@ from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
+from mock import Mock, MagicMock
+from twisted.internet.defer import Deferred
 
 
 class TTask(Task):
@@ -132,59 +129,6 @@ class TestGNRApplicationLogic(DatabaseFixture):
         logic = GNRApplicationLogic()
         self.assertTrue(os.path.isdir(logic.root_path))
 
-    def test_run_test_task(self):
-        rpc_client = RPCClient()
-
-        logic = GNRApplicationLogic()
-        logic.client = Client.__new__(Client)
-        logic.client.datadir = logic.root_path
-        logic.client.rpc_clients = [rpc_client]
-
-        gnrgui = GNRGui(Mock(), AppMainWindow)
-
-        logic.client.datadir = self.path
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
-        logic.customizer.new_task_dialog_customizer = Mock()
-
-        ts = Mock()
-        files = self.additional_dir_content([1])
-        ts.definition.main_program_file = files[0]
-        ts.definition.renderer = "TESTTASK"
-
-        task_type = Mock()
-        ttb = TTaskBuilder(self.path)
-        task_type.task_builder_type.return_value = ttb
-        logic.task_types["TESTTASK"] = task_type
-
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-
-        assert rpc_client.success
-
-        ttb.src_code = "raise Exception('some error')"
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-
-        assert rpc_client.error
-
-        ttb.src_code = "print 'hello'"
-        logic.run_test_task(ts)
-        time.sleep(0.5)
-
-        assert rpc_client.error
-
-        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
-        logic.task_settings_changed()
-        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
-
-        logic.tasks["xyz"] = ts
-        logic.clone_task("xyz")
-
-        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
-
-        gnrgui.app.exit(0)
-        gnrgui.app.deleteLater()
-
     def test_update_payments_view(self):
         logic = GNRApplicationLogic()
         logic.client = Mock()
@@ -204,12 +148,24 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
 
+
+class TestGNRApplicationLogicWithClient(DatabaseFixture):
+
+    def setUp(self):
+        super(TestGNRApplicationLogicWithClient, self).setUp()
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False)
+
+    def tearDown(self):
+        self.client.quit()
+        super(TestGNRApplicationLogicWithClient, self).tearDown()
+
     def test_inline_callbacks(self):
 
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
 
-        golem_client = Client()
+        golem_client = self.client
         golem_client.task_server = Mock()
         golem_client.p2pservice = Mock()
         golem_client.resource_server = Mock()
@@ -240,30 +196,28 @@ class TestGNRApplicationLogic(DatabaseFixture):
         logic.load_keys_from_file('invalid')
         logic.save_keys_to_files(os.path.join(self.path, 'invalid_1'), os.path.join(self.path, 'invalid_2'))
 
-        golem_client.quit()
-
     def test_change_description(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
-        golem_client = Client(datadir=self.path)
+        golem_client = self.client
         client = MockRPCClient(golem_client)
         service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
         logic.register_client(client, service_info)
         golem_client.change_description("NEW DESC")
         time.sleep(0.5)
         assert golem_client.get_description() == "NEW DESC"
-        golem_client.quit()
 
 
-class TestConfigDialog(DatabaseFixture):
+class TestGNRApplicationLogicWithGUI(DatabaseFixture):
 
     def setUp(self):
-        super(TestConfigDialog, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        super(TestGNRApplicationLogicWithGUI, self).setUp()
+        self.client = Client.__new__(Client)
+        self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestConfigDialog, self).tearDown()
+        super(TestGNRApplicationLogicWithGUI, self).tearDown()
         self.app.app.exit(0)
         self.app.app.deleteLater()
 
@@ -285,3 +239,52 @@ class TestConfigDialog(DatabaseFixture):
 
         assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+
+    def test_run_test_task(self):
+        logic = self.logic
+        gnrgui = self.app
+
+        rpc_client = RPCClient()
+
+        logic.root_path = self.path
+        logic.client = self.client
+        logic.client.datadir = logic.root_path
+        logic.client.rpc_clients = [rpc_client]
+
+        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer.new_task_dialog_customizer = Mock()
+
+        ts = Mock()
+        files = self.additional_dir_content([1])
+        ts.definition.main_program_file = files[0]
+        ts.definition.renderer = "TESTTASK"
+
+        task_type = Mock()
+        ttb = TTaskBuilder(self.path)
+        task_type.task_builder_type.return_value = ttb
+        logic.task_types["TESTTASK"] = task_type
+
+        logic.run_test_task(ts)
+        time.sleep(0.5)
+
+        assert rpc_client.success
+
+        ttb.src_code = "raise Exception('some error')"
+        logic.run_test_task(ts)
+        time.sleep(0.5)
+
+        assert rpc_client.error
+
+        logic.run_test_task(ts)
+        time.sleep(0.5)
+
+        assert rpc_client.error
+
+        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        logic.task_settings_changed()
+        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
+
+        logic.tasks["xyz"] = ts
+        logic.clone_task("xyz")
+
+        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition

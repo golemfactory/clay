@@ -79,8 +79,8 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(object):
-    def __init__(self, datadir=None, transaction_system=False,
-                 connect_to_known_hosts=True, **config_overrides):
+    def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
+                 use_docker_machine_manager=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -96,6 +96,7 @@ class Client(object):
         self.config_desc.init_from_app_config(config)
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
+                self.quit()  # quit only closes underlying services (for now)
                 raise AttributeError(
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
@@ -148,6 +149,7 @@ class Client(object):
         else:
             self.transaction_system = None
 
+        self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
@@ -176,7 +178,8 @@ class Client(object):
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
-                                      use_ipv6=self.config_desc.use_ipv6)
+                                      use_ipv6=self.config_desc.use_ipv6,
+                                      use_docker_machine_manager=self.use_docker_machine_manager)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -230,6 +233,8 @@ class Client(object):
         if self.monitor:
             self.monitor.on_logout()
             self.monitor.shut_down()
+        if self.db:
+            self.db.close()
         self._unlock_datadir()
 
     def key_changed(self):

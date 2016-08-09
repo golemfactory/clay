@@ -5,6 +5,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 
 class BlenderEnvTest(unittest.TestCase):
+
     def test_blender(self):
         env = BlenderEnvironment()
         assert bool(env.supported()) == bool(env.check_software())
@@ -18,8 +19,8 @@ class BlenderEnvTest(unittest.TestCase):
         self.assertTrue(result == perf)
         
 
-
 class TestLuxRenderEnvironment(unittest.TestCase):
+
     def test_lux(self):
         env = LuxRenderEnvironment()
         self.assertIsInstance(env, LuxRenderEnvironment)

@@ -40,27 +40,25 @@ def ip_addresses(use_ipv6=False):
     return addresses
 
 
-def ip_networks(use_ipv6=False):
-    if use_ipv6:
-        addr_family = netifaces.AF_INET6
-    else:
-        addr_family = netifaces.AF_INET
+def ipv4_networks():
+    addr_family = netifaces.AF_INET
     addresses = []
+
     for inter in netifaces.interfaces():
         ip = netifaces.ifaddresses(inter).get(addr_family)
         if not ip:
             continue
         for addrInfo in ip:
             addr = unicode(addrInfo.get('addr'))
-            mask = unicode(addrInfo.get('netmask'))
+            mask = unicode(addrInfo.get('netmask', '255.255.255.0'))
 
             try:
                 ip_addr = ipaddress.ip_network((addr, mask), strict=False)
             except Exception as exc:
-                logger.error("Error parsing ip address {}: {}".format(addr, exc.message))
+                logger.error("Error parsing ip address {}: {}".format(addr, exc))
                 continue
 
-            if addr != '127.0.0.1' and addr != '::1':
+            if addr != '127.0.0.1':
                 split = unicode(ip_addr).split('/')
                 addresses.append((split[0], split[1]))
     return addresses

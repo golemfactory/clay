@@ -77,7 +77,10 @@ class HandleKeyError(object):
 def config_logging(logname=LOG_NAME):
     """Config logger"""
 
+    # \t and other special chars cause problems with log handlers
+    logname = logname.encode('string-escape')
     directory = os.path.dirname(logname)
+
     if directory:
         try:
             os.makedirs(directory)

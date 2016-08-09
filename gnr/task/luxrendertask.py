@@ -11,6 +11,7 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
+from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
@@ -97,7 +98,9 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            docker_images=self.task_definition.docker_images
                            )
 
-        return self._set_verification_options(lux_task)
+        self._set_verification_options(lux_task)
+        lux_task.initialize(self.dir_manager)
+        return lux_task
 
 
 class LuxTask(RenderingTask):
@@ -210,10 +213,10 @@ class LuxTask(RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
 
-        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
+        self.interpret_task_results(subtask_id, task_result, result_type)
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
@@ -283,8 +286,6 @@ class LuxTask(RenderingTask):
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is not None:
             try:
-                if not os.path.exists(self.tmp_dir):
-                    os.makedirs(self.tmp_dir)
                 shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
@@ -471,5 +472,7 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self):
-        return os.path.join(self.tmp_dir, "test_result.flm")
+    def __get_test_flm(self, dir_=None):
+        if dir_ is None:
+            dir_ = self.tmp_dir
+        return os.path.join(dir_, "test_result.flm")

@@ -49,7 +49,7 @@ class IdentityDialogCustomizer(Customizer):
         if result:
             self.keys_changed()
         else:
-            IdentityDialogCustomizer.show_error_window("Can't load key from given file")
+            IdentityDialogCustomizer.show_error_window(u"Can't load key from given file")
 
     def _save_in_file(self):
         save_keys_dialog = SaveKeysDialog(self.gui.window)
@@ -60,7 +60,7 @@ class IdentityDialogCustomizer(Customizer):
         try:
             difficulty = int(self.gui.ui.difficulty_spin_box.text())
         except ValueError:
-            IdentityDialogCustomizer.show_error_window("Difficulty must be an integer [0-255]")
+            IdentityDialogCustomizer.show_error_window(u"Difficulty must be an integer [0-255]")
             return
 
         reply = QMessageBox.warning(self.gui.window, "Warning!", GENERATE_NEW_WARNING, QMessageBox.Yes | QMessageBox.No,
@@ -117,4 +117,4 @@ class SaveKeysDialogCustomizer(Customizer):
         if res:
             self.gui.window.close()
         else:
-            SaveKeysDialogCustomizer.show_error_window("Can't save keys in given files")
+            self.show_error_window(u"Can't save keys in given files")

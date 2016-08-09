@@ -148,7 +148,7 @@ def start_client_process(queue, start_ranking, datadir=None,
     client.environments_manager.load_config(client.datadir)
 
     def listen():
-        rpc_server = WebSocketRPCServerFactory()
+        rpc_server = WebSocketRPCServerFactory(interface='localhost')
         rpc_server.listen()
 
         client_service_info = client.set_rpc_server(rpc_server)

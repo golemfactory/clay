@@ -221,7 +221,7 @@ class TestP2PService(DatabaseFixture):
         service.sync_network()
         assert last_time == service.last_time_tried_connect_with_seed
         service.reconnect_with_seed_threshold = 0.1
-        time.sleep(0.1)
+        time.sleep(0.5)
         service.sync_network()
         assert last_time < service.last_time_tried_connect_with_seed
 
