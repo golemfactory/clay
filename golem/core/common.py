@@ -2,9 +2,9 @@ import os
 import sys
 from os import path
 
-LOG_NAME = "golem.log"
+import errno
 
-ETH = 1 / float(10**18)
+LOG_NAME = "golem.log"
 
 
 def is_windows():
@@ -59,6 +59,19 @@ class HandleKeyError(object):
 
 def config_logging(logname=LOG_NAME):
     """Config logger"""
+
+    # \t and other special chars cause problems with log handlers
+    logname = logname.encode('string-escape')
+    directory = os.path.dirname(logname)
+
+    if directory:
+        try:
+            os.makedirs(directory)
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
+                raise
+
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "gnr", "logging.ini"))
     logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
+

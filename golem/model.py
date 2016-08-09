@@ -41,13 +41,17 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts]
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
             db.drop_tables(tables, safe=True)
             Database._set_user_version(Database.SCHEMA_VERSION)
         db.create_tables(tables, safe=True)
+
+    def close(self):
+        if not self.db.is_closed():
+            self.db.close()
 
 
 class BaseModel(Model):
@@ -111,7 +115,13 @@ class Payment(BaseModel):
     status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = IntegerField()
-    details = JsonField(default={})
+    details = JsonField()
+
+    def __init__(self, *args, **kwargs):
+        super(Payment, self).__init__(*args, **kwargs)
+        # For convenience always have .details as a dictionary
+        if self.details is None:
+            self.details = {}
 
 
 class ReceivedPayment(BaseModel):
@@ -183,3 +193,11 @@ class KnownHosts(BaseModel):
         indexes = (
             (('ip_address', 'port'), True),  # unique index
         )
+
+
+class Account(BaseModel):
+    node_id = CharField(unique=True)
+    description = TextField(default="")
+
+    class Meta:
+        database = db

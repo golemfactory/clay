@@ -83,10 +83,11 @@ class MockReactorThread(Thread):
             time.sleep(0.1)
 
     def __reactor_loop(self):
+        timeout = 1 * 10 ** -3
         while self.working:
             try:
                 self.reactor.runUntilCurrent()
-                self.reactor.doIteration(self.reactor.timeout() or 0)
+                self.reactor.doIteration(timeout)
             except Exception as e:
                 print "Unexpected error in main loop:", e.message
         self.done = True

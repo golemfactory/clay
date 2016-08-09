@@ -36,6 +36,6 @@ class Customizer(object):
     @staticmethod
     def show_error_window(text):
 
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", text)
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()

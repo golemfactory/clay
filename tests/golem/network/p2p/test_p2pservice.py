@@ -2,20 +2,22 @@ import time
 import uuid
 
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from mock import MagicMock
+from mock import MagicMock, Mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
 
 
 class TestP2PService(DatabaseFixture):
     def test_add_to_peer_keeper(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         node = Node()
@@ -48,11 +50,11 @@ class TestP2PService(DatabaseFixture):
         self.assertEqual(len(service.peers), 102)
 
     def test_remove_old_peers(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         node = MagicMock()
-        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
         node.key_id = node.key
 
         service.last_peers_request = time.time() + 10
@@ -70,18 +72,18 @@ class TestP2PService(DatabaseFixture):
         assert len(service.peers) == 1
 
     def test_refresh_peers(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = MagicMock()
-        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
         node.key_id = node.key
         node.address = sa
 
         node2 = MagicMock()
-        node2.key = EllipticalKeysAuth("TEST2").get_key_id()
+        node2.key = EllipticalKeysAuth(self.path, "TESTPRIV2", "TESTPUB2").get_key_id()
         node2.key_id = node2.key
         node2.address = sa
 
@@ -105,13 +107,13 @@ class TestP2PService(DatabaseFixture):
         assert len(service.peers) == 2
 
     def test_redundant_peers(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = MagicMock()
-        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
         node.key_id = node.key
         node.address = sa
 
@@ -122,10 +124,10 @@ class TestP2PService(DatabaseFixture):
         assert service.enough_peers()
 
     def test_add_known_peer(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
-        key_id = EllipticalKeysAuth("TEST").get_key_id()
+        key_id = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
         nominal_seeds = len(service.seeds)
 
         node = Node(
@@ -181,12 +183,12 @@ class TestP2PService(DatabaseFixture):
         assert len(service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
 
         node = MagicMock()
-        node.key = EllipticalKeysAuth("TEST").get_key_id()
+        node.key = EllipticalKeysAuth(self.path, "PRIVTEST", "PUBTEST").get_key_id()
         node.key_id = node.key
         node.pub_addr = '127.0.0.1'
         node.pub_port = 10000
@@ -207,7 +209,7 @@ class TestP2PService(DatabaseFixture):
         assert len(service.pending_connections) == 1
 
     def test_reconnect_with_seed(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         service.connect_to_seeds()
@@ -219,12 +221,12 @@ class TestP2PService(DatabaseFixture):
         service.sync_network()
         assert last_time == service.last_time_tried_connect_with_seed
         service.reconnect_with_seed_threshold = 0.1
-        time.sleep(0.1)
+        time.sleep(0.5)
         service.sync_network()
         assert last_time < service.last_time_tried_connect_with_seed
 
     def test_want_to_start_task_session(self):
-        keys_auth = EllipticalKeysAuth()
+        keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
                              connect_to_known_hosts=False)
         service.task_server = MagicMock()
@@ -249,9 +251,83 @@ class TestP2PService(DatabaseFixture):
         service.node = node_info
 
         service.want_to_start_task_session(key_id, node_info, conn_id)
+        service.want_to_start_task_session(peer.key_id, node_info, conn_id)
 
+    def test_get_diagnostic(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        m = MagicMock()
+        m.transport.getPeer.return_value.port = "10432"
+        m.transport.getPeer.return_value.host = "10.10.10.10"
+        ps1 = PeerSession(m)
+        ps1.key_id = keys_auth.key_id
+        service.add_peer(keys_auth.key_id, ps1)
+        m2 = MagicMock()
+        m2.transport.getPeer.return_value.port = "11432"
+        m2.transport.getPeer.return_value.host = "127.0.0.1"
+        ps2 = PeerSession(m2)
+        keys_auth2 = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        ps2.key_id = keys_auth2.key_id
+        service.add_peer(keys_auth2.key_id, ps2)
+        service.get_diagnostics(DiagnosticsOutputFormat.json)
 
+    def test(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        service.task_server = Mock()
+        service.peer_keeper = Mock()
+        service.peer_keeper.sync.return_value = dict()
+        service.connect = Mock()
+        service.last_tasks_request = 0
 
+        p = Mock()
+        p.key_id = 'deadbeef'
+        p.degree = 1
+        p.last_message_time = 0
 
+        p2 = Mock()
+        p2.key_id = 'deadbeef02'
+        p2.degree = 1
+        p2.last_message_time = 0
 
+        service.peers[p.key_id] = p
+        service.peers['deadbeef02'] = p2
+        service.resource_peers['deadbeef02'] = [1, 2, 3, 4]
+        service.peer_order = [p.key_id, p2.key_id]
+        service.peer_keeper.sessions_to_end = [p2]
 
+        service.ping_peers(1)
+        assert p.ping.called
+
+        service.key_changed()
+        assert p.dropped.called
+
+        degrees = service.get_peers_degree()
+        assert len(degrees) == 2
+        assert p.key_id in degrees
+
+        service.send_get_resource_peers()
+        assert p.send_get_resource_peers.called
+
+        resource_peers = service.get_resource_peers()
+        assert len(resource_peers) == 1
+
+        service.remove_task('task_id')
+        assert p.send_remove_task.called
+
+        service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id', 'conn_id')
+        assert p.send_inform_about_nat_traverse_failure.called
+
+        service.send_nat_traverse_failure(p.key_id, 'conn_id')
+        assert p.send_nat_traverse_failure.called
+
+        service.send_stop_gossip()
+        assert p.send_stop_gossip.called
+
+        service.sync_network()
+        assert p.send_get_tasks.called
+
+        service.remove_peer(p)
+        assert p.key_id not in service.peers

@@ -43,7 +43,8 @@ class EthereumTransactionSystem(TransactionSystem):
     def get_balance(self):
         b = self.__proc.balance()
         ab = self.__proc.available_balance()
-        return b, ab
+        d = self.__proc.deposit_balance()
+        return b, ab, d
 
     def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
@@ -51,3 +52,10 @@ class EthereumTransactionSystem(TransactionSystem):
         :param dict payments: all payments group by ethereum address
         """
         pass
+
+    def get_incoming_payments(self):
+        return [{'status': payment.status,
+                 'payer': payment.payer,
+                 'value': payment.value,
+                 'block_number': payment.extra['block_number']
+                 } for payment in self.__monitor.get_incoming_payments()]

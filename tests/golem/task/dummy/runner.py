@@ -3,6 +3,8 @@ The task simply computes hashes of some random data and requires
 no external tools. The amount of data processed (ie hashed) and computational
 difficulty is configurable, see comments in DummyTaskParameters.
 """
+import atexit
+import logging
 import os
 import re
 import shutil
@@ -16,7 +18,9 @@ from threading import Thread
 from twisted.internet import reactor
 
 from golem.client import Client
+from golem.core.common import is_windows
 from golem.environments.environment import Environment
+from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
 
@@ -32,23 +36,31 @@ node_kind = ""
 
 
 def report(msg):
-    global node_kind
     print format_msg(node_kind, os.getpid(), msg)
 
 
 def run_requesting_node(datadir, num_subtasks=3):
+    client = None
+
+    def shutdown():
+        client and client.quit()
+        logging.shutdown()
+    atexit.register(shutdown)
+
     global node_kind
     node_kind = "REQUESTER"
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False)
+                    connect_to_known_hosts=False,
+                    use_docker_machine_manager=False)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
+    task.initialize(DirManager(datadir))
     client.enqueue_new_task(task)
 
     port = client.p2pservice.cur_port
@@ -56,12 +68,12 @@ def run_requesting_node(datadir, num_subtasks=3):
     report("Listening on {}".format(requester_addr))
 
     def report_status():
-        finished = False
         while True:
             time.sleep(1)
-            if not finished and task.finished_computation():
+            if task.finished_computation():
                 report("Task finished")
-                finished = True
+                shutdown()
+                return
 
     reactor.callInThread(report_status)
     reactor.run()
@@ -69,13 +81,21 @@ def run_requesting_node(datadir, num_subtasks=3):
 
 
 def run_computing_node(datadir, peer_address, fail_after=None):
+    client = None
+
+    def shutdown():
+        client and client.quit()
+        logging.shutdown()
+    atexit.register(shutdown)
+
     global node_kind
     node_kind = "COMPUTER "
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
     client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False)
+                    connect_to_known_hosts=False,
+                    use_docker_machine_manager=False)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
@@ -99,6 +119,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
                 reactor.callFromThread(reactor.stop)
+                shutdown()
                 return
             time.sleep(1)
 
@@ -200,8 +221,14 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
         for proc in all_procs:
             if proc.poll() is None:
-                proc.kill()
+                if is_windows():
+                    proc.terminate()
+                else:
+                    proc.kill()
+                proc.wait()
+                del proc
 
+        time.sleep(1)
         shutil.rmtree(datadir)
 
 

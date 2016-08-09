@@ -18,6 +18,8 @@ class ProcessMonitor(Thread):
         while self.working:
             for process in self.child_processes:
                 if not process.is_alive():
+                    print "Subprocess {} exited with code {}. Terminating".format(process.pid,
+                                                                                  process.exitcode)
                     self.exit()
             time.sleep(1)
 

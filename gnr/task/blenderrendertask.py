@@ -144,7 +144,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
-        return self._set_verification_options(blender_task)
+        self._set_verification_options(blender_task)
+        blender_task.initialize(self.dir_manager)
+        return blender_task
 
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
@@ -209,14 +211,12 @@ class BlenderRenderTask(FrameRenderingTask):
         for frame in frames:
             self.frames_given[frame] = {}
 
-        tmp_dir = self._get_tmp_dir()
-        if not self.use_frames:
-            self.preview_file_path = "{}".format(os.path.join(tmp_dir, "current_preview"))
-        else:
-            self.preview_file_path = []
-            for i in range(len(self.frames)):
-                self.preview_file_path.append("{}".format(os.path.join(tmp_dir, "current_preview{}".format(i))))
-        
+        self.preview_updater = None
+        self.preview_updaters = None
+
+    def initialize(self, dir_manager):
+        super(BlenderRenderTask, self).initialize(dir_manager)
+
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
@@ -224,16 +224,19 @@ class BlenderRenderTask(FrameRenderingTask):
         expected_offsets = {}
         for i in range(1, parts + 1):
             _, expected_offset = self._get_min_max_y(i)
-            expected_offset =  self.res_y - int(expected_offset * float(self.res_y))
+            expected_offset = self.res_y - int(expected_offset * float(self.res_y))
             expected_offsets[i] = expected_offset
-        
-        if self.use_frames:
-            self.preview_updaters = []
-            for i in range(0, len(self.frames)):
-                preview_path = self.preview_file_path[i]
-                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
-        else:
+
+        if not self.use_frames:
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             self.preview_updater = PreviewUpdater(self.preview_file_path, self.res_x, self.res_y, expected_offsets)
+        else:
+            self.preview_file_path = []
+            self.preview_updaters = []
+            for i in range(len(self.frames)):
+                preview_path = os.path.join(self.tmp_dir, "current_preview{}".format(i))
+                self.preview_file_path.append(preview_path)
+                self.preview_updaters.append(PreviewUpdater(preview_path, self.res_x, self.res_y, expected_offsets))
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -306,6 +309,8 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if self.use_frames:
             frames = [self.frames[0]]
+            if len(self.frames) > 1:
+                frames.append(max(self.frames))
         else:
             frames = [1]
 
@@ -330,6 +335,11 @@ class BlenderRenderTask(FrameRenderingTask):
             os.makedirs(self.test_task_res_path)
 
         return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+
+    def query_extra_data_for_advance_verification(self, extra_data):
+        ctd = self.query_extra_data_for_test_task()
+        ctd.extra_data = extra_data
+        return ctd
 
     def _get_min_max_y(self, start_task):
         if self.use_frames:
@@ -420,12 +430,8 @@ class BlenderRenderTask(FrameRenderingTask):
             img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
-
-    def _get_output_name(self, frame_num, num_start):
-        num = str(frame_num)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
     
-    def _put_image_together(self, tmp_dir):
+    def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -434,7 +440,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+            self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
                        
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
@@ -486,5 +492,7 @@ class CustomCollector(RenderingTaskCollector):
         _, new_img_res_y = new_part.size
         self.current_offset += new_img_res_y
         img_offset.paste(new_part, (0, offset))
-        return ImageChops.add(final_img, img_offset)
+        result = ImageChops.add(final_img, img_offset)
+        img_offset.close()
+        return result
     

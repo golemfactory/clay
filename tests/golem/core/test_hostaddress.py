@@ -1,5 +1,31 @@
 import unittest
-from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ip_networks
+
+import netifaces
+from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks
+from mock import patch
+
+
+def mock_ifaddresses(*args):
+    addrs = dict()
+    addrs[netifaces.AF_INET] = [
+        dict(
+            addr='127.0.0.1',
+            netmask=None
+        ),
+        dict(
+            addr='10.0.0.10',
+            netmask='255.255.255.0'
+        ),
+        dict(
+            addr='8.8.8.8',
+            netmask='255.255.255.255'
+        ),
+        dict(
+            addr='invalid',
+            netmask='invalid'
+        ),
+    ]
+    return addrs
 
 
 class TestHostAddress(unittest.TestCase):
@@ -12,8 +38,11 @@ class TestHostAddress(unittest.TestCase):
         self.assertEqual(get_host_address('10.30.10.217'), '10.30.10.216')
 
     def testGetIPNetworks(self):
-        ip_networks()
-        ip_networks(use_ipv6=True)
+        ipv4_networks()
+
+    @patch('netifaces.ifaddresses', side_effect=mock_ifaddresses)
+    def testGetIPNetworks2(self, *_):
+        ipv4_networks()
 
     def testIpAddressPrivate(self):
         assert ip_address_private('::1')

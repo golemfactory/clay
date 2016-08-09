@@ -30,7 +30,7 @@ class TaskHeader(object):
         self.max_price = max_price
 
 
-class TaskBuilder:
+class TaskBuilder(object):
     def __init__(self):
         pass
 
@@ -56,7 +56,7 @@ class ComputeTaskDef(object):
         self.docker_images = None
 
 
-class Task:
+class Task(object):
 
     class ExtraData(object):
         def __init__(self, should_wait=False, ctd=None, **kwargs):
@@ -120,11 +120,10 @@ class Task:
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
-        :param DirManager dir_manager: directory manager that keeps information where results are kept
         :param result_type: result_types representation
         """
         return  # Implement in derived class
@@ -206,12 +205,13 @@ class Task:
         return 0.0
 
     @abc.abstractmethod
-    def get_resources(self, task_id, resource_header, resource_type=0):
+    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
         """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
         preparing resources depends from declared resource_type
         :param task_id: FIXME
         :param ResourceHeader resource_header: description of resources that computing node already have for this task
         :param int resource_type: resource type from resources_types (0 for zip, 1 for hash list)
+        :param str tmp_dir: additional directory that can be used during file transfer
         :return None | str | (TaskResourceHeader, list): result depends on return on resource_type
         """
         return None

@@ -12,12 +12,14 @@ from taskcomputer import TaskComputer
 from taskkeeper import TaskHeaderKeeper
 from taskmanager import TaskManager
 from tasksession import TaskSession
+from weakreflist.weakreflist import WeakList
 
 logger = logging.getLogger(__name__)
 
 
 class TaskServer(PendingConnectionsServer):
-    def __init__(self, node, config_desc, keys_auth, client, use_ipv6=False):
+    def __init__(self, node, config_desc, keys_auth, client,
+                 use_ipv6=False, use_docker_machine_manager=True):
         self.client = client
         self.keys_auth = keys_auth
         self.config_desc = config_desc
@@ -28,11 +30,12 @@ class TaskServer(PendingConnectionsServer):
                                         key_id=self.keys_auth.get_key_id(),
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
-        self.task_computer = TaskComputer(config_desc.node_name, self)
+        self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
+                                          use_docker_machine_manager=use_docker_machine_manager)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
-        self.task_sessions_incoming = []
+        self.task_sessions_incoming = WeakList()
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -74,6 +77,12 @@ class TaskServer(PendingConnectionsServer):
         theader = self.task_keeper.get_task()
         if theader is not None:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)
+            env_id = theader.environment
+            env = self.task_keeper.environments_manager.get_environment_by_id(env_id)
+            if env is not None:
+                performance = env.get_performance(self.config_desc)
+            else:
+                performance = 0.0
             logger.debug("Requesting trust level: {}".format(trust))
             if trust >= self.config_desc.requesting_trust:
                 self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
@@ -81,7 +90,7 @@ class TaskServer(PendingConnectionsServer):
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
                     'task_id': theader.task_id,
-                    'estimated_performance': self.config_desc.estimated_performance,
+                    'estimated_performance': performance,
                     'price': self.config_desc.min_price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,

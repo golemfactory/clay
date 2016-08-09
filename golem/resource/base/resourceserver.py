@@ -122,7 +122,9 @@ class BaseResourceServer:
 
     def resource_downloaded(self, filename, multihash, task_id, *args):
         if not filename or not multihash:
-            self.resource_download_error(filename, task_id)
+            self.resource_download_error(Exception("Invalid resource: {} ({})"
+                                                   .format(filename, multihash)),
+                                         filename, multihash, task_id)
             return
 
         collected = self.remove_resource_to_get(filename, task_id)

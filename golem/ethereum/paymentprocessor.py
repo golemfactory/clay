@@ -1,8 +1,11 @@
+from __future__ import division
+
 import logging
 import time
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
+from ethereum.utils import denoms
 from twisted.internet.task import LoopingCall
 
 from golem.model import Payment, PaymentStatus
@@ -54,6 +57,7 @@ class PaymentProcessor(object):
         self.__client = client
         self.__privkey = privkey
         self.__balance = None
+        self.__deposit = None
         self.__reserved = 0
         self.__awaiting = []    # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
@@ -106,8 +110,23 @@ class PaymentProcessor(object):
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
             self.__balance = self.__client.get_balance(addr.encode('hex'))
-            log.info("Balance: {}".format(self.__balance / float(10**18)))
+            log.info("Balance: {}".format(self.__balance / denoms.ether))
         return self.__balance
+
+    def deposit_balance(self, refresh=False):
+        if self.__deposit is None or refresh:
+            data = bank_contract.encode('balance', ())
+            addr = keys.privtoaddr(self.__privkey)
+            r = self.__client.call(_from=addr.encode('hex'),
+                                   to=self.BANK_ADDR.encode('hex'),
+                                   data=data.encode('hex'),
+                                   block='pending')
+            if r is None or r == '0x':
+                self.__deposit = 0
+            else:
+                self.__deposit = int(r, 16)
+            log.info("Deposit: {}".format(self.__deposit / denoms.ether))
+        return self.__deposit
 
     def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
@@ -119,14 +138,17 @@ class PaymentProcessor(object):
         value = payment.value
         assert type(value) in (int, long)
         balance = self.available_balance()
-        log.info("Payment to {} ({})".format(payment.payee.encode('hex'),
-                                             value))
+        log.info("Payment {:.6} to {:.6} ({:.6f})".format(
+                 payment.subtask,
+                 payment.payee.encode('hex'),
+                 value / denoms.ether))
         if value > balance:
-            log.warning("Not enough money: {}".format(balance))
+            log.warning("Low balance: {:.6f}".format(balance / denoms.ether))
             return False
         self.__awaiting.append(payment)
         self.__reserved += value
-        log.info("Balance: {}, reserved {}".format(balance, self.__reserved))
+        log.info("Balance: {:.6f}, reserved {:.6f}".format(
+                 balance / denoms.ether, self.__reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -139,13 +161,18 @@ class PaymentProcessor(object):
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count(addr.encode('hex'))
         p, value = _encode_payments(payments)
+        deposit = self.deposit_balance(refresh=True)
+        # First use ether from deposit, so transfer only missing amount.
+        transfer_value = max(value - deposit, 0)
         data = bank_contract.encode('transfer', [p])
         gas = 21000 + len(p) * 30000
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.BANK_ADDR,
-                         value=value, data=data)
+                         value=transfer_value, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
-        log.info("Batch payments: {}".format(h.encode('hex')))
+        log.info("Batch payments: {:.6}, value: {:.6f}, transfer: {:.6f}"
+                 .format(h.encode('hex'), value / denoms.ether,
+                         transfer_value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -157,6 +184,10 @@ class PaymentProcessor(object):
                 payment.status = PaymentStatus.sent
                 payment.details['tx'] = h.encode('hex')
                 payment.save()
+                log.debug("- {} send to {} ({:.6f})".format(
+                          payment.subtask,
+                          payment.payee.encode('hex'),
+                          payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
             assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
@@ -167,21 +198,26 @@ class PaymentProcessor(object):
         confirmed = []
         for h, payments in self.__inprogress.iteritems():
             hstr = h.encode('hex')
-            log.info("Checking {} transaction".format(hstr))
-            info = self.__client.get_transaction_by_hash(hstr)
-            assert info, "Transaction has been lost"
-            if info['blockNumber']:
-                block_hash = info['blockHash'][2:]
+            log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
+            receipt = self.__client.get_transaction_receipt(hstr)
+            if receipt:
+                block_hash = receipt['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
-                block_number = int(info['blockNumber'], 16)
-                log.info("Confirmed {}: block {} ({})".format(hstr, block_hash,
-                                                              block_number))
+                block_number = int(receipt['blockNumber'], 16)
+                gas_used = int(receipt['gasUsed'], 16)
+                total_fee = gas_used * self.GAS_PRICE
+                fee = total_fee // len(payments)
+                log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
+                         .format(hstr, block_hash, block_number, gas_used, fee))
                 with Payment._meta.database.transaction():
                     for p in payments:
                         p.status = PaymentStatus.confirmed
                         p.details['block_number'] = block_number
                         p.details['block_hash'] = block_hash
+                        p.details['fee'] = fee
                         p.save()
+                        log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
+                                  fee / denoms.ether))
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.
@@ -199,12 +235,13 @@ class PaymentProcessor(object):
             value = 100
             log.info("Requesting {} ETH from Golem Faucet".format(value))
             addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(self.__client, addr, value * 10**18)
+            Faucet.gimme_money(self.__client, addr, value * denoms.ether)
             self.__faucet_request_ttl = 10
             return False
         return True
 
     def run(self):
         if self.synchronized() and self.get_ethers_from_faucet():
-            self.sendout()
+            self.deposit_balance(refresh=True)
             self.monitor_progress()
+            self.sendout()

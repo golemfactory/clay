@@ -8,7 +8,7 @@ from golem.transactions.ethereum.ethereumincomeskeeper import EthereumIncomesKee
 class TestEthereumIncomesKeeper(TestWithDatabase):
     def test_get_income(self):
         ik = EthereumIncomesKeeper()
-        e = EllipticalKeysAuth()
+        e = EllipticalKeysAuth(self.path)
         node = e.get_key_id()
         self.assertIsNone(ik.get_income(node, 0))
         self.assertEqual(ik.get_income(node, 10), [])

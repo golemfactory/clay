@@ -46,6 +46,19 @@ class TestPayment(DatabaseFixture):
         with self.assertRaises(TypeError):
             Payment.create(payee="XX", subtask="zz", value=5, status=1)
 
+    def test_payment_details(self):
+        p1 = Payment(payee="me", subtask="T1000", value=123456)
+        p2 = Payment(payee="you", subtask="T900", value=654321)
+        assert p1.payee != p2.payee
+        assert p1.subtask != p2.subtask
+        assert p1.value != p2.value
+        assert p1.details == {}
+        assert p1.details == p2.details
+        assert p1.details is not p2.details
+        p1.details['check'] = True
+        assert p1.details['check']
+        assert 'check' not in p2.details
+
 
 class TestReceivedPayment(DatabaseFixture):
 

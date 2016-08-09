@@ -22,9 +22,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         ps = PeerSession(MagicMock())
         ps2 = PeerSession(MagicMock())
 
-        EllipticalKeysAuth._keys_dir = self.path
-        ek = EllipticalKeysAuth(random())
-        ek2 = EllipticalKeysAuth(random())
+        ek = EllipticalKeysAuth(self.path, "RANDOMPRIV", "RANDOMPUB")
+        ek2 = EllipticalKeysAuth(self.path, "RANDOMPRIV2", "RANDOMPUB2")
         ps.p2p_service.encrypt = ek.encrypt
         ps.p2p_service.decrypt = ek.decrypt
         ps.key_id = ek2.key_id
@@ -45,7 +44,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         conf = MagicMock()
 
         node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth()
+        keys_auth = KeysAuth(self.path)
         keys_auth.key = node.key
         keys_auth.key_id = node.key
 
@@ -92,14 +91,19 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 class TestPeerSessionInfo(unittest.TestCase):
 
     def test(self):
-        attributes = PeerSessionInfo.attributes
-        session = MagicMock()
 
-        for attr in attributes:
-            setattr(session, attr, True)
+        session = PeerSession(MagicMock())
 
         session.unknown_property = False
         session_info = PeerSessionInfo(session)
+
+        attributes = [
+            'address', 'port',
+            'verified', 'rand_val',
+            'degree', 'key_id',
+            'node_name', 'node_info',
+            'listen_port', 'conn_id'
+        ]
 
         for attr in attributes:
             assert hasattr(session_info, attr)

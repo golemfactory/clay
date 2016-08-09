@@ -1,3 +1,5 @@
+from __future__ import division
+
 import atexit
 import json
 import logging
@@ -13,7 +15,7 @@ import psutil
 from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address
+from ethereum.utils import normalize_address, denoms
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -35,7 +37,7 @@ class Faucet(object):
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
-        log.info("Faucet --({} ETH)--> {} ({})".format(float(value) / 10**18,
+        log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
                                                        addr.encode('hex'), h))
         h = h[2:].decode('hex')
         assert h == tx.hash
@@ -51,14 +53,18 @@ class Faucet(object):
 
 
 class NodeProcess(object):
-    MINIMAL_GETH_VERSION_REQUIRED = '1.4.5'
+    MIN_GETH_VERSION = '1.4.5'
+    MAX_GETH_VERSION = '1.4.999'
 
     def __init__(self, nodes, datadir):
-        program = find_program('geth')
-        output, _ = subprocess.Popen(['geth', 'version'],
+        self.__prog = find_program('geth')
+        if not self.__prog:
+            raise OSError("Ethereum client 'geth' not found")
+        output, _ = subprocess.Popen([self.__prog, 'version'],
                                      stdout=subprocess.PIPE).communicate()
-        ver = StrictVersion(re.search("Version: (\d\.\d{1,2}\.\d{1,2})", output).group(1))
-        assert ver >= self.MINIMAL_GETH_VERSION_REQUIRED
+        ver = StrictVersion(re.search("Version: (\d+\.\d+\.\d+)", output).group(1))
+        if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
+            raise OSError("Incompatible Ethereum client 'geth' version: {}".format(ver))
         log.info("geth version {}".format(ver))
 
         if not path.exists(datadir):
@@ -68,13 +74,14 @@ class NodeProcess(object):
             nodes_file = path.join(datadir, 'static-nodes.json')
             json.dump(nodes, open(nodes_file, 'w'))
 
-        # Init the ethereum node with genesis block information
-        if not path.exists(path.join(datadir, 'chaindata')):
-            genesis_file = path.join(path.dirname(__file__),
-                                     'genesis_golem.json')
-            init_args = [program, '--datadir', datadir, 'init', genesis_file]
-            subprocess.check_call(init_args)
-            log.info("geth init: {}".format(' '.join(init_args)))
+        # Init the ethereum node with genesis block information.
+        # Do it always to overwrite invalid genesis block information
+        # (e.g. genesis of main Ethereum network)
+        genesis_file = path.join(path.dirname(__file__),
+                                 'genesis_golem.json')
+        init_args = [self.__prog, '--datadir', datadir, 'init', genesis_file]
+        subprocess.check_call(init_args)
+        log.info("geth init: {}".format(' '.join(init_args)))
 
         self.datadir = datadir
         self.__ps = None
@@ -86,16 +93,13 @@ class NodeProcess(object):
     def start(self, rpc, mining=False, nodekey=None, port=None):
         if self.__ps:
             return
-
         assert not self.rpcport
-        program = find_program('geth')
-        assert program  # TODO: Replace with a nice exception
 
         if not port:
             port = find_free_net_port()
         self.port = port
         args = [
-            program,
+            self.__prog,
             '--datadir', self.datadir,
             '--networkid', '9',
             '--port', str(self.port),

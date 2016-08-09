@@ -1,5 +1,7 @@
 import logging
+import sys
 import time
+import uuid
 from os import path, makedirs
 from threading import Lock
 
@@ -10,9 +12,15 @@ from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
+from golem.core.variables import APP_VERSION
+from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
+from golem.diag.vm import VMDiagnosticsProvider
+from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database
+from golem.model import Database, Account
+from golem.monitor.monitor import SystemMonitor
+from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -54,6 +62,7 @@ class GolemClientRemoteEventListener(GolemClientEventListener):
 
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
+        TaskManagerEventListener.__init__(self)
         self.client = client
 
     def task_status_updated(self, task_id):
@@ -70,14 +79,15 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(object):
-    def __init__(self, datadir=None, transaction_system=False,
-                 connect_to_known_hosts=True, **config_overrides):
+    def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
+                 use_docker_machine_manager=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
 
         if not datadir:
             datadir = get_local_datadir('default')
+
         self.datadir = datadir
         self.__lock_datadir()
 
@@ -86,11 +96,12 @@ class Client(object):
         self.config_desc.init_from_app_config(config)
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
+                self.quit()  # quit only closes underlying services (for now)
                 raise AttributeError(
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.config_desc.node_name)
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
         # NETWORK
@@ -106,6 +117,7 @@ class Client(object):
         logger.debug("Is super node? {}".format(self.node.is_super_node()))
 
         self.p2pservice = None
+        self.diag_service = None
 
         self.task_server = None
         self.last_nss_time = time.time()
@@ -137,6 +149,7 @@ class Client(object):
         else:
             self.transaction_system = None
 
+        self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
@@ -148,8 +161,11 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.monitor = None
+        self.session_id = uuid.uuid4().get_hex()
 
     def start(self):
+        self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -162,7 +178,8 @@ class Client(object):
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
-                                      use_ipv6=self.config_desc.use_ipv6)
+                                      use_ipv6=self.config_desc.use_ipv6,
+                                      use_docker_machine_manager=self.use_docker_machine_manager)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -187,6 +204,19 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
+        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+
+        if self.monitor:
+            self.monitor.on_login()
+
+    def init_monitor(self):
+        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
+                                     self.get_description(), self.config_desc)
+        self.monitor = SystemMonitor(metadata, monitor_config)
+        self.monitor.start()
+        self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
+        self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
+        self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
         logger.debug("P2pservice connecting to {} on port {}".format(
@@ -198,6 +228,13 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.diag_service:
+            self.diag_service.unregister_all()
+        if self.monitor:
+            self.monitor.on_logout()
+            self.monitor.shut_down()
+        if self.db:
+            self.db.close()
         self._unlock_datadir()
 
     def key_changed(self):
@@ -349,7 +386,7 @@ class Client(object):
     def get_balance(self):
         if self.use_transaction_system():
             return self.transaction_system.get_balance()
-        return None, None
+        return None, None, None
 
     def get_payments_list(self):
         if self.use_transaction_system():
@@ -357,8 +394,11 @@ class Client(object):
         return ()
 
     def get_incomes_list(self):
-        if self.use_transaction_system():
-            return self.transaction_system.get_incomes_list()
+        if self.transaction_system:
+            return self.transaction_system.get_incoming_payments()
+        # FIXME use method that connect payment with expected payments
+        # if self.use_transaction_system():
+        #    return self.transaction_system.get_incomes_list()
         return ()
 
     def use_transaction_system(self):
@@ -373,6 +413,18 @@ class Client(object):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
+
+    def get_description(self):
+        try:
+            account, _ = Account.get_or_create(node_id=self.get_client_id())
+            return account.description
+        except Exception as e:
+            return "An error has occured {}".format(e)
+
+    def change_description(self, description):
+        self.get_description()
+        q = Account.update(description=description).where(Account.node_id == self.get_client_id())
+        q.execute()
 
     def use_ranking(self):
         return bool(self.ranking)
@@ -470,17 +522,11 @@ class Client(object):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)
 
-    def get_computing_trust(self, node_id):
-        return self.ranking.get_computing_trust(node_id)
-
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
 
     def send_stop_gossip(self):
         return self.p2pservice.send_stop_gossip()
-
-    def get_requesting_trust(self, node_id):
-        return self.ranking.get_requesting_trust(node_id)
 
     def collect_gossip(self):
         return self.p2pservice.pop_gossip()
@@ -528,9 +574,18 @@ class Client(object):
 
             self.check_payments()
 
-            if time.time() - self.last_nss_time > self.config_desc.node_snapshot_interval:
-                with self.snapshot_lock:
-                    self.__make_node_state_snapshot()
+            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
+                if self.monitor:
+                    self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
+                                                   self.get_computed_task_count(), self.get_error_task_count(),
+                                                   self.get_timeout_task_count())
+                    self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
+                                                           self.task_server.task_computer.counting_task,
+                                                           self.task_server.task_computer.task_requested,
+                                                           self.task_server.task_computer.compute_tasks,
+                                                           self.task_server.task_computer.assigned_subtasks.keys())
+                # with self.snapshot_lock:
+                #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 

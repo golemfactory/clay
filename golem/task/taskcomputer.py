@@ -43,7 +43,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server):
+    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -72,10 +72,11 @@ class TaskComputer(object):
         self.docker_manager = DockerMachineManager()
         lux_perf = float(task_server.config_desc.estimated_lux_performance)
         blender_perf = float(task_server.config_desc.estimated_blender_performance)
-        if int(lux_perf) == 0 and int(blender_perf) == 0:
+        if int(lux_perf) == 0 or int(blender_perf) == 0:
             run_benchmarks = True
         else:
             run_benchmarks = False
+        self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
                            in_background=False, 
                            run_benchmarks=run_benchmarks)
@@ -244,14 +245,14 @@ class TaskComputer(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
-        builder = task_builder(node_name, task_state.definition, datadir)
+        builder = task_builder(node_name, task_state.definition, datadir, self.dir_manager)
         t = Task.build_task(builder)
         br = BenchmarkRunner(t, datadir, success_callback, error_callback, benchmark)
         br.run()
     
     def run_benchmarks(self):
         def error_callback(err_msg):
-            logger.error("Unable to run benchmark: {}".format(err.msg))
+            logger.error("Unable to run benchmark: {}".format(err_msg))
         
         def lux_success_callback(performance):
             cfg_desc = client.config_desc
@@ -271,34 +272,40 @@ class TaskComputer(object):
         lux_builder = LuxRenderTaskBuilder
         self.run_benchmark(lux_benchmark, lux_builder, datadir, node_name, lux_success_callback, error_callback)
         
+        
+        
         blender_benchmark = BlenderBenchmark()
         blender_builder = BlenderRenderTaskBuilder
         self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, blender_success_callback, error_callback)
+        
+        
         
     def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
-        if not dm.docker_machine_available:
-            if run_benchmarks:
-                self.run_benchmarks()
+        if not dm.docker_machine_available and run_benchmarks:
+            self.run_benchmarks()
             return
+        
+        if dm.docker_machine_available and self.use_docker_machine_manager:
 
-        self.toggle_config_dialog(True)
-        def status_callback():
-            return self.counting_task
+            self.toggle_config_dialog(True)
 
-        def done_callback():
-            if run_benchmarks:
-                self.run_benchmarks()
-            logger.debug("Resuming new task computation")
-            self.toggle_config_dialog(False)
-            self.runnable = True
+            def status_callback():
+                return self.counting_task
 
-        self.runnable = False
-        dm.update_config(status_callback,
-                         done_callback,
-                         in_background)
+            def done_callback():
+                if run_benchmarks:
+                    self.run_benchmarks()
+                logger.debug("Resuming new task computation")
+                self.toggle_config_dialog(False)
+                self.runnable = True
+
+            self.runnable = False
+            dm.update_config(status_callback,
+                             done_callback,
+                             in_background)
 
     def register_listener(self, listener):
         self.listeners.append(listener)
