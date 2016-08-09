@@ -1,23 +1,20 @@
-import os
 import datetime
-import time
 import logging
+import os
+import time
 from PyQt4 import QtCore
+
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QPixmapCache
-from golem.task.taskstate import SubtaskStatus
-from golem.core.common import get_golem_path
-
-from gnr.ui.dialog import ShowTaskResourcesDialog
-
-
-from gnr.renderingdirmanager import get_preview_file
-from gnr.renderingtaskstate import RenderingTaskDefinition
 
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
-
-from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
+from gnr.renderingdirmanager import get_preview_file
+from gnr.renderingtaskstate import RenderingTaskDefinition
+from gnr.ui.dialog import ShowTaskResourcesDialog
+from golem.core.common import get_golem_path
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.gui")
 
@@ -219,6 +216,24 @@ class AbsRenderingMainWindowCustomizer(object):
 
         if t.definition.renderer:
             definition = t.definition
+            
+            scaled_size = QPixmap(self.last_preview_path).size()
+            
+            scaled_x = scaled_size.width()
+            scaled_y = scaled_size.height()
+            
+            
+            margin_left = (300. - scaled_x) / 2.
+            margin_right = 300. - margin_left
+            
+            margin_top = (200. - scaled_y) / 2.
+            margin_bottom = 200. - margin_top
+            
+            if x <= margin_left or x >= margin_right or y <= margin_top or y >= margin_bottom:
+                return
+            
+            x = (x - margin_left)
+            y = (y - margin_top) + 1
             task_id = definition.task_id
             task = self.logic.get_task(task_id)
             renderer = self.logic.get_renderer(definition.renderer)
@@ -228,9 +243,9 @@ class AbsRenderingMainWindowCustomizer(object):
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, frames=frames,
-                                                            frame_num=frame_num)
+                                                            frame_num=frame_num, res_y = scaled_y)
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks)
+                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, res_y=scaled_y)
         return num
 
     def __get_subtask(self, num):
@@ -258,14 +273,20 @@ class AbsRenderingMainWindowCustomizer(object):
             renderer = self.logic.get_renderer(definition.renderer)
             subtask = self.__get_subtask(num)
             if subtask is not None:
+                if os.path.isfile(self.last_preview_path):
+                    size = QPixmap(self.last_preview_path).size()
+                    res_x = size.width()
+                    res_y = size.height()
+                else:
+                    res_x, res_y = self.current_task_highlighted.definition.resolution
                 if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     border = renderer.get_task_border(subtask.extra_data['start_task'],
                                                       subtask.extra_data['end_task'],
                                                       subtask.extra_data['total_tasks'],
-                                                      self.current_task_highlighted.definition.resolution[0],
-                                                      self.current_task_highlighted.definition.resolution[1],
+                                                      res_x,
+                                                      res_y,
                                                       use_frames=True,
                                                       frames=frames,
                                                       frame_num=frame_num)
@@ -273,8 +294,8 @@ class AbsRenderingMainWindowCustomizer(object):
                     border = renderer.get_task_border(subtask.extra_data['start_task'],
                                                       subtask.extra_data['end_task'],
                                                       subtask.extra_data['total_tasks'],
-                                                      self.current_task_highlighted.definition.resolution[0],
-                                                      self.current_task_highlighted.definition.resolution[1])
+                                                      res_x,
+                                                      res_y)
 
                 if os.path.isfile(self.last_preview_path):
                     self.__draw_border(border)

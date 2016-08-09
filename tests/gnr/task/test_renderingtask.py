@@ -37,18 +37,18 @@ class TestRenderingTask(TestDirFixture):
         tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
         makedirs(tmp_dir)
         img = rt._open_preview()
-        for i in range(rt.res_x):
-            for j in range(rt.res_y):
+        for i in range(int(round(rt.res_x * rt.scale_factor))):
+            for j in range(int(round(rt.res_y * rt.scale_factor))):
                 img.putpixel((i, j), (1, 255, 255))
         img.save(rt.preview_file_path, "BMP")
         img.close()
         rt._remove_from_preview("xxyyzz")
         img = rt._open_preview()
         assert img.getpixel((0, 0)) == (1, 255, 255)
-        assert img.getpixel((0, 6)) == (0, 0, 0)
-        assert img.getpixel((412, 11)) == (0, 0, 0)
-        assert img.getpixel((799, 12)) == (1, 255, 255)
-        assert img.getpixel((400, 16)) == (1, 255, 255)
+        assert img.getpixel((0, 2)) == (0, 0, 0)
+        assert img.getpixel((200, 3)) == (0, 0, 0)
+        assert img.getpixel((199, 4)) == (1, 255, 255)
+        assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
 
 
