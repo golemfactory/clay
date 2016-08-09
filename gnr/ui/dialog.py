@@ -91,7 +91,7 @@ class TestingTaskProgressDialog(Dialog):
         Dialog.__init__(self, parent, Ui_testingTaskProgressDialog)
         self.lock = Lock()
         self.timer = QTimer()
-        self.timer.timeout(25)
+        self.timer.start(25)
         self.timer.timeout.connect(self._update_progress_bar)
         self.ui.progressBar.setRange(0, 100)
         self.ui.progressBar.setValue(0)
