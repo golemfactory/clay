@@ -194,7 +194,7 @@ class TestBaseDockerJob(TestDockerJob):
             client = self.test_client()
             info = client.inspect_container(job.container_id)
             self.assertIn("Path", info)
-            self.assertEqual(info["Path"], "/usr/bin/python")
+            self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
             self.assertIn("Args", info)
             self.assertEqual(info["Args"], [job._get_container_script_path()])
 

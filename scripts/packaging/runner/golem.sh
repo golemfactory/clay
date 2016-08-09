@@ -37,13 +37,24 @@ REMOTE_VERSION_FILE="remote.version"
 EXEC_DIR=$(readlink -f $(find . -name "exe.*" -type d -print -quit))
 UTILS_DIR="utils"
 SCRIPTS_DIR="scripts"
+DOCKER_DIR="docker"
+DOCKER_IMAGES_INI="${DOCKER_DIR}/images.ini"
 EXEC_NAME="golemapp"
 
 PATH="${GETH_DIR}:${IPFS_DIR}:${EXEC_DIR}:${PATH}"
 
+set -e
+
 # ----------------------------------------------------------------------------------------------------------------------
 
-set -e
+function check_program {
+    if [ "$(which $1)" == "" ]; then
+        echo "Please install $1"
+        exit 1
+    fi
+}
+
+# ----------------------------------------------------------------------------------------------------------------------
 
 function download {
     URL=$1
@@ -113,6 +124,7 @@ function update {
     if [ -d "${UPDATE_DIR}" ]; then
         rm -rf "${EXEC_DIR}"
         rm -rf "${SCRIPTS_DIR}"
+        rm -rf "${DOCKER_DIR}"
         rm -rf "${UTILS_DIR}"
 
         cp -a "${UPDATE_DIR}/golem/." "${CWD}"
@@ -138,6 +150,10 @@ function check_update {
     fi
 }
 
+check_program wget
+check_program unzip
+check_program docker
+
 set +e
 
 if [ -f ".version" ]; then
@@ -152,17 +168,45 @@ fi
 set -e
 # ----------------------------------------------------------------------------------------------------------------------
 
-for img in "base" "blender" "luxrender"; do
-    echo "Checking golem/${img}"
-    STATUS=$(docker images -q "golem/${img}")
+function build_docker_image {
+    IMG_NAME=$1
+    IMG_FILE=$2
+    IMG_TAG=$3
+    IMG="${IMG_NAME}:${IMG_TAG}"
+    CWD="$(pwd)"
 
-    if [[ "${STATUS}" == "" ]]; then
-        echo "Building image golem/${img}"
-        docker build -t golem/${img} -f scripts/Dockerfile.${img} .
+    cd "${SCRIPT_DIR}/${DOCKER_DIR}"
+
+    echo "Building image ${IMG} $(pwd)"
+    docker build -t "${IMG_NAME}" -f "${IMG_FILE}" . && docker tag -f "${IMG_NAME}" "${IMG}"
+
+    cd "${CWD}"
+}
+
+function check_docker_image {
+    IMG_NAME=$1
+    IMG_FILE=$2
+    IMG_TAG=$3
+    IMG="${IMG_NAME}:${IMG_TAG}"
+
+    echo "Checking ${IMG}"
+    if [[ "$(docker images -q "${IMG}")" == "" ]]; then
+        build_docker_image "${IMG_NAME}" "${IMG_FILE}" "${IMG_TAG}"
     else
-        echo "    image golem/${img} exists"
+        echo "    image ${IMG} exists"
     fi
-done
+}
+
+while read LINE; do
+    if [ "${LINE}" != "" ]; then
+        IMG_NAME=$(echo ${LINE} | cut -f1 -d' ')
+        IMG_FILE=$(echo ${LINE} | cut -f2 -d' ')
+        IMG_TAG=$(echo ${LINE} | cut -f3 -d' ')
+        if [ "${IMG_NAME}" != "" -a "${IMG_FILE}" != "" -a "${IMG_TAG}" != "" ]; then
+            check_docker_image "${IMG_NAME}" "${IMG_FILE}" "${IMG_TAG}"
+        fi
+    fi
+done < "${DOCKER_IMAGES_INI}"
 
 # ----------------------------------------------------------------------------------------------------------------------
 
@@ -201,8 +245,10 @@ fi
 # echo "Waiting for the IPFS daemon..."
 # while ! grep 'Daemon is ready' "${IPFS_LOG}"; do sleep 1; done
 
-now=$(date)
-host=$(hostname)
+DATE=$(date)
+NOW=${DATE//,/_}
+NOW=${NOW// /_}
+HOST=$(hostname)
 
 if [[ $# -lt 1 ]]; then
     ARGS="--nogui"
@@ -210,7 +256,7 @@ else
     ARGS=$@
 fi
 
-"$EXEC_DIR/$EXEC_NAME" $ARGS >> "golem ${hostname} ${now}.log" 2>&1
+"$EXEC_DIR/$EXEC_NAME" $ARGS >> "golem_${HOST}_${NOW}.log" 2>&1
 
 # killall ipfs
 

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_HOST_CONFIG = dict(
     privileged=False,
     # mount the container's root filesystem as read only
-    read_only=True,
+    # read_only=True,
     # ['bridge', 'none', 'container:<name|id>', 'host']
     network_mode='none',
     dns=[],

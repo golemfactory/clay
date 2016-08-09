@@ -609,7 +609,8 @@ def osx_rewrite_python(creator, exe_dir, *args):
 def linux_remove_libc(creator, exe_dir, *args):
     if creator.platform == 'linux':
         libc_path = os.path.join(exe_dir, 'libc.so.6')
-        os.remove(libc_path)
+        if os.path.exists(libc_path):
+            os.remove(libc_path)
 
 
 def win_clean_qt(creator, _, __, x_dir):
@@ -634,7 +635,6 @@ def all_task_collector(creator, *args):
         return
 
     filename = 'taskcollector'
-    tc_path = os.path.join(tc_dir, filename)
     tc_release_path = os.path.join(tc_release_dir, filename)
 
     if not os.path.exists(tc_release_path):
@@ -670,8 +670,27 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
 
     def zip_dir(src_dir, zip_handle):
         for root, dirs, files in os.walk(src_dir):
-            for f in files:
-                zip_handle.write(os.path.join(root, f))
+            for _file in files:
+                zip_handle.write(os.path.join(root, _file))
+
+    def collect_docker_files():
+        images_ini = os.path.join(task_dir, 'images.ini')
+        result = set()
+
+        with open(images_ini) as ini_file:
+            for line in ini_file:
+                if line:
+                    name, docker_file, tag = line.split(' ')
+                    full_path = os.path.join(task_dir, docker_file)
+                    result.add((full_path, docker_file))
+
+        docker_file_dir = os.path.dirname(next(iter(result))[1])
+        entrypoint_path = os.path.join(docker_file_dir, 'entrypoint.sh')
+
+        result.add((os.path.join(task_dir, entrypoint_path), 'entrypoint.sh'))
+        result.add((images_ini, 'images.ini'))
+
+        return result
 
     def assemble_dir(dir_name):
 
@@ -683,10 +702,10 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
 
         exe_dir = build_subdir(dir_name)
         pack_exe_dir = new_package_subdir(dir_name)
-        pack_scripts_dir = new_package_subdir(scripts_dir)
+        pack_docker_dir = new_package_subdir(docker_dir)
 
         os.makedirs(pack_dir)
-        os.makedirs(pack_scripts_dir)
+        os.makedirs(pack_docker_dir)
 
         shutil.move(exe_dir, pack_exe_dir)
         copy_tree(runner_scripts_dir, pack_dir, update=True)
@@ -697,9 +716,12 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
             script = 'golem.cmd'
         os.remove(os.path.join(pack_dir, script))
 
-        for docker_file in docker_files:
-            dst_path = os.path.join(pack_scripts_dir, os.path.basename(docker_file))
-            shutil.copy(docker_file, dst_path)
+        for full_path, docker_file in docker_files:
+            dst_path = os.path.join(pack_docker_dir, docker_file)
+            dst_dir = os.path.dirname(dst_path)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+            shutil.copy(full_path, dst_path)
 
         version_stamp(pack_dir)
 
@@ -709,12 +731,10 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
         cwd = os.getcwd()
         os.chdir(build_dir)
 
-        file_path = file_name
+        if os.path.exists(file_name):
+            os.remove(file_name)
 
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        zipf = zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED)
+        zipf = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
         zip_dir(package_subdir, zipf)
         zipf.close()
 
@@ -722,16 +742,18 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
 
     build_dir = 'build'
     scripts_dir = 'scripts'
+    docker_dir = 'docker'
+    package_subdir = 'golem'
+
     runner_scripts_dir = os.path.join(scripts_dir, 'packaging', 'runner')
     taskcollector_dir = os.path.join('gnr', 'taskcollector', 'Release')
 
-    package_subdir = 'golem'
+    task_dir = os.path.join('gnr', 'task')
     pack_dir = build_subdir(package_subdir)
-    docker_files = [os.path.join('gnr', 'task', 'images', 'Dockerfile.' + ext)
-                    for ext in ['base', 'blender', 'luxrender']]
+
+    docker_files = collect_docker_files()
 
     sub_dirs = next(os.walk(build_dir))[1]
-
     for subdir in sub_dirs:
         if subdir.startswith('exe'):
             assemble_dir(subdir)
