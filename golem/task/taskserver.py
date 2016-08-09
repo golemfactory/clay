@@ -578,10 +578,6 @@ class TaskServer(PendingConnectionsServer):
 
     def __connection_for_resource_request_failure(self, conn_id, key_id, subtask_id, resource_header):
 
-        if key_id == self.node.key:
-            self.final_conn_failure(conn_id)
-            return
-
         response = lambda session: self.__connection_for_resource_request_established(session, conn_id, key_id,
                                                                                       subtask_id, resource_header)
         if key_id in self.response_list:
@@ -608,7 +604,6 @@ class TaskServer(PendingConnectionsServer):
 
         response = lambda session: self.__connection_for_result_rejected_established(session, conn_id, key_id,
                                                                                      subtask_id)
-
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
