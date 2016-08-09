@@ -14,7 +14,7 @@ from golem.testutils import TempDirFixture
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater)
-from gnr.renderingtaskstate import RenderingTaskDefinition, AdvanceRenderingVerificationOptions
+from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -87,18 +87,22 @@ class TestBlenderFrameTask(TempDirFixture):
 
 
 class TestBlenderTask(TempDirFixture):
-    def setUp(self):
-        super(TestBlenderTask, self).setUp()
+    def build_bt(self, res_x, res_y, total_tasks, frames=[]):
         program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
-        self.bt = BlenderRenderTask(node_name="example-node-name",
+        if frames == []:
+            use_frames = False
+            frames = [1]
+        else:
+            use_frames = True
+        bt = BlenderRenderTask(node_name="example-node-name",
                                     task_id="example-task-id",
                                     main_scene_dir=self.tempdir,
                                     main_scene_file=path.join(self.path, "example.blend"),
                                     main_program_file=program_file,
-                                    total_tasks=7,
-                                    res_x=2,
-                                    res_y=300,
+                                    total_tasks=total_tasks,
+                                    res_x=res_x,
+                                    res_y=res_y,
                                     outfilebasename="example_out",
                                     output_file=output_file,
                                     output_format="PNG",
@@ -107,13 +111,21 @@ class TestBlenderTask(TempDirFixture):
                                     task_resources=[],
                                     estimated_memory=123,
                                     root_path=self.tempdir,
-                                    use_frames=False,
+                                    use_frames=use_frames,
                                     compositing=False,
-                                    frames=[1],
+                                    frames=frames,
                                     max_price=10)
-
+        bt.initialize(DirManager(self.tempdir))
+        return bt
+    
+    def setUp(self):
+        super(TestBlenderTask, self).setUp()
+        program_file = self.temp_file_name('program')
+        output_file = self.temp_file_name('output')
+        self.bt = self.build_bt(2, 300, 7)
         dm = DirManager(self.path)
         self.bt.initialize(dm)
+
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
@@ -208,93 +220,74 @@ class TestBlenderTask(TempDirFixture):
         file3 = self.temp_file_name('preview3.bmp')
         file4 = self.temp_file_name('preview4.bmp')
         
-        self.bt.total_tasks = 2
-        self.bt.frames = [1]
-        self.bt.use_frames = True
-        self.bt.res_x = 10
-        self.bt.res_y = 11
-        self.bt.preview_updaters = [PreviewUpdater(file1, self.bt.res_x, self.bt.res_y, {1: 0, 2: 5})]
+        bt = self.build_bt(300, 200, 2, frames=[1])
+        bt.preview_updaters = [PreviewUpdater(file1, bt.res_x, bt.res_y, {1: 0, 2: 99})]
         
-        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, 5))
-        data = array.array('f', [1.0] * (self.bt.res_x * 5)).tostring()
+        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(bt.res_x, 99))
+        data = array.array('f', [1.0] * (bt.res_x * 99)).tostring()
         img1.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
         img1.close()
         
-        img2 = OpenEXR.OutputFile(file2, OpenEXR.Header(self.bt.res_x, 6))
-        data = array.array('f', [1.0] * (self.bt.res_x * 6)).tostring()
+        img2 = OpenEXR.OutputFile(file2, OpenEXR.Header(bt.res_x, 101))
+        data = array.array('f', [1.0] * (bt.res_x * 101)).tostring()
         img2.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
         img2.close()        
         
-        self.bt._update_frame_preview(file1, 1, part=1)
-        self.assertTrue(self.bt.preview_updaters[0].perfect_match_area_y == 5)
-        self.assertTrue(self.bt.preview_updaters[0].perfectly_placed_subtasks == 1)
+        bt._update_frame_preview(file1, 1, part=1)
+        self.assertTrue(bt.preview_updaters[0].perfect_match_area_y == 99)
+        self.assertTrue(bt.preview_updaters[0].perfectly_placed_subtasks == 1)
         
-        self.bt._update_frame_preview(file2, 1, part=2)
-        self.assertTrue(self.bt.preview_updaters[0].perfect_match_area_y == 11)
-        self.assertTrue(self.bt.preview_updaters[0].perfectly_placed_subtasks == 2)
+        bt._update_frame_preview(file2, 1, part=2)
+        self.assertTrue(bt.preview_updaters[0].perfect_match_area_y == 200)
+        self.assertTrue(bt.preview_updaters[0].perfectly_placed_subtasks == 2)
         
-        self.bt.preview_file_path = []
-        self.bt.preview_file_path.append(file3)
-        self.bt.preview_task_file_path = []
-        self.bt.preview_task_file_path.append(file4)
+        bt.preview_file_path = []
+        bt.preview_file_path.append(file3)
+        bt.preview_task_file_path = []
+        bt.preview_task_file_path.append(file4)
         
-        self.bt._update_frame_preview(file1, 1, part=1, final=True)
+        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(bt.res_x, 99))
+        data = array.array('f', [1.0] * (bt.res_x * 99)).tostring()
+        img1.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
+        img1.close()
+        
+        bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
-        self.assertTrue(img.size == (10, 5))
+        self.assertTrue(img.size == (300, 200))
         img = Image.open(file4)
-        self.assertTrue(img.size == (10, 5))
+        self.assertTrue(img.size == (300, 200))
+        
 
     def test_mark_task_area(self):
-        self.bt.use_frames = True
-        self.bt.res_y = 200
-        self.bt.res_x = 300
-        color = (0, 0, 255)
+        bt = self.build_bt(300, 200, 2, frames=[1, 2])
         
         file1 = self.temp_file_name('preview1.bmp')
-        img_task = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
+        img_task = Image.new("RGB", (bt.res_x, bt.res_y))
         img_task.save(file1, "BMP")
+        color = (0, 0, 255)
         
         # test the case in which a single subtask is a whole frame
         
-        self.bt.frames = [1, 2]
-        self.bt.total_tasks = 2
-        
-        self.bt._mark_task_area(None, img_task, color, 0)
-        
-        for i in range(0, self.bt.res_x):
-            for j in range(0, self.bt.res_y):
+        self.assertTrue(bt.frames == [1, 2])
+        bt._mark_task_area(None, img_task, color, 0)
+        for i in range(0, bt.res_x):
+            for j in range(0, bt.res_y):
                 pixel = img_task.getpixel((i, j))
                 self.assertTrue(pixel == color)
         
 
         # test the case with frames divided into multiple subtasks
         
+        bt = self.build_bt(600, 200, 4, frames=[2, 3])
+        subtask = {"start_task": 2, "end_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
-        img_task2 = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
+        img_task2 = Image.new("RGB", (bt.res_x / 2, bt.res_y / 2))
         img_task2.save(file2, "BMP")
-        
-        file3 = self.temp_file_name('preview3.bmp')
-        img_task3 = Image.new("RGB", (self.bt.res_x, self.bt.res_y))
-        img_task3.save(file3, "BMP")
-        
-        self.bt.frames = [2, 3]
-        self.bt.total_tasks = 6
-        expected_offsets = {1: 0, 2: 66, 3: 133}
-        self.bt.preview_updaters = [PreviewUpdater(file2, self.bt.res_x, self.bt.res_y, expected_offsets),
-                                    PreviewUpdater(file3, self.bt.res_x, self.bt.res_y, expected_offsets)
-                                   ]                
-        self.bt.preview_updaters[0].perfect_match_area_y = 34
-        self.bt.preview_updaters[0].perfectly_placed_subtasks = 1
-        subtask = {"start_task": 2}
-        self.bt._mark_task_area(subtask, img_task2, color, 0)
-        for i in range(0, self.bt.res_x):
-            pixel = img_task2.getpixel((i, 33))
-            self.assertTrue(pixel == (0, 0, 0))
-            pixel = img_task2.getpixel((i, 133))
-            self.assertTrue(pixel == (0, 0, 0))
-            for j in range(34, 133):
-                pixel = img_task2.getpixel((i, j))
-                self.assertTrue(pixel == color)
+        bt._mark_task_area(subtask, img_task2, color)
+        pixel = img_task2.getpixel((0, 49))
+        self.assertTrue(pixel == (0, 0, 0))
+        pixel = img_task2.getpixel((0, 50))
+        self.assertTrue(pixel == color)
 
     def test_query_extra_data(self):
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
@@ -303,8 +296,8 @@ class TestBlenderTask(TempDirFixture):
 
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
         assert extra_data.should_wait
-
-    def test_advance_verification(self):
+    
+    def test_advanced_verification(self):
         bb = BlenderBenchmark()
         bb.task_definition.verification_options = AdvanceRenderingVerificationOptions()
         bb.task_definition.verification_options.type = 'forAll'
@@ -335,6 +328,16 @@ class TestPreviewUpdater(TempDirFixture):
                 expected_offsets[i] = res_y
                 chunks_sizes[i] = y
                 res_y += y
+            
+            if res_x != 0 and res_y != 0:
+                if float(res_x) / float(res_y) > 300. / 200.:
+                    scale_factor = 300. / res_x
+                else:
+                    scale_factor = 200. / res_y
+                scale_factor = min(1.0, scale_factor)
+            else:
+                scale_factor = 1.0
+            
             pu = PreviewUpdater(preview_file, res_x, res_y, expected_offsets)
             chunks_list = range(1, chunks + 1)
             shuffle(chunks_list)
@@ -343,7 +346,10 @@ class TestPreviewUpdater(TempDirFixture):
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
                 pu.update_preview(file1, i)
-            self.assertTrue(pu.perfect_match_area_y == res_y and pu.perfectly_placed_subtasks == chunks)
+            print pu.perfect_match_area_y, res_y * scale_factor
+            if int(round(res_y * scale_factor)) != 200:
+                self.assertAlmostEqual(pu.perfect_match_area_y, res_y * scale_factor)
+            self.assertTrue(pu.perfectly_placed_subtasks == chunks)
 
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
@@ -354,4 +360,3 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
-

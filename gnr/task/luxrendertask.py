@@ -46,14 +46,26 @@ def build_lux_render_info(dialog, customizer):
 
 
 def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
-    boarder = []
-    for i in range(0, res_y):
-        boarder.append((0, i))
-        boarder.append((res_x - 1, i))
-    for i in range(0, res_x):
-        boarder.append((i, 0))
-        boarder.append((i, res_y - 1))
-    return boarder
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    border = []
+    x = int(round(res_x * scale_factor))
+    y = int(round(res_y * scale_factor))
+    for i in range(0, y):
+        border.append((0, i))
+        border.append((x - 1, i))
+    for i in range(0, x):
+        border.append((i, 0))
+        border.append((i, y - 1))
+    return border
 
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
@@ -385,11 +397,15 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
+        scaled = img.resize((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                            resample=Image.BILINEAR)
+        img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.numAdd))
         img_current.save(self.preview_file_path, "BMP")
         img.close()
+        scaled.close()
         img_current.close()
 
     def __update_preview_from_exr(self, new_chunk_file):
@@ -400,8 +416,11 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
-        img.save(self.preview_file_path, "BMP")
+        scaled = img.fit((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                         resample=Image.BILINEAR)
+        scaled.save(self.preview_file_path, "BMP")
         img.close()
+        scaled.close()
         img_current.close()
 
     def __generate_final_file(self, flm):
