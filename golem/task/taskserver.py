@@ -488,10 +488,6 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_task_request_failure(self, conn_id, node_name, key_id, task_id, estimated_performance, price,
                                               max_resource_size, max_memory_size, num_cores, *args):
 
-        if key_id == self.node.key:
-            self.final_conn_failure(conn_id)
-            return
-
         response = lambda session: self.__connection_for_task_request_established(session, conn_id, node_name, key_id,
                                                                                   task_id, estimated_performance, price,
                                                                                   max_resource_size, max_memory_size,
