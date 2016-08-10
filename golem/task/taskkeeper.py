@@ -4,7 +4,7 @@ import random
 import time
 from math import ceil
 
-from golem.core.common import HandleKeyError
+from golem.core.common import HandleKeyError, get_current_time
 from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -21,7 +21,6 @@ class CompTaskInfo(object):
         self.header = header
         self.price = price
         self.requests = 1
-        self.timeout = time.time() + header.ttl
         self.subtasks = {}
 
 
@@ -87,10 +86,15 @@ class CompTaskKeeper(object):
     def request_failure(self, task_id):
         self.active_tasks[task_id].requests -= 1
 
+    @handle_key_error
+    def remove_old_task(self, task_id):
+        if len(self.active_tasks[task_id].subtasks) == 0:
+            self.remove_task(task_id)
+
     def remove_old_tasks(self):
-        time_ = time.time()
+        time_ = get_current_time()
         for task_id, task in self.active_tasks.items():
-            if time_ > task.timeout and len(task.subtasks) == 0:
+            if time_ > task.header.deadline and len(task.subtasks) == 0:
                 self.remove_task(task_id)
 
 
@@ -197,7 +201,7 @@ class TaskHeaderKeeper(object):
                                                         task_owner_key_id=th_dict_repr["key_id"],
                                                         environment=th_dict_repr["environment"],
                                                         task_owner=th_dict_repr["task_owner"],
-                                                        ttl=th_dict_repr["ttl"],
+                                                        deadline=th_dict_repr["deadline"],
                                                         subtask_timeout=th_dict_repr["subtask_timeout"],
                                                         max_price=th_dict_repr["max_price"])
                     is_supported = self.is_supported(th_dict_repr)
@@ -229,10 +233,8 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
-            cur_time = time.time()
-            t.ttl = t.ttl - (cur_time - t.last_checking)
-            t.last_checking = cur_time
-            if t.ttl <= 0:
+            cur_time = get_current_time()
+            if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 

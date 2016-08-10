@@ -25,3 +25,4 @@ class TestMemoryChecker(TestCase):
         assert mm == 50
         assert mc.max_mem == 1200050
         assert mc.min_mem == 1100030
+

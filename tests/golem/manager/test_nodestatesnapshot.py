@@ -1,6 +1,6 @@
-from datetime import datetime
 from unittest import TestCase
 
+from golem.core.common import get_current_time
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot, LocalTaskStateSnapshot, NodeStateSnapshot
 
 
@@ -48,7 +48,7 @@ class TestNodeStateSnapshot(TestCase):
         nss2.local_task_state["xyz"] = "local task state"
         assert isinstance(nss, NodeStateSnapshot)
         assert nss.uid == 0
-        assert nss.timestamp <= datetime.utcnow()
+        assert nss.timestamp <= get_current_time()
         assert nss.endpoint_addr == ""
         assert nss.endpoint_port == ""
         assert nss.peers_num == 0
@@ -60,7 +60,7 @@ class TestNodeStateSnapshot(TestCase):
         assert nss.running
         assert isinstance(nss2, NodeStateSnapshot)
         assert nss2.uid == "ABC"
-        assert nss2.timestamp <= datetime.utcnow()
+        assert nss2.timestamp <= get_current_time()
         assert nss2.endpoint_addr == "10.10.10.10"
         assert nss2.endpoint_port == 1024
         assert nss2.peers_num == 5

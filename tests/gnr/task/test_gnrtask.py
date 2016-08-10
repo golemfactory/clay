@@ -2,9 +2,11 @@ import shutil
 import os
 import zlib
 import cPickle as pickle
+from datetime import timedelta
 
 from mock import Mock
 
+from golem.core.common import get_current_time
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.tools.assertlogs import LogTestCase
@@ -52,6 +54,13 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
+
+        task.restart()
+        assert task.num_tasks_received == 0
+        assert task.last_task == 0
+        assert len(task.subtasks_given) == 0
+        assert task.num_failed_subtasks == 0
+        assert task.header.deadline >= get_current_time() + timedelta(seconds=(task.full_task_timeout - 2))
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()

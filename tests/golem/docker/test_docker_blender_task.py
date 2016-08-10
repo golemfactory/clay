@@ -1,4 +1,5 @@
 import shutil
+import time
 from os import makedirs, path
 
 import gnr.node
@@ -6,7 +7,7 @@ import jsonpickle
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
@@ -68,10 +69,12 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=0):
+    def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
+
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
+        ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
@@ -107,7 +110,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         TaskServer.send_task_failed = send_task_failed
 
         # Start task computation
-        task_computer.task_given(ctd, timeout)
+        task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
         self.assertTrue(result)
 
@@ -123,14 +126,15 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _run_docker_test_task(self, render_task, timeout=0):
-
+    def _run_docker_test_task(self, render_task, timeout=60*5):
+        render_task.deadline = timeout_to_deadline(timeout)
         task_computer = TaskTester(render_task, self.path, Mock(), Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
 
-    def _run_docker_local_comp_task(self, render_task, timeout=0):
+    def _run_docker_local_comp_task(self, render_task, timeout=60*5):
+        render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(render_task, self.tempdir, Mock(), Mock(),
                                        render_task.query_extra_data_for_test_task)
         local_computer.run()
@@ -172,7 +176,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def test_blender_subtask_timeout(self):
         task = self._create_test_task()
         task_thread, error_msg, out_dir = \
-            self._run_docker_task(task, timeout=1)
+            self._run_docker_task(task, timeout=3)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(error_msg, str)
         self.assertTrue(error_msg.startswith("Task timed out"))
