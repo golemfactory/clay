@@ -154,7 +154,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         pending_conn = next(server.pending_connections.itervalues())
         server._mark_connected(pending_conn.id, "10.10.10.1", self.port)
         assert pending_conn.status == PenConnStatus.Connected
-        assert SocketAddress("10.10.10.1", self.port) not in pending_conn.socket_addresses
+        assert SocketAddress("10.10.10.1", self.port) == pending_conn.socket_addresses[0]
 
     def test_sync_pending(self):
         network = Network()

@@ -130,7 +130,7 @@ class PendingConnectionsServer(TCPServer):
             self.conn_final_failure_for_type[conn.type](conn_id, **conn.args)
             self.remove_pending_conn(conn_id)
         else:
-            logger.error("Connection {} is unknown".format(conn_id))
+            logger.debug("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
         sockets = [sock for sock in
@@ -227,12 +227,11 @@ class PendingConnectionsServer(TCPServer):
     def _mark_connected(self, conn_id, addr, port):
         ad = SocketAddress(addr, port)
         pc = self.pending_connections.get(conn_id)
-        if pc is not None:
+        if pc:
             pc.status = PenConnStatus.Connected
-            try:
+            if ad in pc.socket_addresses:
                 pc.socket_addresses.remove(ad)
-            except ValueError:
-                logger.warning("{}:{} not in connection socket_addresses".format(addr, port))
+            pc.socket_addresses = [ad] + pc.socket_addresses
 
     @staticmethod
     def _node_info_to_socket_addresses(node_info, port):
@@ -240,9 +239,8 @@ class PendingConnectionsServer(TCPServer):
         if node_info.pub_addr is None:
             return socket_addresses
         if node_info.pub_port:
-            socket_addresses.append(SocketAddress(node_info.pub_addr, node_info.pub_port))
-        else:
-            socket_addresses.append(SocketAddress(node_info.pub_addr, port))
+            port = node_info.pub_port
+        socket_addresses.append(SocketAddress(node_info.pub_addr, port))
         return socket_addresses
 
 

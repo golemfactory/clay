@@ -263,7 +263,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
             if should_wait:
-                logger.warning("Waiting for client's {} task results".format(node_name))
+                logger.warning("Waiting for results from {}".format(node_name))
             else:
                 logger.warning("Client {} banned from this task".format(node_name))
 
