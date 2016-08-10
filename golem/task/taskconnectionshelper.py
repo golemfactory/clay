@@ -1,6 +1,7 @@
 import time
+import weakref
 
-REMOVE_OLD_INTERVAL = 3600
+REMOVE_OLD_INTERVAL = 180
 
 
 class TaskConnectionsHelper(object):
@@ -28,7 +29,7 @@ class TaskConnectionsHelper(object):
         if conn_id in self.conn_to_set:
             return False
         else:
-            self.conn_to_set[conn_id] = (key_id, node_info, super_node_info, time.time())
+            self.conn_to_set[conn_id] = (key_id, weakref.ref(node_info), super_node_info, time.time())
             return True
 
     def want_to_start(self, conn_id, node_info, super_node_info):
@@ -54,10 +55,7 @@ class TaskConnectionsHelper(object):
         self.conn_to_start = dict(filter(lambda(y, z): cur_time - z[2] < self.remove_old_interval,
                                          self.conn_to_start.items()))
 
-    def remove_conn_to_start(self, conn_id):
-        self.conn_to_start.pop(conn_id, None)
-
-    def cannot_pass_conn_request(self, conn_id):
+    def cannot_start_task_session(self, conn_id):
         """ Inform task server that cannot pass request with given conn id
         :param conn_id: id of a connection that can't be established
         """

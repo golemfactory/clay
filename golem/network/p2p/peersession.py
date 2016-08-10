@@ -79,6 +79,8 @@ class PeerSession(BasicSafeSession):
         BasicSafeSession.dropped(self)
         if self.remove_on_disconnect:
             self.p2p_service.remove_peer(self)
+        else:
+            self.p2p_service.remove_pending_conn(self.conn_id)
 
     def interpret(self, msg):
         """

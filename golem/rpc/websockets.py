@@ -384,7 +384,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         if not self._deferred.called:
             self._deferred.callback(session)
 
-    def _reconnect(self):
+    def _reconnect(self, *_):
         logger.warn("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
         conn_deferred = task.deferLater(self.reactor, self._reconnect_timeout, self.connect)
         conn_deferred.addErrback(self._reconnect)

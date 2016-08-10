@@ -87,6 +87,23 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
 
+    def test_dropped(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service = MagicMock()
+
+        peer_session.remove_on_disconnect = True
+        peer_session.dropped()
+        assert peer_session.p2p_service.remove_peer.called
+        assert not peer_session.p2p_service.remove_pending_conn.called
+
+        peer_session.p2p_service.remove_peer.called = False
+
+        peer_session.remove_on_disconnect = False
+        peer_session.dropped()
+        assert not peer_session.p2p_service.remove_peer.called
+        assert peer_session.p2p_service.remove_pending_conn.called
+
 
 class TestPeerSessionInfo(unittest.TestCase):
 
