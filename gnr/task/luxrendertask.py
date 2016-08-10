@@ -4,7 +4,7 @@ import random
 import shutil
 
 from collections import OrderedDict
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
@@ -415,8 +415,9 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
-        scaled = img.fit((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
-                         resample=Image.BILINEAR)
+        scaled = ImageOps.fit(img,
+                              (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                              method=Image.BILINEAR)
         scaled.save(self.preview_file_path, "BMP")
         img.close()
         scaled.close()

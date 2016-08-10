@@ -101,8 +101,6 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         files[1] = outer_dir_path(files[1])
         files[4] = outer_dir_path(files[4])
 
-        print task.results[subtask_id], files
-
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
