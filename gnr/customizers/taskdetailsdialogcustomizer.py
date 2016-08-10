@@ -16,10 +16,19 @@ from gnr.ui.subtasktableentry import SubtaskTableElem
 logger = logging.getLogger("gnr.gui")
 
 
+class SortingOrder(object):
+    ascending = QtCore.Qt.AscendingOrder
+    descending = QtCore.Qt.DescendingOrder
+
+
 class TaskDetailsDialogCustomizer(Customizer):
     def __init__(self, gui, logic, gnr_task_state):
         self.gnr_task_state = gnr_task_state
         self.subtask_table_elements = {}
+        
+        # which column use for sorting subtasks
+        self.sorting = -1
+        self.sorting_order = None
         Customizer.__init__(self, gui, logic)
         self.update_view(self.gnr_task_state.task_state)
 
@@ -68,8 +77,21 @@ class TaskDetailsDialogCustomizer(Customizer):
                                self.__nodes_table_row_selected)
         QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
                                self.__nodes_table_row_double_clicked)
+        QtCore.QObject.connect(self.gui.ui.nodesTableWidget.horizontalHeader(), QtCore.SIGNAL("sectionClicked(int)"),
+                               self.__header_clicked)
         self.gui.ui.nodesTableWidget.customContextMenuRequested.connect(self.__context_menu_requested)
         self.gui.ui.closeButton.clicked.connect(self.__close_button_clicked)
+
+    def __header_clicked(self, column):
+        if column == self.sorting:
+            if self.sorting_order == SortingOrder.ascending:
+                self.sorting_order = SortingOrder.descending
+            else:
+                self.sorting_order = SortingOrder.ascending
+        else:
+            self.sorting_order = SortingOrder.ascending
+            self.sorting = column
+        self.gui.ui.nodesTableWidget.sortItems(self.sorting, self.sorting_order)
 
     def __update_node_additional_info(self, node_name, subtask_id):
         if subtask_id in self.gnr_task_state.task_state.subtask_states:
@@ -100,6 +122,10 @@ class TaskDetailsDialogCustomizer(Customizer):
         subtask_table_elem.update(0.0, "", 0.0)
 
         self.__update_node_additional_info(node_name, subtask_id)
+        
+        if self.sorting != -1 and self.sorting_order is not None:
+            self.gui.ui.nodesTableWidget.sortItems(self.sorting, self.sorting_order)
+            
 
     # SLOTS
     ###########################
