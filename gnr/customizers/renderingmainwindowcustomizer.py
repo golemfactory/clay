@@ -1,24 +1,20 @@
-import os
 import datetime
-import time
 import logging
+import os
+import time
 from PyQt4 import QtCore
+
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QPixmapCache
-from golem.task.taskstate import SubtaskStatus
-from golem.core.common import get_golem_path
-
-from gnr.ui.dialog import ShowTaskResourcesDialog
-
-
-from gnr.renderingdirmanager import get_preview_file
-from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.blenderrendertask import BlenderRenderTask
 
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
-
-from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
+from gnr.renderingdirmanager import get_preview_file
+from gnr.renderingtaskstate import RenderingTaskDefinition
+from gnr.ui.dialog import ShowTaskResourcesDialog
+from golem.core.common import get_golem_path
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.gui")
 
@@ -149,7 +145,6 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.frameSlider.setVisible(False)
         if "resultPreview" in t.task_state.extra_data:
             file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
-            time.sleep(0.5)
             if os.path.exists(file_path):
                 self.__update_img(QPixmap(file_path))
                 self.last_preview_path = file_path
@@ -287,25 +282,25 @@ class AbsRenderingMainWindowCustomizer(object):
                 if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
-                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
-                                                       subtask.extra_data['end_task'],
-                                                       subtask.extra_data['total_tasks'],
-                                                       res_x,
-                                                       res_y,
-                                                       use_frames=True,
-                                                       frames=frames,
-                                                       frame_num=frame_num)
+                    border = renderer.get_task_border(subtask.extra_data['start_task'],
+                                                      subtask.extra_data['end_task'],
+                                                      subtask.extra_data['total_tasks'],
+                                                      res_x,
+                                                      res_y,
+                                                      use_frames=True,
+                                                      frames=frames,
+                                                      frame_num=frame_num)
                 else:
-                    border = renderer.get_task_boarder(subtask.extra_data['start_task'],
-                                                       subtask.extra_data['end_task'],
-                                                       subtask.extra_data['total_tasks'],
-                                                       res_x,
-                                                       res_y)
+                    border = renderer.get_task_border(subtask.extra_data['start_task'],
+                                                      subtask.extra_data['end_task'],
+                                                      subtask.extra_data['total_tasks'],
+                                                      res_x,
+                                                      res_y)
 
                 if os.path.isfile(self.last_preview_path):
-                    self.__draw_boarder(border)
+                    self.__draw_border(border)
 
-    def __draw_boarder(self, border):
+    def __draw_border(self, border):
         pixmap = QPixmap(self.last_preview_path)
         p = QPainter(pixmap)
         pen = QPen(QColor(0, 0, 0))

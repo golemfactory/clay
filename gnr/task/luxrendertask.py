@@ -4,13 +4,12 @@ import random
 import shutil
 
 from collections import OrderedDict
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingenvironment import LuxRenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
@@ -40,12 +39,12 @@ def build_lux_render_info(dialog, customizer):
     renderer.output_formats = ["exr", "png", "tga"]
     renderer.scene_file_ext = ["lxs"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
-    renderer.get_task_boarder = get_task_boarder
+    renderer.get_task_border = get_task_border
 
     return renderer
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
     preview_x = 300
     preview_y = 200
     if res_x != 0 and res_y != 0:
@@ -416,8 +415,9 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
-        scaled = img.fit((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
-                         resample=Image.BILINEAR)
+        scaled = ImageOps.fit(img,
+                              (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                              method=Image.BILINEAR)
         scaled.save(self.preview_file_path, "BMP")
         img.close()
         scaled.close()

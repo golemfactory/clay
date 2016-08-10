@@ -152,6 +152,7 @@ class FrameRenderingTask(RenderingTask):
             img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
 
         if img:
+            img_x, img_y = img.size
             img = Image.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
                                resample=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
@@ -316,17 +317,17 @@ class FrameRenderingTask(RenderingTask):
             RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                     frame_num=1):
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
+                    frame_num=1):
     if not use_frames:
-        boarder = __get_boarder(start_task, end_task, total_tasks, res_x, res_y)
+        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
     elif total_tasks > frames:
         parts = total_tasks / frames
-        boarder = __get_boarder((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
     else:
-        boarder = []
+        border = []
 
-    return boarder
+    return border
 
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
@@ -342,7 +343,7 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_fr
     return num
 
 
-def __get_boarder(start_task, end_task, parts, res_x, res_y):
+def __get_border(start_task, end_task, parts, res_x, res_y):
     preview_x = 300
     preview_y = 200
     if res_x != 0 and res_y != 0:
@@ -353,16 +354,16 @@ def __get_boarder(start_task, end_task, parts, res_x, res_y):
         scale_factor = min(1.0, scale_factor)
     else:
         scale_factor = 1.0
-    boarder = []
+    border = []
     upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
     lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
     for i in range(upper, lower):
-        boarder.append((0, i))
-        boarder.append((res_x - 1, i))
+        border.append((0, i))
+        border.append((res_x - 1, i))
     for i in range(0, res_x):
-        boarder.append((i, upper))
-        boarder.append((i, lower))
-    return boarder
+        border.append((i, upper))
+        border.append((i, lower))
+    return border
 
 
 def __num_from_pixel(p_y, res_y, tasks):

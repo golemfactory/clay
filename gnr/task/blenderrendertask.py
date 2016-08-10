@@ -1,25 +1,20 @@
 import logging
-import random
-import os
 import math
+import os
+import random
 from collections import OrderedDict
 
 from PIL import Image, ImageChops
-
-from golem.task.taskstate import SubtaskStatus
-
-from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
+from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_border, \
+    get_task_num_from_pixels
 from gnr.task.gnrtask import GNROptions
 from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
-
-from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_boarder, \
-    get_task_num_from_pixels
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
-
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.task")
 
@@ -49,12 +44,12 @@ class PreviewUpdater(object):
         # their correct places
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
-        
+
     def get_offset(self, subtask_number):
         if subtask_number in self.expected_offsets.keys():
             return self.expected_offsets[subtask_number]
         return self.preview_res_y
-        
+
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
@@ -64,6 +59,7 @@ class PreviewUpdater(object):
                 img = exr_to_pil(subtask_path)
             else:
                 img = Image.open(subtask_path)
+
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
                 _, img_y = img.size
@@ -107,7 +103,7 @@ def build_blender_renderer_info(dialog, customizer):
     renderer.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
     renderer.scene_file_ext = ["blend"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
-    renderer.get_task_boarder = get_task_boarder
+    renderer.get_task_border = get_task_border
 
     return renderer
 
@@ -519,4 +515,3 @@ class CustomCollector(RenderingTaskCollector):
         result = ImageChops.add(final_img, img_offset)
         img_offset.close()
         return result
-    

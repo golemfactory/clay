@@ -1,11 +1,12 @@
+import unittest
 from os import makedirs
 
-from golem.resource.dirmanager import DirManager
-from golem.tools.testdirfixture import TestDirFixture
-
-from gnr.task.renderingtask import RenderingTask
 from gnr.renderingdirmanager import get_tmp_path
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
+from gnr.task.framerenderingtask import get_task_border
+from gnr.task.renderingtask import RenderingTask
+from golem.resource.dirmanager import DirManager
+from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestRenderingTask(TestDirFixture):
@@ -50,3 +51,15 @@ class TestRenderingTask(TestDirFixture):
         assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
 
+
+class TestGetTaskBorder(unittest.TestCase):
+
+    def test(self):
+        border = get_task_border(0, 1, 1, use_frames=False)
+        assert len(border) == 1400
+
+        border = get_task_border(0, 1, 1, use_frames=True)
+        assert not border
+
+        border = get_task_border(0, 1000, 1000, use_frames=True)
+        assert len(border) == 640

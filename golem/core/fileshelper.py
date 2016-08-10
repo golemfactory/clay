@@ -131,3 +131,15 @@ def find_file_with_ext(directory, extensions):
             _, ext = os.path.splitext(name)
             if ext.lower() in extensions:
                 return os.path.join(root, name)
+
+
+def outer_dir_path(path):
+    upper_dir = os.path.dirname(os.path.dirname(path))
+    file_name = os.path.basename(path)
+    return os.path.join(upper_dir, file_name)
+
+
+def inner_dir_path(path, directory):
+    current_dir = os.path.dirname(path)
+    filename = os.path.basename(path)
+    return os.path.join(current_dir, directory, filename)
