@@ -50,6 +50,7 @@ class TestNewTaskDialogCustomizer(TestCase):
         td.main_program_file = "/a/b/c/"
         td.task_name = task_name
         td.main_scene_file = 'a/b/c/d e/file.blend'
+        td.output_file = 'a/b/c/d e/result.jpeg'
         win_norm_resources = {"\\abc\\def", "\\ghi\\jik"}
         oth_norm_resources = {"/abc/def", "/ghi/jik"}
         customizer.load_task_definition(td)

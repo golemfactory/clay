@@ -151,6 +151,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_task_type(definition)
         settings = QSettings()
         settings.setValue('main_scene_path', os.path.dirname(definition.main_scene_file))
+        settings.setValue('output_file_path', os.path.dirname(definition.output_file))
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
