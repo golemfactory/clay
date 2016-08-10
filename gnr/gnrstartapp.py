@@ -184,5 +184,3 @@ def start_app(datadir=None, rendering=False,
         start_client_process(queue, start_ranking, datadir, transaction_system)
     except Exception as exc:
         print "Exception in Client process: {}".format(exc)
-
-    process_monitor.exit()
