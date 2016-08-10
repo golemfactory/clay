@@ -178,7 +178,7 @@ function build_docker_image {
     cd "${SCRIPT_DIR}/${DOCKER_DIR}"
 
     echo "Building image ${IMG} $(pwd)"
-    docker build -t "${IMG_NAME}" -f "${IMG_FILE}" . && docker tag -f "${IMG_NAME}" "${IMG}"
+    docker build -t "${IMG_NAME}" -f "${IMG_FILE}" . && docker tag "${IMG_NAME}" "${IMG}"
 
     cd "${CWD}"
 }
@@ -189,7 +189,7 @@ function check_docker_image {
     IMG_TAG=$3
     IMG="${IMG_NAME}:${IMG_TAG}"
 
-    echo "Checking ${IMG}"
+    echo "Checking docker image ${IMG}"
     if [[ "$(docker images -q "${IMG}")" == "" ]]; then
         build_docker_image "${IMG_NAME}" "${IMG_FILE}" "${IMG_TAG}"
     else

@@ -56,7 +56,7 @@ def try_building_docker_images():
                 cmd = "docker build -t {} -f {} .".format(image, docker_file)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
-                cmd = "docker tag -f {} {}:{}".format(image, image, tag)
+                cmd = "docker tag {} {}:{}".format(image, image, tag)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
             except ValueError:
