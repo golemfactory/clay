@@ -838,7 +838,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         cur_time = time.time()
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
             self.last_refresh_peers = cur_time
-            if self.peers:
+            if len(self.peers) > 1:
                 peer_id = random.choice(self.peers.keys())
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
