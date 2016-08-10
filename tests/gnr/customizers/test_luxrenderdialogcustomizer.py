@@ -1,4 +1,4 @@
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QSettings
 from PyQt4.QtTest import QTest
 from mock import Mock, patch
 import os
@@ -51,8 +51,10 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         lux_customizer.get_task_specific_options(definition)
         lux_customizer.load_task_definition(definition)
 
+        settings = QSettings()
+        path = u"{}".format(settings.value('main_scene_path', os.path.expanduser('~')).toString())
         QTest.mouseClick(lux_customizer.gui.ui.chooseMainSceneFileButton, Qt.LeftButton)
         mock_file_dialog.getOpenFileName.assert_called_with(lux_customizer.gui,
                                                             "Choose main scene file",
-                                                            os.path.expanduser("~"),
+                                                            path,
                                                             u"Scene files (*.LXS *.lxs)")
