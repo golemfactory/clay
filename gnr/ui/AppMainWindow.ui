@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>983</width>
-    <height>737</height>
+    <height>785</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>4</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -480,16 +480,6 @@
                  </item>
                 </layout>
                </item>
-               <item row="4" column="1">
-                <widget class="QPushButton" name="resetToDefaultButton">
-                 <property name="toolTip">
-                  <string>Restore default task settings. Warning: you will loose current task definition if it is not saved!</string>
-                 </property>
-                 <property name="text">
-                  <string>Reset to defaults</string>
-                 </property>
-                </widget>
-               </item>
                <item row="3" column="1">
                 <spacer name="verticalSpacer">
                  <property name="orientation">
@@ -569,6 +559,16 @@
                     </property>
                     <property name="text">
                      <string>Load</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="resetToDefaultButton">
+                    <property name="toolTip">
+                     <string>Restore default task settings. Warning: you will loose current task definition if it is not saved!</string>
+                    </property>
+                    <property name="text">
+                     <string>Reset to defaults</string>
                     </property>
                    </widget>
                   </item>
