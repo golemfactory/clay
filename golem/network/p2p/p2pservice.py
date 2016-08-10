@@ -267,17 +267,17 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         self.remove_pending_conn(peer_session.conn_id)
 
-        for p in self.peers.keys():
-            if self.peers.get(p, None) == peer_session:
-                self.peers.pop(p, None)
-                self.incoming_peers.pop(p, None)
-                self.suggested_address.pop(p, None)
-                self.suggested_conn_reverse.pop(p, None)
-                if p in self.free_peers:
-                    self.free_peers.remove(p)
-                if p in self.peer_order:
-                    self.peer_order.remove(p)
-                break
+        p = peer_session.key_id
+
+        self.peers.pop(p, None)
+        self.incoming_peers.pop(p, None)
+        self.suggested_address.pop(p, None)
+        self.suggested_conn_reverse.pop(p, None)
+
+        if p in self.free_peers:
+            self.free_peers.remove(p)
+        if p in self.peer_order:
+            self.peer_order.remove(p)
 
         self.__send_degree()
 
@@ -632,17 +632,17 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
             super_node_info = self.node
 
         logger.debug("Try to start task session {}".format(key_id))
-        peers = dict(self.peers)
+
+        connected_peer = self.peers.get(key_id)
+        if connected_peer:
+            if node_info.key == self.node.key:
+                self.set_suggested_conn_reverse(key_id)
+            connected_peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
+            return
+
         msg_snd = False
 
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                if node_info.key == self.node.key:
-                    self.set_suggested_conn_reverse(key_id)
-                peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
-                return
-
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
@@ -665,26 +665,22 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :return:
         """
         logger.debug("Nat hole ready {}:{}".format(addr, port))
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
-                return
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
 
     def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
         self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
 
     def send_nat_traverse_failure(self, key_id, conn_id):
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_nat_traverse_failure(conn_id)
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_nat_traverse_failure(conn_id)
 
     def traverse_nat_failure(self, conn_id):
         self.task_server.traverse_nat_failure(conn_id)
@@ -842,7 +838,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         cur_time = time.time()
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
             self.last_refresh_peers = cur_time
-            if len(self.peers) > 1:
+            if self.peers:
                 peer_id = random.choice(self.peers.keys())
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
