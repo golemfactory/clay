@@ -623,7 +623,6 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_start_session_failure(self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
         logger.info("Failed to start requested task session for node {}".format(key_id))
         self.final_conn_failure(conn_id)
-        self.final_conn_failure(ans_conn_id)
         # self.__initiate_nat_traversal(key_id, node_info, super_node_info, ans_conn_id)
 
     def __initiate_nat_traversal(self, key_id, node_info, super_node_info, ans_conn_id):
