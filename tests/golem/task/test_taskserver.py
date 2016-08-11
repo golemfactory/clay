@@ -444,7 +444,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         method = ts._TaskServer__connection_for_start_session_failure
         method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
 
-        ts.final_conn_failure.assert_called_with('ans_conn_id')
+        ts.final_conn_failure.assert_called_with('conn_id')
 
     def test_conn_final_failures(self):
 
