@@ -527,8 +527,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def __parse_error_message(error_msg):
-        if not error_msg:
-            return u"Unknown error"
         if any(code in error_msg for code in ['246', '247', '500']):
             return u"[{}] There is a chance that you RAM limit is too low. Consider increasing max memory usage".format(
                 error_msg)
