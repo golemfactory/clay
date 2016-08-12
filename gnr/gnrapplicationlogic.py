@@ -448,6 +448,9 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer = None
                 self.config_dialog = None
 
+    def docker_config_changed(self):
+        self.customizer.configuration_dialog_customizer.load_data()
+
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 

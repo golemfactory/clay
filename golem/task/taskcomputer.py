@@ -243,8 +243,7 @@ class TaskComputer(object):
             logger.error("Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
-    
-        
+
     def run_benchmark(self, benchmark, task_builder, datadir, node_name, success_callback, error_callback):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
@@ -263,11 +262,13 @@ class TaskComputer(object):
             cfg_desc = client.config_desc
             cfg_desc.estimated_lux_performance = performance
             client.change_config(cfg_desc)
+            self.docker_config_changed()
             
         def blender_success_callback(performance):
             cfg_desc = client.config_desc
             cfg_desc.estimated_blender_performance = performance
             client.change_config(cfg_desc)
+            self.docker_config_changed()
         
         client = self.task_server.client
         node_name = client.get_node_name()
@@ -277,13 +278,13 @@ class TaskComputer(object):
         lux_builder = LuxRenderTaskBuilder
         self.run_benchmark(lux_benchmark, lux_builder, datadir, node_name, lux_success_callback, error_callback)
         
-        
-        
         blender_benchmark = BlenderBenchmark()
         blender_builder = BlenderRenderTaskBuilder
         self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, blender_success_callback, error_callback)
-        
-        
+
+    def docker_config_changed(self):
+        for l in self.listeners:
+            l.docker_config_changed()
         
     def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
         dm = self.docker_manager
