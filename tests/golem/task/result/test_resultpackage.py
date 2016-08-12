@@ -140,7 +140,9 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         node = MockNode(node_name)
 
         tr = MockTaskResult(self.task_id, self.files)
-        path = etp.create(self.out_path, node, tr,
+        path = etp.create(self.out_path,
+                          node=node,
+                          task_result=tr,
                           pickle_files=self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
@@ -149,7 +151,9 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         tr = MockTaskResult(self.task_id, "Result string data",
                             result_type=result_types["data"])
 
-        path = etp.create(self.out_path, node, tr)
+        path = etp.create(self.out_path,
+                          node=node,
+                          task_result=tr)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -159,7 +163,9 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         node = MockNode(node_name)
         tr = MockTaskResult(self.task_id, self.files)
 
-        path = etp.create(self.out_path, node, tr,
+        path = etp.create(self.out_path,
+                          node=node,
+                          task_result=tr,
                           pickle_files=self.pickle_files)
 
         extracted = etp.extract(path)
@@ -185,7 +191,9 @@ class TestExtractedPackage(TestDirFixture):
         node = MockNode(node_name)
         tr = MockTaskResult(self.task_id, self.files)
 
-        path = etp.create(self.out_path, node, tr,
+        path = etp.create(self.out_path,
+                          node=node,
+                          task_result=tr,
                           pickle_files=self.pickle_files)
 
         extracted = etp.extract(path)
