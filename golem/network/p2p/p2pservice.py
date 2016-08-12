@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+from collections import deque
 
 from ipaddress import AddressValueError
 
@@ -22,6 +23,7 @@ REFRESH_PEERS_TIMEOUT = 1200  # How often should we disconnect with a random nod
 RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try should we try to connect with seed?
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
+HISTORY_LEN = 5  # How many entries from challenge history should we remember
 
 SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
 
@@ -57,7 +59,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
-        self.challenge_history = []
+        self.challenge_history = deque(maxlen=HISTORY_LEN)
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts

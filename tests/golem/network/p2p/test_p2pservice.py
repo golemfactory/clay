@@ -1,7 +1,6 @@
 import time
 import uuid
 
-from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from mock import MagicMock, Mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -9,9 +8,10 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
-from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.testutils import DatabaseFixture
 
 
@@ -347,3 +347,19 @@ class TestP2PService(DatabaseFixture):
 
         service.remove_peer(p)
         assert p.key_id not in service.peers
+
+    def test_challenge_history_len(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        difficulty = service._get_difficulty("KEY_ID")
+        for i in range(3):
+            challenge = service._get_challenge(keys_auth.get_key_id())
+            service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
+        assert len(service.challenge_history) == 3
+        assert service.last_challenge is not None
+        for i in range(100):
+            challenge = service._get_challenge(keys_auth.get_key_id())
+            service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
+
+        assert len(service.challenge_history) == HISTORY_LEN
