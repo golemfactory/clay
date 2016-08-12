@@ -5,5 +5,5 @@ if [ "$LOCAL_USER_ID" != "" ]; then
     export HOME=/home/task
     exec /usr/local/bin/gosu task /bin/sh -c "/usr/bin/python $@"
 else
-    /bin/sh -c "/usr/bin/python $@"
+    /usr/bin/python $@
 fi
