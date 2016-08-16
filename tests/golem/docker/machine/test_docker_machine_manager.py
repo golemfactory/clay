@@ -159,21 +159,19 @@ class TestDockerMachineManager(unittest.TestCase):
         assert dmm.stop_vm(MACHINE_NAME)
 
     def test_check_environment(self):
-        dmm = MockDockerMachineManager()
+        MockDockerMachineManager._DockerMachineManager__import_virtualbox = mock.Mock()
 
-        dmm.check_environment()
+        dmm = MockDockerMachineManager()
         assert dmm.docker_machine_available
 
-        get_images = dmm.docker_machine_images
-        dmm.docker_machine_images = lambda x: []
-
+        dmm = MockDockerMachineManager()
+        dmm.docker_machine_images = lambda *_: []
         dmm.check_environment()
         assert not dmm.docker_machine_available
 
-        dmm.docker_machine_images = get_images
+        dmm = MockDockerMachineManager()
         dmm.docker_machine = MACHINE_NAME
         dmm.virtual_box.version = None
-
         dmm.check_environment()
         assert not dmm.docker_machine_available
 

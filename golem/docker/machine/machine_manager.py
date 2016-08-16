@@ -70,9 +70,7 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
-        self.__import_virtualbox()
-        if self.docker_machine:
-            self.check_environment()
+        self.check_environment()
 
     def check_environment(self):
         logger.debug("DockerManager: checking VM availability")
@@ -83,8 +81,9 @@ class DockerMachineManager(DockerConfigManager):
                 self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
 
             # VirtualBox availability check
-            if not self.virtual_box.version:
-                raise EnvironmentError("Cannot connect to VirtualBox")
+            self.__import_virtualbox()
+            if not self.virtual_box or not self.virtual_box.version:
+                raise EnvironmentError("Unknown VirtualBox version")
 
             # Docker Machine VM availability check
             self.docker_images = self.docker_machine_images()
@@ -397,15 +396,9 @@ class DockerMachineManager(DockerConfigManager):
         return machine_obj
 
     def __import_virtualbox(self):
-        try:
-            from virtualbox import VirtualBox
-            from virtualbox.library import ISession, LockType
+        from virtualbox import VirtualBox
+        from virtualbox.library import ISession, LockType
 
-            self.virtual_box = VirtualBox()
-            self.ISession = ISession
-            self.LockType = LockType
-
-        except Exception as e:
-
-            self.docker_machine_available = False
-            logger.warn("Couldn't import virtualbox: {}".format(e))
+        self.virtual_box = VirtualBox()
+        self.ISession = ISession
+        self.LockType = LockType
