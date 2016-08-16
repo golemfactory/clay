@@ -58,7 +58,7 @@ class TaskComputer(object):
         self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerMachineManager()
+        self.docker_manager = DockerMachineManager.install()
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
                            in_background=False)

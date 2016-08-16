@@ -16,6 +16,7 @@ FALLBACK_DOCKER_MACHINE_NAME = 'default'
 class DockerMachineManager(DockerConfigManager):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
+    SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
 
     docker_machine_commands = dict(
         active=['docker-machine', 'active'],
@@ -115,6 +116,32 @@ class DockerMachineManager(DockerConfigManager):
             self._threads.push(thread)
         else:
             thread.run()
+
+    def recover_vm_connectivity(self, done_callback, in_background=True):
+        """
+        This method tries to resolve issues with VirtualBox network adapters on Windows
+        by saving VM's state and resuming it afterwards.
+        :param done_callback: Function to run on completion. Takes vbox session as an argument.
+        :param in_background: Run the recovery process in a separate thread.
+        :return:
+        """
+        if not self._env_checked:
+            self.check_environment()
+
+        if self.docker_machine_available:
+            def save_and_resume():
+                self._save_vm_state(self.docker_machine)
+                session = self.start_vm(self.docker_machine)
+                done_callback(session)
+
+            thread = Thread(target=save_and_resume)
+
+            if in_background:
+                self._threads.push(thread)
+            else:
+                thread.run()
+        else:
+            done_callback(None)
 
     def find_vm(self, name_or_id):
         try:
@@ -317,6 +344,22 @@ class DockerMachineManager(DockerConfigManager):
 
         except Exception as e:
             logger.error("VirtualBox: error stopping a VM: '{}'"
+                         .format(e))
+        return None
+
+    def _save_vm_state(self, vm_or_session, lock_type=None):
+        try:
+            session = self.__session_from_arg(vm_or_session,
+                                              lock_type=lock_type)
+            logger.debug("VirtualBox: saving state of VM '{}'"
+                         .format(session.machine.name))
+
+            progress = session.machine.save_state()
+            progress.wait_for_completion(timeout=self.SAVE_STATE_TIMEOUT)
+            return session
+
+        except Exception as e:
+            logger.error("VirtualBox: error saving VM's state: '{}'"
                          .format(e))
         return None
 

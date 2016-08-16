@@ -1,11 +1,38 @@
 import copy
 import logging
 import os
+import threading
 import time
 from threading import Thread, Lock
 
 
 logger = logging.getLogger(__name__)
+
+
+class ParentThreadMonitor(Thread):
+    def __init__(self, parent_thread, terminate_func):
+        super(ParentThreadMonitor, self).__init__(target=self._monitor)
+        self._parent_thread = parent_thread
+        self._terminate_func = terminate_func
+        self._interval = 1
+        self.daemon = True
+        self.working = False
+
+    def stop(self):
+        self.working = False
+        if self.is_alive():
+            self.join()
+
+    def _monitor(self):
+        self.working = True
+        while self.working:
+            self._parent_thread.join(self._interval)
+            # despite being an active parent thread, is_alive returns False
+            # if the application is shutting down
+            if not self._parent_thread.is_alive():
+                self.working = False
+                self._terminate_func()
+                return
 
 
 class TaskThread(Thread):
@@ -14,6 +41,8 @@ class TaskThread(Thread):
         super(TaskThread, self).__init__()
 
         self.task_computer = task_computer
+        self.parent_monitor = ParentThreadMonitor(threading.current_thread(),
+                                                  terminate_func=self.end_comp)
         self.vm = None
         self.subtask_id = subtask_id
         self.src_code = src_code
@@ -60,6 +89,10 @@ class TaskThread(Thread):
         with self.lock:
             return self.error
 
+    def start(self):
+        self.parent_monitor.start()
+        super(TaskThread, self).start()
+
     def run(self):
         logger.info("RUNNING ")
         try:
@@ -69,11 +102,14 @@ class TaskThread(Thread):
             self.error = True
             self.error_msg = str(exc)
             self.done = True
-        self.task_computer.task_computed(self)
+        finally:
+            self.task_computer.task_computed(self)
+            self.parent_monitor.stop()
 
     def end_comp(self):
         self.end_time = time.time()
-        self.vm.end_comp()
+        if self.vm:
+            self.vm.end_comp()
 
     def __do_work(self):
         extra_data = copy.copy(self.extra_data)
