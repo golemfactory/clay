@@ -169,11 +169,35 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm.check_environment()
         assert not dmm.docker_machine_available
 
-        dmm = MockDockerMachineManager()
-        dmm.docker_machine = MACHINE_NAME
-        dmm.virtual_box.version = None
-        dmm.check_environment()
-        assert not dmm.docker_machine_available
+        mock_virtualbox_module = mock.MagicMock()
+
+        with mock.patch.dict('sys.modules', **{
+            'virtualbox': mock_virtualbox_module,
+            'virtualbox.library': mock_virtualbox_module
+        }):
+            mock_virtualbox = mock.Mock()
+            mock_virtualbox.version = None
+            mock_virtualbox_module.VirtualBox.return_value = mock_virtualbox
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.check_environment()
+            assert not dmm.docker_machine_available
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = None
+            dmm.check_environment()
+            assert not dmm.docker_machine_available
+
+        with mock.patch.dict('sys.modules', **{
+            'virtualbox': mock.MagicMock(),
+            'virtualbox.library': mock.MagicMock()
+        }):
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
+            dmm.check_environment()
+            assert dmm.docker_machine_available
 
     def test_update_config(self):
         status_switch = [True]

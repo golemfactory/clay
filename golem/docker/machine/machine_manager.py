@@ -81,7 +81,7 @@ class DockerMachineManager(DockerConfigManager):
                 self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
 
             # VirtualBox availability check
-            self.__import_virtualbox()
+            self._import_virtualbox()
             if not self.virtual_box or not self.virtual_box.version:
                 raise EnvironmentError("Unknown VirtualBox version")
 
@@ -376,6 +376,14 @@ class DockerMachineManager(DockerConfigManager):
             logger.debug('VirtualBox: VM {} reconfigured successfully'
                          .format(vm.name))
 
+    def _import_virtualbox(self):
+        from virtualbox import VirtualBox
+        from virtualbox.library import ISession, LockType
+
+        self.virtual_box = VirtualBox()
+        self.ISession = ISession
+        self.LockType = LockType
+
     def __session_from_arg(self, session_obj, lock_type=None):
         if not isinstance(session_obj, self.ISession):
             vm = self.__machine_from_arg(session_obj)
@@ -394,11 +402,3 @@ class DockerMachineManager(DockerConfigManager):
                              .format(machine_obj, e))
                 return None
         return machine_obj
-
-    def __import_virtualbox(self):
-        from virtualbox import VirtualBox
-        from virtualbox.library import ISession, LockType
-
-        self.virtual_box = VirtualBox()
-        self.ISession = ISession
-        self.LockType = LockType
