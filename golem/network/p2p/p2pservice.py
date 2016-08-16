@@ -184,6 +184,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         for peer in self.peers.values():
             peer = PeerSessionInfo(peer).__dict__
             del peer['node_info']
+            del peer['rand_val']
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
 
