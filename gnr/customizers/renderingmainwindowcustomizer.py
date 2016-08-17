@@ -143,12 +143,12 @@ class AbsRenderingMainWindowCustomizer(object):
     def __set_preview(self, t):
         self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
         self.gui.ui.frameSlider.setVisible(False)
-        if "resultPreview" in t.task_state.extra_data:
+        if "resultPreview" in t.task_state.extra_data and os.path.exists(os.path.abspath(t.task_state.extra_data["resultPreview"])):
             file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
-            if os.path.exists(file_path):
-                self.__update_img(QPixmap(file_path))
-                self.last_preview_path = file_path
+            self.__update_img(QPixmap(file_path))
+            self.last_preview_path = file_path
         else:
+            self.preview_path = os.path.join(get_golem_path(), "gnr", get_preview_file())
             self.__update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
