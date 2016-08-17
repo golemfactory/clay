@@ -243,9 +243,9 @@ class AbsRenderingMainWindowCustomizer(object):
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, frames=frames,
-                                                            frame_num=frame_num, res_y = scaled_y)
+                                                            frame_num=frame_num, res_y=self.current_task_highlighted.definition.resolution[1])
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, res_y=scaled_y)
+                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, res_y=self.current_task_highlighted.definition.resolution[1])
         return num
 
     def __get_subtask(self, num):
@@ -312,10 +312,10 @@ class AbsRenderingMainWindowCustomizer(object):
         self.__update_img(pixmap)
 
     def __update_img(self, img):
-        size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
-        pic = img.scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        #size = QtCore.QSize(200 if img.height() > img.width() else 300, 200)
+        #pic = img.scaled(size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
         self.gui.ui.previewLabel.setScaledContents(False)
-        self.gui.ui.previewLabel.setPixmap(pic)
+        self.gui.ui.previewLabel.setPixmap(img)
         QPixmapCache.clear()
 
 
