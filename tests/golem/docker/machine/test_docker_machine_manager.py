@@ -1,7 +1,6 @@
 import unittest
 
 import mock
-
 from golem.docker.machine.machine_manager import DockerMachineManager
 
 MACHINE_NAME = 'default'
@@ -222,12 +221,50 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager()
         dmm.constrain_all([MACHINE_NAME])
 
+    def test_recover_vm_connectivity(self):
 
+        invalid_value = 'string'
+        result = [invalid_value]
 
+        def callback(session):
+            result[0] = session
 
+        dmm = MockDockerMachineManager()
+        dmm._save_vm_state = mock.Mock()
+        dmm.start_vm = mock.Mock()
+        dmm._env_checked = True
 
+        dmm.start_vm.return_value = mock.Mock()
+        dmm.docker_machine_available = False
 
+        result[0] = invalid_value
+        dmm.recover_vm_connectivity(callback, in_background=False)
+        assert result[0] is None
 
+        result[0] = invalid_value
+        dmm.recover_vm_connectivity(callback, in_background=True)
+        assert result[0] is None
+
+        dmm.docker_machine_available = True
+
+        result[0] = invalid_value
+        dmm._save_vm_state.called = False
+        dmm.recover_vm_connectivity(callback, in_background=False)
+        assert dmm._save_vm_state.called
+        assert result[0]
+
+        result[0] = invalid_value
+        dmm._save_vm_state.called = False
+        dmm._threads = mock.Mock()
+        dmm._threads.push = lambda x: x.run()
+        dmm.recover_vm_connectivity(callback, in_background=True)
+        assert dmm._save_vm_state.called
+        assert result[0]
+
+    def test_save_vm_state(self):
+        dmm = MockDockerMachineManager()
+        assert not dmm._save_vm_state(None)
+        assert dmm._save_vm_state(MACHINE_NAME)
 
 
 
