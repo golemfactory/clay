@@ -1,7 +1,7 @@
 import logging
 import time
 
-from golem.core.common import HandleKeyError
+from golem.core.common import HandleKeyError, get_current_time
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -310,9 +310,7 @@ class TaskManager(object):
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
                 if s.subtask_status == SubtaskStatus.starting:
-                    s.ttl = s.ttl - (cur_time - s.last_checking)
-                    s.last_checking = cur_time
-                    if s.ttl <= 0:
+                    if get_current_time() > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
@@ -451,11 +449,6 @@ class TaskManager(object):
             task.subtask_timeout = subtask_timeout
             task.full_task_timeout = full_task_timeout
             task.header.last_checking = time.time()
-            ts = self.tasks_states[task_id]
-            for s in ts.subtask_states.values():
-                s.ttl = subtask_timeout
-                s.last_checking = time.time()
-            return True
         else:
             logger.info("Cannot find task {} in my tasks".format(task_id))
             return False
