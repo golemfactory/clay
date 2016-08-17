@@ -230,7 +230,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.preview_file_path = []
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
-                preview_path = os.path.join(self.tmp_dir, "current_preview{}".format(i))
+                preview_path = os.path.join(self.tmp_dir, "current_task_preview{}".format(i))
                 self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
                                                             int(round(self.res_x * self.scale_factor)),
@@ -421,6 +421,7 @@ class BlenderRenderTask(FrameRenderingTask):
             img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+            self._update_frame_task_preview()
     
     def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
@@ -448,7 +449,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.mark_part_on_preview(subtask['start_task'], img_task, color, self.preview_updater)
         elif self.total_tasks <= len(self.frames):
             for i in range(0, int(math.floor(self.res_x * self.scale_factor))):
-                for j in range(0, int(math_floor(self.res_y * self.scale_factor))):
+                for j in range(0, int(math.floor(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
