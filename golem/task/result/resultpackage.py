@@ -1,6 +1,7 @@
 import abc
 import os
 import pickle
+import uuid
 import zipfile
 
 from golem.core.fileencrypt import AESFileEncryptor
@@ -9,7 +10,7 @@ from golem.task.taskbase import result_types
 
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, pickle_files=None):
+    def create(self, output_path, disk_files=None, pickle_files=None, **kwargs):
 
         if not disk_files and not pickle_files:
             raise ValueError('No files to pack')
@@ -29,7 +30,7 @@ class Packager(object):
         return output_path
 
     @abc.abstractmethod
-    def extract(self, input_path):
+    def extract(self, input_path, output_dir=None, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -47,8 +48,13 @@ class Packager(object):
 
 class ZipPackager(Packager):
 
-    def extract(self, input_path):
-        output_dir = os.path.dirname(input_path)
+    def extract(self, input_path, output_dir=None, **kwargs):
+
+        if not output_dir:
+            output_dir = os.path.dirname(input_path)
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
         with zipfile.ZipFile(input_path, 'r') as zf:
             zf.extractall(output_dir)
@@ -76,12 +82,13 @@ class EncryptingPackager(Packager):
         self._creator = self.creator_class()
         self.key_or_secret = key_or_secret
 
-    def create(self, output_path, disk_files=None, pickle_files=None):
+    def create(self, output_path, disk_files=None, pickle_files=None, **kwargs):
 
+        output_dir = os.path.dirname(output_path)
+        tmp_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".enc")
         out_file_path = super(EncryptingPackager, self).create(output_path,
                                                                disk_files=disk_files,
                                                                pickle_files=pickle_files)
-        tmp_file_path = out_file_path + ".enc"
 
         self.encryptor_class.encrypt(out_file_path,
                                      tmp_file_path,
@@ -92,9 +99,10 @@ class EncryptingPackager(Packager):
 
         return out_file_path
 
-    def extract(self, input_path):
+    def extract(self, input_path, output_dir=None, **kwargs):
 
-        tmp_file_path = input_path + ".dec"
+        input_dir = os.path.dirname(input_path)
+        tmp_file_path = os.path.join(input_dir, str(uuid.uuid4()) + ".dec")
 
         self.encryptor_class.decrypt(input_path,
                                      tmp_file_path,
@@ -103,7 +111,7 @@ class EncryptingPackager(Packager):
         os.remove(input_path)
         os.rename(tmp_file_path, input_path)
 
-        return self._creator.extract(input_path)
+        return self._creator.extract(input_path, output_dir=output_dir)
 
     def generator(self, output_path):
         return self._creator.generator(output_path)
@@ -137,8 +145,9 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         self.parent = super(EncryptingTaskResultPackager, self)
         self.parent.__init__(key_or_secret)
 
-    def create(self, output_path, node, task_result,
-               disk_files=None, pickle_files=None):
+    def create(self, output_path,
+               disk_files=None, pickle_files=None,
+               node=None, task_result=None, **kwargs):
 
         disk_files, pickle_files = self.__collect_files(task_result,
                                                         disk_files=disk_files,
@@ -151,9 +160,9 @@ class EncryptingTaskResultPackager(EncryptingPackager):
                                   disk_files=disk_files,
                                   pickle_files=pickle_files)
 
-    def extract(self, input_path):
+    def extract(self, input_path, output_dir=None, **kwargs):
 
-        files, files_dir = self.parent.extract(input_path)
+        files, files_dir = self.parent.extract(input_path, output_dir=output_dir)
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:

@@ -64,13 +64,12 @@ class TaskThread(Thread):
         logger.info("RUNNING ")
         try:
             self.__do_work()
-            self.task_computer.task_computed(self)
         except Exception as exc:
             logger.error("Task computing error: {}".format(exc))
             self.error = True
             self.error_msg = str(exc)
             self.done = True
-            self.task_computer.task_computed(self)
+        self.task_computer.task_computed(self)
 
     def end_comp(self):
         self.end_time = time.time()

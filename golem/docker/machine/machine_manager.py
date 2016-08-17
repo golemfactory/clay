@@ -68,7 +68,7 @@ class DockerMachineManager(DockerConfigManager):
         self.virtual_box_config = self.defaults
 
         self._env_checked = False
-        self._threads = ThreadQueueExecutor(name='docker-machine')
+        self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
         self.__import_virtualbox()
         if self.docker_machine:
@@ -80,8 +80,7 @@ class DockerMachineManager(DockerConfigManager):
         try:
             if not self.docker_machine:
                 active = self.docker_machine_command('active')
-                self.docker_machine = active.strip().replace("\n", "") or \
-                                      FALLBACK_DOCKER_MACHINE_NAME
+                self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
 
             # VirtualBox availability check
             if not self.virtual_box.version:
@@ -98,8 +97,6 @@ class DockerMachineManager(DockerConfigManager):
             logger.warn("DockerMachine: not available: {}".format(e))
             self.docker_machine_available = False
 
-        if self.docker_machine_available and not self._threads.isAlive():
-            self._threads.start()
         self._env_checked = True
 
     def update_config(self, status_callback, done_callback, in_background=True):

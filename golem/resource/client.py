@@ -18,6 +18,9 @@ from twisted.internet import threads
 logger = logging.getLogger(__name__)
 
 
+SHA1_BLOCK_SIZE = 65536
+
+
 def file_sha_256(file_path):
     sha = hashlib.sha256()
 
@@ -253,11 +256,12 @@ class AsyncRequestExecutor(object):
     """ Execute a deferred job in a separate thread (Twisted) """
 
     @staticmethod
-    def run(deferred_call, success, error):
+    def run(deferred_call, success=None, error=None):
         deferred = threads.deferToThread(deferred_call.method,
                                          *deferred_call.args,
                                          **deferred_call.kwargs)
-        deferred.addCallbacks(success, error)
-
-
-SHA1_BLOCK_SIZE = 65536
+        if success:
+            deferred.addCallback(success)
+        if error:
+            deferred.addErrback(error)
+        return deferred

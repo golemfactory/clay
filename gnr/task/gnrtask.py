@@ -6,6 +6,7 @@ import time
 
 from golem.core.common import HandleKeyError
 from golem.core.compress import decompress
+from golem.core.fileshelper import outer_dir_path
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
@@ -232,7 +233,10 @@ class GNRTask(Task):
         :return:
         """
         if result_type == result_types['data']:
-            return [self._unpack_task_result(trp) for trp in task_result]
+            output_dir = os.path.join(self.tmp_dir, subtask_id)
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            return [self._unpack_task_result(trp, output_dir) for trp in task_result]
         elif result_type == result_types['files']:
             return task_result
         else:
@@ -251,18 +255,17 @@ class GNRTask(Task):
         :param str err_log_ext: extension that stderr files have
         :return:
         """
+
         filtered_task_results = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
-                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
-                os.rename(tr, new_tr)
-                self.stderr[subtask_id] = new_tr
+                self.stderr[subtask_id] = tr
             elif tr.endswith(log_ext):
-                new_tr = os.path.join(os.path.dirname(tr), subtask_id + os.path.basename(tr))
-                os.rename(tr, new_tr)
-                self.stdout[subtask_id] = new_tr
+                self.stdout[subtask_id] = tr
             else:
-                filtered_task_results.append(tr)
+                new_tr = outer_dir_path(tr)
+                filtered_task_results.append(new_tr)
+                os.rename(tr, new_tr)
 
         return filtered_task_results
 
@@ -295,11 +298,11 @@ class GNRTask(Task):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].reject()
         self.num_failed_subtasks += 1
 
-    def _unpack_task_result(self, trp):
+    def _unpack_task_result(self, trp, output_dir):
         tr = pickle.loads(trp)
-        with open(os.path.join(self.tmp_dir, tr[0]), "wb") as fh:
+        with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
-        return os.path.join(self.tmp_dir, tr[0])
+        return os.path.join(output_dir, tr[0])
 
     def _get_resources_root_dir(self):
         prefix = os.path.commonprefix(self.task_resources)

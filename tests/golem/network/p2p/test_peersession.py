@@ -87,6 +87,23 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
 
+    def test_dropped(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service = MagicMock()
+
+        peer_session.remove_on_disconnect = True
+        peer_session.dropped()
+        assert peer_session.p2p_service.remove_peer.called
+        assert not peer_session.p2p_service.remove_pending_conn.called
+
+        peer_session.p2p_service.remove_peer.called = False
+
+        peer_session.remove_on_disconnect = False
+        peer_session.dropped()
+        assert not peer_session.p2p_service.remove_peer.called
+        assert peer_session.p2p_service.remove_pending_conn.called
+
 
 class TestPeerSessionInfo(unittest.TestCase):
 
@@ -97,14 +114,20 @@ class TestPeerSessionInfo(unittest.TestCase):
         session.unknown_property = False
         session_info = PeerSessionInfo(session)
 
-        attributes = [
+        simple_attributes = [
             'address', 'port',
-            'verified', 'rand_val',
-            'degree', 'key_id',
-            'node_name', 'node_info',
+            'verified', 'degree',
+            'key_id', 'node_name',
             'listen_port', 'conn_id'
         ]
+        attributes = simple_attributes + ['node_info']
 
         for attr in attributes:
             assert hasattr(session_info, attr)
         assert not hasattr(session_info, 'unknown_property')
+
+        simplified = session_info.get_simplified_repr()
+        for attr in simple_attributes:
+            simplified[attr]
+        with self.assertRaises(KeyError):
+            simplified["node_id"]

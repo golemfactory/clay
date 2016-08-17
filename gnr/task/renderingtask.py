@@ -113,6 +113,16 @@ class RenderingTask(GNRTask):
 
         self.verified_clients = set()
         self.max_pending_client_results = max_pending_client_results
+        preview_x = 300
+        preview_y = 200
+        if self.res_x != 0 and self.res_y != 0:
+            if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
+                self.scale_factor = float(preview_x) / float(self.res_x)
+            else:
+                self.scale_factor = float(preview_y) / float(self.res_y)
+            self.scale_factor = min(1.0, self.scale_factor)
+        else:
+            self.scale_factor = 1.0
 
         if is_windows():
             self.__get_path = self.__get_path_windows
@@ -200,10 +210,10 @@ class RenderingTask(GNRTask):
         self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
-        upper = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['start_task'] - 1)))
-        lower = int(math.floor(float(self.res_y) / float(self.total_tasks) * (subtask['end_task'])))
-        for i in range(0, self.res_x):
-            for j in range(upper, lower):
+        upper = max(0, int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['start_task'] - 1))))
+        lower = min(int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['end_task']))), int(round(self.res_y * self.scale_factor)))
+        for i in range(0, int(round(self.res_x * self.scale_factor))):
+            for j in range(int(round(upper)), int(round(lower))):
                 img_task.putpixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):
@@ -286,7 +296,7 @@ class RenderingTask(GNRTask):
 
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
-            img = Image.new("RGB", (self.res_x, self.res_y))
+            img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
             img.save(self.preview_file_path, "BMP")
             img.close()
 

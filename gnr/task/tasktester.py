@@ -30,7 +30,7 @@ class TaskTester(LocalComputer):
                                     0)
 
     def task_computed(self, task_thread):
-        if task_thread.result:
+        if (not task_thread.error) and task_thread.result:
             res, est_mem = task_thread.result
             if res and res.get("data"):
                 self.task.after_test(res, self.tmp_dir)

@@ -21,14 +21,18 @@ class PeerSessionInfo(object):
     def __init__(self, session):
         attributes = [
             'address', 'port',
-            'verified', 'rand_val',
-            'degree', 'key_id',
+            'verified', 'degree', 'key_id',
             'node_name', 'node_info',
             'listen_port', 'conn_id'
         ]
 
         for attr in attributes:
             setattr(self, attr, getattr(session, attr))
+
+    def get_simplified_repr(self):
+        repr = self.__dict__
+        del repr['node_info']
+        return repr
 
 
 class PeerSession(BasicSafeSession):
@@ -79,6 +83,8 @@ class PeerSession(BasicSafeSession):
         BasicSafeSession.dropped(self)
         if self.remove_on_disconnect:
             self.p2p_service.remove_peer(self)
+        else:
+            self.p2p_service.remove_pending_conn(self.conn_id)
 
     def interpret(self, msg):
         """

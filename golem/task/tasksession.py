@@ -3,7 +3,6 @@ import logging
 import os
 import struct
 import time
-import traceback
 
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
@@ -15,6 +14,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer
+from golem.resource.client import AsyncRequest, AsyncRequestExecutor
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -398,7 +398,7 @@ class TaskSession(MiddlemanSafeSession):
 
         if msg.delay <= 0.0:
             res.already_sending = True
-            self.__send_result_hash(res)
+            return self.__send_result_hash(res)
         else:
             res.last_sending_trial = time.time()
             res.delay_time = msg.delay
@@ -410,19 +410,26 @@ class TaskSession(MiddlemanSafeSession):
         multihash = msg.multihash
         subtask_id = msg.subtask_id
         client_options = msg.options
-        task_id = self.task_manager.subtask2task_mapping.get(subtask_id)
 
-        logger.debug("IPFS: Task result hash received: {} from {}:{} (options: {})"
+        task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
+        task = self.task_manager.tasks.get(task_id, None)
+        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+
+        if not task:
+            logger.error("Task result received with unknown subtask_id: {}".format(subtask_id))
+            return
+
+        logger.debug("Task result hash received: {} from {}:{} (options: {})"
                      .format(multihash, self.address, self.port, client_options))
 
         def on_success(extracted_pkg, *args, **kwargs):
             extra_data = extracted_pkg.to_extra_data()
-            logger.debug("IPFS: Task result extracted {}"
+            logger.debug("Task result extracted {}"
                          .format(extracted_pkg.__dict__))
             self.result_received(extra_data, decrypt=False)
 
         def on_error(exc, *args, **kwargs):
-            logger.error("IPFS: Task result error: {} ({})"
+            logger.error("Task result error: {} ({})"
                          .format(subtask_id, exc or "unspecified"))
             self.send(MessageSubtaskResultRejected(subtask_id))
             self.task_server.reject_result(subtask_id, self.result_owner)
@@ -431,13 +438,12 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
         self.task_manager.task_result_incoming(subtask_id)
-        self.task_manager.task_result_manager.pull_package(multihash,
-                                                           task_id,
-                                                           subtask_id,
+        self.task_manager.task_result_manager.pull_package(multihash, task_id, subtask_id,
                                                            secret,
                                                            success=on_success,
                                                            error=on_error,
-                                                           client_options=client_options)
+                                                           client_options=client_options,
+                                                           output_dir=output_dir)
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
@@ -625,34 +631,31 @@ class TaskSession(MiddlemanSafeSession):
 
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
-        output = None
-        errors = None
-        recoverable_error = False
 
-        try:
-            output = task_result_manager.create(self.task_server.node, res,
-                                                secret, client_options)
-        except EnvironmentError as exc:
-            errors = exc.message
-            recoverable_error = True
-        except Exception as exc:
-            errors = exc.message
-            logger.debug(traceback.format_exc())
+        def success(output):
+            logger.debug("Task session: sending task result hash: {}".format(output))
 
-        if output:
             file_name, multihash = output
-            logger.debug("Task session: sending task result hash: {} ({}, options: {})"
-                         .format(file_name, multihash, client_options))
             self.send(MessageTaskResultHash(subtask_id, multihash, secret, options=client_options))
-        else:
+
+        def error(exc):
             logger.error("Couldn't create a task result package for subtask {}: {}"
-                         .format(res.subtask_id, errors))
-            if recoverable_error:
+                         .format(res.subtask_id, exc))
+
+            if isinstance(exc, EnvironmentError):
                 self.task_server.retry_sending_task_result(subtask_id)
             else:
-                self.send(MessageTaskFailure(subtask_id, errors))
+                self.send(MessageTaskFailure(subtask_id, exc.message))
                 self.task_server.task_result_sent(subtask_id)
+
             self.dropped()
+
+        request = AsyncRequest(task_result_manager.create,
+                               self.task_server.node, res,
+                               client_options=client_options,
+                               key_or_secret=secret)
+
+        return AsyncRequestExecutor.run(request, success=success, error=error)
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}

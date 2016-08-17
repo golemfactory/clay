@@ -9,6 +9,7 @@ from golem.task.taskbase import Task
 class TaskThread:
     def __init__(self, result):
         self.result = result
+        self.error = False
 
 
 class MemTaskThread(TaskThread):
@@ -59,6 +60,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.assertEqual(tt.get_progress(), "30%")
         task_thread.error = True
         self.assertEqual(tt.get_progress(), 0)
+        tt.task_computed(task_thread)
         tt.error_callback.assert_called_with("Another error")
 
 
