@@ -267,27 +267,27 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         self.remove_pending_conn(peer_session.conn_id)
 
-        p = peer_session.key_id
+        peer_id = peer_session.key_id
+        stored_session = self.peers.get(peer_id)
 
-        self.peers.pop(p, None)
-        self.incoming_peers.pop(p, None)
-        self.suggested_address.pop(p, None)
-        self.suggested_conn_reverse.pop(p, None)
-
-        if p in self.free_peers:
-            self.free_peers.remove(p)
-        if p in self.peer_order:
-            self.peer_order.remove(p)
-
-        self.__send_degree()
+        if stored_session == peer_session:
+            self.remove_peer_by_id(peer_id)
 
     def remove_peer_by_id(self, peer_id):
         """ Remove peer session with peer that has given id
         :param str peer_id:
         """
-        peer = self.peers.get(peer_id)
+        peer = self.peers.pop(peer_id, None)
+        self.incoming_peers.pop(peer_id, None)
+        self.suggested_address.pop(peer_id, None)
+        self.suggested_conn_reverse.pop(peer_id, None)
+
+        if peer_id in self.free_peers:
+            self.free_peers.remove(peer_id)
+        if peer_id in self.peer_order:
+            self.peer_order.remove(peer_id)
+
         if peer:
-            self.remove_peer(peer)
             self.__send_degree()
         else:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
