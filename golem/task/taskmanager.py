@@ -306,7 +306,7 @@ class TaskManager(TaskEventListener):
             th.last_checking = cur_time
             if th.ttl <= 0:
                 logger.info("Task {} dies".format(th.task_id))
-                self.tasks[th.task_id].unregister_listener(self.task_events_listener)
+                self.tasks[th.task_id].unregister_listener(self)
                 del self.tasks[th.task_id]
                 continue
             ts = self.tasks_states[th.task_id]
@@ -414,7 +414,7 @@ class TaskManager(TaskEventListener):
                 del self.subtask2task_mapping[sub.subtask_id]
             self.tasks_states[task_id].subtask_states.clear()
 
-            self.tasks[task_id].unregister_listener(self.task_events_listener)
+            self.tasks[task_id].unregister_listener(self)
             del self.tasks[task_id]
             del self.tasks_states[task_id]
 
