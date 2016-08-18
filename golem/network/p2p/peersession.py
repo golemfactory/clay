@@ -278,15 +278,13 @@ class PeerSession(BasicSafeSession):
             self.disconnect(PeerSession.DCRProtocolVersion)
             return
 
-        redundant_peers = self.p2p_service.redundant_peers()
-        p = self.p2p_service.find_peer(self.key_id)
         self.p2p_service.add_to_peer_keeper(self.node_info)
         self.p2p_service.interpret_metadata(metadata,
                                             self.address,
                                             self.listen_port,
                                             self.node_info)
 
-        if self.key_id in redundant_peers:
+        if self.p2p_service.enough_peers():
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
@@ -300,6 +298,8 @@ class PeerSession(BasicSafeSession):
                                               "node_name": self.node_name,
                                               "conn_trials": 0})
             return
+
+        p = self.p2p_service.find_peer(self.key_id)
 
         if p:
             if not next_hello and p != self and p.conn.opened:
