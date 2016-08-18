@@ -238,7 +238,7 @@ class DockerMachineManager(DockerConfigManager):
             command += [machine_name]
         if check_output:
             return subprocess.check_output(command, shell=shell)
-        return subprocess.check_call(command)
+        return subprocess.check_call(command, shell=shell)
 
     def docker_machine_images(self):
         output = self.docker_machine_command('list')

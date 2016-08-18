@@ -126,7 +126,7 @@ class MockDockerMachineManager(DockerMachineManager):
         self.docker_machine = MACHINE_NAME
         self.docker_machine_available = True
 
-    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
+    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=True):
         if self.use_parent_methods:
             return super(MockDockerMachineManager, self).docker_machine_command(
                 key, machine_name, check_output, shell)
