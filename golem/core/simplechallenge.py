@@ -1,10 +1,13 @@
 # Generating, solving and checking solutions of crypto-puzzles for proof of work system
 
-from random import randint
+from random import randint, sample
 from hashlib import sha256
 import time
 
 __author__ = 'Magda.Stasiewicz'
+
+CHALLENGE_HISTORY_LIMIT = 100
+MAX_RANDINT = 100000000000000000000000000
 
 
 def sha2(seed):
@@ -23,9 +26,11 @@ def create_challenge(history, prev):
     """
     concat = ""
     for h in history:
-        concat = concat + str(h[0]) + str(h[1])
-    concat += str(prev)
-    concat += str(randint(0, 100000000000000000000000000))
+        concat = concat + "".join(sample(str(h[0]), min(CHALLENGE_HISTORY_LIMIT, len(h[0])))) + \
+                          "".join(sample(str(h[1]), min(CHALLENGE_HISTORY_LIMIT, len(h[1]))))
+    if prev:
+        concat += "".join(sample(str(prev), min(CHALLENGE_HISTORY_LIMIT, len(prev))))
+    concat += str(randint(0, MAX_RANDINT))
     return concat
 
 
