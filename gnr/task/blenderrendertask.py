@@ -424,12 +424,6 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
-    def __get_frame_num_from_output_file(self, file_):
-        file_name = os.path.basename(file_)
-        file_name, ext = os.path.splitext(file_name)
-        idx = file_name.find(self.outfilebasename)
-        return int(file_name[idx + len(self.outfilebasename):])
-
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
