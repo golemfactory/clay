@@ -4,7 +4,7 @@ import random
 import shutil
 
 from collections import OrderedDict
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageOps
 
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
@@ -39,20 +39,32 @@ def build_lux_render_info(dialog, customizer):
     renderer.output_formats = ["exr", "png", "tga"]
     renderer.scene_file_ext = ["lxs"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
-    renderer.get_task_boarder = get_task_boarder
+    renderer.get_task_border = get_task_border
 
     return renderer
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
-    boarder = []
-    for i in range(0, res_y):
-        boarder.append((0, i))
-        boarder.append((res_x - 1, i))
-    for i in range(0, res_x):
-        boarder.append((i, 0))
-        boarder.append((i, res_y - 1))
-    return boarder
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    border = []
+    x = int(round(res_x * scale_factor))
+    y = int(round(res_y * scale_factor))
+    for i in range(0, y):
+        border.append((0, i))
+        border.append((x - 1, i))
+    for i in range(0, x):
+        border.append((i, 0))
+        border.append((i, y - 1))
+    return border
 
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
@@ -94,7 +106,9 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            docker_images=self.task_definition.docker_images
                            )
 
-        return self._set_verification_options(lux_task)
+        self._set_verification_options(lux_task)
+        lux_task.initialize(self.dir_manager)
+        return lux_task
 
 
 class LuxTask(RenderingTask):
@@ -159,7 +173,7 @@ class LuxTask(RenderingTask):
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
             if should_wait:
-                logger.warning("Waiting for client's {} task results".format(node_name))
+                logger.warning("Waiting for results from {}".format(node_name))
             else:
                 logger.warning("Client {} banned from this task".format(node_name))
 
@@ -206,10 +220,10 @@ class LuxTask(RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
 
-    def computation_finished(self, subtask_id, task_result, dir_manager=None, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
 
-        self.interpret_task_results(subtask_id, task_result, result_type, self.tmp_dir)
+        self.interpret_task_results(subtask_id, task_result, result_type)
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
@@ -279,8 +293,6 @@ class LuxTask(RenderingTask):
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is not None:
             try:
-                if not os.path.exists(self.tmp_dir):
-                    os.makedirs(self.tmp_dir)
                 shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
@@ -384,11 +396,15 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
+        scaled = img.resize((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                            resample=Image.BILINEAR)
+        img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, img, 1.0 / float(self.numAdd))
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.numAdd))
         img_current.save(self.preview_file_path, "BMP")
         img.close()
+        scaled.close()
         img_current.close()
 
     def __update_preview_from_exr(self, new_chunk_file):
@@ -399,8 +415,12 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
-        img.save(self.preview_file_path, "BMP")
+        scaled = ImageOps.fit(img,
+                              (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+                              method=Image.BILINEAR)
+        scaled.save(self.preview_file_path, "BMP")
         img.close()
+        scaled.close()
         img_current.close()
 
     def __generate_final_file(self, flm):
@@ -466,5 +486,7 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self):
-        return os.path.join(self.tmp_dir, "test_result.flm")
+    def __get_test_flm(self, dir_=None):
+        if dir_ is None:
+            dir_ = self.tmp_dir
+        return os.path.join(dir_, "test_result.flm")

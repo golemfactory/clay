@@ -11,21 +11,10 @@ between both roles).
 ## Installing and testing 
 
 Follow the installation instruction from 
-[here](https://github.com/imapp-pl/golem/wiki/Installation#runing-from-the-source).
- 
-Then run
+[here](https://github.com/imapp-pl/golem/wiki/Installation).
 
-`cd gnr`
-`python main.py` 
-
-
-To run unittest run:
-
-`python setup.py test`
-
-To run more complicated test with imunes follow instruction from 
-[here](https://github.com/imapp-pl/golem/wiki/Testing-with-IMUNES).
-
+[Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
+[Golem Linux package](https://www.dropbox.com/s/rwakk9d2tay3cob/golem-linux.zip?dl=0)
 
 ## Warning
 

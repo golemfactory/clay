@@ -1,6 +1,8 @@
 import cPickle
+import unittest
 
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
 
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
@@ -245,14 +247,28 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         assert ts.task_server.reject_result.called
         assert ts.task_manager.task_computation_failure.called
 
-    def test_react_to_get_task_result(self):
 
+def executor_success(req, success, error):
+    success(('filename', 'multihash'))
+
+
+def executor_recoverable_error(req, success, error):
+    error(EnvironmentError())
+
+
+def executor_error(req, success, error):
+    error(Exception())
+
+
+class TestCreatePackage(unittest.TestCase):
+
+    def setUp(self):
         conn = Mock()
         ts = TaskSession(conn)
         ts.dropped = Mock()
         ts.result_received = Mock()
         ts.send = Mock()
-        trm = ts.task_manager.task_result_manager
+        ts.task_manager = Mock()
 
         subtask_id = 'xxyyzz'
 
@@ -260,29 +276,35 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         res.subtask_id = subtask_id
         ts.task_server.get_waiting_task_result.return_value = res
 
-        def create(*args, **kwargs):
-            return 'filename', 'multihash'
-
-        def create_raise_env(*args, **kwargs):
-            raise EnvironmentError('error')
-
-        def create_raise(*args, **kwargs):
-            raise Exception('error')
-
         msg = MessageGetTaskResult(subtask_id=subtask_id)
 
-        trm.create = create
-        ts._react_to_get_task_result(msg)
-        assert ts.send.called
-        assert not ts.task_server.task_result_sent.called
+        self.subtask_id = subtask_id
+        self.ts = ts
+        self.msg = msg
 
-        trm.create = create_raise_env
-        ts._react_to_get_task_result(msg)
+    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_success)
+    def test_send_task_result_hash_success(self, _):
+
+        ts = self.ts
+        ts._react_to_get_task_result(self.msg)
+
+        assert ts.send.called
+        assert not ts.dropped.called
+
+    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_recoverable_error)
+    def test_send_task_result_hash_recoverable_error(self, _):
+
+        ts = self.ts
+        ts._react_to_get_task_result(self.msg)
+
+        assert not ts.send.called
         assert ts.task_server.retry_sending_task_result.called
 
-        trm.create = create_raise
-        ts._react_to_get_task_result(msg)
-        assert ts.task_server.task_result_sent.called
+    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_error)
+    def test_send_task_result_hash_recoverable_error(self, _):
 
-        ts.task_server.get_waiting_task_result.return_value = None
+        ts = self.ts
+        ts._react_to_get_task_result(self.msg)
+
+        assert ts.send.called
         assert ts.dropped.called

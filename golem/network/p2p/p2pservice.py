@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+from collections import deque
 
 from ipaddress import AddressValueError
 
@@ -22,6 +23,7 @@ REFRESH_PEERS_TIMEOUT = 1200  # How often should we disconnect with a random nod
 RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try should we try to connect with seed?
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
+HISTORY_LEN = 5  # How many entries from challenge history should we remember
 
 SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
 
@@ -57,7 +59,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.reconnect_with_seed_threshold = RECONNECT_WITH_SEED_THRESHOLD
         self.refresh_peers_timeout = REFRESH_PEERS_TIMEOUT
         self.should_solve_challenge = SOLVE_CHALLENGE
-        self.challenge_history = []
+        self.challenge_history = deque(maxlen=HISTORY_LEN)
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -182,8 +184,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def get_diagnostics(self, output_format):
         peer_data = []
         for peer in self.peers.values():
-            peer = PeerSessionInfo(peer).__dict__
-            del peer['node_info']
+            peer = PeerSessionInfo(peer).get_simplified_repr()
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
 
@@ -265,20 +266,19 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Remove given peer session
         :param PeerSession peer_session: remove peer session
         """
-        pc = self.pending_connections.get(peer_session.conn_id)
-        if pc:
-            pc.status = PenConnStatus.Failure
+        self.remove_pending_conn(peer_session.conn_id)
 
-        for p in self.peers.keys():
-            if self.peers[p] == peer_session:
-                self.peer_order.remove(p)
-                self.peers.pop(p, None)
-                self.incoming_peers.pop(p, None)
-                self.suggested_address.pop(p, None)
-                self.suggested_conn_reverse.pop(p, None)
-                if p in self.free_peers:
-                    self.free_peers.remove(p)
-                break
+        p = peer_session.key_id
+
+        self.peers.pop(p, None)
+        self.incoming_peers.pop(p, None)
+        self.suggested_address.pop(p, None)
+        self.suggested_conn_reverse.pop(p, None)
+
+        if p in self.free_peers:
+            self.free_peers.remove(p)
+        if p in self.peer_order:
+            self.peer_order.remove(p)
 
         self.__send_degree()
 
@@ -624,23 +624,26 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         if not self.task_server.task_connections_helper.is_new_conn_request(
                 conn_id, key_id, node_info, super_node_info):
+            # fixme
+            self.task_server.remove_pending_conn(conn_id)
+            self.task_server.remove_responses(conn_id)
             return
 
         if super_node_info is None and self.node.is_super_node():
             super_node_info = self.node
 
         logger.debug("Try to start task session {}".format(key_id))
-        peers = dict(self.peers)
+
+        connected_peer = self.peers.get(key_id)
+        if connected_peer:
+            if node_info.key == self.node.key:
+                self.set_suggested_conn_reverse(key_id)
+            connected_peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
+            return
+
         msg_snd = False
 
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                if node_info.key == self.node.key:
-                    self.set_suggested_conn_reverse(key_id)
-                peer.send_want_to_start_task_session(node_info, conn_id, super_node_info)
-                return
-
-        for peer in peers.itervalues():
+        for peer in self.peers.values():
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(key_id, node_info, conn_id, super_node_info)
                 msg_snd = True
@@ -651,7 +654,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         # TODO This method should be only sent to supernodes or nodes that are closer to the target node
 
         if not msg_snd and node_info.key == self.get_key_id():
-            self.task_server.task_connections_helper.cannot_pass_conn_request(conn_id)
+            self.task_server.task_connections_helper.cannot_start_task_session(conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         """
@@ -663,26 +666,22 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :return:
         """
         logger.debug("Nat hole ready {}:{}".format(addr, port))
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
-                return
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_task_nat_hole(rv_key_id, addr, port, ans_conn_id)
 
     def traverse_nat(self, key_id, addr, port, conn_id, super_key_id):
         self.task_server.traverse_nat(key_id, addr, port, conn_id, super_key_id)
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_inform_about_nat_traverse_failure(res_key_id, conn_id)
 
     def send_nat_traverse_failure(self, key_id, conn_id):
-        peers = dict(self.peers)
-        for peer in peers.itervalues():
-            if peer.key_id == key_id:
-                peer.send_nat_traverse_failure(conn_id)
+        peer = self.peers.get(key_id)
+        if peer:
+            peer.send_nat_traverse_failure(conn_id)
 
     def traverse_nat_failure(self, conn_id):
         self.task_server.traverse_nat_failure(conn_id)
@@ -831,8 +830,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
                long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
-        for peer_id in self.peers.keys():
-            peer = self.peers[peer_id]
+        for peer in self.peers.values():
             if time.time() - peer.last_message_time > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(PeerSession.DCRTimeout)

@@ -103,6 +103,25 @@ class TestPendingConnectionServer(unittest.TestCase):
             self.assertEqual(res[i].address, node.prv_addresses[i])
             self.assertEqual(res[i].port, port)
 
+    def test_address_accessible(self):
+        config = Mock()
+        config.use_ipv6 = False
+
+        server = PendingConnectionsServer(config, Mock())
+
+        assert not server._is_address_accessible(None)
+
+        sockv4 = SocketAddress('8.8.8.8', 40100)
+        sockv6 = SocketAddress('2001:0db8:85a3:0000:0000:8a2e:abcd:efea', 40100)
+
+        assert server._is_address_accessible(sockv4)
+        assert not server._is_address_accessible(sockv6)
+
+        server.use_ipv6 = True
+
+        assert server._is_address_accessible(sockv4)
+        assert server._is_address_accessible(sockv6)
+
     def test_pending_conn(self):
         network = Network()
         server = PendingConnectionsServer(None, network)
@@ -135,7 +154,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         pending_conn = next(server.pending_connections.itervalues())
         server._mark_connected(pending_conn.id, "10.10.10.1", self.port)
         assert pending_conn.status == PenConnStatus.Connected
-        assert SocketAddress("10.10.10.1", self.port) not in pending_conn.socket_addresses
+        assert SocketAddress("10.10.10.1", self.port) == pending_conn.socket_addresses[0]
 
     def test_sync_pending(self):
         network = Network()

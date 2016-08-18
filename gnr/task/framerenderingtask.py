@@ -61,6 +61,10 @@ class FrameRenderingTask(RenderingTask):
         self.use_frames = use_frames
         self.frames = frames
 
+        self.frames_given = {}
+        for frame in frames:
+            self.frames_given[frame] = {}
+
         if use_frames:
             self.preview_file_path = [None] * len(frames)
             self.preview_task_file_path = [None] * len(frames)
@@ -72,14 +76,11 @@ class FrameRenderingTask(RenderingTask):
             self.preview_task_file_path = [None] * len(self.frames)
 
     @RenderingTask.handle_key_error
-    def computation_finished(self, subtask_id, task_results, dir_manager=None, result_type=0):        
+    def computation_finished(self, subtask_id, task_results, result_type=0):
         if not self.should_accept(subtask_id):
             return
 
-        tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=False)
-        self.tmp_dir = tmp_dir
-
-        self.interpret_task_results(subtask_id, task_results, result_type, tmp_dir)
+        self.interpret_task_results(subtask_id, task_results, result_type)
         tr_files = self.results[subtask_id]
 
         if len(tr_files) > 0:
@@ -114,14 +115,14 @@ class FrameRenderingTask(RenderingTask):
                 if not self.use_frames:
                     self._collect_image_part(num_start, tr_file)
                 elif self.total_tasks <= len(self.frames):
-                    frames_list = self._collect_frames(num_start, tr_file, frames_list, tmp_dir)
+                    frames_list = self._collect_frames(num_start, tr_file, frames_list)
                 else:
-                    self._collect_frame_part(num_start, tr_file, parts, tmp_dir)
+                    self._collect_frame_part(num_start, tr_file, parts)
 
             self.num_tasks_received += num_end - num_start + 1
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
-            self._put_image_together(tmp_dir)
+            self._put_image_together()
 
     @GNRTask.handle_key_error
     def computation_failed(self, subtask_id):
@@ -142,16 +143,18 @@ class FrameRenderingTask(RenderingTask):
         else:
             img = Image.open(new_chunk_file_path)
 
-        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         if self.preview_file_path[num] is None:
-            self.preview_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_preview"), num)
+            self.preview_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), num)
         if self.preview_task_file_path[num] is None:
-            self.preview_task_file_path[num] = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), num)
+            self.preview_task_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), num)
 
         if not final:
             img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
 
         if img:
+            img_x, img_y = img.size
+            img = Image.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
+                               resample=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
             
@@ -159,8 +162,8 @@ class FrameRenderingTask(RenderingTask):
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
-            img_offset = Image.new("RGB", (self.res_x, self.res_y))
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) / float(all_chunks_num)))
+            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
+            offset = int(math.floor((chunk_num - 1) * float(self.res_y) * self.scale_factor / float(all_chunks_num)))
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
@@ -194,7 +197,8 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            img = Image.new("RGB", (self.res_x, self.res_y))
+            img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
+                                    int(round(self.res_y * self.scale_factor))))
             img.save(preview_file_path, "BMP")
 
         return Image.open(preview_file_path)
@@ -203,13 +207,13 @@ class FrameRenderingTask(RenderingTask):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.__full_frames():
-            for i in range(0, self.res_x):
-                for j in range(0, self.res_y):
+            for i in range(0, int(round(self.res_x * self.scale_factor))):
+                for j in range(0, int(round(self.res_y))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
-            upper = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(float(self.res_y) / float(parts)) * ((subtask['start_task'] - 1) % parts + 1))
+            upper = int(math.ceil(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts))
+            lower = int(math.floor(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts + 1))
             for i in range(0, self.res_x):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
@@ -235,7 +239,7 @@ class FrameRenderingTask(RenderingTask):
             parts = total_tasks / len(frames)
             return [frames[(start_task - 1) / parts]], parts
 
-    def _put_image_together(self, tmp_dir):
+    def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -244,7 +248,7 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(os.path.join(tmp_dir, output_file_name),
+            self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                self.collected_file_names.values(), "paste")
 
     def _put_frame_together(self, frame_num, num_start):
@@ -273,12 +277,12 @@ class FrameRenderingTask(RenderingTask):
         self._update_preview(tr_file, num_start)
         self._update_task_preview()
 
-    def _collect_frames(self, num_start, tr_file, frames_list, tmp_dir):
+    def _collect_frames(self, num_start, tr_file, frames_list):
         self.frames_given[frames_list[0]][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
 
-    def _collect_frame_part(self, num_start, tr_file, parts, tmp_dir):
+    def _collect_frame_part(self, num_start, tr_file, parts):
 
         frame_num = self.frames[(num_start - 1) / parts]
         part = self._count_part(num_start, parts)
@@ -296,31 +300,34 @@ class FrameRenderingTask(RenderingTask):
         return self.total_tasks <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
-        tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         idx = self.frames.index(frame)
-        preview_task_file_path = "{}{}".format(os.path.join(tmp_dir, "current_task_preview"), idx)
-        preview_file_path = "{}{}".format(os.path.join(tmp_dir, "current_preview"), idx)
+        preview_task_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), idx)
+        preview_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), idx)
         img_task = self._open_frame_preview(preview_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
+
+    def _get_output_name(self, frame_num, num_start):
+        num = str(frame_num)
+        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         if not self.use_frames:
             RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
 
 
-def get_task_boarder(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                     frame_num=1):
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
+                    frame_num=1):
     if not use_frames:
-        boarder = __get_boarder(start_task, end_task, total_tasks, res_x, res_y)
+        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
     elif total_tasks > frames:
         parts = total_tasks / frames
-        boarder = __get_boarder((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
     else:
-        boarder = []
+        border = []
 
-    return boarder
+    return border
 
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
@@ -336,18 +343,31 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_fr
     return num
 
 
-def __get_boarder(start_task, end_task, parts, res_x, res_y):
-    boarder = []
-    upper = int(math.floor(float(res_y) / float(parts) * (start_task - 1)))
-    lower = int(math.floor(float(res_y) / float(parts) * end_task))
+def __get_border(start_task, end_task, parts, res_x, res_y):
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    border = []
+    upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
+    lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
     for i in range(upper, lower):
-        boarder.append((0, i))
-        boarder.append((res_x, i))
+        border.append((0, i))
+        border.append((res_x - 1, i))
     for i in range(0, res_x):
-        boarder.append((i, upper))
-        boarder.append((i, lower))
-    return boarder
+        border.append((i, upper))
+        border.append((i, lower))
+    return border
 
 
 def __num_from_pixel(p_y, res_y, tasks):
-    return int(math.floor(p_y / math.floor(float(res_y) / float(tasks)))) + 1
+    num = int(math.ceil(float(tasks) * float(p_y) / float(res_y)))
+    num = max(num, 1)
+    num = min(num, tasks)
+    return num

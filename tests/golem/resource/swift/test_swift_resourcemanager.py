@@ -26,7 +26,18 @@ class TestSwiftClient(TempDirFixture):
 
     def test(self):
         client = OpenStackSwiftClient()
-        options = client.build_options('node_id')
+
+        max_retries = 10
+        for i in xrange(0, max_retries):
+            try:
+                options = client.build_options('node_id')
+            except Exception as exc:
+                if i >= max_retries:
+                    self.fail("Max retries = {} reached (exception: {})"
+                              .format(max_retries, exc))
+            else:
+                break
+
         results = client.add(self.src_file,
                              client_options=options)
 

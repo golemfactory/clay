@@ -1,7 +1,6 @@
 import time
 import uuid
 
-from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from mock import MagicMock, Mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -9,9 +8,10 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts, MAX_STORED_HOSTS
 from golem.network.p2p.node import Node
-from golem.network.p2p.p2pservice import P2PService
+from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.testutils import DatabaseFixture
 
 
@@ -221,7 +221,7 @@ class TestP2PService(DatabaseFixture):
         service.sync_network()
         assert last_time == service.last_time_tried_connect_with_seed
         service.reconnect_with_seed_threshold = 0.1
-        time.sleep(0.1)
+        time.sleep(0.5)
         service.sync_network()
         assert last_time < service.last_time_tried_connect_with_seed
 
@@ -232,6 +232,7 @@ class TestP2PService(DatabaseFixture):
         service.task_server = MagicMock()
         service.task_server.task_connections_helper = TaskConnectionsHelper()
         service.task_server.task_connections_helper.task_server = service.task_server
+        service.task_server.task_connections_helper.is_new_conn_request = Mock(side_effect=lambda *_: True)
 
         def true_method(*args):
             return True
@@ -251,7 +252,13 @@ class TestP2PService(DatabaseFixture):
         service.node = node_info
 
         service.want_to_start_task_session(key_id, node_info, conn_id)
+        assert not peer.send_want_to_start_task_session.called
         service.want_to_start_task_session(peer.key_id, node_info, conn_id)
+        assert not peer.send_want_to_start_task_session.called
+
+        peer.key_id = peer_id
+        service.want_to_start_task_session(peer.key_id, node_info, conn_id)
+        assert peer.send_want_to_start_task_session.called
 
     def test_get_diagnostic(self):
         keys_auth = EllipticalKeysAuth(self.path)
@@ -317,8 +324,17 @@ class TestP2PService(DatabaseFixture):
         service.remove_task('task_id')
         assert p.send_remove_task.called
 
+        service.inform_about_nat_traverse_failure(str(uuid.uuid4()), 'res_key_id', 'conn_id')
+        assert not p.send_inform_about_nat_traverse_failure.called
+
         service.inform_about_nat_traverse_failure(p.key_id, 'res_key_id', 'conn_id')
         assert p.send_inform_about_nat_traverse_failure.called
+
+        service.inform_about_task_nat_hole(str(uuid.uuid4()), 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
+        assert not p.send_task_nat_hole.called
+
+        service.inform_about_task_nat_hole(p.key_id, 'rv_key_id', '127.0.0.1', 40102, 'ans_conn_id')
+        assert p.send_task_nat_hole.called
 
         service.send_nat_traverse_failure(p.key_id, 'conn_id')
         assert p.send_nat_traverse_failure.called
@@ -331,3 +347,19 @@ class TestP2PService(DatabaseFixture):
 
         service.remove_peer(p)
         assert p.key_id not in service.peers
+
+    def test_challenge_history_len(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        difficulty = service._get_difficulty("KEY_ID")
+        for i in range(3):
+            challenge = service._get_challenge(keys_auth.get_key_id())
+            service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
+        assert len(service.challenge_history) == 3
+        assert service.last_challenge is not None
+        for i in range(100):
+            challenge = service._get_challenge(keys_auth.get_key_id())
+            service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
+
+        assert len(service.challenge_history) == HISTORY_LEN

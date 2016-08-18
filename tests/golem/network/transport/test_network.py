@@ -5,7 +5,7 @@ import unittest
 from contextlib import contextmanager
 
 from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import Message, MessageHello
+from golem.network.transport.message import Message, MessageHello, init_messages
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
@@ -47,24 +47,23 @@ timeout = 20
 
 
 @contextmanager
-def async_scope(a, idx=0):
-    a[idx] = False
+def async_scope(status, idx=0):
+    status[idx] = False
     started = time.time()
 
     yield
 
-    while not a[idx]:
+    while not status[idx]:
         if time.time() - started >= timeout:
             raise RuntimeError('Operation timed out')
-        time.sleep(0.5)
+        time.sleep(0.2)
 
 
 def get_port():
-    min_port = 10000
+    min_port = 49200
     max_port = 65535
     test_port_range = 1000
-    t = int(time.time() * 10 ** 6)
-    base = t % (max_port - min_port - test_port_range)
+    base = int(time.time() * 10 ** 6) % (max_port - min_port - test_port_range)
     return base + min_port
 
 
@@ -84,140 +83,154 @@ class TestNetwork(TestWithReactor):
         protocol_factory = ProtocolFactory(SafeProtocol, Server(), session_factory)
         self.network = TCPNetwork(protocol_factory)
 
-    def test_listen(self):
+    def test(self):
 
-        async_ready = [False]
+        listen_status = [False]
+        conn_status = [False, False, False]
 
-        def _conn_success(*args, **kwargs):
+        def _listen_success(*args, **kwargs):
             self.__listen_success(*args, **kwargs)
-            async_ready[0] = True
+            listen_status[0] = True
 
-        def _conn_failure(**kwargs):
+        def _listen_failure(**kwargs):
             self.__listen_failure(**kwargs)
-            async_ready[0] = True
+            listen_status[0] = True
 
-        def _stop_success(*args, **kwargs):
+        def _conn_success(idx):
+            def fn(*args, **kwargs):
+                self.__connection_success(*args, **kwargs)
+                conn_status[idx] = True
+            return fn
+
+        def _conn_failure(idx):
+            def fn(**kwargs):
+                self.__connection_failure(**kwargs)
+                conn_status[idx] = True
+            return fn
+
+        def _listen_stop_success(*args, **kwargs):
             self.__stop_listening_success(*args, **kwargs)
-            async_ready[0] = True
+            listen_status[0] = True
 
-        def _stop_failure(**kwargs):
+        def _listen_stop_failure(**kwargs):
             self.__stop_listening_failure(**kwargs)
-            async_ready[0] = True
+            listen_status[0] = True
 
         port = get_port()
 
-        listen_info = TCPListenInfo(port,
-                                    established_callback=_conn_success,
-                                    failure_callback=_conn_failure)
-        with async_scope(async_ready):
-            self.network.listen(listen_info)
-        self.assertEquals(self.port, port)
+        # listen
 
         listen_info = TCPListenInfo(port,
-                                    established_callback=_conn_success,
-                                    failure_callback=_conn_failure)
-        with async_scope(async_ready):
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(listen_status):
+            self.network.listen(listen_info)
+        self.assertEquals(self.port, port)
+        self.assertEquals(len(self.network.active_listeners), 1)
+
+        listen_info = TCPListenInfo(port,
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(listen_status):
             self.network.listen(listen_info)
         self.assertEquals(self.port, None)
-
-        port = max(1000, port - 1000)
+        self.assertEquals(len(self.network.active_listeners), 1)
 
         listen_info = TCPListenInfo(port, port + 1000,
-                                    established_callback=_conn_success,
-                                    failure_callback=_conn_failure)
-        with async_scope(async_ready):
+                                    established_callback=_listen_success,
+                                    failure_callback=_listen_failure)
+        with async_scope(listen_status):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, port)
-
-        with async_scope(async_ready):
-            self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
         self.assertEquals(self.port, port + 1)
-        self.assertEquals(len(self.network.active_listeners), 3)
-        self.assertEquals(self.kwargs_len, 5)
-
-        listening_info = TCPListeningInfo(port + 1,
-                                          stopped_callback=_stop_success,
-                                          stopped_errback=_stop_failure)
-        with async_scope(async_ready):
-            d = self.network.stop_listening(listening_info)
-            time.sleep(5)
         self.assertEquals(len(self.network.active_listeners), 2)
+
+        with async_scope(listen_status):
+            self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
+        self.assertEquals(self.port, port + 2)
+        self.assertEquals(self.kwargs_len, 5)
+        self.assertEquals(len(self.network.active_listeners), 3)
+
+        # connect
+
+        address = SocketAddress('localhost', port)
+        connect_info = TCPConnectInfo([address], _conn_success(0), _conn_failure(0))
+        self.connect_success = None
+
+        with async_scope(conn_status, 0):
+            self.network.connect(connect_info)
+        self.assertTrue(self.connect_success)
+
+        address2 = SocketAddress('localhost', port + 1)
+        connect_info_2 = TCPConnectInfo([address2], _conn_success(1), _conn_failure(1))
+        self.connect_success = None
+
+        with async_scope(conn_status, 1):
+            self.network.connect(connect_info_2)
+        self.assertTrue(self.connect_success)
+
+        connect_info_3 = TCPConnectInfo([address, address2], _conn_success(2), _conn_failure(2))
+        self.connect_success = None
+
+        with async_scope(conn_status, 2):
+            self.network.connect(connect_info_3)
+        self.assertTrue(self.connect_success)
+
+        # stop listening
+
+        listening_info = TCPListeningInfo(port,
+                                          stopped_callback=_listen_stop_success,
+                                          stopped_errback=_listen_stop_failure)
+        with async_scope(listen_status):
+            d = self.network.stop_listening(listening_info)
+
         self.assertTrue(d.called)
+        self.assertEquals(len(self.network.active_listeners), 2)
         self.assertTrue(self.stop_listening_success)
 
-        listening_info = TCPListeningInfo(port + 1,
-                                          stopped_callback=_stop_success,
-                                          stopped_errback=_stop_failure)
-        with async_scope(async_ready):
+        listening_info = TCPListeningInfo(port,
+                                          stopped_callback=_listen_stop_success,
+                                          stopped_errback=_listen_stop_failure)
+        with async_scope(listen_status):
             self.network.stop_listening(listening_info)
         self.assertEquals(len(self.network.active_listeners), 2)
         self.assertFalse(self.stop_listening_success)
 
+        listening_info = TCPListeningInfo(port + 1,
+                                          stopped_callback=_listen_stop_success,
+                                          stopped_errback=_listen_stop_failure)
+
+        with async_scope(listen_status):
+            self.network.stop_listening(listening_info)
+        self.assertEquals(len(self.network.active_listeners), 1)
+        self.assertTrue(self.stop_listening_success)
+
+        listening_info = TCPListeningInfo(port + 2,
+                                          stopped_callback=_listen_stop_success,
+                                          stopped_errback=_listen_stop_failure)
+
+        with async_scope(listen_status):
+            self.network.stop_listening(listening_info)
+        self.assertEquals(len(self.network.active_listeners), 0)
+        self.assertTrue(self.stop_listening_success)
+
+        # listen on previously closed ports
+
         listen_info = TCPListenInfo(port, port + 4,
-                                    established_callback=_conn_success,
-                                    failure_callback=_conn_failure)
-        with async_scope(async_ready):
-            self.network.listen(listen_info)
-        self.assertEquals(self.port, port + 1)
-
-    def test_connect(self):
-
-        async_ready = [False, False, False]
-
-        def _success_fn(idx):
-            def fn(*args, **kwargs):
-                self.__connection_success(*args, **kwargs)
-                async_ready[idx] = True
-            return fn
-
-        def _failure_fn(idx):
-            def fn(**kwargs):
-                self.__connection_failure(**kwargs)
-                async_ready[idx] = True
-            return fn
-
-        def _listen_success(*args, **kwargs):
-            self.__listen_success(*args, **kwargs)
-            async_ready[0] = True
-
-        def _listen_failure(*args, **kwargs):
-            self.__listen_failure(*args, **kwargs)
-            async_ready[0] = True
-
-        port_1 = get_port()
-        port_2 = get_port()
-
-        listen_info = TCPListenInfo(port_1,
                                     established_callback=_listen_success,
                                     failure_callback=_listen_failure)
-        with async_scope(async_ready):
+
+        with async_scope(listen_status):
             self.network.listen(listen_info)
+        self.assertEquals(self.port, port)
+        self.assertEquals(len(self.network.active_listeners), 1)
 
-        listen_info = TCPListenInfo(port_2,
-                                    established_callback=_listen_success,
-                                    failure_callback=_listen_failure)
-        with async_scope(async_ready):
-            self.network.listen(listen_info)
+        listening_info = TCPListeningInfo(port,
+                                          stopped_callback=_listen_stop_success,
+                                          stopped_errback=_listen_stop_failure)
 
-        address = SocketAddress('127.0.0.1', port_1)
-        connect_info = TCPConnectInfo([address], _success_fn(0), _failure_fn(0))
-
-        with async_scope(async_ready, 0):
-            self.network.connect(connect_info)
-        self.assertTrue(self.connect_success)
-
-        address2 = SocketAddress('127.0.0.1', port_2)
-        connect_info_2 = TCPConnectInfo([address2], _success_fn(1), _failure_fn(1))
-
-        with async_scope(async_ready, 1):
-            self.network.connect(connect_info_2)
-        self.assertTrue(self.connect_success)
-
-        connect_info_3 = TCPConnectInfo([address, address2], _success_fn(2), _failure_fn(2))
-
-        with async_scope(async_ready, 2):
-            self.network.connect(connect_info_3)
-        self.assertTrue(self.connect_success)
+        with async_scope(listen_status):
+            self.network.stop_listening(listening_info)
+        self.assertEquals(len(self.network.active_listeners), 0)
 
     def __listen_success(self, port, **kwargs):
         self.listen_success = True
@@ -332,6 +345,7 @@ class TestProtocols(unittest.TestCase):
 
 class TestBasicProtocol(unittest.TestCase):
     def test_send_and_receive_message(self):
+        init_messages()
         p = BasicProtocol()
         p.transport = Transport()
         session_factory = SessionFactory(ASession)

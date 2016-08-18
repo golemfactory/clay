@@ -2,11 +2,14 @@ import types
 import unittest
 import uuid
 
-import requests
+import time
 import twisted
-from mock import Mock
+from golem.tools.testwithreactor import TestWithReactor
+from mock import Mock, patch
+from twisted.internet.defer import Deferred
 
-from golem.resource.client import ClientHandler, ClientCommands, ClientError, ClientOptions, ClientConfig
+from golem.resource.client import ClientHandler, ClientCommands, ClientError, ClientOptions, ClientConfig, AsyncRequest, \
+    AsyncRequestExecutor
 
 
 class MockClientHandler(ClientHandler):
@@ -89,3 +92,30 @@ class TestClientOptions(unittest.TestCase):
         assert options.get('valid_id', 'valid_version', option)
 
 
+class TestAsyncRequest(TestWithReactor):
+
+    def test_callbacks(self):
+        done = [False]
+
+        method = Mock()
+        req = AsyncRequest(method)
+
+        def success(*_):
+            done[0] = True
+
+        def error(*_):
+            done[0] = True
+
+        done[0] = False
+        method.called = False
+        AsyncRequestExecutor.run(req, success, error)
+        time.sleep(1)
+
+        assert method.called
+
+        done[0] = False
+        method.called = False
+        AsyncRequestExecutor.run(req)
+        time.sleep(1)
+
+        assert method.called

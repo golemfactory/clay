@@ -13,7 +13,7 @@ class VMDiagnosticsProvider(DiagnosticsProvider):
             'connections', 'cpu_affinity', 'cpu_percent', 'cpu_times', 'create_time',
             'memory_info', 'memory_percent',
             'nice', 'num_ctx_switches', 'num_threads', 'status',
-            'username', 'cwd', 'io_counters', 'nice'
+            'username', 'cwd', 'io_counters',
         ]
 
         if is_windows():

@@ -69,7 +69,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
             return result_manager.create(mock_node,
                                          mock_task_result,
-                                         secret), secret
+                                         key_or_secret=secret), secret
 
     def setUp(self):
         TestDirFixture.setUp(self)
@@ -106,7 +106,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                       self.task_id)
         path, multihash = data
 
-        extracted = manager.extract(path, secret)
+        extracted = manager.extract(path, key_or_secret=secret)
         self.assertIsInstance(extracted, ExtractedPackage)
 
         for f in extracted.files:

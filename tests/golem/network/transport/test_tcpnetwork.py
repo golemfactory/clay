@@ -1,21 +1,20 @@
-import unittest
+import logging
 import math
 import os
 import struct
 
-from mock import MagicMock
-
+from golem.core.common import config_logging
+from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.variables import BUFF_SIZE
+from golem.network.transport.message import MessageDisconnect
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
                                                 EncryptFileProducer, DecryptFileConsumer,
                                                 EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
                                                 logger)
-from golem.network.transport.message import MessageDisconnect
-
-from golem.core.variables import BUFF_SIZE
-from golem.core.keysauth import EllipticalKeysAuth
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
-from golem.tools.assertlogs import LogTestCase
+from mock import MagicMock
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -80,6 +79,15 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
 
 
 class TestFileProducerAndConsumer(TestWithKeysAuth):
+
+    @classmethod
+    def setUpClass(cls):
+        config_logging()
+
+    @classmethod
+    def tearDownClass(cls):
+        logging.shutdown()
+
     def setUp(self):
         TestWithKeysAuth.setUp(self)
         self.tmp_file1, self.tmp_file2, self.tmp_file3 = self.additional_dir_content([1, [2]])

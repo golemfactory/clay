@@ -17,12 +17,16 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
+        super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
 
     def test_customizer(self):
         self.logic.client = Mock()
+        self.logic.client.config_desc = Mock()
+        self.logic.client.config_desc.max_price = 0
+        self.logic.client.get_config.return_value = self.logic.client.config_desc
+
         register_rendering_task_types(self.logic)
         customizer = RenderingNewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
         self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)

@@ -89,27 +89,27 @@ class Message:
         """
         assert isinstance(db_, DataBuffer)
         messages_ = []
-        msg_ = db_.read_len_prefixed_string()
-        while msg_:
+
+        for msg in db_.get_len_prefixed_string():
+
             encrypted = True
             try:
-                msg_ = server.decrypt(msg_)
+                msg = server.decrypt(msg)
             except AssertionError:
                 logger.warning("Failed to decrypt message, maybe it's not encrypted?")
                 encrypted = False
             except Exception as err:
                 logger.error("Failed to decrypt message {}".format(str(err)))
-                assert False
-            m = cls.deserialize_message(msg_)
+                continue
+
+            m = cls.deserialize_message(msg)
 
             if m is None:
-                logger.error("Failed to deserialize message {}".format(msg_))
-                assert False
+                logger.error("Failed to deserialize message {}".format(msg))
+                continue
 
             m.encrypted = encrypted
-
             messages_.append(m)
-            msg_ = db_.read_len_prefixed_string()
 
         return messages_
 

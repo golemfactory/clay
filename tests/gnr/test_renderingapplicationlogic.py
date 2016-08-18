@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from os import path
-
+import os
+import uuid
 from mock import Mock
+
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
-
 
 from gnr.application import GNRGui
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
@@ -14,6 +14,7 @@ from gnr.gnrstartapp import register_rendering_task_types
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
+from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -25,6 +26,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         self.logic.datadir = self.path
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.dir_manager = DirManager(self.path)
 
     def tearDown(self):
         super(TestRenderingApplicationLogic, self).tearDown()
@@ -54,7 +56,8 @@ class TestRenderingApplicationLogic(TestDirFixture):
         register_rendering_task_types(logic)
         m = Mock()
         logic.run_benchmark(BlenderBenchmark(), m)
-        logic.br.tt.join()
+        if logic.br.tt:
+            logic.br.tt.join()
         assert logic.progress_dialog_customizer.gui.ui.message.text() == u"Recounted"
         assert logic.progress_dialog_customizer.gui.ui.okButton.isEnabled()
         assert logic.customizer.gui.ui.recountBlenderButton.isEnabled()
@@ -68,19 +71,31 @@ class TestRenderingApplicationLogic(TestDirFixture):
         broken_benchmark.task_definition.main_program_file = u'Bździągwa'
         logic.show_error_window = Mock()
         logic.run_benchmark(broken_benchmark, m)
+        if logic.br.tt:
+            logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
         logic.run_benchmark(broken_benchmark, m)
+        if logic.br.tt:
+            logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
+        broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
         logic.run_benchmark(broken_benchmark, m)
+        if logic.br.tt:
+            logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Main scene file is not properly set")
 
         logic.test_task_computation_error(u"Bździągwa")
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"
+        logic.test_task_computation_error(u"500 server error")
+        logic.progress_dialog_customizer.gui.ui.message.text() ==\
+        u"Task test computation failure. [500 server error] There is a chance that you RAM limit is too low. Consider increasing max memory usage"
+        logic.test_task_computation_error(None)
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. "
         logic.test_task_computation_success([], 10000)
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"

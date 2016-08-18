@@ -1,19 +1,20 @@
 import logging
+import os
 import shutil
 from os import makedirs, path, remove
 
-import jsonpickle
-from mock import Mock
-
 import gnr.node
+import jsonpickle
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
 from golem.core.common import get_golem_path
-from golem.model import db
+
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
+from mock import Mock
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -27,26 +28,27 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     TASK_FILE = "docker-luxrender-test-task.json"
 
     def setUp(self):
-        super(TestDockerLuxrenderTask, self).setUp()
+        TempDirFixture.setUp(self)
+        DockerTestCase.setUp(self)
         self.error_msg = None
         self.dirs_to_remove = []
         self.files_to_remove = []
         self.node = None
-        self.task_computer_send_task_failed = TaskServer.send_task_failed
+        self._send_task_failed = TaskServer.send_task_failed
 
     def tearDown(self):
-        if self.node:
-            self.node.client._unlock_datadir()
-        if not db.is_closed():
-            db.close()
+        if self.node and self.node.client:
+            self.node.client.quit()
         for f in self.files_to_remove:
             if path.isfile(f):
                 remove(f)
         for dir_ in self.dirs_to_remove:
             if path.isdir(dir_):
                 shutil.rmtree(dir_)
-        TaskServer.send_task_failed = self.task_computer_send_task_failed
-        super(TestDockerLuxrenderTask, self).tearDown()
+        TaskServer.send_task_failed = self._send_task_failed
+
+        DockerTestCase.tearDown(self)
+        TempDirFixture.tearDown(self)
 
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
@@ -68,7 +70,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _test_task(self):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir)
+        dir_manager = DirManager(self.path)
+        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
@@ -80,9 +83,13 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.client.start = Mock()
         self.node.initialize()
 
-        task_computer = self.node.client.task_server.task_computer
+        task_server = TaskServer(Mock(), Mock(), Mock(), self.node.client,
+                                 use_docker_machine_manager=False)
+        task_computer = task_server.task_computer
+
         resource_dir = task_computer.resource_manager.get_resource_dir(task_id)
         temp_dir = task_computer.resource_manager.get_temporary_dir(task_id)
         self.dirs_to_remove.append(resource_dir)
@@ -128,12 +135,19 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer.run()
         computer.tt.join(60.0)
         test_file = task._LuxTask__get_test_flm()
+
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
-        new_file = path.join(path.dirname(test_file), "newfile.flm")
-        shutil.copy(test_file, new_file)
         extra_data = task.query_extra_data(10000)
         ctd = extra_data.ctd
+
+        new_file = path.join(path.dirname(test_file), ctd.subtask_id, "newfile.flm")
+        file_dir = os.path.dirname(new_file)
+        if not os.path.exists(file_dir):
+            os.makedirs(file_dir)
+
+        shutil.copy(test_file, new_file)
+
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
 
@@ -147,6 +161,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         extra_data = task.query_extra_data(10000)
         ctd = extra_data.ctd
+        shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
@@ -154,6 +169,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         extra_data = task.query_extra_data(10)
         ctd = extra_data.ctd
+        shutil.copy(test_file, new_file)
         assert task.num_tasks_received == 2
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
@@ -173,6 +189,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.advanceVerification = False
         extra_data = task.query_extra_data(10)
         ctd = extra_data.ctd
+        shutil.copy(test_file, new_file)
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
         assert task.verify_task()

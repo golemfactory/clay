@@ -1,16 +1,16 @@
 import unittest
 
-from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message
+from golem.core.databuffer import DataBuffer
+from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message, MessageHello
+from mock import Mock, patch
 
 
 class FailingMessage(Message):
-    def __init__(self):
-        Message.__init__(self, 0)
+    def __init__(self, *args, **kwargs):
+        Message.__init__(self, *args, **kwargs)
 
     def dict_repr(self):
         raise Exception()
-
-
 
 
 class TestMessages(unittest.TestCase):
@@ -75,7 +75,7 @@ class TestMessages(unittest.TestCase):
         m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         assert m.serialize()
 
-        m = FailingMessage()
+        m = FailingMessage(-1)
         serialized = None
 
         try:
@@ -84,3 +84,42 @@ class TestMessages(unittest.TestCase):
             pass
         assert not serialized
         assert not Message.deserialize_message(None)
+
+    def test_decrypt_and_deserialize(self):
+        db = DataBuffer()
+        server = Mock()
+        n_messages = 10
+
+        def serialize_messages(_b):
+            for m in [MessageHello() for _ in xrange(0, n_messages)]:
+                m.serialize_to_buffer(_b)
+
+        serialize_messages(db)
+        server.decrypt = lambda x: x
+        assert len(Message.decrypt_and_deserialize(db, server)) == n_messages
+
+        patch_method = 'golem.network.transport.message.Message.deserialize_message'
+        with patch(patch_method, side_effect=lambda x: None):
+            serialize_messages(db)
+            assert len(Message.decrypt_and_deserialize(db, server)) == 0
+
+        def raise_assertion(*_):
+            raise AssertionError()
+
+        def raise_error(*_):
+            raise Exception()
+
+        server.decrypt = raise_assertion
+        serialize_messages(db)
+
+        result = Message.decrypt_and_deserialize(db, server)
+
+        assert len(result) == n_messages
+        assert all(not m.encrypted for m in result)
+
+        server.decrypt = raise_error
+        serialize_messages(db)
+
+        result = Message.decrypt_and_deserialize(db, server)
+
+        assert len(result) == 0
