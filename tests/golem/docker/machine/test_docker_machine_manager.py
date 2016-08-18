@@ -222,10 +222,6 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm.constrain_all([MACHINE_NAME])
 
     def test_recover_vm_connectivity(self):
-
-        invalid_value = 'string'
-        result = [invalid_value]
-
         callback = mock.Mock()
 
         dmm = MockDockerMachineManager()
@@ -265,5 +261,51 @@ class TestDockerMachineManager(unittest.TestCase):
         assert not dmm._save_vm_state(None)
         assert dmm._save_vm_state(MACHINE_NAME)
 
+    def test_recover_ctx(self):
+        dmm = MockDockerMachineManager()
 
+        machine_from_arg = mock.Mock()
+        start_docker_machine = mock.Mock()
+        save_vm_state = mock.Mock()
 
+        dmm._DockerMachineManager__machine_from_arg = machine_from_arg
+        dmm._start_docker_machine = start_docker_machine
+        dmm._save_vm_state = save_vm_state
+
+        machine_from_arg.return_value = None
+
+        with dmm._recover_ctx(mock.Mock()):
+            pass
+        assert not start_docker_machine.called
+
+        session = mock.Mock()
+        session.machine.state = 'Running'
+        immutable_vm = mock.Mock()
+        immutable_vm.create_session.return_value = session
+        machine_from_arg.return_value = immutable_vm
+
+        with dmm._recover_ctx(mock.Mock()):
+            pass
+        assert start_docker_machine.called
+
+        with dmm._recover_ctx(mock.Mock()):
+            raise Exception("1")
+        assert session.unlock_machine.called
+
+    def test_restart_ctx(self):
+        dmm = DockerMachineManager()
+        machine_from_arg = mock.Mock()
+        machine_from_arg.return_value = None
+        dmm._DockerMachineManager__machine_from_arg = machine_from_arg
+        dmm._docker_machine_running = mock.Mock()
+        dmm._start_docker_machine = mock.Mock()
+        dmm._stop_vm = mock.Mock()
+
+        with dmm._restart_ctx(mock.Mock()):
+            pass
+        assert not dmm._docker_machine_running.called
+
+        machine_from_arg.return_value = mock.Mock()
+        with dmm._restart_ctx(mock.Mock()):
+            raise Exception("X")
+        assert dmm._docker_machine_running.called

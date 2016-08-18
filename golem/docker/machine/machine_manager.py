@@ -231,6 +231,7 @@ class DockerMachineManager(DockerConfigManager):
     def _restart_ctx(self, name_or_id_or_machine, restart=True):
         immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
         if not immutable_vm:
+            yield None
             return
 
         running = self._docker_machine_running()
@@ -239,7 +240,6 @@ class DockerMachineManager(DockerConfigManager):
 
         session = immutable_vm.create_session(self.LockType.write)
         vm = session.machine
-        exception = None
 
         if str(vm.state) in self.power_down_states:
             self.stop_vm(session)
@@ -247,7 +247,8 @@ class DockerMachineManager(DockerConfigManager):
         try:
             yield vm
         except Exception as e:
-            exception = e
+            logger.error("DockerMachine: restart context error: {}"
+                         .format(e))
 
         vm.save_settings()
 
@@ -258,32 +259,28 @@ class DockerMachineManager(DockerConfigManager):
         if restart or not running:
             self._start_docker_machine()
 
-        if exception:
-            logger.error("DockerMachine: restart context error: {}"
-                         .format(exception))
-
     @contextmanager
     def _recover_ctx(self, name_or_id_or_machine):
         immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
         if not immutable_vm:
+            yield None
             return
 
         session = immutable_vm.create_session(self.LockType.shared)
         vm = session.machine
-        exception = None
+
+        if str(vm.state) in self.running_states:
+            self._save_vm_state(session)
 
         try:
-            if str(vm.state) in self.running_states:
-                self._save_vm_state(session)
             yield vm
-            session.unlock_machine()
-            self._start_docker_machine()
         except Exception as e:
-            exception = e
-
-        if exception:
             logger.error("DockerMachine: recovery error: {}"
-                         .format(exception))
+                         .format(e))
+
+        with self._try():
+            session.unlock_machine()
+        self._start_docker_machine()
 
     def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
         command = self.docker_machine_commands.get(key, None)
