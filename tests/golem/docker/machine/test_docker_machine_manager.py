@@ -126,7 +126,7 @@ class MockDockerMachineManager(DockerMachineManager):
         self.docker_machine = MACHINE_NAME
         self.docker_machine_available = True
 
-    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=True):
+    def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
         if self.use_parent_methods:
             return super(MockDockerMachineManager, self).docker_machine_command(
                 key, machine_name, check_output, shell)
@@ -203,9 +203,10 @@ class TestDockerMachineManager(unittest.TestCase):
 
     def test_docker_machine_command(self):
         dmm = MockDockerMachineManager(use_parent_methods=True)
-        dmm.docker_machine_commands['test'] = ['echo', MACHINE_NAME]
+        dmm.docker_machine_commands['test'] = ['python', '--version']
 
-        assert dmm.docker_machine_command('test')
+        print dmm.docker_machine_command('test')
+        assert dmm.docker_machine_command('test') == ""
         assert dmm.docker_machine_command('test', check_output=False) == 0
         assert not dmm.docker_machine_command('deadbeef')
 
