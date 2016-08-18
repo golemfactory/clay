@@ -104,7 +104,7 @@ class Task(object):
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
-        if listener is self.listeners:
+        if listener in self.listeners:
             self.listeners.remove(listener)
         else:
             logger.warning("Trying to unregister listener that wasn't registered.")

@@ -32,22 +32,14 @@ def log_key_error(*args, **kwargs):
     return None
 
 
-class TMTaskEventListener(TaskEventListener):
-    def __init__(self, task_manager):
-        super(TaskEventListener, self).__init__()
-        self.task_manager = task_manager
-
-    def notify_update_task(self, task_id):
-        self.task_manager.notice_task_update(task_id)
-
-
-class TaskManager(object):
+class TaskManager(TaskEventListener):
     """ Keeps and manages information about requested tasks
     """
     handle_key_error = HandleKeyError(log_key_error)
 
     def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
                  use_distributed_resources=True):
+        super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
 
@@ -69,7 +61,6 @@ class TaskManager(object):
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
-        self.task_events_listener = TMTaskEventListener(self)
 
         self.comp_task_keeper = CompTaskKeeper()
 
@@ -103,7 +94,7 @@ class TaskManager(object):
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
-        task.register_listener(self.task_events_listener)
+        task.register_listener(self)
 
         self.tasks[task.header.task_id] = task
 
@@ -487,7 +478,6 @@ class TaskManager(object):
         ss.computation_time = computation_time
         ss.value = compute_subtask_value(ss.computer.price, computation_time)
 
-
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
@@ -515,6 +505,9 @@ class TaskManager(object):
             ss.value = 0
 
             ts.subtask_states[ctd.subtask_id] = ss
+
+    def notify_update_task(self, task_id):
+        self.notice_task_updated(task_id)
 
     @handle_key_error
     def notice_task_updated(self, task_id):

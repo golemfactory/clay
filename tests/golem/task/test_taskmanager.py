@@ -1,12 +1,11 @@
 import time
-from unittest import TestCase
 
 from mock import Mock
 
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager, logger, TMTaskEventListener
+from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
 
 from golem.tools.assertlogs import LogTestCase
@@ -263,12 +262,10 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.remove_old_tasks()
         assert tm.tasks.get('xyz') is None
 
+    def test_task_event_listener(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.notice_task_updated = Mock()
+        assert isinstance(tm, TaskEventListener)
+        tm.notify_update_task("xyz")
+        tm.notice_task_updated.assert_called_with("xyz")
 
-class TestTMTaskEventListener(TestCase):
-    def test_listener(self):
-        manager = Mock()
-        listener = TMTaskEventListener(manager)
-        assert listener.task_manager == manager
-        assert isinstance(listener, TaskEventListener)
-        listener.notify_update_task("xyz")
-        manager.notice_task_update.assert_called_with("xyz")
