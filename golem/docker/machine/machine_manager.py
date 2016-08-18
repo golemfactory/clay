@@ -31,6 +31,10 @@ class DockerMachineManager(DockerConfigManager):
         'Saved', 'Aborted'
     ]
 
+    running_states = [
+        'Running', 'FirstOnline', 'LastOnline'
+    ]
+
     constraint_keys = [
         'memory_size', 'cpu_count', 'cpu_execution_cap'
     ]
@@ -119,8 +123,9 @@ class DockerMachineManager(DockerConfigManager):
 
     def recover_vm_connectivity(self, done_callback, in_background=True):
         """
-        This method tries to resolve issues with VirtualBox network adapters on Windows
-        by saving VM's state and resuming it afterwards.
+        This method tries to resolve issues with VirtualBox network adapters (mainly on Windows)
+        by saving VM's state and resuming it afterwards with docker-machine. This reestablishes
+        SSH connectivity with docker machine VM.
         :param done_callback: Function to run on completion. Takes vbox session as an argument.
         :param in_background: Run the recovery process in a separate thread.
         :return:
@@ -130,9 +135,10 @@ class DockerMachineManager(DockerConfigManager):
 
         if self.docker_machine_available:
             def save_and_resume():
-                self._save_vm_state(self.docker_machine)
-                session = self.start_vm(self.docker_machine)
-                done_callback(session)
+                vm = self.__machine_from_arg(self.docker_machine)
+                with self._recover_ctx(vm):
+                    logger.debug("DockerMachine: VM state saved")
+                done_callback()
 
             thread = Thread(target=save_and_resume)
 
@@ -141,7 +147,7 @@ class DockerMachineManager(DockerConfigManager):
             else:
                 thread.run()
         else:
-            done_callback(None)
+            done_callback()
 
     def find_vm(self, name_or_id):
         try:
@@ -149,13 +155,14 @@ class DockerMachineManager(DockerConfigManager):
         except Exception as e:
             logger.warn("VirtualBox: not available: {}".format(e))
 
-    def start_vm(self, mixed):
+    def start_vm(self, mixed, lock_type=None):
         """
         Power up a machine identified by the mixed param
         :param mixed: Machine id, name, Machine object or Session object
+        :param lock_type: Session lock type
         :return: Session object
         """
-        return self._power_up_vm(mixed)
+        return self._power_up_vm(mixed, lock_type=lock_type)
 
     def stop_vm(self, mixed, lock_type=None):
         """
@@ -253,6 +260,29 @@ class DockerMachineManager(DockerConfigManager):
 
         if exception:
             logger.error("DockerMachine: restart context error: {}"
+                         .format(exception))
+
+    @contextmanager
+    def _recover_ctx(self, name_or_id_or_machine):
+        immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
+        if not immutable_vm:
+            return
+
+        session = immutable_vm.create_session(self.LockType.shared)
+        vm = session.machine
+        exception = None
+
+        try:
+            if str(vm.state) in self.running_states:
+                self._save_vm_state(session)
+            yield vm
+            session.unlock_machine()
+            self._start_docker_machine()
+        except Exception as e:
+            exception = e
+
+        if exception:
+            logger.error("DockerMachine: recovery error: {}"
                          .format(exception))
 
     def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):

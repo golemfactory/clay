@@ -226,40 +226,39 @@ class TestDockerMachineManager(unittest.TestCase):
         invalid_value = 'string'
         result = [invalid_value]
 
-        def callback(session):
-            result[0] = session
+        callback = mock.Mock()
 
         dmm = MockDockerMachineManager()
         dmm._save_vm_state = mock.Mock()
         dmm.start_vm = mock.Mock()
         dmm._env_checked = True
 
-        dmm.start_vm.return_value = mock.Mock()
+        dmm._start_docker_machine = mock.Mock()
         dmm.docker_machine_available = False
 
-        result[0] = invalid_value
+        dmm._start_docker_machine.called = False
         dmm.recover_vm_connectivity(callback, in_background=False)
-        assert result[0] is None
+        assert not dmm._start_docker_machine.called
 
-        result[0] = invalid_value
+        dmm._start_docker_machine.called = False
         dmm.recover_vm_connectivity(callback, in_background=True)
-        assert result[0] is None
+        assert not dmm._start_docker_machine.called
 
         dmm.docker_machine_available = True
 
-        result[0] = invalid_value
-        dmm._save_vm_state.called = False
+        callback.called = False
+        dmm._start_docker_machine.called = False
         dmm.recover_vm_connectivity(callback, in_background=False)
-        assert dmm._save_vm_state.called
-        assert result[0]
+        assert dmm._start_docker_machine.called
+        assert callback.called
 
-        result[0] = invalid_value
-        dmm._save_vm_state.called = False
+        callback.called = False
+        dmm._start_docker_machine.called = False
         dmm._threads = mock.Mock()
         dmm._threads.push = lambda x: x.run()
         dmm.recover_vm_connectivity(callback, in_background=True)
-        assert dmm._save_vm_state.called
-        assert result[0]
+        assert dmm._start_docker_machine.called
+        assert callback.called
 
     def test_save_vm_state(self):
         dmm = MockDockerMachineManager()
