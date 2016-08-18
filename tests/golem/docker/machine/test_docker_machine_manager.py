@@ -293,7 +293,7 @@ class TestDockerMachineManager(unittest.TestCase):
         assert session.unlock_machine.called
 
     def test_restart_ctx(self):
-        dmm = DockerMachineManager()
+        dmm = MockDockerMachineManager()
         machine_from_arg = mock.Mock()
         machine_from_arg.return_value = None
         dmm._DockerMachineManager__machine_from_arg = machine_from_arg
