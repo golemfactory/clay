@@ -205,7 +205,6 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager(use_parent_methods=True)
         dmm.docker_machine_commands['test'] = ['python', '--version']
 
-        print dmm.docker_machine_command('test')
         assert dmm.docker_machine_command('test') == ""
         assert dmm.docker_machine_command('test', check_output=False) == 0
         assert not dmm.docker_machine_command('deadbeef')
