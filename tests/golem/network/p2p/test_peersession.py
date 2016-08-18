@@ -97,13 +97,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called
 
-        peer_session.p2p_service.remove_peer.called = False
-
-        peer_session.remove_on_disconnect = False
-        peer_session.dropped()
-        assert not peer_session.p2p_service.remove_peer.called
-        assert peer_session.p2p_service.remove_pending_conn.called
-
 
 class TestPeerSessionInfo(unittest.TestCase):
 
