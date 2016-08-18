@@ -5,7 +5,7 @@ from copy import deepcopy
 
 from golem.core.variables import APP_VERSION
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("golem.task")
 
 
 class TaskHeader(object):
@@ -104,12 +104,10 @@ class Task(object):
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
-        assert isinstance(listener, TaskEventListener)
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
-        logger.warning("Trying to unregister listener that wasn't registered.")
+        if listener is self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
