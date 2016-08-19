@@ -60,8 +60,6 @@ class SmartTableItem(QTableWidgetItem):
             if len(t2) == 0:
                 t2 = "0.0"
             return float(t1) < float(t2)
-        if t1.isdigit() and t2.isdigit():
-            return int(t1) < int(t2)
         return t1 < t2
             
             
