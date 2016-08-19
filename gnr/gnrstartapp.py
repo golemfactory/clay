@@ -1,4 +1,5 @@
 import logging
+import uuid
 from multiprocessing import Process, Queue
 from os import path
 
@@ -21,8 +22,8 @@ from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
-
+from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, WebSocketCertManager, \
+    WebSocketSSLContext
 
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
@@ -79,7 +80,8 @@ class GUIApp(object):
         self.app.execute(True)
 
 
-def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
+def start_gui_process(queue, rpc_password, datadir,
+                      rendering=True, gui_app=None, reactor=None):
 
     if datadir:
         log_name = path.join(datadir, GUI_LOG_NAME)
@@ -101,7 +103,8 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         reactor = install_qt4_reactor()
 
     rpc_address = client_service_info.rpc_address
-    rpc_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
+    rpc_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port,
+                                           rpc_password)
 
     def on_connected(_):
         golem_client = rpc_client.build_client(client_service_info)
@@ -121,8 +124,8 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         reactor.run()
 
 
-def start_client_process(queue, start_ranking, datadir=None,
-                         transaction_system=False, client=None):
+def start_client_process(queue, rpc_password, start_ranking,
+                         datadir=None, transaction_system=False, client=None):
 
     if datadir:
         log_name = path.join(datadir, CLIENT_LOG_NAME)
@@ -148,7 +151,10 @@ def start_client_process(queue, start_ranking, datadir=None,
     client.environments_manager.load_config(client.datadir)
 
     def listen():
-        rpc_server = WebSocketRPCServerFactory(interface='localhost')
+        cert_manager = WebSocketCertManager(datadir)
+        ssl_context = WebSocketSSLContext(cert_manager)
+        rpc_server = WebSocketRPCServerFactory(password=rpc_password, ssl_context=ssl_context)
+
         rpc_server.listen()
 
         client_service_info = client.set_rpc_server(rpc_server)
@@ -171,8 +177,10 @@ def start_app(datadir=None, rendering=False,
 
     queue = Queue()
 
+    rpc_password = str(uuid.uuid4())
+
     gui_process = Process(target=start_gui_process,
-                          args=(queue, datadir, rendering))
+                          args=(queue, rpc_password, datadir, rendering))
     gui_process.daemon = True
     gui_process.start()
 
@@ -181,7 +189,8 @@ def start_app(datadir=None, rendering=False,
     process_monitor.start()
 
     try:
-        start_client_process(queue, start_ranking, datadir, transaction_system)
+        start_client_process(queue, rpc_password, start_ranking,
+                             datadir, transaction_system)
     except Exception as exc:
         print "Exception in Client process: {}".format(exc)
 
