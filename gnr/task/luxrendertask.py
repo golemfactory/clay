@@ -352,7 +352,6 @@ class LuxTask(RenderingTask):
         for tr_file in tr_files:
             if tr_file.upper().endswith('.FLM'):
                 self.collected_file_names[num_start] = tr_file
-                self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
                 self.num_tasks_received += 1
 
             elif not tr_file.upper().endswith('.LOG'):

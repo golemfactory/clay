@@ -66,8 +66,8 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
             luxtask.after_test({}, self.path)
         open(os.path.join(self.path, "sth.flm"), 'w').close()
         luxtask.after_test({}, self.path)
-        prev_dir = luxtask.root_path
-        luxtask.root_path = "/dev/null/:errors?"
+        prev_tmp_dir = luxtask.tmp_dir
+        luxtask.tmp_dir = "/dev/null/:errors?"
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
 

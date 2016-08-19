@@ -23,7 +23,7 @@ class TestBlenderBenchmark(unittest.TestCase):
     def test_task_settings(self):
         self.assertTrue(self.bb.normalization_constant == 9360)
         self.assertTrue(self.bb.blender_task_path == self.task_path)
-        self.assertTrue(self.bb.task_definition.output_file == "/tmp/blender_benchmark.png")
+        self.assertTrue(self.bb.task_definition.output_file == "blender_benchmark.png")
         self.assertTrue(self.bb.task_definition.tasktype == "Blender")
         self.assertTrue(self.bb.task_definition.renderer == "Blender")
         self.assertTrue(self.bb.task_definition.output_format == "png")

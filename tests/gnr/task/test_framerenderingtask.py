@@ -5,6 +5,7 @@ from mock import Mock
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
+from golem.task.taskclient import TaskClient
 from golem.tools.testdirfixture import TestDirFixture
 
 from gnr.task.framerenderingtask import FrameRenderingTask
@@ -29,25 +30,21 @@ class TestFrameRenderingTask(TestDirFixture):
         dir_manager = Mock()
         dir_manager.get_task_temporary_dir.return_value = self.path
         assert task.verify_results("xxyyzz", [], 1) == []
-        assert task.subtasks_given["xxyyzz"]['verified'] == False
+        assert not task.subtasks_given["xxyyzz"]['verified']
         assert task.counting_nodes.get("DEF") is None
         task.subtasks_given["xxyyzz"] = {"status": SubtaskStatus.starting, "verified": True, 'node_id': "DEF",
                                          "frames": [1, 2]}
         assert task.verify_results("xxyyzz", [],  1) == []
-        assert task.subtasks_given["xxyyzz"]['verified'] == False
+        assert not task.subtasks_given["xxyyzz"]['verified']
         assert task.counting_nodes.get("DEF") is None
         task.subtasks_given["xxyyzz"] = {"status": SubtaskStatus.starting, "verified": True, 'node_id': "DEF",
                                          "frames": [1, 2]}
-        files = self.additional_dir_content([2])
-        assert task.verify_results("xxyyzz", files, 1) == files
-        assert task.subtasks_given["xxyyzz"]['verified'] == True
-        assert task.counting_nodes.get("DEF") == 1
 
     def test_accept_results(self):
         task = self._get_frame_task()
-        makedirs(get_tmp_path("ABC", "xyz", self.path))
         task.subtasks_given["xxyyzz"] = {"status": SubtaskStatus.starting, "verified": True, 'node_id': "DEF",
                                          "frames": [1, 2], 'start_task': 1, 'parts': 1, 'end_task': 2}
+        TaskClient.assert_exists("DEF", task.counting_nodes)
         img = Image.new("RGB", (800, 600), "white")
         files = [path.join(self.path, "file1.PNG"), path.join(self.path, "file2.PNG")]
         img.save(files[0])
@@ -58,9 +55,11 @@ class TestFrameRenderingTask(TestDirFixture):
         task = self._get_frame_task(False)
         task.subtasks_given["xxyyzz"] = {"status": SubtaskStatus.starting, "verified": True, 'node_id': "DEF",
                                          "frames": [1, 2], 'start_task': 1, 'parts': 1, 'end_task': 2}
+        TaskClient.assert_exists("DEF", task.counting_nodes)
         task.accept_results("xxyyzz", files)
 
         task = self._get_frame_task()
+        TaskClient.assert_exists("DEF", task.counting_nodes)
         task.total_tasks = 12
         task.subtasks_given["xxyyzz"] = {"status": SubtaskStatus.starting, "verified": True, 'node_id': "DEF",
                                          "frames": [1, 2], 'start_task': 1, 'parts': 1, 'end_task': 2}
