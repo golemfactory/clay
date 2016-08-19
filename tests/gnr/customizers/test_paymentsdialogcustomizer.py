@@ -48,6 +48,10 @@ class TestSmartTableItem(unittest.TestCase):
         i2 = SmartTableItem("0.001%")
         self.assertTrue(i1 < i2)
         
+        i1 = SmartTableItem("0.01%")
+        i2 = SmartTableItem("")
+        self.assertTrue(i2 < i1)
+        
         i1 = SmartTableItem("3.001%")
         i2 = SmartTableItem("0.001%")
         self.assertTrue(i2 < i1)
@@ -57,7 +61,15 @@ class TestSmartTableItem(unittest.TestCase):
         self.assertTrue(i1 < i2)
         
         i1 = SmartTableItem("123 ETH")
+        i2 = SmartTableItem("0.0001 ETH")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("")
         i2 = SmartTableItem("0.001 ETH")
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("123 ETH")
+        i2 = SmartTableItem("")
         self.assertTrue(i2 < i1)
         
         i1 = None
@@ -66,3 +78,6 @@ class TestSmartTableItem(unittest.TestCase):
         i1 = SmartTableItem("123 ETH")
         i2 = None
         self.assertTrue(i2 < i1)
+        
+        
+        
