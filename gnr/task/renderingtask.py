@@ -175,11 +175,9 @@ class RenderingTask(GNRTask):
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        print "MARKING {} WITH EMPTY COLOR".format(self.subtasks_given[subtask_id]['start_task'])
         img.save(self.preview_file_path, "BMP")
 
     def _update_task_preview(self):
-        print "UPDATE TASK PREVIEW"
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
@@ -191,7 +189,6 @@ class RenderingTask(GNRTask):
             if sub['status'] == SubtaskStatus.starting:
                 self._mark_task_area(sub, img_task, sent_color)
             if sub['status'] == SubtaskStatus.failure:
-                print "MARKING {} WITH FAILED COLOR".format(sub['start_task'])
                 self._mark_task_area(sub, img_task, failed_color)
 
         img_task.save(self.preview_task_file_path, "BMP")

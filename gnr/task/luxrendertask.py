@@ -320,11 +320,12 @@ class LuxTask(RenderingTask):
         num_start = self.subtasks_given[subtask_id]['start_task']
         test_result_flm = self.__get_test_flm()
         self.interpret_task_results(subtask_id, task_result, result_type)
-        tr_files = [os.path.normpath(file_) for file_ in self.results[subtask_id]]
+        tr_files = self.results[subtask_id]
         if len(tr_files) == 0:
             return tr_files
         flm_found = False
         for tr_file in tr_files:
+            tr_file = os.path.normpath(tr_file)
             if tr_file.upper().endswith('.FLM'):
                 self.collected_file_names[num_start] = tr_file
                 if self.advanceVerification:
@@ -347,7 +348,7 @@ class LuxTask(RenderingTask):
     def accept_results(self, subtask_id, tr_files):
         super(LuxTask, self).accept_results(subtask_id, tr_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
-
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
         for tr_file in tr_files:
             if tr_file.upper().endswith('.FLM'):
                 self.collected_file_names[num_start] = tr_file

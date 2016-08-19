@@ -81,11 +81,13 @@ class FrameRenderingTask(RenderingTask):
             if len(tr_files) < len(frames_list):
                 self.subtasks_given[subtask_id]['verified'] = False
                 return tr_files
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']] = 1
+        if not self._verify_imgs(subtask_id, tr_files):
+            self.subtasks_given[subtask_id]['verified'] = False
         return tr_files
 
     def accept_results(self, subtask_id, tr_files):
         super(FrameRenderingTask, self).accept_results(subtask_id, tr_files)
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
         num_end = self.subtasks_given[subtask_id]['end_task']
@@ -99,10 +101,7 @@ class FrameRenderingTask(RenderingTask):
 
         self.num_tasks_received += num_end - num_start + 1
 
-        if self.num_tasks_received == self.total_tasks:
-            if self.use_frames:
-                self._copy_frames()
-            else:
+        if self.num_tasks_received == self.total_tasks and not self.use_frames:
                 self._put_image_together()
 
     def reject_results(self, subtask_id):
