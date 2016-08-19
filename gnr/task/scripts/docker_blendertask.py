@@ -52,6 +52,6 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
             sys.exit(exit_code)
 
 
-run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
-                 params.start_task, params.frames, params.output_format, params.total_tasks)
+run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task,
+                 params.frames, params.output_format, params.total_tasks if params.total_tasks else 4)
 
