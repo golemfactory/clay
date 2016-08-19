@@ -11,7 +11,7 @@ from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_border, \
     get_task_num_from_pixels
 from gnr.task.gnrtask import GNROptions
-from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
+from gnr.task.renderingtask import AcceptClientVerdict
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 from golem.task.taskstate import SubtaskStatus

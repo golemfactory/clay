@@ -104,6 +104,7 @@ class GNRTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
+        self.verification_options = None
 
     def is_docker_task(self):
         return self.header.docker_images is not None
