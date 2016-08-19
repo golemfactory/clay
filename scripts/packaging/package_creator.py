@@ -861,6 +861,7 @@ build_options = {
                 'libraw.so.*',
                 'libgmp.so.*',
                 'libpng12.so.0',
+                'libfreeimage.so.3',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
