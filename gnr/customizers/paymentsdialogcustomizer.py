@@ -44,7 +44,7 @@ class SmartTableItem(QTableWidgetItem):
             return False
         t1 = str(t1)
         t2 = str(t2)
-        if t1.endswith("ETH"):
+        if t1.endswith("ETH") or t2.endswith("ETH"):
             t1 = t1[:-4]
             t2 = t2[:-4]
             if len(t1) == 0:
@@ -52,7 +52,7 @@ class SmartTableItem(QTableWidgetItem):
             if len(t2) == 0:
                 t2 = "0.0"
             return float(t1) < float(t2)
-        if t1.endswith("%"):
+        if t1.endswith("%") or t2.endswith("%"):
             t1 = t1[:-1]
             t2 = t2[:-1]
             if len(t1) == 0:
