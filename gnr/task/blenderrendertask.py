@@ -222,7 +222,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
-        expected_offsets = generate_expected_offsets(parts, self.scale_factor, self.res_y)
+        expected_offsets = generate_expected_offsets(parts, self.res_x, self.res_y)
         preview_y = expected_offsets[parts + 1]
         self.scale_factor = float(preview_y) / self.res_y
 
@@ -557,7 +557,6 @@ def __scale_factor(res_x, res_y):
 
 def __num_from_pixel(p_y, res_x, res_y, tasks):
     offsets = generate_expected_offsets(tasks, res_x, res_y)
-    previous_end = 0
     for task_num in range(1, tasks + 1):
         low = offsets[task_num]
         high = offsets[task_num + 1]
