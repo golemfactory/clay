@@ -36,31 +36,22 @@ class PaymentsDialogCustomizer(Customizer):
 
 class SmartTableItem(QTableWidgetItem):
     def __lt__(self, other):
-        t1 = self.text()
-        t2 = other.text()
-        if t1 is None:
-            return True
-        if t2 is None:
-            return False
-        t1 = str(t1)
-        t2 = str(t2)
-        if t1.endswith("ETH") or t2.endswith("ETH"):
-            t1 = t1[:-4]
-            t2 = t2[:-4]
-            if len(t1) == 0:
-                t1 = "0.0"
-            if len(t2) == 0:
-                t2 = "0.0"
-            return float(t1) < float(t2)
-        if t1.endswith("%") or t2.endswith("%"):
-            t1 = t1[:-1]
-            t2 = t2[:-1]
-            if len(t1) == 0:
-                t1 = "0.0"
-            if len(t2) == 0:
-                t2 = "0.0"
-            return float(t1) < float(t2)
+        t1 = str(self.text())
+        t2 = str(other.text())
+        for postfix in ['ETH', '%']:
+            if t1.endswith(postfix) or t2.endswith(postfix):
+                l = len(postfix)
+                t1 = self.to_float(t1[:-l])
+                t2 = self.to_float(t2[:-l])
+                return t1 < t2
         return t1 < t2
+
+    @staticmethod
+    def to_float(t):
+        try:
+            return float(t)
+        except Exception:
+            return 0.0
             
             
 
