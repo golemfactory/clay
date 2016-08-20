@@ -11,7 +11,7 @@ from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater, get_task_border,
-                                        generate_expected_offsets)
+                                        generate_expected_offsets, get_task_num_from_pixels)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -386,4 +386,19 @@ class TestHelpers(unittest.TestCase):
             self.assertTrue(max(border) == (260, offsets[i + 1] - 1))
         border = get_task_border(2, 2, 30, use_frames=True, frames=30)
         self.assertTrue(border == [])
+
+    def test_get_task_num_from_pixels(self):
+        offsets = generate_expected_offsets(30, 1920, 1080)
+        frame_offsets = generate_expected_offsets(15, 1920, 1080)
+        for k in range(1, 31):
+            num = get_task_num_from_pixels(6, offsets[k] + 1, 30, res_x=1920, res_y=1080)
+            self.assertTrue(num == k)
+            
+            num = get_task_num_from_pixels(1, 0, 30, res_x=1920, res_y=1080, use_frames=True, frames=30, frame_num=k)
+            self.assertTrue(num == k)
+            
+            i = (k - 1) % 15 + 1
+            num = get_task_num_from_pixels(1, frame_offsets[i] + 3, 30, res_x=1920, res_y=1080, use_frames=True, frames=2, frame_num=(k - 1)/15 + 1)
+            self.assertTrue(num == k)
+            
         
