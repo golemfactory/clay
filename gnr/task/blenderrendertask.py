@@ -583,7 +583,7 @@ def __get_border(start_task, end_task, parts, res_x, res_y):
     scale_factor = float(offsets[parts + 1]) / res_y
     
     upper = offsets[start_task]
-    lower = offsets[end_task + 1] - 1
+    lower = offsets[end_task + 1]
     for i in range(upper, lower):
         border.append((0, i))
         border.append((int(math.floor(res_x * scale_factor)), i))

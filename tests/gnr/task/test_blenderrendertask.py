@@ -10,7 +10,8 @@ from PIL import Image
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
-                                        BlenderRendererOptions, PreviewUpdater)
+                                        BlenderRendererOptions, PreviewUpdater, get_task_border,
+                                        generate_expected_offsets)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -368,3 +369,21 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
+
+class TestHelpers(unittest.TestCase):
+    def test_get_task_border(self):
+        offsets = generate_expected_offsets(30, 800, 600)
+        for k in range(1, 31):
+            border = get_task_border(k, k, 30, res_x=800, res_y=600)
+            self.assertTrue((min(border) == (0, offsets[k])))
+            self.assertTrue(max(border) == (240, offsets[k + 1] - 1))
+        
+        offsets = generate_expected_offsets(15, 800, 600)
+        for k in range(1, 31):
+            border = get_task_border(k, k, 30, res_x=800, res_y=600, use_frames=True, frames=2)
+            i = (k - 1) % 15 + 1
+            self.assertTrue(min(border) == (0, offsets[i]))
+            self.assertTrue(max(border) == (260, offsets[i + 1] - 1))
+        border = get_task_border(2, 2, 30, use_frames=True, frames=30)
+        self.assertTrue(border == [])
+        
