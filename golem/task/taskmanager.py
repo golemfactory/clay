@@ -447,10 +447,7 @@ class TaskManager(object):
         """
         if task_id not in self.tasks_states:
             return None
-        subtasks = []
-        for sub in self.tasks_states[task_id].subtask_states.values():
-            subtasks.append(sub.subtask_id)
-        return subtasks
+        return [sub.subtask_id for sub in self.tasks_states[task_id].subtask_states.values()]
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
@@ -488,7 +485,6 @@ class TaskManager(object):
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.computation_time = computation_time
         ss.value = compute_subtask_value(ss.computer.price, computation_time)
-
 
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """

@@ -22,7 +22,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         LogTestCase.tearDown(self)
         TestWithKeysAuth.tearDown(self)
 
-        if self.ts:
+        if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
     def test_request(self):
@@ -518,3 +518,32 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                        "max_price": 20
                        }
         return task_header
+
+    def _get_task_manager_task_mock(self, task_id, subtask_id):
+        task_mock = Mock()
+        task_mock.header.task_id = task_id
+        task_mock.header.resource_size = 2 * 1024
+        task_mock.header.estimated_memory = 3 * 1024
+        task_mock.header.max_price = 10000
+        task_mock.query_extra_data.return_value.ctd.task_id = task_id
+        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        return task_mock
+
+    def test_get_subtasks_for_task_id(self):
+        ccd = ClientConfigDescriptor()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+
+        assert ts.get_subtasks_for_task_id("NOT EXISTING") == []
+        task_mock = self._get_task_manager_task_mock("TASK 1", "SUBTASK1")
+        task_mock2 = self._get_task_manager_task_mock("TASK 2", "DIFF_SUBTASK1")
+        task_mock3 = self._get_task_manager_task_mock("TASK 3", "NO SUBTASK")
+        ts.task_manager.add_new_task(task_mock)
+        ts.task_manager.add_new_task(task_mock2)
+        ts.task_manager.get_next_subtask("NODEID", "NODENAME", "TASK 1", 1000, 100, 10000, 1000)
+        ts.task_manager.get_next_subtask("NODEID", "NODENAME", "TASK 2", 1000, 100, 10000, 1000)
+        task_mock.query_extra_data.return_value.ctd.subtask_id = "SUBTASK2"
+        ts.task_manager.get_next_subtask("NODEID1", "NODENAME", "TASK 1", 1000, 100, 10000, 1000)
+        assert ts.get_subtasks_for_task_id("TASK 3") == []
+        assert ts.get_subtasks_for_task_id("TASK 2") == ["DIFF_SUBTASK1"]
+        assert set(ts.get_subtasks_for_task_id("TASK 1")) == {"SUBTASK1", "SUBTASK2"}

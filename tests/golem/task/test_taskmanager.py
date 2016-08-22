@@ -217,3 +217,20 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called
 
+    def test_get_subtasks(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        assert tm.get_subtasks("Task 1") is None
+        task_mock = self._get_task_mock()
+        tm.add_new_task(task_mock)
+        task_mock2 = self._get_task_mock("TASK 1", "SUBTASK 1")
+        tm.add_new_task(task_mock2)
+        assert tm.get_subtasks("xyz") == []
+        assert tm.get_subtasks("TASK 1") == []
+        tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        tm.get_next_subtask("NODEID", "NODENAME", "TASK 1", 1000, 100, 10000, 10000)
+        task_mock.query_extra_data.return_value.ctd.subtask_id = "aabbcc"
+        tm.get_next_subtask("NODEID2", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        task_mock.query_extra_data.return_value.ctd.subtask_id = "ddeeff"
+        tm.get_next_subtask("NODEID3", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        assert set(tm.get_subtasks("xyz")) == {"xxyyzz", "aabbcc", "ddeeff"}
+        assert tm.get_subtasks("TASK 1") == ["SUBTASK 1"]

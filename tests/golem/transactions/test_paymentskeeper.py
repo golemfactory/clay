@@ -147,6 +147,8 @@ class TestPaymentsKeeper(TestWithDatabase):
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 6)
+        assert pk.get_payment("xxyyzz") == 20
+        assert pk.get_payment("not existing") == 0
 
 
 class TestAccountInfo(TempDirFixture):

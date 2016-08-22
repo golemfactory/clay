@@ -10,15 +10,20 @@ class PaymentsDatabase(object):
     """ Save and retrieve from database information about payments that this node has to make / made
     """
 
-    def get_payment_value(self, payment_info):
+    @staticmethod
+    def get_payment_value(payment_info):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
         :param PaymentInfo payment_info: payment structure from which the
                database should retrieve information about computing node and
                task id.
         :return int: value of a previous similiar payment or 0 if there is no such payment in database
         """
+        return PaymentsDatabase.get_payment_for_subtask(payment_info.subtask_id)
+
+    @staticmethod
+    def get_payment_for_subtask(subtask_id):
         try:
-            return Payment.get(Payment.subtask == payment_info.subtask_id).value
+            return Payment.get(Payment.subtask == subtask_id).value
         except Payment.DoesNotExist:
             logger.warning("Can't get payment value - payment does not exist")
             return 0
@@ -94,10 +99,7 @@ class PaymentsKeeper(object):
         :param subtask_id: Subtask ID
         :return: Cost of the @subtask_id
         """
-        for payment in self.db.get_newest_payment(100):
-            if payment.subtask == subtask_id:
-                return float(payment.value)
-        return 0.0
+        return self.db.get_payment_for_subtask(subtask_id)
 
 
 class PaymentInfo(object):
