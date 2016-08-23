@@ -315,7 +315,6 @@ class TaskComputer(object):
             self.counting_task = None
             return
 
-        tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
 

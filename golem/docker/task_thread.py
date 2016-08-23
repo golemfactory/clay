@@ -1,9 +1,7 @@
 import logging
 import os
-from threading import Lock
 
 import requests
-
 from golem.docker.job import DockerJob
 from golem.task.taskthread import TaskThread
 from golem.vm.memorychecker import MemoryChecker
@@ -44,22 +42,6 @@ class DockerTaskThread(TaskThread):
         self.mc = None
         self.check_mem = check_mem
 
-        self._lock = Lock()
-        self._terminating = False
-
-    def _fail(self, error_obj):
-        logger.error("Task computing error: {}".format(error_obj))
-        self.error = True
-        self.error_msg = str(error_obj)
-        self.done = True
-        self.task_computer.task_computed(self)
-
-    def _cleanup(self):
-        if self.mc:
-            self.mc.stop()
-        if self.parent_monitor:
-            self.parent_monitor.stop()
-
     def run(self):
         if not self.image:
             self._fail("None of the Docker images is available")
@@ -86,13 +68,8 @@ class DockerTaskThread(TaskThread):
                 if self.check_mem:
                     self.mc = MemoryChecker()
                     self.mc.start()
-                self.check_termination()
                 self.job.start()
-                if self.use_timeout:
-                    exit_code = self.job.wait(self.task_timeout)
-                else:
-                    exit_code = self.job.wait()
-
+                exit_code = self.job.wait()
                 # Get stdout and stderr
                 stdout_file = os.path.join(output_dir, self.STDOUT_FILE)
                 stderr_file = os.path.join(output_dir, self.STDERR_FILE)
@@ -130,21 +107,14 @@ class DockerTaskThread(TaskThread):
         return 0.0
 
     def end_comp(self):
-        with self._lock:
-            self._terminating = True
         try:
             self.job.kill()
         except AttributeError:
             pass
         except requests.exceptions.BaseHTTPError:
             if self.docker_manager:
-                self.docker_manager.recover_vm_connectivity(lambda *_: self.job.kill())
+                self.docker_manager.recover_vm_connectivity(lambda: self.job.kill())
 
-    def check_timeout(self):
-        pass
-
-    def check_termination(self):
-        with self._lock:
-            if self._terminating:
-                raise Exception("Job terminated")
-
+    def _cleanup(self):
+        if self.mc:
+            self.mc.stop()

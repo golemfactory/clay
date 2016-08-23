@@ -1,3 +1,4 @@
+import atexit
 import logging
 import sys
 import time
@@ -163,6 +164,8 @@ class Client(object):
         self.get_resource_peers_interval = 5.0
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
+
+        atexit.register(lambda: self.quit())
 
     def start(self):
         self.init_monitor()
