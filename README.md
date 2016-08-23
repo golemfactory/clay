@@ -22,6 +22,10 @@ Follow the installation instruction from
 Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured.
 Please be sure that you understand the risk before installing the software. 
  
+## License
+
+[GPLv3](https://github.com/imapp-pl/golem/blob/develop/LICENSE.txt)
+ 
 ## Contact  
 
 Help us develop the application by submitting issues and bugs. See instruction 
