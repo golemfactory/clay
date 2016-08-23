@@ -1,7 +1,6 @@
 import ctypes
 import os
 import pkgutil
-import requests
 import shutil
 import subprocess
 import sys
@@ -865,6 +864,7 @@ build_options = {
                 'libthai.so.0',
                 'libpango-1.0.so.0',
                 'libpangoft2-1.0.so.0',
+                'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
