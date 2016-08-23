@@ -1,5 +1,6 @@
 import logging
 import sys
+from PyQt4 import QtCore
 from os import path
 
 from PyQt4.QtCore import QSize
@@ -12,6 +13,12 @@ logger = logging.getLogger("gnr.app")
 
 class GNRGui:
     def __init__(self, app_logic, mainWindowClass):
+        try:
+            # Linux check might suffice if X11 was the only option available
+            QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+        except Exception:
+            pass
+
         self.app = QApplication(sys.argv)
         app_icon = QIcon()
         icon_path = path.join(get_golem_path(), "gnr", "ui", "img")
