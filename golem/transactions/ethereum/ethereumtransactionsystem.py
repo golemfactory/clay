@@ -1,9 +1,7 @@
-from __future__ import division
 import logging
 from os import path
 
 from ethereum import keys
-from ethereum.utils import denoms
 
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -68,8 +66,8 @@ class EthereumTransactionSystem(TransactionSystem):
         :param subtasks: List of subtasks ID
         :return: Cost of subtasks
         """
-        cost = 0.0
+        cost = 0
         if self.payments_keeper:
             for subtask in subtasks:
                 cost += self.payments_keeper.get_payment(subtask)
-        return cost / denoms.ether
+        return cost

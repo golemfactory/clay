@@ -1,8 +1,10 @@
+from __future__ import division
 import cPickle
 import logging
 import os
 from threading import Lock
 
+from ethereum.utils import denoms
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
@@ -97,7 +99,7 @@ class GNRMainWindowCustomizer(Customizer):
     def __update_payment(self, task_id, i):
         price = yield self.logic.get_cost_for_task_id(task_id)
         if price:
-            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price))
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price / denoms.ether))
 
     def update_time(self):
         with self.lock:

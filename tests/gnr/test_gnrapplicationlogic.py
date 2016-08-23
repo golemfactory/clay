@@ -187,6 +187,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture):
         logic.update_stats()
         logic.get_keys_auth()
         logic.save_task('any', os.path.join(self.path, str(uuid.uuid4())))
+        logic.save_task('any', os.path.join(self.path, str(uuid.uuid4()) + ".gt"))
         logic.recount_performance(1)
         logic.get_environments()
         logic.get_payments()
@@ -195,6 +196,8 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture):
         logic.get_difficulty()
         logic.load_keys_from_file('invalid')
         logic.save_keys_to_files(os.path.join(self.path, 'invalid_1'), os.path.join(self.path, 'invalid_2'))
+
+        logic.get_cost_for_task_id("unknown task")
 
     def test_change_description(self):
         logic = GNRApplicationLogic()
