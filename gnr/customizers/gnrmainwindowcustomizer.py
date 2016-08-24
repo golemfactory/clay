@@ -241,7 +241,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.insertRow(current_row_count)
 
         task_table_elem = TaskTableElem(task_id, status, task_name)
-        for col in range(0, ItemMap.count() - 1):
+        for col in range(ItemMap.count()):
             if col != ItemMap.Progress:
                 self.gui.ui.taskTableWidget.setItem(
                     current_row_count, col, task_table_elem.get_column_item(col))
