@@ -80,7 +80,7 @@ class ClientTaskComputerEventListener(object):
 
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_docker_machine_manager=True, use_monitor=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -161,11 +161,13 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
 
     def start(self):
-        self.init_monitor()
+        if self.use_monitor:
+            self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -204,9 +206,9 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
-        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
 
         if self.monitor:
+            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
             self.monitor.on_login()
 
     def init_monitor(self):
