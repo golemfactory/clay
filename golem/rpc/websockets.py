@@ -183,7 +183,6 @@ class WebSocketRPCProtocol(object):
         self.factory.add_session(self)
         if not self._requests_task.running:
             self._requests_task.start(REQUEST_REMOVE_INTERVAL)
-        self._retry_requests()
 
     def onClose(self, was_clean, code, reason):
         self.factory.remove_session(self)
@@ -257,7 +256,7 @@ class WebSocketRPCProtocol(object):
 
         return deferred
 
-    def _retry_requests(self):
+    def retry_requests(self):
         for request in self.factory.requests.values():
             self.send_message(request['message'], new_request=False)
 
@@ -387,13 +386,19 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
     def _reconnect(self, *_):
         logger.warn("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
         conn_deferred = task.deferLater(self.reactor, self._reconnect_timeout, self.connect)
+        conn_deferred.addCallback(self._client_reconnected)
         conn_deferred.addErrback(self._reconnect)
 
-    def _client_connected(self, *args):
+    def _client_connected(self, *_):
         logger.info("WebSocket RPC: connection to {} established".format(self.remote_ws_address))
         addr = self.connector.transport.socket.getsockname()
         self.local_host = addr[0]
         self.local_port = addr[1]
+
+    def _client_reconnected(self, *_):
+        session = self.get_session(self.remote_host, self.remote_port)
+        if session:
+            session.retry_requests()
 
     def clientConnectionLost(self, connector, reason):
         logger.warn("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
