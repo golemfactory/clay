@@ -381,6 +381,9 @@ class LuxTask(RenderingTask):
             self.__update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
+    
+    def _update_task_preview(self):
+        pass
 
     @RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
