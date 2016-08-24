@@ -91,9 +91,9 @@ class Task(object):
         self.listeners = []
 
     def __getstate__(self):
-        state = deepcopy(vars(self))
-        del state['listeners']
-        return state
+        state_attr = vars(self).keys()
+        state_attr.remove('listeners')
+        return {attr: deepcopy(getattr(self, attr)) for attr in state_attr}
 
     def __setstate__(self, dict_):
         self.__dict__ = dict_
@@ -180,7 +180,6 @@ class Task(object):
         :return bool: True if task passed verification, False otherwise
         """
         return  # Implement in derived class
-
 
 
     @abc.abstractmethod
