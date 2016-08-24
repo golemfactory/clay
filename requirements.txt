@@ -12,6 +12,7 @@ peewee>=2.8.1
 Pillow==3.0.0
 psutil
 pyelliptic==1.5.7
+pyOpenSSL>=16.0.0
 pysha3==0.3
 pystun==0.1.0
 qt4reactor==1.6

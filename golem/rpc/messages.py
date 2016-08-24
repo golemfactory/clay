@@ -11,6 +11,32 @@ class RPCMessage(object):
         self.protocol_version = PROTOCOL_VERSION
 
 
+class RPCAuthMessage(RPCMessage):
+    
+    def __init__(self):
+        super(RPCAuthMessage, self).__init__()
+
+
+class RPCAuthRequiredMessage(RPCAuthMessage):
+    
+    def __init__(self):
+        super(RPCAuthRequiredMessage, self).__init__()
+
+
+class RPCAuthRequestMessage(RPCAuthMessage):
+
+    def __init__(self, password):
+        super(RPCAuthRequestMessage, self).__init__()
+        self.password = password
+
+
+class RPCAuthResponseMessage(RPCAuthMessage):
+
+    def __init__(self, verdict):
+        super(RPCAuthResponseMessage, self).__init__()
+        self.verdict = verdict
+
+
 class RPCRequestMessage(RPCMessage):
 
     def __init__(self, method, args, kwargs):

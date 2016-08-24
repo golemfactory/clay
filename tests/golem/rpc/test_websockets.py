@@ -29,14 +29,15 @@ class MockService(object):
 
 def _build():
     mock_service = MockService()
+    rpc_password = str(uuid.uuid4())
 
-    ws_server = WebSocketRPCServerFactory()
+    ws_server = WebSocketRPCServerFactory(password=rpc_password)
     ws_server.listen()
 
     service_info = ws_server.add_service(mock_service)
 
     ws_address = service_info.rpc_address
-    ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port)
+    ws_client = WebSocketRPCClientFactory(ws_address.host, ws_address.port, password=rpc_password, use_ssl=False)
 
     return ws_client, ws_server, service_info
 
@@ -129,10 +130,11 @@ class TestRPCClient(TestWithReactor):
         deferred.addErrback(fail)
 
     def test_add_session(self):
+        rpc_password = str(uuid.uuid4())
         peer = Mock()
         peer.host, peer.port = '127.0.0.1', 10000
 
-        factory = WebSocketRPCClientFactory(peer.host, peer.port)
+        factory = WebSocketRPCClientFactory(peer.host, peer.port, password=rpc_password)
         factory._deferred = Deferred()
 
         session = Mock()
@@ -264,7 +266,8 @@ class TestProtocol(unittest.TestCase):
         def failing_func(*args, **kwargs):
             raise Exception()
 
-        factory = WebSocketRPCClientFactory('localhost', 1234)
+        rpc_password = str(uuid.uuid4())
+        factory = WebSocketRPCClientFactory('localhost', 1234, password=rpc_password)
         factory.perform_request = Mock()
 
         protocol = WebSocketRPCProtocol()
@@ -290,5 +293,4 @@ class TestProtocol(unittest.TestCase):
 
         protocol.send_message(message, new_request=True)
         assert message.id not in factory.requests
-
 

@@ -1,5 +1,7 @@
 import logging
 import os
+import uuid
+
 from mock import Mock, patch
 from multiprocessing import Queue
 
@@ -33,6 +35,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
     @patch('logging.config.fileConfig')
     def test_start_client(self, *_):
+        rpc_password = str(uuid.uuid4())
         client = None
 
         try:
@@ -44,7 +47,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
             start_client_process(queue=Mock(),
                                  client=client,
-                                 start_ranking=False)
+                                 start_ranking=False,
+                                 rpc_password=rpc_password)
         except Exception as exc:
             self.fail("Cannot start client process: {}".format(exc))
         finally:
@@ -53,9 +57,10 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
     @patch('logging.config.fileConfig')
     def test_start_gui(self, *_):
+        rpc_password = str(uuid.uuid4())
         queue = Queue()
 
-        rpc_server = WebSocketRPCServerFactory()
+        rpc_server = WebSocketRPCServerFactory(password=rpc_password)
         rpc_server.local_host = '127.0.0.1'
 
         mock_service_info = rpc_server.add_service(MockService())
@@ -68,7 +73,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             gui_app.listen = Mock()
             reactor = self._get_reactor()
 
-            start_gui_process(queue, self.path,
+            start_gui_process(queue,
+                              rpc_password,
+                              self.path,
                               gui_app=gui_app,
                               reactor=reactor)
         except Exception as exc:
