@@ -404,12 +404,12 @@ class BlenderRenderTask(FrameRenderingTask):
         if results and results.get("data"):
             for filename in results["data"]:
                 if filename.lower().endswith(".log"):
-                    fd = open(filename, "r")
-                    warnings = self.__find_missing_files_warnings(fd.read())
-                    fd.close()
-                    for w in warnings:
-                        if not w in ret:
-                            ret.append(w)
+                    with open(filename, "r") as fd:
+                        warnings = self.__find_missing_files_warnings(fd.read())
+                        fd.close()
+                        for w in warnings:
+                            if w not in ret:
+                                ret.append(w)
 
         return ret
 
