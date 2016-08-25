@@ -78,10 +78,13 @@ class ClientTaskComputerEventListener(object):
     def toggle_config_dialog(self, on=True):
         self.client.toggle_config_dialog(on)
 
+    def docker_config_changed(self):
+        self.client.docker_config_changed()
+
 
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_docker_machine_manager=True, use_monitor=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -162,13 +165,15 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
 
         atexit.register(lambda: self.quit())
 
     def start(self):
-        self.init_monitor()
+        if self.use_monitor:
+            self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -207,9 +212,9 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
-        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
 
         if self.monitor:
+            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
             self.monitor.on_login()
 
     def init_monitor(self):
@@ -455,11 +460,12 @@ class Client(object):
         self.rpc_server = rpc_server
         return self.rpc_server.add_service(self)
 
-    def change_config(self, new_config_desc):
+    def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
-        self.task_server.change_config(self.config_desc)
+        if self.task_server:
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -552,6 +558,10 @@ class Client(object):
     def toggle_config_dialog(self, on=True):
         for rpc_client in self.rpc_clients:
             rpc_client.toggle_config_dialog(on)
+
+    def docker_config_changed(self):
+        for rpc_client in self.rpc_clients:
+            rpc_client.docker_config_changed()
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:

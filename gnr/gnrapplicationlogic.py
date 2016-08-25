@@ -282,8 +282,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
     @inlineCallbacks
-    def change_config(self, cfg_desc):
-        yield self.client.change_config(cfg_desc)
+    def change_config(self, cfg_desc, run_benchmarks=False):
+        yield self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_node_name()
         self.customizer.set_name(u"{}".format(self.node_name))
 
@@ -447,6 +447,9 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer.close()
                 self.config_dialog_customizer = None
                 self.config_dialog = None
+
+    def docker_config_changed(self):
+        self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):

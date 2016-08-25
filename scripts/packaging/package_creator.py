@@ -1,7 +1,6 @@
 import ctypes
 import os
 import pkgutil
-import requests
 import shutil
 import subprocess
 import sys
@@ -839,12 +838,15 @@ build_options = {
         # Copy missing libs
         'copy_libs': {
             'win': [
-                'msvcr120.dll',
                 'libeay32.dll',
                 'libgcc_s_dw2-1.dll',
-                'libwinpthread-1.dll'
+                'libwinpthread-1.dll',
+                'msvcp120.dll',
+                'msvcr120.dll'
             ],
             'linux': [
+                '_sha3.so',
+                '_cffi_backend.so',
                 'libstdc++*',
                 'libc.so*',
                 'libpython2.7.so.1.0',
@@ -853,13 +855,17 @@ build_options = {
                 'libffi.so.*',
                 'libgssapi_krb5.so.*',
                 'libz.so.1',
-                '_sha3.so',
                 'OpenEXR.so',
                 'netifaces.so',
-                '_cffi_backend.so',
                 'libraw.so.*',
                 'libgmp.so.*',
                 'libpng12.so.0',
+                'libdatrie.so.1',
+                'libthai.so.0',
+                'libpango-1.0.so.0',
+                'libpangoft2-1.0.so.0',
+                'libpangocairo-1.0.so.0',
+                'libfreeimage.so.3',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',

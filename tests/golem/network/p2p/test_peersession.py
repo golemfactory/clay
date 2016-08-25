@@ -114,14 +114,20 @@ class TestPeerSessionInfo(unittest.TestCase):
         session.unknown_property = False
         session_info = PeerSessionInfo(session)
 
-        attributes = [
+        simple_attributes = [
             'address', 'port',
-            'verified', 'rand_val',
-            'degree', 'key_id',
-            'node_name', 'node_info',
+            'verified', 'degree',
+            'key_id', 'node_name',
             'listen_port', 'conn_id'
         ]
+        attributes = simple_attributes + ['node_info']
 
         for attr in attributes:
             assert hasattr(session_info, attr)
         assert not hasattr(session_info, 'unknown_property')
+
+        simplified = session_info.get_simplified_repr()
+        for attr in simple_attributes:
+            simplified[attr]
+        with self.assertRaises(KeyError):
+            simplified["node_id"]
