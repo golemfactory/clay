@@ -270,7 +270,7 @@ class GNRTask(Task):
         return filtered_task_results
 
     def after_test(self, results, tmp_dir):
-        pass
+        return None
 
     @handle_key_error
     def should_accept(self, subtask_id):
