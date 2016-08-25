@@ -1,5 +1,10 @@
 import ctypes
+import inspect
 import os
+from collections import namedtuple, OrderedDict
+
+import imp
+import pkg_resources
 import pkgutil
 import shutil
 import subprocess
@@ -23,7 +28,343 @@ def get_platform():
         raise EnvironmentError("Unsupported platform: {}".format(sys.platform))
 
 
-class ModulePackage(object):
+class LicenseCollector(object):
+
+    FileLicense = namedtuple('FileLicense', ['file_name'])
+
+    class ModuleMetadata(object):
+        def __init__(self, name, license, author='UNKNOWN', author_email='UNKNOWN',
+                     version='UNKNOWN', home_page='UNKNOWN'):
+            self.name = name
+            self.license = license
+            self.author = author
+            self.author_email = author_email
+            self.version = version
+            self.home_page = home_page
+
+        def __str__(self):
+            data = OrderedDict()
+            data['Name'] = self.name
+            data['Version'] = self.version
+            data['Home-page'] = self.home_page
+            data['Author'] = self.author
+            data['Author-email'] = self.author_email
+            data['License'] = self.license
+            return '\n'.join([k + ': ' + v for k, v in data.iteritems()])
+
+    MODULE_LICENSE_FILE_NAME = 'LICENSE'
+    MODULE_EXCEPTIONS = ['golem', 'gnr', 'encodings', 'importlib', 'lib',
+                         'json', 'ctypes', 'sqlite3', 'distutils',
+                         'pkg_resources', 'curses', 'pydoc_data',
+                         'unittest', 'compiler', 'xml', 'PyQt4',
+                         'BUILD_CONSTANTS.pyc']
+
+    # noinspection PyTypeChecker
+    MODULE_PLUGINS = dict({
+        'ethereum': ('eth_client_utils', 'eth_rpc_client'),
+        'peewee': ('playhouse', 'pwiz'),
+        'zope': ('zope.interface',),
+        'twisted': ('qtreactor', 'qt4reactor')
+    })
+
+    # noinspection PyTypeChecker
+    LICENSES = dict({
+        'ethereum': ModuleMetadata(
+            name='ethereum', license='MIT'
+        ),
+        'virtualbox': ModuleMetadata(
+            name='virtualbox', license='Apache Software Licence'
+        ),
+        'docker': ModuleMetadata(
+            name='docker', license='Apache 2.0'
+        ),
+        'email': ModuleMetadata(
+            name='email',
+            author='Barry Warsaw',
+            author_email='email-sig@python.org',
+            license='PSFL'
+        ),
+        'click': ModuleMetadata(
+            name='click', license=FileLicense('click-license.txt')
+        ),
+        'zope': ModuleMetadata(
+            name='zope', license=FileLicense('ZPL-2.1.txt')
+        ),
+        'multiprocessing': ModuleMetadata(
+            name='multiprocessing',
+            author='R. Oudkerk',
+            author_email='r.m.oudkerk@gmail.com',
+            license=FileLicense('multiprocessing-license.txt')
+        ),
+        'logging': ModuleMetadata(
+            name='logging',
+            author='Vinay Sajip',
+            license=FileLicense('logging-license.txt')
+        ),
+
+        'OpenEXR.so': (
+            'OpenEXR', 'OpenEXR Python package by James Bowman',
+            FileLicense('OpenEXR-license.txt')
+        )
+    })
+
+    def __init__(self, root_dir, package_dirs, library_dirs,
+                 package_exceptions=None, library_exceptions=None):
+
+        self.root_dir = root_dir
+        self.license_dir = os.path.join(root_dir, 'scripts', 'packaging', 'licenses')
+
+        self.package_dirs = package_dirs
+        self.library_dirs = library_dirs
+        self.package_excs = package_exceptions or self.MODULE_EXCEPTIONS
+        self.library_excs = library_exceptions or []
+
+    def write_package_licenses(self, output_path):
+        print "Writing module licenses to", output_path
+
+        def write_metadata(f, p, m, is_file=False):
+            try:
+                f.write(str(self.get_package_metadata(p, m, is_file)))
+                f.write('\n\n\n')
+            except Exception as exc:
+                print exc
+
+        def valid_extension(f):
+            flower = f.lower()
+            return any(flower.endswith(e) for e in ['.py', '.pyc', '.pyd'])
+
+        with open(output_path, 'w') as out_file:
+            for directory in self.package_dirs:
+
+                src_path, dirs, files = next(os.walk(directory))
+
+                filtered_dirs = [d for d in dirs if d not in self.package_excs]
+                filtered_files = [f for f in files if f not in self.package_excs and valid_extension(f)]
+
+                for d in filtered_dirs:
+                    write_metadata(out_file, src_path, d)
+
+                for f in filtered_files:
+                    write_metadata(out_file, src_path, f, is_file=True)
+
+    def write_library_licenses(self, output_path):
+        print "Writing library licenses to", output_path
+
+        platform = get_platform()
+
+        def write_license(f, p, lib):
+            library_path = os.path.join(p, lib)
+
+            if platform == 'linux':
+                if '.so' not in lib.lower():
+                    return
+
+                try:
+                    entry = self._get_linux_library_license(lib, library_path)
+                except:
+                    entry = self.LICENSES.get(lib)
+
+                    if not entry:
+                        message = "Cannot retrieve a license for library {}.\n" \
+                                  "It most likely comes from one of Python packages.\n" \
+                                  "Please check the modules license file for the proper license.".format(lib)
+                        entry = lib, message, None
+
+            elif platform == 'win':
+                if not lib.lower().endswith('.dll'):
+                    return
+
+                entry = self._get_win_library_license(lib, library_path)
+
+            package, package_desc, license_file = entry
+
+            f.write("================================================\n\n")
+            f.write("Library: '{}' is provided by:".format(lib) + '\n')
+            f.write(package_desc)
+            f.write("\n")
+
+            if license_file:
+                if isinstance(license_file, self.FileLicense):
+                    license_file = os.path.join(self.license_dir, license_file.file_name)
+                with open(license_file) as lf:
+                    for line in lf:
+                        f.write(line)
+
+            f.write("\n\n\n")
+
+        with open(output_path, 'w') as out_file:
+            for directory in self.library_dirs:
+
+                src_path, dirs, files = next(os.walk(directory))
+                filtered_files = [f for f in files if f not in self.library_excs]
+
+                for ff in filtered_files:
+                    write_license(out_file, src_path, ff)
+
+    def get_package_metadata(self, modules_path, module, is_file=False):
+
+        module_path = os.path.join(modules_path, module)
+        module = self._get_package_name(modules_path, module)
+        meta, lic = self.get_package_license(module, is_file=is_file)
+
+        if isinstance(lic, self.FileLicense):
+            license_path = os.path.join(self.license_dir, lic.file_name)
+            module_license_path = os.path.join(module_path, self.MODULE_LICENSE_FILE_NAME)
+            shutil.copy(license_path, module_license_path)
+            meta.license = 'Custom (included in package)'
+
+        return meta
+
+    def get_package_license(self, module, is_file=False):
+        package, meta, lic = None, None, None
+
+        try:
+            package = pkg_resources.get_distribution(module)
+        except:
+
+            if self._get_package_plugin(module):
+                return None, None
+            elif module.startswith('_'):
+                module = module.replace('_', '', 1)
+                return self.get_package_license(module, is_file=is_file)
+
+            try:
+
+                if is_file:
+                    module = module[:module.rfind('.')]
+                imported = __import__(module)
+
+                if hasattr(imported, '__loader__'):
+                    package = pkg_resources.EggMetadata(imported.__loader__)
+                else:
+                    for item in pkg_resources.find_on_path(pkgutil.ImpImporter, module):
+                        package = item
+                    if not package:
+                        package = self._find_package(imported, is_file=is_file)
+            except:
+                pass
+
+        if package:
+            meta, lic = self._get_metadata_and_license(package)
+
+        if not (meta and lic):
+            try:
+                meta = self.LICENSES.get(module)
+                lic = meta.license
+            except:
+                raise Exception("Cannot read '{}' metadata".format(module))
+
+        return meta, lic
+
+    @staticmethod
+    def _get_linux_library_license(library, library_path):
+        provides_cmd = ['dpkg', '-S', library]
+        package = subprocess.check_output(provides_cmd).split(':')[0].strip()
+
+        package_cmd = ['dpkg', '-s', package]
+        package_desc = subprocess.check_output(package_cmd)
+
+        license_file = os.path.join('/usr/share/doc', package, 'copyright')
+        assert os.path.exists(license_file)
+        return package, package_desc, license_file
+
+    def _get_win_library_license(self, library, library_path):
+        return None, None, None
+
+    def _get_package_plugin(self, module):
+        for k, v in self.MODULE_PLUGINS.iteritems():
+            if module in v:
+                return k
+
+    @classmethod
+    def _find_package(cls, imported_package, is_file=False):
+        candidates = []
+        packages = []
+
+        package_name = imported_package.__name__
+
+        if is_file:
+            package_path = os.path.abspath(imported_package.__file__)
+            packages_path = os.path.dirname(package_path)
+            package_repr = package_name
+        else:
+            if hasattr(imported_package, '__path__'):
+                package_path = imported_package.__path__[0]
+            else:
+                package_path = os.path.dirname(imported_package.__file__)
+            packages_path = os.path.dirname(package_path)
+            package_repr = os.path.basename(package_path)
+
+        src_dir, dirs, files = next(os.walk(packages_path))
+
+        lm = package_name.lower()
+        for d in dirs:
+            ld = d.lower()
+            if lm in ld and (ld.endswith('.egg-info') or ld.endswith('.dist-info')):
+                candidates.append((os.path.join(src_dir, d), d))
+
+        for full_path, directory in candidates:
+
+            top_level_file = os.path.join(full_path, 'top_level.txt')
+            metadata = pkg_resources.PathMetadata(packages_path, full_path)
+            package = pkg_resources.Distribution.from_location(packages_path,
+                                                               directory,
+                                                               metadata,
+                                                               precedence=pkg_resources.DEVELOP_DIST)
+
+            if cls._top_level_file_matches(top_level_file, package_repr):
+                return package
+            packages.append(package)
+
+        for package in packages:
+            if package_name in package.project_name:
+                return package
+
+    @staticmethod
+    def _top_level_file_matches(top_level_file, package_repr):
+        if os.path.isfile(top_level_file):
+            with open(top_level_file) as f:
+                for line in f:
+                    line = line.replace('\r', '')
+                    line = line.replace('\n', '')
+                    if package_repr == line:
+                        return True
+
+    @staticmethod
+    def _get_package_name(package_path, package_dir):
+        name = package_dir
+        try:
+            imp.find_module(package_dir)
+        except:
+            name = inspect.getmodulename(package_path) or name
+        return name
+
+    @staticmethod
+    def _get_metadata_and_license(package):
+
+        allowed_entries = [
+            'Name:', 'Version:', 'Summary:',
+            'Author:', 'Author-email:', 'Home-page:',
+            'Classifier:', 'License:',
+        ]
+
+        def allowed_entry(entry):
+            return any([entry.startswith(ae) for ae in allowed_entries])
+
+        for e in ['METADATA', 'PKG-INFO']:
+            try:
+                metadata = [e for e in package.get_metadata_lines(e) if allowed_entry(e)]
+                for line in metadata:
+                    k, v = line.split(': ', 1)
+                    if k == "License":
+                        return '\n'.join(metadata), v
+            except Exception:
+                pass
+
+        return None, None
+
+
+class DirPackage(object):
     def __init__(self, name, to_lib_dir=True,
                  exclude_platforms=None,
                  include_platforms=None,
@@ -299,7 +640,7 @@ class PackageCreator(Command):
         mod_dir = os.path.dirname(os.__file__)
 
         for module in self.pack_modules:
-            if isinstance(module, ModulePackage):
+            if isinstance(module, DirPackage):
                 if module.skip_platform(self.platform):
                     continue
                 dst_dir = x_dir if module.use_lib_dir else exe_dir
@@ -421,7 +762,6 @@ class PackageCreator(Command):
 # cx_Freeze configuration
 
 exe_options = {
-    'include_files': ['requirements.txt'],
     "packages": [
         "os", "sys", "pkg_resources", "encodings", "click",
         "bitcoin", "devp2p", "service_identity", "OpenEXR",
@@ -760,6 +1100,33 @@ def all_assets(creator, exe_dir, lib_dir, x_dir):
     shutil.copy(no_preview_path, no_preview_dest_path)
 
 
+def all_licenses(creator, exe_dir, lib_dir, x_dir):
+    package_dirs = [x_dir, exe_dir]
+    library_dirs = [exe_dir, lib_dir, x_dir]
+
+    package_output_file = os.path.join(exe_dir, 'LICENSE-PACKAGES.txt')
+    library_output_file = os.path.join(exe_dir, 'LICENSE-LIBRARIES.txt')
+
+    lm = LicenseCollector(root_dir=creator.setup_dir,
+                          package_dirs=package_dirs,
+                          library_dirs=library_dirs)
+
+    lm.write_package_licenses(package_output_file)
+    lm.write_library_licenses(library_output_file)
+
+    license_file = 'LICENSE.txt'
+    readme_file = 'README.md'
+
+    shutil.copy(
+        os.path.join(lm.root_dir, license_file),
+        os.path.join(exe_dir, license_file)
+    )
+    shutil.copy(
+        os.path.join(lm.root_dir, readme_file),
+        os.path.join(exe_dir, readme_file)
+    )
+
+
 def update_cx_freeze_config(options):
     platform = PackageCreator.platform
     if platform == 'osx':
@@ -779,34 +1146,34 @@ build_options = {
     "pack": {
         # Patch missing dependencies
         'pack_modules': [
-            ModulePackage('psutil'),
-            ModulePackage('cffi'),
-            ModulePackage('devp2p'),
-            ModulePackage('pycparser'),
-            ModulePackage('Crypto'),
-            ModulePackage('bitcoin'),
-            ModulePackage('click'),
-            ModulePackage('docker'),
-            ModulePackage('websocket'),
-            ModulePackage('PIL'),
-            ModulePackage('PyQt4'),
-            ModulePackage('certifi'),
-            ModulePackage('psutil'),
+            DirPackage('psutil'),
+            DirPackage('cffi'),
+            DirPackage('devp2p'),
+            DirPackage('pycparser'),
+            DirPackage('Crypto'),
+            DirPackage('bitcoin'),
+            DirPackage('click'),
+            DirPackage('docker'),
+            DirPackage('websocket'),
+            DirPackage('PIL'),
+            DirPackage('PyQt4'),
+            DirPackage('certifi'),
+            DirPackage('psutil'),
 
-            ModulePackage('pywintypes', include_platforms=['win']),
-            ModulePackage('win32api', include_platforms=['win']),
-            ModulePackage('win32com', include_platforms=['win']),
-            ModulePackage('winerror', include_platforms=['win']),
+            DirPackage('pywintypes', include_platforms=['win']),
+            DirPackage('win32api', include_platforms=['win']),
+            DirPackage('win32com', include_platforms=['win']),
+            DirPackage('winerror', include_platforms=['win']),
 
-            ModulePackage('secp256k1', exclude_platforms=['win']),
-            ModulePackage('virtualbox', exclude_platforms=['linux']),
-            ModulePackage('vboxapi',
-                          exclude_platforms=['linux'],
-                          location_resolver=_resolve_vboxapi_location),
+            DirPackage('secp256k1', exclude_platforms=['win']),
+            DirPackage('virtualbox', exclude_platforms=['linux']),
+            DirPackage('vboxapi',
+                       exclude_platforms=['linux'],
+                       location_resolver=_resolve_vboxapi_location),
 
-            ModulePackage('encodings', to_lib_dir=False),
-            ModulePackage('ndg.httpsclient', to_lib_dir=True),
-            ModulePackage('zope.interface', to_lib_dir=False),
+            DirPackage('encodings', to_lib_dir=False),
+            DirPackage('ndg.httpsclient', to_lib_dir=True),
+            DirPackage('zope.interface', to_lib_dir=False),
 
             # Standard library files
             "_abcoll", "_weakrefset",
@@ -919,6 +1286,7 @@ build_options = {
             osx_rewrite_python,
             all_assets,
             all_task_collector,
+            all_licenses,
             all_assemble
         ]
     }
