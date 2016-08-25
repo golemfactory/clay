@@ -152,29 +152,25 @@ class LicenseCollector(object):
 
         platform = get_platform()
 
+        if platform != 'linux':
+            raise EnvironmentError("OS unsupported: {}".format(platform))
+
         def write_license(f, p, lib):
             library_path = os.path.join(p, lib)
 
-            if platform == 'linux':
-                if '.so' not in lib.lower():
-                    return
+            if '.so' not in lib.lower():
+                return
 
-                try:
-                    entry = self._get_linux_library_license(lib, library_path)
-                except:
-                    entry = self.LICENSES.get(lib)
+            try:
+                entry = self._get_linux_library_license(lib, library_path)
+            except:
+                entry = self.LICENSES.get(lib)
 
-                    if not entry:
-                        message = "Cannot retrieve a license for library {}.\n" \
-                                  "It most likely comes from one of Python packages.\n" \
-                                  "Please check the modules license file for the proper license.".format(lib)
-                        entry = lib, message, None
-
-            elif platform == 'win':
-                if not lib.lower().endswith('.dll'):
-                    return
-
-                entry = self._get_win_library_license(lib, library_path)
+                if not entry:
+                    message = "Cannot retrieve a license for library {}.\n" \
+                              "It most likely comes from one of Python packages.\n" \
+                              "Please check the modules license file for the proper license.".format(lib)
+                    entry = lib, message, None
 
             package, package_desc, license_file = entry
 
@@ -267,9 +263,6 @@ class LicenseCollector(object):
         license_file = os.path.join('/usr/share/doc', package, 'copyright')
         assert os.path.exists(license_file)
         return package, package_desc, license_file
-
-    def _get_win_library_license(self, library, library_path):
-        return None, None, None
 
     def _get_package_plugin(self, module):
         for k, v in self.MODULE_PLUGINS.iteritems():
@@ -1112,7 +1105,9 @@ def all_licenses(creator, exe_dir, lib_dir, x_dir):
                           library_dirs=library_dirs)
 
     lm.write_package_licenses(package_output_file)
-    lm.write_library_licenses(library_output_file)
+
+    if creator.platform != 'win':
+        lm.write_library_licenses(library_output_file)
 
     license_file = 'LICENSE.txt'
     readme_file = 'README.md'
