@@ -19,6 +19,8 @@ class BenchmarkRunner(LocalComputer):
                                BenchmarkRunner.RUNNER_SUCCESS)
         # probably this could be done differently
         self.benchmark = benchmark
+        self.start_time = None
+        self.end_time = None
         
     def _get_task_thread(self, ctd):
         if ctd.docker_images:

@@ -355,7 +355,6 @@ class TestPreviewUpdater(TempDirFixture):
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
                 pu.update_preview(file1, i)
-            print pu.perfect_match_area_y, res_y * scale_factor
             if int(round(res_y * scale_factor)) != 200:
                 self.assertAlmostEqual(pu.perfect_match_area_y, res_y * scale_factor)
             self.assertTrue(pu.perfectly_placed_subtasks == chunks)

@@ -18,7 +18,7 @@ from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.gui")
 
-frame_renderers = [u"3ds Max Renderer", u"VRay Standalone", u"Blender"]
+frame_renderers = [u"Blender"]
 
 
 def subtasks_priority(sub):
