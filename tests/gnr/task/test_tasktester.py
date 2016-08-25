@@ -41,7 +41,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        self.task.after_test = Mock()
+        self.task.after_test = lambda res, tmp_dir: None
         self.task.query_extra_data_for_test_task = Mock()
 
         tt = TaskTester(self.task, self.path, Mock(), Mock())
