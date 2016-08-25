@@ -169,7 +169,7 @@ class Client(object):
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
 
-        atexit.register(lambda: self.quit())
+        atexit.register(self.quit)
 
     def start(self):
         if self.use_monitor:

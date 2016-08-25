@@ -113,7 +113,7 @@ class DockerTaskThread(TaskThread):
             pass
         except requests.exceptions.BaseHTTPError:
             if self.docker_manager:
-                self.docker_manager.recover_vm_connectivity(lambda: self.job.kill())
+                self.docker_manager.recover_vm_connectivity(self.job.kill)
 
     def _cleanup(self):
         if self.mc:
