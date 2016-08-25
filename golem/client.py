@@ -77,6 +77,9 @@ class ClientTaskComputerEventListener(object):
     def toggle_config_dialog(self, on=True):
         self.client.toggle_config_dialog(on)
 
+    def docker_config_changed(self):
+        self.client.docker_config_changed()
+
 
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
@@ -454,11 +457,12 @@ class Client(object):
         self.rpc_server = rpc_server
         return self.rpc_server.add_service(self)
 
-    def change_config(self, new_config_desc):
+    def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
-        self.task_server.change_config(self.config_desc)
+        if self.task_server:
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -551,6 +555,10 @@ class Client(object):
     def toggle_config_dialog(self, on=True):
         for rpc_client in self.rpc_clients:
             rpc_client.toggle_config_dialog(on)
+
+    def docker_config_changed(self):
+        for rpc_client in self.rpc_clients:
+            rpc_client.docker_config_changed()
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
