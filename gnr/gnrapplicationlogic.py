@@ -516,9 +516,15 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def test_task_computation_success(self, results, est_mem):
+    def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        self.progress_dialog_customizer.show_message(u"Test task computation success!")
+        if msg is not None:
+            from PyQt4.QtGui import QMessageBox
+            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
+            ms_box.exec_()
+            ms_box.show()
+        msg = u"Task tested successfully"
+        self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:

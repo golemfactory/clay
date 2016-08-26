@@ -298,6 +298,7 @@ class LuxTask(RenderingTask):
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
             logger.warning("Couldn't find flm file.")
+        return None
 
     def query_extra_data_for_merge(self):
 

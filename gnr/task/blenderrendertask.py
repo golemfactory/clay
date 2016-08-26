@@ -399,6 +399,28 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
+    def after_test(self, results, tmp_dir):
+        ret = []
+        if results and results.get("data"):
+            for filename in results["data"]:
+                if filename.lower().endswith(".log"):
+                    with open(filename, "r") as fd:
+                        warnings = self.__find_missing_files_warnings(fd.read())
+                        fd.close()
+                        for w in warnings:
+                            if w not in ret:
+                                ret.append(w)
+
+        return ret
+
+    def __find_missing_files_warnings(self, log_content):
+        warnings = []
+        for l in log_content.splitlines():
+            if l.lower().startswith("warning: path ") and l.lower().endswith(" not found"):
+                # extract filename from warning message
+                warnings.append(os.path.basename(l[14:-11]))
+        return warnings
+
     def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)
         file_name, ext = os.path.splitext(file_name)

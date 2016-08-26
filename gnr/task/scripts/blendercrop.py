@@ -17,3 +17,6 @@ for scene in bpy.data.scenes:
 
 #then render:
 bpy.ops.render.render()
+
+#and check if additional files aren't missing
+bpy.ops.file.report_missing_files()
