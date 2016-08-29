@@ -839,8 +839,6 @@ build_options = {
         'copy_libs': {
             'win': [
                 'libeay32.dll',
-                'libgcc_s_dw2-1.dll',
-                'libwinpthread-1.dll',
                 'msvcp120.dll',
                 'msvcr120.dll'
             ],
