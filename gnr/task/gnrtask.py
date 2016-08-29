@@ -104,6 +104,7 @@ class GNRTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
+        self.verification_options = None
 
     def is_docker_task(self):
         return self.header.docker_images is not None
@@ -270,7 +271,7 @@ class GNRTask(Task):
         return filtered_task_results
 
     def after_test(self, results, tmp_dir):
-        pass
+        return None
 
     @handle_key_error
     def should_accept(self, subtask_id):

@@ -41,7 +41,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        self.task.after_test = Mock()
+        self.task.after_test = lambda res, tmp_dir: None
         self.task.query_extra_data_for_test_task = Mock()
 
         tt = TaskTester(self.task, self.path, Mock(), Mock())
@@ -64,6 +64,26 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         tt.error_callback.assert_called_with("Another error")
 
 
+        self.message = ""
+        
+        def success_callback(res, est_mem, msg):
+            self.message = "Success " + msg
+
+        self.task.header.node_name = self.node
+        self.task.header.task_id = self.task_name
+        self.task.root_path = self.path
+        self.task.after_test = lambda res, tmp_dir: ["bla", "ble"]
+        self.task.query_extra_data_for_test_task = Mock()
+
+        tt = TaskTester(self.task, self.path, success_callback, None)
+        tt.tmp_dir = self.path
+        task_thread = TaskThread(result)
+        tt.task_computed(task_thread)
+        self.assertTrue("Success" in self.message)
+        self.assertTrue("Additional data is missing:" in self.message)
+        self.assertTrue("bla" in self.message)
+        self.assertTrue("ble" in self.message)
+        self.assertTrue("Make sure you added all required files to resources." in self.message)
 
 
 

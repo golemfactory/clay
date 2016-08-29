@@ -10,7 +10,7 @@ from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder
 from gnr.task.gnrtask import GNROptions
-from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
+from gnr.task.renderingtask import AcceptClientVerdict
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 from golem.task.taskstate import SubtaskStatus
@@ -398,6 +398,28 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data['script_src'] = script_src
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
+
+    def after_test(self, results, tmp_dir):
+        ret = []
+        if results and results.get("data"):
+            for filename in results["data"]:
+                if filename.lower().endswith(".log"):
+                    with open(filename, "r") as fd:
+                        warnings = self.__find_missing_files_warnings(fd.read())
+                        fd.close()
+                        for w in warnings:
+                            if w not in ret:
+                                ret.append(w)
+
+        return ret
+
+    def __find_missing_files_warnings(self, log_content):
+        warnings = []
+        for l in log_content.splitlines():
+            if l.lower().startswith("warning: path ") and l.lower().endswith(" not found"):
+                # extract filename from warning message
+                warnings.append(os.path.basename(l[14:-11]))
+        return warnings
 
     def __get_frame_num_from_output_file(self, file_):
         file_name = os.path.basename(file_)

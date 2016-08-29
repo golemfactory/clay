@@ -282,8 +282,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
     @inlineCallbacks
-    def change_config(self, cfg_desc):
-        yield self.client.change_config(cfg_desc)
+    def change_config(self, cfg_desc, run_benchmarks=False):
+        yield self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_node_name()
         self.customizer.set_name(u"{}".format(self.node_name))
 
@@ -448,6 +448,9 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer = None
                 self.config_dialog = None
 
+    def docker_config_changed(self):
+        self.customizer.configuration_dialog_customizer.load_data()
+
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
@@ -513,9 +516,15 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def test_task_computation_success(self, results, est_mem):
+    def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        self.progress_dialog_customizer.show_message(u"Test task computation success!")
+        if msg is not None:
+            from PyQt4.QtGui import QMessageBox
+            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
+            ms_box.exec_()
+            ms_box.show()
+        msg = u"Task tested successfully"
+        self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:

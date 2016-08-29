@@ -32,9 +32,15 @@ class TaskTester(LocalComputer):
     def task_computed(self, task_thread):
         if (not task_thread.error) and task_thread.result:
             res, est_mem = task_thread.result
+            message = None
             if res and res.get("data"):
-                self.task.after_test(res, self.tmp_dir)
-                self.success_callback(res, est_mem)
+                missing_files = self.task.after_test(res, self.tmp_dir)
+                if missing_files:
+                    message = u"Additional data is missing:\n"
+                    for w in missing_files:
+                        message += u"    {}\n".format(w)
+                    message += u"\nMake sure you added all required files to resources."
+                self.success_callback(res, est_mem, msg=message)
                 return
 
         logger_msg = self.comp_failed_warning

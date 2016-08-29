@@ -53,6 +53,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
+        
+        self.assertEqual(task.after_test(None, None), None)
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()
