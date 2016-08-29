@@ -41,7 +41,8 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account]
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account,
+                  Stats]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
@@ -182,6 +183,10 @@ class NeighbourLocRank(BaseModel):
         primary_key = CompositeKey('node_id', 'about_node_id')
 
 
+##################
+# NETWORK MODELS #
+##################
+
 class KnownHosts(BaseModel):
     ip_address = CharField()
     port = IntegerField()
@@ -195,9 +200,22 @@ class KnownHosts(BaseModel):
         )
 
 
+##################
+# ACCOUNT MODELS #
+##################
+
 class Account(BaseModel):
     node_id = CharField(unique=True)
     description = TextField(default="")
 
     class Meta:
         database = db
+
+
+class Stats(BaseModel):
+    name = CharField()
+    value = CharField()
+
+    class Meta:
+        database = db
+

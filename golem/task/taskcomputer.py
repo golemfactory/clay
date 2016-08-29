@@ -3,21 +3,44 @@ import os
 import time
 import uuid
 from threading import Lock
-# sys.path.append('../manager')
+
 
 from golem.docker.machine.machine_manager import DockerMachineManager
-from golem.vm.vm import PythonProcVM, PythonTestVM
+from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.model import Stats
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
-from golem.docker.task_thread import DockerTaskThread
+from golem.vm.vm import PythonProcVM, PythonTestVM
+
+
 
 
 logger = logging.getLogger(__name__)
 
 
 class StatsKeeper(object):
+    def __init__(self):
+        self.current_stats = CompStats()
+        self.global_stats = CompStats()
+        self.init_global_stats()
+
+    def init_global_stats(self):
+        for stat in vars(self.global_stats).keys():
+            val = self._retrieve_stat(stat)
+            if val:
+                setattr(self.global_stats, stat, val)
+
+    def _retrieve_stat(self, name):
+        try:
+            stat, _ = Stats.get_or_create(name=name)
+            return int(stat.value)
+        except Exception as e:
+            logger.warning(u"Cannot retrieve {} from  database: {}".format(name, e))
+
+
+class CompStats(object):
     def __init__(self):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
