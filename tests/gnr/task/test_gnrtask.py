@@ -3,11 +3,9 @@ import os
 import zlib
 import cPickle as pickle
 
-from mock import Mock
-
 from golem.core.fileshelper import outer_dir_path
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import result_types
+from golem.task.taskbase import result_types, TaskEventListener
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -29,7 +27,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
         subtask_id = "xxyyzz"
 
-        task.subtasks_given[subtask_id] = Mock()
+        task.subtasks_given[subtask_id] = {}
         self.assertEqual(task.get_stdout(subtask_id), "")
         self.assertEqual(task.get_stderr(subtask_id), "")
         self.assertEqual(task.get_results(subtask_id), [])
@@ -55,6 +53,33 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stderr(subtask_id), files[1])
         
         self.assertEqual(task.after_test(None, None), None)
+
+        assert len(task.listeners) == 0
+        class TestListener(TaskEventListener):
+            def __init__(self):
+                super(TestListener, self).__init__()
+                self.notify_called = False
+                self.task_id = None
+
+            def notify_update_task(self, task_id):
+                self.notify_called = True
+                self.task_id = task_id
+
+        l1 = TestListener()
+        l2 = TestListener()
+        l3 = TestListener()
+        task.register_listener(l1)
+        task.register_listener(l2)
+        task.register_listener(l3)
+        task.unregister_listener(l2)
+        task.notify_update_task()
+        assert not l2.notify_called
+        assert l1.notify_called
+        assert l3.notify_called
+        assert l1.task_id == "xyz"
+        assert l3.task_id == "xyz"
+        assert l2.task_id is None
+
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()
