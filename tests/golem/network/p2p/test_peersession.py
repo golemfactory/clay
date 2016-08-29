@@ -42,6 +42,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 
         conn = MagicMock()
         conf = MagicMock()
+        conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
         keys_auth = KeysAuth(self.path)
