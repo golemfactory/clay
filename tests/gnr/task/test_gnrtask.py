@@ -1,7 +1,8 @@
+import cPickle as pickle
 import shutil
 import os
 import zlib
-import cPickle as pickle
+from copy import copy
 
 from golem.core.fileshelper import outer_dir_path
 from golem.resource.dirmanager import DirManager
@@ -93,6 +94,8 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3]+"err.log")
         files[3] += "err.log"
 
+        files_copy = copy(files)
+
         task.interpret_task_results(subtask_id, files, result_types["files"])
 
         files[0] = outer_dir_path(files[0])
@@ -103,9 +106,27 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
-        for f in files:
-            os.remove(f)
-            self.assertFalse(os.path.isfile(f))
+        for f in files_copy:
+            with open(f, 'w'):
+                pass
+
+        task.interpret_task_results(subtask_id, files_copy, result_types["files"])
+        self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
+        for f in files_copy:
+            with open(f, 'w'):
+                pass
+        os.remove(files[0])
+        os.makedirs(files[0])
+        with self.assertLogs(logger, level="WARNING"):
+            task.interpret_task_results(subtask_id, files_copy, result_types["files"])
+        assert task.results[subtask_id] == [files[1], files[4]]
+
+        os.removedirs(files[0])
+
+        for f in files + files_copy:
+            if os.path.isfile(f):
+                os.remove(f)
+            assert not os.path.isfile(f)
 
         subtask_id = "aabbcc"
         files_dir = os.path.join(task.tmp_dir, subtask_id)
