@@ -169,6 +169,22 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_status == SubtaskStatus.finished
         assert tm.tasks_states["xyz"].status == TaskStatus.finished
 
+        th.task_id = "abc"
+        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"], verify_subtasks={"aabbcc": True})
+        tm.add_new_task(t2)
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
+        assert not wrong_task
+        assert ctd.subtask_id == "aabbcc"
+        assert not should_wait
+        tm.restart_subtask("aabbcc")
+        ss = tm.tasks_states["abc"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.restarted
+        assert not tm.computed_task_received("aabbcc", [], 0)
+        assert ss.subtask_progress == 0.0
+        assert ss.subtask_status == SubtaskStatus.restarted
+        assert not t2.finished["aabbcc"]
+
+
         th.task_id = "qwe"
         t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
         tm.add_new_task(t3)

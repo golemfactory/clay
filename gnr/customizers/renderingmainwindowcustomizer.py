@@ -23,6 +23,7 @@ frame_renderers = [u"Blender"]
 
 def subtasks_priority(sub):
     priority = {
+        SubtaskStatus.restarted: 6,
         SubtaskStatus.failure: 5,
         SubtaskStatus.resent: 4,
         SubtaskStatus.finished: 3,
