@@ -4,11 +4,10 @@ import time
 import uuid
 from threading import Lock
 
-from golem.core.common import HandleAttributeError
+from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
-from golem.model import Stats
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
@@ -16,57 +15,6 @@ from golem.vm.vm import PythonProcVM, PythonTestVM
 
 
 logger = logging.getLogger(__name__)
-
-
-def log_attr_error(*args, **kwargs):
-    logger.warning("Unknown stats {}".format(args[1]))
-
-
-class StatsKeeper(object):
-
-    handle_attribute_error = HandleAttributeError(log_attr_error)
-
-    def __init__(self):
-        self.session_stats = CompStats()
-        self.global_stats = CompStats()
-        self.init_global_stats()
-
-    @handle_attribute_error
-    def init_global_stats(self):
-        for stat in vars(self.global_stats).keys():
-            val = self._retrieve_stat(stat)
-            if val:
-                setattr(self.global_stats, stat, val)
-
-    def get_stats(self, name):
-        stats = self._get_stat(name)
-        if stats is None:
-            stats = (None, None)
-        return stats
-
-    @handle_attribute_error
-    def increase_stat(self, stat_name):
-        val = getattr(self.session_stats, stat_name)
-        setattr(self.session_stats, stat_name, val + 1)
-        global_val = self._retrieve_stat(stat_name)
-        if global_val is not None:
-            setattr(self.global_stats, stat_name, global_val + 1)
-            try:
-                Stats.update(value=u"{}".format(global_val+1)).where(Stats.name == stat_name).execute()
-            except Exception as err:
-                logger.error(u"Exception occur while updating stat {}: {}".format(stat_name, err))
-
-    @staticmethod
-    def _retrieve_stat(name):
-        try:
-            stat, _ = Stats.get_or_create(name=name, defaults={'value': '0'})
-            return int(stat.value)
-        except Exception as e:
-            logger.warning(u"Cannot retrieve {} from  database: {}".format(name, e))
-
-    @handle_attribute_error
-    def _get_stat(self, name):
-        return getattr(self.session_stats, name), getattr(self.global_stats, name)
 
 
 class CompStats(object):
@@ -115,7 +63,7 @@ class TaskComputer(object):
         self.change_config(task_server.config_desc,
                            in_background=False)
 
-        self.stats = StatsKeeper()
+        self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
