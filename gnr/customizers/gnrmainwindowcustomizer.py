@@ -40,6 +40,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
         self.new_task_dialog_customizer = None
+        self.configuration_dialog_customizer = None
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
@@ -49,7 +50,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.timer.timeout.connect(self.update_time)
 
     def init_config(self):
-        ConfigurationDialogCustomizer(self.gui, self.logic)
+        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
         self._set_new_task_dialog_customizer()
 
     def set_options(self, cfg_desc, id_, eth_address, description):

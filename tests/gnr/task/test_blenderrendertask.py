@@ -10,7 +10,8 @@ from PIL import Image
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
-                                        BlenderRendererOptions, PreviewUpdater)
+                                        BlenderRendererOptions, PreviewUpdater, get_task_border,
+                                        generate_expected_offsets, get_task_num_from_pixels)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -134,6 +135,41 @@ class TestBlenderTask(TempDirFixture):
         dm = DirManager(self.path)
         self.bt.initialize(dm)
 
+    def test_after_test(self):
+        self.assertEqual(self.bt.after_test({}, None), [])
+        self.assertEqual(self.bt.after_test({"notData":[]}, None), [])
+        
+        outlog = self.temp_file_name("out.log")
+        errlog = self.temp_file_name("err.log")
+        
+        fd_out = open(outlog, 'w')
+        fd_out.close()
+        
+        fd_err = open(errlog, 'w')
+        fd_err.close()
+        
+        results = {"data": {outlog, errlog}}
+        warnings = self.bt.after_test(results, None)
+        
+        self.assertEqual(warnings, [])
+        
+
+        fd_out = open(outlog, 'w')
+        fd_out.write("Warning: path 'example/directory/to/file/f1.png' not found\nwarning: Path 'example/directory/to/file2.png' not fouND")
+        fd_out.close()
+        
+        fd_err = open(errlog, 'w')
+        fd_err.write("Warning: path 'example/directory/to/another/file3.png' not found\nexample/to/file4.png")
+        fd_err.close()
+        
+        results = {"data": {outlog, errlog}}
+        warnings = self.bt.after_test(results, None)
+        
+        self.assertTrue("f1.png" in warnings)
+        self.assertTrue("file2.png" in warnings)
+        self.assertTrue("file3.png" in warnings)
+        self.assertFalse("file4.png" in warnings)
+        
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
@@ -354,7 +390,6 @@ class TestPreviewUpdater(TempDirFixture):
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
                 pu.update_preview(file1, i)
-            print pu.perfect_match_area_y, res_y * scale_factor
             if int(round(res_y * scale_factor)) != 200:
                 self.assertAlmostEqual(pu.perfect_match_area_y, res_y * scale_factor)
             self.assertTrue(pu.perfectly_placed_subtasks == chunks)
@@ -368,3 +403,36 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
+
+class TestHelpers(unittest.TestCase):
+    def test_get_task_border(self):
+        offsets = generate_expected_offsets(30, 800, 600)
+        for k in range(1, 31):
+            border = get_task_border(k, k, 30, res_x=800, res_y=600)
+            self.assertTrue((min(border) == (0, offsets[k])))
+            self.assertTrue(max(border) == (240, offsets[k + 1] - 1))
+        
+        offsets = generate_expected_offsets(15, 800, 600)
+        for k in range(1, 31):
+            border = get_task_border(k, k, 30, res_x=800, res_y=600, use_frames=True, frames=2)
+            i = (k - 1) % 15 + 1
+            self.assertTrue(min(border) == (0, offsets[i]))
+            self.assertTrue(max(border) == (260, offsets[i + 1] - 1))
+        border = get_task_border(2, 2, 30, use_frames=True, frames=30)
+        self.assertTrue(border == [])
+
+    def test_get_task_num_from_pixels(self):
+        offsets = generate_expected_offsets(30, 1920, 1080)
+        frame_offsets = generate_expected_offsets(15, 1920, 1080)
+        for k in range(1, 31):
+            num = get_task_num_from_pixels(6, offsets[k] + 1, 30, res_x=1920, res_y=1080)
+            self.assertTrue(num == k)
+            
+            num = get_task_num_from_pixels(1, 0, 30, res_x=1920, res_y=1080, use_frames=True, frames=30, frame_num=k)
+            self.assertTrue(num == k)
+            
+            i = (k - 1) % 15 + 1
+            num = get_task_num_from_pixels(1, frame_offsets[i] + 3, 30, res_x=1920, res_y=1080, use_frames=True, frames=2, frame_num=(k - 1)/15 + 1)
+            self.assertTrue(num == k)
+            
+        

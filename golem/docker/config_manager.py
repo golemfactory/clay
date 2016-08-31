@@ -56,7 +56,12 @@ class DockerConfigManager(object):
                 host_config['mem_limit'] = int(max_memory_size) * 1000
 
         self.container_host_config.update(host_config)
-        DockerTaskThread.container_host_config = self.container_host_config
+
+    @classmethod
+    def install(cls, *args, **kwargs):
+        docker_manager = cls(*args, **kwargs)
+        DockerTaskThread.docker_manager = docker_manager
+        return docker_manager
 
     @contextmanager
     def _try(self):

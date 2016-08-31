@@ -34,6 +34,26 @@ class PaymentsDialogCustomizer(Customizer):
         for col in range(len(income_table_elem.cols)):
             self.gui.ui.incomesTable.setItem(current_row_count, col, income_table_elem.get_column_item(col))
 
+class SmartTableItem(QTableWidgetItem):
+    def __lt__(self, other):
+        t1 = str(self.text())
+        t2 = str(other.text())
+        for postfix in ['ETH', '%']:
+            if t1.endswith(postfix) or t2.endswith(postfix):
+                l = len(postfix)
+                t1 = self.to_float(t1[:-l])
+                t2 = self.to_float(t2[:-l])
+                return t1 < t2
+        return t1 < t2
+
+    @staticmethod
+    def to_float(t):
+        try:
+            return float(t)
+        except Exception:
+            return 0.0
+            
+            
 
 class PaymentTableElem(object):
     def __init__(self, payment_info):
@@ -41,11 +61,11 @@ class PaymentTableElem(object):
         value = payment_info["value"]
         fee = "{:.1f}%".format(float(fee * 100) / value) if fee else ""
 
-        subtask = QTableWidgetItem(payment_info["subtask"])
-        payee = QTableWidgetItem(payment_info["payee"].encode('hex'))
-        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
-        status = QTableWidgetItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
-        fee = QTableWidgetItem(fee)
+        subtask = SmartTableItem(payment_info["subtask"])
+        payee = SmartTableItem(payment_info["payee"].encode('hex'))
+        value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
+        status = SmartTableItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
+        fee = SmartTableItem(fee)
         self.cols = [subtask, payee, status, value, fee]
 
     def get_column_item(self, col):
@@ -55,10 +75,10 @@ class PaymentTableElem(object):
 class IncomeTableElem(object):
     def __init__(self, income_info):
         value = income_info["value"]
-        payer = QTableWidgetItem(income_info["payer"].encode('hex'))
-        status = QTableWidgetItem(str(income_info["status"]).replace("PaymentStatus.", ""))
-        value = QTableWidgetItem("{:.6f} ETH".format(value / denoms.ether))
-        block_number = QTableWidgetItem(str(income_info["block_number"]))
+        payer = SmartTableItem(income_info["payer"].encode('hex'))
+        status = SmartTableItem(str(income_info["status"]).replace("PaymentStatus.", ""))
+        value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
+        block_number = SmartTableItem(str(income_info["block_number"]))
         self.cols = [payer, status, value, block_number]
 
     def get_column_item(self, col):

@@ -34,6 +34,7 @@ class ConfigurationDialogCustomizer(Customizer):
             self.__load_advance_config(config_desc)
             self.__load_resource_config()
             self.__load_payment_config(config_desc)
+            self.docker_config_changed = False
 
         self.logic.get_config().addCallback(load)
 
@@ -63,6 +64,14 @@ class ConfigurationDialogCustomizer(Customizer):
 
         QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__recount_performance)
+        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__docker_config_changed)
+               
+        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageComboBox, QtCore.SIGNAL("currentIndexChanged(QString)"),
+                               self.__docker_config_changed)
+        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
+                               self.__docker_config_changed)
+        
 
         self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
         self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
@@ -82,6 +91,10 @@ class ConfigurationDialogCustomizer(Customizer):
                                self.__check_eth_account)
 
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
+
+    def __docker_config_changed(self):
+        self.docker_config_changed = True
+        
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
@@ -267,13 +280,19 @@ class ConfigurationDialogCustomizer(Customizer):
             self.gui.ui.requestingTrustSlider.setValue(trust)
         except ValueError:
             return
+        
 
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
+        
         self.__read_basic_config(cfg_desc)
         self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
-        self.logic.change_config(cfg_desc)
+        self.logic.change_config(cfg_desc, run_benchmarks=self.docker_config_changed)
+        self.load_data()
+        self.docker_config_changed = False
+        
+
 
     def __read_basic_config(self, cfg_desc):
         cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())

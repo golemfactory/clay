@@ -154,7 +154,8 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture):
     def setUp(self):
         super(TestGNRApplicationLogicWithClient, self).setUp()
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False)
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
 
     def tearDown(self):
         self.client.quit()

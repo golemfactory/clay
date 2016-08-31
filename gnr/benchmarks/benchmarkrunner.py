@@ -3,8 +3,6 @@ import time
 
 from gnr.task.localcomputer import LocalComputer
 
-from golem.task.taskcomputer import PyTestTaskThread
-
 
 logger = logging.getLogger("gnr.benchmarks")
 
@@ -21,6 +19,8 @@ class BenchmarkRunner(LocalComputer):
                                BenchmarkRunner.RUNNER_SUCCESS)
         # probably this could be done differently
         self.benchmark = benchmark
+        self.start_time = None
+        self.end_time = None
         
     def _get_task_thread(self, ctd):
         if ctd.docker_images:
@@ -32,6 +32,8 @@ class BenchmarkRunner(LocalComputer):
         self.start_time = time.time()
         logger.debug("Started at {}".format(self.start_time))
         LocalComputer.run(self)
+        if self.tt:
+            self.tt.join()
     
     def task_computed(self, task_thread):
         self.end_time = time.time()

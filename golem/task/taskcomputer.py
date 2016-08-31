@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import os
 import uuid
 from threading import Lock
 # sys.path.append('../manager')
@@ -12,6 +13,16 @@ from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
 from golem.docker.task_thread import DockerTaskThread
+
+from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
+from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
+from gnr.renderingtaskstate import RenderingTaskState
+from golem.task.taskstate import TaskStatus
+from golem.task.taskbase import Task
+from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from gnr.task.luxrendertask import LuxRenderTaskBuilder
+
 
 
 logger = logging.getLogger(__name__)
@@ -58,10 +69,23 @@ class TaskComputer(object):
         self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerMachineManager()
+        self.docker_manager = DockerMachineManager.install()
+        try:
+            lux_perf = float(task_server.config_desc.estimated_lux_performance)
+            blender_perf = float(task_server.config_desc.estimated_blender_performance)
+        except:
+            lux_perf = 0
+            blender_perf = 0
+        
+        if int(lux_perf) == 0 or int(blender_perf) == 0:
+            run_benchmarks = True
+        else:
+            run_benchmarks = False
+
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
-                           in_background=False)
+                           in_background=False, 
+                           run_benchmarks=run_benchmarks)
 
         self.stats = StatsKeeper()
 
@@ -205,19 +229,72 @@ class TaskComputer(object):
 
         return ret
 
-    def change_config(self, config_desc, in_background=True):
+    def change_config(self, config_desc, in_background=True, run_benchmarks=False):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_timeout = config_desc.waiting_for_task_timeout
         self.waiting_for_task_session_timeout = config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks
-        self.change_docker_config(config_desc, in_background)
+        self.change_docker_config(config_desc, run_benchmarks, in_background)
+    
+    def _validate_task_state(self, task_state):
+        td = task_state.definition
+        if not os.path.exists(td.main_program_file):
+            logger.error("Main program file does not exist: {}".format(td.main_program_file))
+            return False
+        return True
 
-    def change_docker_config(self, config_desc, in_background=True):
+    def run_benchmark(self, benchmark, task_builder, datadir, node_name, success_callback, error_callback):
+        task_state = RenderingTaskState()
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = benchmark.query_benchmark_task_definition()
+        self._validate_task_state(task_state)
+        builder = task_builder(node_name, task_state.definition, datadir, self.dir_manager)
+        t = Task.build_task(builder)
+        br = BenchmarkRunner(t, datadir, success_callback, error_callback, benchmark)
+        br.run()
+    
+    def run_benchmarks(self):
+        def error_callback(err_msg):
+            logger.error("Unable to run benchmark: {}".format(err_msg))
+        
+        def lux_success_callback(performance):
+            cfg_desc = client.config_desc
+            cfg_desc.estimated_lux_performance = performance
+            client.change_config(cfg_desc)
+            self.docker_config_changed()
+            
+        def blender_success_callback(performance):
+            cfg_desc = client.config_desc
+            cfg_desc.estimated_blender_performance = performance
+            client.change_config(cfg_desc)
+            self.docker_config_changed()
+        
+        client = self.task_server.client
+        node_name = client.get_node_name()
+        datadir = client.datadir
+        
+        lux_benchmark = LuxBenchmark()
+        lux_builder = LuxRenderTaskBuilder
+        self.run_benchmark(lux_benchmark, lux_builder, datadir, node_name, lux_success_callback, error_callback)
+        
+        blender_benchmark = BlenderBenchmark()
+        blender_builder = BlenderRenderTaskBuilder
+        self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, blender_success_callback, error_callback)
+
+    def docker_config_changed(self):
+        for l in self.listeners:
+            l.docker_config_changed()
+        
+    def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
+        if not dm.docker_machine_available and run_benchmarks:
+            self.run_benchmarks()
+            return
+        
         if dm.docker_machine_available and self.use_docker_machine_manager:
 
             self.toggle_config_dialog(True)
@@ -226,6 +303,8 @@ class TaskComputer(object):
                 return self.counting_task
 
             def done_callback():
+                if run_benchmarks:
+                    self.run_benchmarks()
                 logger.debug("Resuming new task computation")
                 self.toggle_config_dialog(False)
                 self.runnable = True
@@ -315,7 +394,6 @@ class TaskComputer(object):
             self.counting_task = None
             return
 
-        tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
 

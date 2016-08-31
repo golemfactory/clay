@@ -298,6 +298,7 @@ class LuxTask(RenderingTask):
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
             logger.warning("Couldn't find flm file.")
+        return None
 
     def query_extra_data_for_merge(self):
 
@@ -381,6 +382,9 @@ class LuxTask(RenderingTask):
             self.__update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
+    
+    def _update_task_preview(self):
+        pass
 
     @RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
@@ -449,7 +453,7 @@ class LuxTask(RenderingTask):
             except (IOError, OSError) as err:
                 logger.warning("Couldn't rename and copy img file. {}".format(err))
 
-        self.notify_update_task(self.header.task_id)
+        self.notify_update_task()
 
     def __final_img_error(self, error):
         logger.error("Cannot generate final image: {}".format(error))
