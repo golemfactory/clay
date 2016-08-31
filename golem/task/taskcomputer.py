@@ -4,7 +4,7 @@ import time
 import uuid
 from threading import Lock
 
-
+from golem.core.common import HandleAttributeError
 from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
@@ -15,29 +15,58 @@ from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 
-
-
 logger = logging.getLogger(__name__)
 
 
+def log_attr_error(*args, **kwargs):
+    logger.warning("Unknown stats {}".format(args[1]))
+
+
 class StatsKeeper(object):
+
+    handle_attribute_error = HandleAttributeError(log_attr_error)
+
     def __init__(self):
-        self.current_stats = CompStats()
+        self.session_stats = CompStats()
         self.global_stats = CompStats()
         self.init_global_stats()
 
+    @handle_attribute_error
     def init_global_stats(self):
         for stat in vars(self.global_stats).keys():
             val = self._retrieve_stat(stat)
             if val:
                 setattr(self.global_stats, stat, val)
 
-    def _retrieve_stat(self, name):
+    def get_stats(self, name):
+        stats = self._get_stat(name)
+        if stats is None:
+            stats = (None, None)
+        return stats
+
+    @handle_attribute_error
+    def increase_stat(self, stat_name):
+        val = getattr(self.session_stats, stat_name)
+        setattr(self.session_stats, stat_name, val + 1)
+        global_val = self._retrieve_stat(stat_name)
+        if global_val is not None:
+            setattr(self.global_stats, stat_name, global_val + 1)
+            try:
+                Stats.update(value=u"{}".format(global_val+1)).where(Stats.name == stat_name).execute()
+            except Exception as err:
+                logger.error(u"Exception occur while updating stat {}: {}".format(stat_name, err))
+
+    @staticmethod
+    def _retrieve_stat(name):
         try:
-            stat, _ = Stats.get_or_create(name=name)
+            stat, _ = Stats.get_or_create(name=name, defaults={'value': '0'})
             return int(stat.value)
         except Exception as e:
             logger.warning(u"Cannot retrieve {} from  database: {}".format(name, e))
+
+    @handle_attribute_error
+    def _get_stat(self, name):
+        return getattr(self.session_stats, name), getattr(self.global_stats, name)
 
 
 class CompStats(object):
@@ -184,20 +213,20 @@ class TaskComputer(object):
 
         if task_thread.error or task_thread.error_msg:
             if "Task timed out" in task_thread.error_msg:
-                self.stats.tasks_with_timeout += 1
+                self.stats.increase_stat('tasks_with_timeout')
             else:
-                self.stats.tasks_with_errors += 1
+                self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
             logger.info("Task {} computed".format(subtask_id))
-            self.stats.computed_tasks += 1
+            self.stats.increase_stat('computed_tasks')
             self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                           subtask.return_address, subtask.return_port, subtask.key_id,
                                           subtask.task_owner, self.node_name)
         else:
-            self.stats.tasks_with_errors += 1
+            self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)

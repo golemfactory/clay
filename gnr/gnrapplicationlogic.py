@@ -256,9 +256,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
         self.customizer.gui.ui.supportedTasks.setText(str(supported))
-        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
+
+        self.customizer.gui.ui.computedTasks.setText(self._format_stats_message(computed_tasks))
+        self.customizer.gui.ui.tasksWithErrors.setText(self._format_stats_message(tasks_with_errors))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(self._format_stats_message(tasks_with_timeout))
 
     @inlineCallbacks
     def get_config(self):
@@ -589,3 +590,11 @@ class GNRApplicationLogic(QtCore.QObject):
             self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
+
+    @staticmethod
+    def _format_stats_message(stat):
+        try:
+            return u"Session: {}; All time: {}".format(stat[0], stat[1])
+        except (IndexError, TypeError) as err:
+            logger.warning("Problem with stat formatin {}".format(err))
+            return u"Error"

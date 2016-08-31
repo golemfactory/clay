@@ -374,13 +374,13 @@ class Client(object):
         return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
-        return self.task_server.task_computer.stats.computed_tasks
+        return self.task_server.task_computer.stats.get_stats('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_timeout
+        return self.task_server.task_computer.stats.get_stats('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_errors
+        return self.task_server.task_computer.stats.get_stats('tasks_with_errors')
 
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
@@ -578,8 +578,8 @@ class Client(object):
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
-                                                   self.get_computed_task_count(), self.get_error_task_count(),
-                                                   self.get_timeout_task_count())
+                                                   self.get_computed_task_count()[0], self.get_error_task_count()[0],
+                                                   self.get_timeout_task_count()[0])
                     self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
                                                            self.task_server.task_computer.counting_task,
                                                            self.task_server.task_computer.task_requested,
