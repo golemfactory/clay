@@ -25,7 +25,7 @@ class PaymentsDatabase(object):
         try:
             return Payment.get(Payment.subtask == subtask_id).value
         except Payment.DoesNotExist:
-            logger.warning("Can't get payment value - payment does not exist")
+            logger.debug("Can't get payment value - payment does not exist")
             return 0
 
     def add_payment(self, payment_info):
