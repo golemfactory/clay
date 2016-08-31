@@ -69,7 +69,7 @@ class TaskComputer(object):
         self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerMachineManager()
+        self.docker_manager = DockerMachineManager.install()
         try:
             lux_perf = float(task_server.config_desc.estimated_lux_performance)
             blender_perf = float(task_server.config_desc.estimated_blender_performance)
@@ -81,6 +81,7 @@ class TaskComputer(object):
             run_benchmarks = True
         else:
             run_benchmarks = False
+
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
                            in_background=False, 
@@ -393,7 +394,6 @@ class TaskComputer(object):
             self.counting_task = None
             return
 
-        tt.setDaemon(True)
         self.current_computations.append(tt)
         tt.start()
 

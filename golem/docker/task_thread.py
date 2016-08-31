@@ -2,7 +2,6 @@ import logging
 import os
 
 import requests
-
 from golem.docker.job import DockerJob
 from golem.task.taskthread import TaskThread
 from golem.vm.memorychecker import MemoryChecker
@@ -21,7 +20,7 @@ class DockerTaskThread(TaskThread):
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
 
-    container_host_config = None
+    docker_manager = None
 
     def __init__(self, task_computer, subtask_id, docker_images,
                  orig_script_dir, src_code, extra_data, short_desc,
@@ -40,18 +39,13 @@ class DockerTaskThread(TaskThread):
                 break
 
         self.job = None
+        self.mc = None
         self.check_mem = check_mem
-
-    def _fail(self, error_obj):
-        logger.error("Task computing error: {}".format(error_obj))
-        self.error = True
-        self.error_msg = str(error_obj)
-        self.done = True
-        self.task_computer.task_computed(self)
 
     def run(self):
         if not self.image:
             self._fail("None of the Docker images is available")
+            self._cleanup()
             return
         try:
             work_dir = os.path.join(self.tmp_path, "work")
@@ -62,26 +56,27 @@ class DockerTaskThread(TaskThread):
             if not os.path.exists(output_dir):
                 os.mkdir(output_dir)
 
+            if self.docker_manager:
+                host_config = self.docker_manager.container_host_config
+            else:
+                host_config = None
+
             with DockerJob(self.image, self.src_code, self.extra_data,
                            self.res_path, work_dir, output_dir,
-                           host_config=self.container_host_config) as job:
+                           host_config=host_config) as job:
                 self.job = job
                 if self.check_mem:
-                    mc = MemoryChecker()
-                    mc.start()
+                    self.mc = MemoryChecker()
+                    self.mc.start()
                 self.job.start()
-                if self.use_timeout:
-                    exit_code = self.job.wait(self.task_timeout)
-                else:
-                    exit_code = self.job.wait()
-
+                exit_code = self.job.wait()
                 # Get stdout and stderr
                 stdout_file = os.path.join(output_dir, self.STDOUT_FILE)
                 stderr_file = os.path.join(output_dir, self.STDERR_FILE)
                 self.job.dump_logs(stdout_file, stderr_file)
 
-                if self.check_mem:
-                    estm_mem = mc.stop()
+                if self.mc:
+                    estm_mem = self.mc.stop()
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
                     # TODO: this only collects top-level files, what if there
@@ -104,13 +99,22 @@ class DockerTaskThread(TaskThread):
                 self._fail(exc)
         except Exception as exc:
             self._fail(exc)
+        finally:
+            self._cleanup()
 
     def get_progress(self):
         # TODO: make the container update some status file?
         return 0.0
 
     def end_comp(self):
-        pass
+        try:
+            self.job.kill()
+        except AttributeError:
+            pass
+        except requests.exceptions.BaseHTTPError:
+            if self.docker_manager:
+                self.docker_manager.recover_vm_connectivity(self.job.kill)
 
-    def check_timeout(self):
-        pass
+    def _cleanup(self):
+        if self.mc:
+            self.mc.stop()

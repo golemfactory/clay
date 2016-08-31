@@ -1,3 +1,4 @@
+import atexit
 import logging
 import sys
 import time
@@ -167,6 +168,8 @@ class Client(object):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
+
+        atexit.register(self.quit)
 
     def start(self):
         if self.use_monitor:
