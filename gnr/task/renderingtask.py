@@ -196,7 +196,7 @@ class RenderingTask(GNRTask):
         for sub in self.subtasks_given.values():
             if sub['status'] == SubtaskStatus.starting:
                 self._mark_task_area(sub, img_task, sent_color)
-            if sub['status'] == SubtaskStatus.failure:
+            if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
         img_task.save(self.preview_task_file_path, "BMP")
@@ -245,7 +245,7 @@ class RenderingTask(GNRTask):
             return start_task, end_task
         else:
             for sub in self.subtasks_given.values():
-                if sub['status'] == SubtaskStatus.failure:
+                if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']
                     start_task = sub['start_task']

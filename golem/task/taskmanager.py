@@ -371,7 +371,7 @@ class TaskManager(TaskEventListener):
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing
-        self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.failure
+        self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.restarted
         self.tasks_states[task_id].subtask_states[subtask_id].stderr = "[GOLEM] Restarted"
 
         self.notice_task_updated(task_id)
