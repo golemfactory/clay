@@ -1,4 +1,5 @@
 import logging
+from threading import Lock
 
 from golem.core.common import HandleAttributeError
 from golem.model import Stats
@@ -15,6 +16,7 @@ class StatsKeeper(object):
     handle_attribute_error = HandleAttributeError(log_attr_error)
 
     def __init__(self, stat_class, default_value=''):
+        self._lock = Lock()
         self.session_stats = stat_class()
         self.global_stats = stat_class()
         self.default = default_value
@@ -23,9 +25,10 @@ class StatsKeeper(object):
     @handle_attribute_error
     def init_global_stats(self):
         for stat in vars(self.global_stats).keys():
-            val = self._retrieve_stat(stat)
-            if val:
-                setattr(self.global_stats, stat, val)
+            with self._lock:
+                val = self._retrieve_stat(stat)
+                if val:
+                    setattr(self.global_stats, stat, val)
 
     def get_stats(self, name):
         stats = self._get_stat(name)
@@ -52,15 +55,16 @@ class IntStatsKeeper(StatsKeeper):
 
     @StatsKeeper.handle_attribute_error
     def increase_stat(self, stat_name):
-        val = getattr(self.session_stats, stat_name)
-        setattr(self.session_stats, stat_name, val + 1)
-        global_val = self._retrieve_stat(stat_name)
-        if global_val is not None:
-            setattr(self.global_stats, stat_name, global_val + 1)
-            try:
-                Stats.update(value=u"{}".format(global_val+1)).where(Stats.name == stat_name).execute()
-            except Exception as err:
-                logger.error(u"Exception occur while updating stat {}: {}".format(stat_name, err))
+        with self._lock:
+            val = getattr(self.session_stats, stat_name)
+            setattr(self.session_stats, stat_name, val + 1)
+            global_val = self._retrieve_stat(stat_name)
+            if global_val is not None:
+                setattr(self.global_stats, stat_name, global_val + 1)
+                try:
+                    Stats.update(value=u"{}".format(global_val+1)).where(Stats.name == stat_name).execute()
+                except Exception as err:
+                    logger.error(u"Exception occur while updating stat {}: {}".format(stat_name, err))
 
     def _retrieve_stat(self, name):
         try:

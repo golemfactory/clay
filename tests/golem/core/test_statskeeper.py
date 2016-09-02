@@ -1,3 +1,5 @@
+from threading import Thread
+
 from golem.core.statskeeper import IntStatsKeeper
 from golem.task.taskcomputer import CompStats
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -33,3 +35,26 @@ class TestStatsKeeper(TestWithDatabase):
         self._compare_stats(st2, [5, 0, 0, 2, 0, 0])
         st.increase_stat("computed_tasks")
         self._compare_stats(st, [6, 0, 0, 4, 0, 0])
+
+    def test_for_race_conditions(self):
+        n_threads = 10
+        n_updates = 5
+        n_expected = n_threads * n_updates
+
+        sk = IntStatsKeeper(CompStats)
+
+        def increase_stat():
+            n = 0
+            while n < n_updates:
+                sk.increase_stat("computed_tasks")
+                n += 1
+
+        threads = [Thread(target=increase_stat) for _ in xrange(0, n_threads)]
+
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert sk.session_stats.computed_tasks == n_expected
+        assert sk.global_stats.computed_tasks == n_expected
