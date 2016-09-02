@@ -1,7 +1,6 @@
 import unittest
 
 import mock
-
 from golem.docker.machine.machine_manager import DockerMachineManager
 
 MACHINE_NAME = 'default'
@@ -159,23 +158,45 @@ class TestDockerMachineManager(unittest.TestCase):
         assert dmm.stop_vm(MACHINE_NAME)
 
     def test_check_environment(self):
-        dmm = MockDockerMachineManager()
+        MockDockerMachineManager._DockerMachineManager__import_virtualbox = mock.Mock()
 
-        dmm.check_environment()
+        dmm = MockDockerMachineManager()
         assert dmm.docker_machine_available
 
-        get_images = dmm.docker_machine_images
-        dmm.docker_machine_images = lambda x: []
-
+        dmm = MockDockerMachineManager()
+        dmm.docker_machine_images = lambda *_: []
         dmm.check_environment()
         assert not dmm.docker_machine_available
 
-        dmm.docker_machine_images = get_images
-        dmm.docker_machine = MACHINE_NAME
-        dmm.virtual_box.version = None
+        mock_virtualbox_module = mock.MagicMock()
 
-        dmm.check_environment()
-        assert not dmm.docker_machine_available
+        with mock.patch.dict('sys.modules', **{
+            'virtualbox': mock_virtualbox_module,
+            'virtualbox.library': mock_virtualbox_module
+        }):
+            mock_virtualbox = mock.Mock()
+            mock_virtualbox.version = None
+            mock_virtualbox_module.VirtualBox.return_value = mock_virtualbox
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.check_environment()
+            assert not dmm.docker_machine_available
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = None
+            dmm.check_environment()
+            assert not dmm.docker_machine_available
+
+        with mock.patch.dict('sys.modules', **{
+            'virtualbox': mock.MagicMock(),
+            'virtualbox.library': mock.MagicMock()
+        }):
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
+            dmm.check_environment()
+            assert dmm.docker_machine_available
 
     def test_update_config(self):
         status_switch = [True]
@@ -203,9 +224,9 @@ class TestDockerMachineManager(unittest.TestCase):
 
     def test_docker_machine_command(self):
         dmm = MockDockerMachineManager(use_parent_methods=True)
-        dmm.docker_machine_commands['test'] = ['echo', MACHINE_NAME]
+        dmm.docker_machine_commands['test'] = ['python', '--version']
 
-        assert dmm.docker_machine_command('test')
+        assert dmm.docker_machine_command('test') == ""
         assert dmm.docker_machine_command('test', check_output=False) == 0
         assert not dmm.docker_machine_command('deadbeef')
 
@@ -222,12 +243,91 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager()
         dmm.constrain_all([MACHINE_NAME])
 
+    def test_recover_vm_connectivity(self):
+        callback = mock.Mock()
 
+        dmm = MockDockerMachineManager()
+        dmm._save_vm_state = mock.Mock()
+        dmm.start_vm = mock.Mock()
+        dmm._env_checked = True
 
+        dmm._start_docker_machine = mock.Mock()
+        dmm.docker_machine_available = False
 
+        dmm._start_docker_machine.called = False
+        dmm.recover_vm_connectivity(callback, in_background=False)
+        assert not dmm._start_docker_machine.called
 
+        dmm._start_docker_machine.called = False
+        dmm.recover_vm_connectivity(callback, in_background=True)
+        assert not dmm._start_docker_machine.called
 
+        dmm.docker_machine_available = True
 
+        callback.called = False
+        dmm._start_docker_machine.called = False
+        dmm.recover_vm_connectivity(callback, in_background=False)
+        assert dmm._start_docker_machine.called
+        assert callback.called
 
+        callback.called = False
+        dmm._start_docker_machine.called = False
+        dmm._threads = mock.Mock()
+        dmm._threads.push = lambda x: x.run()
+        dmm.recover_vm_connectivity(callback, in_background=True)
+        assert dmm._start_docker_machine.called
+        assert callback.called
 
+    def test_save_vm_state(self):
+        dmm = MockDockerMachineManager()
+        assert not dmm._save_vm_state(None)
+        assert dmm._save_vm_state(MACHINE_NAME)
 
+    def test_recover_ctx(self):
+        dmm = MockDockerMachineManager()
+
+        machine_from_arg = mock.Mock()
+        start_docker_machine = mock.Mock()
+        save_vm_state = mock.Mock()
+
+        dmm._DockerMachineManager__machine_from_arg = machine_from_arg
+        dmm._start_docker_machine = start_docker_machine
+        dmm._save_vm_state = save_vm_state
+
+        machine_from_arg.return_value = None
+
+        with dmm._recover_ctx(mock.Mock()):
+            pass
+        assert not start_docker_machine.called
+
+        session = mock.Mock()
+        session.machine.state = 'Running'
+        immutable_vm = mock.Mock()
+        immutable_vm.create_session.return_value = session
+        machine_from_arg.return_value = immutable_vm
+
+        with dmm._recover_ctx(mock.Mock()):
+            pass
+        assert start_docker_machine.called
+
+        with dmm._recover_ctx(mock.Mock()):
+            raise Exception("1")
+        assert session.unlock_machine.called
+
+    def test_restart_ctx(self):
+        dmm = MockDockerMachineManager()
+        machine_from_arg = mock.Mock()
+        machine_from_arg.return_value = None
+        dmm._DockerMachineManager__machine_from_arg = machine_from_arg
+        dmm._docker_machine_running = mock.Mock()
+        dmm._start_docker_machine = mock.Mock()
+        dmm._stop_vm = mock.Mock()
+
+        with dmm._restart_ctx(mock.Mock()):
+            pass
+        assert not dmm._docker_machine_running.called
+
+        machine_from_arg.return_value = mock.Mock()
+        with dmm._restart_ctx(mock.Mock()):
+            raise Exception("X")
+        assert dmm._docker_machine_running.called

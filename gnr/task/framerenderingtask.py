@@ -4,11 +4,10 @@ import math
 import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
-from gnr.task.gnrtask import GNRTask
 
+from gnr.task.gnrtask import GNRTask
 from gnr.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from gnr.task.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
-from gnr.renderingdirmanager import get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.task")
@@ -190,7 +189,7 @@ class FrameRenderingTask(RenderingTask):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
 
-            if sub['status'] == SubtaskStatus.failure:
+            if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, failed_color)
 
@@ -303,7 +302,7 @@ class FrameRenderingTask(RenderingTask):
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), idx)
         preview_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), idx)
-        img_task = self._open_frame_preview(preview_file_path)
+        img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path

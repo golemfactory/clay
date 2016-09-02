@@ -13,7 +13,7 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingdirmanager import get_tmp_path
+from gnr.gnrtaskstate import AdvanceVerificationOptions
 
 logger = logging.getLogger("gnr.task")
 
@@ -104,6 +104,7 @@ class GNRTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
+        self.verification_options = AdvanceVerificationOptions()
 
     def is_docker_task(self):
         return self.header.docker_images is not None
@@ -263,14 +264,23 @@ class GNRTask(Task):
             elif tr.endswith(log_ext):
                 self.stdout[subtask_id] = tr
             else:
-                new_tr = outer_dir_path(tr)
-                filtered_task_results.append(new_tr)
-                os.rename(tr, new_tr)
+                try:
+                    new_tr = outer_dir_path(tr)
+                    if os.path.isfile(new_tr):
+                        os.remove(new_tr)
+                    os.rename(tr, new_tr)
+                    filtered_task_results.append(new_tr)
+                except (IOError, OSError) as err:
+                    logger.warning("Problem with moving file {} to new location: {}".format(tr, err))
 
         return filtered_task_results
 
     def after_test(self, results, tmp_dir):
-        pass
+        return None
+
+    def notify_update_task(self):
+        for l in self.listeners:
+            l.notify_update_task(self.header.task_id)
 
     @handle_key_error
     def should_accept(self, subtask_id):

@@ -16,6 +16,7 @@ FALLBACK_DOCKER_MACHINE_NAME = 'default'
 class DockerMachineManager(DockerConfigManager):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
+    SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
 
     docker_machine_commands = dict(
         active=['docker-machine', 'active'],
@@ -28,6 +29,10 @@ class DockerMachineManager(DockerConfigManager):
 
     power_down_states = [
         'Saved', 'Aborted'
+    ]
+
+    running_states = [
+        'Running', 'FirstOnline', 'LastOnline'
     ]
 
     constraint_keys = [
@@ -70,9 +75,7 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
-        self.__import_virtualbox()
-        if self.docker_machine:
-            self.check_environment()
+        self.check_environment()
 
     def check_environment(self):
         logger.debug("DockerManager: checking VM availability")
@@ -83,8 +86,9 @@ class DockerMachineManager(DockerConfigManager):
                 self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
 
             # VirtualBox availability check
-            if not self.virtual_box.version:
-                raise EnvironmentError("Cannot connect to VirtualBox")
+            self._import_virtualbox()
+            if not self.virtual_box or not self.virtual_box.version:
+                raise EnvironmentError("Unknown VirtualBox version")
 
             # Docker Machine VM availability check
             self.docker_images = self.docker_machine_images()
@@ -116,19 +120,48 @@ class DockerMachineManager(DockerConfigManager):
         else:
             thread.run()
 
+    def recover_vm_connectivity(self, done_callback, in_background=True):
+        """
+        This method tries to resolve issues with VirtualBox network adapters (mainly on Windows)
+        by saving VM's state and resuming it afterwards with docker-machine. This reestablishes
+        SSH connectivity with docker machine VM.
+        :param done_callback: Function to run on completion. Takes vbox session as an argument.
+        :param in_background: Run the recovery process in a separate thread.
+        :return:
+        """
+        if not self._env_checked:
+            self.check_environment()
+
+        if self.docker_machine_available:
+            def save_and_resume():
+                vm = self.__machine_from_arg(self.docker_machine)
+                with self._recover_ctx(vm):
+                    logger.debug("DockerMachine: VM state saved")
+                done_callback()
+
+            thread = Thread(target=save_and_resume)
+
+            if in_background:
+                self._threads.push(thread)
+            else:
+                thread.run()
+        else:
+            done_callback()
+
     def find_vm(self, name_or_id):
         try:
             return self.virtual_box.find_machine(name_or_id)
         except Exception as e:
             logger.warn("VirtualBox: not available: {}".format(e))
 
-    def start_vm(self, mixed):
+    def start_vm(self, mixed, lock_type=None):
         """
         Power up a machine identified by the mixed param
         :param mixed: Machine id, name, Machine object or Session object
+        :param lock_type: Session lock type
         :return: Session object
         """
-        return self._power_up_vm(mixed)
+        return self._power_up_vm(mixed, lock_type=lock_type)
 
     def stop_vm(self, mixed, lock_type=None):
         """
@@ -197,6 +230,7 @@ class DockerMachineManager(DockerConfigManager):
     def _restart_ctx(self, name_or_id_or_machine, restart=True):
         immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
         if not immutable_vm:
+            yield None
             return
 
         running = self._docker_machine_running()
@@ -205,7 +239,6 @@ class DockerMachineManager(DockerConfigManager):
 
         session = immutable_vm.create_session(self.LockType.write)
         vm = session.machine
-        exception = None
 
         if str(vm.state) in self.power_down_states:
             self.stop_vm(session)
@@ -213,7 +246,8 @@ class DockerMachineManager(DockerConfigManager):
         try:
             yield vm
         except Exception as e:
-            exception = e
+            logger.error("DockerMachine: restart context error: {}"
+                         .format(e))
 
         vm.save_settings()
 
@@ -224,9 +258,28 @@ class DockerMachineManager(DockerConfigManager):
         if restart or not running:
             self._start_docker_machine()
 
-        if exception:
-            logger.error("DockerMachine: restart context error: {}"
-                         .format(exception))
+    @contextmanager
+    def _recover_ctx(self, name_or_id_or_machine):
+        immutable_vm = self.__machine_from_arg(name_or_id_or_machine)
+        if not immutable_vm:
+            yield None
+            return
+
+        session = immutable_vm.create_session(self.LockType.shared)
+        vm = session.machine
+
+        if str(vm.state) in self.running_states:
+            self._save_vm_state(session)
+
+        try:
+            yield vm
+        except Exception as e:
+            logger.error("DockerMachine: recovery error: {}"
+                         .format(e))
+
+        with self._try():
+            session.unlock_machine()
+        self._start_docker_machine()
 
     def docker_machine_command(self, key, machine_name=None, check_output=True, shell=False):
         command = self.docker_machine_commands.get(key, None)
@@ -320,6 +373,22 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e))
         return None
 
+    def _save_vm_state(self, vm_or_session, lock_type=None):
+        try:
+            session = self.__session_from_arg(vm_or_session,
+                                              lock_type=lock_type)
+            logger.debug("VirtualBox: saving state of VM '{}'"
+                         .format(session.machine.name))
+
+            progress = session.machine.save_state()
+            progress.wait_for_completion(timeout=self.SAVE_STATE_TIMEOUT)
+            return session
+
+        except Exception as e:
+            logger.error("VirtualBox: error saving VM's state: '{}'"
+                         .format(e))
+        return None
+
     def __constrain(self, machine_obj, **kwargs):
         vm = self.__machine_from_arg(machine_obj)
         if not vm:
@@ -377,6 +446,14 @@ class DockerMachineManager(DockerConfigManager):
             logger.debug('VirtualBox: VM {} reconfigured successfully'
                          .format(vm.name))
 
+    def _import_virtualbox(self):
+        from virtualbox import VirtualBox
+        from virtualbox.library import ISession, LockType
+
+        self.virtual_box = VirtualBox()
+        self.ISession = ISession
+        self.LockType = LockType
+
     def __session_from_arg(self, session_obj, lock_type=None):
         if not isinstance(session_obj, self.ISession):
             vm = self.__machine_from_arg(session_obj)
@@ -395,17 +472,3 @@ class DockerMachineManager(DockerConfigManager):
                              .format(machine_obj, e))
                 return None
         return machine_obj
-
-    def __import_virtualbox(self):
-        try:
-            from virtualbox import VirtualBox
-            from virtualbox.library import ISession, LockType
-
-            self.virtual_box = VirtualBox()
-            self.ISession = ISession
-            self.LockType = LockType
-
-        except Exception as e:
-
-            self.docker_machine_available = False
-            logger.warn("Couldn't import virtualbox: {}".format(e))

@@ -1,6 +1,6 @@
 import unittest
 from golem.model import PaymentStatus
-from gnr.customizers.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem
+from gnr.customizers.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem, SmartTableItem
 from PyQt4.QtGui import QTableWidgetItem
 
 
@@ -29,3 +29,55 @@ class TestTableElem(unittest.TestCase):
         self.assertEqual(b.get_column_item(1).text(), "confirmed")
         self.assertEqual(b.get_column_item(2).text(), "2.110000 ETH")
         self.assertEqual(b.get_column_item(3).text(), "ABB")
+
+class TestSmartTableItem(unittest.TestCase):
+    def test_comparison(self):
+        i1 = SmartTableItem("11121")
+        i2 = SmartTableItem("111111")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("aa11121")
+        i2 = SmartTableItem("a111111")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("0%")
+        i2 = SmartTableItem("0.001%")
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("")
+        i2 = SmartTableItem("0.001%")
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("0.01%")
+        i2 = SmartTableItem("")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("3.001%")
+        i2 = SmartTableItem("0.001%")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("0.0001 ETH")
+        i2 = SmartTableItem("0.001 ETH")
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("123 ETH")
+        i2 = SmartTableItem("0.0001 ETH")
+        self.assertTrue(i2 < i1)
+        
+        i1 = SmartTableItem("")
+        i2 = SmartTableItem("0.001 ETH")
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("123 ETH")
+        i2 = SmartTableItem("")
+        self.assertTrue(i2 < i1)
+        
+        i1 = None
+        self.assertTrue(i1 < i2)
+        
+        i1 = SmartTableItem("123 ETH")
+        i2 = None
+        self.assertTrue(i2 < i1)
+        
+        
+        

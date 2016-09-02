@@ -1,6 +1,5 @@
 import logging
 
-import os
 from PIL import Image
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
@@ -31,7 +30,6 @@ class Benchmark(object):
     def find_resources(self):
         return set()
 
-
     # result is a list of files produced in computation (logs and imgs)
     # if img has a different format, you need to implement this method in a subclass
     def verify_result(self, result):
@@ -41,8 +39,7 @@ class Benchmark(object):
             elif f.lower().endswith(".log") and not self.verify_log(f):
                 return False
         return True
-                
-        
+
     def verify_img(self, filename):
         try:
             image = Image.open(filename)

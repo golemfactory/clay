@@ -106,23 +106,6 @@ class TestP2PService(DatabaseFixture):
         # disabled
         assert len(service.peers) == 2
 
-    def test_redundant_peers(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
-                             connect_to_known_hosts=False)
-        sa = SocketAddress('127.0.0.1', 11111)
-
-        node = MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
-        node.key_id = node.key
-        node.address = sa
-
-        service.config_desc.opt_peer_num = 0
-        service.add_peer(node.key, node)
-
-        assert len(service.redundant_peers()) == 1
-        assert service.enough_peers()
-
     def test_add_known_peer(self):
         keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
