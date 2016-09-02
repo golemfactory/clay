@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.fileshelper import find_file_with_ext
+from golem.core.fileshelper import find_file_with_ext, common_dir
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
@@ -330,7 +330,7 @@ class LuxTask(RenderingTask):
             return False
         if self.verification_error:
             return False
-        commonprefix = os.path.commonprefix(computer.tt.result['data'])
+        commonprefix = common_dir(computer.tt.result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         logs = find_file_with_ext(commonprefix, [".log"])
         stderr = filter(lambda x: os.path.basename(x) == "stderr.log", computer.tt.result['data'])
@@ -442,7 +442,7 @@ class LuxTask(RenderingTask):
         self.verification_error = True
 
     def __final_img_ready(self, results):
-        commonprefix = os.path.commonprefix(results["data"])
+        commonprefix = common_dir(results['data'])
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
         if img is None:
             # TODO Maybe we should try again?
@@ -468,7 +468,7 @@ class LuxTask(RenderingTask):
         computer.tt.join()
 
     def __final_flm_ready(self, results):
-        commonprefix = os.path.commonprefix(results['data'])
+        commonprefix = common_dir(results['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         if flm is None:
             self.__final_flm_failure("No flm file created")
