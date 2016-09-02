@@ -22,7 +22,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 6
+TASK_PROTOCOL_ID = 7
 
 
 class TaskSession(MiddlemanSafeSession):
