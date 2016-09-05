@@ -22,6 +22,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.max_price = 10000
         task_mock.query_extra_data.return_value.ctd.task_id = task_id
         task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        task_mock.get_progress.return_value = 0.3
         return task_mock
 
     def test_get_next_subtask(self):
@@ -284,4 +285,60 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert isinstance(tm, TaskEventListener)
         tm.notify_update_task("xyz")
         tm.notice_task_updated.assert_called_with("xyz")
+
+    def test_query_task_state(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.query_task_state("xyz") is None
+
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            ts = tm.query_task_state("xyz")
+        assert ts is not None
+        assert ts.progress == 0.3
+
+    def test_resume_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.resume_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.resume_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.starting
+        assert tm.tasks_states["xyz"].status == TaskStatus.starting
+
+    def test_restart_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.restart_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.restart_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.waiting
+        assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+
+    def test_abort_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.abort_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.abort_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.aborted
+        assert tm.tasks_states["xyz"].status == TaskStatus.aborted
+
+    def test_pause_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.pause_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.pause_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.paused
+        assert tm.tasks_states["xyz"].status == TaskStatus.paused
 
