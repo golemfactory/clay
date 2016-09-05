@@ -2,6 +2,9 @@ import logging
 import math
 import os
 import struct
+from unittest import TestCase
+
+from mock import MagicMock
 
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
@@ -10,11 +13,11 @@ from golem.network.transport.message import MessageDisconnect
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
                                                 EncryptFileProducer, DecryptFileConsumer,
                                                 EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
-                                                logger)
+                                                logger, SocketAddress)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
-from mock import MagicMock
+
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
@@ -193,3 +196,25 @@ class TestBasicProtocol(LogTestCase):
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)
         self.assertEqual(protocol.session.interpret.call_args[0][0].get_type(), m.get_type())
+
+
+class TestSocketAddress(TestCase):
+    def test_zone_index(self):
+        base_address = u"fe80::3"
+        address = u"fe80::3%eth0"
+        port = 1111
+        sa = SocketAddress(address, port)
+        assert sa.address == base_address
+        assert sa.port == port
+
+        address = u"fe80::3%1"
+        sa = SocketAddress(address, port)
+        assert sa.address == base_address
+
+        address = u"fe80::3%en0"
+        sa = SocketAddress(address, port)
+        assert sa.address == base_address
+
+        address = base_address
+        sa = SocketAddress(address, port)
+        assert sa.address == base_address
