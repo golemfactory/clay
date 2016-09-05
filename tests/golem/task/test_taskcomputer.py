@@ -1,10 +1,10 @@
 import os
 import time
 
-from golem.client import ClientTaskComputerEventListener
 from mock import MagicMock, Mock
 
 from golem.core.common import timeout_to_deadline
+from golem.client import ClientTaskComputerEventListener
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.tools.assertlogs import LogTestCase

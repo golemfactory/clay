@@ -67,17 +67,28 @@ def timeout_to_deadline(timeout):
     return get_current_time() + timedelta(seconds=timeout)
 
 
-class HandleKeyError(object):
-    def __init__(self, handle_error):
+class HandleError(object):
+    def __init__(self, error, handle_error):
         self.handle_error = handle_error
+        self.error = error
 
     def __call__(self, func):
         def func_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except KeyError:
+            except self.error:
                 return self.handle_error(*args, **kwargs)
         return func_wrapper
+
+
+class HandleKeyError(HandleError):
+    def __init__(self, handle_error):
+        super(HandleKeyError, self).__init__(KeyError, handle_error)
+
+
+class HandleAttributeError(HandleError):
+    def __init__(self, handle_error):
+        super(HandleAttributeError, self).__init__(AttributeError, handle_error)
 
 
 def config_logging(logname=LOG_NAME):
