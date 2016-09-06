@@ -492,6 +492,14 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
+    @handle_key_error
+    def get_payment_for_task_id(self, task_id):
+        val = 0.0
+        t = self.tasks_states[task_id]
+        for ss in t.subtask_states.values():
+            val += ss.value
+        return val
+
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
         if ctd.task_id not in self.tasks_states:

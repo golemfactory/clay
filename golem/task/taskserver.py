@@ -232,17 +232,6 @@ class TaskServer(PendingConnectionsServer):
     def get_resource_port(self):
         return self.client.resource_port
 
-    def get_subtasks_for_task_id(self, task_id):
-        """
-        Get all subtasks related with given @task_id
-        :param task_id: Task ID
-        :return: List of all subtasks related with @task_id
-        """
-        subtasks = self.task_manager.get_subtasks(task_id)
-        if subtasks is None:
-            return []
-        return subtasks
-
     def get_subtask_ttl(self, task_id):
         return self.task_manager.comp_task_keeper.get_subtask_ttl(task_id)
 
