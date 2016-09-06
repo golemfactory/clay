@@ -1,5 +1,6 @@
-import unittest
 import os
+import tempfile
+import unittest
 
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.benchmarks.benchmark import Benchmark
@@ -23,7 +24,7 @@ class TestLuxBenchmark(unittest.TestCase):
     def test_task_settings(self):
         self.assertTrue(self.lb.normalization_constant == 9910)
         self.assertTrue(self.lb.lux_task_path == self.task_path)
-        self.assertTrue(self.lb.task_definition.output_file == "/tmp/lux_benchmark.png")
+        self.assertTrue(self.lb.task_definition.output_file == os.path.join(tempfile.gettempdir(), "lux_benchmark.png"))
         self.assertTrue(self.lb.task_definition.tasktype == "LuxRender")
         self.assertTrue(self.lb.task_definition.renderer == "LuxRender")
         self.assertTrue(self.lb.task_definition.output_format == "png")
