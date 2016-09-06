@@ -22,7 +22,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         LogTestCase.tearDown(self)
         TestWithKeysAuth.tearDown(self)
 
-        if self.ts:
+        if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
     def test_request(self):
@@ -526,3 +526,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                        "max_price": 20
                        }
         return task_header
+
+    def _get_task_manager_task_mock(self, task_id, subtask_id):
+        task_mock = Mock()
+        task_mock.header.task_id = task_id
+        task_mock.header.resource_size = 2 * 1024
+        task_mock.header.estimated_memory = 3 * 1024
+        task_mock.header.max_price = 10000
+        task_mock.query_extra_data.return_value.ctd.task_id = task_id
+        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        return task_mock

@@ -41,10 +41,16 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         definition.renderer_options.compositing = False
         resources = self.additional_dir_content([3])
         definition.renderer_options.remove_from_resources.return_value = set(resources[0:1])
+        definition.renderer_options.add_to_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)
         self.logic.customizer = Mock()
         self.logic.renderers[renderer.name] = renderer
         customizer.load_task_definition(definition)
         assert len(definition.resources) == 3
+        customizer.gui.ui.taskNameLineEdit.setText("NEW NAME")
+        definition2 = customizer._query_task_definition()
+        assert definition2.task_name == "NEW NAME"
+
+
 
 
