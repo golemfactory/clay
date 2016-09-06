@@ -68,9 +68,6 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(frames)
             self.preview_task_file_path = [None] * len(frames)
 
-    def restart(self):
-        RenderingTask.restart(self)
-
     @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, result_type=0):
         if not self.should_accept(subtask_id):
