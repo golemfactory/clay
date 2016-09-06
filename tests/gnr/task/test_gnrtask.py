@@ -4,9 +4,12 @@ import os
 import zlib
 from copy import copy
 
+from mock import MagicMock
+
 from golem.core.fileshelper import outer_dir_path
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types, TaskEventListener
+from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -80,7 +83,6 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         assert l1.task_id == "xyz"
         assert l3.task_id == "xyz"
         assert l2.task_id is None
-
 
     def test_interpret_task_results(self):
         task = self._get_gnr_task()
@@ -165,6 +167,27 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.stderr[subtask_id], "[GOLEM] Task result 58 not supported")
         self.assertEqual(task.stdout[subtask_id], "")
 
+    def test_restart(self):
+        task = self._get_gnr_task()
+        task.num_tasks_received = 1
+        task.last_task = 8
+        task.num_failed_subtasks = 2
+        task.counting_nodes = MagicMock()
+
+        task.subtasks_given["xyz"] = {'status': SubtaskStatus.finished, 'start_task': 1, 'end_task': 1, 'node_id': 'ABC'}
+        task.subtasks_given["abc"] = {'status': SubtaskStatus.failure, 'start_task': 4, 'end_task': 4, 'node_id': 'abc'}
+        task.subtasks_given["def"] = {'status': SubtaskStatus.starting, 'start_task': 8, 'end_task': 8, 'node_id': 'DEF'}
+        task.subtasks_given["ghi"] = {'status': SubtaskStatus.resent, 'start_task': 2, 'end_task': 2, 'node_id': 'aha'}
+        task.restart()
+        assert task.num_tasks_received == 0
+        assert task.last_task == 8
+        assert task.num_failed_subtasks == 4
+        assert task.subtasks_given["xyz"]["status"] == SubtaskStatus.restarted
+        assert task.subtasks_given["abc"]["status"] == SubtaskStatus.failure
+        assert task.subtasks_given["def"]["status"] == SubtaskStatus.restarted
+        assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.restarted
+
     def __compress_and_pickle_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
         return pickle.dumps((os.path.basename(file_name), file_data))
+
