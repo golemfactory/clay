@@ -22,7 +22,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         LogTestCase.tearDown(self)
         TestWithKeysAuth.tearDown(self)
 
-        if self.ts:
+        if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
     def test_request(self):
@@ -34,15 +34,23 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                         use_docker_machine_manager=False)
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
+        ts.client.get_suggested_conn_reverse.return_value = False
         self.assertIsInstance(ts, TaskServer)
-        self.assertEqual(0, ts.request_task())
+        assert ts.request_task() is None
         n2 = Node()
         n2.prv_addr = "10.10.10.10"
         n2.port = 10101
         task_header = self.__get_example_task_header()
         task_header["task_owner"] = n2
         ts.add_task_header(task_header)
-        self.assertEqual("uvw", ts.request_task())
+        assert ts.request_task() == "uvw"
+        ts.remove_task_header("uvw")
+        task_header["port"] = 0
+        task_header["id"] = "uvw2"
+        assert ts.add_task_header(task_header)
+        assert ts.task_keeper.task_headers["uvw2"] is not None
+        assert ts.request_task() is None
+        assert ts.task_keeper.task_headers.get("uvw2") is None
 
     def test_send_results(self):
         ccd = ClientConfigDescriptor()
@@ -518,3 +526,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                        "max_price": 20
                        }
         return task_header
+
+    def _get_task_manager_task_mock(self, task_id, subtask_id):
+        task_mock = Mock()
+        task_mock.header.task_id = task_id
+        task_mock.header.resource_size = 2 * 1024
+        task_mock.header.estimated_memory = 3 * 1024
+        task_mock.header.max_price = 10000
+        task_mock.query_extra_data.return_value.ctd.task_id = task_id
+        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        return task_mock

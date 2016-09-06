@@ -409,6 +409,17 @@ class Client(object):
         #    return self.transaction_system.get_incomes_list()
         return ()
 
+    def get_payment_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
+        if cost is None:
+            return 0.0
+        return cost
+
     def use_transaction_system(self):
         return bool(self.transaction_system)
 

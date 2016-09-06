@@ -435,6 +435,16 @@ class TaskManager(TaskEventListener):
 
         return ts
 
+    def get_subtasks(self, task_id):
+        """
+        Get all subtasks related with given task id
+        :param task_id: Task ID
+        :return: list of all subtasks related with @task_id or None if @task_id is not known
+        """
+        if task_id not in self.tasks_states:
+            return None
+        return [sub.subtask_id for sub in self.tasks_states[task_id].subtask_states.values()]
+
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
@@ -475,6 +485,14 @@ class TaskManager(TaskEventListener):
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
+
+    @handle_task_key_error
+    def get_payment_for_task_id(self, task_id):
+        val = 0.0
+        t = self.tasks_states[task_id]
+        for ss in t.subtask_states.values():
+            val += ss.value
+        return val
 
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 

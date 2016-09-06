@@ -24,6 +24,7 @@ class RendererDefaults:
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
+        self.task_name = ""
 
 
 class RenderingTaskDefinition(GNRTaskDefinition):
@@ -37,6 +38,7 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.main_scene_file = ""
         self.output_file = ""
         self.output_format = ""
+        self.task_name = ""
 
 
 class RenderingTaskState:
