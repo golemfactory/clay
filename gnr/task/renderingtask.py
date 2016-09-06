@@ -129,9 +129,7 @@ class RenderingTask(GNRTask):
         self._update_task_preview()
 
     def restart(self):
-        GNRTask.restart(self)
-        self.preview_file_path = None
-        self.preview_task_file_path = None
+        super(RenderingTask, self).restart()
 
         self.collected_file_names = {}
 
