@@ -362,17 +362,14 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.tasks_states[task_id].time_started = time.time()
 
-        for sub in self.tasks_states[task_id].subtask_states.values():
-            del self.subtask2task_mapping[sub.subtask_id]
-        self.tasks_states[task_id].subtask_states.clear()
+        for ss in self.tasks_states[task_id].subtask_states.values():
+            if ss.subtask_status != SubtaskStatus.failure:
+                ss.subtask_status = SubtaskStatus.restarted
 
         self.notice_task_updated(task_id)
 
+    @handle_subtask_key_error
     def restart_subtask(self, subtask_id):
-        if subtask_id not in self.subtask2task_mapping:
-            logger.error("Subtask {} not in subtasks queue".format(subtask_id))
-            return
-
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing

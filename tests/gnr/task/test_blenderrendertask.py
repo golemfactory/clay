@@ -93,6 +93,8 @@ class TestBlenderFrameTask(TempDirFixture):
         print str_
         assert path.isfile(str_)
 
+        assert len(self.bt.preview_file_path) == len(self.bt.frames)
+        assert len(self.bt.preview_task_file_path) == len(self.bt.frames)
 
 
 class TestBlenderTask(TempDirFixture):
@@ -169,7 +171,6 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue("file2.png" in warnings)
         self.assertTrue("file3.png" in warnings)
         self.assertFalse("file4.png" in warnings)
-        
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
@@ -238,6 +239,11 @@ class TestBlenderTask(TempDirFixture):
             img_x, img_y = img.size
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
+        self.bt.restart()
+        assert self.bt.preview_updater.chunks == {}
+        assert self.bt.preview_updater.perfectly_placed_subtasks == 0
+        assert self.bt.preview_updater.perfect_match_area_y == 0
+
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:
             self.bt.output_format = output_format.lower()
@@ -300,7 +306,13 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue(img.size == (300, 200))
         img = Image.open(file4)
         self.assertTrue(img.size == (300, 200))
-        
+
+        print bt.use_frames
+        bt.restart()
+        for preview in bt.preview_updaters:
+            assert preview.chunks == {}
+            assert preview.perfect_match_area_y == 0
+            assert preview.perfectly_placed_subtasks == 0
 
     def test_mark_task_area(self):
         bt = self.build_bt(300, 200, 2, frames=[1, 2])
@@ -404,6 +416,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
 
+
 class TestHelpers(unittest.TestCase):
     def test_get_task_border(self):
         offsets = generate_expected_offsets(30, 800, 600)
@@ -434,5 +447,3 @@ class TestHelpers(unittest.TestCase):
             i = (k - 1) % 15 + 1
             num = get_task_num_from_pixels(1, frame_offsets[i] + 3, 30, res_x=1920, res_y=1080, use_frames=True, frames=2, frame_num=(k - 1)/15 + 1)
             self.assertTrue(num == k)
-            
-        

@@ -185,7 +185,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_status == SubtaskStatus.restarted
         assert not t2.finished["aabbcc"]
 
-
         th.task_id = "qwe"
         t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
         tm.add_new_task(t3)
