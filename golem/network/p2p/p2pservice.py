@@ -340,15 +340,24 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.manager_session = None
 
     def change_config(self, config_desc):
-        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
+        """ Change configuration descriptor.
+        If node_name was changed, send hello to all peers to update node_name.
+        If listening port is changed, than stop listening on old port and start
         listening on a new one. If seed address is changed, connect to a new seed.
         Change configuration for resource server.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
 
+        is_node_name_changed = self.node_name != config_desc.node_name
+
         TCPServer.change_config(self, config_desc)
+        self.node_name = config_desc.node_name
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
+
+        if is_node_name_changed:
+            for peer in self.peers.values():
+                peer.hello()
 
         for peer in self.peers.values():
             if peer.port == self.config_desc.seed_port and peer.address == self.config_desc.seed_host:

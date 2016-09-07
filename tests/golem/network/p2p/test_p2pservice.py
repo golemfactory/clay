@@ -346,3 +346,34 @@ class TestP2PService(DatabaseFixture):
             service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
 
         assert len(service.challenge_history) == HISTORY_LEN
+
+    def test_change_config_name(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "test name change"
+        assert service.node_name != "test name change"
+        service.change_config(ccd)
+        assert service.node_name == "test name change"
+
+    def test_broadcast_on_name_change(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        conn = MagicMock()
+        peer = PeerSession(conn)
+        peer.hello_called = False
+        def fake_hello(self):
+            self.hello_called = True
+        import types
+        peer.hello = types.MethodType(fake_hello, peer)
+        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        peer.key_id = keys_auth.key_id
+        service.add_peer(keys_auth.key_id, peer)
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "test sending hello on name change"
+        assert not peer.hello_called
+        service.change_config(ccd)
+        assert peer.hello_called
+
