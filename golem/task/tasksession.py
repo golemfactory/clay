@@ -13,10 +13,10 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
-    EncryptDataProducer, DecryptDataConsumer
+    EncryptDataProducer, DecryptDataConsumer, SocketAddress
 from golem.resource.client import AsyncRequest, AsyncRequestExecutor
 from golem.resource.resource import decompress_dir
-from golem.task.taskbase import result_types, resource_types
+from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -356,7 +356,8 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def _react_to_task_to_compute(self, msg):
-        if self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
+
+        if self._check_ctd_params(msg.ctd) and self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
             self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
         else:
@@ -578,6 +579,13 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
         # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
+
+    def _check_ctd_params(self, ctd):
+        if not isinstance(ctd, ComputeTaskDef) or ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
+            return False
+        if not SocketAddress.is_proper_address(ctd.return_address, ctd.return_port):
+            return False
+        return True
 
     def __send_delta_resource(self, msg):
         res_file_path = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),

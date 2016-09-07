@@ -218,3 +218,9 @@ class TestSocketAddress(TestCase):
         address = base_address
         sa = SocketAddress(address, port)
         assert sa.address == base_address
+
+    def test_is_proper_address(self):
+        assert SocketAddress.is_proper_address("127.0.0.1", 1020)
+        assert not SocketAddress.is_proper_address("127.0.0.1", 0)
+        assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
+        assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)

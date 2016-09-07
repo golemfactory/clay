@@ -40,11 +40,15 @@ def log_key_error(*args, **kwargs):
 
 
 class CompTaskKeeper(object):
+    """ Keeps information about subtasks that should be computed by this node."""
+
     handle_key_error = HandleKeyError(log_key_error)
 
     def __init__(self):
-        self.active_tasks = {}
-        self.subtask_to_task = {}
+        """ Create new instance of compuatational task's definition's keeper
+        """
+        self.active_tasks = {}  # information about tasks that this node wants to compute
+        self.subtask_to_task = {}  # maps subtasks id to tasks id
 
     def add_request(self, theader, price):
         task_id = theader.task_id
