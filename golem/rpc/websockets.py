@@ -13,7 +13,7 @@ from golem.core.simpleserializer import DILLSerializer
 from golem.rpc.exceptions import RPCNotConnected, RPCServiceError, RPCProtocolError, \
     RPCMessageError
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION, RPCBatchRequestMessage
-from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo
+from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo, RPCSimpleClient
 
 logger = logging.getLogger(__name__)
 
@@ -377,6 +377,10 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         self.connector = self.reactor.connectTCP(self.remote_host, self.remote_port,
                                                  self, timeout=timeout)
         return self._deferred
+
+    def build_simple_client(self, timeout=None):
+        rpc = RPC(self, self.remote_ws_address, conn_timeout=timeout)
+        return RPCSimpleClient(rpc)
 
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)

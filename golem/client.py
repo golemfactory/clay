@@ -376,6 +376,9 @@ class Client(object):
     def get_task_count(self):
         return len(self.task_server.task_keeper.get_all_tasks())
 
+    def get_tasks(self):
+        return self.task_server.task_keeper.get_all_tasks()
+
     def get_supported_task_count(self):
         return len(self.task_server.task_keeper.supported_tasks)
 

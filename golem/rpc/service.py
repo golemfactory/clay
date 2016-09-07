@@ -1,3 +1,5 @@
+import collections
+
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
@@ -11,7 +13,7 @@ class ServiceHelper(object):
 
     @staticmethod
     def to_dict(service):
-        methods = {}
+        methods = dict()
 
         for method in dir(service):
             attr = getattr(service, method)
@@ -21,13 +23,13 @@ class ServiceHelper(object):
         return methods
 
     @staticmethod
-    def to_list(service):
-        methods = []
+    def to_set(service):
+        methods = set()
 
         for method in dir(service):
             attr = getattr(service, method)
             if ServiceHelper.is_accessible(method, attr):
-                methods.append(method)
+                methods.add(method)
 
         return methods
 
@@ -41,54 +43,17 @@ class ServiceHelper(object):
 class ServiceMethods(object):
 
     def __init__(self, service):
-        if service:
-            self.methods = ServiceHelper.to_dict(service)
-        else:
-            self.methods = {}
+        self.methods = ServiceHelper.to_dict(service)
 
-
-class ServiceProxy(ServiceMethods):
-
-    _name_exceptions = ['service', 'methods', 'wrap',
-                        'start_batch', 'call_batch']
-
-    def __init__(self, service):
-        ServiceMethods.__init__(self, service)
-
-        for name, method in self.methods.iteritems():
-            self.methods[name] = self.wrap(name, method)
-
-    def __getattribute__(self, name, exceptions=None):
-        exceptions = exceptions or ServiceProxy._name_exceptions
-
-        if name.startswith('_') or name in exceptions:
-            return object.__getattribute__(self, name)
-
-        elif hasattr(self, 'methods'):
-            return self.methods.get(name, None)
-
-        return None
-
-    def wrap(self, name, method):
-        raise NotImplementedError()
-
-    def start_batch(self):
-        pass
-
-    def call_batch(self, batch):
-        pass
-
-
-class ServiceMethodNamesProxy(ServiceProxy):
-
-    def __init__(self, method_names):
-        ServiceMethods.__init__(self, None)
-
-        for name in method_names:
-            self.methods[name] = self.wrap(name, None)
-
-    def wrap(self, name, method):
-        raise NotImplementedError()
+    @staticmethod
+    def names(mixed):
+        if isinstance(mixed, ServiceMethods):
+            return mixed.methods.keys()
+        elif isinstance(mixed, dict):
+            return mixed.keys()
+        elif isinstance(mixed, collections.Iterable):
+            return mixed
+        return ServiceHelper.to_set(mixed)
 
 
 class RPCAddress(object):
@@ -110,7 +75,7 @@ class RPCAddress(object):
 class RPCServiceInfo(object):
 
     def __init__(self, service, rpc_address):
-        self.method_names = ServiceHelper.to_list(service)
+        self.method_names = ServiceHelper.to_set(service)
         self.rpc_address = rpc_address
 
 
@@ -127,11 +92,22 @@ class RPCProxyService(object):
         return method(*args, **kwargs)
 
 
-class RPCProxyClient(ServiceMethodNamesProxy):
+class RPCProxyClient(object):
 
-    def __init__(self, rpc, method_names):
+    _name_exceptions = {'methods', 'wrap', 'start_batch', 'call_batch'}
+
+    def __init__(self, rpc, methods):
         self.rpc = rpc
-        ServiceMethodNamesProxy.__init__(self, method_names)
+        self.methods = dict()
+
+        for name in ServiceMethods.names(methods):
+            self.methods[name] = self.wrap(name, None)
+
+    def __getattribute__(self, name):
+        if name.startswith('_') or name in self._name_exceptions:
+            return object.__getattribute__(self, name)
+        elif hasattr(self, 'methods'):
+            return self.methods.get(name)
 
     def start_batch(self):
         return RPCBatchCall(self)
@@ -146,6 +122,23 @@ class RPCProxyClient(ServiceMethodNamesProxy):
         def wrapper(*args, **kwargs):
             return rpc.call(name, False, *args, **kwargs)
         return wrapper
+
+
+class RPCSimpleClient(RPCProxyClient):
+
+    class MethodCache(object):
+        def __init__(self, client):
+            self.cache = dict()
+            self.client = client
+
+        def get(self, key, _=None):
+            if key not in self.cache:
+                self.cache[key] = self.client.wrap(key, None)
+            return self.cache[key]
+
+    def __init__(self, rpc):
+        super(RPCSimpleClient, self).__init__(rpc, None)
+        self.methods = RPCSimpleClient.MethodCache(self)
 
 
 class RPC(object):

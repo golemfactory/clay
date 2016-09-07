@@ -1,0 +1,40 @@
+import logging
+
+from golem.rpc.websockets import WebSocketRPCClientFactory
+
+logger = logging.getLogger(__name__)
+
+
+class WebSocketsCLI(object):
+
+    def __init__(self, cli_class, address, port):
+        self.cli_class = cli_class
+        self.cli = None
+        self.address = address
+        self.port = port
+
+        from twisted.internet import reactor, threads
+        self.reactor = reactor
+        self.threads = threads
+
+    def execute(self, *args, **kwargs):
+        rpc_factory = WebSocketRPCClientFactory(self.address, self.port)
+
+        def on_connected(_):
+            rpc_client = rpc_factory.build_simple_client()
+            self.cli = self.cli_class(rpc_client)
+            self.threads.deferToThread(self.cli.execute, *args, **kwargs)
+
+        def on_error(error):
+            if self.reactor.running:
+                self.reactor.stop()
+            logger.error("CLI: error: {}".format(error))
+
+        def connect():
+            rpc_factory.connect().addCallbacks(on_connected, on_error)
+
+        self.reactor.callWhenRunning(connect)
+        self.reactor.run()
+
+
+
