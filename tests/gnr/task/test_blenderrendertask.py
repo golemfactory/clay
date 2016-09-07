@@ -94,36 +94,35 @@ class TestBlenderFrameTask(TempDirFixture):
         assert path.isfile(str_)
 
 
-
 class TestBlenderTask(TempDirFixture):
-    def build_bt(self, res_x, res_y, total_tasks, frames=[]):
+    def build_bt(self, res_x, res_y, total_tasks, frames=None):
         program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
-        if frames == []:
+        if frames is None:
             use_frames = False
             frames = [1]
         else:
             use_frames = True
         bt = BlenderRenderTask(node_name="example-node-name",
-                                    task_id="example-task-id",
-                                    main_scene_dir=self.tempdir,
-                                    main_scene_file=path.join(self.path, "example.blend"),
-                                    main_program_file=program_file,
-                                    total_tasks=total_tasks,
-                                    res_x=res_x,
-                                    res_y=res_y,
-                                    outfilebasename="example_out",
-                                    output_file=output_file,
-                                    output_format="PNG",
-                                    full_task_timeout=1,
-                                    subtask_timeout=1,
-                                    task_resources=[],
-                                    estimated_memory=123,
-                                    root_path=self.tempdir,
-                                    use_frames=use_frames,
-                                    compositing=False,
-                                    frames=frames,
-                                    max_price=10)
+                               task_id="example-task-id",
+                               main_scene_dir=self.tempdir,
+                               main_scene_file=path.join(self.path, "example.blend"),
+                               main_program_file=program_file,
+                               total_tasks=total_tasks,
+                               res_x=res_x,
+                               res_y=res_y,
+                               outfilebasename="example_out",
+                               output_file=output_file,
+                               output_format="PNG",
+                               full_task_timeout=1,
+                               subtask_timeout=1,
+                               task_resources=[],
+                               estimated_memory=123,
+                               root_path=self.tempdir,
+                               use_frames=use_frames,
+                               compositing=False,
+                               frames=frames,
+                               max_price=10)
         bt.initialize(DirManager(self.tempdir))
         return bt
     
