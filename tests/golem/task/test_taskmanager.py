@@ -60,21 +60,21 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
     def test_get_and_set_value(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING") as l:
             tm.set_value("xyz", "xxyyzz", 13)
-        self.assertTrue(any(["not my task" in log for log in l.output]))
-        with self.assertLogs(logger, level=1) as l:
+        assert any("not my task" in log for log in l.output)
+        with self.assertLogs(logger, level="WARNING"):
             tm.get_value("xxyyzz")
 
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING"):
             tm.set_computation_time("xxyyzz", 12)
 
         task_mock = self._get_task_mock()
 
         tm.add_new_task(task_mock)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING") as l:
             tm.set_value("xyz", "xxyyzz", 13)
-        self.assertTrue(any(["not my subtask" in log for log in l.output]))
+        assert any("not my subtask" in log for log in l.output)
 
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
         subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
