@@ -486,11 +486,10 @@ class Client(object):
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
-        logger.info("listener {} not registered".format(listener))
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("listener {} not registered".format(listener))
 
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)

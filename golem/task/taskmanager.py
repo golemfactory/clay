@@ -83,10 +83,10 @@ class TaskManager(TaskEventListener):
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("Trying to unregister listener that wasn't registered {}".format(listener))
 
     def add_new_task(self, task):
         assert task.header.task_id not in self.tasks
