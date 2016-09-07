@@ -1,5 +1,6 @@
-import unittest
 import os
+import tempfile
+import unittest
 
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.benchmark import Benchmark
@@ -23,7 +24,8 @@ class TestBlenderBenchmark(unittest.TestCase):
     def test_task_settings(self):
         self.assertTrue(self.bb.normalization_constant == 9360)
         self.assertTrue(self.bb.blender_task_path == self.task_path)
-        self.assertTrue(self.bb.task_definition.output_file == "/tmp/blender_benchmark.png")
+        self.assertTrue(self.bb.task_definition.output_file == os.path.join(tempfile.gettempdir(),
+                                                                            "blender_benchmark.png"))
         self.assertTrue(self.bb.task_definition.tasktype == "Blender")
         self.assertTrue(self.bb.task_definition.renderer == "Blender")
         self.assertTrue(self.bb.task_definition.output_format == "png")
