@@ -76,32 +76,36 @@ class TaskServer(PendingConnectionsServer):
     def request_task(self):
         theader = self.task_keeper.get_task()
         if theader is not None:
-            trust = self.client.get_requesting_trust(theader.task_owner_key_id)
-            env_id = theader.environment
-            env = self.task_keeper.environments_manager.get_environment_by_id(env_id)
-            if env is not None:
-                performance = env.get_performance(self.config_desc)
-            else:
-                performance = 0.0
-            logger.debug("Requesting trust level: {}".format(trust))
-            if trust >= self.config_desc.requesting_trust:
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
-                args = {
-                    'node_name': self.config_desc.node_name,
-                    'key_id': theader.task_owner_key_id,
-                    'task_id': theader.task_id,
-                    'estimated_performance': performance,
-                    'price': self.config_desc.min_price,
-                    'max_resource_size': self.config_desc.max_resource_size,
-                    'max_memory_size': self.config_desc.max_memory_size,
-                    'num_cores': self.config_desc.num_cores
-                }
-                self._add_pending_request(TaskConnTypes.TaskRequest, theader.task_owner, theader.task_owner_port,
-                                          theader.task_owner_key_id, args)
+            try:
+                trust = self.client.get_requesting_trust(theader.task_owner_key_id)
+                env_id = theader.environment
+                env = self.task_keeper.environments_manager.get_environment_by_id(env_id)
+                if env is not None:
+                    performance = env.get_performance(self.config_desc)
+                else:
+                    performance = 0.0
+                logger.debug("Requesting trust level: {}".format(trust))
+                if trust >= self.config_desc.requesting_trust:
+                    self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+                    args = {
+                        'node_name': self.config_desc.node_name,
+                        'key_id': theader.task_owner_key_id,
+                        'task_id': theader.task_id,
+                        'estimated_performance': performance,
+                        'price': self.config_desc.min_price,
+                        'max_resource_size': self.config_desc.max_resource_size,
+                        'max_memory_size': self.config_desc.max_memory_size,
+                        'num_cores': self.config_desc.num_cores
+                    }
+                    self._add_pending_request(TaskConnTypes.TaskRequest, theader.task_owner, theader.task_owner_port,
+                                              theader.task_owner_key_id, args)
 
-                return theader.task_id
+                    return theader.task_id
+            except Exception as err:
+                logger.warning("Cannot send request for task: {}".format(err))
+                self.task_keeper.remove_task_header(theader.task_id)
 
-        return 0
+        return None
 
     def request_resource(self, subtask_id, resource_header, address, port, key_id, task_owner):
         if subtask_id in self.task_sessions:

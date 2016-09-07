@@ -59,3 +59,4 @@ class EthereumTransactionSystem(TransactionSystem):
                  'value': payment.value,
                  'block_number': payment.extra['block_number']
                  } for payment in self.__monitor.get_incoming_payments()]
+

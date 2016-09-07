@@ -1,8 +1,10 @@
 import os
+import tempfile
 
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
 from gnr.task.luxrendertask import LuxRenderOptions
+
 
 class LuxBenchmark(Benchmark):
     def __init__(self):
@@ -13,7 +15,7 @@ class LuxBenchmark(Benchmark):
         
         self.lux_task_path = os.path.join(get_benchmarks_path(), "luxrender", "lux_task")
         
-        self.task_definition.output_file = "/tmp/lux_benchmark.png"
+        self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "lux_benchmark.png")
         self.task_definition.tasktype = "LuxRender"
         self.task_definition.renderer = "LuxRender"
         self.task_definition.output_format = "png"
@@ -25,11 +27,9 @@ class LuxBenchmark(Benchmark):
         self.task_definition.main_program_file = u"{}".format(find_task_script("docker_luxtask.py"))
         self.task_definition.resources = self.find_resources()
 
-
     def find_resources(self):
         selection = []
         for root, dirs, files in os.walk(self.lux_task_path):
             for name in files:
                 selection.append(os.path.join(root, name))
         return set(selection)
-    
