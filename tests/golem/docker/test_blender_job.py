@@ -42,7 +42,8 @@ class TestBlenderDockerJob(TestDockerJob):
             "end_task": 42,
             "output_format": "EXR",
             "frames": [1],
-            "total_tasks": 1
+            "total_tasks": 1,
+            "leading_zeros": 3
         }
 
         with self._create_test_job(script=task_script_src, params=params) as job:
@@ -51,5 +52,5 @@ class TestBlenderDockerJob(TestDockerJob):
             self.assertEqual(exit_code, 0)
 
         out_files = os.listdir(self.output_dir)
-        self.assertEqual(out_files, ['out_42_1.exr'])
+        self.assertEqual(out_files, ['out_42_001.exr'])
 
