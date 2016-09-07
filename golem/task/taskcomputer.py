@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 import os
 import uuid
@@ -22,7 +21,6 @@ from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
-
 
 
 logger = logging.getLogger(__name__)
