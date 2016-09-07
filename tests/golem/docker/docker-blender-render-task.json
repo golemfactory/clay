@@ -71,5 +71,6 @@
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },
   "subtask_timeout":1200,
-  "total_subtasks":6
+  "total_subtasks":6,
+  "leading_zeros": 7
 }

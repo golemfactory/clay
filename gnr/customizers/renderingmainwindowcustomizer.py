@@ -156,8 +156,8 @@ class AbsRenderingMainWindowCustomizer(object):
     def __get_frame_name(self, definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
         frame_num = definition.renderer_options.frames[num]
-        return "{}_{}_{}{}".format(output_name, num,
-                                   str(frame_num).zfill(len(str(len(definition.renderer_options.frames)))), ext)
+        padding = max(len(str(max(definition.renderer_options.frames))), definition.leading_zeros)
+        return "{}_{}_{}{}".format(output_name, num, str(frame_num).zfill(padding), ext)
 
     def __update_output_file_color(self):
         if os.path.isfile(self.gui.ui.outputFile.text()):

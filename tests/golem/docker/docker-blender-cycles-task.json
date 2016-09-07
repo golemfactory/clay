@@ -72,5 +72,6 @@
       "name": "golem/blender:latest",
       "id": null
     }
-  ]
+  ],
+  "leading_zeros": 3
 }

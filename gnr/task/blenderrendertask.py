@@ -144,6 +144,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
+                                         leading_zeros=self.task_definition.leading_zeros,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
         blender_task.initialize(self.dir_manager)
@@ -191,6 +192,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  return_address="",
                  return_port=0,
                  key_id="",
+                 leading_zeros=0,
                  docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
@@ -208,6 +210,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.script_src = ""
 
         self.compositing = compositing
+        self.leading_zeros = leading_zeros
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
@@ -278,6 +281,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y,
                                                   self.compositing)
+
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
@@ -286,7 +290,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "frames": frames,
-                      "output_format": self.output_format
+                      "output_format": self.output_format,
+                      "leading_zeros": self.leading_zeros
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -330,7 +335,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "frames": frames,
-                      "output_format": self.output_format
+                      "output_format": self.output_format,
+                      "leading_zeros": self.leading_zeros
                       }
 
         hash = "{}".format(random.getrandbits(128))
