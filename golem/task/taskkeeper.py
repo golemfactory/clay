@@ -51,6 +51,8 @@ class CompTaskKeeper(object):
         self.subtask_to_task = {}  # maps subtasks id to tasks id
 
     def add_request(self, theader, price):
+        assert type(price) in (int, long)
+        assert price >= 0
         task_id = theader.task_id
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
