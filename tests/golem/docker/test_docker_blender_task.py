@@ -3,6 +3,7 @@ from os import makedirs, path
 
 import gnr.node
 import jsonpickle
+import time
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
@@ -75,7 +76,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node.client.ranking = Mock()
         self.node.client.start = Mock()
+        self.node.client.p2pservice = Mock()
         self.node.initialize()
 
         task_server = TaskServer(Mock(), Mock(), Mock(), self.node.client,
@@ -118,8 +121,19 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
                 task_thread = task_computer.current_computations[0]
 
         if task_thread:
-            task_thread.join(60.0)
-            task_thread.end_comp()
+            started = time.time()
+            while task_thread.is_alive():
+                if time.time() - started >= 60:
+                    task_thread.end_comp()
+                    break
+                time.sleep(1)
+                task_computer.run()
+
+        started = time.time()
+        while task_computer.counting_task:
+            if time.time() - started >= 5:
+                raise Exception("Computation timed out")
+            time.sleep(0.1)
 
         return task_thread, self.error_msg, temp_dir
 
@@ -174,8 +188,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task_thread, error_msg, out_dir = \
             self._run_docker_task(task, timeout=1)
         self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsInstance(error_msg, str)
-        self.assertTrue(error_msg.startswith("Task timed out"))
+        self.assertIsInstance(task_thread.error_msg, str)
+        self.assertTrue(task_thread.error_msg.startswith("Task timed out"))
 
     def test_wrong_image_repository_specified(self):
         task = self._create_test_task()

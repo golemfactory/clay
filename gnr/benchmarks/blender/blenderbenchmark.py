@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
@@ -14,7 +15,7 @@ class BlenderBenchmark(Benchmark):
         
         self.blender_task_path = os.path.join(get_benchmarks_path(), "blender", "blender_task")
         
-        self.task_definition.output_file = "/tmp/blender_benchmark.png"
+        self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "blender_benchmark.png")
         self.task_definition.tasktype = "Blender"
         self.task_definition.renderer = "Blender"
         self.task_definition.output_format = "png"
@@ -26,5 +27,3 @@ class BlenderBenchmark(Benchmark):
         self.task_definition.main_program_file = u"{}".format(find_task_script("docker_blendertask.py"))
 
         self.task_definition.resources.add(os.path.normpath(self.task_definition.main_scene_file))
-
-    

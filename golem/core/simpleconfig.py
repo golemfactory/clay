@@ -88,7 +88,7 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, common_config, node_config, cfg_file, refresh=False):
+    def __init__(self, common_config, node_config, cfg_file, refresh=False, keep_old=True):
         """ Read existing configuration or creat new one if it doesn't exist or refresh option is set to True.
         :param common_config: configuration that is common for all nodes
         :param node_config: node specific configuration
@@ -114,10 +114,8 @@ class SimpleConfig(object):
                     else:
                         self.__read_options(cfg)
 
-                        # if not check_uid:
-                        #     write_config = False
-                        # elif len(self._node_config.get_node_name()) > 0:
-                        #     write_config = False
+                        if not keep_old:
+                            self.__remove_old_options(cfg)
                 else:
                     cfg.add_section(self._node_config.section())
 
@@ -151,12 +149,6 @@ class SimpleConfig(object):
         return cfg
 
     def __write_config(self, cfg, cfg_file):
-        # if uuid:
-        #     logger_msg = "Generating fresh UUID for {} ->".format(self.get_node_config().section())
-        #     new_uuid = SimpleAuth.generate_uuid()
-        #     logger.info("{} {}".format(logger_msg, new_uuid.get_hex()))
-        #     self.get_node_config().set_node_name(new_uuid.get_hex())
-
         self.__write_options(cfg)
 
         if os.path.exists(cfg_file):
@@ -178,11 +170,21 @@ class SimpleConfig(object):
         return cfg.set(property_.section(), property_.key(), property_.value())
 
     def __read_options(self, cfg):
-
         for prop in self.get_common_config().properties() + self.get_node_config().properties():
-            prop.set_value_from_str(self.__read_option(cfg, prop))
+            try:
+                prop.set_value_from_str(self.__read_option(cfg, prop))
+            except ConfigParser.NoOptionError:
+                logger.info("Adding new config option: {} ({})".format(prop.key(), prop.value()))
 
     def __write_options(self, cfg):
 
         for prop in self.get_common_config().properties() + self.get_node_config().properties():
             self.__write_option(cfg, prop)
+
+    def __remove_old_options(self, cfg):
+        for opt in cfg.options('Common'):
+            if opt not in [p.key() for p in self.get_common_config().properties()]:
+                cfg.remove_option('Common', opt)
+        for opt in cfg.options('Node'):
+            if opt not in [p.key() for p in self.get_node_config().properties()]:
+                cfg.remove_option('Node', opt)

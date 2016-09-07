@@ -256,9 +256,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
         self.customizer.gui.ui.supportedTasks.setText(str(supported))
-        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
+
+        self.customizer.gui.ui.computedTasks.setText(self._format_stats_message(computed_tasks))
+        self.customizer.gui.ui.tasksWithErrors.setText(self._format_stats_message(tasks_with_errors))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(self._format_stats_message(tasks_with_timeout))
 
     @inlineCallbacks
     def get_config(self):
@@ -282,8 +283,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
     @inlineCallbacks
-    def change_config(self, cfg_desc):
-        yield self.client.change_config(cfg_desc)
+    def change_config(self, cfg_desc, run_benchmarks=False):
+        yield self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_node_name()
         self.customizer.set_name(u"{}".format(self.node_name))
 
@@ -422,6 +423,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def save_task(task_state, file_path):
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if not path.endswith("."):
+                file_path += "."
+            file_path += "gt"
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
@@ -447,6 +453,9 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer.close()
                 self.config_dialog_customizer = None
                 self.config_dialog = None
+
+    def docker_config_changed(self):
+        self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
@@ -513,9 +522,15 @@ class GNRApplicationLogic(QtCore.QObject):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
-    def test_task_computation_success(self, results, est_mem):
+    def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        self.progress_dialog_customizer.show_message(u"Test task computation success!")
+        if msg is not None:
+            from PyQt4.QtGui import QMessageBox
+            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
+            ms_box.exec_()
+            ms_box.show()
+        msg = u"Task tested successfully"
+        self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
@@ -577,6 +592,16 @@ class GNRApplicationLogic(QtCore.QObject):
         config = yield self.get_config()
         returnValue(config.max_price)
 
+    @inlineCallbacks
+    def get_cost_for_task_id(self, task_id):
+        """
+        Get cost of subtasks related with @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = yield self.client.get_payment_for_task_id(task_id)
+        returnValue(cost)
+
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
@@ -589,3 +614,11 @@ class GNRApplicationLogic(QtCore.QObject):
             self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
+
+    @staticmethod
+    def _format_stats_message(stat):
+        try:
+            return u"Session: {}; All time: {}".format(stat[0], stat[1])
+        except (IndexError, TypeError) as err:
+            logger.warning("Problem with stat formatin {}".format(err))
+            return u"Error"

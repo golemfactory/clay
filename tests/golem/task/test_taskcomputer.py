@@ -1,9 +1,9 @@
 import os
 import time
 
-from golem.client import ClientTaskComputerEventListener
 from mock import MagicMock, Mock
 
+from golem.client import ClientTaskComputerEventListener
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.tools.assertlogs import LogTestCase
@@ -175,7 +175,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
             tt.join(timeout=5)
 
     def test_change_config(self):
-        tc = TaskComputer("ABC", Mock(), use_docker_machine_manager=False)
+        task_server = MagicMock()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = Mock()
 
         tc.use_docker_machine_manager = False

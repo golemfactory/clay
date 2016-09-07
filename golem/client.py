@@ -1,3 +1,4 @@
+import atexit
 import logging
 import sys
 import time
@@ -77,10 +78,13 @@ class ClientTaskComputerEventListener(object):
     def toggle_config_dialog(self, on=True):
         self.client.toggle_config_dialog(on)
 
+    def docker_config_changed(self):
+        self.client.docker_config_changed()
+
 
 class Client(object):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_docker_machine_manager=True, use_monitor=True, **config_overrides):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -161,11 +165,15 @@ class Client(object):
         self.resource_port = 0
         self.last_get_resource_peers_time = time.time()
         self.get_resource_peers_interval = 5.0
+        self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
 
+        atexit.register(self.quit)
+
     def start(self):
-        self.init_monitor()
+        if self.use_monitor:
+            self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
 
@@ -204,9 +212,9 @@ class Client(object):
         self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
-        self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
 
         if self.monitor:
+            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
             self.monitor.on_login()
 
     def init_monitor(self):
@@ -372,13 +380,13 @@ class Client(object):
         return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
-        return self.task_server.task_computer.stats.computed_tasks
+        return self.task_server.task_computer.stats.get_stats('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_timeout
+        return self.task_server.task_computer.stats.get_stats('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_errors
+        return self.task_server.task_computer.stats.get_stats('tasks_with_errors')
 
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
@@ -400,6 +408,17 @@ class Client(object):
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
         return ()
+
+    def get_payment_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
+        if cost is None:
+            return 0.0
+        return cost
 
     def use_transaction_system(self):
         return bool(self.transaction_system)
@@ -452,11 +471,12 @@ class Client(object):
         self.rpc_server = rpc_server
         return self.rpc_server.add_service(self)
 
-    def change_config(self, new_config_desc):
+    def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
-        self.task_server.change_config(self.config_desc)
+        if self.task_server:
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -550,6 +570,10 @@ class Client(object):
         for rpc_client in self.rpc_clients:
             rpc_client.toggle_config_dialog(on)
 
+    def docker_config_changed(self):
+        for rpc_client in self.rpc_clients:
+            rpc_client.docker_config_changed()
+
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
             if to_int:
@@ -576,8 +600,8 @@ class Client(object):
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
-                                                   self.get_computed_task_count(), self.get_error_task_count(),
-                                                   self.get_timeout_task_count())
+                                                   self.get_computed_task_count()[0], self.get_error_task_count()[0],
+                                                   self.get_timeout_task_count()[0])
                     self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
                                                            self.task_server.task_computer.counting_task,
                                                            self.task_server.task_computer.task_requested,

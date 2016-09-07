@@ -39,7 +39,8 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             client = Client(datadir=self.path,
                             transaction_system=False,
                             connect_to_known_hosts=False,
-                            use_docker_machine_manager=False)
+                            use_docker_machine_manager=False,
+                            use_monitor=False)
 
             start_client_process(queue=Mock(),
                                  client=client,

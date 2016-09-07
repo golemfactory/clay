@@ -162,7 +162,7 @@ class AppConfig:
                                  estimated_blender_performance="0",
                                  )
 
-        cfg = SimpleConfig(common_config, node_config, cfg_file)
+        cfg = SimpleConfig(common_config, node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)
 
     def __init__(self, cfg, config_file):

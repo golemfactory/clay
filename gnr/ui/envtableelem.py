@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
+from PyQt4.QtGui import QTableWidgetItem
 from PyQt4.QtCore import Qt
 
 

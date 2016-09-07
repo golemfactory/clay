@@ -8,10 +8,9 @@ from PIL import Image, ImageChops
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
 from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
-from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, get_task_border, \
-    get_task_num_from_pixels
+from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder
 from gnr.task.gnrtask import GNROptions
-from gnr.task.renderingtask import RenderingTask, AcceptClientVerdict
+from gnr.task.renderingtask import AcceptClientVerdict
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 from golem.task.taskstate import SubtaskStatus
@@ -223,34 +222,27 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
-        self.expected_offsets = {}
-        previous_end = 0
-        for i in range(1, parts + 1):
-            low, high = self._get_min_max_y(i) 
-            low *= self.scale_factor * self.res_y
-            high *=  self.scale_factor * self.res_y
-            height = int(round(high - low))
-            self.expected_offsets[i] = previous_end
-            previous_end += height
-        
-        preview_y = previous_end
+        expected_offsets = generate_expected_offsets(parts, self.res_x, self.res_y)
+        preview_y = expected_offsets[parts + 1]
+        if self.res_y:
+            self.scale_factor = float(preview_y) / self.res_y
 
         if self.use_frames:
             self.preview_file_path = []
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
-                preview_path = os.path.join(self.tmp_dir, "current_preview{}".format(i))
+                preview_path = os.path.join(self.tmp_dir, "current_task_preview{}".format(i))
                 self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
                                                             int(round(self.res_x * self.scale_factor)),
                                                             preview_y, 
-                                                            self.expected_offsets))
+                                                            expected_offsets))
         else:
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             self.preview_updater = PreviewUpdater(self.preview_file_path, 
                                                   int(round(self.res_x * self.scale_factor)), 
                                                   preview_y, 
-                                                  self.expected_offsets)
+                                                  expected_offsets)
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
@@ -360,24 +352,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
-        if self.res_y % parts == 0:
-            min_y = (parts - start_task) * (1.0 / float(parts))
-            max_y = (parts - start_task + 1) * (1.0 / float(parts))
-        else:
-            ceiling_height = int(math.ceil(float(self.res_y) / float(parts)))
-            ceiling_subtasks = parts - (ceiling_height * parts - self.res_y)
-            if start_task > ceiling_subtasks:
-                min_y = float(parts - start_task) * float(ceiling_height - 1) / float(self.res_y)
-                max_y = float(parts - start_task + 1) * float(ceiling_height - 1) / float(self.res_y)
-            else:
-                min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
-                min_y += (ceiling_subtasks - start_task) * ceiling_height
-                min_y = float(min_y) / float(self.res_y)
-
-                max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
-                max_y += (ceiling_subtasks - start_task + 1) * ceiling_height
-                max_y = float(max_y) / float(self.res_y)
-        return min_y, max_y
+        return get_min_max_y(start_task, parts, self.res_y)
 
     def _get_part_size(self, subtask_id):
         start_task = self.subtasks_given[subtask_id]['start_task']
@@ -424,6 +399,34 @@ class BlenderRenderTask(FrameRenderingTask):
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
+    def after_test(self, results, tmp_dir):
+        ret = []
+        if results and results.get("data"):
+            for filename in results["data"]:
+                if filename.lower().endswith(".log"):
+                    with open(filename, "r") as fd:
+                        warnings = self.__find_missing_files_warnings(fd.read())
+                        fd.close()
+                        for w in warnings:
+                            if w not in ret:
+                                ret.append(w)
+
+        return ret
+
+    def __find_missing_files_warnings(self, log_content):
+        warnings = []
+        for l in log_content.splitlines():
+            if l.lower().startswith("warning: path ") and l.lower().endswith(" not found"):
+                # extract filename from warning message
+                warnings.append(os.path.basename(l[14:-11]))
+        return warnings
+
+    def __get_frame_num_from_output_file(self, file_):
+        file_name = os.path.basename(file_)
+        file_name, ext = os.path.splitext(file_name)
+        idx = file_name.find(self.outfilebasename)
+        return int(file_name[idx + len(self.outfilebasename):])
+
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
 
@@ -441,6 +444,7 @@ class BlenderRenderTask(FrameRenderingTask):
             img.close()
         else:
             self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+            self._update_frame_task_preview()
     
     def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
@@ -467,8 +471,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             self.mark_part_on_preview(subtask['start_task'], img_task, color, self.preview_updater)
         elif self.total_tasks <= len(self.frames):
-            for i in range(0, int(round(self.res_x * self.scale_factor))):
-                for j in range(0, int(round(self.res_y * self.scale_factor))):
+            for i in range(0, int(math.floor(self.res_x * self.scale_factor))):
+                for j in range(0, int(math.floor(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
@@ -509,3 +513,103 @@ class CustomCollector(RenderingTaskCollector):
         result = ImageChops.add(final_img, img_offset)
         img_offset.close()
         return result
+
+
+def generate_expected_offsets(parts, res_x, res_y):
+    # returns expected offsets for preview; the highest value is preview's height
+    scale_factor = __scale_factor(res_x, res_y)
+    expected_offsets = {}
+    previous_end = 0
+    for i in range(1, parts + 1):
+        low, high = get_min_max_y(i, parts, res_y) 
+        low *= scale_factor * res_y
+        high *=  scale_factor * res_y
+        height = int(math.floor(high - low))
+        expected_offsets[i] = previous_end
+        previous_end += height
+    
+    expected_offsets[parts + 1] = previous_end
+    return expected_offsets
+    
+def get_min_max_y(task_num, parts, res_y):
+    if res_y % parts == 0:
+        min_y = (parts - task_num) * (1.0 / float(parts))
+        max_y = (parts - task_num + 1) * (1.0 / float(parts))
+    else:
+        ceiling_height = int(math.ceil(float(res_y) / float(parts)))
+        ceiling_subtasks = parts - (ceiling_height * parts - res_y)
+        if task_num > ceiling_subtasks:
+            min_y = float(parts - task_num) * float(ceiling_height - 1) / float(res_y)
+            max_y = float(parts - task_num + 1) * float(ceiling_height - 1) / float(res_y)
+        else:
+            min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+            min_y += (ceiling_subtasks - task_num) * ceiling_height
+            min_y = float(min_y) / float(res_y)
+
+            max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+            max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
+            max_y = float(max_y) / float(res_y)
+    return min_y, max_y
+
+def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
+    if not use_frames:
+        num = __num_from_pixel(p_y, res_x, res_y, total_tasks)
+    else:
+        if total_tasks <= frames:
+            subtask_frames = int(math.ceil(float(frames) / float(total_tasks)))
+            num = int(math.ceil(float(frame_num) / subtask_frames))
+        else:
+            parts = total_tasks / frames
+            num = (frame_num - 1) * parts + __num_from_pixel(p_y, res_x, res_y, parts)
+    return num
+
+
+def __scale_factor(res_x, res_y):
+    preview_x = 300
+    preview_y = 200
+    if res_x != 0 and res_y != 0:
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
+        else:
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+    else:
+        scale_factor = 1.0
+    return scale_factor
+    
+
+def __num_from_pixel(p_y, res_x, res_y, tasks):
+    offsets = generate_expected_offsets(tasks, res_x, res_y)
+    for task_num in range(1, tasks + 1):
+        low = offsets[task_num]
+        high = offsets[task_num + 1]
+        if p_y >= low and p_y < high:
+            return task_num
+    return tasks
+    
+def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
+                    frame_num=1):
+    if not use_frames:
+        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
+    elif total_tasks > frames:
+        parts = total_tasks / frames
+        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+    else:
+        border = []
+
+    return border
+
+def __get_border(start_task, end_task, parts, res_x, res_y):
+    border = []
+    offsets = generate_expected_offsets(parts, res_x, res_y)
+    scale_factor = float(offsets[parts + 1]) / res_y
+    
+    upper = offsets[start_task]
+    lower = offsets[end_task + 1]
+    for i in range(upper, lower):
+        border.append((0, i))
+        border.append((int(math.floor(res_x * scale_factor)), i))
+    for i in range(0, int(math.floor(res_x * scale_factor))):
+        border.append((i, upper))
+        border.append((i, lower))
+    return border

@@ -1,10 +1,13 @@
+import time
+
 from mock import Mock
 
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
+
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -19,6 +22,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock.header.max_price = 10000
         task_mock.query_extra_data.return_value.ctd.task_id = task_id
         task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+        task_mock.get_progress.return_value = 0.3
         return task_mock
 
     def test_get_next_subtask(self):
@@ -109,14 +113,16 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
     def test_computed_task_received(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.listeners.append(Mock())
         th = TaskHeader("ABC", "xyz", "10.10.10.10", 1024, "key_id", "DEFAULT")
         th.max_price = 50
 
         class TestTask(Task):
-            def __init__(self, header, src_code, subtasks_id):
+            def __init__(self, header, src_code, subtasks_id, verify_subtasks):
                 super(TestTask, self).__init__(header, src_code)
                 self.finished = {k: False for k in subtasks_id}
                 self.restarted = {k: False for k in subtasks_id}
+                self.verify_subtasks = verify_subtasks
                 self.subtasks_id = subtasks_id
 
             def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
@@ -136,7 +142,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
                     self.finished[subtask_id] = True
 
             def verify_subtask(self, subtask_id):
-                return self.finished[subtask_id]
+                return self.verify_subtasks[subtask_id]
 
             def finished_computation(self):
                 return not self.needs_computation()
@@ -147,7 +153,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             def restart_subtask(self, subtask_id):
                 self.restarted[subtask_id] = True
 
-        t = TestTask(th, "print 'Hello world'", ["xxyyzz"])
+        t = TestTask(th, "print 'Hello world'", ["xxyyzz"], verify_subtasks={"xxyyzz": True})
         tm.add_new_task(t)
         ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
@@ -164,8 +170,24 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_status == SubtaskStatus.finished
         assert tm.tasks_states["xyz"].status == TaskStatus.finished
 
+        th.task_id = "abc"
+        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"], verify_subtasks={"aabbcc": True})
+        tm.add_new_task(t2)
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
+        assert not wrong_task
+        assert ctd.subtask_id == "aabbcc"
+        assert not should_wait
+        tm.restart_subtask("aabbcc")
+        ss = tm.tasks_states["abc"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.restarted
+        assert not tm.computed_task_received("aabbcc", [], 0)
+        assert ss.subtask_progress == 0.0
+        assert ss.subtask_status == SubtaskStatus.restarted
+        assert not t2.finished["aabbcc"]
+
+
         th.task_id = "qwe"
-        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"])
+        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
         tm.add_new_task(t3)
         ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
@@ -178,6 +200,24 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.stderr == "something went wrong"
         with self.assertLogs(logger, level="WARNING"):
             assert not tm.computed_task_received("qqwwee", [], 0)
+
+        th.task_id = "task4"
+        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"], {'ttt4': False, 'sss4': True})
+        tm.add_new_task(t2)
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2,
+                                                           "10.10.10.10")
+        assert not wrong_task
+        assert ctd.subtask_id == "ttt4"
+        assert not tm.computed_task_received("ttt4", [], 0)
+        tm.listeners[0].task_status_updated.assert_called_with("task4")
+        assert tm.tasks_states["task4"].subtask_states["ttt4"].subtask_status == SubtaskStatus.failure
+        prev_call = tm.listeners[0].task_status_updated.call_count
+        assert not tm.computed_task_received("ttt4", [], 0)
+        assert tm.listeners[0].task_status_updated.call_count == prev_call + 1
+        ctd, wrong_task, should_wait = tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2, "10.10.10.10")
+        assert not wrong_task
+        assert ctd.subtask_id == "sss4"
+        assert tm.computed_task_received("sss4", [], 0)
 
     def test_task_result_incoming(self):
         subtask_id = "xxyyzz"
@@ -217,3 +257,105 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         tm.task_result_incoming(subtask_id)
         assert not task_mock.result_incoming.called
 
+    def test_get_subtasks(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        assert tm.get_subtasks("Task 1") is None
+        task_mock = self._get_task_mock()
+        tm.add_new_task(task_mock)
+        task_mock2 = self._get_task_mock("TASK 1", "SUBTASK 1")
+        tm.add_new_task(task_mock2)
+        assert tm.get_subtasks("xyz") == []
+        assert tm.get_subtasks("TASK 1") == []
+        tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        tm.get_next_subtask("NODEID", "NODENAME", "TASK 1", 1000, 100, 10000, 10000)
+        task_mock.query_extra_data.return_value.ctd.subtask_id = "aabbcc"
+        tm.get_next_subtask("NODEID2", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        task_mock.query_extra_data.return_value.ctd.subtask_id = "ddeeff"
+        tm.get_next_subtask("NODEID3", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        assert set(tm.get_subtasks("xyz")) == {"xxyyzz", "aabbcc", "ddeeff"}
+        assert tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
+
+    def test_resource_send(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.listeners.append(Mock())
+        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde",
+                            "DEFAULT"), "print 'hello world'")
+        tm.add_new_task(t)
+        tm.resources_send("xyz")
+        assert tm.listeners[0].notice_task_updated.called_with("xyz")
+
+    def test_remove_old_tasks(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.listeners.append(Mock())
+        t = Task(Mock(), "")
+        t.header.task_id = "xyz"
+        t.header.ttl = 0.5
+        t.header.last_checking = time.time()
+        tm.add_new_task(t)
+        assert tm.tasks_states["xyz"].status in tm.activeStatus
+        time.sleep(1)
+        tm.remove_old_tasks()
+        assert tm.tasks.get('xyz') is None
+
+    def test_task_event_listener(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        tm.notice_task_updated = Mock()
+        assert isinstance(tm, TaskEventListener)
+        tm.notify_update_task("xyz")
+        tm.notice_task_updated.assert_called_with("xyz")
+
+    def test_query_task_state(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.query_task_state("xyz") is None
+
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            ts = tm.query_task_state("xyz")
+        assert ts is not None
+        assert ts.progress == 0.3
+
+    def test_resume_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.resume_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.resume_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.starting
+        assert tm.tasks_states["xyz"].status == TaskStatus.starting
+
+    def test_restart_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.restart_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.restart_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.waiting
+        assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+
+    def test_abort_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.abort_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.abort_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.aborted
+        assert tm.tasks_states["xyz"].status == TaskStatus.aborted
+
+    def test_pause_task(self):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.pause_task("xyz") is None
+        t = self._get_task_mock()
+        tm.add_new_task(t)
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.pause_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.paused
+        assert tm.tasks_states["xyz"].status == TaskStatus.paused

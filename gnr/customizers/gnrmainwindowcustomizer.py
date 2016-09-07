@@ -1,7 +1,10 @@
+from __future__ import division
+import cPickle
 import logging
 import os
-import cPickle
+from threading import Lock
 
+from ethereum.utils import denoms
 from PyQt4 import QtCore
 from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
@@ -11,7 +14,9 @@ from golem.task.taskstate import TaskStatus
 from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
                           EnvironmentsDialog, IdentityDialog, NodeNameDialog
 
-from gnr.ui.tasktableelem import TaskTableElem
+from twisted.internet.defer import inlineCallbacks
+
+from gnr.ui.tasktableelem import TaskTableElem, ItemMap
 
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir
@@ -35,12 +40,17 @@ class GNRMainWindowCustomizer(Customizer):
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
         self.new_task_dialog_customizer = None
+        self.configuration_dialog_customizer = None
         Customizer.__init__(self, gui, logic)
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
+        self.lock = Lock()
+        self.timer = QtCore.QTimer()
+        self.timer.start(1000)
+        self.timer.timeout.connect(self.update_time)
 
     def init_config(self):
-        ConfigurationDialogCustomizer(self.gui, self.logic)
+        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
         self._set_new_task_dialog_customizer()
 
     def set_options(self, cfg_desc, id_, eth_address, description):
@@ -70,24 +80,43 @@ class GNRMainWindowCustomizer(Customizer):
     # Updates tasks information in gui
     def update_tasks(self, tasks):
         for i in range(self.gui.ui.taskTableWidget.rowCount()):
-            task_id = self.gui.ui.taskTableWidget.item(i, 0).text()
+            task_id = self.gui.ui.taskTableWidget.item(i, ItemMap.Id).text()
             task_id = "{}".format(task_id)
             if task_id in tasks:
-                self.gui.ui.taskTableWidget.item(i, 1).setText(tasks[task_id].task_state.status)
-                progress_bar_in_box_layout = self.gui.ui.taskTableWidget.cellWidget(i, 2)
+                self.gui.ui.taskTableWidget.item(i, ItemMap.Status).setText(tasks[task_id].task_state.status)
+                progress_bar_in_box_layout = self.gui.ui.taskTableWidget.cellWidget(i, ItemMap.Progress)
                 layout = progress_bar_in_box_layout.layout()
                 pb = layout.itemAt(0).widget()
                 pb.setProperty("value", int(tasks[task_id].task_state.progress * 100.0))
                 if self.task_details_dialog_customizer:
                     if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
                         self.task_details_dialog_customizer.update_view(tasks[task_id].task_state)
+                self.__update_payment(task_id, i)
 
             else:
                 assert False, "Update task for unknown task."
 
+    @inlineCallbacks
+    def __update_payment(self, task_id, i):
+        price = yield self.logic.get_cost_for_task_id(task_id)
+        if price:
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price / denoms.ether))
+
+    def update_time(self):
+        with self.lock:
+            for i in range(self.gui.ui.taskTableWidget.rowCount()):
+                status = self.gui.ui.taskTableWidget.item(i, ItemMap.Status).text()
+                if status == 'Computing' or status == 'Waiting':
+                    l = self.gui.ui.taskTableWidget.item(i, ItemMap.Time).text().split(':')
+                    time_ = int(l[0]) * 3600 + int(l[1]) * 60 + int(l[2]) + 1
+                    m, s = divmod(time_, 60)
+                    h, m = divmod(m, 60)
+                    self.gui.ui.taskTableWidget.item(i, ItemMap.Time).setText(
+                        ("%02d:%02d:%02d" % (h, m, s)))
+
     # Add task information in gui
     def add_task(self, task):
-        self._add_task(task.definition.task_id, task.status)
+        self._add_task(task.definition.task_id, task.status, task.definition.task_name)
 
     def update_task_additional_info(self, t):
         self.current_task_highlighted = t
@@ -106,7 +135,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def remove_task(self, task_id):
         for row in range(0, self.gui.ui.taskTableWidget.rowCount()):
-            if self.gui.ui.taskTableWidget.item(row, 0).text() == task_id:
+            if self.gui.ui.taskTableWidget.item(row, ItemMap.Id).text() == task_id:
                 self.gui.ui.taskTableWidget.removeRow(row)
                 return
 
@@ -208,18 +237,20 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.startTaskButton.setEnabled(False)
         self.logic.start_task(self.current_task_highlighted.definition.task_id)
 
-    def _add_task(self, task_id, status):
+    def _add_task(self, task_id, status, task_name):
         current_row_count = self.gui.ui.taskTableWidget.rowCount()
         self.gui.ui.taskTableWidget.insertRow(current_row_count)
 
-        task_table_elem = TaskTableElem(task_id, status)
+        task_table_elem = TaskTableElem(task_id, status, task_name)
+        for col in range(ItemMap.count()):
+            if col != ItemMap.Progress:
+                self.gui.ui.taskTableWidget.setItem(
+                    current_row_count, col, task_table_elem.get_column_item(col))
 
-        for col in range(0, 2):
-            self.gui.ui.taskTableWidget.setItem(current_row_count, col, task_table_elem.get_column_item(col))
+        self.gui.ui.taskTableWidget.setCellWidget(
+            current_row_count, ItemMap.Progress, task_table_elem.progressBarInBoxLayoutWidget)
 
-        self.gui.ui.taskTableWidget.setCellWidget(current_row_count, 2, task_table_elem.progressBarInBoxLayoutWidget)
-
-        self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(current_row_count, 1))
+        self.gui.ui.taskTableWidget.setCurrentItem(self.gui.ui.taskTableWidget.item(current_row_count, ItemMap.Status))
         self.update_task_additional_info(self.logic.get_task(task_id))
 
     def _show_payments_clicked(self):
@@ -243,7 +274,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _task_table_row_clicked(self, row, col):
         if row < self.gui.ui.taskTableWidget.rowCount():
-            task_id = self.gui.ui.taskTableWidget.item(row, 0).text()
+            task_id = self.gui.ui.taskTableWidget.item(row, ItemMap.Id).text()
             task_id = "{}".format(task_id)
             t = self.logic.get_task(task_id)
             self.update_task_additional_info(t)
@@ -255,7 +286,7 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _task_table_row_double_clicked(self, m):
         row = m.row()
-        task_id = "{}".format(self.gui.ui.taskTableWidget.item(row, 0).text())
+        task_id = "{}".format(self.gui.ui.taskTableWidget.item(row, ItemMap.Id).text())
         self.show_details_dialog(task_id)
 
     def _edit_description(self):
@@ -275,7 +306,7 @@ class GNRMainWindowCustomizer(Customizer):
             return
         row = self.gui.ui.taskTableWidget.itemAt(p).row()
 
-        id_item = self.gui.ui.taskTableWidget.item(row, 0)
+        id_item = self.gui.ui.taskTableWidget.item(row, ItemMap.Id)
         task_id = "{}".format(id_item.text())
         gnr_task_state = self.logic.get_task(task_id)
 

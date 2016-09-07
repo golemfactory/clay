@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.fileshelper import find_file_with_ext
+from golem.core.fileshelper import find_file_with_ext, common_dir
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
@@ -298,6 +298,7 @@ class LuxTask(RenderingTask):
                 logger.warning("Couldn't rename and copy .flm file. {}".format(err))
         else:
             logger.warning("Couldn't find flm file.")
+        return None
 
     def query_extra_data_for_merge(self):
 
@@ -329,7 +330,7 @@ class LuxTask(RenderingTask):
             return False
         if self.verification_error:
             return False
-        commonprefix = os.path.commonprefix(computer.tt.result['data'])
+        commonprefix = common_dir(computer.tt.result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         logs = find_file_with_ext(commonprefix, [".log"])
         stderr = filter(lambda x: os.path.basename(x) == "stderr.log", computer.tt.result['data'])
@@ -381,6 +382,9 @@ class LuxTask(RenderingTask):
             self.__update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
+    
+    def _update_task_preview(self):
+        pass
 
     @RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
@@ -438,7 +442,7 @@ class LuxTask(RenderingTask):
         self.verification_error = True
 
     def __final_img_ready(self, results):
-        commonprefix = os.path.commonprefix(results["data"])
+        commonprefix = common_dir(results['data'])
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
         if img is None:
             # TODO Maybe we should try again?
@@ -449,7 +453,7 @@ class LuxTask(RenderingTask):
             except (IOError, OSError) as err:
                 logger.warning("Couldn't rename and copy img file. {}".format(err))
 
-        self.notify_update_task(self.header.task_id)
+        self.notify_update_task()
 
     def __final_img_error(self, error):
         logger.error("Cannot generate final image: {}".format(error))
@@ -464,7 +468,7 @@ class LuxTask(RenderingTask):
         computer.tt.join()
 
     def __final_flm_ready(self, results):
-        commonprefix = os.path.commonprefix(results['data'])
+        commonprefix = common_dir(results['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         if flm is None:
             self.__final_flm_failure("No flm file created")
