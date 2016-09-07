@@ -307,7 +307,6 @@ class TestBlenderTask(TempDirFixture):
         img = Image.open(file4)
         self.assertTrue(img.size == (300, 200))
 
-        print bt.use_frames
         bt.restart()
         for preview in bt.preview_updaters:
             assert preview.chunks == {}
