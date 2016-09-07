@@ -143,7 +143,7 @@ class GNRTask(Task):
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
-        was_failure_before = self.subtasks_given[subtask_id]['status'] == SubtaskStatus.failure
+        was_failure_before = self.subtasks_given[subtask_id]['status'] in [SubtaskStatus.failure, SubtaskStatus.resent]
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
                 self._mark_subtask_failed(subtask_id)

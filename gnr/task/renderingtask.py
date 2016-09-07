@@ -130,7 +130,6 @@ class RenderingTask(GNRTask):
 
     def restart(self):
         super(RenderingTask, self).restart()
-
         self.collected_file_names = {}
 
     @GNRTask.handle_key_error

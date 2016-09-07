@@ -185,7 +185,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         assert task.subtasks_given["xyz"]["status"] == SubtaskStatus.restarted
         assert task.subtasks_given["abc"]["status"] == SubtaskStatus.failure
         assert task.subtasks_given["def"]["status"] == SubtaskStatus.restarted
-        assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.restarted
+        assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.resent
 
     def __compress_and_pickle_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
