@@ -6,6 +6,10 @@ class CommandException(Exception):
     pass
 
 
+class HelpException(CommandException):
+    pass
+
+
 class ParsingException(CommandException):
     def __repr__(self):
         return u"{}".format(self.message)

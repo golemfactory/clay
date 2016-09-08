@@ -1,35 +1,56 @@
 import argparse
-
+import sys
 import time
 
-import sys
-import types
+from twisted.internet.defer import TimeoutError
 
-from golem.interface.command import CommandHelper, CommandStorage
-from golem.interface.exceptions import ExecutionException, ParsingException
+from golem.interface.command import CommandHelper, CommandStorage, command
+from golem.interface.exceptions import ExecutionException, ParsingException, HelpException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
+
+
+@command(name="exit", help="Exit the interactive shell")
+def _exit(raise_exit=True):
+    from twisted.internet import reactor
+    from twisted.internet.error import ReactorNotRunning
+
+    try:
+        if reactor.running:
+            reactor.callFromThread(reactor.stop)
+        if raise_exit:
+            sys.exit(0)
+    except ReactorNotRunning:
+        pass
+    except Exception as exc:
+        import logging
+        logging.error("Shutdown error: {}".format(exc))
+
+
+@command(name="help", help="Display this help message")
+def _help():
+    raise HelpException()
 
 
 class ArgumentParser(argparse.ArgumentParser):
     def error(self, message):
+        self.print_usage()
         exc = sys.exc_info()[1]
         raise ParsingException(exc or message)
+
+    def exit(self, status=0, message=None):
+        pass
 
 
 class CLI(object):
 
-    DESCRIPTION = 'Golem command line interface'
+    PROG = 'Golem'
+    DESCRIPTION = 'Command line interface help'
     METAVAR = ''
 
-    def __init__(self, client, roots=None):
+    def __init__(self, client, roots=None, processors=None, formatters=None):
 
         self.client = client
         self.roots = roots or CommandStorage.roots
-
-        for root in self.roots:
-            setattr(root, 'client', client)
-
-        CommandStorage.debug()
 
         self.parser = None
         self.shared_parser = None
@@ -37,25 +58,45 @@ class CLI(object):
         self.processors = []
         self.formatters = []
 
-        self.default_formatter = CommandFormatter()
-        self.add_formatter(self.default_formatter)
+        for root in self.roots:
+            setattr(root, 'client', client)
+
+        if processors:
+            for processor in processors:
+                self.add_processor(processor)
+
+        if formatters:
+            for formatter in formatters:
+                self.add_formatter(formatter)
+
         self.add_formatter(CommandJSONFormatter())
+        self.add_formatter(CommandFormatter())  # default
 
     def execute(self, args=None, interactive=False):
-        while True:
 
+        if interactive:
+            import readline
+            readline.parse_and_bind("tab: complete")
+
+        while True:
             if not args:
-                sys.stdout.write(">> ")
-                sys.stdout.flush()
-                args = sys.stdin.readline().strip().split(' ')
+                line = raw_input('>> ')
+                args = line.strip().split(' ')
 
             if args:
-                sys.stdout.write(self.process(args))
-                sys.stdout.write("\n")
-                sys.stdout.flush()
+                try:
+                    result = self.process(args)
+                except SystemExit:
+                    break
+
+                if result is not None:
+                    sys.stdout.write(result)
+                    sys.stdout.write("\n")
+                    sys.stdout.flush()
 
             args = None
             if not interactive:
+                _exit(raise_exit=False)
                 break
 
     def process(self, args):
@@ -63,32 +104,41 @@ class CLI(object):
             self.build()
 
         formatter = None
+        result = str()
         started = time.time()
 
         try:
 
             namespace = self.parser.parse_args(args)
-            print namespace.__dict__
             formatter = self.get_formatter(namespace)
             callback = namespace.__dict__.pop('callback')
             result = CommandHelper.wait_for(callback(**namespace.__dict__))
 
-        except ParsingException as exc:
-            result = exc
+        except HelpException:
+            self.parser.print_help()
+
+        except ParsingException:
+            self.parser.print_help()
+
+        except TimeoutError:
+            result = ExecutionException("Command timed out", ' '.join(args), started)
 
         except Exception as exc:
             result = ExecutionException(exc, ' '.join(args), started)
 
         finally:
             if not formatter:
-                formatter = self.default_formatter
+                formatter = self.formatters[-1]
 
         for processor in self.processors:
             result = processor.process(result)
+
         return formatter.format(result, started)
 
     def build(self):
-        self.shared_parser = ArgumentParser(add_help=False)
+        self.shared_parser = ArgumentParser(add_help=False,
+                                            prog=self.PROG,
+                                            usage=argparse.SUPPRESS)
 
         for formatter in self.formatters:
             if formatter.argument:
@@ -97,8 +147,12 @@ class CLI(object):
                                                 default=False,
                                                 help=formatter.help)
 
-        self.parser = ArgumentParser(description=self.DESCRIPTION,
-                                     parents=[self.shared_parser])
+        self.parser = ArgumentParser(prog=self.PROG,
+                                     description=self.DESCRIPTION,
+                                     parents=[self.shared_parser],
+                                     add_help=False,
+                                     usage=argparse.SUPPRESS)
+
         self.subparsers = self.parser.add_subparsers(metavar=self.METAVAR)
 
         for root in self.roots:
@@ -119,7 +173,7 @@ class CLI(object):
             if f.supports(namespace_dict):
                 formatter = f
             f.remove_option(namespace_dict)
-        return formatter or self.default_formatter
+        return formatter or self.formatters[-1]
 
     def _build_parser(self, parser, parent, elem):
 
@@ -131,8 +185,10 @@ class CLI(object):
         arguments = interface['arguments']
         is_callable = interface['callable']
 
-        subparser = parser.add_parser(name=interface['name'], help=interface.get('help'),
-                                      parents=[self.shared_parser])
+        subparser = parser.add_parser(name=interface['name'],
+                                      help=interface.get('help'),
+                                      parents=[self.shared_parser],
+                                      usage=argparse.SUPPRESS)
 
         if is_callable:
             subparser.set_defaults(callback=self._build_callback(parent, source))
@@ -142,18 +198,18 @@ class CLI(object):
             self._build_children(subparser, elem, children, name)
 
     def _build_children(self, parser, parent, children, name):
-        subparser = parser.add_subparsers(title=name, metavar=self.METAVAR)
+        subparser = parser.add_subparsers(title=name, metavar=self.METAVAR,
+                                          parser_class=ArgumentParser)
         for child in children.values():
             self._build_parser(subparser, parent, child)
 
     @staticmethod
     def _build_callback(parent, elem):
         if parent:
-            def wrapper(*args, **kwargs):
-                elem(parent.instance, *args, **kwargs)
-            method = wrapper
+            method = CommandHelper.wrap_call(elem)
         else:
             method = elem
+
         return lambda *a, **kw: method(*a, **kw)
 
     @staticmethod

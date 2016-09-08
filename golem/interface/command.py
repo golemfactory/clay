@@ -17,7 +17,7 @@ def group(name=None, parent=None, **kwargs):
 
     def update_methods(cls):
         """
-        Iterate over class methods and convert them to commands
+        Iterate over non-static methods and convert them to commands
         :param cls: Class to inspect
         :return: None
         """
@@ -159,15 +159,6 @@ def __property_wrapper_builder(prop, value):
 
     w = CommandHelper.set_wrapper(wrapper)
     return wrapper
-
-
-class CommandGroup(object):
-    client = None
-    instance = None
-
-    def __init__(self, client=None):
-        self.instance = self.instance or self
-        self.client = self.client or client
 
 
 class CommandHelper(object):
@@ -338,7 +329,6 @@ class CommandHelper(object):
 
     @staticmethod
     def wait_for(deferred, timeout=None):
-
         if not isinstance(deferred, Deferred):
             return deferred
 
@@ -353,6 +343,11 @@ class CommandHelper(object):
         if isinstance(result, Failure):
             result.raiseException()
         return result
+
+    @staticmethod
+    def wrap_call(elem, self_or_cls=None):
+        # elem cannot be a static method; they're not parsed by @group
+        return lambda *a, **kw: elem(self_or_cls, *a, **kw)
 
     @staticmethod
     def is_callable(elem):

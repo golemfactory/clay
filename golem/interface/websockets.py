@@ -1,13 +1,10 @@
-import logging
-
 from golem.rpc.websockets import WebSocketRPCClientFactory
 
-logger = logging.getLogger(__name__)
 
-
-class WebSocketsCLI(object):
+class WebSocketCLI(object):
 
     def __init__(self, cli_class, address, port):
+
         self.cli_class = cli_class
         self.cli = None
         self.address = address
@@ -28,7 +25,9 @@ class WebSocketsCLI(object):
         def on_error(error):
             if self.reactor.running:
                 self.reactor.stop()
-            logger.error("CLI: error: {}".format(error))
+
+            import sys
+            sys.stderr.write("Error occurred: {}".format(error))
 
         def connect():
             rpc_factory.connect().addCallbacks(on_connected, on_error)

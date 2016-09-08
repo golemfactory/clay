@@ -126,7 +126,7 @@ class SessionManager(SessionAwareMixin):
         addr = self.get_session_addr(session)
         return addr in self.sessions
 
-    def get_session(self, host, port):
+    def get_session(self, host, port, timeout=None):
         for session_key, session in self.sessions.items():
             if session_key == (host, port):
                 return session
@@ -388,7 +388,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
             self._deferred.callback(session)
 
     def _reconnect(self, *_):
-        logger.warn("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
+        logger.info("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
         conn_deferred = task.deferLater(self.reactor, self._reconnect_timeout, self.connect)
         conn_deferred.addCallback(self._client_reconnected)
         conn_deferred.addErrback(self._reconnect)
@@ -405,7 +405,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
             session.retry_requests()
 
     def clientConnectionLost(self, connector, reason):
-        logger.warn("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
+        logger.info("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
         self._reconnect()
 
     def clientConnectionFailed(self, connector, reason):
