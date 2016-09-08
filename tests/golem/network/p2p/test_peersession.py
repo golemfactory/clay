@@ -1,5 +1,4 @@
 import unittest
-from random import random
 
 from mock import MagicMock
 

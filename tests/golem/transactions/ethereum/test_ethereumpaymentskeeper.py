@@ -1,4 +1,3 @@
-import unittest
 
 from rlp.utils import decode_hex
 from sha3 import sha3_256
