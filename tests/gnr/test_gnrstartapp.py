@@ -1,4 +1,3 @@
-import logging
 import os
 from mock import Mock, patch
 from multiprocessing import Queue

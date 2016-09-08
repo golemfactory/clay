@@ -1,4 +1,3 @@
-import unittest
 from copy import deepcopy
 from peewee import IntegrityError
 from os import urandom
