@@ -4,8 +4,8 @@ import time
 from golem.core.common import HandleKeyError
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
-
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener
@@ -90,6 +90,8 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task):
         assert task.header.task_id not in self.tasks
+        assert self.key_id
+        assert SocketAddress.is_proper_address(self.listen_address, self.listen_port)
 
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port

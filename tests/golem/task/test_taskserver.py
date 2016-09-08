@@ -168,6 +168,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
+        ts.task_manager.listen_port = 1111
+        ts.task_manager.listen_address = "10.10.10.10"
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
@@ -205,6 +207,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.root_path = self.path
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
+        ts.task_manager.listen_address = "10.10.10.10"
+        ts.task_manager.listen_port = 1111
         self.ts = ts
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
