@@ -372,8 +372,12 @@ class TestP2PService(DatabaseFixture):
         peer.key_id = keys_auth.key_id
         service.add_peer(keys_auth.key_id, peer)
         ccd = ClientConfigDescriptor()
-        ccd.node_name = "test sending hello on name change"
         assert not peer.hello_called
         service.change_config(ccd)
-        assert peer.hello_called
+        assert not peer.hello_called # negative test
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "test sending hello on name change"
+        service.change_config(ccd)
+        assert peer.hello_called # positive test
+
 
