@@ -185,7 +185,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_status == SubtaskStatus.restarted
         assert not t2.finished["aabbcc"]
 
-
         th.task_id = "qwe"
         t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
         tm.add_new_task(t3)
@@ -337,6 +336,17 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             tm.restart_task("xyz")
         assert tm.tasks["xyz"].task_status == TaskStatus.waiting
         assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+        tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        t.query_extra_data.return_value.ctd.subtask_id = "xxyyzz2"
+        tm.get_next_subtask("NODEID2", "NODENAME2", "xyz", 1000, 100, 10000, 10000)
+        assert len(tm.tasks_states["xyz"].subtask_states) == 2
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.restart_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.waiting
+        assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+        assert len(tm.tasks_states["xyz"].subtask_states) == 2
+        for ss in tm.tasks_states["xyz"].subtask_states.values():
+            assert ss.subtask_status == SubtaskStatus.restarted
 
     def test_abort_task(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
