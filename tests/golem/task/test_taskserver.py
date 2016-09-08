@@ -176,9 +176,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.max_price = 1000
 
         extra_data = Mock()
-        extra_data.ctd = Mock()
+        extra_data.ctd = ComputeTaskDef()
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
+        extra_data.ctd.environment = "DEFAULT"
 
         task_mock.query_extra_data.return_value = extra_data
 
@@ -213,9 +214,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.max_price = 1000
 
         extra_data = Mock()
-        extra_data.ctd = Mock()
+        extra_data.ctd = ComputeTaskDef()
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
+        extra_data.ctd.environment = "DEFAULT"
 
         task_mock.query_extra_data.return_value = extra_data
 

@@ -8,7 +8,7 @@ from golem.resource.dirmanager import DirManager
 
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
@@ -164,10 +164,12 @@ class TaskManager(TaskEventListener):
                 should_wait = extra_data.should_wait
                 ctd = extra_data.ctd
 
-                if ctd is None or ctd.subtask_id is None:
+                if not self._check_compute_task_def(ctd, task_id):
                     return None, False, should_wait
-
                 ctd.key_id = th.task_owner_key_id
+                ctd.return_address = th.task_owner_address
+                ctd.return_port = th.task_owner_port
+                ctd.task_owner = th.task_owner
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
                 self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.notice_task_updated(task_id)
@@ -523,6 +525,15 @@ class TaskManager(TaskEventListener):
         # self.save_state()
         for l in self.listeners:
             l.task_status_updated(task_id)
+
+    def _check_compute_task_def(self, ctd, task_id):
+        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id or not ctd.environment:
+            return False
+        if task_id != ctd.task_id or self.subtask2task_mapping.get(ctd.subtask_id) is not None:
+            return False
+        if self.tasks_states[ctd.task_id].subtask_states.get(ctd.subtask_id) is not None:
+            return False
+        return True
 
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:
