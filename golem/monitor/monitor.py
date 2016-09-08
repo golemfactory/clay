@@ -81,6 +81,11 @@ class SystemMonitor(object):
     def on_login(self):
         return self._send_with_args(LoginModel, self.meta_data)
 
+    def on_config_update(self, meta_data):
+        self.meta_data = meta_data
+        self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
+        return self._send_with_args(LoginModel, self.meta_data)
+
     def on_logout(self):
         return self._send_with_args(LogoutModel, self.meta_data)
 
