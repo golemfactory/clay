@@ -38,7 +38,7 @@ class LuxRenderDefaults(RendererDefaults):
 def build_lux_render_info(dialog, customizer):
     defaults = LuxRenderDefaults()
 
-    renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, dialog, customizer, LuxRenderOptions)
+    renderer = RendererInfo(LuxTask.TASK_TYPE, defaults, LuxRenderTaskBuilder, dialog, customizer, LuxRenderOptions)
     renderer.output_formats = ["exr", "png", "tga"]
     renderer.scene_file_ext = ["lxs"]
     renderer.get_task_num_from_pixels = get_task_num_from_pixels
@@ -106,6 +106,7 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.max_price,
                            self.task_definition.renderer_options.halttime,
                            self.task_definition.renderer_options.haltspp,
+                           task_name=self.task_definition.task_name,
                            docker_images=self.task_definition.docker_images
                            )
 
@@ -115,6 +116,8 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
 
 
 class LuxTask(RenderingTask):
+
+    TASK_TYPE = "LuxRender"
 
     ################
     # Task methods #
@@ -140,6 +143,7 @@ class LuxTask(RenderingTask):
                  max_price,
                  halttime,
                  haltspp,
+                 task_name="",
                  return_address="",
                  return_port=0,
                  key_id="",
@@ -149,7 +153,7 @@ class LuxTask(RenderingTask):
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
                                total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price, docker_images)
+                               root_path, estimated_memory, max_price, task_name, docker_images)
 
         self.tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         self.undeletable.append(self.__get_test_flm())

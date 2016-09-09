@@ -106,7 +106,7 @@ class PreviewUpdater(object):
 def build_blender_renderer_info(dialog, customizer):
     defaults = BlenderDefaults()
 
-    renderer = RendererInfo("Blender", defaults, BlenderRenderTaskBuilder, dialog,
+    renderer = RendererInfo(BlenderRenderTask.TASK_TYPE, defaults, BlenderRenderTaskBuilder, dialog,
                             customizer, BlenderRendererOptions)
     renderer.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
     renderer.scene_file_ext = ["blend"]
@@ -153,6 +153,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
+                                         task_name=self.task_definition.task_name,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
         blender_task.initialize(self.dir_manager)
@@ -172,6 +173,7 @@ DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
 
 class BlenderRenderTask(FrameRenderingTask):
 
+    TASK_TYPE = "Blender"
     ################
     # Task methods #
     ################
@@ -197,6 +199,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  frames,
                  compositing,
                  max_price,
+                 task_name="",
                  return_address="",
                  return_port=0,
                  key_id="",
@@ -206,7 +209,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                     BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
+                                    root_path, estimated_memory, use_frames, frames, max_price, task_name,
+                                    docker_images)
 
         crop_task = find_task_script("blendercrop.py")
         try:

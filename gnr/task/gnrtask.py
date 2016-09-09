@@ -60,8 +60,8 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
-
+                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, task_name="",
+                 docker_images=None):
         """ Create more specific task implementation
         :param src_code:
         :param node_name:
@@ -75,6 +75,7 @@ class GNRTask(Task):
         :param resource_size:
         :param estimated_memory:
         :param float max_price: maximum price that this node may par for an hour of computation
+        :param task_name: how user called this task
         :param docker_images: docker image specification
         """
         deadline = timeout_to_deadline(task_timeout)
@@ -88,6 +89,7 @@ class GNRTask(Task):
 
         self.total_tasks = 0
         self.last_task = 0
+        self.task_name = task_name
 
         self.num_tasks_received = 0
         self.subtasks_given = {}
@@ -104,6 +106,7 @@ class GNRTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
+
         self.verification_options = AdvanceVerificationOptions()
 
     def is_docker_task(self):
