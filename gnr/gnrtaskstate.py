@@ -22,6 +22,10 @@ class GNRTaskDefinition(object):
         self.options = GNROptions
         self.docker_images = None
 
+        self.task_name = ""
+        self.output_file = ""
+        self.output_format = ""
+
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 

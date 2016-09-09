@@ -29,16 +29,12 @@ class RendererDefaults:
 
 class RenderingTaskDefinition(GNRTaskDefinition):
     def __init__(self):
-        GNRTaskDefinition.__init__(self)
+        super(RenderingTaskDefinition, self).__init__()
 
         self.resolution = [0, 0]
         self.renderer = None
         self.renderer_options = None
-
         self.main_scene_file = ""
-        self.output_file = ""
-        self.output_format = ""
-        self.task_name = ""
 
 
 class RenderingTaskState:
