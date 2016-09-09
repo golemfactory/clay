@@ -215,8 +215,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any([path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]]))
+            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
         self.assertTrue(
-            any([path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]]))
+            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
         self.assertTrue(
-            any([f.endswith(".flm") for f in result["data"]]))
+            any(f.endswith(".flm") for f in result["data"]))

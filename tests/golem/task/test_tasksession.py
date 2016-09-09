@@ -45,14 +45,14 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
         with self.assertLogs(logger, level=1) as l:
             res = ts.decrypt(data)
-        self.assertTrue(any(["maybe it's not encrypted?" in log for log in l.output]))
-        self.assertFalse(any(["Encrypt error" in log for log in l.output]))
+        self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
+        self.assertFalse(any("Encrypt error" in log for log in l.output))
         self.assertEqual(res, data)
 
         ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
         with self.assertLogs(logger, level=1) as l:
             res = ts.decrypt(data)
-        self.assertTrue(any(["Different error" in log for log in l.output]))
+        self.assertTrue(any("Different error" in log for log in l.output))
         self.assertIsNone(res)
 
         ts.task_server = None

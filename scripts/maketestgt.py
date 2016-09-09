@@ -15,7 +15,7 @@ def read_task(file_, file_dest):
     assert os.path.isfile(task.main_scene_file)
     task.main_program_file = os.path.normpath(os.path.join(get_golem_path(), task.main_program_file))
     assert os.path.isfile(task.main_program_file)
-    task.resources = set([os.path.normpath(os.path.join(get_golem_path(), res))for res in task.resources])
+    task.resources = {os.path.normpath(os.path.join(get_golem_path(), res))for res in task.resources}
     for res in task.resources:
         assert os.path.isfile(res)
 

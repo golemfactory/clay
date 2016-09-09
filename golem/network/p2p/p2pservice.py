@@ -890,7 +890,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not known_hosts:
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
-        self.seeds = set([(x.ip_address, x.port) for x in known_hosts if x.is_seed])
+        self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
         self.seeds.update(SEEDS)
 
         ip_address = self.config_desc.seed_host
