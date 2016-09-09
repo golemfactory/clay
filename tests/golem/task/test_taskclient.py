@@ -1,3 +1,4 @@
+import pickle
 import unittest
 import uuid
 
@@ -26,3 +27,6 @@ class TestTaskClient(unittest.TestCase):
 
         tc.reject()
         assert tc.rejected()
+
+        tc2 = pickle.loads(pickle.dumps(tc))
+        assert tc2.rejected()
