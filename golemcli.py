@@ -3,11 +3,12 @@ import sys
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
+from golem.interface.client.peers import Peers
 from golem.interface.client.tasks import Tasks
 from golem.interface.websockets import WebSocketCLI
 
 # prevent 'unused' warnings
-_ = {Tasks}
+_ = {Tasks, Peers}
 
 
 def main():
@@ -18,14 +19,15 @@ def main():
         port=('-p', '--port'),
     )
 
+    args = sys.argv[1:]
+
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(*arguments['interactive'], dest="interactive", action="store_true", default=False)
+    parser.add_argument(*arguments['interactive'], dest="interactive", action="store_true", default=not args)
     parser.add_argument(*arguments['address'], dest="address", type=str, default='127.0.0.1')
     parser.add_argument(*arguments['port'], dest="port", type=int, default=60103)
 
-    parsed, forwarded = parser.parse_known_args(sys.argv[1:])
-
+    parsed, forwarded = parser.parse_known_args(args)
     # setup logging if in interactive mode
     if parsed.interactive:
         config_logging("golem_cli.log")

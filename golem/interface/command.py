@@ -1,6 +1,7 @@
 import inspect
 import types
 from Queue import Queue, Empty
+from operator import itemgetter
 
 from twisted.internet.defer import Deferred, TimeoutError
 from twisted.python.failure import Failure
@@ -57,10 +58,11 @@ def group(name=None, parent=None, **kwargs):
     return decorate
 
 
-def command(name=None, **kwargs):
+def command(name=None, root=False, **kwargs):
     """
-    Stand-alone command function decorator
+    Command function decorator
     :param name: Command name
+    :param root: Force as root command
     :param parent: Parent command object
     :param kwargs: Additional parameters (see CommandHelper.init_interface)
     :return: decorated function
@@ -73,7 +75,7 @@ def command(name=None, **kwargs):
         CommandHelper.init_interface(func,
                                      name=name or func.__name__.lower(),
                                      **kwargs)
-        if func not in CommandStorage.roots:
+        if root and func not in CommandStorage.roots:
             CommandStorage.roots.append(func)
         return func
 
@@ -83,43 +85,22 @@ def command(name=None, **kwargs):
 
 def argument(*args, **kwargs):
     """
-    Add an argument to command
-    :param args: Forwarded positional arguments
+    Add an argument to a command
     :param kwargs: Forwarded keyword arguments
     :return: decorated function
     """
 
     def wrapper(func):
         CommandHelper.set_wrapped(func, w)
-        CommandHelper.add_argument(func, *args, **kwargs)
+        CommandHelper.add_argument(func, Argument(*args, **kwargs))
         return func
 
     w = CommandHelper.set_wrapper(wrapper)
     return wrapper
 
 
-def identifier(name, optional=False, creates=False, updates=False, deletes=False):
-    """
-    Add an identifier argument passed to command. Accepts modifiers.
-    :param optional: Default to None if not provided
-    :param name: Identifier name (must match func. arg name)
-    :param creates: Purpose modifier
-    :param updates: Purpose modifier
-    :param deletes: Purpose modifier
-    :return: decorated function
-    """
-
-    def wrapper(func):
-        kwargs = dict(help='object identifier')
-        if optional:
-            kwargs['default'] = None
-
-        CommandHelper.set_wrapped(func, w)
-        CommandHelper.add_argument(func, name, **kwargs)
-        return func
-
-    w = CommandHelper.set_wrapper(wrapper)
-    return wrapper
+def identifier(name, **kwargs):
+    return argument(name, help=kwargs.pop('help', 'object_identifier'), **kwargs)
 
 
 def doc(value):
@@ -161,6 +142,81 @@ def __property_wrapper_builder(prop, value):
     return wrapper
 
 
+class Argument(object):
+
+    def __init__(self, *args, **kwargs):
+        self.args = args or []
+        self.kwargs = kwargs or {}
+
+    def simplify(self):
+
+        args = list(self.args)
+        kwargs = dict(self.kwargs)
+
+        is_flag = args and args[0].startswith('-')
+        boolean = kwargs.pop('boolean', is_flag)
+
+        if 'action' not in kwargs:
+            choices = 'choices' in kwargs
+
+            if boolean and not choices:
+                kwargs['action'] = 'store_true'
+            else:
+                kwargs['action'] = 'store'
+
+        if kwargs.pop('optional', False):
+            kwargs['default'] = kwargs.get('default', None)
+
+        if 'default' in kwargs and not boolean:
+            kwargs['nargs'] = '?'
+
+        ret = Argument(*args, **kwargs)
+        return ret
+
+    @staticmethod
+    def extend(arg, *args, **kwargs):
+        new_arg = Argument(*arg.args, **arg.kwargs)
+        new_arg.args += args
+        new_arg.kwargs.update(kwargs)
+        return new_arg
+
+    def __repr__(self):
+        return "Arguments args: {}\n kwargs: {}\n".format(self.args, self.kwargs)
+
+
+class CommandResult(object):
+
+    NONE = 0
+    PLAIN = 1
+    TABULAR = 2
+
+    def __init__(self, data, data_format=None):
+        self.data = data
+        if data_format is None:
+            data_format = CommandResult.PLAIN
+        self.data_format = data_format
+
+    @staticmethod
+    def to_tabular(headers, values):
+        return CommandResult((headers, values), CommandResult.TABULAR)
+
+    def from_tabular(self):
+        assert self.data_format == CommandResult.TABULAR
+        data = self.data
+
+        if data and len(data) == 2:
+            return data[0], data[1]
+        return None, None
+
+    @staticmethod
+    def sort(headers, values, key):
+        if key:
+            column_idx = headers.index(key)
+            if column_idx != -1:
+                values = sorted(values, key=itemgetter(column_idx))
+        return values
+
+
 class CommandHelper(object):
 
     COMMAND_INTERFACE = '__golem_cmd__'
@@ -171,9 +227,14 @@ class CommandHelper(object):
             self.source = source
 
     @classmethod
-    def init_interface(cls, elem, name=None, parent=None, children=None, arguments=None, **kwargs):
+    def init_interface(cls, elem, name=None, parent=None, children=None, arguments=None, argument=None, **kwargs):
 
         interface = cls.get_interface(elem)
+
+        if argument:
+            if not arguments:
+                arguments = []
+            arguments.append(argument)
 
         if interface:
 
@@ -278,11 +339,11 @@ class CommandHelper(object):
         return not_exists
 
     @classmethod
-    def add_argument(cls, elem, *args, **kwargs):
+    def add_argument(cls, elem, arg):
         cls.init_interface(elem)
 
         arguments = cls.get_arguments(elem)
-        arguments.append(cls.simplify_argument(*args, **kwargs))
+        arguments.append(arg.simplify())
 
     @classmethod
     def update_property(cls, interface, prop, value):
@@ -304,28 +365,12 @@ class CommandHelper(object):
         if not (interface and arguments):
             return
 
-        arguments = [cls.simplify_argument(a) for a in arguments]
+        arguments = [arg.simplify() for arg in arguments]
 
         if interface['arguments']:
             interface['arguments'].extend(arguments)
         else:
             interface['arguments'] = arguments
-
-    @staticmethod
-    def simplify_argument(*args, **kwargs):
-        if 'action' not in kwargs:
-            default = args and args[0].startswith('-')
-            boolean = kwargs.pop('boolean', default)
-
-            if boolean:
-                kwargs['action'] = 'store_true'
-            else:
-                kwargs['action'] = 'store'
-
-        if 'default' in kwargs:
-            kwargs['nargs'] = '?'
-
-        return args or [], kwargs or {}
 
     @staticmethod
     def wait_for(deferred, timeout=None):

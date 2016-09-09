@@ -377,11 +377,19 @@ class Client(object):
         return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_tasks(self, task_id=None):
+        tasks = self.task_server.task_manager.tasks
         if task_id:
-            if task_id in self.task_server.task_keeper.task_headers:
-                return self.task_server.task_keeper.task_headers[task_id]
-            return None
-        return self.task_server.task_keeper.get_all_tasks()
+            return tasks.get(task_id)
+        return tasks
+
+    def get_task_stats(self):
+        return dict(
+            in_network=self.get_task_count(),
+            supported=self.get_supported_task_count(),
+            subtasks_computed=self.get_computed_task_count(),
+            subtasks_with_errors=self.get_error_task_count(),
+            subtasks_with_timeout=self.get_timeout_task_count()
+        )
 
     def get_supported_task_count(self):
         return len(self.task_server.task_keeper.supported_tasks)

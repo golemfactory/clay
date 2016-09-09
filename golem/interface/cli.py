@@ -4,12 +4,12 @@ import time
 
 from twisted.internet.defer import TimeoutError
 
-from golem.interface.command import CommandHelper, CommandStorage, command
-from golem.interface.exceptions import ExecutionException, ParsingException, HelpException
+from golem.interface.command import CommandHelper, CommandStorage, command, Argument
+from golem.interface.exceptions import ExecutionException, ParsingException, InterruptException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
-@command(name="exit", help="Exit the interactive shell")
+@command(name="exit", help="Exit the interactive shell", root=True)
 def _exit(raise_exit=True):
     from twisted.internet import reactor
     from twisted.internet.error import ReactorNotRunning
@@ -26,28 +26,35 @@ def _exit(raise_exit=True):
         logging.error("Shutdown error: {}".format(exc))
 
 
-@command(name="help", help="Display this help message")
+@command(name="help", help="Display this help message", root=True)
 def _help():
-    raise HelpException()
+    message = \
+u"""Golem command line interface help
+
+To display command details type:
+    command -h
+"""
+    raise ParsingException(message)
 
 
 class ArgumentParser(argparse.ArgumentParser):
+
     def error(self, message):
         self.print_usage()
         exc = sys.exc_info()[1]
-        raise ParsingException(exc or message)
+        raise ParsingException(exc or message, self)
 
     def exit(self, status=0, message=None):
-        pass
+        raise InterruptException()
 
 
 class CLI(object):
 
     PROG = 'Golem'
-    DESCRIPTION = 'Command line interface help'
+    DESCRIPTION = None
     METAVAR = ''
 
-    def __init__(self, client, roots=None, processors=None, formatters=None):
+    def __init__(self, client, roots=None, formatters=None):
 
         self.client = client
         self.roots = roots or CommandStorage.roots
@@ -55,24 +62,22 @@ class CLI(object):
         self.parser = None
         self.shared_parser = None
         self.subparsers = None
-        self.processors = []
         self.formatters = []
 
         for root in self.roots:
             setattr(root, 'client', client)
 
-        if processors:
-            for processor in processors:
-                self.add_processor(processor)
-
         if formatters:
             for formatter in formatters:
                 self.add_formatter(formatter)
+        else:
+            self.add_formatter(CommandJSONFormatter())
 
-        self.add_formatter(CommandJSONFormatter())
         self.add_formatter(CommandFormatter())  # default
 
     def execute(self, args=None, interactive=False):
+
+        CommandStorage.debug()
 
         if interactive:
             import readline
@@ -112,28 +117,30 @@ class CLI(object):
             namespace = self.parser.parse_args(args)
             formatter = self.get_formatter(namespace)
             callback = namespace.__dict__.pop('callback')
-            result = CommandHelper.wait_for(callback(**namespace.__dict__))
+            result = callback(**namespace.__dict__)
 
-        except HelpException:
-            self.parser.print_help()
+        except InterruptException:
+            pass
 
-        except ParsingException:
-            self.parser.print_help()
+        except ParsingException as exc:
+            sys.stdout.write('{}\n\n'.format(exc))
+            if exc.parser:
+                exc.parser.print_help()
+            else:
+                self.parser.print_help()
 
         except TimeoutError:
             result = ExecutionException("Command timed out", ' '.join(args), started)
 
         except Exception as exc:
-            result = ExecutionException(exc, ' '.join(args), started)
+            result = ExecutionException("Exception: {}".format(exc), ' '.join(args), started)
 
-        finally:
-            if not formatter:
-                formatter = self.formatters[-1]
+            import traceback
+            traceback.print_exc()
 
-        for processor in self.processors:
-            result = processor.process(result)
-
-        return formatter.format(result, started)
+        if not formatter:
+            formatter = self.formatters[-1]
+        return formatter.format(result)
 
     def build(self):
         self.shared_parser = ArgumentParser(add_help=False,
@@ -150,7 +157,6 @@ class CLI(object):
         self.parser = ArgumentParser(prog=self.PROG,
                                      description=self.DESCRIPTION,
                                      parents=[self.shared_parser],
-                                     add_help=False,
                                      usage=argparse.SUPPRESS)
 
         self.subparsers = self.parser.add_subparsers(metavar=self.METAVAR)
@@ -172,7 +178,7 @@ class CLI(object):
         for f in self.formatters:
             if f.supports(namespace_dict):
                 formatter = f
-            f.remove_option(namespace_dict)
+            f.clear_argument(namespace_dict)
         return formatter or self.formatters[-1]
 
     def _build_parser(self, parser, parent, elem):
@@ -185,7 +191,7 @@ class CLI(object):
         arguments = interface['arguments']
         is_callable = interface['callable']
 
-        subparser = parser.add_parser(name=interface['name'],
+        subparser = parser.add_parser(name=name,
                                       help=interface.get('help'),
                                       parents=[self.shared_parser],
                                       usage=argparse.SUPPRESS)
@@ -215,4 +221,5 @@ class CLI(object):
     @staticmethod
     def _build_arguments(parser, arguments):
         for argument in arguments:
-            parser.add_argument(*argument[0], **argument[1])
+            if isinstance(argument, Argument):
+                parser.add_argument(*argument.args, **argument.kwargs)

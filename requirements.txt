@@ -31,3 +31,4 @@ ndg-httpsclient
 ovh
 certifi
 weakreflist
+tabulate

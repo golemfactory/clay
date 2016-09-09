@@ -6,11 +6,16 @@ class CommandException(Exception):
     pass
 
 
-class HelpException(CommandException):
+class InterruptException(CommandException):
     pass
 
 
 class ParsingException(CommandException):
+
+    def __init__(self, message, parser=None):
+        super(ParsingException, self).__init__(message)
+        self.parser = parser
+
     def __repr__(self):
         return u"{}".format(self.message)
 

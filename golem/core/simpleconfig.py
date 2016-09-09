@@ -184,7 +184,7 @@ class SimpleConfig(object):
     def __remove_old_options(self, cfg):
         for opt in cfg.options('Common'):
             if opt not in [p.key() for p in self.get_common_config().properties()]:
-                cfg.remove_option('Common', opt)
+                cfg.clear_argument('Common', opt)
         for opt in cfg.options('Node'):
             if opt not in [p.key() for p in self.get_node_config().properties()]:
-                cfg.remove_option('Node', opt)
+                cfg.clear_argument('Node', opt)

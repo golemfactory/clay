@@ -1,42 +1,87 @@
+import abc
 import json
+import pprint
 
-FORMATTER_REPR_PROPERTY = '__formatter_repr__'
+from tabulate import tabulate
+
+from golem.interface.command import CommandResult
 
 
-class CommandFormatter(object):
+class _CommandResultFormatter(object):
+    __metaclass__ = abc.ABCMeta
 
-    def __init__(self, argument=None, help=None, use_pprint=True):
+    def __init__(self, argument=None, help=None, prettify=True):
         self.argument = argument
         self.help = help
+        self.prettify = prettify
 
-        if use_pprint:
-            import pprint
-            self.to_repr = lambda x: unicode(pprint.pformat(to_dict(x)))
-        else:
-            self.to_repr = lambda x: unicode(to_dict(x))
+    def supports(self, arg_dict):
+        return self.argument and arg_dict.get(self.argument)
 
-    def format(self, result, started):
-        if result:
-            return self.to_repr(result)
+    def clear_argument(self, arg_dict):
+        arg_dict.pop(self.argument, None)
 
-    def supports(self, option_dict):
-        return self.argument and self.argument in option_dict and option_dict[self.argument]
+    @abc.abstractmethod
+    def format(self, result):
+        pass
 
-    def remove_option(self, option_dict):
-        option_dict.pop(self.argument, None)
+    @staticmethod
+    def _initial_format(result):
+
+        if result is None:
+            return None, CommandResult.NONE
+
+        if isinstance(result, CommandResult):
+
+            if result.data_format == CommandResult.TABULAR:
+                return result.from_tabular(), CommandResult.TABULAR
+
+            result = result.data
+
+        return result, CommandResult.PLAIN
 
 
-class CommandJSONFormatter(CommandFormatter):
+class CommandFormatter(_CommandResultFormatter):
+
+    def __init__(self, argument=None, help=None, prettify=True):
+        super(CommandFormatter, self).__init__(argument, help, prettify)
+
+    def format(self, result):
+        result, result_type = self._initial_format(result)
+
+        if result_type != CommandResult.NONE:
+
+            if result_type == CommandResult.TABULAR:
+                return tabulate(result[1], headers=result[0], tablefmt="plain")
+
+            elif isinstance(result, dict) and result:
+                string = ""
+                for k, v in result.iteritems():
+                    string += "{}: {}\n".format(k, v)
+                return string
+
+            elif self.prettify and result:
+                return pprint.pformat(result)
+
+            return repr(result)
+
+
+class CommandJSONFormatter(_CommandResultFormatter):
 
     ARGUMENT = 'json'
     HELP = 'return results in JSON format'
 
-    def __init__(self):
-        super(CommandJSONFormatter, self).__init__(self.ARGUMENT, self.HELP,
-                                                   use_pprint=False)
+    def __init__(self, prettify=True):
+        super(CommandJSONFormatter, self).__init__(self.ARGUMENT, self.HELP, prettify=prettify)
 
-    def format(self, result, started):
-        return json.dumps(to_dict(result), indent=4, sort_keys=True)
+    def format(self, result):
+        result, result_type = self._initial_format(result)
+
+        if result_type != CommandResult.NONE:
+            result = to_dict(result)
+            if self.prettify:
+                return json.dumps(result, indent=4, sort_keys=True)
+            return json.dumps(result)
 
 
 def to_dict(obj, cls=None):

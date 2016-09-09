@@ -34,6 +34,3 @@ class WebSocketCLI(object):
 
         self.reactor.callWhenRunning(connect)
         self.reactor.run()
-
-
-

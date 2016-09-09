@@ -239,26 +239,13 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def update_stats(self):
+        response = yield self.client.get_task_stats()
 
-        response = yield self.client.start_batch() \
-            .get_task_count() \
-            .get_supported_task_count() \
-            .get_computed_task_count() \
-            .get_error_task_count() \
-            .get_timeout_task_count() \
-            .call()
-
-        tasks_with_timeout = response.pop()
-        tasks_with_errors = response.pop()
-        computed_tasks = response.pop()
-        supported = response.pop()
-        known_tasks = response.pop()
-
-        self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
-        self.customizer.gui.ui.supportedTasks.setText(str(supported))
-        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
+        self.customizer.gui.ui.knownTasks.setText(str(response['in_network']))
+        self.customizer.gui.ui.supportedTasks.setText(str(response['supported']))
+        self.customizer.gui.ui.computedTasks.setText(str(response['subtasks_computed']))
+        self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
 
     @inlineCallbacks
     def get_config(self):
