@@ -4,6 +4,7 @@ import os
 import struct
 import time
 
+from golem.core.common import HandleAttributeError
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
     MessageGetTaskResult, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
@@ -25,10 +26,23 @@ logger = logging.getLogger(__name__)
 TASK_PROTOCOL_ID = 6
 
 
+def drop_after_attr_error(*args, **kwargs):
+    logger.warning("Attribute error occur")
+    args[0].dropped()
+
+
+def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
+    logger.warning("Attribute error occur")
+    args[0].task_computer.session_closed()
+    args[0].dropped()
+
+
 class TaskSession(MiddlemanSafeSession):
     """ Session for Golem task network """
 
     ConnectionStateType = MidAndFilesProtocol
+    handle_attr_error = HandleAttributeError(drop_after_attr_error)
+    handle_attr_error_with_task_computer = HandleAttributeError(call_task_computer_and_drop_after_attr_error)
 
     def __init__(self, conn):
         """
@@ -355,8 +369,8 @@ class TaskSession(MiddlemanSafeSession):
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
             self.dropped()
 
+    @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
-
         if self._check_ctd_params(msg.ctd) and self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
             self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
