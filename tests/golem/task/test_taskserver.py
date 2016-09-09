@@ -3,7 +3,7 @@ import uuid
 from collections import deque
 
 from math import ceil
-from mock import Mock, MagicMock, ANY
+from mock import Mock, MagicMock, patch, ANY
 
 from stun import FullCone
 
@@ -162,7 +162,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.ts = ts
         ts.sync_network()
 
-    def test_results(self):
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_results(self, mock_addr):
+        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
@@ -201,7 +203,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
         self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
 
-    def test_results_no_payment_addr(self):
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_results_no_payment_addr(self, mock_addr):
+        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
