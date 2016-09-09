@@ -4,7 +4,6 @@ import subprocess
 import re
 import shlex
 
-from optparse import OptionParser
 
 var_re = re.compile("\%\{[^\}]*\}")
 

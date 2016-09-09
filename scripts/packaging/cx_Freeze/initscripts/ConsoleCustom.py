@@ -53,9 +53,7 @@ m = __import__("__main__")
 name, ext = os.path.splitext(os.path.basename(os.path.normcase(FILE_NAME)))
 moduleName = "%s__main__" % name
 
-import encodings
 import importlib
-import ssl
 
 module = importlib.import_module(moduleName)
 module.start()

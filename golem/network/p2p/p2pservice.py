@@ -13,7 +13,7 @@ from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
-from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
+from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
 from golem.ranking.gossipkeeper import GossipKeeper
 from peerkeeper import PeerKeeper
 
@@ -340,15 +340,24 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.manager_session = None
 
     def change_config(self, config_desc):
-        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
+        """ Change configuration descriptor.
+        If node_name was changed, send hello to all peers to update node_name.
+        If listening port is changed, than stop listening on old port and start
         listening on a new one. If seed address is changed, connect to a new seed.
         Change configuration for resource server.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
 
+        is_node_name_changed = self.node_name != config_desc.node_name
+
         TCPServer.change_config(self, config_desc)
+        self.node_name = config_desc.node_name
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
+
+        if is_node_name_changed:
+            for peer in self.peers.values():
+                peer.hello()
 
         for peer in self.peers.values():
             if peer.port == self.config_desc.seed_port and peer.address == self.config_desc.seed_host:
@@ -881,7 +890,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not known_hosts:
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
-        self.seeds = set([(x.ip_address, x.port) for x in known_hosts if x.is_seed])
+        self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
         self.seeds.update(SEEDS)
 
         ip_address = self.config_desc.seed_host

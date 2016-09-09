@@ -29,7 +29,7 @@ class TestNodeConfig(LogTestCase):
         with self.assertLogs(logger, level=1) as l:
             res = NodeConfig.read_estimated_performance()
 
-        self.assertTrue(any(["Can't open" in log for log in l.output]))
+        self.assertTrue(any("Can't open" in log for log in l.output))
         self.assertEqual(res, 0)
 
         appconfig.ESTM_FILENAME = TestNodeConfig.wrong_name
@@ -38,7 +38,7 @@ class TestNodeConfig(LogTestCase):
         with self.assertLogs(logger, level=1) as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
-        self.assertTrue(any(["Can't open" in log for log in l.output]))
+        self.assertTrue(any("Can't open" in log for log in l.output))
 
         appconfig.ESTM_FILENAME = TestNodeConfig.good_name
         good_file = SimpleEnv.env_file_name(appconfig.ESTM_FILENAME)
@@ -55,14 +55,14 @@ class TestNodeConfig(LogTestCase):
         with self.assertLogs(logger, level=1) as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
-        self.assertTrue(any(["to float" in log for log in l.output]))
+        self.assertTrue(any("to float" in log for log in l.output))
 
         with open(good_file, 'w') as f:
             f.write("abc")
         with self.assertLogs(logger, level=1) as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
-        self.assertTrue(any(["to float" in log for log in l.output]))
+        self.assertTrue(any("to float" in log for log in l.output))
 
     def tearDown(self):
         not_file = SimpleEnv.env_file_name(TestNodeConfig.wrong_name)

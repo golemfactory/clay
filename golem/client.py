@@ -218,8 +218,7 @@ class Client(object):
             self.monitor.on_login()
 
     def init_monitor(self):
-        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
-                                     self.get_description(), self.config_desc)
+        metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
@@ -477,6 +476,8 @@ class Client(object):
         self.p2pservice.change_config(self.config_desc)
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
+        metadata = self.__get_nodemetadatamodel()
+        self.monitor.on_config_update(metadata)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -486,11 +487,10 @@ class Client(object):
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
-        logger.info("listener {} not registered".format(listener))
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("listener {} not registered".format(listener))
 
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)
@@ -573,6 +573,10 @@ class Client(object):
     def docker_config_changed(self):
         for rpc_client in self.rpc_clients:
             rpc_client.docker_config_changed()
+
+    def __get_nodemetadatamodel(self):
+        return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
+                                 APP_VERSION, self.get_description(), self.config_desc)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:

@@ -60,21 +60,21 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
     def test_get_and_set_value(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING") as l:
             tm.set_value("xyz", "xxyyzz", 13)
-        self.assertTrue(any(["not my task" in log for log in l.output]))
-        with self.assertLogs(logger, level=1) as l:
+        assert any("not my task" in log for log in l.output)
+        with self.assertLogs(logger, level="WARNING"):
             tm.get_value("xxyyzz")
 
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING"):
             tm.set_computation_time("xxyyzz", 12)
 
         task_mock = self._get_task_mock()
 
         tm.add_new_task(task_mock)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level="WARNING") as l:
             tm.set_value("xyz", "xxyyzz", 13)
-        self.assertTrue(any(["not my subtask" in log for log in l.output]))
+        assert any("not my subtask" in log for log in l.output)
 
         tm.tasks_states["xyz"].status = tm.activeStatus[0]
         subtask, wrong_task, wait = tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
@@ -184,7 +184,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert ss.subtask_progress == 0.0
         assert ss.subtask_status == SubtaskStatus.restarted
         assert not t2.finished["aabbcc"]
-
 
         th.task_id = "qwe"
         t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
@@ -337,6 +336,17 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             tm.restart_task("xyz")
         assert tm.tasks["xyz"].task_status == TaskStatus.waiting
         assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+        tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
+        t.query_extra_data.return_value.ctd.subtask_id = "xxyyzz2"
+        tm.get_next_subtask("NODEID2", "NODENAME2", "xyz", 1000, 100, 10000, 10000)
+        assert len(tm.tasks_states["xyz"].subtask_states) == 2
+        with self.assertNoLogs(logger, level="WARNING"):
+            tm.restart_task("xyz")
+        assert tm.tasks["xyz"].task_status == TaskStatus.waiting
+        assert tm.tasks_states["xyz"].status == TaskStatus.waiting
+        assert len(tm.tasks_states["xyz"].subtask_states) == 2
+        for ss in tm.tasks_states["xyz"].subtask_states.values():
+            assert ss.subtask_status == SubtaskStatus.restarted
 
     def test_abort_task(self):
         tm = TaskManager("ABC", Node(), root_path=self.path)
