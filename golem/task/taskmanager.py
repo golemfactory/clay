@@ -167,7 +167,7 @@ class TaskManager(TaskEventListener):
                 ctd = extra_data.ctd
 
                 if not self._check_compute_task_def(ctd, task_id):
-                    return None, False, should_wait
+                    return None, False, False
                 ctd.key_id = th.task_owner_key_id
                 ctd.return_address = th.task_owner_address
                 ctd.return_port = th.task_owner_port
@@ -529,7 +529,7 @@ class TaskManager(TaskEventListener):
             l.task_status_updated(task_id)
 
     def _check_compute_task_def(self, ctd, task_id):
-        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id or not ctd.environment:
+        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
             return False
         if task_id != ctd.task_id or self.subtask2task_mapping.get(ctd.subtask_id) is not None:
             return False
