@@ -49,7 +49,6 @@ class TestNewTaskDialogCustomizer(TestCase):
         td.resources = ["/abc/./def", "/ghi/jik"]
         td.main_program_file = "/a/b/c/"
         td.task_name = task_name
-        td.leading_zeros = 7
         win_norm_resources = {"\\abc\\def", "\\ghi\\jik"}
         oth_norm_resources = {"/abc/def", "/ghi/jik"}
         customizer.load_task_definition(td)
@@ -66,7 +65,6 @@ class TestNewTaskDialogCustomizer(TestCase):
         else:
             assert td.resources == oth_norm_resources
         self.assertEqual(td.task_name, task_name)
-        self.assertEqual(td.leading_zeros, 7)
 
         reg = re.compile('Blender_[0-2]\d:[0-5]\d:[0-5]\d_20\d\d-[0-1]\d\-[0-3]\d')
         td.task_name = None

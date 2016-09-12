@@ -122,6 +122,8 @@ class BlenderRendererOptions(GNROptions):
         self.use_frames = False
         self.frames = range(1, 11)
         self.compositing = False
+        self.set_leading_zeros = False
+        self.leading_zeros = 0
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
@@ -153,7 +155,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
-                                         leading_zeros=self.task_definition.leading_zeros,
+                                         leading_zeros=self.task_definition.renderer_options.leading_zeros,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
         blender_task.initialize(self.dir_manager)

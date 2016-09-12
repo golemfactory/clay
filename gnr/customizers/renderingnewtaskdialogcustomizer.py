@@ -51,7 +51,6 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
                                                    self.gui.ui.verificationForAllRadioButton.toggled,
                                                    self.gui.ui.verificationForFirstRadioButton.toggled,
                                                    self.gui.ui.probabilityLineEdit.textChanged,
-                                                   self.gui.ui.leadingZerosLineEdit.textChanged
                                                    ])
 
     def _setup_verification_connections(self):
@@ -120,7 +119,6 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.task_customizer.load_data()
 
         self.gui.ui.mainProgramFileLineEdit.setText(dr.defaults.main_program_file)
-        self.gui.ui.leadingZerosLineEdit.setText("0")
 
         set_time_spin_boxes(self.gui, dr.defaults.full_task_timeout, dr.defaults.subtask_timeout)
 

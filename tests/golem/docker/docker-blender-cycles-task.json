@@ -35,7 +35,9 @@
       8,
       9,
       10
-    ]
+    ],
+    "set_leading_zeros":true,
+    "leading_zeros":3
   },
   "task_type":null,
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
@@ -72,6 +74,5 @@
       "name": "golem/blender:latest",
       "id": null
     }
-  ],
-  "leading_zeros": 3
+  ]
 }

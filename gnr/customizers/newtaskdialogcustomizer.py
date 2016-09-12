@@ -154,7 +154,6 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
         self.gui.ui.taskNameLineEdit.setText(definition.task_name if definition.task_name else u"{}_{}".format(
             self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
-        self.gui.ui.leadingZerosLineEdit.setText("{}".format(definition.leading_zeros))
 
         self._load_options(definition)
 
@@ -231,13 +230,6 @@ class NewTaskDialogCustomizer(Customizer):
             definition.resources = self.add_task_resource_dialog_customizer.resources
         else:
             definition.resources = set()
-
-        try:
-            zeros = self.gui.ui.leadingZerosLineEdit.text()
-            definition.leading_zeros = int(zeros) if zeros else 0
-        except ValueError:
-            definition.leading_zeros = 0
-            logger.warning("Incorrect leading zeros value: {}".format(self.gui.ui.leadingZerosLineEdit.text()))
 
     def _read_task_type(self, definition):
         definition.task_type = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())

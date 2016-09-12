@@ -381,9 +381,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="6" column="1">
-                  <widget class="QWidget" name="advancVerificationWidget" native="true"/>
-                 </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_58">
                    <property name="toolTip">
@@ -407,6 +404,16 @@
                     </widget>
                    </item>
                   </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_51">
+                   <property name="toolTip">
+                    <string>After this time subtask computation will be aborted</string>
+                   </property>
+                   <property name="text">
+                    <string>Subtask timeout</string>
+                   </property>
+                  </widget>
                  </item>
                  <item row="2" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_19">
@@ -460,17 +467,7 @@
                    </item>
                   </layout>
                  </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="label_51">
-                   <property name="toolTip">
-                    <string>After this time subtask computation will be aborted</string>
-                   </property>
-                   <property name="text">
-                    <string>Subtask timeout</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="4" column="0">
+                 <item row="3" column="0">
                   <widget class="QLabel" name="label_59">
                    <property name="toolTip">
                     <string>Check this if you want to enable advanced subtask verification</string>
@@ -480,32 +477,15 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="4" column="1">
+                 <item row="3" column="1">
                   <widget class="QCheckBox" name="advanceVerificationCheckBox">
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="0">
-                  <widget class="QLabel" name="LeadingZerosLabel">
-                   <property name="toolTip">
-                    <string>Set number of leading zeros in frames names</string>
-                   </property>
-                   <property name="text">
-                    <string>Leadings zeros:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="3" column="1">
-                  <widget class="QLineEdit" name="leadingZerosLineEdit">
-                   <property name="toolTip">
-                    <string/>
-                   </property>
-                   <property name="text">
-                    <string>0</string>
-                   </property>
-                  </widget>
+                 <item row="5" column="1">
+                  <widget class="QWidget" name="advancVerificationWidget" native="true"/>
                  </item>
                 </layout>
                </item>
