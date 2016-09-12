@@ -39,6 +39,16 @@ def report(msg):
     print format_msg(node_kind, os.getpid(), msg)
 
 
+def create_client(datadir):
+    return Client(datadir=datadir,
+                  use_monitor=False,
+                  transaction_system=False,
+                  connect_to_known_hosts=False,
+                  use_docker_machine_manager=False,
+                  estimated_lux_performance=1000.0,
+                  estimated_blender_performance=1000.0)
+
+
 def run_requesting_node(datadir, num_subtasks=3):
     client = None
 
@@ -52,10 +62,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False,
-                    use_docker_machine_manager=False,
-                    use_monitor=False)
+    client = create_client(datadir)
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
@@ -94,10 +101,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    client = Client(datadir=datadir, transaction_system=False,
-                    connect_to_known_hosts=False,
-                    use_docker_machine_manager=False,
-                    use_monitor=False)
+    client = create_client(datadir)
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))

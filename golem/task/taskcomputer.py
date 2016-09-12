@@ -1,18 +1,17 @@
 import logging
-import os
 import time
 import os
 import uuid
 from threading import Lock
-# sys.path.append('../manager')
 
+from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.machine.machine_manager import DockerMachineManager
-from golem.vm.vm import PythonProcVM, PythonTestVM
+from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
-from golem.docker.task_thread import DockerTaskThread
+from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
@@ -24,11 +23,10 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 
 
-
 logger = logging.getLogger(__name__)
 
 
-class StatsKeeper(object):
+class CompStats(object):
     def __init__(self):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
@@ -87,7 +85,7 @@ class TaskComputer(object):
                            in_background=False, 
                            run_benchmarks=run_benchmarks)
 
-        self.stats = StatsKeeper()
+        self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
@@ -185,20 +183,20 @@ class TaskComputer(object):
 
         if task_thread.error or task_thread.error_msg:
             if "Task timed out" in task_thread.error_msg:
-                self.stats.tasks_with_timeout += 1
+                self.stats.increase_stat('tasks_with_timeout')
             else:
-                self.stats.tasks_with_errors += 1
+                self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
             logger.info("Task {} computed".format(subtask_id))
-            self.stats.computed_tasks += 1
+            self.stats.increase_stat('computed_tasks')
             self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                           subtask.return_address, subtask.return_port, subtask.key_id,
                                           subtask.task_owner, self.node_name)
         else:
-            self.stats.tasks_with_errors += 1
+            self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)

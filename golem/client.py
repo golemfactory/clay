@@ -218,8 +218,7 @@ class Client(object):
             self.monitor.on_login()
 
     def init_monitor(self):
-        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
-                                     self.get_description(), self.config_desc)
+        metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
@@ -395,13 +394,13 @@ class Client(object):
         return len(self.task_server.task_keeper.supported_tasks)
 
     def get_computed_task_count(self):
-        return self.task_server.task_computer.stats.computed_tasks
+        return self.task_server.task_computer.stats.get_stats('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_timeout
+        return self.task_server.task_computer.stats.get_stats('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server.task_computer.stats.tasks_with_errors
+        return self.task_server.task_computer.stats.get_stats('tasks_with_errors')
 
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
@@ -423,6 +422,17 @@ class Client(object):
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
         return ()
+
+    def get_payment_for_task_id(self, task_id):
+        """
+        Get current cost of the task defined by @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
+        if cost is None:
+            return 0.0
+        return cost
 
     def use_transaction_system(self):
         return bool(self.transaction_system)
@@ -481,6 +491,8 @@ class Client(object):
         self.p2pservice.change_config(self.config_desc)
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
+        metadata = self.__get_nodemetadatamodel()
+        self.monitor.on_config_update(metadata)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -490,11 +502,10 @@ class Client(object):
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
-        logger.info("listener {} not registered".format(listener))
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("listener {} not registered".format(listener))
 
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)
@@ -578,6 +589,10 @@ class Client(object):
         for rpc_client in self.rpc_clients:
             rpc_client.docker_config_changed()
 
+    def __get_nodemetadatamodel(self):
+        return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
+                                 APP_VERSION, self.get_description(), self.config_desc)
+
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:
             if to_int:
@@ -604,8 +619,8 @@ class Client(object):
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
                     self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
-                                                   self.get_computed_task_count(), self.get_error_task_count(),
-                                                   self.get_timeout_task_count())
+                                                   self.get_computed_task_count()[0], self.get_error_task_count()[0],
+                                                   self.get_timeout_task_count()[0])
                     self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
                                                            self.task_server.task_computer.counting_task,
                                                            self.task_server.task_computer.task_requested,

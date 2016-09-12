@@ -1,5 +1,4 @@
 import unittest
-from random import random
 
 from mock import MagicMock
 
@@ -36,7 +35,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ps.decrypt(ps2.encrypt(data)), data)
         with self.assertLogs(logger, level=1) as l:
             self.assertEqual(ps2.decrypt(data), data)
-        self.assertTrue(any(["not encrypted" in log for log in l.output]))
+        self.assertTrue(any("not encrypted" in log for log in l.output))
 
     def test_react_to_hello(self):
 

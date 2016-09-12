@@ -45,4 +45,7 @@ class SubtaskContextMenuCustomizer:
         if subtask_status == SubtaskStatus.resent:
             enabled["Restart"] = False
 
+        if subtask_status == SubtaskStatus.restarted:
+            enabled["Restart"] = False
+
         return enabled

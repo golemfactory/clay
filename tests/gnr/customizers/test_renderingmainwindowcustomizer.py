@@ -1,13 +1,16 @@
 import os
+from unittest import TestCase
 
 from mock import MagicMock, patch
 from PIL import Image
 
+from golem.task.taskstate import SubtaskState, SubtaskStatus
+from golem.tools.testdirfixture import TestDirFixture
+
 from gnr.application import GNRGui
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
-from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestRenderingMainWindowCustomizer(TestDirFixture):
@@ -64,10 +67,29 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         assert customizer.gui.ui.previewLabel.pixmap().width() == 301
         assert customizer.gui.ui.previewLabel.pixmap().height() == 206
 
-
         rts.definition.renderer = u"Blender"
         rts.definition.renderer_options = MagicMock()
         rts.definition.renderer_options.use_frames = True
         rts.definition.renderer_options.frames = range(10)
         rts.task_state.extra_data = {"resultPreview": [img_path]}
         customizer.update_task_additional_info(rts)
+
+    class TestPriorites(TestCase):
+        def test_subtask_priority(self):
+            s_rst = SubtaskState()
+            s_rst.subtask_status = SubtaskStatus.restarted
+            s_fil = SubtaskState()
+            s_fil.subtask_status = SubtaskStatus.failure
+            s_rsd = SubtaskState()
+            s_rsd.subtask_status = SubtaskStatus.resent
+            s_fin = SubtaskState()
+            s_fin.subtask_status = SubtaskStatus.finished
+            s_sta = SubtaskState()
+            s_sta.subtask_status = SubtaskStatus.starting
+            s_wai = SubtaskState()
+            s_wai.subtask_status = SubtaskStatus.waiting
+            assert subtasks_priority(s_rst) > subtasks_priority(s_fin)
+            assert subtasks_priority(s_fil) > subtasks_priority(s_fin)
+            assert subtasks_priority(s_rsd) > subtasks_priority(s_fin)
+            assert subtasks_priority(s_fin) > subtasks_priority(s_sta)
+            assert subtasks_priority(s_fin) > subtasks_priority(s_wai)

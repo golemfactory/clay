@@ -1,4 +1,3 @@
-import unittest
 from copy import deepcopy
 from peewee import IntegrityError
 from os import urandom
@@ -29,7 +28,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
         with self.assertLogs(logger, level=1) as l:
             self.assertEquals(0, pd.get_payment_value(pi))
-        self.assertTrue(any(["not exist" in log for log in l.output]))
+        self.assertTrue(any("not exist" in log for log in l.output))
         pd.add_payment(pi)
         self.assertEquals(20, pd.get_payment_value(pi))
         pi = PaymentInfo("xyz", "aabbcc", 10, ai)
@@ -60,7 +59,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
             self.assertIsNone(pd.get_state(pi4))
         pd.add_payment(pi3)
         pd.add_payment(pi4)
-        self.assertTrue(any(["not exist" in log for log in l.output]))
+        self.assertTrue(any("not exist" in log for log in l.output))
         self.assertEquals(pd.get_state(pi), None)
         self.assertEquals(pd.get_state(pi2), PaymentStatus.awaiting)
         self.assertEquals(pd.get_state(pi3), PaymentStatus.awaiting)
@@ -147,6 +146,8 @@ class TestPaymentsKeeper(TestWithDatabase):
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 6)
+        assert pk.get_payment("xxyyzz") == 20
+        assert pk.get_payment("not existing") == 0
 
 
 class TestAccountInfo(TempDirFixture):

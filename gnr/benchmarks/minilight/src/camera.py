@@ -7,7 +7,6 @@
 from math import pi, tan
 from raytracer import RayTracer
 from vector3f import Vector3f
-from random import Random
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))\s*(\S+)').search

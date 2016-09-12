@@ -4,7 +4,7 @@ from scene import Scene
 
 from mtrenderer import RenderWorker
 
-from sys import argv, stdout
+from sys import argv
 from time import time
 
 BANNER = ''

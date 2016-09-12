@@ -60,6 +60,10 @@ class SocketAddress(object):
 
         if self.address.find(':') != -1:
             # IPv6 address
+            if self.address.find("%") != -1:
+                # Address with zone index
+                self.address = self.address[:self.address.find("%")]
+
             IPv6Address(self.address.decode('utf8'))
             self.ipv6 = True
         else:

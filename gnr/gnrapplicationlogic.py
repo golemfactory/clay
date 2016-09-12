@@ -247,6 +247,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
         self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
 
+
     @inlineCallbacks
     def get_config(self):
         config = yield self.client.get_config()
@@ -409,6 +410,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def save_task(task_state, file_path):
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if not path.endswith("."):
+                file_path += "."
+            file_path += "gt"
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
@@ -573,6 +579,16 @@ class GNRApplicationLogic(QtCore.QObject):
         config = yield self.get_config()
         returnValue(config.max_price)
 
+    @inlineCallbacks
+    def get_cost_for_task_id(self, task_id):
+        """
+        Get cost of subtasks related with @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = yield self.client.get_payment_for_task_id(task_id)
+        returnValue(cost)
+
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
@@ -585,3 +601,11 @@ class GNRApplicationLogic(QtCore.QObject):
             self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
+
+    @staticmethod
+    def _format_stats_message(stat):
+        try:
+            return u"Session: {}; All time: {}".format(stat[0], stat[1])
+        except (IndexError, TypeError) as err:
+            logger.warning("Problem with stat formatin {}".format(err))
+            return u"Error"
