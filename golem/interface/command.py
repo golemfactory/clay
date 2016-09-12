@@ -3,8 +3,11 @@ import types
 from Queue import Queue, Empty
 from operator import itemgetter
 
+import datetime
 from twisted.internet.defer import Deferred, TimeoutError
 from twisted.python.failure import Failure
+
+from golem.interface.exceptions import CommandException
 
 
 def group(name=None, parent=None, **kwargs):
@@ -145,8 +148,8 @@ def __property_wrapper_builder(prop, value):
 class Argument(object):
 
     def __init__(self, *args, **kwargs):
-        self.args = args or []
-        self.kwargs = kwargs or {}
+        self.args = args or list()
+        self.kwargs = kwargs or dict()
 
     def simplify(self):
 
@@ -181,27 +184,30 @@ class Argument(object):
         return new_arg
 
     def __repr__(self):
-        return "Arguments args: {}\n kwargs: {}\n".format(self.args, self.kwargs)
+        return "args: {}\n kwargs: {}\n".format(self.args, self.kwargs)
 
 
 class CommandResult(object):
 
+    ERROR = -1
     NONE = 0
     PLAIN = 1
     TABULAR = 2
 
-    def __init__(self, data, data_format=None):
+    def __init__(self, data=None, type=None, error=None):
+        if error:
+            raise CommandException(error)
         self.data = data
-        if data_format is None:
-            data_format = CommandResult.PLAIN
-        self.data_format = data_format
+        self.type = type or CommandResult.PLAIN
 
     @staticmethod
-    def to_tabular(headers, values):
+    def to_tabular(headers, values, sort=None):
+        if sort in headers:
+            values = CommandResult.sort(headers, values, sort)
         return CommandResult((headers, values), CommandResult.TABULAR)
 
     def from_tabular(self):
-        assert self.data_format == CommandResult.TABULAR
+        assert self.type == CommandResult.TABULAR
         data = self.data
 
         if data and len(data) == 2:
@@ -215,6 +221,12 @@ class CommandResult(object):
             if column_idx != -1:
                 values = sorted(values, key=itemgetter(column_idx))
         return values
+
+    @staticmethod
+    def time_str(timestamp):
+        if timestamp:
+            datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
+        return ""
 
 
 class CommandHelper(object):

@@ -230,6 +230,8 @@ class WebSocketRPCProtocol(object):
                                                        message.kwargs)
         except Exception as exc:
             errors = exc.message
+            import traceback
+            traceback.print_exc()
 
         response = RPCResponseMessage(request_id=message.id,
                                       result=results,
@@ -251,6 +253,10 @@ class WebSocketRPCProtocol(object):
 
             logger.error("RPC: error sending message: {}"
                          .format(exc))
+
+            import traceback
+            traceback.print_exc()
+
         else:
             self.sendMessage(prepared, isBinary=True)
 

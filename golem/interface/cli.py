@@ -117,7 +117,8 @@ class CLI(object):
             namespace = self.parser.parse_args(args)
             formatter = self.get_formatter(namespace)
             callback = namespace.__dict__.pop('callback')
-            result = callback(**namespace.__dict__)
+            normalized = self._normalize_namespace(namespace)
+            result = callback(**normalized)
 
         except InterruptException:
             pass
@@ -163,10 +164,6 @@ class CLI(object):
 
         for root in self.roots:
             self._build_parser(self.subparsers, None, root)
-
-    def add_processor(self, processor):
-        if processor:
-            self.processors.append(processor)
 
     def add_formatter(self, formatter):
         if formatter:
@@ -223,3 +220,11 @@ class CLI(object):
         for argument in arguments:
             if isinstance(argument, Argument):
                 parser.add_argument(*argument.args, **argument.kwargs)
+
+    @classmethod
+    def _normalize_namespace(cls, namespace):
+        return {cls._normalize_key(k): v for k, v in namespace.__dict__.iteritems()}
+
+    @staticmethod
+    def _normalize_key(key):
+        return key.replace('-', '_')

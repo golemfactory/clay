@@ -340,6 +340,10 @@ class Client(object):
     def get_keys_auth(self):
         return self.keys_auth
 
+    def get_dir_manager_dict(self):
+        if self.task_server:
+            return self.task_server.task_computer.dir_manager.__dict__
+
     def load_keys_from_file(self, file_name):
         if file_name != "":
             return self.keys_auth.load_from_file(file_name)
@@ -377,9 +381,34 @@ class Client(object):
 
     def get_tasks(self, task_id=None):
         tasks = self.task_server.task_manager.tasks
-        if task_id:
-            return tasks.get(task_id)
-        return tasks
+        tasks_states = self.task_server.task_manager.tasks_states
+
+        if tasks:
+            if task_id:
+                return self._simple_task_desc(tasks_states, task_id, tasks.get(task_id))
+            return [self._simple_task_desc(tasks_states, task_id, t) for task_id, t in tasks.iteritems()]
+
+    @staticmethod
+    def _simple_task_desc(_states, _id, _task):
+        if _task:
+            state = _states.get(_id)
+            return dict(
+                id=_task.header.task_id,
+                remaining=state.remaining_time,
+                subtasks=_task.get_total_tasks(),
+                status=state.status,
+                progress=_task.get_progress()
+            )
+
+    def get_subtasks(self, task_id):
+        task_state = self.task_server.task_manager.tasks_states.get(task_id)
+        if task_state:
+            return task_state.subtask_states
+
+    def get_subtask(self, task_id, subtask_id):
+        subtasks = self.get_subtasks(task_id)
+        if subtasks:
+            return subtasks.get(subtask_id)
 
     def get_task_stats(self):
         return dict(

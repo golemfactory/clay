@@ -3,12 +3,12 @@ import sys
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
-from golem.interface.client.peers import Peers
+from golem.interface.client.network import Network
 from golem.interface.client.tasks import Tasks
 from golem.interface.websockets import WebSocketCLI
 
 # prevent 'unused' warnings
-_ = {Tasks, Peers}
+_ = {Tasks, Network}
 
 
 def main():

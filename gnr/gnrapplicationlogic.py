@@ -247,7 +247,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
         self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
 
-
     @inlineCallbacks
     def get_config(self):
         config = yield self.client.get_config()
@@ -287,14 +286,14 @@ class GNRApplicationLogic(QtCore.QObject):
             logger.error(error_msg)
             return
 
-        tb = self._get_builder(ts)
+        tb = self.get_builder(ts)
         t = Task.build_task(tb)
         ts.task_state.status = TaskStatus.starting
         self.customizer.update_tasks(self.tasks)
 
         self.client.enqueue_new_task(t)
 
-    def _get_builder(self, task_state):
+    def get_builder(self, task_state):
         # FIXME This is just temporary for solution for Brass
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
@@ -453,7 +452,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            tb = self._get_builder(task_state)
+            tb = self.get_builder(task_state)
             t = Task.build_task(tb)
             self.client.run_test_task(t)
 
@@ -468,7 +467,7 @@ class GNRApplicationLogic(QtCore.QObject):
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
 
-        tb = self._get_builder(task_state)
+        tb = self.get_builder(task_state)
         t = Task.build_task(tb)
 
         self.br = BenchmarkRunner(t, self.datadir,

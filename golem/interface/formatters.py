@@ -33,7 +33,7 @@ class _CommandResultFormatter(object):
 
         if isinstance(result, CommandResult):
 
-            if result.data_format == CommandResult.TABULAR:
+            if result.type == CommandResult.TABULAR:
                 return result.from_tabular(), CommandResult.TABULAR
 
             result = result.data
@@ -52,7 +52,7 @@ class CommandFormatter(_CommandResultFormatter):
         if result_type != CommandResult.NONE:
 
             if result_type == CommandResult.TABULAR:
-                return tabulate(result[1], headers=result[0], tablefmt="plain")
+                return tabulate(result[1], headers=result[0], tablefmt="simple")
 
             elif isinstance(result, dict) and result:
                 string = ""

@@ -1,6 +1,38 @@
-from tabulate import tabulate
+import cPickle
+import collections
+import copy
+import os
+import uuid
+from Queue import Queue
 
+from gnr.renderingapplicationlogic import AbsRenderingApplicationLogic
+from gnr.renderingtaskstate import RenderingTaskState
+from gnr.task.blenderrendertask import build_blender_renderer_info
+from gnr.task.luxrendertask import build_lux_render_info
+from gnr.task.tasktester import TaskTester
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskStatus
+
+
+def _build_application_logic(client, datadir):
+    args = (None, None)
+
+    logic = AbsRenderingApplicationLogic()
+    logic.register_new_renderer_type(build_blender_renderer_info(*args))
+    logic.register_new_renderer_type(build_lux_render_info(*args))
+
+    logic.datadir = datadir
+    logic.node_name = CommandHelper.wait_for(client.get_node_name())
+
+    dir_manager_dict = CommandHelper.wait_for(client.get_dir_manager_dict())
+    dir_manager = DirManager.__new__(DirManager)
+    dir_manager.__dict__ = dir_manager_dict
+
+    logic.dir_manager = dir_manager
+
+    return logic
 
 
 @group(help="Task management commands")
@@ -8,46 +40,127 @@ class Tasks(object):
 
     client = None
 
-    task_table_headers = ['name', 'id', 'status', '% completed']
-    subtask_table_headers = ['node', 'id', 'time left', 'status', '% completed']
+    task_table_headers = ['id', 'remaining', 'subtasks', 'status', 'completion']
+    subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
+    sub_id_opt = Argument('subtask_id', help="Subtask identifier (optional)", optional=True)
 
     sort_task = Argument(
         '--sort',
-        choices=['id', 'name', 'status', 'completion'],
+        choices=task_table_headers,
         optional=True,
         help="Sort tasks"
     )
+    sort_subtask = Argument(
+        '--sort',
+        choices=subtask_table_headers,
+        optional=True,
+        help="Sort subtasks"
+    )
+    file_name = Argument(
+        'file_name',
+        help="File to load a task from"
+    )
+    skip_test = Argument(
+        '--skip-test',
+        default=False,
+        help="Skip task testing phase"
+    )
+
+    application_logic = None
 
     @command(arguments=(id_opt, sort_task), help="Show task details")
     def show(self, id, sort):
+
         deferred = Tasks.client.get_tasks(id)
-        task = CommandHelper.wait_for(deferred)
+        result = CommandHelper.wait_for(deferred)
 
-        return task
+        if isinstance(result, collections.Iterable) and not isinstance(result, str):
+            values = []
 
-    @command(argument=id_opt, help="Show sub-tasks")
-    def subtasks(self, id, sort):
+            for task in result:
+                values.append([
+                    task['id'],
+                    str(task['remaining']),
+                    str(task['subtasks']),
+                    task['status'],
+                    str(int(task['progress'] * 100.0)) + ' %'
+                ])
+
+            return CommandResult.to_tabular(Tasks.task_table_headers, values, sort=sort)
+
+        return result
+
+    @command(arguments=(id_req, sub_id_opt, sort_subtask), help="Show sub-tasks")
+    def subtasks(self, id, subtask_id, sort):
         values = []
 
-        deferred = Tasks.client.get_tasks(id)
-        task = CommandHelper.wait_for(deferred)
+        if subtask_id:
 
-        if task:
-            subtasks = task.subtasks_given
-            for subtask_id, subtask in subtasks.iteritems():
-                values.append([
-                    '-',
-                    subtask_id,
-                    '-',
-                    subtask['status'],
-                    '-'
-                ])
-            values = CommandResult.sort(Tasks.subtask_table_headers, values, sort)
+            deferred = Tasks.client.get_subtask(id, subtask_id)
+            return CommandHelper.wait_for(deferred)
 
-        return CommandResult.to_tabular(Tasks.subtask_table_headers, values)
+        else:
+
+            deferred = Tasks.client.get_subtasks(id)
+            subtasks = CommandHelper.wait_for(deferred)
+
+            if subtasks:
+                for subtask_id, subtask in subtasks.iteritems():
+                    values.append([
+                        subtask.computer.node_name,
+                        subtask_id,
+                        subtask.subtask_rem_time,
+                        subtask.subtask_status,
+                        str(int(subtask.subtask_progress * 100.0)) + ' %'
+                    ])
+
+            return CommandResult.to_tabular(Tasks.subtask_table_headers, values, sort=sort)
+
+    @command(arguments=(file_name, skip_test), help="Load a task from file")
+    def load(self, file_name, skip_test):
+
+        try:
+            with open(file_name) as task_file:
+                definition = cPickle.loads(task_file.read())
+        except Exception as exc:
+            return CommandResult(error="Error reading task from file '{}': {}".format(file_name, exc))
+
+        definition.resources = {os.path.normpath(res) for res in definition.resources}
+        datadir = CommandHelper.wait_for(Tasks.client.get_datadir())
+
+        # TODO: unify GUI and CLI logic
+
+        rendering_task_state = RenderingTaskState()
+        rendering_task_state.definition = definition
+        rendering_task_state.task_state.status = TaskStatus.starting
+
+        if not Tasks.application_logic:
+            Tasks.application_logic = _build_application_logic(Tasks.client, datadir)
+
+        task_builder = Tasks.application_logic.get_builder(rendering_task_state)
+        task = Task.build_task(task_builder)
+        task.header.task_id = str(uuid.uuid4())
+
+        if not skip_test:
+
+            test_task = copy.deepcopy(task)
+            queue = Queue()
+
+            TaskTester(
+                test_task, datadir,
+                success_callback=lambda *a, **kw: queue.put(True),
+                error_callback=lambda *a, **kw: queue.put(a)
+            ).run()
+
+            test_result = queue.get()
+            if test_result is not True:
+                return CommandResult(error="Test failed: {}".format(test_result))
+
+        deferred = Tasks.client.enqueue_new_task(task)
+        return CommandHelper.wait_for(deferred)
 
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
