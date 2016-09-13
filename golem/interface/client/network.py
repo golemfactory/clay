@@ -2,7 +2,7 @@ from golem.interface.command import group, Argument, command, CommandHelper, Com
 from golem.network.transport.tcpnetwork import SocketAddress
 
 
-@group(help="Network management commands")
+@group(help="Manage network")
 class Network(object):
 
     client = None

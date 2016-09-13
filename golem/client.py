@@ -3,6 +3,8 @@ import logging
 import sys
 import time
 import uuid
+from Queue import Queue
+from copy import copy
 from os import path, makedirs
 from threading import Lock
 
@@ -11,17 +13,18 @@ from twisted.internet import task
 from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
-from golem.monitor.monitor import SystemMonitor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
+from golem.monitor.monitor import SystemMonitor
+from golem.monitorconfig import monitor_config
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -312,6 +315,9 @@ class Client(object):
     def decrease_trust(self, node_id, stat, mod=1.0):
         self.ranking.decrease_trust(node_id, stat, mod)
 
+    def get_node(self):
+        return self.node
+
     def get_node_name(self):
         return self.config_desc.node_name
 
@@ -367,6 +373,12 @@ class Client(object):
     def get_config(self):
         return self.config_desc
 
+    def update_setting(self, key, value):
+        if not hasattr(self.config_desc, key):
+            raise Exception("Unknown setting: {}".format(key))
+        setattr(self.config_desc, key, value)
+        self.change_config(self.config_desc)
+
     def get_datadir(self):
         return self.datadir
 
@@ -385,30 +397,56 @@ class Client(object):
 
         if tasks:
             if task_id:
-                return self._simple_task_desc(tasks_states, task_id, tasks.get(task_id))
-            return [self._simple_task_desc(tasks_states, task_id, t) for task_id, t in tasks.iteritems()]
+                return self._simple_task_repr(tasks_states, task_id, tasks.get(task_id))
+            return [self._simple_task_repr(tasks_states, task_id, t) for task_id, t in tasks.iteritems()]
+
+    def get_subtasks(self, task_id):
+        task_state = self.task_server.task_manager.tasks_states.get(task_id)
+        if task_state:
+            return [self._simple_subtask_repr(subtask) for subtask in task_state.subtask_states]
+
+        raise Exception("Task {} not found".format(task_id))
+
+    def get_subtask(self, subtask_id):
+        task = self.task_server.task_manager.subtask2task_mapping.get(subtask_id)
+        if task:
+            task_state = self.task_server.task_manager.tasks_states.get(task.header.task_id)
+            if task_state:
+                subtask = task_state.subtask_states.get(subtask_id)
+                return self._simple_task_repr(subtask)
+
+        raise Exception("Subtask {} not found".format(subtask_id))
 
     @staticmethod
-    def _simple_task_desc(_states, _id, _task):
+    def _simple_task_repr(_states, _id, _task):
         if _task:
             state = _states.get(_id)
             return dict(
                 id=_task.header.task_id,
-                remaining=state.remaining_time,
+                time_remaining=state.remaining_time,
                 subtasks=_task.get_total_tasks(),
                 status=state.status,
                 progress=_task.get_progress()
             )
 
-    def get_subtasks(self, task_id):
-        task_state = self.task_server.task_manager.tasks_states.get(task_id)
-        if task_state:
-            return task_state.subtask_states
-
-    def get_subtask(self, task_id, subtask_id):
-        subtasks = self.get_subtasks(task_id)
-        if subtasks:
-            return subtasks.get(subtask_id)
+    @staticmethod
+    def _simple_subtask_repr(subtask):
+        if subtask:
+            return dict(
+                subtask_id=subtask.subtask_id,
+                node_name=subtask.computer.node_name,
+                node_id=subtask.computer.node_id,
+                node_performance=subtask.computer.performance,
+                node_ip_address=subtask.computer.ip_address,
+                node_port=subtask.computer.port,
+                status=subtask.subtask_status,
+                progress=subtask.subtask_progress,
+                time_started=subtask.time_started,
+                time_remaining=subtask.subtask_rem_time,
+                results=subtask.results,
+                stderr=subtask.stderr,
+                stdout=subtask.stdout
+            )
 
     def get_task_stats(self):
         return dict(
@@ -546,11 +584,12 @@ class Client(object):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def get_res_dirs(self):
-        dirs = {"computing": self.get_computed_files_dir(),
+        return {"computing": self.get_computed_files_dir(),
                 "received": self.get_received_files_dir(),
-                "distributed": self.get_distributed_files_dir()
-                }
-        return dirs
+                "distributed": self.get_distributed_files_dir()}
+
+    def get_res_dirs_sizes(self):
+        return {name: du(d) for name, d in self.get_res_dirs().iteritems()}
 
     def get_computed_files_dir(self):
         return self.task_server.get_task_computer_root()
@@ -581,6 +620,41 @@ class Client(object):
 
     def get_environments(self):
         return self.environments_manager.get_environments()
+
+    def get_environments_with_performances(self):
+        envs = copy(self.environments_manager.get_environments())
+        return [self._simple_env_repr(env) for env in envs]
+
+    def run_benchmark(self, env_id):
+        # TODO: move benchmarks to environments
+        from gnr.renderingenvironment import BlenderEnvironment
+        from gnr.renderingenvironment import LuxRenderEnvironment
+
+        queue = Queue()
+
+        def success(performance):
+            queue.put(performance)
+
+        def error(msg):
+            queue.put(msg)
+
+        if env_id == BlenderEnvironment.get_id():
+            self.task_server.task_computer.run_blender_benchmark(success, error)
+        elif env_id == LuxRenderEnvironment.get_id():
+            self.task_server.task_computer.run_lux_benchmark(success, error)
+        else:
+            queue.put("Unknown environment: {}".format(env_id))
+
+        return queue.get()
+
+    def _simple_env_repr(self, env):
+        return dict(
+            id=env.get_id(),
+            supported=env.supported(),
+            active=env.is_accepted(),
+            performance=env.get_performance(self.config_desc),
+            description=env.short_description
+        )
 
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)

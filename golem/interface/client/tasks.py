@@ -35,7 +35,7 @@ def _build_application_logic(client, datadir):
     return logic
 
 
-@group(help="Task management commands")
+@group(help="Manage tasks")
 class Tasks(object):
 
     client = None
@@ -45,7 +45,6 @@ class Tasks(object):
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
-    sub_id_opt = Argument('subtask_id', help="Subtask identifier (optional)", optional=True)
 
     sort_task = Argument(
         '--sort',
@@ -77,13 +76,13 @@ class Tasks(object):
         deferred = Tasks.client.get_tasks(id)
         result = CommandHelper.wait_for(deferred)
 
-        if isinstance(result, collections.Iterable) and not isinstance(result, str):
+        if isinstance(result, list):
             values = []
 
             for task in result:
                 values.append([
                     task['id'],
-                    str(task['remaining']),
+                    str(task['time_remaining']),
                     str(task['subtasks']),
                     task['status'],
                     str(int(task['progress'] * 100.0)) + ' %'
@@ -93,31 +92,24 @@ class Tasks(object):
 
         return result
 
-    @command(arguments=(id_req, sub_id_opt, sort_subtask), help="Show sub-tasks")
-    def subtasks(self, id, subtask_id, sort):
+    @command(arguments=(id_req, sort_subtask), help="Show sub-tasks")
+    def subtasks(self, id, sort):
         values = []
 
-        if subtask_id:
+        deferred = Tasks.client.get_subtasks(id)
+        result = CommandHelper.wait_for(deferred)
 
-            deferred = Tasks.client.get_subtask(id, subtask_id)
-            return CommandHelper.wait_for(deferred)
+        if isinstance(result, list):
+            for subtask in result:
+                values.append([
+                    subtask['node_name'],
+                    subtask['subtask_id'],
+                    subtask['time_remaining'],
+                    subtask['status'],
+                    str(int(subtask['progress'] * 100.0)) + ' %'
+                ])
 
-        else:
-
-            deferred = Tasks.client.get_subtasks(id)
-            subtasks = CommandHelper.wait_for(deferred)
-
-            if subtasks:
-                for subtask_id, subtask in subtasks.iteritems():
-                    values.append([
-                        subtask.computer.node_name,
-                        subtask_id,
-                        subtask.subtask_rem_time,
-                        subtask.subtask_status,
-                        str(int(subtask.subtask_progress * 100.0)) + ' %'
-                    ])
-
-            return CommandResult.to_tabular(Tasks.subtask_table_headers, values, sort=sort)
+        return CommandResult.to_tabular(Tasks.subtask_table_headers, values, sort=sort)
 
     @command(arguments=(file_name, skip_test), help="Load a task from file")
     def load(self, file_name, skip_test):
@@ -190,4 +182,22 @@ class Tasks(object):
     @doc("Show statistics for tasks")
     def stats(self):
         deferred = Tasks.client.get_task_stats()
+        return CommandHelper.wait_for(deferred)
+
+
+@group(help="Manage subtasks")
+class Subtasks(object):
+
+    client = None
+
+    subtask_id = Argument('subtask_id', help="Subtask identifier")
+
+    @command(argument=subtask_id, help="Show subtask details")
+    def show(self, subtask_id):
+        deferred = Subtasks.client.get_subtask(subtask_id)
+        return CommandHelper.wait_for(deferred)
+
+    @command(argument=subtask_id, help="Restart a subtask")
+    def restart(self, subtask_id):
+        deferred = Subtasks.client.restart_subtask(subtask_id)
         return CommandHelper.wait_for(deferred)

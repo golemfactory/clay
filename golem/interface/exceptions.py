@@ -1,6 +1,8 @@
 import time
 import traceback
 
+import datetime
+
 
 class CommandException(Exception):
     pass
@@ -22,17 +24,16 @@ class ParsingException(CommandException):
 
 class ExecutionException(CommandException):
 
-    def __init__(self, message, command, started, include_stack=False):
+    def __init__(self, message, command, started):
         self.message = message
         self.command = command
         self.started = started
-        self.include_stack = include_stack
 
     def __repr__(self):
-        base = u"[{} - {}] ERROR: {}\n{}\n".format(self.started, time.time(),
-                                                   self.message, self.command)
+        return u"[{} s] ERROR: {}".format(time.time() - self.started, self.message)
 
-        if self.include_stack:
-            return base + traceback.format_stack()
-        return base
-
+    @staticmethod
+    def time_str(timestamp):
+        if timestamp:
+            return datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S.%f')
+        return ""

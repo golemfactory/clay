@@ -3,7 +3,6 @@ import types
 from Queue import Queue, Empty
 from operator import itemgetter
 
-import datetime
 from twisted.internet.defer import Deferred, TimeoutError
 from twisted.python.failure import Failure
 
@@ -159,6 +158,9 @@ class Argument(object):
         is_flag = args and args[0].startswith('-')
         boolean = kwargs.pop('boolean', is_flag)
 
+        if kwargs.pop('optional', False):
+            kwargs['default'] = kwargs.get('default', False)
+
         if 'action' not in kwargs:
             choices = 'choices' in kwargs
 
@@ -166,9 +168,6 @@ class Argument(object):
                 kwargs['action'] = 'store_true'
             else:
                 kwargs['action'] = 'store'
-
-        if kwargs.pop('optional', False):
-            kwargs['default'] = kwargs.get('default', None)
 
         if 'default' in kwargs and not boolean:
             kwargs['nargs'] = '?'
@@ -189,7 +188,6 @@ class Argument(object):
 
 class CommandResult(object):
 
-    ERROR = -1
     NONE = 0
     PLAIN = 1
     TABULAR = 2
@@ -197,14 +195,13 @@ class CommandResult(object):
     def __init__(self, data=None, type=None, error=None):
         if error:
             raise CommandException(error)
-        self.data = data
-        self.type = type or CommandResult.PLAIN
 
-    @staticmethod
-    def to_tabular(headers, values, sort=None):
-        if sort in headers:
-            values = CommandResult.sort(headers, values, sort)
-        return CommandResult((headers, values), CommandResult.TABULAR)
+        self.data = data
+
+        if data is None:
+            self.type = type or CommandResult.NONE
+        else:
+            self.type = type or CommandResult.PLAIN
 
     def from_tabular(self):
         assert self.type == CommandResult.TABULAR
@@ -215,18 +212,18 @@ class CommandResult(object):
         return None, None
 
     @staticmethod
+    def to_tabular(headers, values, sort=None):
+        if sort in headers:
+            values = CommandResult.sort(headers, values, sort)
+        return CommandResult((headers, values), CommandResult.TABULAR)
+
+    @staticmethod
     def sort(headers, values, key):
         if key:
             column_idx = headers.index(key)
             if column_idx != -1:
                 values = sorted(values, key=itemgetter(column_idx))
         return values
-
-    @staticmethod
-    def time_str(timestamp):
-        if timestamp:
-            datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S')
-        return ""
 
 
 class CommandHelper(object):
@@ -385,7 +382,7 @@ class CommandHelper(object):
             interface['arguments'] = arguments
 
     @staticmethod
-    def wait_for(deferred, timeout=None):
+    def wait_for(deferred, timeout=10):
         if not isinstance(deferred, Deferred):
             return deferred
 

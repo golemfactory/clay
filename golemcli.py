@@ -3,12 +3,20 @@ import sys
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
+from golem.interface.client import account
+from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
-from golem.interface.client.tasks import Tasks
+from golem.interface.client.payments import payments, incomes
+from golem.interface.client.resources import Resources
+from golem.interface.client.settings import Settings
+from golem.interface.client.tasks import Tasks, Subtasks
 from golem.interface.websockets import WebSocketCLI
 
 # prevent 'unused' warnings
-_ = {Tasks, Network}
+_ = {
+    Tasks, Subtasks, Network, Environments, Resources, Settings,
+    account, incomes, payments,
+}
 
 
 def main():

@@ -1,11 +1,12 @@
 import argparse
 import sys
 import time
+import traceback
 
 from twisted.internet.defer import TimeoutError
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
-from golem.interface.exceptions import ExecutionException, ParsingException, InterruptException
+from golem.interface.exceptions import ExecutionException, ParsingException, InterruptException, CommandException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
@@ -29,12 +30,14 @@ def _exit(raise_exit=True):
 @command(name="help", help="Display this help message", root=True)
 def _help():
     message = \
-u"""Golem command line interface help
-
-To display command details type:
-    command -h
-"""
+u"""To display command details type:
+    command -h"""
     raise ParsingException(message)
+
+
+@command(name="debug", help="Display CLI command tree", root=True)
+def _debug():
+    CommandStorage.debug()
 
 
 class ArgumentParser(argparse.ArgumentParser):
@@ -77,8 +80,6 @@ class CLI(object):
 
     def execute(self, args=None, interactive=False):
 
-        CommandStorage.debug()
-
         if interactive:
             import readline
             readline.parse_and_bind("tab: complete")
@@ -93,8 +94,7 @@ class CLI(object):
                     result = self.process(args)
                 except SystemExit:
                     break
-
-                if result is not None:
+                else:
                     sys.stdout.write(result)
                     sys.stdout.write("\n")
                     sys.stdout.flush()
@@ -105,6 +105,7 @@ class CLI(object):
                 break
 
     def process(self, args):
+
         if not self.parser:
             self.build()
 
@@ -124,29 +125,37 @@ class CLI(object):
             pass
 
         except ParsingException as exc:
-            sys.stdout.write('{}\n\n'.format(exc))
+            sys.stderr.write('{}\n\n'.format(exc))
             if exc.parser:
                 exc.parser.print_help()
             else:
                 self.parser.print_help()
+
+        except CommandException as exc:
+            sys.stderr.write('{}\n\n'.format(exc))
 
         except TimeoutError:
             result = ExecutionException("Command timed out", ' '.join(args), started)
 
         except Exception as exc:
             result = ExecutionException("Exception: {}".format(exc), ' '.join(args), started)
-
-            import traceback
             traceback.print_exc()
 
         if not formatter:
             formatter = self.formatters[-1]
-        return formatter.format(result)
+
+        output = formatter.format(result)
+        if output is None:
+            return "Completed in {}s".format(time.time() - started)
+        return output
 
     def build(self):
         self.shared_parser = ArgumentParser(add_help=False,
                                             prog=self.PROG,
                                             usage=argparse.SUPPRESS)
+        self.shared_parser.add_argument("-h", "--help",
+                                        action="help",
+                                        help="Display command's help message")
 
         for formatter in self.formatters:
             if formatter.argument:
@@ -155,7 +164,8 @@ class CLI(object):
                                                 default=False,
                                                 help=formatter.help)
 
-        self.parser = ArgumentParser(prog=self.PROG,
+        self.parser = ArgumentParser(add_help=False,
+                                     prog=self.PROG,
                                      description=self.DESCRIPTION,
                                      parents=[self.shared_parser],
                                      usage=argparse.SUPPRESS)
@@ -190,6 +200,7 @@ class CLI(object):
 
         subparser = parser.add_parser(name=name,
                                       help=interface.get('help'),
+                                      add_help=False,
                                       parents=[self.shared_parser],
                                       usage=argparse.SUPPRESS)
 

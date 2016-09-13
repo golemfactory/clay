@@ -28,10 +28,10 @@ class _CommandResultFormatter(object):
     @staticmethod
     def _initial_format(result):
 
-        if result is None:
+        if result is None or result == '':
             return None, CommandResult.NONE
 
-        if isinstance(result, CommandResult):
+        elif isinstance(result, CommandResult):
 
             if result.type == CommandResult.TABULAR:
                 return result.from_tabular(), CommandResult.TABULAR
@@ -54,22 +54,18 @@ class CommandFormatter(_CommandResultFormatter):
             if result_type == CommandResult.TABULAR:
                 return tabulate(result[1], headers=result[0], tablefmt="simple")
 
-            elif isinstance(result, dict) and result:
-                string = ""
-                for k, v in result.iteritems():
-                    string += "{}: {}\n".format(k, v)
-                return string
+            result = to_dict(result)
 
-            elif self.prettify and result:
+            if self.prettify and not isinstance(result, basestring):
                 return pprint.pformat(result)
 
-            return repr(result)
+            return result
 
 
 class CommandJSONFormatter(_CommandResultFormatter):
 
     ARGUMENT = 'json'
-    HELP = 'return results in JSON format'
+    HELP = 'Return results in JSON format'
 
     def __init__(self, prettify=True):
         super(CommandJSONFormatter, self).__init__(self.ARGUMENT, self.HELP, prettify=prettify)
@@ -78,7 +74,12 @@ class CommandJSONFormatter(_CommandResultFormatter):
         result, result_type = self._initial_format(result)
 
         if result_type != CommandResult.NONE:
-            result = to_dict(result)
+
+            if result_type == CommandResult.TABULAR:
+                result = dict(headers=result[0], values=result[1])
+            else:
+                result = to_dict(result)
+
             if self.prettify:
                 return json.dumps(result, indent=4, sort_keys=True)
             return json.dumps(result)
@@ -90,7 +91,7 @@ def to_dict(obj, cls=None):
         return {k: to_dict(v, cls) for k, v in obj.iteritems()}
 
     elif hasattr(obj, "_ast"):
-        return to_dict(obj._ast())
+        return to_dict(getattr(obj, "_ast")())
 
     elif hasattr(obj, "__iter__") and not isinstance(obj, str):
         return [to_dict(v, cls) for v in obj]
