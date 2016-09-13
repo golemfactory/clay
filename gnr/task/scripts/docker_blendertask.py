@@ -23,7 +23,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}_{}".format(OUTPUT_DIR, outfilebasename, start_task, '#'*padding),
+        "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, '#'*padding),
         "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
@@ -31,14 +31,14 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
 
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,
-                     frames, output_format, leading_zeros):
+                     frames, output_format, pad_to_length):
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
         print("Scene file '{}' does not exist".format(scene_file),
               file=sys.stderr)
         sys.exit(1)
 
-    padding = max(leading_zeros, len(str(max(frames))))
+    padding = max(pad_to_length, len(str(max(frames))))
     blender_script_path = WORK_DIR + "/blenderscript.py"
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
@@ -53,5 +53,5 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task, params.frames,
-                 params.output_format, params.leading_zeros)
+                 params.output_format, params.pad_to_length)
 

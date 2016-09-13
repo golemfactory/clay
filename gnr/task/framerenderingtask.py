@@ -190,17 +190,11 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
+            if self.scale_factor == 0:      # @TODO remove me!!!!!!!!!!!!!!!
+                self.scale_factor = float(1)
             img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
                                     int(round(self.res_y * self.scale_factor))))
-            try:
-                img.save(preview_file_path, "BMP")
-
-            except SystemError as ex:
-                logger.error("{}\nx: {}, res x: {}, scale x: {}\ny: {}, res y: {}, scale y: {}\n".format(
-                    ex,
-                    int(round(self.res_x * self.scale_factor)), self.res_x, self.scale_factor,
-                    int(round(self.res_y * self.scale_factor)), self.res_x, self.scale_factor
-                ))
+            img.save(preview_file_path, "BMP")
 
         return Image.open(preview_file_path)
 

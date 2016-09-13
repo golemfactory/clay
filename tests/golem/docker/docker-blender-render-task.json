@@ -35,8 +35,8 @@
       9,
       10
     ],
-    "set_leading_zeros":false,
-    "leading_zeros":0
+    "use_padding":false,
+    "pad_to_length":0
   },
   "task_type":null,
   "task_id":"d2babb49-428a-48f0-b91a-febff5d8fde5",

@@ -122,8 +122,8 @@ class BlenderRendererOptions(GNROptions):
         self.use_frames = False
         self.frames = range(1, 11)
         self.compositing = False
-        self.set_leading_zeros = False
-        self.leading_zeros = 0
+        self.use_padding = False
+        self.pad_to_length = 0
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
@@ -155,7 +155,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
-                                         leading_zeros=self.task_definition.renderer_options.leading_zeros,
+                                         pad_to_length=self.task_definition.renderer_options.pad_to_length,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
         blender_task.initialize(self.dir_manager)
@@ -203,7 +203,7 @@ class BlenderRenderTask(FrameRenderingTask):
                  return_address="",
                  return_port=0,
                  key_id="",
-                 leading_zeros=0,
+                 pad_to_length=0,
                  docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
@@ -221,7 +221,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self.script_src = ""
 
         self.compositing = compositing
-        self.leading_zeros = leading_zeros
+        self.pad_to_length = pad_to_length
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
@@ -302,7 +302,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "script_src": script_src,
                       "frames": frames,
                       "output_format": self.output_format,
-                      "leading_zeros": self.leading_zeros
+                      "pad_to_length": self.pad_to_length
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -357,7 +357,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "script_src": script_src,
                       "frames": frames,
                       "output_format": self.output_format,
-                      "leading_zeros": self.leading_zeros
+                      "pad_to_length": self.pad_to_length
                       }
 
         hash = "{}".format(random.getrandbits(128))
