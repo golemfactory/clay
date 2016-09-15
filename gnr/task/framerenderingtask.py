@@ -190,8 +190,6 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            if self.scale_factor == 0:      # @TODO remove me!!!!!!!!!!!!!!!
-                self.scale_factor = float(1)
             img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
                                     int(round(self.res_y * self.scale_factor))))
             img.save(preview_file_path, "BMP")
@@ -248,7 +246,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
-        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num, 4))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -303,9 +301,8 @@ class FrameRenderingTask(RenderingTask):
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
 
-    def _get_output_name(self, frame_num, num_start):
-        num = str(frame_num)
-        return "{}{}.{}".format(self.outfilebasename, num.zfill(4), self.output_format)
+    def _get_output_name(self, frame_num, padding):
+        return "{}_{}.{}".format(self.outfilebasename, str(frame_num).zfill(padding), self.output_format)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         if not self.use_frames:
