@@ -184,6 +184,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
         extra_data.ctd.environment = "DEFAULT"
+        extra_data.should_wait = False
 
         task_mock.query_extra_data.return_value = extra_data
 
@@ -226,6 +227,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
         extra_data.ctd.environment = "DEFAULT"
+        extra_data.should_wait = False
 
         task_mock.query_extra_data.return_value = extra_data
 
@@ -239,6 +241,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         account_info.key_id = "key"
         account_info.eth_account = Mock()
         account_info.eth_account.address = None
+
         ts.accept_result("xxyyzz", account_info)
         assert ts.client.transaction_system.add_payment_info.call_count == 0
 
