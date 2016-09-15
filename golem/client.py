@@ -94,6 +94,8 @@ class Client(object):
 
         self.datadir = datadir
         self.__lock_datadir()
+        self.lock = Lock()
+        self.task_tester = None
 
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
@@ -277,15 +279,34 @@ class Client(object):
 
     def run_test_task(self, t):
         def on_success(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_success(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_success(*args, **kwargs)
+                self.task_tester = None
 
         def on_error(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_error(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_error(*args, **kwargs)
+                self.task_tester = None
 
-        tt = TaskTester(t, self.datadir, on_success, on_error)
-        tt.run()
+        has_started = False
+        with self.lock:
+            if self.task_tester is None:
+                self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+                self.task_tester.run()
+                has_started = True
+
+        for rpc_client in self.rpc_clients:
+            rpc_client.test_task_started(has_started)
+        return has_started
+
+    def abort_test_task(self):
+        with self.lock:
+            if self.task_tester is not None:
+                self.task_tester.end_comp()
+                return True
+            return False
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
