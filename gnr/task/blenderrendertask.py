@@ -233,7 +233,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks
         expected_offsets = generate_expected_offsets(parts, self.res_x, self.res_y)
         preview_y = expected_offsets[parts + 1]
-        if self.res_y:
+        if self.res_y != 0 and preview_y != 0:
             self.scale_factor = float(preview_y) / self.res_y
 
         if self.use_frames:
