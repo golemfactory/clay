@@ -33,6 +33,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         ctd.subtask_id = subtask_id
         ctd.environment = "DEFAULT"
         task_mock.query_extra_data.return_value.ctd = ctd
+        task_mock.query_extra_data.return_value.should_wait = False
         task_mock.get_progress.return_value = 0.3
         return task_mock
 
