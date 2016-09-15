@@ -147,9 +147,11 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __run_lux_benchmark_button_clicked(self):
         self.logic.run_benchmark(LuxBenchmark(), self.gui.ui.luxPerformanceLabel)
+        self.__change_config()
 
     def __run_blender_benchmark_button_clicked(self):
         self.logic.run_benchmark(BlenderBenchmark(), self.gui.ui.blenderPerformanceLabel)
+        self.__change_config()
 
     def __load_trust_config(self, config_desc):
         self.__load_trust(config_desc.computing_trust, self.gui.ui.computingTrustLineEdit,
