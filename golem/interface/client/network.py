@@ -14,7 +14,6 @@ class Network(object):
 
     full_table = Argument(
         '--full',
-        boolean=True,
         optional=True,
         help="Show full table contents"
     )

@@ -8,14 +8,12 @@ class Resources(object):
 
     provider = Argument(
         "--provider",
-        boolean=True,
         optional=True,
         help="For provider role"
     )
 
     requester = Argument(
         "--requester",
-        boolean=True,
         optional=True,
         help="For requester role"
     )

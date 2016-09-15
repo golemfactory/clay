@@ -87,17 +87,20 @@ class CLI(object):
         while True:
             if not args:
                 line = raw_input('>> ')
-                args = line.strip().split(' ')
+                if line:
+                    args = line.strip().split(' ')
+                else:
+                    args = None
 
             if args:
                 try:
-                    result = self.process(args)
+                    result, output = self.process(args)
                 except SystemExit:
                     break
                 else:
-                    sys.stdout.write(result)
-                    sys.stdout.write("\n")
-                    sys.stdout.flush()
+                    output.write(result)
+                    output.write(u"\n")
+                    output.flush()
 
             args = None
             if not interactive:
@@ -109,8 +112,9 @@ class CLI(object):
         if not self.parser:
             self.build()
 
+        result = None
         formatter = None
-        result = str()
+        output = sys.stderr
         started = time.time()
 
         try:
@@ -125,29 +129,28 @@ class CLI(object):
             pass
 
         except ParsingException as exc:
-            sys.stderr.write('{}\n\n'.format(exc))
-            if exc.parser:
-                exc.parser.print_help()
-            else:
-                self.parser.print_help()
+            parser = exc.parser or self.parser
+            result = u"{}\n\n{}".format(exc, parser.format_help())
 
         except CommandException as exc:
-            sys.stderr.write('{}\n\n'.format(exc))
+            result = u"{}".format(exc)
 
         except TimeoutError:
-            result = ExecutionException("Command timed out", ' '.join(args), started)
+            result = ExecutionException(u"Command timed out", u" ".join(args), started)
 
         except Exception as exc:
-            result = ExecutionException("Exception: {}".format(exc), ' '.join(args), started)
-            traceback.print_exc()
+            result = ExecutionException(u"Exception: {}".format(exc), u" ".join(args), started)
+
+        else:
+            output = sys.stdout
 
         if not formatter:
             formatter = self.formatters[-1]
 
-        output = formatter.format(result)
-        if output is None:
-            return "Completed in {}s".format(time.time() - started)
-        return output
+        result = formatter.format(result)
+        if result is None:
+            return "Completed in {}s".format(time.time() - started), output
+        return result, output
 
     def build(self):
         self.shared_parser = ArgumentParser(add_help=False,

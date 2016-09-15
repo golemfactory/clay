@@ -13,6 +13,9 @@ Setting = namedtuple('Setting', ['help', 'type', 'converter', 'validator'])
 def _int(x):
     return int(x)
 
+_cpu_count = multiprocessing.cpu_count()
+_virtual_mem = int(virtual_memory().total / 1024)
+
 
 @group(help="Manage settings")
 class Settings(object):
@@ -21,21 +24,18 @@ class Settings(object):
 
     basic = Argument(
         '--basic',
-        boolean=True,
         optional=True,
         default=False,
         help="Show basic settings"
     )
     provider = Argument(
         '--provider',
-        boolean=True,
         optional=True,
         default=False,
         help="Show provider settings"
     )
     requester = Argument(
         '--requester',
-        boolean=True,
         optional=True,
         default=False,
         help="Show requester settings"
@@ -100,24 +100,24 @@ class Settings(object):
             'Minimal requester trust',
             'int [-100, 100]',
             _int,
-            lambda x: 100 <= x <= 100
+            lambda x: -100 <= x <= 100
         ),
         'computing_trust': Setting(
             'Minimal provider trust',
             'int [-100, 100]',
             _int,
-            lambda x: 100 <= x <= 100
+            lambda x: -100 <= x <= 100
         ),
         'min_price': Setting(
             'Min ETH/h price (provider)',
             'float >= 0',
-            lambda x: float(x) / denoms.ether,
+            lambda x: float(x) * denoms.ether,
             lambda x: x >= 0
         ),
         'max_price': Setting(
             'Max ETH/h price (requester)',
             'float >= 0',
-            lambda x: float(x) / denoms.ether,
+            lambda x: float(x) * denoms.ether,
             lambda x: x >= 0
         ),
         'use_ipv6': Setting(
@@ -146,15 +146,15 @@ class Settings(object):
         ),
         'max_memory_size': Setting(
             'Max memory size',
-            '{} > int >= {} [kB]'.format(int(virtual_memory().total / 1024), MIN_MEMORY_SIZE),
+            '{} > int >= {} [kB]'.format(_virtual_mem, MIN_MEMORY_SIZE),
             _int,
-            lambda x: int(virtual_memory().total / 1024) > x >= MIN_MEMORY_SIZE
+            lambda x: _virtual_mem > x >= MIN_MEMORY_SIZE
         ),
         'num_cores': Setting(
             'Number of CPU cores to use',
-            '{} >= int >= 1'.format(multiprocessing.cpu_count()),
+            '{} >= int >= 1'.format(_cpu_count),
             _int,
-            lambda x: multiprocessing.cpu_count() >= x >= 1
+            lambda x: _cpu_count >= x >= 1
         )
     }
 

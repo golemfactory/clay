@@ -10,21 +10,19 @@ class WebSocketCLI(object):
         self.address = address
         self.port = port
 
-        from twisted.internet import reactor, threads
-        self.reactor = reactor
-        self.threads = threads
-
     def execute(self, *args, **kwargs):
+        from twisted.internet import reactor, threads
+
         rpc_factory = WebSocketRPCClientFactory(self.address, self.port)
 
         def on_connected(_):
             rpc_client = rpc_factory.build_simple_client()
             self.cli = self.cli_class(rpc_client)
-            self.threads.deferToThread(self.cli.execute, *args, **kwargs)
+            threads.deferToThread(self.cli.execute, *args, **kwargs)
 
         def on_error(error):
-            if self.reactor.running:
-                self.reactor.stop()
+            if reactor.running:
+                reactor.stop()
 
             import sys
             sys.stderr.write("Error occurred: {}".format(error))
@@ -32,5 +30,5 @@ class WebSocketCLI(object):
         def connect():
             rpc_factory.connect().addCallbacks(on_connected, on_error)
 
-        self.reactor.callWhenRunning(connect)
-        self.reactor.run()
+        reactor.callWhenRunning(connect)
+        reactor.run()

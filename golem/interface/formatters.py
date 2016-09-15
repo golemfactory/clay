@@ -4,6 +4,7 @@ import pprint
 
 from tabulate import tabulate
 
+from golem.core.simpleserializer import to_dict
 from golem.interface.command import CommandResult
 
 
@@ -83,29 +84,3 @@ class CommandJSONFormatter(_CommandResultFormatter):
             if self.prettify:
                 return json.dumps(result, indent=4, sort_keys=True)
             return json.dumps(result)
-
-
-def to_dict(obj, cls=None):
-
-    if isinstance(obj, dict):
-        return {k: to_dict(v, cls) for k, v in obj.iteritems()}
-
-    elif hasattr(obj, "_ast"):
-        return to_dict(getattr(obj, "_ast")())
-
-    elif hasattr(obj, "__iter__") and not isinstance(obj, str):
-        return [to_dict(v, cls) for v in obj]
-
-    elif hasattr(obj, "__dict__"):
-
-        data = dict()
-        for k, v in obj.__dict__.iteritems():
-            if not callable(v) and not k.startswith('_'):
-                data[k] = to_dict(v, cls)
-
-        if cls is not None and hasattr(obj, "__class__"):
-            data[cls] = obj.__class__.__name__
-
-        return data
-
-    return obj

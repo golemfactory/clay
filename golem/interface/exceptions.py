@@ -30,7 +30,7 @@ class ExecutionException(CommandException):
         self.started = started
 
     def __repr__(self):
-        return u"[{} s] ERROR: {}".format(time.time() - self.started, self.message)
+        return u"[{}] ERROR: {}".format(self.time_str(time.time()), self.message)
 
     @staticmethod
     def time_str(timestamp):

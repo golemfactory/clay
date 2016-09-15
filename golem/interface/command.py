@@ -46,6 +46,8 @@ def group(name=None, parent=None, **kwargs):
     def decorate(cls):
 
         assert inspect.isclass(cls)
+
+        CommandHelper.init_instance(cls)
         CommandHelper.init_interface(cls,
                                      name=name or cls.__name__.lower(),
                                      parent=parent, **kwargs)
@@ -157,9 +159,11 @@ class Argument(object):
 
         is_flag = args and args[0].startswith('-')
         boolean = kwargs.pop('boolean', is_flag)
+        optional = kwargs.pop('optional', is_flag)
+        default = kwargs.get('default', False if boolean else None)
 
-        if kwargs.pop('optional', False):
-            kwargs['default'] = kwargs.get('default', False)
+        if not boolean and optional:
+            kwargs['default'] = kwargs.get('default', default)
 
         if 'action' not in kwargs:
             choices = 'choices' in kwargs
@@ -169,7 +173,7 @@ class Argument(object):
             else:
                 kwargs['action'] = 'store'
 
-        if 'default' in kwargs and not boolean:
+        if not boolean and 'default' in kwargs:
             kwargs['nargs'] = '?'
 
         ret = Argument(*args, **kwargs)
@@ -181,9 +185,6 @@ class Argument(object):
         new_arg.args += args
         new_arg.kwargs.update(kwargs)
         return new_arg
-
-    def __repr__(self):
-        return "args: {}\n kwargs: {}\n".format(self.args, self.kwargs)
 
 
 class CommandResult(object):
@@ -271,6 +272,18 @@ class CommandHelper(object):
             cls.set_interface(elem, interface)
 
         return interface
+
+    @classmethod
+    def init_instance(cls, elem):
+        instance = elem.__new__(elem)
+        setattr(elem, '_cmd_instance', instance)
+
+    @classmethod
+    def get_instance(cls, elem):
+        if isinstance(elem, types.FunctionType):
+            elem = cls.get_parent(elem)
+        if elem:
+            return getattr(elem, '_cmd_instance')
 
     @classmethod
     def set_wrapper(cls, elem):
@@ -398,10 +411,12 @@ class CommandHelper(object):
             result.raiseException()
         return result
 
-    @staticmethod
-    def wrap_call(elem, self_or_cls=None):
+    @classmethod
+    def wrap_call(cls, elem, instance=None):
+        if not instance:
+            instance = cls.get_instance(elem)
         # elem cannot be a static method; they're not parsed by @group
-        return lambda *a, **kw: elem(self_or_cls, *a, **kw)
+        return lambda *a, **kw: elem(instance, *a, **kw)
 
     @staticmethod
     def is_callable(elem):

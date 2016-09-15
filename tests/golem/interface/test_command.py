@@ -1,0 +1,68 @@
+import unittest
+
+from golem.interface.command import Argument, CommandResult
+
+
+class TestArgument(unittest.TestCase):
+
+    def test_simplify_flag(self):
+
+        argument = Argument('--flag', optional=True)
+        simplified = argument.simplify()
+        kw = simplified.kwargs
+
+        assert 'default' not in kw
+        assert 'nargs' not in kw
+        assert kw['action'] == 'store_true'
+
+    def test_simply_arg(self):
+
+        argument = Argument('arg', optional=True)
+        simplified = argument.simplify()
+        kw = simplified.kwargs
+
+        assert 'default' in kw
+        assert kw['nargs'] == '?'
+        assert kw['default'] is None
+        assert kw['action'] == 'store'
+
+    def test_extend(self):
+
+        argument = Argument('arg', optional=True)
+        extended = Argument.extend(argument, 'narg', optional=False, default=7)
+
+        assert len(extended.args) == 2
+        assert len(extended.kwargs) == 2
+
+        assert extended.kwargs['optional'] is False
+        assert extended.kwargs['default'] == 7
+
+
+class TestCommandResult(unittest.TestCase):
+
+    def test(self):
+
+        for data in ['result', '']:
+            result = CommandResult(data)
+            assert result.type is CommandResult.PLAIN
+            with self.assertRaises(AssertionError):
+                result.from_tabular()
+
+        result = CommandResult()
+        assert result.type is CommandResult.NONE
+        with self.assertRaises(AssertionError):
+            result.from_tabular()
+
+    def test_tabular(self):
+
+        headers = ['1', '2', '3']
+        values = [
+            ['d', 'b', 'f'],
+            ['a', 'e', 'c'],
+        ]
+
+        tabular = CommandResult.to_tabular(headers, values)
+
+        assert tabular.data == (headers, values)
+        assert tabular.type == CommandResult.TABULAR
+        assert tabular.from_tabular() == (headers, values)

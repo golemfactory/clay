@@ -5,7 +5,7 @@ from cbor2 import CBOREncoder, CBORDecoder
 from io import BytesIO
 
 from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer, CBORSerializer, \
-    CBORCoder
+    CBORCoder, to_dict
 
 
 class Example:
@@ -137,3 +137,46 @@ class TestCBORSerializer(unittest.TestCase):
 
         assert deserialized.__class__ == obj.__class__
         assert CBORSerializer.loads(CBORSerializer.dumps(obj)).__class__ == obj.__class__
+
+
+class TestToDict(unittest.TestCase):
+
+    def test_serialization(self):
+        obj = MockSerializationSubject()
+        assert to_dict(obj) == {
+            'property_1': {
+                'k': 'v',
+                'u': {
+                    'property_1': obj.property_1['u'].property_1,
+                    'property_3': 'string',
+                    'property_4': ['list', 'of', ('items',), obj.property_1['u'].property_4[-1]]
+                }
+            },
+            'property_2': {
+                'property_1': obj.property_2.property_1,
+                'property_3': 'string',
+                'property_4': ['list', 'of', ('items',), obj.property_2.property_4[-1]]
+            },
+            'property_4': ['v', 1, (1, 2, 3), {
+                'property_1': obj.property_4[-1].property_1,
+                'property_3': 'string',
+                'property_4': ['list', 'of', ('items',), obj.property_4[-1].property_4[-1]]
+            }]
+        }
+
+    def test_cycle_detection(self):
+        obj = MockSerializationSubject()
+        obj.property_4 = obj
+
+        with self.assertRaises(Exception) as exc_ctx:
+            to_dict(obj)
+
+        exc = exc_ctx.exception
+        assert exc.message == "Cycle detected"
+
+        obj = MockSerializationSubject()
+        inner = MockSerializationInnerSubject()
+        obj.property_1 = inner
+        obj.property_4 = inner
+
+        assert to_dict(obj)
