@@ -54,12 +54,12 @@ class TaskTableElem:
         if col == 0:
             return self.name_item
         if col == 1:
+            return self.id_item
+        if col == 2:
             return self.status_item
         if col == 3:
-            return self.id_item
-        if col == 4:
             return self.timer_item
-        if col == 5:
+        if col == 4:
             return self.cost_item
 
         assert False, "Wrong column index {}".format(col)
@@ -67,11 +67,11 @@ class TaskTableElem:
 
 class ItemMap(object):
     Name = 0
-    Status = 1
-    Progress = 2
-    Id = 3
-    Time = 4
-    Cost = 5
+    Id = 1
+    Status = 2
+    Time = 3
+    Cost = 4
+    Progress = 5
 
     @staticmethod
     def count():
