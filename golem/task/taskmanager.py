@@ -166,8 +166,11 @@ class TaskManager(TaskEventListener):
                 should_wait = extra_data.should_wait
                 ctd = extra_data.ctd
 
-                if not self._check_compute_task_def(ctd, task_id):
+                if should_wait:
+                    return None, False, True
+                elif not self._check_compute_task_def(ctd, task_id):
                     return None, False, False
+
                 ctd.key_id = th.task_owner_key_id
                 ctd.return_address = th.task_owner_address
                 ctd.return_port = th.task_owner_port
