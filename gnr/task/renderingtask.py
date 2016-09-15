@@ -224,9 +224,6 @@ class RenderingTask(GNRTask):
         ctd.task_id = self.header.task_id
         ctd.subtask_id = hash
         ctd.extra_data = extra_data
-        ctd.return_address = self.header.task_owner_address
-        ctd.return_port = self.header.task_owner_port
-        ctd.task_owner = self.header.task_owner
         ctd.short_description = self._short_extra_data_repr(perf_index, extra_data)
         ctd.src_code = self.src_code
         ctd.performance = perf_index

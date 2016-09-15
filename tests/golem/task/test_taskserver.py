@@ -3,7 +3,7 @@ import uuid
 from collections import deque
 
 from math import ceil
-from mock import Mock, MagicMock, ANY
+from mock import Mock, MagicMock, patch, ANY
 
 from stun import FullCone
 
@@ -162,12 +162,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.ts = ts
         ts.sync_network()
 
-    def test_results(self):
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_results(self, mock_addr):
+        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
+        ts.task_manager.listen_port = 1111
+        ts.task_manager.listen_address = "10.10.10.10"
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
         task_mock.header.task_id = "xyz"
@@ -176,9 +180,11 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.max_price = 1000
 
         extra_data = Mock()
-        extra_data.ctd = Mock()
+        extra_data.ctd = ComputeTaskDef()
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
+        extra_data.ctd.environment = "DEFAULT"
+        extra_data.should_wait = False
 
         task_mock.query_extra_data.return_value = extra_data
 
@@ -198,12 +204,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
         self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
 
-    def test_results_no_payment_addr(self):
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_results_no_payment_addr(self, mock_addr):
+        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
+        ts.task_manager.listen_address = "10.10.10.10"
+        ts.task_manager.listen_port = 1111
         self.ts = ts
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         task_mock = Mock()
@@ -213,9 +223,11 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.max_price = 1000
 
         extra_data = Mock()
-        extra_data.ctd = Mock()
+        extra_data.ctd = ComputeTaskDef()
         extra_data.ctd.task_id = "xyz"
         extra_data.ctd.subtask_id = "xxyyzz"
+        extra_data.ctd.environment = "DEFAULT"
+        extra_data.should_wait = False
 
         task_mock.query_extra_data.return_value = extra_data
 
@@ -229,6 +241,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         account_info.key_id = "key"
         account_info.eth_account = Mock()
         account_info.eth_account.address = None
+
         ts.accept_result("xxyyzz", account_info)
         assert ts.client.transaction_system.add_payment_info.call_count == 0
 
