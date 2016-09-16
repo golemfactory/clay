@@ -2,13 +2,14 @@ import unittest
 from contextlib import contextmanager
 from io import StringIO
 
-from mock import patch, Mock
+from mock import patch, Mock, mock
 from twisted.internet.defer import Deferred, TimeoutError
+from twisted.internet.error import ReactorNotRunning
 
-from golem.interface.cli import CLI
+from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
 from golem.interface.command import group, doc, argument, identifier, name, command, CommandStorage, \
     CommandHelper
-from golem.interface.exceptions import InterruptException, ParsingException, CommandException
+from golem.interface.exceptions import ParsingException, CommandException
 
 
 def _nop(*a, **kw):
@@ -22,12 +23,34 @@ def _raise(*a, **kw):
 def _raise_sys_exit(*a, **kw):
     raise SystemExit()
 
+
 @contextmanager
 def _cmd_storage_context():
     roots = CommandStorage.roots
     CommandStorage.roots = []
     yield
     CommandStorage.roots = roots
+
+
+class MockReactor(mock.Mock):
+
+    def __init__(self, *args, **kwargs):
+        super(MockReactor, self).__init__(*args, **kwargs)
+
+        self.running = True
+        self.do_raise = True
+        self.exc_class = ReactorNotRunning
+
+    def callFromThread(self, *_):
+        if self.do_raise:
+            raise self.exc_class()
+
+
+class MockStdout(mock.Mock):
+    data = ''
+
+    def write(self, data):
+        self.data += data
 
 
 class TestCLI(unittest.TestCase):
@@ -47,7 +70,7 @@ class TestCLI(unittest.TestCase):
             return deferred
 
         def __getattribute__(self, name):
-            if name.startswith('_') or name in ['return_value']:
+            if name.startswith('_') or name == 'return_value':
                 return object.__getattribute__(self, name)
             return lambda *args, **kwargs: self.return_value
 
@@ -93,7 +116,7 @@ class TestCLI(unittest.TestCase):
             assert not _exit.called
             assert not _out.getvalue()
 
-    @patch('sys.stdout', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=MockStdout)
     @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
     @patch('golem.core.common.config_logging', side_effect=_nop)
@@ -104,10 +127,29 @@ class TestCLI(unittest.TestCase):
 
         with patch(self.__raw_input, return_value='invalid_command --invalid-flag'):
             cli.execute()
-
             assert _process.called
             assert not _exit.called
-            assert not _out.getvalue()
+            assert not _out.data
+
+    @patch('__builtin__.raw_input')
+    @patch('golem.interface.cli._exit', side_effect=_nop)
+    def test_execute_interactive(self, _exit, _ri):
+
+        with _cmd_storage_context():
+
+            @group("commands")
+            class MockClass(object):
+                def command(self):
+                    pass
+
+                def exit(self):
+                    raise SystemExit()
+
+            client = self.MockClient()
+            cli = CLI(client=client)
+
+            cli.execute(['commands', 'exit'], interactive=True)
+            assert not _exit.called
 
     @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.core.common.config_logging', side_effect=_nop)
@@ -129,37 +171,36 @@ class TestCLI(unittest.TestCase):
 
     @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.core.common.config_logging', side_effect=_nop)
-    def test_process_errors(self, *_):
+    def test_process_errors(self, config_logging, cli_exit):
 
         exceptions = [
-            [InterruptException, False],
-            [ParsingException, True],
-            [CommandException, True],
-            [TimeoutError, True],
-            [Exception, True],
+            ParsingException, CommandException, TimeoutError, Exception,
         ]
 
-        @group("commands", help="command group")
-        class MockClass(object):
-            exc_class = None
+        with _cmd_storage_context():
 
-            @doc("Some help")
-            def command(self):
-                raise self.exc_class()
+            @group("commands", help="command group")
+            class MockClass(object):
+                exc_class = None
 
-        client = self.MockClient()
-        cli = CLI(client=client)
+                @doc("Some help")
+                def command(self):
+                    raise self.exc_class()
 
-        for exc_class, assert_stderr in exceptions:
-            with _cmd_storage_context():
+                def command_2(self):
+                    raise Exception("error")
+
+            client = self.MockClient()
+            cli = CLI(client=client)
+
+            for exc_class in exceptions:
 
                 MockClass.exc_class = exc_class
                 result, _ = cli.process(['commands', 'command'])
 
-                if assert_stderr:
-                    assert result
-                else:
-                    assert result.startswith('Completed')
+                with patch('sys.stderr', new_callable=MockStdout) as out:
+                    cli.execute(['commands', 'command_2'])
+                    assert out.data
 
     def test_build(self):
 
@@ -228,4 +269,80 @@ class TestCLI(unittest.TestCase):
             assert cli.parser._subparsers
             # help, json, subparsers
             assert len(cli.parser._subparsers._actions) == 3
+
+
+class TestCLICommands(unittest.TestCase):
+
+    @patch('logging.error')
+    @patch('sys.exit')
+    @patch('twisted.internet.reactor', create=True, new_callable=MockReactor)
+    def test_exit(self, reactor, sys_exit, logging_error):
+
+        assert CommandHelper.get_interface(_exit)
+
+        _exit()
+        assert not sys_exit.called
+        assert not logging_error.called
+
+        reactor.exc_class = Exception
+
+        _exit()
+        assert not sys_exit.called
+        assert logging_error.called
+
+        reactor.running = False
+        logging_error.called = False
+
+        _exit()
+        assert sys_exit.called
+        assert not logging_error.called
+
+        sys_exit.called = False
+
+        _exit(raise_exit=False)
+        assert not sys_exit.called
+        assert not logging_error.called
+
+    def test_help(self):
+        assert CommandHelper.get_interface(_help)
+
+        with self.assertRaises(ParsingException):
+            _help()
+
+    @patch('sys.stdout', new_callable=MockStdout)
+    def test_debug(self, out):
+        assert CommandHelper.get_interface(_debug)
+
+        _debug()
+
+        assert out.getvalue()
+
+
+class TestArgumentParser(unittest.TestCase):
+
+    def test_error(self):
+
+        ap = ArgumentParser()
+
+        try:
+            raise Exception("test")
+        except Exception as _:
+            with self.assertRaises(ParsingException) as exc:
+                ap.error("custom")
+                assert exc.exception.message != "custom"
+                assert isinstance(exc.exception.message, ParsingException)
+
+        with self.assertRaises(ParsingException) as exc:
+            ap.error("custom")
+            assert exc.exception.message == "custom"
+
+    def test_exit(self):
+
+        ap = ArgumentParser()
+
+        try:
+            ap.exit()
+        except BaseException:
+            self.fail("No exception should be thrown")
+
 

@@ -22,21 +22,20 @@ class Environments(object):
     def show(self, sort):
 
         deferred = Environments.client.get_environments_with_performances()
-        result = CommandHelper.wait_for(deferred)
+        result = CommandHelper.wait_for(deferred) or []
 
-        if isinstance(result, collections.Iterable):
-            values = []
+        values = []
 
-            for env in result:
-                values.append([
-                    env['id'],
-                    str(env['supported']),
-                    str(env['active']),
-                    str(env['performance']),
-                    env['description']
-                ])
+        for env in result:
+            values.append([
+                env['id'],
+                str(env['supported']),
+                str(env['active']),
+                str(env['performance']),
+                env['description']
+            ])
 
-            return CommandResult.to_tabular(Environments.table_headers, values, sort=sort)
+        return CommandResult.to_tabular(Environments.table_headers, values, sort=sort)
 
     @command(argument=name, help="Enable environment")
     def enable(self, name):

@@ -179,4 +179,5 @@ class TestToDict(unittest.TestCase):
         obj.property_1 = inner
         obj.property_4 = inner
 
-        assert to_dict(obj)
+        assert to_dict(obj, cls=MockSerializationSubject)
+        assert to_dict(obj, MockSerializationSubject)

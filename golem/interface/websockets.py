@@ -25,7 +25,7 @@ class WebSocketCLI(object):
                 reactor.stop()
 
             import sys
-            sys.stderr.write("Error occurred: {}".format(error))
+            sys.stderr.write(u"Error occurred: {}".format(error))
 
         def connect():
             rpc_factory.connect().addCallbacks(on_connected, on_error)

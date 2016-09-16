@@ -1,12 +1,11 @@
 import argparse
 import sys
 import time
-import traceback
 
 from twisted.internet.defer import TimeoutError
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
-from golem.interface.exceptions import ExecutionException, ParsingException, InterruptException, CommandException
+from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
@@ -48,7 +47,7 @@ class ArgumentParser(argparse.ArgumentParser):
         raise ParsingException(exc or message, self)
 
     def exit(self, status=0, message=None):
-        raise InterruptException()
+        pass
 
 
 class CLI(object):
@@ -95,6 +94,7 @@ class CLI(object):
             if args:
                 try:
                     result, output = self.process(args)
+                    sys.stdout.write(result)
                 except SystemExit:
                     break
                 else:
@@ -112,7 +112,6 @@ class CLI(object):
         if not self.parser:
             self.build()
 
-        result = None
         formatter = None
         output = sys.stderr
         started = time.time()
@@ -124,9 +123,6 @@ class CLI(object):
             callback = namespace.__dict__.pop('callback')
             normalized = self._normalize_namespace(namespace)
             result = callback(**normalized)
-
-        except InterruptException:
-            pass
 
         except ParsingException as exc:
             parser = exc.parser or self.parser
@@ -149,7 +145,7 @@ class CLI(object):
 
         result = formatter.format(result)
         if result is None:
-            return "Completed in {}s".format(time.time() - started), output
+            return u"Completed in {}s".format(time.time() - started), output
         return result, output
 
     def build(self):

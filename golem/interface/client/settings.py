@@ -45,8 +45,8 @@ class Settings(object):
         'node_name': Setting(
             'Node name',
             'non-empty string',
-            lambda x: unicode(x),
-            lambda x: len(x) > 0
+            lambda x: unicode(x) if isinstance(x, basestring) else None,
+            lambda x: x and len(x) > 0
         ),
         'accept_task': Setting(
             'Accept tasks',
@@ -161,8 +161,8 @@ class Settings(object):
     settings_message = '\n'.join([
         '\t{:32} {:>32}\t{}'.format(k, s.type, s.help) for k, s in settings.iteritems()
     ])
-    invalid_setting_message =\
-"""Invalid key / value
+    invalid_key_message =\
+"""Invalid key
 
     Available settings:\n
 """ + settings_message
@@ -183,7 +183,7 @@ class Settings(object):
 
         config = CommandHelper.wait_for(Settings.client.get_config())
         if not (basic ^ provider) and not (provider ^ requester):
-            return config
+            return config.__dict__
 
         result = dict()
 
@@ -210,8 +210,8 @@ class Settings(object):
     @command(arguments=(key, value), help="Change settings")
     def set(self, key, value):
 
-        if not key or not value or key not in Settings.settings:
-            return CommandResult(error=Settings.invalid_setting_message)
+        if not key or key not in Settings.settings:
+            return CommandResult(error=Settings.invalid_key_message)
 
         setting = Settings.settings[key]
 
@@ -221,7 +221,7 @@ class Settings(object):
             if not setting.validator(value):
                 raise Exception(value)
 
-        except Exception as _:
-            return CommandResult(error="Invalid value for {} (should be {})".format(key, setting.type))
+        except Exception as exc:
+            return CommandResult(error="Invalid value for {} (should be {}): {}".format(key, setting.type, exc))
         else:
             return CommandHelper.wait_for(Settings.client.update_setting(key, value))

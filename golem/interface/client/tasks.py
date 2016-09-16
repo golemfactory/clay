@@ -11,7 +11,6 @@ from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.tasktester import TaskTester
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
-from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 
@@ -25,12 +24,7 @@ def _build_application_logic(client, datadir):
 
     logic.datadir = datadir
     logic.node_name = CommandHelper.wait_for(client.get_node_name())
-
-    dir_manager_dict = CommandHelper.wait_for(client.get_dir_manager_dict())
-    dir_manager = DirManager.__new__(DirManager)
-    dir_manager.__dict__ = dir_manager_dict
-
-    logic.dir_manager = dir_manager
+    logic.dir_manager = CommandHelper.wait_for(client.get_dir_manager())
 
     return logic
 
@@ -76,7 +70,7 @@ class Tasks(object):
         deferred = Tasks.client.get_tasks(id)
         result = CommandHelper.wait_for(deferred)
 
-        if isinstance(result, list):
+        if not id:
             values = []
 
             for task in result:
@@ -85,10 +79,13 @@ class Tasks(object):
                     str(task['time_remaining']),
                     str(task['subtasks']),
                     task['status'],
-                    str(int(task['progress'] * 100.0)) + ' %'
+                    Tasks.__progress_str(task['progress'])
                 ])
 
             return CommandResult.to_tabular(Tasks.task_table_headers, values, sort=sort)
+
+        if isinstance(result, dict):
+            result['progress'] = Tasks.__progress_str(result['progress'])
 
         return result
 
@@ -104,9 +101,9 @@ class Tasks(object):
                 values.append([
                     subtask['node_name'],
                     subtask['subtask_id'],
-                    subtask['time_remaining'],
+                    str(subtask['time_remaining']),
                     subtask['status'],
-                    str(int(subtask['progress'] * 100.0)) + ' %'
+                    Tasks.__progress_str(subtask['progress'])
                 ])
 
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values, sort=sort)
@@ -115,12 +112,12 @@ class Tasks(object):
     def load(self, file_name, skip_test):
 
         try:
-            with open(file_name) as task_file:
-                definition = cPickle.loads(task_file.read())
+            definition = self.__read_from_file(file_name)
         except Exception as exc:
             return CommandResult(error="Error reading task from file '{}': {}".format(file_name, exc))
 
-        definition.resources = {os.path.normpath(res) for res in definition.resources}
+        if hasattr(definition, 'resources'):
+            definition.resources = {os.path.normpath(res) for res in definition.resources}
         datadir = CommandHelper.wait_for(Tasks.client.get_datadir())
 
         # TODO: unify GUI and CLI logic
@@ -138,7 +135,8 @@ class Tasks(object):
 
         if not skip_test:
 
-            test_task = copy.deepcopy(task)
+            test_task = Task.build_task(task_builder)
+            test_task.header.task_id = str(uuid.uuid4())
             queue = Queue()
 
             TaskTester(
@@ -152,7 +150,7 @@ class Tasks(object):
                 return CommandResult(error="Test failed: {}".format(test_result))
 
         deferred = Tasks.client.enqueue_new_task(task)
-        return CommandHelper.wait_for(deferred)
+        return CommandHelper.wait_for(deferred, timeout=1800)
 
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
@@ -183,6 +181,19 @@ class Tasks(object):
     def stats(self):
         deferred = Tasks.client.get_task_stats()
         return CommandHelper.wait_for(deferred)
+
+    @staticmethod
+    def __progress_str(progress):
+        if progress is None:
+            progress = 0
+        elif isinstance(progress, basestring) and progress.endswith('%'):
+            return progress
+        return '{:.2f} %'.format(progress * 100.0)
+
+    @staticmethod
+    def __read_from_file(file_name):
+        with open(file_name) as task_file:
+            return cPickle.loads(task_file.read())
 
 
 @group(help="Manage subtasks")

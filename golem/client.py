@@ -346,9 +346,9 @@ class Client(object):
     def get_keys_auth(self):
         return self.keys_auth
 
-    def get_dir_manager_dict(self):
+    def get_dir_manager(self):
         if self.task_server:
-            return self.task_server.task_computer.dir_manager.__dict__
+            return self.task_server.task_computer.dir_manager
 
     def load_keys_from_file(self, file_name):
         if file_name != "":
@@ -403,7 +403,7 @@ class Client(object):
     def get_subtasks(self, task_id):
         task_state = self.task_server.task_manager.tasks_states.get(task_id)
         if task_state:
-            return [self._simple_subtask_repr(subtask) for subtask in task_state.subtask_states]
+            return [self._simple_subtask_repr(subtask) for subtask_id, subtask in task_state.subtask_states.iteritems()]
 
         raise Exception("Task {} not found".format(task_id))
 
@@ -413,7 +413,7 @@ class Client(object):
             task_state = self.task_server.task_manager.tasks_states.get(task.header.task_id)
             if task_state:
                 subtask = task_state.subtask_states.get(subtask_id)
-                return self._simple_task_repr(subtask)
+                return self._simple_subtask_repr(subtask)
 
         raise Exception("Subtask {} not found".format(subtask_id))
 

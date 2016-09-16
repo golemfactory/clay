@@ -9,17 +9,17 @@ from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 class TestFormatters(unittest.TestCase):
 
     def test_command_formatter(self):
-        fmt = CommandFormatter()
+        formatter = CommandFormatter()
 
         for prettify in [True, False]:
-            fmt.prettify = prettify
+            formatter.prettify = prettify
 
-            assert fmt.format(None) is None
-            assert fmt.format('') is None
-            assert fmt.format('Some text') == 'Some text'
+            assert formatter.format(None) is None
+            assert formatter.format('') is None
+            assert formatter.format('Some text') == 'Some text'
 
             if not prettify:
-                assert fmt.format(fmt) == to_dict(fmt)
+                assert formatter.format(formatter) == to_dict(formatter)
 
         table_headers = ['First', 'Second', 'Third']
         table_values = [
@@ -29,8 +29,8 @@ class TestFormatters(unittest.TestCase):
         ]
 
         tabular_result = CommandResult.to_tabular(table_headers, table_values)
-        tabular_repr = fmt.format(tabular_result)
-        tabular_data_repr = fmt.format(tabular_result.from_tabular())
+        tabular_repr = formatter.format(tabular_result)
+        tabular_data_repr = formatter.format(tabular_result.from_tabular())
 
         assert tabular_repr
         assert tabular_data_repr

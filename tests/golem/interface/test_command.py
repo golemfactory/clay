@@ -1,6 +1,8 @@
 import unittest
 
-from golem.interface.command import Argument, CommandResult
+from twisted.internet.defer import Deferred, TimeoutError
+
+from golem.interface.command import Argument, CommandResult, CommandHelper
 
 
 class TestArgument(unittest.TestCase):
@@ -66,3 +68,44 @@ class TestCommandResult(unittest.TestCase):
         assert tabular.data == (headers, values)
         assert tabular.type == CommandResult.TABULAR
         assert tabular.from_tabular() == (headers, values)
+
+        tabular = CommandResult.to_tabular(headers, values, sort='4')
+
+        assert tabular.from_tabular()[1] == values
+
+        tabular = CommandResult.to_tabular(headers, values, sort='1')
+
+        assert tabular.from_tabular()[1] != values
+        assert tabular.from_tabular()[1] == [
+            ['a', 'e', 'c'],
+            ['d', 'b', 'f'],
+        ]
+
+        tabular = CommandResult.to_tabular(headers, values, sort='2')
+
+        assert tabular.from_tabular()[1] == values
+
+        tabular = CommandResult.to_tabular(headers, values, sort='3')
+
+        assert tabular.from_tabular()[1] != values
+        assert tabular.from_tabular()[1] == [
+            ['a', 'e', 'c'],
+            ['d', 'b', 'f'],
+        ]
+
+
+class TestCommandHelper(unittest.TestCase):
+
+    def test_wait_for_deferred(self):
+
+        assert CommandHelper.wait_for('1234') == '1234'
+
+        deferred = Deferred()
+        deferred.result = '5678'
+        deferred.called = True
+
+        assert CommandHelper.wait_for(deferred) == '5678'
+
+        with self.assertRaises(TimeoutError):
+            deferred_2 = Deferred()
+            CommandHelper.wait_for(deferred_2, timeout=0)

@@ -6,6 +6,7 @@ from tabulate import tabulate
 
 from golem.core.simpleserializer import to_dict
 from golem.interface.command import CommandResult
+from golem.interface.exceptions import CommandException
 
 
 class _CommandResultFormatter(object):
@@ -55,11 +56,16 @@ class CommandFormatter(_CommandResultFormatter):
             if result_type == CommandResult.TABULAR:
                 return tabulate(result[1], headers=result[0], tablefmt="simple")
 
+            elif isinstance(result, basestring):
+                return result
+
+            elif isinstance(result, CommandException):
+                return repr(result)
+
             result = to_dict(result)
 
-            if self.prettify and not isinstance(result, basestring):
+            if self.prettify:
                 return pprint.pformat(result)
-
             return result
 
 

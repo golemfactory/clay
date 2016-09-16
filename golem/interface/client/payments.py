@@ -23,33 +23,31 @@ sort_payments = Argument(
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
 def incomes(sort):
-    deferred = payments.client.get_incomes_list()
-    result = CommandHelper.wait_for(deferred)
+    deferred = incomes.client.get_incomes_list()
+    result = CommandHelper.wait_for(deferred) or []
 
-    if result:
-        values = []
+    values = []
 
-        for income in result:
-            table_elem = IncomeTableElem(income)
-            values.append([c.text() for c in table_elem.cols])
+    for income in result:
+        table_elem = IncomeTableElem(income)
+        values.append([c.text() for c in table_elem.cols])
 
-        return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
+    return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 
 
 @command(argument=sort_payments, help="Display payments", root=True)
 def payments(sort):
 
     deferred = payments.client.get_payments_list()
-    result = CommandHelper.wait_for(deferred)
+    result = CommandHelper.wait_for(deferred) or []
 
-    if result:
-        values = []
+    values = []
 
-        for payment in result:
-            table_elem = PaymentTableElem(payment)
-            values.append([c.text() for c in table_elem.cols])
+    for payment in result:
+        table_elem = PaymentTableElem(payment)
+        values.append([c.text() for c in table_elem.cols])
 
-        return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
+    return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 
 
 
