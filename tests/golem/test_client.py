@@ -324,7 +324,7 @@ class TestClientRPCMethods(TestWithDatabase):
         for k, t in tasks.items():
             print k, t.subtask_states
             for sk, st in t.subtask_states.items():
-                subtask2task[st.subtask_id] = t
+                subtask2task[st.subtask_id] = t.header.task_id
         return subtask2task
 
     def __new_client(self):
