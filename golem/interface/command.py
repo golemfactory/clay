@@ -1,6 +1,7 @@
 import inspect
 import types
 from Queue import Queue, Empty
+from contextlib import contextmanager
 from operator import itemgetter
 
 from twisted.internet.defer import Deferred, TimeoutError
@@ -55,8 +56,8 @@ def group(name=None, parent=None, **kwargs):
 
         if parent:
             CommandHelper.add_child(cls, parent)
-        elif cls not in CommandStorage.roots:
-            CommandStorage.roots.append(cls)
+        else:
+            CommandHelper.add_root(cls)
         return cls
 
     return decorate
@@ -73,14 +74,16 @@ def command(name=None, root=False, **kwargs):
     """
 
     def wrapper(func):
-        kwargs['parent'] = None
+        parent = kwargs.get('parent', None)
 
         CommandHelper.set_wrapped(func, w)
         CommandHelper.init_interface(func,
                                      name=name or func.__name__.lower(),
                                      **kwargs)
-        if root and func not in CommandStorage.roots:
-            CommandStorage.roots.append(func)
+        if parent:
+            CommandHelper.add_child(func, parent)
+        elif root:
+            CommandHelper.add_root(func)
         return func
 
     w = CommandHelper.set_wrapper(wrapper)
@@ -104,7 +107,7 @@ def argument(*args, **kwargs):
 
 
 def identifier(name, **kwargs):
-    return argument(name, help=kwargs.pop('help', 'object_identifier'), **kwargs)
+    return argument(name, help=kwargs.pop('help', 'Object id'), **kwargs)
 
 
 def doc(value):
@@ -349,6 +352,13 @@ class CommandHelper(object):
             interface.put(prop, value)
 
     @classmethod
+    def add_root(cls, elem):
+        not_exists = elem not in CommandStorage.roots
+        if not_exists:
+            CommandStorage.roots.append(elem)
+        return not_exists
+
+    @classmethod
     def add_child(cls, elem, parent):
         cls.init_interface(parent)
 
@@ -440,3 +450,30 @@ class CommandStorage(object):
     def debug(cls):
         for root in cls.roots:
             CommandHelper.debug(root)
+
+
+@contextmanager
+def client_ctx(obj, client):
+
+    if hasattr(obj, 'client'):
+        previous = getattr(obj, 'client')
+    else:
+        previous = None
+
+    setattr(obj, 'client', client)
+    yield
+
+    if previous:
+        setattr(obj, 'client', previous)
+    else:
+        del obj.client
+
+
+@contextmanager
+def storage_context():
+    previous = CommandStorage.roots
+
+    CommandStorage.roots = []
+    yield
+
+    CommandStorage.roots = previous

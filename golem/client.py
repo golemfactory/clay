@@ -408,7 +408,8 @@ class Client(object):
         raise Exception("Task {} not found".format(task_id))
 
     def get_subtask(self, subtask_id):
-        task = self.task_server.task_manager.subtask2task_mapping.get(subtask_id)
+        task_id = self.task_server.task_manager.subtask2task_mapping.get(subtask_id)
+        task = self.task_server.task_manager.tasks.get(task_id)
         if task:
             task_state = self.task_server.task_manager.tasks_states.get(task.header.task_id)
             if task_state:

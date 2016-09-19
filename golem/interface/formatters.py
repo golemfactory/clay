@@ -2,6 +2,7 @@ import abc
 import json
 import pprint
 
+import yaml
 from tabulate import tabulate
 
 from golem.core.simpleserializer import to_dict
@@ -65,7 +66,7 @@ class CommandFormatter(_CommandResultFormatter):
             result = to_dict(result)
 
             if self.prettify:
-                return pprint.pformat(result)
+                return yaml.safe_dump(result)
             return result
 
 

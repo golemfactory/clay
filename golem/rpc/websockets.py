@@ -2,6 +2,7 @@ import logging
 import time
 from collections import deque
 
+import sys
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketServerFactory, WebSocketClientFactory
@@ -354,7 +355,9 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     protocol = WebSocketRPCClientProtocol
 
-    def __init__(self, remote_host, remote_port, serializer=None, keyring=None, *args, **kwargs):
+    def __init__(self, remote_host, remote_port, serializer=None, keyring=None,
+                 on_disconnect=None, *args, **kwargs):
+
         from twisted.internet import reactor
 
         WebSocketClientFactory.__init__(self, *args, **kwargs)
@@ -370,6 +373,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         self.serializer = serializer or DILLSerializer
         self.keyring = keyring
 
+        self.on_disconnect = on_disconnect
         self._reconnect_timeout = kwargs.pop('reconnect_timeout', RECONNECT_TIMEOUT)
         self._deferred = None
 
@@ -383,6 +387,10 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         self.connector = self.reactor.connectTCP(self.remote_host, self.remote_port,
                                                  self, timeout=timeout)
         return self._deferred
+
+    def disconnect(self):
+        if self.connector:
+            self.connector.disconnect()
 
     def build_simple_client(self, timeout=None):
         rpc = RPC(self, self.remote_ws_address, conn_timeout=timeout)
@@ -412,7 +420,11 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         logger.info("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
-        self._reconnect()
+
+        if self.on_disconnect:
+            self.on_disconnect(reason)
+        else:
+            self._reconnect()
 
     def clientConnectionFailed(self, connector, reason):
         logger.error("WebSocket RPC: connection to {} failed".format(self.remote_ws_address))

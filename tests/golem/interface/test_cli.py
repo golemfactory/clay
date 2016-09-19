@@ -1,14 +1,15 @@
+import argparse
 import unittest
-from contextlib import contextmanager
 from io import StringIO
 
 from mock import patch, Mock, mock
 from twisted.internet.defer import Deferred, TimeoutError
 from twisted.internet.error import ReactorNotRunning
 
+from golem.core.simpleserializer import to_dict
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
-from golem.interface.command import group, doc, argument, identifier, name, command, CommandStorage, \
-    CommandHelper
+from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context, \
+    CommandStorage
 from golem.interface.exceptions import ParsingException, CommandException
 
 
@@ -22,14 +23,6 @@ def _raise(*a, **kw):
 
 def _raise_sys_exit(*a, **kw):
     raise SystemExit()
-
-
-@contextmanager
-def _cmd_storage_context():
-    roots = CommandStorage.roots
-    CommandStorage.roots = []
-    yield
-    CommandStorage.roots = roots
 
 
 class MockReactor(mock.Mock):
@@ -135,7 +128,7 @@ class TestCLI(unittest.TestCase):
     @patch('golem.interface.cli._exit', side_effect=_nop)
     def test_execute_interactive(self, _exit, _ri):
 
-        with _cmd_storage_context():
+        with storage_context():
 
             @group("commands")
             class MockClass(object):
@@ -155,7 +148,7 @@ class TestCLI(unittest.TestCase):
     @patch('golem.core.common.config_logging', side_effect=_nop)
     def test_process(self, *_):
 
-        with _cmd_storage_context():
+        with storage_context():
 
             @group("commands")
             class MockClass(object):
@@ -177,7 +170,7 @@ class TestCLI(unittest.TestCase):
             ParsingException, CommandException, TimeoutError, Exception,
         ]
 
-        with _cmd_storage_context():
+        with storage_context():
 
             @group("commands", help="command group")
             class MockClass(object):
@@ -204,16 +197,17 @@ class TestCLI(unittest.TestCase):
 
     def test_build(self):
 
-        with _cmd_storage_context():
+        with storage_context():
 
             @group("mock")
             class MockClass(object):
 
-                @doc("Command help")
+                @name('mock_help')
+                @doc("Help string")
                 def help_method(self):
                     pass
 
-                @argument("--test-flag", "--tf", optional=True)
+                @argument("--test-flag", "-tf", optional=True)
                 def arg_method(self, test_flag):
                     pass
 
@@ -222,10 +216,10 @@ class TestCLI(unittest.TestCase):
                     pass
 
                 @name("renamed_method")
-                def this_is_not_the_name_of_method(self):
+                def method(self):
                     pass
 
-                def auto_picked_up_method(self):
+                def method_2(self):
                     pass
 
                 def _ignored_method(self):
@@ -245,30 +239,45 @@ class TestCLI(unittest.TestCase):
 
             client = self.MockClient()
             cli = CLI(client=client)
-
-            assert cli.roots
-            assert len(cli.roots) == 2
-
-            cls_interface = CommandHelper.get_interface(MockClass)
-            cls_instance = CommandHelper.get_instance(MockClass)
-
-            assert cls_interface
-            assert cls_instance
-
-            cls_children = CommandHelper.get_children(MockClass)
-
-            assert cls_children is cls_interface['children']
-            assert cls_children
-            assert len(cls_children) == 5
-
             cli.build()
 
-            assert cli.shared_parser
-            assert cli.parser
-            assert cli.subparsers
-            assert cli.parser._subparsers
-            # help, json, subparsers
-            assert len(cli.parser._subparsers._actions) == 3
+            def actions(_parser):
+                return [action for action in _parser._actions
+                        if isinstance(action, argparse._SubParsersAction)]
+
+            def choices(_actions):
+                result = {}
+                for action in _actions:
+                    for choice, subparser in action.choices.items():
+                        result[choice] = subparser
+                return result
+
+            cli_actions = actions(cli.parser)
+            cli_choices = choices(cli_actions)
+
+            assert len(cli_choices) == 2
+            assert 'mock' in cli_choices.keys()
+            assert 'outer' in cli_choices.keys()
+
+            mock_actions = actions(cli_choices['mock'])
+            mock_choices = choices(mock_actions)
+            expected_choices = ['arg_method', 'method_2', 'mock_help', 'id_method', 'outer_2', 'renamed_method']
+
+            assert len(mock_choices) == len(expected_choices)
+            assert all([c in mock_choices.keys() for c in expected_choices])
+
+            assert any([a.option_strings == ['--test-flag', '-tf']
+                        and isinstance(a, argparse._StoreTrueAction)
+                        for a in mock_choices['arg_method']._actions])
+
+            string_actions = mock_choices['arg_method']._option_string_actions
+            assert '--test-flag' in string_actions
+            assert '-tf' in string_actions
+
+            assert any([a.dest == 'some_id'
+                        and a.help == 'Object id'
+                        and isinstance(a, argparse._StoreAction)
+                        for a in mock_choices['id_method']._positionals._actions])
 
 
 class TestCLICommands(unittest.TestCase):

@@ -1,8 +1,10 @@
 import unittest
 
+from mock import Mock
 from twisted.internet.defer import Deferred, TimeoutError
 
-from golem.interface.command import Argument, CommandResult, CommandHelper
+from golem.interface.command import Argument, CommandResult, CommandHelper, group, doc, command, client_ctx, \
+    CommandStorage, storage_context
 
 
 class TestArgument(unittest.TestCase):
@@ -109,3 +111,51 @@ class TestCommandHelper(unittest.TestCase):
         with self.assertRaises(TimeoutError):
             deferred_2 = Deferred()
             CommandHelper.wait_for(deferred_2, timeout=0)
+
+    def test_structure(self):
+
+        with storage_context():
+
+            @group("pre_commands")
+            class MockPreClass(object):
+                pass
+
+            @group("commands", help="command group")
+            class MockClass(object):
+                property = None
+
+                def __init__(self):
+                    pass
+
+                @doc("Some help")
+                def mock_1(self):
+                    pass
+
+                @command(name='mock_2_renamed', parent=MockPreClass)
+                def mock_2(self):
+                    pass
+
+            @group("sub_commands", parent=MockClass)
+            class MockSubClass(object):
+                def command(self):
+                    pass
+
+            @command(name='renamed_mc', parent=MockClass)
+            def command_mc():
+                pass
+
+            @command(parent=MockSubClass)
+            def command_msc():
+                pass
+
+            @command(root=True)
+            def command_root():
+                pass
+
+            assert CommandStorage.roots == [MockPreClass, MockClass, command_root]
+            assert CommandHelper.get_children(MockPreClass).keys() == ['mock_2_renamed']
+            assert CommandHelper.get_children(MockClass).keys() == ['sub_commands', 'mock_1', 'renamed_mc']
+            assert CommandHelper.get_children(MockSubClass).keys() == ['command_msc', 'command']
+
+
+

@@ -42,7 +42,6 @@ def _debug():
 class ArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):
-        self.print_usage()
         exc = sys.exc_info()[1]
         raise ParsingException(exc or message, self)
 
@@ -60,6 +59,7 @@ class CLI(object):
 
         self.client = client
         self.roots = roots or CommandStorage.roots
+        self.working = True
 
         self.parser = None
         self.shared_parser = None
@@ -83,7 +83,7 @@ class CLI(object):
             import readline
             readline.parse_and_bind("tab: complete")
 
-        while True:
+        while self.working:
             if not args:
                 line = raw_input('>> ')
                 if line:
@@ -94,7 +94,6 @@ class CLI(object):
             if args:
                 try:
                     result, output = self.process(args)
-                    sys.stdout.write(result)
                 except SystemExit:
                     break
                 else:

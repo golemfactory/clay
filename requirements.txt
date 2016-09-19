@@ -32,3 +32,4 @@ ovh
 certifi
 weakreflist
 tabulate
+PyYAML>=3.11

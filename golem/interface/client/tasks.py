@@ -73,7 +73,7 @@ class Tasks(object):
         if not id:
             values = []
 
-            for task in result:
+            for task in result or []:
                 values.append([
                     task['id'],
                     str(task['time_remaining']),

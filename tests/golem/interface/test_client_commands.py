@@ -6,13 +6,13 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from mock import Mock
 
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from gnr.task.tasktester import TaskTester
+from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.interface.client.account import account
 from golem.interface.client.environments import Environments
@@ -21,27 +21,10 @@ from golem.interface.client.payments import incomes, payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
-from golem.interface.command import CommandResult
+from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager
 from golem.testutils import TempDirFixture
-
-
-@contextmanager
-def client_ctx(obj, instance):
-
-    if hasattr(obj, 'client'):
-        previous = getattr(obj, 'client')
-    else:
-        previous = None
-
-    setattr(obj, 'client', instance)
-    yield
-
-    if previous:
-        setattr(obj, 'client', previous)
-    else:
-        del obj.client
 
 
 def dbg(result):
