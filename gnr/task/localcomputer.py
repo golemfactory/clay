@@ -52,6 +52,13 @@ class LocalComputer(object):
             logger.warning("{}: {}".format(self.comp_failed_warning, exc))
             self.error_callback(str(exc))
 
+    def end_comp(self):
+        if self.tt:
+            self.tt.end_comp()
+            return True
+        else:
+            return False
+
     def get_progress(self):
         if self.tt:
             with self.lock:
