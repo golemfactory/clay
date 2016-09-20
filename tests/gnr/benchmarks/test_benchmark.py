@@ -1,5 +1,3 @@
-import unittest
-import os
 from PIL import Image
 
 from golem.testutils import TempDirFixture

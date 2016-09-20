@@ -151,6 +151,9 @@ class PeerSession(BasicSafeSession):
         logger.info("Starting peer session {} : {}".format(self.address, self.port))
         self.__send_hello()
 
+    def hello(self):
+        self.__send_hello()
+
     def ping(self, interval):
         """ Will send ping message if time from last message was longer than interval
         :param float interval: number of seconds that should pass until ping message may be send

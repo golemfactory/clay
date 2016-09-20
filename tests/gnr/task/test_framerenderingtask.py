@@ -1,4 +1,3 @@
-from os import path, makedirs
 
 from PIL import Image
 from mock import Mock

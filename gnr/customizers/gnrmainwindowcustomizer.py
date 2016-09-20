@@ -72,7 +72,6 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.nameLabel.setText(u"{}".format(node_name))
         self.gui.ui.nodeNameLineEdit.setText(u"{}".format(node_name))
 
-
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
         self.logic.enqueue_new_task(ui_new_task_info)
@@ -80,19 +79,19 @@ class GNRMainWindowCustomizer(Customizer):
     # Updates tasks information in gui
     def update_tasks(self, tasks):
         for i in range(self.gui.ui.taskTableWidget.rowCount()):
-            task_id = self.gui.ui.taskTableWidget.item(i, ItemMap.Id).text()
-            task_id = "{}".format(task_id)
-            if task_id in tasks:
-                self.gui.ui.taskTableWidget.item(i, ItemMap.Status).setText(tasks[task_id].task_state.status)
+            task_id = u"{}".format(self.gui.ui.taskTableWidget.item(i, ItemMap.Id).text())
+            task = tasks.get(task_id)
+            if task:
+                self.gui.ui.taskTableWidget.item(i, ItemMap.Status).setText(task.task_state.status)
                 progress_bar_in_box_layout = self.gui.ui.taskTableWidget.cellWidget(i, ItemMap.Progress)
                 layout = progress_bar_in_box_layout.layout()
                 pb = layout.itemAt(0).widget()
-                pb.setProperty("value", int(tasks[task_id].task_state.progress * 100.0))
+                pb.setProperty("value", int(task.task_state.progress * 100.0))
                 if self.task_details_dialog_customizer:
                     if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
-                        self.task_details_dialog_customizer.update_view(tasks[task_id].task_state)
-                self.__update_payment(task_id, i)
-
+                        self.task_details_dialog_customizer.update_view(task.task_state)
+                if task.task_state.status not in [TaskStatus.starting, TaskStatus.notStarted]:
+                    self.__update_payment(task_id, i)
             else:
                 assert False, "Update task for unknown task."
 
@@ -106,7 +105,7 @@ class GNRMainWindowCustomizer(Customizer):
         with self.lock:
             for i in range(self.gui.ui.taskTableWidget.rowCount()):
                 status = self.gui.ui.taskTableWidget.item(i, ItemMap.Status).text()
-                if status == 'Computing' or status == 'Waiting':
+                if status in [TaskStatus.computing, TaskStatus.waiting]:
                     l = self.gui.ui.taskTableWidget.item(i, ItemMap.Time).text().split(':')
                     time_ = int(l[0]) * 3600 + int(l[1]) * 60 + int(l[2]) + 1
                     m, s = divmod(time_, 60)

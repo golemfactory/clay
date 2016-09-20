@@ -400,8 +400,12 @@ class LuxTask(RenderingTask):
 
         self.preview_file_path = None
         self.numAdd = 0
+
         for f in preview_files:
             self._update_preview(f, None)
+        if len(preview_files) == 0:
+            img = self._open_preview()
+            img.close()
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)

@@ -4,11 +4,11 @@ import time
 from golem.core.common import HandleKeyError, get_current_time
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
-
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
@@ -83,13 +83,15 @@ class TaskManager(TaskEventListener):
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("Trying to unregister listener that wasn't registered {}".format(listener))
 
     def add_new_task(self, task):
         assert task.header.task_id not in self.tasks
+        assert self.key_id
+        assert SocketAddress.is_proper_address(self.listen_address, self.listen_port)
 
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
@@ -164,10 +166,15 @@ class TaskManager(TaskEventListener):
                 should_wait = extra_data.should_wait
                 ctd = extra_data.ctd
 
-                if ctd is None or ctd.subtask_id is None:
-                    return None, False, should_wait
+                if should_wait:
+                    return None, False, True
+                elif not self._check_compute_task_def(ctd, task_id):
+                    return None, False, False
 
                 ctd.key_id = th.task_owner_key_id
+                ctd.return_address = th.task_owner_address
+                ctd.return_port = th.task_owner_port
+                ctd.task_owner = th.task_owner
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
                 self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.notice_task_updated(task_id)
@@ -360,17 +367,14 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.tasks_states[task_id].time_started = time.time()
 
-        for sub in self.tasks_states[task_id].subtask_states.values():
-            del self.subtask2task_mapping[sub.subtask_id]
-        self.tasks_states[task_id].subtask_states.clear()
+        for ss in self.tasks_states[task_id].subtask_states.values():
+            if ss.subtask_status != SubtaskStatus.failure:
+                ss.subtask_status = SubtaskStatus.restarted
 
         self.notice_task_updated(task_id)
 
+    @handle_subtask_key_error
     def restart_subtask(self, subtask_id):
-        if subtask_id not in self.subtask2task_mapping:
-            logger.error("Subtask {} not in subtasks queue".format(subtask_id))
-            return
-
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         self.tasks_states[task_id].status = TaskStatus.computing
@@ -519,6 +523,15 @@ class TaskManager(TaskEventListener):
         # self.save_state()
         for l in self.listeners:
             l.task_status_updated(task_id)
+
+    def _check_compute_task_def(self, ctd, task_id):
+        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+            return False
+        if task_id != ctd.task_id or self.subtask2task_mapping.get(ctd.subtask_id) is not None:
+            return False
+        if self.tasks_states[ctd.task_id].subtask_states.get(ctd.subtask_id) is not None:
+            return False
+        return True
 
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:

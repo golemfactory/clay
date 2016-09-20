@@ -94,6 +94,8 @@ class Client(object):
 
         self.datadir = datadir
         self.__lock_datadir()
+        self.lock = Lock()
+        self.task_tester = None
 
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
@@ -218,8 +220,7 @@ class Client(object):
             self.monitor.on_login()
 
     def init_monitor(self):
-        metadata = NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform, APP_VERSION,
-                                     self.get_description(), self.config_desc)
+        metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, monitor_config)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
@@ -278,15 +279,34 @@ class Client(object):
 
     def run_test_task(self, t):
         def on_success(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_success(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_success(*args, **kwargs)
+                self.task_tester = None
 
         def on_error(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_error(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_error(*args, **kwargs)
+                self.task_tester = None
 
-        tt = TaskTester(t, self.datadir, on_success, on_error)
-        tt.run()
+        has_started = False
+        with self.lock:
+            if self.task_tester is None:
+                self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+                self.task_tester.run()
+                has_started = True
+
+        for rpc_client in self.rpc_clients:
+            rpc_client.test_task_started(has_started)
+        return has_started
+
+    def abort_test_task(self):
+        with self.lock:
+            if self.task_tester is not None:
+                self.task_tester.end_comp()
+                return True
+            return False
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
@@ -477,6 +497,8 @@ class Client(object):
         self.p2pservice.change_config(self.config_desc)
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
+        metadata = self.__get_nodemetadatamodel()
+        self.monitor.on_config_update(metadata)
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -486,11 +508,10 @@ class Client(object):
 
     def unregister_listener(self, listener):
         assert isinstance(listener, GolemClientEventListener)
-        for i in range(len(self.listeners)):
-            if self.listeners[i] is listener:
-                del self.listeners[i]
-                return
-        logger.info("listener {} not registered".format(listener))
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("listener {} not registered".format(listener))
 
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)
@@ -573,6 +594,10 @@ class Client(object):
     def docker_config_changed(self):
         for rpc_client in self.rpc_clients:
             rpc_client.docker_config_changed()
+
+    def __get_nodemetadatamodel(self):
+        return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
+                                 APP_VERSION, self.get_description(), self.config_desc)
 
     def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
         try:

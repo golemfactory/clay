@@ -20,7 +20,7 @@ from gnr.ui.gen.ui_UpdatingConfigDialog import Ui_updatingConfigDialog
 class Dialog(object):
     """ Basic dialog window extension, save specific given class as ui """
     def __init__(self, parent, ui_class):
-        self.window = QDialog(parent)
+        self.window = QDialogPlus(parent)
         self.ui = ui_class()
         self.ui.setupUi(self.window)
 
@@ -28,7 +28,25 @@ class Dialog(object):
         self.window.show()
 
     def close(self):
+        try:
+            self.ui.enable_close(True)
+        except AttributeError:
+            pass
         self.window.close()
+
+class QDialogPlus(QDialog):
+    def __init__(self, parent):
+        QDialog.__init__(self, parent)
+        self.can_be_closed = True
+
+    def closeEvent(self, event):
+        if self.can_be_closed:
+            event.accept()
+        else:
+            event.ignore()
+
+    def enable_close(self, enable):
+        self.can_be_closed = enable
 
 
 # TASK INFO DIALOGS

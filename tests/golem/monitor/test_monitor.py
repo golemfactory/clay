@@ -30,5 +30,10 @@ class TestSystemMonitor(TestCase):
         comp_tasks = int(4 * random.random()) + 1
         tasks = ["task{}".format(i) for i in range(comp_tasks)]
         monitor.on_task_computer_snapshot('some_task_str', False, True, False, tasks)
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "new node name"
+        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
+                                ccd)
+        monitor.on_config_update(nmm)
         monitor.on_logout()
         monitor.shut_down()

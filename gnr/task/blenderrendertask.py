@@ -93,6 +93,15 @@ class PreviewUpdater(object):
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
 
+    def restart(self):
+        self.chunks = {}
+        self.perfect_match_area_y = 0
+        self.perfectly_placed_subtasks = 0
+        if os.path.exists(self.preview_file_path):
+            img = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
+            img.save(self.preview_file_path, "BMP")
+            img.close()
+
 
 def build_blender_renderer_info(dialog, customizer):
     defaults = BlenderDefaults()
@@ -224,7 +233,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks
         expected_offsets = generate_expected_offsets(parts, self.res_x, self.res_y)
         preview_y = expected_offsets[parts + 1]
-        if self.res_y:
+        if self.res_y != 0 and preview_y != 0:
             self.scale_factor = float(preview_y) / self.res_y
 
         if self.use_frames:
@@ -303,6 +312,16 @@ class BlenderRenderTask(FrameRenderingTask):
 
         ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
         return self.ExtraData(ctd=ctd)
+
+    def restart(self):
+        super(BlenderRenderTask, self).restart()
+        if self.use_frames:
+            for preview in self.preview_updaters:
+                preview.restart()
+                self._update_frame_task_preview()
+        else:
+            self.preview_updater.restart()
+            self._update_task_preview()
 
     ###################
     # GNRTask methods #

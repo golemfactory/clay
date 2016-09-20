@@ -34,6 +34,15 @@ class SocketAddress(object):
     _dns_label_pattern = re.compile('(?!-)[a-z\d-]{1,63}(?<!-)\Z', re.IGNORECASE)
     _all_numeric_pattern = re.compile('[0-9\.]+\Z')
 
+    @classmethod
+    def is_proper_address(cls, address, port):
+        try:
+            SocketAddress(address, port)
+        except (AddressValueError, TypeError) as err:
+            logger.info("Wrong address {}".format(err))
+            return False
+        return True
+
     def __init__(self, address, port):
         """Creates and validates SocketAddress. Raises
         AddressValueError if 'address' or 'port' is invalid.

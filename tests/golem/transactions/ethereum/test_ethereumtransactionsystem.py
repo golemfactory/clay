@@ -1,4 +1,3 @@
-from os import urandom
 
 from ethereum import keys
 

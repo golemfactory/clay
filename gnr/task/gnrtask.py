@@ -138,16 +138,12 @@ class GNRTask(Task):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
     def restart(self):
-        self.num_tasks_received = 0
-        self.last_task = 0
-        self.subtasks_given.clear()
-
-        self.num_failed_subtasks = 0
-        self.header.last_checking = time.time()
-        self.header.ttl = self.full_task_timeout
+        for subtask_id in self.subtasks_given.keys():
+            self.restart_subtask(subtask_id)
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
+        was_failure_before = self.subtasks_given[subtask_id]['status'] in [SubtaskStatus.failure, SubtaskStatus.resent]
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
                 self._mark_subtask_failed(subtask_id)
@@ -155,6 +151,8 @@ class GNRTask(Task):
                 self._mark_subtask_failed(subtask_id)
                 tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
                 self.num_tasks_received -= tasks
+        if not was_failure_before:
+            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
     def abort(self):
         pass
