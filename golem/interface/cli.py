@@ -2,28 +2,15 @@ import argparse
 import sys
 import time
 
-from twisted.internet.defer import TimeoutError
-
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
 from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
+from twisted.internet.defer import TimeoutError
 
 
 @command(name="exit", help="Exit the interactive shell", root=True)
-def _exit(raise_exit=True):
-    from twisted.internet import reactor
-    from twisted.internet.error import ReactorNotRunning
-
-    try:
-        if reactor.running:
-            reactor.callFromThread(reactor.stop)
-        if raise_exit:
-            sys.exit(0)
-    except ReactorNotRunning:
-        pass
-    except Exception as exc:
-        import logging
-        logging.error("Shutdown error: {}".format(exc))
+def _exit():
+    CLI.shutdown()
 
 
 @command(name="help", help="Display this help message", root=True)
@@ -55,11 +42,12 @@ class CLI(object):
     DESCRIPTION = None
     METAVAR = ''
 
+    working = False
+
     def __init__(self, client, roots=None, formatters=None):
 
         self.client = client
         self.roots = roots or CommandStorage.roots
-        self.working = True
 
         self.parser = None
         self.shared_parser = None
@@ -77,25 +65,35 @@ class CLI(object):
 
         self.add_formatter(CommandFormatter())  # default
 
+    @classmethod
+    def shutdown(cls):
+        cls.working = False
+
     def execute(self, args=None, interactive=False):
 
         if interactive:
             import readline
             readline.parse_and_bind("tab: complete")
 
+        self.working = True
         while self.working:
             if not args:
-                line = raw_input('>> ')
-                if line:
-                    args = line.strip().split(' ')
+
+                try:
+                    line = raw_input('>> ')
+                except ValueError:
+                    self.working = False
                 else:
-                    args = None
+                    if line:
+                        args = line.strip().split(' ')
+                    else:
+                        args = None
 
             if args:
                 try:
                     result, output = self.process(args)
                 except SystemExit:
-                    break
+                    self.working = False
                 else:
                     output.write(result)
                     output.write(u"\n")
@@ -103,8 +101,7 @@ class CLI(object):
 
             args = None
             if not interactive:
-                _exit(raise_exit=False)
-                break
+                self.working = False
 
     def process(self, args):
 

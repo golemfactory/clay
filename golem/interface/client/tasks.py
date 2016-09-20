@@ -1,6 +1,4 @@
 import cPickle
-import collections
-import copy
 import os
 import uuid
 from Queue import Queue

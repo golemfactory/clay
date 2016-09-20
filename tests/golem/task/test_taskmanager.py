@@ -1,12 +1,13 @@
 import time
+import uuid
 
-from mock import Mock
+from mock import Mock, patch
 
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
-from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus
+from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus, ComputerState
 
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -369,3 +370,98 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             tm.pause_task("xyz")
         assert tm.tasks["xyz"].task_status == TaskStatus.paused
         assert tm.tasks_states["xyz"].status == TaskStatus.paused
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_tasks(self, _):
+        tm = TaskManager("ABC", Node(), root_path=self.path)
+
+        count = 3
+
+        tasks, tasks_states, task_id, subtask_id = self.__build_tasks(count)
+
+        tm.tasks = tasks
+        tm.tasks_states = tasks_states
+        tm.subtask2task_mapping = self.__build_subtask2task(tasks)
+
+        one_task = tm.get_dict_task(task_id)
+        assert one_task
+        assert isinstance(one_task, dict)
+        assert len(one_task)
+
+        all_tasks = tm.get_dict_tasks()
+
+        assert all_tasks
+        assert isinstance(all_tasks, list)
+        assert len(all_tasks) == count
+        assert all([isinstance(t, dict) for t in all_tasks])
+
+        one_subtask = tm.get_dict_subtask(subtask_id)
+
+        assert one_subtask
+        assert isinstance(one_subtask, dict)
+        assert len(one_subtask)
+
+        task_subtasks = tm.get_dict_subtasks(task_id)
+
+        assert task_subtasks
+        assert isinstance(task_subtasks, list)
+        assert all([isinstance(t, dict) for t in task_subtasks])
+
+    @classmethod
+    def __build_tasks(cls, n):
+
+        tasks = dict()
+        tasks_states = dict()
+        task_id = None
+        subtask_id = None
+
+        for i in xrange(0, n):
+
+            task = Mock()
+            task.header.task_id = str(uuid.uuid4())
+            task.get_total_tasks.return_value = i + 2
+            task.get_progress.return_value = i * 10
+
+            state = Mock()
+            state.status = 'waiting'
+            state.remaining_time = 100 - i
+
+            subtask_states, subtask_id = cls.__build_subtasks(n)
+
+            state.subtask_states = subtask_states
+            task.subtask_states = subtask_states
+
+            task_id = task.header.task_id
+
+            tasks[task.header.task_id] = task
+            tasks_states[task.header.task_id] = state
+
+        return tasks, tasks_states, task_id, subtask_id
+
+    @staticmethod
+    def __build_subtasks(n):
+
+        subtasks = dict()
+        subtask_id = None
+
+        for i in xrange(0, n):
+
+            subtask = Mock()
+            subtask.subtask_id = str(uuid.uuid4())
+            subtask.computer = ComputerState()
+            subtask.computer.node_name = 'node_{}'.format(i)
+            subtask.computer.node_id = 'deadbeef0{}'.format(i)
+            subtask_id = subtask.subtask_id
+
+            subtasks[subtask.subtask_id] = subtask
+
+        return subtasks, subtask_id
+
+    @staticmethod
+    def __build_subtask2task(tasks):
+        subtask2task = dict()
+        for k, t in tasks.items():
+            print k, t.subtask_states
+            for sk, st in t.subtask_states.items():
+                subtask2task[st.subtask_id] = t.header.task_id
+        return subtask2task

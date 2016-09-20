@@ -68,10 +68,9 @@ class TestCLI(unittest.TestCase):
             return lambda *args, **kwargs: self.return_value
 
     @patch('sys.stdout', new_callable=StringIO)
-    @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.interface.cli.CLI.process', side_effect=lambda x: (u' '.join(x), Mock()))
     @patch('golem.core.common.config_logging', side_effect=_nop)
-    def test_execute(self, _, _process, _exit, _out):
+    def test_execute(self, _, _process, _out):
 
         client = self.MockClient()
         cli = CLI(client=client, formatters=[self.MockFormatter()])
@@ -81,16 +80,13 @@ class TestCLI(unittest.TestCase):
 
         assert not _process.called
         assert not _out.getvalue()
-        assert _exit.called
 
         _process.called = False
-        _exit.called = False
 
         with patch(self.__raw_input, return_value='invalid_command --invalid-flag'):
             cli.execute()
 
         assert _process.called
-        assert _exit.called
 
     @patch('sys.stdout', new_callable=StringIO)
     @patch('golem.interface.cli._exit', side_effect=_nop)
@@ -289,28 +285,9 @@ class TestCLICommands(unittest.TestCase):
 
         assert CommandHelper.get_interface(_exit)
 
-        _exit()
-        assert not sys_exit.called
-        assert not logging_error.called
-
-        reactor.exc_class = Exception
-
-        _exit()
-        assert not sys_exit.called
-        assert logging_error.called
-
-        reactor.running = False
-        logging_error.called = False
-
-        _exit()
-        assert sys_exit.called
-        assert not logging_error.called
-
-        sys_exit.called = False
-
-        _exit(raise_exit=False)
-        assert not sys_exit.called
-        assert not logging_error.called
+        with patch('golem.interface.cli.CLI.shutdown') as shutdown:
+            _exit()
+            assert shutdown.called
 
     def test_help(self):
         assert CommandHelper.get_interface(_help)

@@ -1,4 +1,3 @@
-import sys
 from golem.rpc.websockets import WebSocketRPCClientFactory
 
 
@@ -16,19 +15,17 @@ class WebSocketCLI(object):
         from twisted.internet import reactor, threads
 
         self.rpc = WebSocketRPCClientFactory(self.address, self.port,
-                                             on_disconnect=self.on_disconnect)
+                                             on_disconnect=self.shutdown)
 
         def on_connected(_):
             rpc_client = self.rpc.build_simple_client()
             self.cli = self.cli_class(rpc_client)
-            threads.deferToThread(self.cli.execute, *args, **kwargs)
+            threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
 
         def on_error(error):
-            if reactor.running:
-                reactor.stop()
-
             import sys
             sys.stderr.write(u"Error occurred: {}".format(error))
+            self.shutdown()
 
         def connect():
             self.rpc.connect().addCallbacks(on_connected, on_error)
@@ -36,9 +33,16 @@ class WebSocketCLI(object):
         reactor.callWhenRunning(connect)
         reactor.run()
 
-    def on_disconnect(self, _):
+    def shutdown(self, *_):
         from twisted.internet import reactor
-        self.cli.working = False
-        self.rpc.disconnect()
-        if reactor.running:
-            reactor.callFromThread(reactor.stop)
+        from twisted.internet.error import ReactorNotRunning
+
+        if self.cli:
+            self.cli.shutdown()
+        if self.rpc:
+            self.rpc.disconnect()
+
+        try:
+            reactor.stop()
+        except ReactorNotRunning:
+            pass

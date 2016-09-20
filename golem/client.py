@@ -392,62 +392,15 @@ class Client(object):
         return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_tasks(self, task_id=None):
-        tasks = self.task_server.task_manager.tasks
-        tasks_states = self.task_server.task_manager.tasks_states
-
-        if tasks:
-            if task_id:
-                return self._simple_task_repr(tasks_states, task_id, tasks.get(task_id))
-            return [self._simple_task_repr(tasks_states, task_id, t) for task_id, t in tasks.iteritems()]
+        if task_id:
+            return self.task_server.task_manager.get_dict_task(task_id)
+        return self.task_server.task_manager.get_dict_tasks()
 
     def get_subtasks(self, task_id):
-        task_state = self.task_server.task_manager.tasks_states.get(task_id)
-        if task_state:
-            return [self._simple_subtask_repr(subtask) for subtask_id, subtask in task_state.subtask_states.iteritems()]
-
-        raise Exception("Task {} not found".format(task_id))
+        return self.task_server.task_manager.get_dict_subtasks(task_id)
 
     def get_subtask(self, subtask_id):
-        task_id = self.task_server.task_manager.subtask2task_mapping.get(subtask_id)
-        task = self.task_server.task_manager.tasks.get(task_id)
-        if task:
-            task_state = self.task_server.task_manager.tasks_states.get(task.header.task_id)
-            if task_state:
-                subtask = task_state.subtask_states.get(subtask_id)
-                return self._simple_subtask_repr(subtask)
-
-        raise Exception("Subtask {} not found".format(subtask_id))
-
-    @staticmethod
-    def _simple_task_repr(_states, _id, _task):
-        if _task:
-            state = _states.get(_id)
-            return dict(
-                id=_task.header.task_id,
-                time_remaining=state.remaining_time,
-                subtasks=_task.get_total_tasks(),
-                status=state.status,
-                progress=_task.get_progress()
-            )
-
-    @staticmethod
-    def _simple_subtask_repr(subtask):
-        if subtask:
-            return dict(
-                subtask_id=subtask.subtask_id,
-                node_name=subtask.computer.node_name,
-                node_id=subtask.computer.node_id,
-                node_performance=subtask.computer.performance,
-                node_ip_address=subtask.computer.ip_address,
-                node_port=subtask.computer.port,
-                status=subtask.subtask_status,
-                progress=subtask.subtask_progress,
-                time_started=subtask.time_started,
-                time_remaining=subtask.subtask_rem_time,
-                results=subtask.results,
-                stderr=subtask.stderr,
-                stdout=subtask.stdout
-            )
+        return self.task_server.task_manager.get_dict_subtask(subtask_id)
 
     def get_task_stats(self):
         return dict(

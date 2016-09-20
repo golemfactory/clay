@@ -1,6 +1,14 @@
 import argparse
 import sys
 
+# hack: mock GNRApplicationLogic = faster startup, clean output (no scrypt import warnings)
+# alternative: refactor gnr.renderingapplicationlogic
+
+# import imp
+# gnr_app_logic = imp.new_module('gnr.gnrapplicationlogic')
+# exec('class GNRApplicationLogic(object): pass', gnr_app_logic.__dict__)
+# sys.modules['gnr.gnrapplicationlogic'] = gnr_app_logic
+
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
 from golem.interface.client import account
@@ -36,9 +44,13 @@ def main():
     parser.add_argument(*arguments['port'], dest="port", type=int, default=60103)
 
     parsed, forwarded = parser.parse_known_args(args)
+
     # setup logging if in interactive mode
     if parsed.interactive:
         config_logging("golem_cli.log")
+    else:
+        import logging
+        logging.raiseExceptions = 0
 
     # run the cli
     cli = WebSocketCLI(CLI, address=parsed.address, port=parsed.port)

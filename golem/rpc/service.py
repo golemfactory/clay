@@ -169,6 +169,9 @@ class RPC(object):
             rpc_request = RPCRequestMessage(callee, args, kwargs)
 
         response = yield session.send_message(rpc_request)
+        # TODO: handle response errors
+        # if response.errors:
+        #     raise RPCServiceError(response.errors)
         returnValue(response.result)
 
     @inlineCallbacks

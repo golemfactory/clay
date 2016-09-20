@@ -1,13 +1,11 @@
 import abc
 import json
-import pprint
 
 import yaml
-from tabulate import tabulate
-
 from golem.core.simpleserializer import to_dict
 from golem.interface.command import CommandResult
 from golem.interface.exceptions import CommandException
+from tabulate import tabulate
 
 
 class _CommandResultFormatter(object):
@@ -66,7 +64,7 @@ class CommandFormatter(_CommandResultFormatter):
             result = to_dict(result)
 
             if self.prettify:
-                return yaml.safe_dump(result)
+                return yaml.safe_dump(result, allow_unicode=True, default_flow_style=False)
             return result
 
 

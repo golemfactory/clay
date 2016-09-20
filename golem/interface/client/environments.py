@@ -1,5 +1,3 @@
-import collections
-
 from golem.interface.command import group, CommandHelper, Argument, command, CommandResult
 
 

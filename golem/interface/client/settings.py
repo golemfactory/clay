@@ -1,11 +1,10 @@
 import multiprocessing
 from collections import namedtuple
-from psutil import virtual_memory
 
 from ethereum.utils import denoms
-
-from golem.appconfig import MAX_MEMORY_SIZE, MIN_MEMORY_SIZE
-from golem.interface.command import group, Argument, command, CommandHelper, CommandResult, doc
+from golem.appconfig import MIN_MEMORY_SIZE
+from golem.interface.command import group, Argument, command, CommandHelper, CommandResult
+from psutil import virtual_memory
 
 Setting = namedtuple('Setting', ['help', 'type', 'converter', 'validator'])
 
