@@ -72,7 +72,12 @@ def config_logging(logname=LOG_NAME):
     """Config logger"""
 
     # \t and other special chars cause problems with log handlers
-    logname = logname.encode('string-escape')
+    if isinstance(logname, unicode):
+        escaping = 'unicode-escape'
+    else:
+        escaping = 'string-escape'
+
+    logname = logname.encode(escaping)
     directory = os.path.dirname(logname)
 
     if directory:

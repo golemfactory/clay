@@ -1,6 +1,9 @@
+import os
 from unittest import TestCase
 
-from golem.core.common import HandleKeyError, HandleAttributeError
+from golem.core.common import HandleKeyError, HandleAttributeError, config_logging
+from golem.testutils import TempDirFixture
+from mock import patch, ANY
 
 
 def handle_error(*args, **kwargs):
@@ -30,3 +33,42 @@ class TestHandleAttibuteError(TestCase):
     @h
     def test_call_with_dec(self):
         assert self.func("Abc") == 6
+
+
+class TestConfigLogging(TempDirFixture):
+
+    @patch('logging.config.fileConfig')
+    def test(self, file_config):
+
+        invalid_logname = os.path.join("!@#$%&*()/><}{';.,", "dir", "log.txt")
+        invalid_logname_u = unicode(invalid_logname)
+
+        with self.assertRaises(OSError):
+            config_logging(invalid_logname)
+
+        with self.assertRaises(OSError):
+            config_logging(invalid_logname_u)
+
+        assert not file_config.called
+
+        logname = os.path.join(self.path, "dir", "log.txt")
+        dirname = os.path.dirname(logname)
+
+        config_logging(logname)
+
+        assert os.path.exists(dirname)
+        file_config.assert_called_with(ANY,
+                                       defaults={'logname': logname.encode('string-escape')},
+                                       disable_existing_loggers=False)
+
+        file_config.called = False
+
+        logname_u = unicode(logname)
+        dirname_u = unicode(dirname)
+
+        config_logging(logname_u)
+
+        assert os.path.exists(dirname_u)
+        file_config.assert_called_with(ANY,
+                                       defaults={'logname': logname_u.encode('unicode-escape')},
+                                       disable_existing_loggers=False)
