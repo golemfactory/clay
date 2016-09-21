@@ -40,7 +40,7 @@ class TestConfigLogging(TempDirFixture):
     @patch('logging.config.fileConfig')
     def test(self, file_config):
 
-        invalid_logname = os.path.join("!@#$%&*()/><}{';.,", "dir", "log.txt")
+        invalid_logname = os.path.join(self.path, "/<\0?:/*!\">", "dir", "log.txt")
         invalid_logname_u = unicode(invalid_logname)
 
         with self.assertRaises(OSError):
