@@ -257,15 +257,10 @@ class TaskComputer(object):
         def error_callback(err_msg):
             logger.error("Unable to run benchmark: {}".format(err_msg))
         
-        def lux_success_callback(performance):
+        def success_callback(performance, cfg_param):
             cfg_desc = client.config_desc
-            cfg_desc.estimated_lux_performance = performance
-            client.change_config(cfg_desc)
-            self.docker_config_changed()
-            
-        def blender_success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_blender_performance = performance
+            perf = int((performance * 10) + 0.5) / 10.0
+            setattr(cfg_desc, cfg_param, perf)
             client.change_config(cfg_desc)
             self.docker_config_changed()
         
@@ -275,11 +270,18 @@ class TaskComputer(object):
         
         lux_benchmark = LuxBenchmark()
         lux_builder = LuxRenderTaskBuilder
-        self.run_benchmark(lux_benchmark, lux_builder, datadir, node_name, lux_success_callback, error_callback)
+        self.run_benchmark(lux_benchmark, lux_builder, datadir,
+                           node_name, lambda p: success_callback(performance=p,
+                                                                 cfg_param="estimated_lux_performance"),
+                           error_callback)
         
         blender_benchmark = BlenderBenchmark()
         blender_builder = BlenderRenderTaskBuilder
-        self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, blender_success_callback, error_callback)
+        self.run_benchmark(blender_benchmark, blender_builder, datadir,
+                           node_name, lambda p: success_callback(performance=p,
+                                                                 cfg_param="estimated_blender_performance"),
+                           error_callback)
+
 
     def docker_config_changed(self):
         for l in self.listeners:
