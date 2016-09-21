@@ -4,6 +4,7 @@ import time
 from collections import deque
 
 from ipaddress import AddressValueError
+from threading import Lock
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 
@@ -12,7 +13,7 @@ from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
-from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer, PenConnStatus
+from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
 from golem.ranking.gossipkeeper import GossipKeeper
 from peerkeeper import PeerKeeper
 
@@ -71,6 +72,8 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.resource_peers = {}
         self.seeds = set()
+
+        self._peer_lock = Lock()
 
         try:
             self.__remove_redundant_hosts_from_db()
@@ -220,8 +223,9 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :param PeerSession peer: peer session with given peer
         """
         logger.info("Adding peer {}, key id difficulty: {}".format(key_id, self.keys_auth.get_difficulty(peer.key_id)))
-        self.peers[key_id] = peer
-        self.peer_order.append(key_id)
+        with self._peer_lock:
+            self.peers[key_id] = peer
+            self.peer_order.append(key_id)
         self.__send_degree()
 
     def add_to_peer_keeper(self, peer_info):
@@ -268,27 +272,28 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         self.remove_pending_conn(peer_session.conn_id)
 
-        p = peer_session.key_id
+        peer_id = peer_session.key_id
+        stored_session = self.peers.get(peer_id)
 
-        self.peers.pop(p, None)
-        self.incoming_peers.pop(p, None)
-        self.suggested_address.pop(p, None)
-        self.suggested_conn_reverse.pop(p, None)
-
-        if p in self.free_peers:
-            self.free_peers.remove(p)
-        if p in self.peer_order:
-            self.peer_order.remove(p)
-
-        self.__send_degree()
+        if stored_session == peer_session:
+            self.remove_peer_by_id(peer_id)
 
     def remove_peer_by_id(self, peer_id):
         """ Remove peer session with peer that has given id
         :param str peer_id:
         """
-        peer = self.peers.get(peer_id)
+        with self._peer_lock:
+            peer = self.peers.pop(peer_id, None)
+            self.incoming_peers.pop(peer_id, None)
+            self.suggested_address.pop(peer_id, None)
+            self.suggested_conn_reverse.pop(peer_id, None)
+
+            if peer_id in self.free_peers:
+                self.free_peers.remove(peer_id)
+            if peer_id in self.peer_order:
+                self.peer_order.remove(peer_id)
+
         if peer:
-            self.remove_peer(peer)
             self.__send_degree()
         else:
             logger.info("Can't remove peer {}, unknown peer".format(peer_id))
@@ -305,13 +310,8 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Inform whether peer has optimal or more open connections with other peers
         :return bool: True if peer has enough open connections with other peers, False otherwise
         """
-        return len(self.peers) >= self.config_desc.opt_peer_num
-
-    def redundant_peers(self):
-        if self.enough_peers():
-            start_idx = self.config_desc.opt_peer_num - 1
-            return self.peer_order[start_idx:]
-        return []
+        with self._peer_lock:
+            return len(self.peers) >= self.config_desc.opt_peer_num
 
     def set_last_message(self, type_, client_key_id, t, msg, address, port):
         """ Add given message to last message buffer and inform peer keeper about it
@@ -340,15 +340,24 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.manager_session = None
 
     def change_config(self, config_desc):
-        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
+        """ Change configuration descriptor.
+        If node_name was changed, send hello to all peers to update node_name.
+        If listening port is changed, than stop listening on old port and start
         listening on a new one. If seed address is changed, connect to a new seed.
         Change configuration for resource server.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
 
+        is_node_name_changed = self.node_name != config_desc.node_name
+
         TCPServer.change_config(self, config_desc)
+        self.node_name = config_desc.node_name
 
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
+
+        if is_node_name_changed:
+            for peer in self.peers.values():
+                peer.hello()
 
         for peer in self.peers.values():
             if peer.port == self.config_desc.seed_port and peer.address == self.config_desc.seed_host:
@@ -881,7 +890,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not known_hosts:
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
-        self.seeds = set([(x.ip_address, x.port) for x in known_hosts if x.is_seed])
+        self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
         self.seeds.update(SEEDS)
 
         ip_address = self.config_desc.seed_host

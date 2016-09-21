@@ -1,6 +1,9 @@
+
 from ethereum import keys
 
+from golem.network.p2p.node import Node
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
 PRIV_KEY = '\7' * 32

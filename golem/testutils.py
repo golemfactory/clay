@@ -3,7 +3,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from os import path, mkdir
+from os import path
 
 from golem.core.common import is_windows, is_osx
 

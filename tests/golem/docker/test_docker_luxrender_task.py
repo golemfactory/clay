@@ -141,10 +141,16 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         extra_data = task.query_extra_data(10000)
         ctd = extra_data.ctd
 
+        copied_file = path.join(path.dirname(test_file), "newfile.flm")
         new_file = path.join(path.dirname(test_file), ctd.subtask_id, "newfile.flm")
         file_dir = os.path.dirname(new_file)
+
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
+
+        def remove_copied_file():
+            if os.path.exists(copied_file):
+                os.remove(copied_file)
 
         shutil.copy(test_file, new_file)
 
@@ -163,6 +169,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
+        remove_copied_file()
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
         shutil.move(test_file + "copy", test_file)
@@ -170,6 +177,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         extra_data = task.query_extra_data(10)
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)
+        remove_copied_file()
         assert task.num_tasks_received == 2
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
@@ -190,6 +198,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         extra_data = task.query_extra_data(10)
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)
+        remove_copied_file()
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
         assert task.verify_task()
@@ -206,8 +215,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any([path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]]))
+            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
         self.assertTrue(
-            any([path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]]))
+            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
         self.assertTrue(
-            any([f.endswith(".flm") for f in result["data"]]))
+            any(f.endswith(".flm") for f in result["data"]))

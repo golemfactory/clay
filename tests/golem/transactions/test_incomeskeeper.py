@@ -12,7 +12,7 @@ class TestIncomesDatabase(LogTestCase, TestWithDatabase):
         id = IncomesDatabase()
         with self.assertLogs(logger, level=1) as l:
             self.assertEquals((0, 0), id.get_income_value("xyz", "DEF"))
-        self.assertTrue(any(["not exist" in log for log in l.output]))
+        self.assertTrue(any("not exist" in log for log in l.output))
         id.update_income("xyz", "DEF", 20, 30, "SOMESTATE")
         self.assertEquals((20, 30), id.get_income_value("xyz", "DEF"))
         id.update_income("xyz", "DEF", 20, 30, "SOMESTATE")

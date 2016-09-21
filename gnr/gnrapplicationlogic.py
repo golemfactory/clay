@@ -256,9 +256,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
         self.customizer.gui.ui.supportedTasks.setText(str(supported))
-        self.customizer.gui.ui.computedTasks.setText(str(computed_tasks))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(tasks_with_errors))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(tasks_with_timeout))
+
+        self.customizer.gui.ui.computedTasks.setText(self._format_stats_message(computed_tasks))
+        self.customizer.gui.ui.tasksWithErrors.setText(self._format_stats_message(tasks_with_errors))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(self._format_stats_message(tasks_with_timeout))
 
     @inlineCallbacks
     def get_config(self):
@@ -422,6 +423,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def save_task(task_state, file_path):
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if not path.endswith("."):
+                file_path += "."
+            file_path += "gt"
         with open(file_path, "wb") as f:
             tspickled = cPickle.dumps(task_state)
             f.write(tspickled)
@@ -456,7 +462,14 @@ class GNRApplicationLogic(QtCore.QObject):
 
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.button_enable(False)  # disable 'ok' button
+            self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
+            self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
+            self.progress_dialog_customizer.enable_close(False)        # prevent from closing
+            self.progress_dialog_customizer.show_message("Preparing test...")
+            def on_abort():
+                self.progress_dialog_customizer.show_message("Aborting test...")
+                self.abort_test_task()
+            self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
@@ -467,6 +480,13 @@ class GNRApplicationLogic(QtCore.QObject):
             return True
 
         return False
+
+    def test_task_started(self, success):
+        self.progress_dialog_customizer.show_message("Testing...")
+        self.progress_dialog_customizer.enable_abort_button(success)
+
+    def abort_test_task(self):
+        self.client.abort_test_task()
 
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label):
@@ -485,7 +505,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-        self.progress_dialog_customizer.button_enable(False)    # disable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(False) # disable 'ok' button
         self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
@@ -494,7 +514,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def _benchmark_computation_success(self, performance, label):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounted")
-        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
         # rounding
@@ -505,7 +525,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def _benchmark_computation_error(self, error):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounting failed: {}".format(error))
-        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
     @inlineCallbacks
@@ -525,7 +545,9 @@ class GNRApplicationLogic(QtCore.QObject):
             ms_box.show()
         msg = u"Task tested successfully"
         self.progress_dialog_customizer.show_message(msg)
-        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button
+        self.progress_dialog_customizer.enable_close(True)
+        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
@@ -536,7 +558,9 @@ class GNRApplicationLogic(QtCore.QObject):
         if error:
             err_msg += self.__parse_error_message(error)
         self.progress_dialog_customizer.show_message(err_msg)
-        self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True) # enable 'ok' button
+        self.progress_dialog_customizer.enable_close(True)
+        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
@@ -586,6 +610,16 @@ class GNRApplicationLogic(QtCore.QObject):
         config = yield self.get_config()
         returnValue(config.max_price)
 
+    @inlineCallbacks
+    def get_cost_for_task_id(self, task_id):
+        """
+        Get cost of subtasks related with @task_id
+        :param task_id: Task ID
+        :return: Cost of the task
+        """
+        cost = yield self.client.get_payment_for_task_id(task_id)
+        returnValue(cost)
+
     def show_error_window(self, text):
         from PyQt4.QtGui import QMessageBox
         ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
@@ -598,3 +632,11 @@ class GNRApplicationLogic(QtCore.QObject):
             self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
             return False
         return True
+
+    @staticmethod
+    def _format_stats_message(stat):
+        try:
+            return u"Session: {}; All time: {}".format(stat[0], stat[1])
+        except (IndexError, TypeError) as err:
+            logger.warning("Problem with stat formatin {}".format(err))
+            return u"Error"

@@ -7,7 +7,6 @@
 from spatialindex import SpatialIndex
 from triangle import Triangle
 from vector3f import Vector3f, ZERO, ONE, MAX
-from random import Random
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))').search

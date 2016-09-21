@@ -13,7 +13,7 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingdirmanager import get_tmp_path
+from gnr.gnrtaskstate import AdvanceVerificationOptions
 
 logger = logging.getLogger("gnr.task")
 
@@ -104,7 +104,7 @@ class GNRTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verification_options = None
+        self.verification_options = AdvanceVerificationOptions()
 
     def is_docker_task(self):
         return self.header.docker_images is not None
@@ -138,16 +138,12 @@ class GNRTask(Task):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
     def restart(self):
-        self.num_tasks_received = 0
-        self.last_task = 0
-        self.subtasks_given.clear()
-
-        self.num_failed_subtasks = 0
-        self.header.last_checking = time.time()
-        self.header.ttl = self.full_task_timeout
+        for subtask_id in self.subtasks_given.keys():
+            self.restart_subtask(subtask_id)
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
+        was_failure_before = self.subtasks_given[subtask_id]['status'] in [SubtaskStatus.failure, SubtaskStatus.resent]
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
                 self._mark_subtask_failed(subtask_id)
@@ -155,6 +151,8 @@ class GNRTask(Task):
                 self._mark_subtask_failed(subtask_id)
                 tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
                 self.num_tasks_received -= tasks
+        if not was_failure_before:
+            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
     def abort(self):
         pass
@@ -264,14 +262,23 @@ class GNRTask(Task):
             elif tr.endswith(log_ext):
                 self.stdout[subtask_id] = tr
             else:
-                new_tr = outer_dir_path(tr)
-                filtered_task_results.append(new_tr)
-                os.rename(tr, new_tr)
+                try:
+                    new_tr = outer_dir_path(tr)
+                    if os.path.isfile(new_tr):
+                        os.remove(new_tr)
+                    os.rename(tr, new_tr)
+                    filtered_task_results.append(new_tr)
+                except (IOError, OSError) as err:
+                    logger.warning("Problem with moving file {} to new location: {}".format(tr, err))
 
         return filtered_task_results
 
     def after_test(self, results, tmp_dir):
         return None
+
+    def notify_update_task(self):
+        for l in self.listeners:
+            l.notify_update_task(self.header.task_id)
 
     @handle_key_error
     def should_accept(self, subtask_id):

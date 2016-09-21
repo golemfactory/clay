@@ -2,7 +2,6 @@ import cPickle
 import unittest
 
 from mock import Mock, MagicMock, patch
-from twisted.internet.defer import Deferred
 
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
@@ -10,7 +9,7 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
                                              MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask)
-from golem.task.taskbase import result_types
+from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.testutils import TempDirFixture
@@ -45,14 +44,14 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
         with self.assertLogs(logger, level=1) as l:
             res = ts.decrypt(data)
-        self.assertTrue(any(["maybe it's not encrypted?" in log for log in l.output]))
-        self.assertFalse(any(["Encrypt error" in log for log in l.output]))
+        self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
+        self.assertFalse(any("Encrypt error" in log for log in l.output))
         self.assertEqual(res, data)
 
         ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
         with self.assertLogs(logger, level=1) as l:
             res = ts.decrypt(data)
-        self.assertTrue(any(["Different error" in log for log in l.output]))
+        self.assertTrue(any("Different error" in log for log in l.output))
         self.assertIsNone(res)
 
         ts.task_server = None
@@ -246,6 +245,72 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts._react_to_task_result_hash(msg)
         assert ts.task_server.reject_result.called
         assert ts.task_manager.task_computation_failure.called
+
+    def test_react_to_task_compute(self):
+        conn = Mock()
+        ts = TaskSession(conn)
+        ts.key_id = "KEY_ID"
+        ts.task_manager = Mock()
+        ts.task_computer = Mock()
+        ts.task_server = Mock()
+        ts.task_server.get_subtask_ttl.return_value = 31313
+
+        def __reset_mocks():
+            ts.task_manager.reset_mock()
+            ts.task_computer.reset_mock()
+            conn.reset_mock()
+
+        msg = MessageTaskToCompute()
+        with self.assertLogs(logger, level="WARNING"):
+            ts._react_to_task_to_compute(msg)
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd = ComputeTaskDef()
+        ctd.key_id = "KEY_ID"
+        ctd.subtask_id = "SUBTASKID"
+        ctd.task_owner = Node()
+        ctd.task_owner.key = "KEY_ID"
+        ctd.return_address = "10.10.10.10"
+        ctd.return_port = 1112
+        msg = MessageTaskToCompute(ctd)
+        ts._react_to_task_to_compute(msg)
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(ctd)
+        ts.task_computer.session_closed.assert_not_called()
+        ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
+        ts.task_computer.task_given.assert_called_with(ctd, 31313)
+        conn.close.assert_not_called()
+
+        __reset_mocks()
+        ctd.key_id = "KEY_ID2"
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd.key_id = "KEY_ID"
+        ctd.task_owner.key = "KEY_ID2"
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd.task_owner.key = "KEY_ID"
+        ctd.return_port = 0
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd.task_owner.key = "KEY_ID"
+        ctd.return_port = 1319
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        conn.close.assert_not_called()
 
 
 def executor_success(req, success, error):

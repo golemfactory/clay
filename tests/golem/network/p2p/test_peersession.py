@@ -1,5 +1,4 @@
 import unittest
-from random import random
 
 from mock import MagicMock
 
@@ -36,12 +35,13 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ps.decrypt(ps2.encrypt(data)), data)
         with self.assertLogs(logger, level=1) as l:
             self.assertEqual(ps2.decrypt(data), data)
-        self.assertTrue(any(["not encrypted" in log for log in l.output]))
+        self.assertTrue(any("not encrypted" in log for log in l.output))
 
     def test_react_to_hello(self):
 
         conn = MagicMock()
         conf = MagicMock()
+        conf.opt_peer_num = 10
 
         node = Node(node_name='node', key='ffffffff')
         keys_auth = KeysAuth(self.path)
@@ -96,13 +96,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session.dropped()
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called
-
-        peer_session.p2p_service.remove_peer.called = False
-
-        peer_session.remove_on_disconnect = False
-        peer_session.dropped()
-        assert not peer_session.p2p_service.remove_peer.called
-        assert peer_session.p2p_service.remove_pending_conn.called
 
 
 class TestPeerSessionInfo(unittest.TestCase):

@@ -1,7 +1,11 @@
-import time
 import abc
+import logging
+import time
+from copy import deepcopy
 
 from golem.core.variables import APP_VERSION
+
+logger = logging.getLogger("golem.task")
 
 
 class TaskHeader(object):
@@ -56,6 +60,14 @@ class ComputeTaskDef(object):
         self.docker_images = None
 
 
+class TaskEventListener(object):
+    def __init__(self):
+        pass
+
+    def notify_update_task(self, task_id):
+        pass
+
+
 class Task(object):
 
     class ExtraData(object):
@@ -76,7 +88,26 @@ class Task(object):
         self.header = header
         self.undeletable = []
 
-        self.notify_update_task = lambda task_id: None
+        self.listeners = []
+
+    def __getstate__(self):
+        state_attr = vars(self).keys()
+        state_attr.remove('listeners')
+        return {attr: deepcopy(getattr(self, attr)) for attr in state_attr}
+
+    def __setstate__(self, dict_):
+        self.__dict__ = dict_
+        self.listeners = []
+
+    def register_listener(self, listener):
+        assert isinstance(listener, TaskEventListener)
+        self.listeners.append(listener)
+
+    def unregister_listener(self, listener):
+        if listener in self.listeners:
+            self.listeners.remove(listener)
+        else:
+            logger.warning("Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
@@ -149,7 +180,6 @@ class Task(object):
         :return bool: True if task passed verification, False otherwise
         """
         return  # Implement in derived class
-
 
 
     @abc.abstractmethod
@@ -268,6 +298,7 @@ class Task(object):
         :return:
         """
         pass
+
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1, 'hashes': 2}

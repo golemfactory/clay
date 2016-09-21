@@ -61,29 +61,12 @@ class LicenseCollector(object):
 
     # noinspection PyTypeChecker
     MODULE_PLUGINS = dict({
-        'ethereum': ('eth_client_utils', 'eth_rpc_client'),
         'peewee': ('playhouse', 'pwiz'),
-        'zope': ('zope.interface',),
-        'twisted': ('qtreactor', 'qt4reactor')
+        'zope': ('zope.interface',)
     })
 
     # noinspection PyTypeChecker
     LICENSES = dict({
-        'ethereum': ModuleMetadata(
-            name='ethereum', license='MIT'
-        ),
-        'virtualbox': ModuleMetadata(
-            name='virtualbox', license='Apache Software Licence'
-        ),
-        'docker': ModuleMetadata(
-            name='docker', license='Apache 2.0'
-        ),
-        'email': ModuleMetadata(
-            name='email',
-            author='Barry Warsaw',
-            author_email='email-sig@python.org',
-            license='PSFL'
-        ),
         'click': ModuleMetadata(
             name='click', license=FileLicense('click-license.txt')
         ),
@@ -101,12 +84,13 @@ class LicenseCollector(object):
             author='Vinay Sajip',
             license=FileLicense('logging-license.txt')
         ),
-
         'OpenEXR.so': (
             'OpenEXR', 'OpenEXR Python package by James Bowman',
             FileLicense('OpenEXR-license.txt')
         )
     })
+
+    _info_dir_cache = dict()
 
     def __init__(self, root_dir, package_dirs, library_dirs,
                  package_exceptions=None, library_exceptions=None):
@@ -119,13 +103,15 @@ class LicenseCollector(object):
         self.package_excs = package_exceptions or self.MODULE_EXCEPTIONS
         self.library_excs = library_exceptions or []
 
-    def write_package_licenses(self, output_path):
+    def write_module_licenses(self, output_path):
         print "Writing module licenses to", output_path
 
         def write_metadata(f, p, m, is_file=False):
             try:
-                f.write(str(self.get_package_metadata(p, m, is_file)))
-                f.write('\n\n\n')
+                metadata = self.get_module_metadata(p, m, is_file)
+                if metadata:
+                    f.write(str(metadata))
+                    f.write('\n\n\n')
             except Exception as exc:
                 print exc
 
@@ -152,29 +138,25 @@ class LicenseCollector(object):
 
         platform = get_platform()
 
+        if platform != 'linux':
+            raise EnvironmentError("OS unsupported: {}".format(platform))
+
         def write_license(f, p, lib):
             library_path = os.path.join(p, lib)
 
-            if platform == 'linux':
-                if '.so' not in lib.lower():
-                    return
+            if '.so' not in lib.lower():
+                return
 
-                try:
-                    entry = self._get_linux_library_license(lib, library_path)
-                except:
-                    entry = self.LICENSES.get(lib)
+            try:
+                entry = self._get_linux_library_license(lib, library_path)
+            except:
+                entry = self.LICENSES.get(lib)
 
-                    if not entry:
-                        message = "Cannot retrieve a license for library {}.\n" \
-                                  "It most likely comes from one of Python packages.\n" \
-                                  "Please check the modules license file for the proper license.".format(lib)
-                        entry = lib, message, None
-
-            elif platform == 'win':
-                if not lib.lower().endswith('.dll'):
-                    return
-
-                entry = self._get_win_library_license(lib, library_path)
+                if not entry:
+                    message = "Cannot retrieve a license for library {}.\n" \
+                              "It most likely comes from one of Python packages.\n" \
+                              "Please check the modules license file for the proper license.".format(lib)
+                    entry = lib, message, None
 
             package, package_desc, license_file = entry
 
@@ -201,11 +183,11 @@ class LicenseCollector(object):
                 for ff in filtered_files:
                     write_license(out_file, src_path, ff)
 
-    def get_package_metadata(self, modules_path, module, is_file=False):
+    def get_module_metadata(self, modules_path, module_repr, is_file=False):
 
-        module_path = os.path.join(modules_path, module)
-        module = self._get_package_name(modules_path, module)
-        meta, lic = self.get_package_license(module, is_file=is_file)
+        module_path = os.path.join(modules_path, module_repr)
+        module_repr = self._get_module_name(modules_path, module_repr)
+        meta, lic = self.get_module_license(module_repr, is_file=is_file)
 
         if isinstance(lic, self.FileLicense):
             license_path = os.path.join(self.license_dir, lic.file_name)
@@ -215,7 +197,7 @@ class LicenseCollector(object):
 
         return meta
 
-    def get_package_license(self, module, is_file=False):
+    def get_module_license(self, module, is_file=False):
         package, meta, lic = None, None, None
 
         try:
@@ -226,7 +208,7 @@ class LicenseCollector(object):
                 return None, None
             elif module.startswith('_'):
                 module = module.replace('_', '', 1)
-                return self.get_package_license(module, is_file=is_file)
+                return self.get_module_license(module, is_file=is_file)
 
             try:
 
@@ -268,9 +250,6 @@ class LicenseCollector(object):
         assert os.path.exists(license_file)
         return package, package_desc, license_file
 
-    def _get_win_library_license(self, library, library_path):
-        return None, None, None
-
     def _get_package_plugin(self, module):
         for k, v in self.MODULE_PLUGINS.iteritems():
             if module in v:
@@ -278,41 +257,35 @@ class LicenseCollector(object):
 
     @classmethod
     def _find_package(cls, imported_package, is_file=False):
-        candidates = []
-        packages = []
-
         package_name = imported_package.__name__
 
         if is_file:
             package_path = os.path.abspath(imported_package.__file__)
-            packages_path = os.path.dirname(package_path)
             package_repr = package_name
         else:
             if hasattr(imported_package, '__path__'):
                 package_path = imported_package.__path__[0]
             else:
                 package_path = os.path.dirname(imported_package.__file__)
-            packages_path = os.path.dirname(package_path)
             package_repr = os.path.basename(package_path)
 
-        src_dir, dirs, files = next(os.walk(packages_path))
+        packages_path = cls._upper_egg_dir(os.path.dirname(package_path))
 
-        lm = package_name.lower()
-        for d in dirs:
-            ld = d.lower()
-            if lm in ld and (ld.endswith('.egg-info') or ld.endswith('.dist-info')):
-                candidates.append((os.path.join(src_dir, d), d))
+        if packages_path not in cls._info_dir_cache:
+            cls._info_dir_cache[packages_path] = cls._collect_info_dirs(packages_path)
+
+        candidates = cls._info_dir_cache[packages_path]
+        packages = []
 
         for full_path, directory in candidates:
 
-            top_level_file = os.path.join(full_path, 'top_level.txt')
-            metadata = pkg_resources.PathMetadata(packages_path, full_path)
+            metadata = cls._path_metadata(packages_path, full_path)
             package = pkg_resources.Distribution.from_location(packages_path,
                                                                directory,
                                                                metadata,
                                                                precedence=pkg_resources.DEVELOP_DIST)
 
-            if cls._top_level_file_matches(top_level_file, package_repr):
+            if cls._top_level_file_matches(full_path, package_repr):
                 return package
             packages.append(package)
 
@@ -321,17 +294,58 @@ class LicenseCollector(object):
                 return package
 
     @staticmethod
-    def _top_level_file_matches(top_level_file, package_repr):
-        if os.path.isfile(top_level_file):
-            with open(top_level_file) as f:
-                for line in f:
-                    line = line.replace('\r', '')
-                    line = line.replace('\n', '')
-                    if package_repr == line:
-                        return True
+    def _path_metadata(packages_path, full_path):
+        if full_path.lower().endswith('.egg'):
+            full_path = os.path.join(full_path, 'EGG-INFO')
+        return pkg_resources.PathMetadata(packages_path, full_path)
 
     @staticmethod
-    def _get_package_name(package_path, package_dir):
+    def _top_level_file_matches(package_path, package_repr):
+        top_level_files = [
+            os.path.join(package_path, 'top_level.txt'),
+            os.path.join(package_path, 'EGG-INFO', 'top_level.txt'),
+        ]
+
+        for top_level_file in top_level_files:
+            if os.path.isfile(top_level_file):
+                with open(top_level_file) as f:
+                    for line in f:
+                        line = line.replace('\r', '')
+                        line = line.replace('\n', '')
+                        if package_repr == line:
+                            return True
+
+    @staticmethod
+    def _collect_info_dirs(root_dir):
+        _, dirs, _ = next(os.walk(root_dir))
+        result = set()
+
+        for directory in dirs:
+            lower = directory.lower()
+            if lower.endswith('.egg-info') or lower.endswith('.dist-info') or lower.endswith('.egg'):
+                result.add((os.path.join(root_dir, directory), directory))
+
+        return result
+
+    @staticmethod
+    def _upper_egg_dir(packages_path):
+        norm_path = os.path.normpath(packages_path)
+        path_stub = norm_path
+
+        def cut(p):
+            idx = p.rfind(os.path.sep)
+            if idx != -1:
+                return p[:idx]
+
+        while path_stub:
+            if path_stub.lower().endswith('.egg'):
+                return cut(path_stub)
+            path_stub = cut(path_stub)
+
+        return packages_path
+
+    @staticmethod
+    def _get_module_name(package_path, package_dir):
         name = package_dir
         try:
             imp.find_module(package_dir)
@@ -1111,8 +1125,9 @@ def all_licenses(creator, exe_dir, lib_dir, x_dir):
                           package_dirs=package_dirs,
                           library_dirs=library_dirs)
 
-    lm.write_package_licenses(package_output_file)
-    lm.write_library_licenses(library_output_file)
+    lm.write_module_licenses(package_output_file)
+    if creator.platform != 'win':
+        lm.write_library_licenses(library_output_file)
 
     license_file = 'LICENSE.txt'
     readme_file = 'README.md'
@@ -1206,8 +1221,6 @@ build_options = {
         'copy_libs': {
             'win': [
                 'libeay32.dll',
-                'libgcc_s_dw2-1.dll',
-                'libwinpthread-1.dll',
                 'msvcp120.dll',
                 'msvcr120.dll'
             ],

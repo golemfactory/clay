@@ -106,23 +106,6 @@ class TestP2PService(DatabaseFixture):
         # disabled
         assert len(service.peers) == 2
 
-    def test_redundant_peers(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        service = P2PService(None, ClientConfigDescriptor(), keys_auth,
-                             connect_to_known_hosts=False)
-        sa = SocketAddress('127.0.0.1', 11111)
-
-        node = MagicMock()
-        node.key = EllipticalKeysAuth(self.path, "TESTPRIV", "TESTPUB").get_key_id()
-        node.key_id = node.key
-        node.address = sa
-
-        service.config_desc.opt_peer_num = 0
-        service.add_peer(node.key, node)
-
-        assert len(service.redundant_peers()) == 1
-        assert service.enough_peers()
-
     def test_add_known_peer(self):
         keys_auth = EllipticalKeysAuth(self.path)
         service = P2PService(None, ClientConfigDescriptor(), keys_auth,
@@ -363,3 +346,38 @@ class TestP2PService(DatabaseFixture):
             service.solve_challenge(keys_auth.get_key_id(), challenge, difficulty)
 
         assert len(service.challenge_history) == HISTORY_LEN
+
+    def test_change_config_name(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "test name change"
+        assert service.node_name != "test name change"
+        service.change_config(ccd)
+        assert service.node_name == "test name change"
+
+    def test_broadcast_on_name_change(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        conn = MagicMock()
+        peer = PeerSession(conn)
+        peer.hello_called = False
+        def fake_hello(self):
+            self.hello_called = True
+        import types
+        peer.hello = types.MethodType(fake_hello, peer)
+        keys_auth = EllipticalKeysAuth(self.path, "PUBTESTPATH1", "PUBTESTPATH2")
+        peer.key_id = keys_auth.key_id
+        service.add_peer(keys_auth.key_id, peer)
+        ccd = ClientConfigDescriptor()
+        assert not peer.hello_called
+        service.change_config(ccd)
+        assert not peer.hello_called # negative test
+        ccd = ClientConfigDescriptor()
+        ccd.node_name = "test sending hello on name change"
+        service.change_config(ccd)
+        assert peer.hello_called # positive test
+
+

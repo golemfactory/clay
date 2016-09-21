@@ -245,6 +245,16 @@ class DockerJob(object):
                      .format(self.container_id, self.get_status()))
         return -1
 
+    def kill(self):
+        try:
+            status = self.get_status()
+        except Exception:
+            status = None
+
+        if status == self.STATE_RUNNING:
+            client = local_client()
+            client.kill(self.container_id)
+
     def dump_logs(self, stdout_file=None, stderr_file=None):
         if not self.container:
             return

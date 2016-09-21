@@ -15,7 +15,6 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.localcomputer import LocalComputer
@@ -46,7 +45,6 @@ class RenderingTaskBuilder(GNRTaskBuilder):
             new_task.advanceVerification = False
         else:
             new_task.advanceVerification = True
-            new_task.verification_options = AdvanceRenderingVerificationOptions()
             new_task.verification_options.type = self.task_definition.verification_options.type
             new_task.verification_options.box_size = (self.task_definition.verification_options.box_size[0],
                                                       (self.task_definition.verification_options.box_size[1] / 2) * 2)
@@ -125,19 +123,13 @@ class RenderingTask(GNRTask):
         else:
             self.scale_factor = 1.0
 
-        if is_windows():
-            self.__get_path = self.__get_path_windows
-
     @GNRTask.handle_key_error
     def computation_failed(self, subtask_id):
         GNRTask.computation_failed(self, subtask_id)
         self._update_task_preview()
 
     def restart(self):
-        GNRTask.restart(self)
-        self.preview_file_path = None
-        self.preview_task_file_path = None
-
+        super(RenderingTask, self).restart()
         self.collected_file_names = {}
 
     @GNRTask.handle_key_error
@@ -201,7 +193,7 @@ class RenderingTask(GNRTask):
         for sub in self.subtasks_given.values():
             if sub['status'] == SubtaskStatus.starting:
                 self._mark_task_area(sub, img_task, sent_color)
-            if sub['status'] == SubtaskStatus.failure:
+            if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
         img_task.save(self.preview_task_file_path, "BMP")
@@ -232,9 +224,6 @@ class RenderingTask(GNRTask):
         ctd.task_id = self.header.task_id
         ctd.subtask_id = hash
         ctd.extra_data = extra_data
-        ctd.return_address = self.header.task_owner_address
-        ctd.return_port = self.header.task_owner_port
-        ctd.task_owner = self.header.task_owner
         ctd.short_description = self._short_extra_data_repr(perf_index, extra_data)
         ctd.src_code = self.src_code
         ctd.performance = perf_index
@@ -250,7 +239,7 @@ class RenderingTask(GNRTask):
             return start_task, end_task
         else:
             for sub in self.subtasks_given.values():
-                if sub['status'] == SubtaskStatus.failure:
+                if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']
                     start_task = sub['start_task']
@@ -408,6 +397,8 @@ class RenderingTask(GNRTask):
         return False
 
     def __get_path(self, path):
+        if is_windows():
+            return self.__get_path_windows(path)
         return path
 
     def __get_path_windows(self, path):
