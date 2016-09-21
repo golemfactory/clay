@@ -3,6 +3,7 @@ import time
 
 from mock import MagicMock, Mock
 
+from golem.core.common import timeout_to_deadline
 from golem.client import ClientTaskComputerEventListener
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
@@ -96,10 +97,11 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.src_code = "cnt=0\nfor i in range(10000):\n\tcnt += 1\noutput={'data': cnt, 'result_type': 0}"
         ctd.extra_data = {}
         ctd.short_description = "add cnt"
+        ctd.deadline = timeout_to_deadline(10)
         self.assertEqual(len(tc.assigned_subtasks), 0)
-        tc.task_given(ctd, 10)
+        tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertEqual(tc.assigned_subtasks["xxyyzz"].timeout, 10)
+        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
@@ -111,7 +113,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
                                                         "10.10.10.10", 10203, "key", "owner", "ABC")
 
         tc.support_direct_computation = True
-        tc.task_given(ctd, 10)
+        tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
         assert not tc.waiting_for_task
         assert len(tc.current_computations) == 1
@@ -137,9 +139,10 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         ctd.subtask_id = "aabbcc"
         ctd.src_code = "raise Exception('some exception')"
-        tc.task_given(ctd, 5)
+        ctd.deadline = timeout_to_deadline(5)
+        tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
-        self.assertEqual(tc.assigned_subtasks["aabbcc"].timeout, 5)
+        self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline, timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
                                                            "10.10.10.10", 10203, "key", "owner")
@@ -154,7 +157,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print 'Hello world'"
-        tc.task_given(ctd, 5)
+        ctd.timeout = timeout_to_deadline(5)
+        tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
@@ -162,7 +166,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
                                                         "key", "owner", "ABC")
 
         ctd.subtask_id = "xxyyzz2"
-        tc.task_given(ctd, 1)
+        ctd.timeout = timeout_to_deadline(1)
+        tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
         tt = tc.current_computations[0]
         tc.task_computed(tc.current_computations[0])

@@ -61,7 +61,7 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images=None):
+                 ttl, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
 
         """ Create more specific task implementation
         :param src_code:
@@ -72,14 +72,14 @@ class GNRTask(Task):
         :param owner_key_id:
         :param environment:
         :param ttl:
-        :param subtask_ttl:
+        :param subtask_timeout:
         :param resource_size:
         :param estimated_memory:
         :param float max_price: maximum price that this node may par for an hour of computation
         :param docker_images: docker image specification
         """
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_ttl, resource_size, estimated_memory, max_price=max_price,
+                        ttl, subtask_timeout, resource_size, estimated_memory, max_price=max_price,
                         docker_images=docker_images)
 
         Task.__init__(self, th, src_code)

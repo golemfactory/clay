@@ -7,8 +7,8 @@ import gnr.node
 import jsonpickle
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
-from golem.core.common import get_golem_path
 
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
@@ -76,10 +76,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
 
-    def _run_docker_task(self, render_task, timeout=0):
+    def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
         extra_data = render_task.query_extra_data(1.0)
         ctd = extra_data.ctd
+        ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
         self.node = gnr.node.GNRNode(datadir=self.path)
@@ -113,7 +114,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         TaskServer.send_task_failed = send_task_failed
 
         # Start task computation
-        task_computer.task_given(ctd, timeout)
+        task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
         self.assertTrue(result)
 
