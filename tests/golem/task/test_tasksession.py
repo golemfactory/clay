@@ -280,7 +280,7 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
-        ts.task_computer.task_given.assert_called_with(ctd, 31313)
+        ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
 
         __reset_mocks()
