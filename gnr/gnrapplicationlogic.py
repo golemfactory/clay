@@ -19,6 +19,7 @@ from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.resource.dirmanager import DirManager
@@ -78,6 +79,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.br = None
         self.__looping_calls = None
         self.dir_manager = None
+        self.reactor = None
 
     def start(self):
         task_status = task.LoopingCall(self.get_status)
@@ -475,7 +477,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return False
 
     # label param is the gui element to set text
-    def run_benchmark(self, benchmark, label):
+    def run_benchmark(self, benchmark, label, cfg_param_name):
         task_state = RenderingTaskState()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
@@ -483,9 +485,13 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self._get_builder(task_state)
         t = Task.build_task(tb)
+        
+        reactor = self.__get_reactor()
 
         self.br = BenchmarkRunner(t, self.datadir,
-                                  lambda p: self._benchmark_computation_success(performance=p, label=label),
+                                  lambda p: reactor.callFromThread(self._benchmark_computation_success, 
+                                                                   performance=p, label=label, 
+                                                                   cfg_param=cfg_param_name),
                                   self._benchmark_computation_error,
                                   benchmark)
 
@@ -497,7 +503,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.br.run()
 
-    def _benchmark_computation_success(self, performance, label):
+    @inlineCallbacks # dla yield self.get_config
+    def _benchmark_computation_success(self, performance, label, cfg_param):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounted")
         self.progress_dialog_customizer.button_enable(True)     # enable 'ok' button
@@ -505,7 +512,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
-
+        
+        cfg_desc = yield self.client.get_config() # get_config jest asynchroniczny
+        setattr(cfg_desc, cfg_param, perf)
+        self.change_config(cfg_desc)
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
@@ -622,3 +632,9 @@ class GNRApplicationLogic(QtCore.QObject):
         except (IndexError, TypeError) as err:
             logger.warning("Problem with stat formatin {}".format(err))
             return u"Error"
+
+    def __get_reactor(self):
+        if not self.reactor:
+            from twisted.internet import reactor
+            self.reactor = reactor
+        return self.reactor
