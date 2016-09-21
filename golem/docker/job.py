@@ -111,6 +111,11 @@ class DockerJob(object):
         container_config = dict(self.host_config)
         cpuset = container_config.pop('cpuset', None)
 
+        if is_windows():
+            environment = None
+        else:
+            environment = dict(LOCAL_USER_ID=os.getuid())
+
         host_cfg = client.create_host_config(
             binds={
                 posix_path(self.work_dir): {
@@ -137,7 +142,8 @@ class DockerJob(object):
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            cpuset=cpuset
+            cpuset=cpuset,
+            environment=environment
         )
         self.container_id = self.container["Id"]
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
