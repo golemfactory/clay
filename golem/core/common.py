@@ -82,9 +82,7 @@ def config_logging(logname=LOG_NAME):
 
     if directory:
         try:
-            print "MKDIRS", directory, os.path.exists(directory)
             os.makedirs(directory)
-            print "EXISTS", os.path.exists(directory)
         except OSError as exc:
             if exc.errno != errno.EEXIST:
                 raise
