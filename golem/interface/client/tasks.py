@@ -3,7 +3,6 @@ import os
 import uuid
 from Queue import Queue
 
-from gnr.renderingapplicationlogic import AbsRenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
@@ -13,18 +12,33 @@ from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 
 
-def _build_application_logic(client, datadir):
-    args = (None, None)
+class RendererLogic(object):
 
-    logic = AbsRenderingApplicationLogic()
-    logic.register_new_renderer_type(build_blender_renderer_info(*args))
-    logic.register_new_renderer_type(build_lux_render_info(*args))
+    def __init__(self, node_name, datadir, dir_manager):
+        self.node_name = node_name
+        self.datadir = datadir
+        self.dir_manager = dir_manager
+        self.renderers = {}
 
-    logic.datadir = datadir
-    logic.node_name = CommandHelper.wait_for(client.get_node_name())
-    logic.dir_manager = CommandHelper.wait_for(client.get_dir_manager())
+    def get_builder(self, task_state):
+        renderer = task_state.definition.renderer
+        return self.renderers[renderer].task_builder_type(self.node_name, task_state.definition,
+                                                          self.datadir, self.dir_manager)
 
-    return logic
+    def register_new_renderer_type(self, renderer):
+        self.renderers[renderer.name] = renderer
+
+    @staticmethod
+    def instantiate(client, datadir):
+        args = (None, None)
+        node_name = CommandHelper.wait_for(client.get_node_name())
+        dir_manager = CommandHelper.wait_for(client.get_dir_manager())
+
+        logic = RendererLogic(node_name, datadir, dir_manager)
+        logic.register_new_renderer_type(build_blender_renderer_info(*args))
+        logic.register_new_renderer_type(build_lux_render_info(*args))
+
+        return logic
 
 
 @group(help="Manage tasks")
@@ -52,7 +66,7 @@ class Tasks(object):
     )
     file_name = Argument(
         'file_name',
-        help="File to load a task from"
+        help="Task file"
     )
     skip_test = Argument(
         '--skip-test',
@@ -125,7 +139,7 @@ class Tasks(object):
         rendering_task_state.task_state.status = TaskStatus.starting
 
         if not Tasks.application_logic:
-            Tasks.application_logic = _build_application_logic(Tasks.client, datadir)
+            Tasks.application_logic = RendererLogic.instantiate(Tasks.client, datadir)
 
         task_builder = Tasks.application_logic.get_builder(rendering_task_state)
         task = Task.build_task(task_builder)

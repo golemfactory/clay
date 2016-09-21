@@ -1,14 +1,6 @@
 import argparse
 import sys
 
-# hack: mock GNRApplicationLogic = faster startup, clean output (no scrypt import warnings)
-# alternative: refactor gnr.renderingapplicationlogic
-
-# import imp
-# gnr_app_logic = imp.new_module('gnr.gnrapplicationlogic')
-# exec('class GNRApplicationLogic(object): pass', gnr_app_logic.__dict__)
-# sys.modules['gnr.gnrapplicationlogic'] = gnr_app_logic
-
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
 from golem.interface.client import account
