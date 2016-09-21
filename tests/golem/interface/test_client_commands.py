@@ -164,14 +164,15 @@ class TestNetwork(unittest.TestCase):
             result = Network().status()
 
             assert self.client.get_status.called
-            assert isinstance(result, dict)
-            assert 'status' in result and result['status'] == 'Status'
+            assert isinstance(result, basestring)
+            assert result
+            assert result != 'unknown'
 
             self.client.get_status.return_value = None
             result = Network().status()
 
-            assert isinstance(result, dict)
-            assert 'status' in result and result['status'] == 'unknown'
+            assert isinstance(result, basestring)
+            assert result == 'unknown'
 
     def test_connect(self):
         with client_ctx(Network, self.client):

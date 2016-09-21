@@ -30,7 +30,7 @@ def incomes(sort):
 
     for income in result:
         table_elem = IncomeTableElem(income)
-        values.append([c.text() for c in table_elem.cols])
+        values.append([str(c.text()) for c in table_elem.cols])
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 
@@ -45,7 +45,7 @@ def payments(sort):
 
     for payment in result:
         table_elem = PaymentTableElem(payment)
-        values.append([c.text() for c in table_elem.cols])
+        values.append([str(c.text()) for c in table_elem.cols])
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 

@@ -28,7 +28,7 @@ class Network(object):
     def status(self):
         deferred = Network.client.get_status()
         status = CommandHelper.wait_for(deferred) or "unknown"
-        return dict(status=status)
+        return status
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port):

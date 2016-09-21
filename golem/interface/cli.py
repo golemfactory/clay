@@ -21,19 +21,22 @@ u"""To display command details type:
     raise ParsingException(message)
 
 
-@command(name="debug", help="Display CLI command tree", root=True)
+# @command(name="debug", help="Display CLI command tree", root=True)
 def _debug():
     CommandStorage.debug()
 
 
 class ArgumentParser(argparse.ArgumentParser):
 
+    def print_help(self, file=None):
+        pass
+
     def error(self, message):
         exc = sys.exc_info()[1]
         raise ParsingException(exc or message, self)
 
     def exit(self, status=0, message=None):
-        pass
+        raise ParsingException(message, self)
 
 
 class CLI(object):
@@ -70,19 +73,20 @@ class CLI(object):
         cls.working = False
 
     def execute(self, args=None, interactive=False):
+        cls = self.__class__
 
         if interactive:
             import readline
             readline.parse_and_bind("tab: complete")
 
-        self.working = True
-        while self.working:
-            if not args:
+        cls.working = True
+        while cls.working:
 
+            if not args:
                 try:
                     line = raw_input('>> ')
                 except ValueError:
-                    self.working = False
+                    cls.working = False
                 else:
                     if line:
                         args = line.strip().split(' ')
@@ -93,7 +97,7 @@ class CLI(object):
                 try:
                     result, output = self.process(args)
                 except SystemExit:
-                    self.working = False
+                    cls.working = False
                 else:
                     output.write(result)
                     output.write(u"\n")
@@ -101,7 +105,7 @@ class CLI(object):
 
             args = None
             if not interactive:
-                self.working = False
+                cls.working = False
 
     def process(self, args):
 
@@ -122,7 +126,11 @@ class CLI(object):
 
         except ParsingException as exc:
             parser = exc.parser or self.parser
-            result = u"{}\n\n{}".format(exc, parser.format_help())
+
+            if exc.message:
+                result = u"{}\n\n{}".format(exc or u"Invalid command", parser.format_help())
+            else:
+                result = parser.format_help()
 
         except CommandException as exc:
             result = u"{}".format(exc)
@@ -139,7 +147,12 @@ class CLI(object):
         if not formatter:
             formatter = self.formatters[-1]
 
-        result = formatter.format(result)
+        try:
+            result = formatter.format(result)
+        except Exception as exc:
+            result = repr(result)
+            sys.stderr.write("Formatter error: {}".format(exc))
+
         if result is None:
             return u"Completed in {}s".format(time.time() - started), output
         return result, output

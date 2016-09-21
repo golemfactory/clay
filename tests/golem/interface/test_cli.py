@@ -6,10 +6,8 @@ from mock import patch, Mock, mock
 from twisted.internet.defer import Deferred, TimeoutError
 from twisted.internet.error import ReactorNotRunning
 
-from golem.core.simpleserializer import to_dict
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
-from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context, \
-    CommandStorage
+from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
 
 
@@ -119,6 +117,16 @@ class TestCLI(unittest.TestCase):
             assert _process.called
             assert not _exit.called
             assert not _out.data
+
+    @patch('golem.interface.cli.CLI.process', side_effect=_raise_sys_exit)
+    @patch('golem.core.common.config_logging', side_effect=_nop)
+    def test_interactive(self, _, _process):
+        client = self.MockClient()
+        cli = CLI(client=client)
+
+        with patch(self.__raw_input, return_value='exit'):
+            cli.execute(interactive=True)
+            assert _process.called
 
     @patch('__builtin__.raw_input')
     @patch('golem.interface.cli._exit', side_effect=_nop)
@@ -297,10 +305,7 @@ class TestCLICommands(unittest.TestCase):
 
     @patch('sys.stdout', new_callable=MockStdout)
     def test_debug(self, out):
-        assert CommandHelper.get_interface(_debug)
-
         _debug()
-
         assert out.getvalue()
 
 
@@ -325,10 +330,7 @@ class TestArgumentParser(unittest.TestCase):
     def test_exit(self):
 
         ap = ArgumentParser()
-
-        try:
+        with self.assertRaises(ParsingException):
             ap.exit()
-        except BaseException:
-            self.fail("No exception should be thrown")
 
 
