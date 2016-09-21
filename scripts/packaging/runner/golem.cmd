@@ -15,6 +15,7 @@ SET EXE_NAME=golemapp.exe
 SET EXE_DIR=%~dp0\exe.win32-2.7
 SET UTILS_DIR=%~dp0\utils
 SET SCRIPTS_DIR=%~dp0\scripts
+SET DOCKER_DIR=%~dp0\docker
 
 SET UPDATE_SERVER=http://52.40.149.24:9999
 SET UPDATE_URL=%UPDATE_SERVER%/golem/
@@ -36,6 +37,8 @@ SET IPFS_DIR=go-ipfs
 
 SET GETH_URL=http://52.40.149.24:9999/Geth-Win64-20160524084915-1.4.5-a269a71.zip
 SET GETH_DIR=geth
+
+SET DOCKER_INI_FILE=%DOCKER_DIR%\images.ini
 
 ::----------------------------------------------------------------------------------------------------------------------
 setlocal enabledelayedexpansion
@@ -61,13 +64,13 @@ SET UPDATED_SCRIPT=%~dp0\.%~nx0
 
 echo Checking for updates
 
-cscript.exe //B "%~dp0\utils\download.vbs" %UPDATE_FILE_URL% "%~dp0\%REMOTE_VERSION_FILE%"
+cscript.exe //B "%UTILS_DIR%\download.vbs" %UPDATE_FILE_URL% "%~dp0\%REMOTE_VERSION_FILE%"
 
 if exist %LOCAL_VERSION_FILE% (
     if exist %REMOTE_VERSION_FILE% (
         for /f %%a in (%LOCAL_VERSION_FILE%) do (
             for /f %%b in (%REMOTE_VERSION_FILE%) do (
-                for /f %%n in ('cscript.exe //nologo "%~dp0\utils\eval.vbs" "%%b > %%a"') do (
+                for /f %%n in ('cscript.exe //nologo "%UTILS_DIR%\eval.vbs" "%%b > %%a"') do (
                     if "%%n"=="-1" goto UPDATE
                 )
                 goto POST_CHECK_UPDATE
@@ -94,12 +97,12 @@ if "%VBOX_MSI_INSTALL_PATH%"=="" (
 )
 
 if not exist %DOCKER_MACHINE% (
-    cscript.exe "%~dp0\utils\notify.vbs" "Docker Machine is not installed. Please re-run the Toolbox Installer and try again."
+    cscript.exe "%UTILS_DIR%\notify.vbs" "Docker Machine is not installed. Please re-run the Toolbox Installer and try again."
     goto END
 )
 
 if not exist %VBOXMANAGE% (
-    cscript.exe "%~dp0\utils\notify.vbs" "VirtualBox is not installed. Please re-run the Toolbox Installer and try again."
+    cscript.exe "%UTILS_DIR%\notify.vbs" "VirtualBox is not installed. Please re-run the Toolbox Installer and try again."
     goto END
 )
 
@@ -147,7 +150,7 @@ for /F "tokens=* delims=" %%i in ('%DOCKER_MACHINE% env --shell=cmd %VM%') DO (
 :CHECK_DOCKER
 
 if "%DOCKER_HOST%"=="" (
-    cscript.exe "%~dp0\utils\notify.vbs" "Cannot start docker machine"
+    cscript.exe "%UTILS_DIR%\notify.vbs" "Cannot start docker machine"
     GOTO END
 )
 
@@ -156,13 +159,13 @@ if "%DOCKER_HOST%"=="" (
 
 :: if not exist %IPFS_DIR% (
 ::     ECHO Downloading IPFS
-::     cscript.exe //B "%~dp0\utils\download.vbs" "%IPFS_URL%" "%~dp0\ipfs.zip"
-::     cscript.exe //B "%~dp0\utils\unzip.vbs" ipfs.zip
+::     cscript.exe //B "%UTILS_DIR%\download.vbs" "%IPFS_URL%" "%~dp0\ipfs.zip"
+::     cscript.exe //B "%UTILS_DIR%\unzip.vbs" ipfs.zip
 ::     del ipfs.zip
 :: )
 
 :: IF not exist %IPFS_DIR% (
-::     cscript.exe "%~dp0\utils\notify.vbs" "Error downloading IPFS"
+::     cscript.exe "%UTILS_DIR%\notify.vbs" "Error downloading IPFS"
 ::     GOTO END
 :: )
 
@@ -170,15 +173,15 @@ if "%DOCKER_HOST%"=="" (
 
 if not exist %GETH_DIR% (
     ECHO Downloading Geth
-    cscript.exe //B "%~dp0\utils\download.vbs" "%GETH_URL%" "%~dp0\geth.zip"
-    cscript.exe //B "%~dp0\utils\unzip.vbs" geth.zip
+    cscript.exe //B "%UTILS_DIR%\download.vbs" "%GETH_URL%" "%~dp0\geth.zip"
+    cscript.exe //B "%UTILS_DIR%\unzip.vbs" geth.zip
     mkdir %GETH_DIR%
     move geth.exe "%GETH_DIR%/geth.exe"
     del geth.zip
 )
 
 IF not exist %GETH_DIR% (
-    cscript.exe "%~dp0\utils\notify.vbs" "Error downloading geth"
+    cscript.exe "%UTILS_DIR%\notify.vbs" "Error downloading geth"
     GOTO END
 )
 
@@ -198,21 +201,32 @@ IF not exist %GETH_DIR% (
 ::----------------------------------------------------------------------------------------------------------------------
 :BUILD_DOCKER_IMAGES
 
-FOR %%D IN (base, blender, luxrender) DO (
-    ECHO Checking docker image golem/%%D
+for /F "tokens=1,2,3" %%i in (%DOCKER_INI_FILE%) do call :check_docker_image %%i %%j %%k
+goto POST_BUILD_DOCKER_IMAGES
+
+:check_docker_image
+    set IMG_NAME=%1
+    set IMG_FILE=%2
+    set IMG_TAG=%3
+    set IMG=%IMG_NAME%:%IMG_TAG%
+
+    echo Checking docker image %IMG%
 
     set "gi="
-    FOR /F "delims=" %%e IN ('docker images -q golem/%%D') do (
+    for /F "delims=" %%e in ('docker images -q %IMG%') do (
         if not defined gi (
             set "gi=%%e"
         )
     )
     if "!gi!"=="" (
-        ECHO Building docker image golem/%%D
-        docker build -t golem/%%D -f scripts\Dockerfile.%%D .
+        echo Building image %IMG%
+        cd %DOCKER_DIR%
+        docker build -t %IMG_NAME% -f %IMG_FILE% . && docker tag %IMG_NAME% %IMG%
+        cd %~dp0
     )
-)
+    exit /b
 
+:POST_BUILD_DOCKER_IMAGES
 ::----------------------------------------------------------------------------------------------------------------------
 :START_GOLEM
 
@@ -242,36 +256,24 @@ echo Updating Golem
 
 if exist "%~dp0\%UPDATE_PACKAGE_LOCAL%" del /q "%~dp0\%UPDATE_PACKAGE_LOCAL%" >nul 2>nul
 
-cscript.exe //B "%~dp0\utils\download.vbs" %UPDATE_PACKAGE_URL% "%~dp0\%UPDATE_PACKAGE_LOCAL%"
-if not exist "%~dp0\%UPDATE_PACKAGE_LOCAL%" goto END
-
-:: Remove all local folders
-:: set "i="
-:: for /F "delims=" %%i in ('dir /ad /b "%~dp0"') do (
-::      if /i not "%%~nxi"=="%UTILS_DIR%" (
-::         rd /S /Q "%~dp0\%%i"
-::      )
-:: )
-
-
-:: Remove all local files
-:: set "i="
-:: for /F "delims=" %%i in ('dir /a-d /b "%~dp0"') do (
-::     if /i not "%%~nxi"=="%UPDATE_PACKAGE_LOCAL%" (
-::         if /i not "%%~nxi"=="%~nx0" (
-::             del /q "%~dp0\%%i" >nul 2>nul
-::         )
-::     )
-:: )
+cscript.exe //B "%UTILS_DIR%\download.vbs" %UPDATE_PACKAGE_URL% "%~dp0\%UPDATE_PACKAGE_LOCAL%"
+if not exist "%~dp0\%UPDATE_PACKAGE_LOCAL%" (
+    cscript.exe "%UTILS_DIR%\notify.vbs" "Error downloading update. Please try again."
+    goto END
+)
 
 if exist "%EXE_DIR%" rd /S /Q "%EXE_DIR%"
 if exist "%SCRIPTS_DIR%" rd /S /Q "%SCRIPTS_DIR%"
+if exist "%DOCKER_DIR%" rd /S /Q "%DOCKER_DIR%"
 if exist "%~dp0\golem" rd /S /Q "%~dp0\golem"
 if exist "%~dp0\.version" del /q "%~dp0\.version"
 
-cscript.exe //B "%~dp0\utils\unzip.vbs" %UPDATE_PACKAGE_LOCAL%
+cscript.exe //B "%UTILS_DIR%\unzip.vbs" %UPDATE_PACKAGE_LOCAL%
 if exist "%~dp0\%UPDATE_PACKAGE_LOCAL%" del /q "%~dp0\%UPDATE_PACKAGE_LOCAL%" >nul 2>nul
-if not exist "%~dp0\golem" goto END
+if not exist "%~dp0\golem" (
+    cscript.exe "%UTILS_DIR%\notify.vbs" "Error extracting update."
+    goto END
+)
 
 if exist "%UTILS_DIR%" rd /S /Q "%UTILS_DIR%"
 

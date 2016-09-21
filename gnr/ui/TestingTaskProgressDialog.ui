@@ -66,6 +66,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="abortButton">
+        <property name="text">
+         <string>Abort</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QLabel" name="message">
         <property name="sizePolicy">
          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
