@@ -3,7 +3,7 @@ import unittest
 import sys
 from mock import patch
 
-from golemcli import main
+from golemcli import start
 
 
 def _nop(*a, **kw):
@@ -17,8 +17,8 @@ class TestGolemCLI(unittest.TestCase):
     def test_golem_cli(self, *_):
 
         with patch.object(sys, 'argv', ["program"]):
-            main()
+            start()
         with patch.object(sys, 'argv', ["program", "-i"]):
-            main()
+            start()
         with patch.object(sys, 'argv', ["program", "--some_forwarded_flag"]):
-            main()
+            start()
