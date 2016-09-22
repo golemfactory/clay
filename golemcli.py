@@ -19,7 +19,7 @@ _ = {
 }
 
 
-def main():
+def start():
     # process initial arguments
     arguments = dict(
         interactive=('-i', '--interactive'),
@@ -52,4 +52,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    start()
