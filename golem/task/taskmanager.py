@@ -43,11 +43,13 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
-    def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
+    def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
                  use_distributed_resources=True):
         super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
+        self.keys_auth = keys_auth
+        self.key_id = keys_auth.get_key_id()
 
         self.tasks = {}
         self.tasks_states = {}
@@ -55,7 +57,6 @@ class TaskManager(TaskEventListener):
 
         self.listen_address = listen_address
         self.listen_port = listen_port
-        self.key_id = key_id
 
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
@@ -93,11 +94,13 @@ class TaskManager(TaskEventListener):
         assert self.key_id
         assert SocketAddress.is_proper_address(self.listen_address, self.listen_port)
 
+        self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
+
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
+        task.header.signature = self.sign_task_header(task.header)
 
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
@@ -201,6 +204,9 @@ class TaskManager(TaskEventListener):
         else:
             logger.error("This is not my subtask {}".format(subtask_id))
             return 0
+
+    def sign_task_header(self, task_header):
+        return self.keys_auth.sign(task_header.to_binary())
 
     def verify_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:

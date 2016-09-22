@@ -10,7 +10,7 @@ from stun import FullCone
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.p2p.node import Node
-from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -26,12 +26,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             self.ts.quit()
 
     def test_request(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ccd.min_price = 10
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
                         use_docker_machine_manager=False)
+        ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_suggested_conn_reverse.return_value = False
@@ -45,25 +46,26 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.add_task_header(task_header)
         assert ts.request_task() == "uvw"
         ts.remove_task_header("uvw")
-        task_header["port"] = 0
-        task_header["id"] = "uvw2"
+        task_header["task_owner_port"] = 0
+        task_header["task_id"] = "uvw2"
         assert ts.add_task_header(task_header)
         assert ts.task_keeper.task_headers["uvw2"] is not None
         assert ts.request_task() is None
         assert ts.task_keeper.task_headers.get("uvw2") is None
 
     def test_send_results(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ccd.min_price = 11
         n = Node()
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
                         use_docker_machine_manager=False)
+        ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         results = {"data": "", "result_type": 0}
         task_header = self.__get_example_task_header()
-        task_header["id"] = "xyz"
+        task_header["task_id"] = "xyz"
         ts.add_task_header(task_header)
         ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
@@ -108,7 +110,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertGreater(ts.client.decrease_trust.call_count, prev_call_count)
 
     def test_connection_for_task_request_established(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ccd.min_price = 11
         n = Node()
         ka = EllipticalKeysAuth(self.path)
@@ -128,7 +130,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3, 1, 2)
 
     def test_change_config(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ccd.task_session_timeout = 40
         ccd.min_price = 1.0
         ccd.use_distributed_resource_management = 10
@@ -140,7 +142,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                         use_docker_machine_manager=False)
         self.ts = ts
 
-        ccd2 = ClientConfigDescriptor()
+        ccd2 = self.__get_config_desc()
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
         ccd2.use_distributed_resource_management = 0
@@ -157,7 +159,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     def test_sync(self):
-        ts = TaskServer(Node(), ClientConfigDescriptor(), EllipticalKeysAuth(self.path), self.client,
+        ts = TaskServer(Node(), self.__get_config_desc(), EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
         ts.sync_network()
@@ -165,19 +167,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
     @patch("golem.task.taskmanager.get_external_address")
     def test_results(self, mock_addr):
         mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
-        ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
         ts.receive_subtask_computation_time("xxyyzz", 1031)
-        task_mock = Mock()
-        task_mock.header.task_id = "xyz"
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
-        task_mock.header.max_price = 1000
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -186,6 +182,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         extra_data.ctd.environment = "DEFAULT"
         extra_data.should_wait = False
 
+        task_mock = self._get_task_manager_task_mock("xyz", "xxyyzz")
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
@@ -208,19 +205,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
     def test_results_no_payment_addr(self, mock_addr):
         mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         # FIXME: This test is too heavy, it starts up whole Golem Client.
-        ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         ts.task_manager.listen_address = "10.10.10.10"
         ts.task_manager.listen_port = 1111
-        self.ts = ts
         ts.receive_subtask_computation_time("xxyyzz", 1031)
-        task_mock = Mock()
-        task_mock.header.task_id = "xyz"
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
-        task_mock.header.max_price = 1000
+
+        self.ts = ts
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -229,6 +221,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         extra_data.ctd.environment = "DEFAULT"
         extra_data.should_wait = False
 
+        task_mock = self._get_task_manager_task_mock("xyz", "xxyyzz")
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
@@ -246,7 +239,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert ts.client.transaction_system.add_payment_info.call_count == 0
 
     def test_traverse_nat(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -256,7 +249,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
 
     def test_forwarded_session_requests(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -288,7 +281,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert ts.task_sessions[subtask_id] == session
 
     def test_retry_sending_task_result(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -304,7 +297,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert not wtr.already_sending
 
     def test_send_waiting_results(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -363,7 +356,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert not ts.failures_to_send
 
     def test_add_task_session(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -375,7 +368,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert ts.task_sessions[subtask_id]
 
     def test_initiate_nat_traversal(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         node = Node()
         node.nat_type = FullCone
 
@@ -405,7 +398,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
                                                    ANY, ANY, ANY, ANY)
 
     def test_remove_task_session(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -420,7 +413,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.remove_task_session(session)
 
     def test_respond_to(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -436,7 +429,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert not session.dropped.called
 
     def test_conn_for_task_failure_established(self):
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -455,7 +448,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_conn_for_start_session_failure(self):
 
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -469,7 +462,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
     def test_conn_final_failures(self):
 
-        ccd = ClientConfigDescriptor()
+        ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, Mock(), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
@@ -522,29 +515,35 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert ts.remove_responses.called
         assert ts.task_computer.session_timeout.called
 
+    def __get_config_desc(self):
+        ccd = ClientConfigDescriptor()
+        ccd.root_path = self.path
+        ccd.estimated_lux_performance = 2000.0
+        ccd.estimated_blender_performance = 2000.0
+        return ccd
+
     @staticmethod
     def __get_example_task_header():
-        node = Node()
-        task_header = {"id": "uvw",
-                       "node_name": "ABC",
-                       "address": "10.10.10.10",
-                       "port": 10101,
-                       "key_id": "kkkk",
-                       "environment": "DEFAULT",
-                       "task_owner": node,
-                       "task_owner_port": 10101,
-                       "task_owner_key_id": "key",
-                       "ttl": 1201,
-                       "subtask_timeout": 120,
-                       "max_price": 20
-                       }
-        return task_header
+        return {
+            "task_id": "uvw",
+            "node_name": "ABC",
+            "environment": "DEFAULT",
+            "task_owner": Node(),
+            "task_owner_port": 10101,
+            "task_owner_key_id": "key",
+            "task_owner_address": "10.10.10.10",
+            "ttl": 1201,
+            "subtask_timeout": 120,
+            "max_price": 20,
+            "resource_size": 2 * 1024,
+            "estimated_memory": 3 * 1024,
+            "signature": None
+        }
 
     def _get_task_manager_task_mock(self, task_id, subtask_id):
         task_mock = Mock()
+        task_mock.header = TaskHeader.from_dict(self.__get_example_task_header())
         task_mock.header.task_id = task_id
-        task_mock.header.resource_size = 2 * 1024
-        task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
         task_mock.query_extra_data.return_value.ctd.task_id = task_id
         task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id

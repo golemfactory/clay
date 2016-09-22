@@ -16,7 +16,7 @@ from golem.tools.testdirfixture import TestDirFixture
 class TestTaskManager(LogTestCase, TestDirFixture):
     def setUp(self):
         super(TestTaskManager, self).setUp()
-        self.tm = TaskManager("ABC", Node(), root_path=self.path)
+        self.tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
         self.tm.listen_port = 2222
@@ -125,7 +125,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
-        print subtask, wrong_task, wait
+
         self.assertIsInstance(subtask, ComputeTaskDef)
         self.assertEqual(wrong_task, False)
 

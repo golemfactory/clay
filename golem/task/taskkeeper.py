@@ -193,19 +193,10 @@ class TaskHeaderKeeper(object):
         :return bool: True if task header was well formatted and no error occurs, False otherwise
         """
         try:
-            id_ = th_dict_repr["id"]
+            id_ = th_dict_repr["task_id"]
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
-                    self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
-                                                        task_id=id_,
-                                                        task_owner_address=th_dict_repr["address"],
-                                                        task_owner_port=th_dict_repr["port"],
-                                                        task_owner_key_id=th_dict_repr["key_id"],
-                                                        environment=th_dict_repr["environment"],
-                                                        task_owner=th_dict_repr["task_owner"],
-                                                        ttl=th_dict_repr["ttl"],
-                                                        subtask_timeout=th_dict_repr["subtask_timeout"],
-                                                        max_price=th_dict_repr["max_price"])
+                    self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                     is_supported = self.is_supported(th_dict_repr)
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     if is_supported:

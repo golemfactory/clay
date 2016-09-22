@@ -3,6 +3,7 @@ import logging
 import time
 from copy import deepcopy
 
+from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import APP_VERSION
 
 logger = logging.getLogger("golem.task")
@@ -14,7 +15,7 @@ class TaskHeader(object):
     """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
-                 min_version=APP_VERSION, max_price=0.0, docker_images=None):
+                 min_version=APP_VERSION, max_price=0.0, docker_images=None, signature=None):
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
@@ -32,6 +33,45 @@ class TaskHeader(object):
         self.min_version = min_version
         self.docker_images = docker_images
         self.max_price = max_price
+        self.signature = signature
+
+    def to_binary(self):
+        return self.dict_to_binary(self.__dict__)
+
+    def to_dict(self):
+        return dict(self.__dict__)
+
+    @staticmethod
+    def from_dict(dictionary):
+        d = dict(dictionary)
+        header = TaskHeader(d.pop('node_name'), d.pop('task_id'),
+                            d.pop('task_owner_address'), d.pop('task_owner_port'),
+                            d.pop('task_owner_key_id'), d.pop('environment'))
+        for k, v in dictionary.iteritems():
+            setattr(header, k, v)
+        return header
+
+    @classmethod
+    def dict_to_binary(cls, dictionary):
+        self_dict = dict(dictionary)
+
+        self_dict.pop('last_checking', None)
+        self_dict.pop('signature', None)
+        self_dict.pop('ttl', None)
+
+        task_owner = self_dict.get('task_owner')
+        if task_owner:
+            self_dict['task_owner'] = cls.__ordered(task_owner.__dict__)
+
+        docker_images = self_dict.get('docker_images')
+        if docker_images:
+            self_dict['docker_images'] = [cls.__ordered(d.__dict__) for d in docker_images]
+
+        return CBORSerializer.dumps(cls.__ordered(self_dict))
+
+    @staticmethod
+    def __ordered(dictionary):
+        return sorted(dictionary.items())
 
 
 class TaskBuilder(object):
