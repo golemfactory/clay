@@ -4,6 +4,7 @@ import os
 import uuid
 from threading import Lock
 
+from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.docker.task_thread import DockerTaskThread
@@ -92,16 +93,14 @@ class TaskComputer(object):
         self.max_assigned_tasks = 1
 
         self.delta = None
-        self.task_timeout = None
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
         self.compute_tasks = task_server.config_desc.accept_tasks
 
-    def task_given(self, ctd, subtask_timeout):
+    def task_given(self, ctd):
         if ctd.subtask_id not in self.assigned_subtasks:
             self.wait(ttl=self.waiting_for_task_timeout)
             self.assigned_subtasks[ctd.subtask_id] = ctd
-            self.assigned_subtasks[ctd.subtask_id].timeout = subtask_timeout
             self.task_to_subtask_mapping[ctd.task_id] = ctd.subtask_id
             self.__request_resource(ctd.task_id, self.resource_manager.get_resource_header(ctd.task_id),
                                     ctd.return_address, ctd.return_port, ctd.key_id, ctd.task_owner)
@@ -114,9 +113,11 @@ class TaskComputer(object):
             subtask_id = self.task_to_subtask_mapping[task_id]
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
+                timeout = deadline_to_timeout(subtask.deadline)
                 self.__compute_task(subtask_id, subtask.docker_images,
                                     subtask.src_code, subtask.extra_data,
-                                    subtask.short_description, subtask.timeout)
+                                    subtask.short_description, timeout)
+                self.waiting_for_task = None
                 return True
             else:
                 return False
@@ -129,14 +130,9 @@ class TaskComputer(object):
                 if unpack_delta:
                     self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
                 self.delta = None
-                self.task_timeout = subtask.timeout
                 self.last_task_timeout_checking = time.time()
-                self.__compute_task(subtask_id, self.assigned_subtasks[subtask_id].docker_images,
-                                    self.assigned_subtasks[subtask_id].src_code,
-                                    self.assigned_subtasks[subtask_id].extra_data,
-                                    self.assigned_subtasks[subtask_id].short_description,
-                                    self.assigned_subtasks[subtask_id].timeout)
-
+                self.__compute_task(subtask_id, subtask.docker_images, subtask.src_code, subtask.extra_data,
+                                    subtask.short_description, deadline_to_timeout(subtask.deadline))
                 return True
             return False
 

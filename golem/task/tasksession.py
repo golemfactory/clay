@@ -23,7 +23,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 6
+TASK_PROTOCOL_ID = 7
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -373,7 +373,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_task_to_compute(self, msg):
         if self._check_ctd_params(msg.ctd) and self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
             self.task_server.add_task_session(msg.ctd.subtask_id, self)
-            self.task_computer.task_given(msg.ctd, self.task_server.get_subtask_ttl(msg.ctd.task_id))
+            self.task_computer.task_given(msg.ctd)
         else:
             self.send(MessageCannotComputeTask(msg.ctd.subtask_id))
             self.task_computer.session_closed()

@@ -3,6 +3,7 @@ import uuid
 
 from mock import Mock, patch
 
+from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
@@ -23,19 +24,24 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.addr_return = ("10.10.10.10", 1111, "Full NAT")
 
     @staticmethod
-    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz"):
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", subtask_timeout=120):
         task_mock = Mock()
         task_mock.header.task_id = task_id
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
-        ctd = ComputeTaskDef()
-        ctd.task_id = task_id
-        ctd.subtask_id = subtask_id
-        ctd.environment = "DEFAULT"
-        task_mock.query_extra_data.return_value.ctd = ctd
-        task_mock.query_extra_data.return_value.should_wait = False
+
+        extra_data = Mock()
+        extra_data.ctd = ComputeTaskDef()
+        extra_data.ctd.task_id = task_id
+        extra_data.ctd.subtask_id = subtask_id
+        extra_data.ctd.environment = "DEFAULT"
+        extra_data.ctd.deadline = timeout_to_deadline(subtask_timeout)
+        extra_data.should_wait = False
+
+        task_mock.query_extra_data.return_value = extra_data
         task_mock.get_progress.return_value = 0.3
+
         return task_mock
 
     @patch("golem.task.taskmanager.get_external_address")
@@ -120,6 +126,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+        print subtask, wrong_task, wait
         self.assertIsInstance(subtask, ComputeTaskDef)
         self.assertEqual(wrong_task, False)
 
@@ -174,6 +181,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
                 ctd.task_id = self.header.task_id
                 ctd.subtask_id = self.subtasks_id[0]
                 ctd.environment = "DEFAULT"
+                ctd.should_wait = False
                 self.subtasks_id = self.subtasks_id[1:]
                 e = self.ExtraData(False, ctd)
                 return e

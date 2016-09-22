@@ -7,6 +7,7 @@ import types
 
 import cbor2
 import dill
+import pytz
 import sys
 
 
@@ -204,7 +205,7 @@ class CBORSerializer(object):
 
     @classmethod
     def dumps(cls, obj):
-        return cbor2.dumps(obj, encoders=cls.encoders)
+        return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
 
 
 if IS_DEBUG:
