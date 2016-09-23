@@ -135,7 +135,7 @@ public:
 			return false;
 		std::cout << "finalize & save " << outputPath << std::endl;
 		auto img = finalize();
-		return GenericWriter(img, outputPath, EXR_FLOAT);
+    return GenericWriter(img, outputPath, EXR_FLOAT);
 	};
 	void set_width(unsigned int w) {
 		width = w;
@@ -279,16 +279,13 @@ int main(int argc, char *argv[]) {
 	}
 
 	std::unique_ptr<TaskCollector> taskCollector;
-	std::unique_ptr<TaskCollector> alphaTaskCollector;
 
 	std::string command{argv[1]};
 	if (command == "add") {
 		taskCollector = std::make_unique<AddTaskCollector>();
-		alphaTaskCollector = std::make_unique<AddTaskCollector>();
 	}
 	else if (command == "paste") {
 		taskCollector = std::make_unique<PasteTaskCollector>();
-		alphaTaskCollector = std::make_unique<PasteTaskCollector>();
 	}
 	else {
 		std::cerr << "Unknown command '" << command << "'. Allowed: 'add', 'paste'.\n";
@@ -307,9 +304,6 @@ int main(int argc, char *argv[]) {
 		}
 		else {
 			if (!taskCollector->addAlphaFile(argv[i])) {
-				std::cerr << "Can't add file: " << argv[i] << "\n";
-			}
-			if (!alphaTaskCollector->addImgFile(argv[i])) {
 				std::cerr << "Can't add file: " << argv[i] << "\n";
 			}
 		}
