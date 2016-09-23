@@ -316,12 +316,13 @@ int main(int argc, char *argv[]) {
 	auto it = name.find_last_of('.');
 	name = ( (it == std::string::npos) ? (name + ".exr") : (name.substr(0, it) + ".Alpha.exr") );
 
-	taskCollector->finalizeAndSave(argv[4]);
-
-	alphaTaskCollector->finalizeAndSave(name);
+  bool saved = taskCollector->finalizeAndSave(argv[4]);
 	// call this ONLY when linking with FreeImage as a static library
 #ifdef FREEIMAGE_LIB
 	FreeImage_DeInitialise();
 #endif // FREEIMAGE_LIB
-	return 0;
+  if (saved)
+    return 0;
+  else
+    return 1;
 }
