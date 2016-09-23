@@ -72,6 +72,9 @@ bool GenericWriter(const bitmap_ptr& dib, const std::string& lpszPathName, int f
 				std::cout << "Can't save file" << lpszPathName << std::endl;
 			}
 		}
+    else {
+      std::cerr << "Can't determine output file type" << std::endl;
+    }
 	}
 	return (bSuccess == TRUE);
 }
