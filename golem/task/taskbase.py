@@ -36,20 +36,16 @@ class TaskHeader(object):
         self.signature = signature
 
     def to_binary(self):
-        return self.dict_to_binary(self.__dict__)
+        return self.dict_to_binary(vars(self))
 
     def to_dict(self):
-        return dict(self.__dict__)
+        return dict(vars(self))
 
     @staticmethod
     def from_dict(dictionary):
-        d = dict(dictionary)
-        header = TaskHeader(d.pop('node_name'), d.pop('task_id'),
-                            d.pop('task_owner_address'), d.pop('task_owner_port'),
-                            d.pop('task_owner_key_id'), d.pop('environment'))
-        for k, v in dictionary.iteritems():
-            setattr(header, k, v)
-        return header
+        clean = dict(dictionary)
+        clean.pop('last_checking', None)
+        return TaskHeader(**clean)
 
     @classmethod
     def dict_to_binary(cls, dictionary):
@@ -61,16 +57,16 @@ class TaskHeader(object):
 
         task_owner = self_dict.get('task_owner')
         if task_owner:
-            self_dict['task_owner'] = cls.__ordered(task_owner.__dict__)
+            self_dict['task_owner'] = cls._ordered(vars(task_owner))
 
         docker_images = self_dict.get('docker_images')
         if docker_images:
-            self_dict['docker_images'] = [cls.__ordered(d.__dict__) for d in docker_images]
+            self_dict['docker_images'] = [cls._ordered(vars(d)) for d in docker_images]
 
-        return CBORSerializer.dumps(cls.__ordered(self_dict))
+        return CBORSerializer.dumps(cls._ordered(self_dict))
 
     @staticmethod
-    def __ordered(dictionary):
+    def _ordered(dictionary):
         return sorted(dictionary.items())
 
 

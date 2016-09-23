@@ -158,8 +158,38 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.task_computer.waiting_for_task_timeout, 90)
         # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
+    def test_add_task_header(self):
+        config = self.__get_config_desc()
+        keys_auth = EllipticalKeysAuth(self.path)
+
+        self.ts = ts = TaskServer(Node(), config, keys_auth, self.client,
+                                  use_docker_machine_manager=False)
+
+        task_header = self.__get_example_task_header()
+        task_header["task_id"] = "xyz"
+
+        with self.assertRaises(Exception) as raised:
+            ts.add_task_header(task_header)
+            assert raised.exception.message == "Invalid signature"
+        assert len(ts.get_tasks_headers()) == 0
+
+        task_header["task_owner_key_id"] = keys_auth.key_id
+        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+
+        ts.add_task_header(task_header)
+        assert len(ts.get_tasks_headers()) == 1
+
+        task_header = self.__get_example_task_header()
+        task_header["task_id"] = "xyz_2"
+        task_header["task_owner_key_id"] = keys_auth.key_id
+        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+
+        ts.add_task_header(task_header)
+        assert len(ts.get_tasks_headers()) == 2
+
     def test_sync(self):
-        ts = TaskServer(Node(), self.__get_config_desc(), EllipticalKeysAuth(self.path), self.client,
+        ccd = self.__get_config_desc()
+        ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
         self.ts = ts
         ts.sync_network()
