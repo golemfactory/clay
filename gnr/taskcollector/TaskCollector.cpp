@@ -274,7 +274,7 @@ int main(int argc, char *argv[]) {
 	          << FreeImage_GetCopyrightMessage() << std::endl;
 
 	if (argc < 4) {
-		std::cerr << "Usage: taskcollector.exe <type> <outputfile> <inputfile1> [<input file2> ...]\n";
+		std::cerr << "Usage: taskcollector.exe <type> <width> <height> <outputfile> <inputfile1> [<input file2> ...]\n";
 		return -1;
 	}
 
