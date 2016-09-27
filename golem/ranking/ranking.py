@@ -192,9 +192,9 @@ class Ranking(object):
 
     def run(self, reactor):
         self.reactor = reactor
-        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
+        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
 
-    def init_stage(self):
+    def __init_stage(self):
         try:
             logger.debug("New gossip stage")
             self.__push_local_ranks()
@@ -204,7 +204,7 @@ class Ranking(object):
             self.finished_neighbours = set()
             self.__init_working_vec()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
     def __init_working_vec(self):
         self.working_vec = {}
@@ -215,7 +215,7 @@ class Ranking(object):
             self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
             self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
-    def new_round(self):
+    def __new_round(self):
         logger.debug("New gossip round")
         try:
             self.__set_k()
@@ -226,9 +226,9 @@ class Ranking(object):
                 self.client.send_gossip(gossip, send_to)
             self.received_gossip = [gossip]
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.end_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.__end_round)
 
-    def end_round(self):
+    def __end_round(self):
         logger.debug("End gossip round")
         try:
             self.received_gossip = self.client.collect_gossip() + self.received_gossip
@@ -237,14 +237,14 @@ class Ranking(object):
             self.__add_gossip()
             self.__check_finished()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.make_break)
+            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.__make_break)
 
-    def make_break(self):
+    def __make_break(self):
         logger.debug("Gossip round finished")
         try:
             self.__check_global_finished()
         except Exception:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
             raise
 
         if self.global_finished:
@@ -253,10 +253,11 @@ class Ranking(object):
                 self.client.collect_stopped_peers()
                 self.__save_working_vec()
             finally:
-                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
+                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
         else:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
+    # thread-safe
     def increase_trust(self, node_id, stat, mod):
         if stat == RankingStats.computed:
             self.db.increase_positive_computing(node_id, mod)
