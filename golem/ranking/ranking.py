@@ -158,7 +158,10 @@ MAX_STEPS = 10
 EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
+""" Ranking class
 
+Ranking class is thread-safe
+"""
 class Ranking(object):
     def __init__(self, client, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
                  min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
