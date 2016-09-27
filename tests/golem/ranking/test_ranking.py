@@ -1,8 +1,38 @@
+import mock
+from threading import Thread
+
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.ranking.ranking import RankingDatabase
+from golem.ranking.ranking import Ranking, RankingDatabase, RankingStats
+from golem.client import Client
 
 
 class TestRankingDatabase(TestWithDatabase):
+    def test_increase_trust_thread_safety(self):
+        c = mock.MagicMock(spec=Client)
+        r = Ranking(c)
+        def run():
+            for x in range(0, 10):
+                r.increase_trust("ABC", RankingStats.computed, 1)
+                r.decrease_trust("ABC", RankingStats.computed, 1)
+                r.increase_trust("ABC", RankingStats.computed, 1)
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread1.join()
+        expected = r.get_computing_trust("ABC")
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread2 = Thread(target=run)
+        thread2.start()
+        thread3 = Thread(target=run)
+        thread3.start()
+        thread4 = Thread(target=run)
+        thread4.start()
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        thread4.join()
+        self.assertEqual(0.0, expected)
+
     def test_local_rank(self):
         self.assertIsNone(RankingDatabase.get_local_rank("ABC"))
         RankingDatabase.increase_positive_computing("ABC", 2)
