@@ -8,7 +8,6 @@ from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
@@ -213,15 +212,6 @@ class TaskComputer(object):
                 self.last_checking = time_
                 if self.waiting_ttl < 0:
                     self.reset()
-
-    def get_progresses(self):
-        ret = {}
-        for c in self.current_computations:
-            tcss = TaskChunkStateSnapshot(c.get_subtask_id(), 0.0, 0.0, c.get_progress(),
-                                          c.get_task_short_desc())  # FIXME: cpu power and estimated time left
-            ret[c.subtask_id] = tcss
-
-        return ret
 
     def change_config(self, config_desc, in_background=True, run_benchmarks=False):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())

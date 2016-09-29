@@ -3,7 +3,6 @@ import time
 
 from golem.core.common import HandleKeyError, get_current_time
 from golem.core.hostaddress import get_external_address
-from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
@@ -334,17 +333,6 @@ class TaskManager(TaskEventListener):
                         s.stderr = "[GOLEM] Timeout"
                         self.notice_task_updated(th.task_id)
         return nodes_with_timeouts
-
-    def get_progresses(self):
-        tasks_progresses = {}
-
-        for t in self.tasks.values():
-            if t.get_progress() < 1.0:
-                ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))
-                tasks_progresses[t.header.task_id] = ltss
-
-        return tasks_progresses
 
     @handle_task_key_error
     def get_resources(self, task_id, resource_header, resource_type=0):
