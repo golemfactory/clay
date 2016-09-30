@@ -40,7 +40,6 @@ class TaskServer(PendingConnectionsServer):
         self.max_trust = 1.0
         self.min_trust = 0.0
 
-        self.last_messages = []
         self.last_message_time_threshold = config_desc.task_session_timeout
 
         self.results_to_send = {}
@@ -197,15 +196,6 @@ class TaskServer(PendingConnectionsServer):
         for tsk in self.task_sessions.keys():
             if self.task_sessions[tsk] == task_session:
                 del self.task_sessions[tsk]
-
-    def set_last_message(self, type_, t, msg, address, port):
-        if len(self.last_messages) >= 5:
-            self.last_messages = self.last_messages[-4:]
-
-        self.last_messages.append([type_, t, address, port, msg])
-
-    def get_last_messages(self):
-        return self.last_messages
 
     def get_waiting_task_result(self, subtask_id):
         return self.results_to_send.get(subtask_id, None)

@@ -78,7 +78,6 @@ class TaskSession(MiddlemanSafeSession):
         :return None:
         """
         # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
-        self.task_server.set_last_message("<-", time.localtime(), msg, self.address, self.port)
         MiddlemanSafeSession.interpret(self, msg)
 
     def dropped(self):
@@ -592,7 +591,6 @@ class TaskSession(MiddlemanSafeSession):
             return
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
         # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
-        self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def _check_ctd_params(self, ctd):
         if not isinstance(ctd, ComputeTaskDef) or ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
