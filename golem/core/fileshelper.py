@@ -160,7 +160,7 @@ def du(path):
             size = int(get_dir_size(path))
         except OSError as err:
             import logging
-            logging.getLogger(__file__).info("Can't open dir {}: {}".format(path, str(err)))
+            logging.getLogger('golem.core').info("Can't open dir {}: {}".format(path, str(err)))
             return "-1"
     human_readable_size, idx = dir_size_to_display(size)
     return "{} {}".format(human_readable_size, translate_resource_index(idx))

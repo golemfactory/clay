@@ -202,6 +202,7 @@ class TestClientRPCMethods(TestWithDatabase):
     def test_get_node(self, _):
         c = self.__new_client()
         assert isinstance(c.get_node(), Node)
+        c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_dir_manager(self, _):
@@ -215,6 +216,7 @@ class TestClientRPCMethods(TestWithDatabase):
         c.task_server.task_computer.current_computations = []
 
         assert isinstance(c.get_dir_manager(), DirManager)
+        c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_update_setting(self, _):
@@ -222,6 +224,7 @@ class TestClientRPCMethods(TestWithDatabase):
         new_node_name = str(uuid.uuid4())
         c.update_setting('node_name', new_node_name)
         assert c.config_desc.node_name == new_node_name
+        c.quit()
 
     def __new_client(self):
         client = Client(datadir=self.path,
