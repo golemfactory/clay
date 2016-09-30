@@ -2,13 +2,12 @@ import argparse
 import unittest
 from io import StringIO
 
-from mock import patch, Mock, mock
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.internet.error import ReactorNotRunning
-
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
 from golem.interface.command import group, doc, argument, identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
+from mock import patch, Mock, mock
+from twisted.internet.defer import Deferred, TimeoutError
+from twisted.internet.error import ReactorNotRunning
 
 
 def _nop(*a, **kw):
@@ -198,6 +197,26 @@ class TestCLI(unittest.TestCase):
                 with patch('sys.stderr', new_callable=MockStdout) as out:
                     cli.execute(['commands', 'command_2'])
                     assert out.data
+
+    def test_args(self):
+
+        expected = [[]]
+        stdout = Mock()
+
+        with storage_context():
+
+            def _check_args(args):
+                assert args == expected[0]
+                return False, stdout
+
+            client = self.MockClient()
+            cli = CLI(client=client)
+
+            expected[0] = ['test', 'string with spaces', '--flag', 'value']
+
+            with patch(self.__raw_input, return_value='test "string with spaces" --flag "value"'):
+                with patch('golem.interface.cli.CLI.process', side_effect=_check_args):
+                    cli.execute()
 
     def test_build(self):
 

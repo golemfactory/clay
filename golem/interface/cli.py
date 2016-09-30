@@ -1,4 +1,5 @@
 import argparse
+import shlex
 import sys
 import time
 
@@ -89,7 +90,7 @@ class CLI(object):
                     cls.working = False
                 else:
                     if line:
-                        args = line.strip().split(' ')
+                        args = shlex.split(line)
                     else:
                         args = None
 
