@@ -24,12 +24,13 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.addr_return = ("10.10.10.10", 1111, "Full NAT")
 
     @staticmethod
-    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", subtask_timeout=120):
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", timeout=120, subtask_timeout=120):
         task_mock = Mock()
         task_mock.header.task_id = task_id
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
+        task_mock.header.deadline = timeout_to_deadline(timeout)
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -343,13 +344,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.tm.listeners.append(Mock())
         t = Task(Mock(), "")
         t.header.task_id = "xyz"
-        t.header.ttl = 0.5
-        t.header.last_checking = time.time()
+        t.header.deadline = timeout_to_deadline(0.5)
         self.tm.add_new_task(t)
         assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
         time.sleep(1)
         self.tm.remove_old_tasks()
-        assert self.tm.tasks.get('xyz') is None
+        assert self.tm.tasks_states['xyz'].status == TaskStatus.timeout
 
     def test_task_event_listener(self):
         self.tm.notice_task_updated = Mock()
