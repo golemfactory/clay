@@ -75,7 +75,7 @@ class TestCLI(unittest.TestCase):
         with patch(self.__raw_input, return_value=''):
             cli.execute()
 
-        assert not _process.called
+        _process.assert_called_with(['help'])
         assert not _out.getvalue()
 
         _process.called = False
@@ -200,23 +200,15 @@ class TestCLI(unittest.TestCase):
 
     def test_args(self):
 
-        expected = [[]]
-        stdout = Mock()
-
         with storage_context():
-
-            def _check_args(args):
-                assert args == expected[0]
-                return False, stdout
 
             client = self.MockClient()
             cli = CLI(client=client)
 
-            expected[0] = ['test', 'string with spaces', '--flag', 'value']
+            expected = ['test', 'string with spaces', '--flag', 'value']
 
             with patch(self.__raw_input, return_value='test "string with spaces" --flag "value"'):
-                with patch('golem.interface.cli.CLI.process', side_effect=_check_args):
-                    cli.execute()
+                assert cli._read_arguments(interactive=True) == expected
 
     def test_build(self):
 

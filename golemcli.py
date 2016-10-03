@@ -20,35 +20,40 @@ _ = {
 
 
 def start():
-    # process initial arguments
-    arguments = dict(
+    flags = dict(
         interactive=('-i', '--interactive'),
         address=('-a', '--address'),
         port=('-p', '--port'),
     )
 
+    flag_options = dict(
+        interactive=dict(dest="interactive", action="store_true", default=False, help="Enter interactive mode"),
+        address=dict(dest="address", type=str, default='127.0.0.1', help="Golem node's address"),
+        port=dict(dest="port", type=int, default=60103, help="Golem node's port"),
+    )
+
+    # process initial arguments
+    parser = argparse.ArgumentParser(add_help=False)
+    for flag_name, flag in flags.items():
+        parser.add_argument(*flag, **flag_options[flag_name])
+
     args = sys.argv[1:]
-
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument(*arguments['interactive'], dest="interactive", action="store_true", default=False)
-    parser.add_argument(*arguments['address'], dest="address", type=str, default='127.0.0.1')
-    parser.add_argument(*arguments['port'], dest="port", type=int, default=60103)
-
     parsed, forwarded = parser.parse_known_args(args)
 
     # setup logging if in interactive mode
-    interactive = parsed.interactive or not forwarded
+    interactive = parsed.interactive
 
     if interactive:
         config_logging("golem_cli.log")
+        cli = CLI()
     else:
         import logging
         logging.raiseExceptions = 0
+        cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     # run the cli
-    cli = WebSocketCLI(CLI, address=parsed.address, port=parsed.port)
-    cli.execute(forwarded, interactive=interactive)
+    ws_cli = WebSocketCLI(cli, address=parsed.address, port=parsed.port)
+    ws_cli.execute(forwarded, interactive=interactive)
 
 
 if __name__ == '__main__':

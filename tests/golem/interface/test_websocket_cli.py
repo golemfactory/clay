@@ -1,15 +1,11 @@
 import unittest
-
-import StringIO
 from contextlib import contextmanager
 
-from golem.rpc.websockets import WebSocketRPCClientFactory
-from twisted.python.failure import Failure
-
-from mock import Mock, patch, MagicMock
-from twisted.internet.defer import Deferred
-
 from golem.interface.websockets import WebSocketCLI
+from golem.rpc.websockets import WebSocketRPCClientFactory
+from mock import Mock, patch
+from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 
 
 class TestWebSocketCLI(unittest.TestCase):
@@ -17,9 +13,6 @@ class TestWebSocketCLI(unittest.TestCase):
     @patch('twisted.internet.threads', create=True, new_callable=Mock)
     @patch('twisted.internet.reactor', create=True, new_callable=Mock)
     def test_execute(self, reactor, threads):
-
-        cli_class = Mock
-        cli_class.execute = Mock()
 
         deferred = Deferred()
         deferred.result = "Success"
@@ -44,16 +37,27 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(cli_class, '127.0.0.1', '12345')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345')
             ws_cli.execute()
 
-            assert ws_cli.cli
+            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Mock)
 
         with rpc_context():
 
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(cli_class, '127.0.0.1', '12345')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345')
             ws_cli.execute()
-            assert not ws_cli.cli
+
+            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)
+
+    def test_no_connection(self):
+
+        client = WebSocketCLI.NoConnection()
+
+        with self.assertRaises(Exception):
+            client.account()
+
+        with self.assertRaises(Exception):
+            client.some_unknown_method()

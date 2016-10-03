@@ -48,7 +48,7 @@ class CLI(object):
 
     working = False
 
-    def __init__(self, client, roots=None, formatters=None):
+    def __init__(self, client=None, roots=None, formatters=None, main_parser=None, main_parser_options=None):
 
         self.client = client
         self.roots = roots or CommandStorage.roots
@@ -58,8 +58,15 @@ class CLI(object):
         self.subparsers = None
         self.formatters = []
 
-        for root in self.roots:
-            setattr(root, 'client', client)
+        self.main_parser = main_parser
+
+        if main_parser_options:
+            self.main_options = set({v.get('dest') or k for k, v in main_parser_options.items()})
+        else:
+            self.main_options = set()
+
+        if self.client:
+            self.register_client(self.client)
 
         if formatters:
             for formatter in formatters:
@@ -68,6 +75,10 @@ class CLI(object):
             self.add_formatter(CommandJSONFormatter())
 
         self.add_formatter(CommandFormatter())  # default
+
+    def register_client(self, client):
+        for root in self.roots:
+            setattr(root, 'client', client)
 
     @classmethod
     def shutdown(cls):
@@ -84,15 +95,7 @@ class CLI(object):
         while cls.working:
 
             if not args:
-                try:
-                    line = raw_input('>> ')
-                except ValueError:
-                    cls.working = False
-                else:
-                    if line:
-                        args = shlex.split(line)
-                    else:
-                        args = None
+                args = self._read_arguments(interactive)
 
             if args:
                 try:
@@ -120,9 +123,10 @@ class CLI(object):
         try:
 
             namespace = self.parser.parse_args(args)
-            formatter = self.get_formatter(namespace)
-            callback = namespace.__dict__.pop('callback')
-            normalized = self._normalize_namespace(namespace)
+            clean = self._clean_namespace(namespace)
+            formatter = self.get_formatter(clean)
+            callback = clean.__dict__.pop('callback')
+            normalized = self._normalize_namespace(clean)
             result = callback(**normalized)
 
         except ParsingException as exc:
@@ -159,9 +163,17 @@ class CLI(object):
         return result, output
 
     def build(self):
+
+        if self.main_parser:
+            shared_kw = {'parents': [self.main_parser]}
+        else:
+            shared_kw = {}
+
         self.shared_parser = ArgumentParser(add_help=False,
                                             prog=self.PROG,
-                                            usage=argparse.SUPPRESS)
+                                            usage=argparse.SUPPRESS,
+                                            **shared_kw)
+
         self.shared_parser.add_argument("-h", "--help",
                                         action="help",
                                         help="Display command's help message")
@@ -240,6 +252,25 @@ class CLI(object):
         for argument in arguments:
             if isinstance(argument, Argument):
                 parser.add_argument(*argument.args, **argument.kwargs)
+
+    @classmethod
+    def _read_arguments(cls, interactive):
+        if interactive:
+            try:
+                line = raw_input('>> ')
+            except ValueError:
+                cls.working = False
+            else:
+                if line:
+                    return shlex.split(line)
+        else:
+            return ['help']
+
+    def _clean_namespace(self, namespace):
+        clean = argparse.Namespace(**namespace.__dict__)
+        for key in self.main_options:
+            clean.__dict__.pop(key, None)
+        return clean
 
     @classmethod
     def _normalize_namespace(cls, namespace):
