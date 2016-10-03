@@ -31,7 +31,8 @@ class TestRankingDatabase(TestWithDatabase):
         thread2.join()
         thread3.join()
         thread4.join()
-        self.assertEqual(0.0, expected)
+        result = r.get_computing_trust("ABC")
+        self.assertEqual(result, expected)
 
     def test_local_rank(self):
         self.assertIsNone(RankingDatabase.get_local_rank("ABC"))
