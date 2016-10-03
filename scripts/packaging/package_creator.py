@@ -1282,6 +1282,7 @@ build_options = {
                 'libpangoft2-1.0.so.0',
                 'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
+                'readline.x86_64-linux-gnu.so',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
