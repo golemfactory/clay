@@ -466,6 +466,53 @@ class TaskManager(TaskEventListener):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
+    def get_dict_task(self, task_id):
+        return self._simple_task_repr(self.tasks_states, self.tasks[task_id])
+
+    def get_dict_tasks(self):
+        return [self._simple_task_repr(self.tasks_states, t) for task_id, t in self.tasks.iteritems()]
+
+    def get_dict_subtasks(self, task_id):
+        task_state = self.tasks_states[task_id]
+        return [self._simple_subtask_repr(subtask) for subtask_id, subtask in task_state.subtask_states.iteritems()]
+
+    def get_dict_subtask(self, subtask_id):
+        task_id = self.subtask2task_mapping[subtask_id]
+        task_state = self.tasks_states[task_id]
+        subtask = task_state.subtask_states[subtask_id]
+        return self._simple_subtask_repr(subtask)
+
+    @staticmethod
+    def _simple_task_repr(_states, _task):
+        if _task:
+            state = _states.get(_task.header.task_id,)
+            return dict(
+                id=_task.header.task_id,
+                time_remaining=state.remaining_time,
+                subtasks=_task.get_total_tasks(),
+                status=state.status,
+                progress=_task.get_progress()
+            )
+
+    @staticmethod
+    def _simple_subtask_repr(subtask):
+        if subtask:
+            return dict(
+                subtask_id=subtask.subtask_id,
+                node_name=subtask.computer.node_name,
+                node_id=subtask.computer.node_id,
+                node_performance=subtask.computer.performance,
+                node_ip_address=subtask.computer.ip_address,
+                node_port=subtask.computer.port,
+                status=subtask.subtask_status,
+                progress=subtask.subtask_progress,
+                time_started=subtask.time_started,
+                time_remaining=subtask.subtask_rem_time,
+                results=subtask.results,
+                stderr=subtask.stderr,
+                stdout=subtask.stdout
+            )
+
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):
         """
