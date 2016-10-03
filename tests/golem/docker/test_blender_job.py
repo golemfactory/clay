@@ -53,5 +53,5 @@ class TestBlenderDockerJob(TestDockerJob):
             self.assertEqual(exit_code, 0)
 
         out_files = os.listdir(self.output_dir)
-        self.assertEqual(out_files, ['out_001.exr'])
+        self.assertEqual(out_files, ['out_42_001.exr'])
 
