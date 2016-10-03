@@ -14,6 +14,7 @@ psutil
 pyelliptic==1.5.7
 pysha3==0.3
 pystun==0.1.0
+pytz
 qt4reactor==1.6
 requests==2.8.1
 six==1.10.0
@@ -31,3 +32,5 @@ ndg-httpsclient
 ovh
 certifi
 weakreflist
+tabulate
+PyYAML>=3.11

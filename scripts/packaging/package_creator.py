@@ -465,8 +465,6 @@ class PackageCreator(Command):
             cmd += ['--init-script', self.init_script]
 
         os.chdir(self.setup_dir)
-
-        import subprocess
         subprocess.check_call(cmd)
 
         base_dir = os.path.join(self.setup_dir, 'build')
@@ -478,8 +476,8 @@ class PackageCreator(Command):
         for _exe_dir in exe_dirs:
             exe_dir = os.path.join(base_dir, _exe_dir)
             lib_dir = os.path.join(exe_dir, 'lib')
-
             x_dir = self._extract_modules(exe_dir, lib_dir)
+
             if not x_dir:
                 raise EnvironmentError("Invalid module archive")
 
@@ -522,20 +520,16 @@ class PackageCreator(Command):
     def _extract_modules(self, exe_dir, lib_dir):
         for zipped in self.extract_modules:
 
-            name = zipped.name
-            exclude = zipped.exclude
             src_dir = lib_dir if zipped.in_lib_dir else exe_dir
+            src_file = os.path.join(src_dir, zipped.name)
 
-            src_file = os.path.join(src_dir, name)
             dest_dir = ''.join('python' + self.py_v)
             dest_path = os.path.join(lib_dir, dest_dir)
 
             if os.path.exists(src_file):
                 self._unzip(src_file, dest_path)
-                self._clean_zip(src_file, exclude)
+                self._clean_zip(src_file, zipped.exclude)
                 return dest_path
-
-        return None
 
     def _find_lib(self, lib):
         if not lib:
@@ -622,11 +616,12 @@ class PackageCreator(Command):
 
     @staticmethod
     def _remove_duplicate_lib(lib, dirs):
-        for dir in dirs:
-            if lib and dir:
-                libpath = os.path.join(dir, lib)
-                if os.path.exists(libpath):
-                    os.remove(libpath)
+        if not lib:
+            return
+        for d in dirs:
+            lib_path = os.path.join(d, lib)
+            if os.path.exists(lib_path):
+                os.remove(lib_path)
 
     def _create_files(self, exe_dir, x_dir):
         for entry in self.create_files:
@@ -657,6 +652,7 @@ class PackageCreator(Command):
             if isinstance(module, DirPackage):
                 if module.skip_platform(self.platform):
                     continue
+
                 dst_dir = x_dir if module.use_lib_dir else exe_dir
                 self._copy_module(module.name, dst_dir, lib_dir,
                                   module.location_resolver)
@@ -712,24 +708,27 @@ class PackageCreator(Command):
             method(self, exe_dir, lib_dir, x_dir)
 
     @staticmethod
-    def _clean_zip(src_file, entry):
+    def _clean_zip(src_file, exclude):
         import zipfile
         import uuid
 
-        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', entry.split('.')[0]]
+        if not isinstance(exclude, list):
+            exclude = [exclude]
+
+        white_list = ['BUILD_CONSTANTS', 'cx_Freeze'] + [entry.split('.')[0] for entry in exclude]
         tmp_file = src_file + "-" + str(uuid.uuid4())
 
-        zin = zipfile.ZipFile(src_file, 'r')
-        zout = zipfile.ZipFile(tmp_file, 'w')
+        zip_in = zipfile.ZipFile(src_file, 'r')
+        zip_out = zipfile.ZipFile(tmp_file, 'w')
 
-        for item in zin.infolist():
-            buf = zin.read(item.filename)
+        for item in zip_in.infolist():
+            buf = zip_in.read(item.filename)
             for w in white_list:
                 if item.filename.startswith(w):
-                    zout.writestr(item, buf)
+                    zip_out.writestr(item, buf)
 
-        zout.close()
-        zin.close()
+        zip_out.close()
+        zip_in.close()
 
         os.remove(src_file)
         shutil.move(tmp_file, src_file)
@@ -962,7 +961,8 @@ def osx_rewrite_python(creator, exe_dir, *args):
 def linux_remove_libc(creator, exe_dir, *args):
     if creator.platform == 'linux':
         libc_path = os.path.join(exe_dir, 'libc.so.6')
-        os.remove(libc_path)
+        if os.path.exists(libc_path):
+            os.remove(libc_path)
 
 
 def win_clean_qt(creator, _, __, x_dir):
@@ -987,7 +987,6 @@ def all_task_collector(creator, *args):
         return
 
     filename = 'taskcollector'
-    tc_path = os.path.join(tc_dir, filename)
     tc_release_path = os.path.join(tc_release_dir, filename)
 
     if not os.path.exists(tc_release_path):
@@ -1023,8 +1022,27 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
 
     def zip_dir(src_dir, zip_handle):
         for root, dirs, files in os.walk(src_dir):
-            for f in files:
-                zip_handle.write(os.path.join(root, f))
+            for _file in files:
+                zip_handle.write(os.path.join(root, _file))
+
+    def collect_docker_files():
+        images_ini = os.path.join(task_dir, 'images.ini')
+        result = set()
+
+        with open(images_ini) as ini_file:
+            for line in ini_file:
+                if line:
+                    name, docker_file, tag = line.split(' ')
+                    full_path = os.path.join(task_dir, docker_file)
+                    result.add((full_path, docker_file))
+
+        docker_file_dir = os.path.dirname(next(iter(result))[1])
+        entrypoint_path = os.path.join(docker_file_dir, 'entrypoint.sh')
+
+        result.add((os.path.join(task_dir, entrypoint_path), 'entrypoint.sh'))
+        result.add((images_ini, 'images.ini'))
+
+        return result
 
     def assemble_dir(dir_name):
 
@@ -1036,23 +1054,28 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
 
         exe_dir = build_subdir(dir_name)
         pack_exe_dir = new_package_subdir(dir_name)
-        pack_scripts_dir = new_package_subdir(scripts_dir)
+        pack_docker_dir = new_package_subdir(docker_dir)
 
         os.makedirs(pack_dir)
-        os.makedirs(pack_scripts_dir)
+        os.makedirs(pack_docker_dir)
 
         shutil.move(exe_dir, pack_exe_dir)
         copy_tree(runner_scripts_dir, pack_dir, update=True)
 
         if creator.platform == 'win':
-            script = 'golem.sh'
+            scripts = ['golem.sh', 'cli.sh']
         else:
-            script = 'golem.cmd'
-        os.remove(os.path.join(pack_dir, script))
+            scripts = ['golem.cmd', 'cli.cmd']
 
-        for docker_file in docker_files:
-            dst_path = os.path.join(pack_scripts_dir, os.path.basename(docker_file))
-            shutil.copy(docker_file, dst_path)
+        for script in scripts:
+            os.remove(os.path.join(pack_dir, script))
+
+        for full_path, docker_file in docker_files:
+            dst_path = os.path.join(pack_docker_dir, docker_file)
+            dst_dir = os.path.dirname(dst_path)
+            if not os.path.exists(dst_dir):
+                os.makedirs(dst_dir)
+            shutil.copy(full_path, dst_path)
 
         version_stamp(pack_dir)
 
@@ -1062,29 +1085,29 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
         cwd = os.getcwd()
         os.chdir(build_dir)
 
-        file_path = file_name
+        if os.path.exists(file_name):
+            os.remove(file_name)
 
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        zipf = zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED)
-        zip_dir(package_subdir, zipf)
-        zipf.close()
+        zip_f = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
+        zip_dir(package_subdir, zip_f)
+        zip_f.close()
 
         os.chdir(cwd)
 
     build_dir = 'build'
     scripts_dir = 'scripts'
+    docker_dir = 'docker'
+    package_subdir = 'golem'
+
     runner_scripts_dir = os.path.join(scripts_dir, 'packaging', 'runner')
     taskcollector_dir = os.path.join('gnr', 'taskcollector', 'Release')
 
-    package_subdir = 'golem'
+    task_dir = os.path.join('gnr', 'task')
     pack_dir = build_subdir(package_subdir)
-    docker_files = [os.path.join('gnr', 'task', 'images', 'Dockerfile.' + ext)
-                    for ext in ['base', 'blender', 'luxrender']]
+
+    docker_files = collect_docker_files()
 
     sub_dirs = next(os.walk(build_dir))[1]
-
     for subdir in sub_dirs:
         if subdir.startswith('exe'):
             assemble_dir(subdir)
@@ -1152,9 +1175,22 @@ def update_cx_freeze_config(options):
         options.update(linux_exe_options)
 
 
-base = 'Console'
-entrypoint = 'golemapp.py'
 update_cx_freeze_config(exe_options)
+
+apps = [
+    {
+        'base': 'Console',
+        'script': 'golemapp.py',
+        'init_script': 'Console.py'
+    },
+    {
+        'base': 'Console',
+        'script': 'golemcli.py',
+        'init_script': 'Console.py'
+    }
+]
+
+app_scripts = [app['script'] for app in apps]
 
 build_options = {
     "build_exe": exe_options,
@@ -1199,13 +1235,13 @@ build_options = {
             "gettext", "copy", "locale", "functools", 'pprint'
         ],
         # Extract files zipped by cx_Freeze
-        # Files beside *.py may not be resolved from an archive
+        # Files other than *.py will not load from an archive
         'extract_modules': [
             ZippedPackage("python" + PackageCreator.py_v + ".zip",
-                          exclude=entrypoint,
+                          exclude=app_scripts,
                           in_lib_dir=True),
             ZippedPackage("library.zip",
-                          exclude=entrypoint,
+                          exclude=app_scripts,
                           in_lib_dir=False)
         ],
         # Patch missing module files
@@ -1227,16 +1263,16 @@ build_options = {
             'linux': [
                 '_sha3.so',
                 '_cffi_backend.so',
+                'OpenEXR.so',
+                'netifaces.so',
+                'ld-linux-x86-64.so.*',
                 'libstdc++*',
                 'libc.so*',
                 'libpython2.7.so.1.0',
-                'ld-linux-x86-64.so.*',
                 'libHalf.so.*',
                 'libffi.so.*',
                 'libgssapi_krb5.so.*',
                 'libz.so.1',
-                'OpenEXR.so',
-                'netifaces.so',
                 'libraw.so.*',
                 'libgmp.so.*',
                 'libpng12.so.0',
@@ -1246,6 +1282,7 @@ build_options = {
                 'libpangoft2-1.0.so.0',
                 'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
+                'readline.x86_64-linux-gnu.so',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
@@ -1308,10 +1345,9 @@ build_options = {
 
 def update_setup_config(setup_dir, options=None, cmdclass=None, executables=None):
 
-    init_script = os.path.join(setup_dir, 'scripts', 'packaging',
-                               'cx_Freeze', 'initscripts', 'ConsoleCustom.py')
+    init_script_dir = os.path.join(setup_dir, 'scripts', 'packaging', 'cx_Freeze', 'initscripts')
 
-    PackageCreator.init_script = init_script
+    PackageCreator.init_script = os.path.join(init_script_dir, 'Console.py')
     PackageCreator.setup_dir = setup_dir
 
     if options is not None:
@@ -1321,8 +1357,9 @@ def update_setup_config(setup_dir, options=None, cmdclass=None, executables=None
         cmdclass.update({'pack': PackageCreator})
 
     if executables is not None:
-        executables.append(Executable(
-            base=base,
-            script=entrypoint,
-            initScript=init_script,
-        ))
+        for app in apps:
+            executables.append(Executable(
+                base=app['base'],
+                script=app['script'],
+                initScript=os.path.join(init_script_dir, app['init_script']),
+            ))

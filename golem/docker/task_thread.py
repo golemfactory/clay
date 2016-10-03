@@ -48,6 +48,8 @@ class DockerTaskThread(TaskThread):
             self._cleanup()
             return
         try:
+            if self.use_timeout and self.task_timeout < 0:
+                raise TimeoutException
             work_dir = os.path.join(self.tmp_path, "work")
             output_dir = os.path.join(self.tmp_path, "output")
 

@@ -7,7 +7,7 @@ from copy import deepcopy, copy
 
 from PIL import Image, ImageChops
 
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
@@ -65,7 +65,7 @@ class RenderingTask(GNRTask):
     ################
 
     def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, ttl,
-                 subtask_ttl, main_program_file, task_resources, main_scene_dir, main_scene_file,
+                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
                  total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
                  estimated_memory, max_price, docker_images=None,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
@@ -83,11 +83,10 @@ class RenderingTask(GNRTask):
             resource_size += os.stat(resource).st_size
 
         GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         ttl, subtask_ttl, resource_size, estimated_memory, max_price, docker_images)
+                         ttl, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
 
         self.full_task_timeout = ttl
         self.header.ttl = self.full_task_timeout
-        self.header.subtask_timeout = subtask_ttl
 
         self.main_program_file = main_program_file
         self.main_scene_file = main_scene_file
@@ -224,14 +223,12 @@ class RenderingTask(GNRTask):
         ctd.task_id = self.header.task_id
         ctd.subtask_id = hash
         ctd.extra_data = extra_data
-        ctd.return_address = self.header.task_owner_address
-        ctd.return_port = self.header.task_owner_port
-        ctd.task_owner = self.header.task_owner
         ctd.short_description = self._short_extra_data_repr(perf_index, extra_data)
         ctd.src_code = self.src_code
         ctd.performance = perf_index
         ctd.working_directory = working_directory
         ctd.docker_images = self.header.docker_images
+        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
         return ctd
 
     def _get_next_task(self):

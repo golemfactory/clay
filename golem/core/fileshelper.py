@@ -1,6 +1,9 @@
 import os
 import shutil
 
+import subprocess
+
+from gnr.customizers.memoryhelper import dir_size_to_display, translate_resource_index
 from golem.core.common import is_windows
 
 
@@ -143,3 +146,21 @@ def inner_dir_path(path, directory):
     current_dir = os.path.dirname(path)
     filename = os.path.basename(path)
     return os.path.join(current_dir, directory, filename)
+
+
+def du(path):
+    """ Imitates bash "du -h <path>" command behaviour. Returns the estiamted size of this directory
+    :param str path: path to directory which size should be measured
+    :return str: directory size in human readeable format (eg. 1 Mb) or "-1" if an error occurs.
+    """
+    try:
+        size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
+    except (OSError, subprocess.CalledProcessError):
+        try:
+            size = int(get_dir_size(path))
+        except OSError as err:
+            import logging
+            logging.getLogger('golem.core').info("Can't open dir {}: {}".format(path, str(err)))
+            return "-1"
+    human_readable_size, idx = dir_size_to_display(size)
+    return "{} {}".format(human_readable_size, translate_resource_index(idx))

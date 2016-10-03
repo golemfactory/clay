@@ -12,6 +12,8 @@ class ClientConfigDescriptor(object):
         self.node_address = ""
         self.start_port = 0
         self.end_port = 0
+        self.rpc_address = ""
+        self.rpc_port = 0
         self.manager_address = ""
         self.manager_port = 0
         self.opt_peer_num = 0

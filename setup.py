@@ -39,6 +39,8 @@ def try_building_docker_images():
               """.format(err))
         return
     images_dir = path.join('gnr', 'task')
+    cwd = os.getcwdu()
+
     with open(path.join(images_dir,  'images.ini')) as f:
         for line in f:
             try:
@@ -46,11 +48,15 @@ def try_building_docker_images():
                 if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
                     print "\n Image {} exists - skipping".format(image)
                     continue
-                docker_file = path.join(images_dir, path.normpath(docker_file))
+
+                docker_file_dir = path.join(images_dir, os.path.dirname(docker_file))
+                os.chdir(docker_file_dir)
+
+                docker_file = path.basename(docker_file)
                 cmd = "docker build -t {} -f {} .".format(image, docker_file)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
-                cmd = "docker tag -f {} {}:{}".format(image, image, tag)
+                cmd = "docker tag {} {}:{}".format(image, image, tag)
                 print "\nRunning '{}' ...\n".format(cmd)
                 subprocess.check_call(cmd.split(" "))
             except ValueError:
@@ -58,6 +64,8 @@ def try_building_docker_images():
             except subprocess.CalledProcessError as err:
                 print "Docker build failed: {}".format(err)
                 sys.exit(1)
+            finally:
+                os.chdir(cwd)
 
 try_building_docker_images()
 
@@ -148,7 +156,12 @@ setup(
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
     packages=packages,
-    entry_points={'console_scripts': ['golemapp = golemapp:start']},
+    entry_points={
+        'console_scripts': [
+            'golemapp = golemapp:start',
+            'golemcli = golemcli:start',
+        ]
+    },
     install_requires=requirements,
     include_package_data=True,
     dependency_links=dependency_links,
