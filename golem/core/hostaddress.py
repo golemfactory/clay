@@ -74,13 +74,13 @@ def ip_address_private(address):
             return ipaddress.IPv6Address(unicode(address)).is_private
         except Exception as exc:
             logger.error("Cannot parse IPv6 address {}: {}"
-                         .format(address, exc.message))
+                         .format(address, exc))
             return False
     try:
         return ipaddress.IPv4Address(unicode(address)).is_private
     except Exception as exc:
         logger.error("Cannot parse IPv4 address {}: {}"
-                     .format(address, exc.message))
+                     .format(address, exc))
         return False
 
 
