@@ -1,4 +1,4 @@
-from gnr.customizers.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem
+from ethereum.utils import denoms
 from golem.interface.command import command, Argument, CommandHelper, CommandResult
 
 incomes_table_headers = ['payer', 'status', 'value', 'block']
@@ -21,6 +21,14 @@ sort_payments = Argument(
 )
 
 
+def __status(info):
+    return unicode(info["status"]).replace(u"PaymentStatus.", u"")
+
+
+def __value(value):
+    return u"{:.6f} ETH".format(value / denoms.ether)
+
+
 @command(argument=sort_incomes, help="Display incomes", root=True)
 def incomes(sort):
     deferred = incomes.client.get_incomes_list()
@@ -29,8 +37,13 @@ def incomes(sort):
     values = []
 
     for income in result:
-        table_elem = IncomeTableElem(income)
-        values.append([str(c.text()) for c in table_elem.cols])
+        entry = [
+            income["payer"].encode('hex'),
+            __status(income),
+            __value(income["value"]),
+            str(income["block_number"])
+        ]
+        values.append(entry)
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 
@@ -44,8 +57,20 @@ def payments(sort):
     values = []
 
     for payment in result:
-        table_elem = PaymentTableElem(payment)
-        values.append([str(c.text()) for c in table_elem.cols])
+
+        payment_value = payment["value"]
+        payment_fee = payment["fee"]
+        payment_fee = u"{:.1f}%".format(float(payment_fee * 100) / payment_value) if payment_fee else u""
+
+        entry = [
+            payment["subtask"],
+            payment["payee"].encode('hex'),
+            __status(payment),
+            __value(payment_value),
+            payment_fee
+        ]
+
+        values.append(entry)
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
 
