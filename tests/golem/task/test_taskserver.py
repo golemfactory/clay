@@ -313,7 +313,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts._mark_connected = Mock()
         ts.task_computer = Mock()
         ts.task_manager = Mock()
-        ts.task_manager.remove_old_tasks.return_value = []
+        ts.task_manager.check_timeouts.return_value = []
         ts.task_keeper = Mock()
         ts.task_connections_helper = Mock()
         ts._add_pending_request = Mock()

@@ -308,7 +308,7 @@ class TaskManager(TaskEventListener):
                          .format(node_id, subtask_id))
 
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
-    def remove_old_tasks(self):
+    def check_timeouts(self):
         nodes_with_timeouts = []
         for t in self.tasks.values():
             th = t.header

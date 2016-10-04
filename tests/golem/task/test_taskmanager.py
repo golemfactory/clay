@@ -339,17 +339,32 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert self.tm.listeners[0].notice_task_updated.called_with("xyz")
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_remove_old_tasks(self, mock_addr):
+    def test_check_timeouts(self, mock_addr):
         mock_addr.return_value = self.addr_return
         self.tm.listeners.append(Mock())
-        t = Task(Mock(), "")
-        t.header.task_id = "xyz"
-        t.header.deadline = timeout_to_deadline(0.5)
+        # Task with timeout
+        t = self._get_task_mock(timeout=0.1)
         self.tm.add_new_task(t)
         assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
-        time.sleep(1)
-        self.tm.remove_old_tasks()
+        time.sleep(0.1)
+        self.tm.check_timeouts()
         assert self.tm.tasks_states['xyz'].status == TaskStatus.timeout
+        # Task with subtask timeout
+        t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc", timeout=10, subtask_timeout=0.1)
+        self.tm.add_new_task(t2)
+        self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(0.1)
+        self.tm.check_timeouts()
+        assert self.tm.tasks_states["abc"].status == TaskStatus.waiting
+        assert self.tm.tasks_states["abc"].subtask_states["aabbcc"].subtask_status == SubtaskStatus.failure
+        # Task with task and subtask timeout
+        t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty", timeout=0.1, subtask_timeout=0.1)
+        self.tm.add_new_task(t3)
+        self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(0.1)
+        self.tm.check_timeouts()
+        assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
+        assert self.tm.tasks_states["qwe"].subtask_states["qwerty"].subtask_status == SubtaskStatus.failure
 
     def test_task_event_listener(self):
         self.tm.notice_task_updated = Mock()
