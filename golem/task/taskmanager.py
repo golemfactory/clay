@@ -453,7 +453,6 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         task.header.deadline = timeout_to_deadline(full_task_timeout)
         task.header.subtask_timeout = subtask_timeout
-        task.subtask_timeout = subtask_timeout
         task.full_task_timeout = full_task_timeout
         task.header.last_checking = time.time()
 
