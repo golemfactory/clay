@@ -1,6 +1,6 @@
 from os import path
 
-from PyQt4.QtGui import QPixmap, QFrame
+from PyQt4.QtGui import QPixmap, QFrame, QHeaderView
 
 from golem.core.common import get_golem_path
 
@@ -15,6 +15,11 @@ class AppMainWindow(object):
         self.ui = Ui_MainWindow()
 
         self.ui.setupUi(self.window)
+
+        table = self.ui.taskTableWidget
+        header = table.horizontalHeader()
+        header.setResizeMode(QHeaderView.ResizeToContents)
+
         self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
 
