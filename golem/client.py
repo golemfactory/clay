@@ -118,12 +118,7 @@ class Client(object):
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
 
-        # FIXME: do in start()
-        self.node.collect_network_info(self.config_desc.seed_host,
-                                       use_ipv6=self.config_desc.use_ipv6)
-
         logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
-        logger.debug("Is super node? {}".format(self.node.is_super_node()))
 
         self.p2pservice = None
         self.diag_service = None
@@ -184,7 +179,9 @@ class Client(object):
 
     def start_network(self):
         logger.info("Starting network ...")
-
+        self.node.collect_network_info(self.config_desc.seed_host,
+                                       use_ipv6=self.config_desc.use_ipv6)
+        logger.debug("Is super node? {}".format(self.node.is_super_node()))
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
 
