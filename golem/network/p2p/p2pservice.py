@@ -79,7 +79,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
             self.__remove_redundant_hosts_from_db()
             self.__sync_seeds()
         except Exception as exc:
-            logger.error("Error reading seed addresses: {}".format(exc.message))
+            logger.error("Error reading seed addresses: {}".format(exc))
 
         # Timers
         self.last_peers_request = time.time()

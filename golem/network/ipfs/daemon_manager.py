@@ -148,7 +148,7 @@ class IPFSDaemonManager(IPFSClientHandler):
                 IPFSCommands.swarm_peers
             )
         except Exception as exc:
-            logger.error("IPFS: Cannot list swarm peers: {}".format(exc.message))
+            logger.error("IPFS: Cannot list swarm peers: {}".format(exc))
         return []
 
     def list_bootstrap_nodes(self, client=None):

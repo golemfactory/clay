@@ -667,7 +667,7 @@ class TaskSession(MiddlemanSafeSession):
             if isinstance(exc, EnvironmentError):
                 self.task_server.retry_sending_task_result(subtask_id)
             else:
-                self.send(MessageTaskFailure(subtask_id, exc.message))
+                self.send(MessageTaskFailure(subtask_id, '{}'.format(exc)))
                 self.task_server.task_result_sent(subtask_id)
 
             self.dropped()
