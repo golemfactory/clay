@@ -1,10 +1,9 @@
+import types
 from os import path
 
 from PyQt4.QtGui import QPixmap, QFrame, QHeaderView
-
-from golem.core.common import get_golem_path
-
 from gen.ui_AppMainWindow import Ui_MainWindow
+from golem.core.common import get_golem_path
 from mainwindow import MainWindow
 
 
@@ -18,7 +17,20 @@ class AppMainWindow(object):
 
         table = self.ui.taskTableWidget
         header = table.horizontalHeader()
-        header.setResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+        header.setResizeMode(QHeaderView.Interactive)
+
+        def window_resize(instance, event):
+            column_count = table.columnCount()
+            column_width = int(table.width() / column_count)
+            for n in range(column_count):
+                width = column_width
+                if n == column_count - 1:
+                    width -= 1  # hide the horizontal scrollbar
+                table.setColumnWidth(n, width)
+            super(MainWindow, instance).resizeEvent(event)
+
+        self.window.resizeEvent = types.MethodType(window_resize, self.window, MainWindow)
 
         self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
@@ -41,6 +53,7 @@ class AppMainWindow(object):
 
     def show(self):
         self.window.show()
+        self.window.resizeEvent(None)
 
     def setEnabled(self, tab_name, enable):
         """
