@@ -1,4 +1,3 @@
-import PyQt4
 import cPickle
 import os
 import unittest
@@ -6,8 +5,6 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from mock import Mock
-
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
@@ -25,6 +22,7 @@ from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager
 from golem.testutils import TempDirFixture
+from mock import Mock
 
 
 def dbg(result):
@@ -257,10 +255,10 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                PyQt4.QtCore.QString(u'6e6f64655f31'),
-                PyQt4.QtCore.QString(u'waiting'),
-                PyQt4.QtCore.QString(u'0.000000 ETH'),
-                PyQt4.QtCore.QString(u'deadbeef01')
+                u'6e6f64655f31',
+                u'waiting',
+                u'0.000000 ETH',
+                u'deadbeef01'
             ]
 
     def test_payments(self):
@@ -272,10 +270,10 @@ class TestPayments(unittest.TestCase):
             assert len(result.data[1]) == self.n_incomes
 
             assert result.data[1][0][:-1] == [
-                PyQt4.QtCore.QString(u'subtask_1'),
-                PyQt4.QtCore.QString(u'6e6f64655f31'),
-                PyQt4.QtCore.QString(u'waiting'),
-                PyQt4.QtCore.QString(u'0.000000 ETH'),
+                u'subtask_1',
+                u'6e6f64655f31',
+                u'waiting',
+                u'0.000000 ETH',
             ]
             assert result.data[1][0][4]
 
