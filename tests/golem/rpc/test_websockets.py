@@ -49,11 +49,14 @@ class TestRPCClient(TestWithReactor):
             big_chunk.extend(list(str(uuid.uuid4())))
         self.big_chunk = big_chunk
 
-    def test(self):
-
+    def _client_test(self, simple_client=False):
         ws_client, ws_server, service_info = _build()
-        client = ws_client.build_client(service_info)
         result = [None, None]
+
+        if simple_client:
+            client = ws_client.build_simple_client()
+        else:
+            client = ws_client.build_client(service_info)
 
         def on_success(*args, **kwargs):
 
@@ -78,11 +81,14 @@ class TestRPCClient(TestWithReactor):
                 self.fail("Test timeout")
             time.sleep(0.1)
 
-    def test_batch(self):
-
+    def _client_batch_test(self, simple_client=False):
         ws_client, ws_server, service_info = _build()
-        client = ws_client.build_client(service_info)
         result = [None, None]
+
+        if simple_client:
+            client = ws_client.build_simple_client()
+        else:
+            client = ws_client.build_client(service_info)
 
         def on_success(*args, **kwargs):
 
@@ -110,6 +116,14 @@ class TestRPCClient(TestWithReactor):
             time.sleep(0.2)
             if time.time() - started > 10:
                 self.fail("Test timeout")
+
+    def test(self):
+        self._client_test()
+        self._client_test(simple_client=True)
+
+    def test_batch(self):
+        self._client_batch_test()
+        self._client_batch_test(simple_client=True)
 
     def test_wait_for_session(self):
         rpc = RPC.__new__(RPC)

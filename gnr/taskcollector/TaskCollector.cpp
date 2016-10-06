@@ -72,6 +72,9 @@ bool GenericWriter(const bitmap_ptr& dib, const std::string& lpszPathName, int f
 				std::cout << "Can't save file" << lpszPathName << std::endl;
 			}
 		}
+    else {
+      std::cerr << "Can't determine output file type" << std::endl;
+    }
 	}
 	return (bSuccess == TRUE);
 }
@@ -132,7 +135,7 @@ public:
 			return false;
 		std::cout << "finalize & save " << outputPath << std::endl;
 		auto img = finalize();
-		return GenericWriter(img, outputPath, EXR_FLOAT);
+    return GenericWriter(img, outputPath, EXR_FLOAT);
 	};
 	void set_width(unsigned int w) {
 		width = w;
@@ -271,21 +274,18 @@ int main(int argc, char *argv[]) {
 	          << FreeImage_GetCopyrightMessage() << std::endl;
 
 	if (argc < 4) {
-		std::cerr << "Usage: taskcollector.exe <type> <outputfile> <inputfile1> [<input file2> ...]\n";
+		std::cerr << "Usage: taskcollector.exe <type> <width> <height> <outputfile> <inputfile1> [<input file2> ...]\n";
 		return -1;
 	}
 
 	std::unique_ptr<TaskCollector> taskCollector;
-	std::unique_ptr<TaskCollector> alphaTaskCollector;
 
 	std::string command{argv[1]};
 	if (command == "add") {
 		taskCollector = std::make_unique<AddTaskCollector>();
-		alphaTaskCollector = std::make_unique<AddTaskCollector>();
 	}
 	else if (command == "paste") {
 		taskCollector = std::make_unique<PasteTaskCollector>();
-		alphaTaskCollector = std::make_unique<PasteTaskCollector>();
 	}
 	else {
 		std::cerr << "Unknown command '" << command << "'. Allowed: 'add', 'paste'.\n";
@@ -306,9 +306,6 @@ int main(int argc, char *argv[]) {
 			if (!taskCollector->addAlphaFile(argv[i])) {
 				std::cerr << "Can't add file: " << argv[i] << "\n";
 			}
-			if (!alphaTaskCollector->addImgFile(argv[i])) {
-				std::cerr << "Can't add file: " << argv[i] << "\n";
-			}
 		}
 	}
 
@@ -316,12 +313,13 @@ int main(int argc, char *argv[]) {
 	auto it = name.find_last_of('.');
 	name = ( (it == std::string::npos) ? (name + ".exr") : (name.substr(0, it) + ".Alpha.exr") );
 
-	taskCollector->finalizeAndSave(argv[4]);
-
-	alphaTaskCollector->finalizeAndSave(name);
+  bool saved = taskCollector->finalizeAndSave(argv[4]);
 	// call this ONLY when linking with FreeImage as a static library
 #ifdef FREEIMAGE_LIB
 	FreeImage_DeInitialise();
 #endif // FREEIMAGE_LIB
-	return 0;
+  if (saved)
+    return 0;
+  else
+    return 1;
 }

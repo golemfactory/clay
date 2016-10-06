@@ -239,27 +239,13 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def update_stats(self):
+        response = yield self.client.get_task_stats()
 
-        response = yield self.client.start_batch() \
-            .get_task_count() \
-            .get_supported_task_count() \
-            .get_computed_task_count() \
-            .get_error_task_count() \
-            .get_timeout_task_count() \
-            .call()
-
-        tasks_with_timeout = response.pop()
-        tasks_with_errors = response.pop()
-        computed_tasks = response.pop()
-        supported = response.pop()
-        known_tasks = response.pop()
-
-        self.customizer.gui.ui.knownTasks.setText(str(known_tasks))
-        self.customizer.gui.ui.supportedTasks.setText(str(supported))
-
-        self.customizer.gui.ui.computedTasks.setText(self._format_stats_message(computed_tasks))
-        self.customizer.gui.ui.tasksWithErrors.setText(self._format_stats_message(tasks_with_errors))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(self._format_stats_message(tasks_with_timeout))
+        self.customizer.gui.ui.knownTasks.setText(str(response['in_network']))
+        self.customizer.gui.ui.supportedTasks.setText(str(response['supported']))
+        self.customizer.gui.ui.computedTasks.setText(str(response['subtasks_computed']))
+        self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
 
     @inlineCallbacks
     def get_config(self):
@@ -300,14 +286,14 @@ class GNRApplicationLogic(QtCore.QObject):
             logger.error(error_msg)
             return
 
-        tb = self._get_builder(ts)
+        tb = self.get_builder(ts)
         t = Task.build_task(tb)
         ts.task_state.status = TaskStatus.starting
         self.customizer.update_tasks(self.tasks)
 
         self.client.enqueue_new_task(t)
 
-    def _get_builder(self, task_state):
+    def get_builder(self, task_state):
         # FIXME This is just temporary for solution for Brass
         if hasattr(task_state.definition, "renderer"):
             task_state.definition.task_type = task_state.definition.renderer
@@ -473,7 +459,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            tb = self._get_builder(task_state)
+            tb = self.get_builder(task_state)
             t = Task.build_task(tb)
             self.client.run_test_task(t)
 
@@ -495,7 +481,7 @@ class GNRApplicationLogic(QtCore.QObject):
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
 
-        tb = self._get_builder(task_state)
+        tb = self.get_builder(task_state)
         t = Task.build_task(tb)
 
         self.br = BenchmarkRunner(t, self.datadir,

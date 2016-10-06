@@ -16,6 +16,8 @@ MANAGER_ADDRESS = "127.0.0.1"
 ESTIMATED_DEFAULT = 2220.0
 START_PORT = 40102
 END_PORT = 60102
+RPC_ADDRESS = "127.0.0.1"
+RPC_PORT = 60103
 OPTIMAL_PEER_NUM = 10
 MIN_MEMORY_SIZE = 1000 * 1024
 MAX_RESOURCE_SIZE = 2 * 1024 * 1024
@@ -126,6 +128,8 @@ class AppConfig:
                                      dist_res_num=DISTRIBUTED_RES_NUM)
 
         node_config = NodeConfig(node_address="",
+                                 rpc_address=RPC_ADDRESS,
+                                 rpc_port=RPC_PORT,
                                  seed_host="",
                                  seed_port=START_PORT,
                                  num_cores=NUM_CORES,

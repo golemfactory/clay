@@ -1,4 +1,6 @@
 import unittest
+import os
+import time
 
 from golem.core.databuffer import DataBuffer
 from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message, MessageHello
@@ -84,6 +86,25 @@ class TestMessages(unittest.TestCase):
             pass
         assert not serialized
         assert not Message.deserialize_message(None)
+
+    def test_timestamp_and_timezones(self):
+        epoch_t = 1475238345.0
+        def set_tz(tz):
+            os.environ['TZ'] = tz
+            time.tzset()
+        set_tz('Europe/Warsaw')
+        warsaw_time = time.localtime(epoch_t)
+        m = MessageHello(timestamp = epoch_t)
+        db = DataBuffer()
+        m.serialize_to_buffer(db)
+        set_tz('US/Eastern')
+        server = Mock()
+        server.decrypt = lambda x: x
+        msgs = Message.decrypt_and_deserialize(db, server)
+        assert len(msgs) == 1
+        newyork_time = time.localtime(msgs[0].timestamp)
+        assert warsaw_time != newyork_time
+        assert time.gmtime(epoch_t) == time.gmtime(msgs[0].timestamp)
 
     def test_decrypt_and_deserialize(self):
         db = DataBuffer()

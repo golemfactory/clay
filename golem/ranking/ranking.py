@@ -553,15 +553,6 @@ class DiscreteTimeRoundOracle:
     def __time_mod(self):
         return time.time() % self.__sum_time()
 
-    def is_break(self):
-        return self.round_time + self.end_round_time < self.__time_mod()
-
-    def is_round(self):
-        return self.__time_mod() <= self.round_time
-
-    def is_end_round(self):
-        return self.round_time < self.__time_mod() <= self.round_time + self.end_round_time
-
     def sec_to_end_round(self):
         tm = self.__time_mod()
         if self.round_time - tm >= 0:

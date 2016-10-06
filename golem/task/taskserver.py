@@ -753,7 +753,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
-        nodes_with_timeouts = self.task_manager.remove_old_tasks()
+        nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             self.client.decrease_trust(node_id, RankingStats.computed)
 

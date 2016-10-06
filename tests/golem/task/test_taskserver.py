@@ -7,6 +7,7 @@ from mock import Mock, MagicMock, patch, ANY
 
 from stun import FullCone
 
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.p2p.node import Node
@@ -335,7 +336,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts._mark_connected = Mock()
         ts.task_computer = Mock()
         ts.task_manager = Mock()
-        ts.task_manager.remove_old_tasks.return_value = []
+        ts.task_manager.check_timeouts.return_value = []
         ts.task_keeper = Mock()
         ts.task_connections_helper = Mock()
         ts._add_pending_request = Mock()
@@ -562,7 +563,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             "task_owner_port": 10101,
             "task_owner_key_id": "key",
             "task_owner_address": "10.10.10.10",
-            "ttl": 1201,
+            "deadline": timeout_to_deadline(1201),
             "subtask_timeout": 120,
             "max_price": 20,
             "resource_size": 2 * 1024,

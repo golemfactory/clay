@@ -14,8 +14,9 @@ class TaskHeader(object):
         network as an offer for computing nodes
     """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=None, ttl=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
+                 task_owner=None, deadline=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
                  min_version=APP_VERSION, max_price=0.0, docker_images=None, signature=None):
+
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
@@ -24,7 +25,7 @@ class TaskHeader(object):
         self.task_owner = task_owner
         # TODO change last_checking param
         self.last_checking = time.time()
-        self.ttl = ttl
+        self.deadline = deadline
         self.subtask_timeout = subtask_timeout
         self.node_name = node_name
         self.resource_size = resource_size
@@ -53,7 +54,6 @@ class TaskHeader(object):
 
         self_dict.pop('last_checking', None)
         self_dict.pop('signature', None)
-        self_dict.pop('ttl', None)
 
         task_owner = self_dict.get('task_owner')
         if task_owner:

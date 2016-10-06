@@ -45,7 +45,7 @@ class AbsRenderingApplicationLogic(object):
     def _get_new_task_state(self):
         return RenderingTaskState()
 
-    def _get_builder(self, task_state):
+    def get_builder(self, task_state):
         return self.renderers[task_state.definition.renderer].task_builder_type(self.node_name,
                                                                                 task_state.definition,
                                                                                 self.datadir, self.dir_manager)
