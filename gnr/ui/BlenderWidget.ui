@@ -202,7 +202,7 @@
         <bool>false</bool>
        </property>
        <property name="toolTip">
-        <string>Set number of leading zeros in frames name</string>
+        <string>Define length of the padding for frames number</string>
        </property>
        <property name="text">
         <string>Leading zeros</string>
