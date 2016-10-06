@@ -3,6 +3,7 @@ import logging
 import time
 from copy import deepcopy
 
+from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import APP_VERSION
 
 logger = logging.getLogger("golem.task")
@@ -14,7 +15,8 @@ class TaskHeader(object):
     """
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, deadline=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
-                 min_version=APP_VERSION, max_price=0.0, docker_images=None):
+                 min_version=APP_VERSION, max_price=0.0, docker_images=None, signature=None):
+
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
@@ -32,6 +34,41 @@ class TaskHeader(object):
         self.min_version = min_version
         self.docker_images = docker_images
         self.max_price = max_price
+        self.signature = signature
+
+    def to_binary(self):
+        return self.dict_to_binary(vars(self))
+
+    def to_dict(self):
+        return dict(vars(self))
+
+    @staticmethod
+    def from_dict(dictionary):
+        clean = dict(dictionary)
+        clean.pop('last_checking', None)
+        return TaskHeader(**clean)
+
+    @classmethod
+    def dict_to_binary(cls, dictionary):
+        self_dict = dict(dictionary)
+
+        self_dict.pop('last_checking', None)
+        self_dict.pop('signature', None)
+        self_dict.pop('deadline', None)
+
+        task_owner = self_dict.get('task_owner')
+        if task_owner:
+            self_dict['task_owner'] = cls._ordered(vars(task_owner))
+
+        docker_images = self_dict.get('docker_images')
+        if docker_images:
+            self_dict['docker_images'] = [cls._ordered(vars(d)) for d in docker_images]
+
+        return CBORSerializer.dumps(cls._ordered(self_dict))
+
+    @staticmethod
+    def _ordered(dictionary):
+        return sorted(dictionary.items())
 
 
 class TaskBuilder(object):
