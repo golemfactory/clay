@@ -448,7 +448,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
-        tm = TaskManager("ABC", Node(), root_path=self.path)
+
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
 
         count = 3
 
