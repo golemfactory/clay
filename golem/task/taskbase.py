@@ -54,6 +54,7 @@ class TaskHeader(object):
 
         self_dict.pop('last_checking', None)
         self_dict.pop('signature', None)
+        self_dict.pop('deadline', None)
 
         task_owner = self_dict.get('task_owner')
         if task_owner:
