@@ -164,7 +164,7 @@ class TaskServer(PendingConnectionsServer):
                         "port": th.task_owner_port,
                         "key_id": th.task_owner_key_id,
                         "task_owner": th.task_owner,
-                        "ttl": th.ttl,
+                        "deadline": th.deadline,
                         "subtask_timeout": th.subtask_timeout,
                         "node_name": th.node_name,
                         "environment": th.environment,
@@ -758,7 +758,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
-        nodes_with_timeouts = self.task_manager.remove_old_tasks()
+        nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             self.client.decrease_trust(node_id, RankingStats.computed)
 

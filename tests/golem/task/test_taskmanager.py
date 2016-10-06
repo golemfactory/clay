@@ -1,9 +1,10 @@
 import time
 import uuid
+from datetime import timedelta
 
 from mock import Mock, patch
 
-from golem.core.common import timeout_to_deadline
+from golem.core.common import get_current_time, timeout_to_deadline
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
@@ -24,12 +25,14 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.addr_return = ("10.10.10.10", 1111, "Full NAT")
 
     @staticmethod
-    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", subtask_timeout=120):
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", timeout=120, subtask_timeout=120):
         task_mock = Mock()
         task_mock.header.task_id = task_id
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
+        task_mock.header.deadline = timeout_to_deadline(timeout)
+        task_mock.header.subtask_timeout = subtask_timeout
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -338,18 +341,32 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert self.tm.listeners[0].notice_task_updated.called_with("xyz")
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_remove_old_tasks(self, mock_addr):
+    def test_check_timeouts(self, mock_addr):
         mock_addr.return_value = self.addr_return
         self.tm.listeners.append(Mock())
-        t = Task(Mock(), "")
-        t.header.task_id = "xyz"
-        t.header.ttl = 0.5
-        t.header.last_checking = time.time()
+        # Task with timeout
+        t = self._get_task_mock(timeout=0.1)
         self.tm.add_new_task(t)
         assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
-        time.sleep(1)
-        self.tm.remove_old_tasks()
-        assert self.tm.tasks.get('xyz') is None
+        time.sleep(0.1)
+        self.tm.check_timeouts()
+        assert self.tm.tasks_states['xyz'].status == TaskStatus.timeout
+        # Task with subtask timeout
+        t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc", timeout=10, subtask_timeout=0.1)
+        self.tm.add_new_task(t2)
+        self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(0.1)
+        self.tm.check_timeouts()
+        assert self.tm.tasks_states["abc"].status == TaskStatus.waiting
+        assert self.tm.tasks_states["abc"].subtask_states["aabbcc"].subtask_status == SubtaskStatus.failure
+        # Task with task and subtask timeout
+        t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty", timeout=0.1, subtask_timeout=0.1)
+        self.tm.add_new_task(t3)
+        self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
+        time.sleep(0.1)
+        self.tm.check_timeouts()
+        assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
+        assert self.tm.tasks_states["qwe"].subtask_states["qwerty"].subtask_status == SubtaskStatus.failure
 
     def test_task_event_listener(self):
         self.tm.notice_task_updated = Mock()
@@ -464,6 +481,19 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert task_subtasks
         assert isinstance(task_subtasks, list)
         assert all([isinstance(t, dict) for t in task_subtasks])
+
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_change_timeouts(self, mock_addr):
+        mock_addr.return_value = self.addr_return
+        t = self._get_task_mock(timeout=20, subtask_timeout=40)
+        self.tm.add_new_task(t)
+        assert get_current_time() + timedelta(seconds=15) <= t.header.deadline
+        assert t.header.deadline <= get_current_time() + timedelta(seconds=20)
+        assert t.header.subtask_timeout == 40
+        self.tm.change_timeouts("xyz", 60, 10)
+        assert get_current_time() + timedelta(seconds=55) <= t.header.deadline
+        assert t.header.deadline <= get_current_time() + timedelta(seconds=60)
+        assert t.header.subtask_timeout == 10
 
     @classmethod
     def __build_tasks(cls, n):
