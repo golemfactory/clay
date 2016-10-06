@@ -3,6 +3,7 @@ import time
 import random
 import operator
 import datetime
+from threading import Lock
 
 from twisted.internet.task import deferLater
 from itertools import izip
@@ -158,10 +159,7 @@ MAX_STEPS = 10
 EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
-""" Ranking class
 
-Ranking class is thread-safe
-"""
 class Ranking(object):
     def __init__(self, client, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
                  min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
@@ -192,6 +190,7 @@ class Ranking(object):
         self.initLocRankPush = True
         self.prev_loc_rank = {}
         self.loc_rank_push_delta = loc_rank_push_delta
+        self.lock = Lock()
 
     def run(self, reactor):
         self.reactor = reactor
@@ -210,13 +209,14 @@ class Ranking(object):
             deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
     def __init_working_vec(self):
-        self.working_vec = {}
-        self.prevRank = {}
-        for loc_rank in self.db.get_all_local_rank():
-            comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
-            req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
-            self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
-            self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
+        with self.lock:
+            self.working_vec = {}
+            self.prevRank = {}
+            for loc_rank in self.db.get_all_local_rank():
+                comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
+                req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
+                self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
+                self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
     def __new_round(self):
         logger.debug("New gossip round")
@@ -262,30 +262,32 @@ class Ranking(object):
 
     # thread-safe
     def increase_trust(self, node_id, stat, mod):
-        if stat == RankingStats.computed:
-            self.db.increase_positive_computing(node_id, mod)
-        elif stat == RankingStats.requested:
-            self.db.increase_positive_requested(node_id, mod)
-        elif stat == RankingStats.payment:
-            self.db.increase_positive_payment(node_id, mod)
-        elif stat == RankingStats.resource:
-            self.db.increase_positive_resource(node_id, mod)
-        else:
-            logger.error("Wrong stat type {}".format(stat))
+        with self.lock:
+            if stat == RankingStats.computed:
+                self.db.increase_positive_computing(node_id, mod)
+            elif stat == RankingStats.requested:
+                self.db.increase_positive_requested(node_id, mod)
+            elif stat == RankingStats.payment:
+                self.db.increase_positive_payment(node_id, mod)
+            elif stat == RankingStats.resource:
+                self.db.increase_positive_resource(node_id, mod)
+            else:
+                logger.error("Wrong stat type {}".format(stat))
 
     def decrease_trust(self, node_id, stat, mod):
-        if stat == RankingStats.computed:
-            self.db.increase_negative_computing(node_id, mod)
-        elif stat == RankingStats.wrong_computed:
-            self.db.increase_wrong_computed(node_id, mod)
-        elif stat == RankingStats.requested:
-            self.db.increase_negative_requested(node_id, mod)
-        elif stat == RankingStats.payment:
-            self.db.increase_negative_payment(node_id, mod)
-        elif stat == RankingStats.resource:
-            self.db.increase_negative_resource(node_id, mod)
-        else:
-            logger.error("Wrong stat type {}".format(stat))
+        with self.lock:
+            if stat == RankingStats.computed:
+                self.db.increase_negative_computing(node_id, mod)
+            elif stat == RankingStats.wrong_computed:
+                self.db.increase_wrong_computed(node_id, mod)
+            elif stat == RankingStats.requested:
+                self.db.increase_negative_requested(node_id, mod)
+            elif stat == RankingStats.payment:
+                self.db.increase_negative_payment(node_id, mod)
+            elif stat == RankingStats.resource:
+                self.db.increase_negative_resource(node_id, mod)
+            else:
+                logger.error("Wrong stat type {}".format(stat))
 
     def get_computing_trust(self, node_id):
         local_rank = self.__get_loc_computing_trust(node_id)
@@ -324,8 +326,9 @@ class Ranking(object):
     def sync_network(self):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
         for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
-            self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
-                                                        about_id, loc_rank)
+            with self.lock:
+                self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
+                                                            about_id, loc_rank)
 
     def __get_loc_computing_trust(self, node_id):
         local_rank = self.db.get_local_rank(node_id)
