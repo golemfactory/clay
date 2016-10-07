@@ -1673,6 +1673,53 @@ class MessageCannotComputeTask(Message):
         return {MessageCannotComputeTask.REASON_STR: self.reason,
                 MessageCannotComputeTask.SUBTASK_ID_STR: self.subtask_id}
 
+
+class MessageContestWinner(Message):
+    Type = TASK_MSG_BASE + 27
+
+    TASK_ID_STR = u"TASK_ID"
+
+    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that node is starting task computation
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageContestWinner.Type, sig, timestamp)
+
+        self.task_id = task_id
+
+        if dict_repr:
+            self.task_id = dict_repr[MessageContestWinner.TASK_ID_STR]
+
+    def dict_repr(self):
+        return {MessageContestWinner.TASK_ID_STR: self.task_id}
+
+
+class MessageContestWinnerAck(Message):
+    Type = TASK_MSG_BASE + 28
+
+    TASK_ID_STR = u"TASK_ID"
+
+    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Message informs that node is starting task computation
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageContestWinnerAck.Type, sig, timestamp)
+
+        self.task_id = task_id
+
+        if dict_repr:
+            self.task_id = dict_repr[MessageContestWinnerAck.TASK_ID_STR]
+
+    def dict_repr(self):
+        return {MessageContestWinnerAck.TASK_ID_STR: self.task_id}
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1908,6 +1955,8 @@ def init_messages():
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
+    MessageContestWinner()
+    MessageContestWinnerAck()
 
     # Resource messages
     MessageGetResource()
