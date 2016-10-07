@@ -11,7 +11,8 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask
+    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask, \
+    MessageContestWinnerAck, MessageContestWinner
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
@@ -86,6 +87,8 @@ class TaskSession(MiddlemanSafeSession):
         MiddlemanSafeSession.dropped(self)
         if self.task_server:
             self.task_server.remove_task_session(self)
+        if self.task_manager:
+            self.task_manager.contest_manager.remove_contender(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -243,6 +246,7 @@ class TaskSession(MiddlemanSafeSession):
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
+        self.task_id = task_id
         self.send(MessageWantToComputeTask(node_name, task_id, performance_index, price,
                                            max_resource_size, max_memory_size, num_cores))
 
@@ -309,6 +313,22 @@ class TaskSession(MiddlemanSafeSession):
             send_unverified=True
         )
 
+    def send_contest_winner(self, task_id):
+        self.send(MessageContestWinner(task_id))
+
+    def send_task_to_compute(self, msg_dict_repr):
+        ctd = self.task_manager.get_next_subtask(self.key_id,
+                                                 msg_dict_repr['node_name'], msg_dict_repr['task_id'],
+                                                 msg_dict_repr['perf_index'], msg_dict_repr['price'],
+                                                 msg_dict_repr['max_res'], msg_dict_repr['max_mem'],
+                                                 msg_dict_repr['num_cores'],
+                                                 self.address)
+        self.send(MessageTaskToCompute(ctd))
+
+    def send_cannot_assign_task(self, task_id, reason=None):
+        self.send(MessageCannotAssignTask(task_id, reason or "Unspecified"))
+        self.disconnect(self.DCRNoMoreMessages)
+
     def send_start_session_response(self, conn_id):
         """ Inform that this session was started as an answer for a request to start task session
         :param uuid conn_id: connection id for reference
@@ -349,25 +369,45 @@ class TaskSession(MiddlemanSafeSession):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        trust = self.task_server.get_computing_trust(self.key_id)
-        logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.config_desc.computing_trust:
-            ctd, wrong_task, wait = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id,
-                                                                       msg.perf_index, msg.price, msg.max_resource_size,
-                                                                       msg.max_memory_size, msg.num_cores, self.address)
-        else:
-            ctd, wrong_task, wait = None, False, False
 
-        if wrong_task:
+        trust = self.task_server.get_computing_trust(self.key_id)
+        self.task_id = msg.task_id
+
+        logger.debug("Computing trust level: {}".format(trust))
+
+        if not self.task_manager.has_task(msg.task_id):
+            logger.debug("Cannot assign task {}".format(msg.task_id))
             self.send(MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
             self.dropped()
-        elif ctd:
-            self.send(MessageTaskToCompute(ctd))
-        elif wait:
-            self.send(MessageWaitingForResults())
-        else:
+
+        elif not self.task_manager.has_subtasks(msg.task_id, msg.max_resource_size, msg.max_memory_size, msg.price):
+            logger.debug("No subtasks {}".format(msg.task_id))
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
             self.dropped()
+
+        elif trust < self.task_server.config_desc.computing_trust:
+            logger.debug("Reputation too low {}".format(msg.task_id))
+            self.send(MessageCannotAssignTask(msg.task_id, "Reputation too low (min {}, got {})"
+                                              .format(self.task_server.config_desc.computing_trust, trust)))
+            self.dropped()
+
+        elif self.task_manager.is_finishing(self.key_id, msg.task_id):
+            logger.debug("Waiting for results {}".format(msg.task_id))
+            self.send(MessageWaitingForResults())
+
+        else:
+            logger.debug("Adding contender for task {}".format(msg.task_id))
+            params = {k.lower(): v for k, v in msg.dict_repr().iteritems()}  # FIXME
+            params['computing_trust'] = self.task_server.client.get_computing_trust(self.key_id) or 0.
+            self.task_manager.contest_manager.add_contender(msg.task_id, self.key_id, session=self, params=params)
+
+    def _react_to_contest_winner(self, msg):
+        if self.task_id == msg.task_id:
+            self.send(MessageContestWinnerAck(msg.task_id))
+
+    def _react_to_contest_winner_ack(self, msg):
+        if self.task_id == msg.task_id:
+            self.task_manager.contest_manager.winner_acknowledgment(msg.task_id, self.key_id)
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
@@ -386,6 +426,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:
+            self.task_manager.contest_manager.remove_contender(self.key_id)
             self.task_manager.task_computation_failure(msg.subtask_id,
                                                        'Task computation rejected: {}'.format(msg.reason))
         self.dropped()
@@ -694,6 +735,8 @@ class TaskSession(MiddlemanSafeSession):
             MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
             MessageCannotComputeTask.Type: self._react_to_cannot_compute_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
+            MessageContestWinner.Type: self._react_to_contest_winner,
+            MessageContestWinnerAck.Type: self._react_to_contest_winner_ack,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
             MessageTaskResultHash.Type: self._react_to_task_result_hash,
             MessageGetResource.Type: self._react_to_get_resource,
