@@ -15,7 +15,6 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from golem.resource.dirmanager import get_test_task_path, find_task_script
-from apps.rendering.task.renderingtask import AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 
 
@@ -255,18 +254,12 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning("Client {} banned from this task".format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
+        self._accept_client(node_id)
 
         start_task, end_task = self._get_next_task()
+        if start_task is None or end_task is None:
+            return None
+
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
 
@@ -315,8 +308,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-        return self.ExtraData(ctd=ctd)
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def restart(self):
         super(BlenderRenderTask, self).restart()

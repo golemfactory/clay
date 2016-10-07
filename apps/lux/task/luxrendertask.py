@@ -17,8 +17,9 @@ from apps.core.task.gnrtask import GNROptions
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
-from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
+from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
+
 
 logger = logging.getLogger("apps.lux")
 
@@ -176,32 +177,19 @@ class LuxTask(RenderingTask):
         self.preview_exr = None
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning("Client {} banned from this task".format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
-        if start_task is None or end_task is None:
+        if not (start_task and end_task):
             logger.error("Task already computed")
-            return self.ExtraData()
+            return None
 
-        working_directory = self._get_working_directory()
-        min_x = 0
-        max_x = 1
-        min_y = (start_task - 1) * (1.0 / float(self.total_tasks))
-        max_y = end_task * (1.0 / float(self.total_tasks))
+        self._accept_client(node_id)
 
         if self.halttime > 0:
             write_interval = int(self.halttime / 2)
         else:
             write_interval = 60
+
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, self.halttime, self.haltspp,
                                         write_interval, [0, 1, 0, 1], self.output_format)
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
@@ -225,8 +213,8 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
 
-        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-        return self.ExtraData(ctd=ctd)
+        working_directory = self._get_working_directory()
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
