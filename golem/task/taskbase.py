@@ -71,14 +71,6 @@ class TaskEventListener(object):
 
 class Task(object):
 
-    class ExtraData(object):
-        def __init__(self, should_wait=False, ctd=None, **kwargs):
-            self.should_wait = should_wait
-            self.ctd = ctd
-
-            for key, value in kwargs.iteritems():
-                setattr(self, key, value)
-
     @classmethod
     def build_task(cls, task_builder):
         assert isinstance(task_builder, TaskBuilder)

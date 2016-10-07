@@ -10,7 +10,6 @@ from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder
 from gnr.task.gnrtask import GNROptions
-from gnr.task.renderingtask import AcceptClientVerdict
 from gnr.task.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 from golem.task.taskstate import SubtaskStatus
@@ -255,16 +254,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning("Client {} banned from this task".format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
+        self._accept_client(node_id)
 
         start_task, end_task = self._get_next_task()
         working_directory = self._get_working_directory()
@@ -310,8 +300,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
-        return self.ExtraData(ctd=ctd)
+        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
 
     def restart(self):
         super(BlenderRenderTask, self).restart()
