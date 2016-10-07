@@ -7,11 +7,11 @@ from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.task.contest import ContestManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
-
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,7 @@ class TaskManager(TaskEventListener):
         resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
                                                          resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
+        self.contest_manager = ContestManager(self.tasks, contest_duration=3)
 
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
@@ -132,6 +133,9 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
+    def has_task(self, task_id):
+        return task_id in self.tasks
+
     def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, price, max_resource_size,
                          max_memory_size, num_cores=0, address=""):
         """ Assign next subtask from task <task_id> to node with given id <node_id> and name. If subtask is assigned
@@ -151,40 +155,31 @@ class TaskManager(TaskEventListener):
         False (regardless new subtask was assigned or not). The third element describes whether we're waiting for
         client's other task results.
         """
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
-            ts = self.tasks_states[task_id]
-            th = task.header
-            should_wait = False
 
-            if th.max_price < price:
-                return None, False, should_wait
+        if not self.has_subtasks(task_id, max_resource_size, max_memory_size, price):
+            # should not reach this point
+            logger.error("No more subtasks in task {}".format(task_id))
+            return None
 
-            if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
-                extra_data = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
+        task = self.tasks[task_id]
+        th = task.header
+        ctd = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
 
-                should_wait = extra_data.should_wait
-                ctd = extra_data.ctd
+        if not self._check_compute_task_def(ctd, task_id):
+            # dev error
+            logger.error("Invalid ComputeTaskDef for task {}".format(task_id))
+            return None
 
-                if should_wait:
-                    return None, False, True
-                elif not self._check_compute_task_def(ctd, task_id):
-                    return None, False, False
+        ctd.key_id = th.task_owner_key_id
+        ctd.return_address = th.task_owner_address
+        ctd.return_port = th.task_owner_port
+        ctd.task_owner = th.task_owner
 
-                ctd.key_id = th.task_owner_key_id
-                ctd.return_address = th.task_owner_address
-                ctd.return_port = th.task_owner_port
-                ctd.task_owner = th.task_owner
-                self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
-                self.notice_task_updated(task_id)
-                return ctd, False, should_wait
+        self.subtask2task_mapping[ctd.subtask_id] = task_id
+        self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
+        self.notice_task_updated(task_id)
 
-            logger.info("Cannot get next task for estimated performance {}".format(estimated_performance))
-            return None, False, should_wait
-        else:
-            logger.info("Cannot find task {} in my tasks".format(task_id))
-            return None, True, False
+        return ctd
 
     def get_tasks_headers(self):
         ret = []
@@ -269,6 +264,7 @@ class TaskManager(TaskEventListener):
                 if self.tasks[task_id].verify_task():
                     logger.debug("Task {} accepted".format(task_id))
                     self.tasks_states[task_id].status = TaskStatus.finished
+                    self.contest_manager.finish(task_id)
                 else:
                     logger.debug("Task {} not accepted".format(task_id))
         self.notice_task_updated(task_id)
@@ -392,6 +388,7 @@ class TaskManager(TaskEventListener):
             del self.subtask2task_mapping[sub.subtask_id]
         self.tasks_states[task_id].subtask_states.clear()
 
+        self.contest_manager.finish(task_id)
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
@@ -418,6 +415,7 @@ class TaskManager(TaskEventListener):
         del self.tasks[task_id]
         del self.tasks_states[task_id]
 
+        self.contest_manager.finish(task_id)
         self.dir_manager.clear_temporary(task_id)
 
     @handle_task_key_error
@@ -533,7 +531,11 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
-    def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
+    def has_subtasks(self, task_id, max_resource_size, max_memory_size, price):
+
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+
         if task_state.status not in self.activeStatus:
             return False
         if not task.needs_computation():
@@ -542,4 +544,23 @@ class TaskManager(TaskEventListener):
             return False
         if task.header.estimated_memory > (long(max_memory_size) * 1024):
             return False
-        return True
+        if task.header.max_price < price:
+            return False
+
+        return task.has_next_task()
+
+    def is_finishing(self, task_id, node_id):
+
+        if task_id not in self.tasks:
+            return False
+
+        task = self.tasks[task_id]
+        task_client = task.counting_nodes.get(node_id)
+
+        if not task_client:
+            return False
+
+        finishing = task_client.finishing()
+        max_finishing = task.max_pending_client_results
+
+        return finishing >= max_finishing or task_client.started() - finishing >= max_finishing
