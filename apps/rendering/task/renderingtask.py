@@ -223,7 +223,7 @@ class RenderingTask(GNRTask):
         ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
         return ctd
 
-    def has_next_task(self):
+    def has_next_subtask(self):
         return self.last_task != self.total_tasks or any(
             sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]
             for sub in self.subtasks_given.values()

@@ -165,8 +165,12 @@ class DummyTask(Task):
             'result_size': self.task_params.result_size,
             'result_file': 'result.' + subtask_id[0:6]
         }
-
-        return self.ExtraData(ctd=subtask_def)
+        subtask_def.task_owner = self.header.task_owner
+        subtask_def.environment = self.header.environment
+        subtask_def.return_address = self.header.task_owner_address
+        subtask_def.return_port = self.header.task_owner_port
+        subtask_def.deadline = timeout_to_deadline(5 * 60)
+        return subtask_def
 
     def verify_task(self):
         # Check if self.subtask_results contains a non None result

@@ -588,6 +588,7 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
+    @handle_task_key_error
     def has_subtasks(self, task_id, max_resource_size, max_memory_size, price):
 
         task = self.tasks[task_id]
@@ -604,7 +605,7 @@ class TaskManager(TaskEventListener):
         if task.header.max_price < price:
             return False
 
-        return task.has_next_task()
+        return task.has_next_subtask()
 
     def is_finishing(self, task_id, node_id):
 

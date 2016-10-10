@@ -84,8 +84,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
-        extra_data = render_task.query_extra_data(1.0)
-        ctd = extra_data.ctd
+        ctd = render_task.query_extra_data(1.0)
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
@@ -149,8 +148,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
-        extra_data = task.query_extra_data(10000)
-        ctd = extra_data.ctd
+        ctd = task.query_extra_data(10000)
 
         copied_file = path.join(path.dirname(test_file), "newfile.flm")
         new_file = path.join(path.dirname(test_file), ctd.subtask_id, "newfile.flm")
@@ -168,16 +166,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
         assert task.verify_subtask(ctd.subtask_id)
 
-        extra_data = task.query_extra_data(10000, node_id="Bla")
-        ctd = extra_data.ctd
+        ctd = task.query_extra_data(10000, node_id="Bla")
         task.advanceVerification = True
         bad_file = path.join(path.dirname(test_file), "badfile.flm")
         open(bad_file, "w").close()
         task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
         assert not task.verify_subtask(ctd.subtask_id)
 
-        extra_data = task.query_extra_data(10000)
-        ctd = extra_data.ctd
+        ctd = task.query_extra_data(10000)
         shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
         remove_copied_file()
@@ -185,8 +181,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         assert task.verify_subtask(ctd.subtask_id)
         shutil.move(test_file + "copy", test_file)
 
-        extra_data = task.query_extra_data(10)
-        ctd = extra_data.ctd
+        ctd = task.query_extra_data(10)
         shutil.copy(test_file, new_file)
         remove_copied_file()
         assert task.num_tasks_received == 2
@@ -206,8 +201,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         assert not task.verify_task()
         remove(outfile)
         task.advanceVerification = False
-        extra_data = task.query_extra_data(10)
-        ctd = extra_data.ctd
+        ctd = task.query_extra_data(10)
         shutil.copy(test_file, new_file)
         remove_copied_file()
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])

@@ -254,14 +254,17 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        self._accept_client(node_id)
-
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             return None
 
         working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
+
+        if start_task is None or end_task is None:
+            return None
+
+        self._accept_client(node_id)
 
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
