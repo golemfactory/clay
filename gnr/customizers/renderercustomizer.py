@@ -13,8 +13,6 @@ logger = logging.getLogger("gnr.gui")
 
 class RendererCustomizer(Customizer):
     def __init__(self, gui, logic):
-        self._last_scene_path = ""
-        self._last_output_path = ""
         self.renderer_options = logic.renderer_options
         Customizer.__init__(self, gui, logic)
 
