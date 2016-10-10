@@ -8,10 +8,10 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
-from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
+from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, ANY, call
 from twisted.internet.defer import Deferred
 
 
@@ -108,7 +108,7 @@ class MockRPCCallChain(object):
         return MockDeferred(self.results)
 
 
-class MockRPCClient(ServiceMethodNamesProxy):
+class MockRPCClient(RPCProxyClient):
     def __init__(self, service):
         self.methods = ServiceHelper.to_dict(service)
 
@@ -316,3 +316,12 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic.clone_task("xyz")
 
         assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
+    def test_main_window(self):
+        self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
+        self.app.main_window.show()
+
+        n = self.app.main_window.ui.taskTableWidget.columnCount()
+
+        set_width = self.app.main_window.ui.taskTableWidget.setColumnWidth
+        set_width.assert_has_calls([call(i, ANY) for i in xrange(0, n)])

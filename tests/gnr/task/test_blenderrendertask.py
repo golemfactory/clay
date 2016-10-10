@@ -369,7 +369,7 @@ class TestPreviewUpdater(TempDirFixture):
         preview_file = self.temp_file_name('sample_img.png')
         res_x = 200
 
-        for chunks in range(1, 100):
+        for chunks in range(1, 13):
             res_y = 0
             expected_offsets = {}
             chunks_sizes = {}

@@ -465,8 +465,6 @@ class PackageCreator(Command):
             cmd += ['--init-script', self.init_script]
 
         os.chdir(self.setup_dir)
-
-        import subprocess
         subprocess.check_call(cmd)
 
         base_dir = os.path.join(self.setup_dir, 'build')
@@ -478,8 +476,8 @@ class PackageCreator(Command):
         for _exe_dir in exe_dirs:
             exe_dir = os.path.join(base_dir, _exe_dir)
             lib_dir = os.path.join(exe_dir, 'lib')
-
             x_dir = self._extract_modules(exe_dir, lib_dir)
+
             if not x_dir:
                 raise EnvironmentError("Invalid module archive")
 
@@ -522,20 +520,16 @@ class PackageCreator(Command):
     def _extract_modules(self, exe_dir, lib_dir):
         for zipped in self.extract_modules:
 
-            name = zipped.name
-            exclude = zipped.exclude
             src_dir = lib_dir if zipped.in_lib_dir else exe_dir
+            src_file = os.path.join(src_dir, zipped.name)
 
-            src_file = os.path.join(src_dir, name)
             dest_dir = ''.join('python' + self.py_v)
             dest_path = os.path.join(lib_dir, dest_dir)
 
             if os.path.exists(src_file):
                 self._unzip(src_file, dest_path)
-                self._clean_zip(src_file, exclude)
+                self._clean_zip(src_file, zipped.exclude)
                 return dest_path
-
-        return None
 
     def _find_lib(self, lib):
         if not lib:
@@ -622,11 +616,12 @@ class PackageCreator(Command):
 
     @staticmethod
     def _remove_duplicate_lib(lib, dirs):
-        for dir in dirs:
-            if lib and dir:
-                libpath = os.path.join(dir, lib)
-                if os.path.exists(libpath):
-                    os.remove(libpath)
+        if not lib:
+            return
+        for d in dirs:
+            lib_path = os.path.join(d, lib)
+            if os.path.exists(lib_path):
+                os.remove(lib_path)
 
     def _create_files(self, exe_dir, x_dir):
         for entry in self.create_files:
@@ -657,6 +652,7 @@ class PackageCreator(Command):
             if isinstance(module, DirPackage):
                 if module.skip_platform(self.platform):
                     continue
+
                 dst_dir = x_dir if module.use_lib_dir else exe_dir
                 self._copy_module(module.name, dst_dir, lib_dir,
                                   module.location_resolver)
@@ -712,24 +708,27 @@ class PackageCreator(Command):
             method(self, exe_dir, lib_dir, x_dir)
 
     @staticmethod
-    def _clean_zip(src_file, entry):
+    def _clean_zip(src_file, exclude):
         import zipfile
         import uuid
 
-        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', entry.split('.')[0]]
+        if not isinstance(exclude, list):
+            exclude = [exclude]
+
+        white_list = ['BUILD_CONSTANTS', 'cx_Freeze'] + [entry.split('.')[0] for entry in exclude]
         tmp_file = src_file + "-" + str(uuid.uuid4())
 
-        zin = zipfile.ZipFile(src_file, 'r')
-        zout = zipfile.ZipFile(tmp_file, 'w')
+        zip_in = zipfile.ZipFile(src_file, 'r')
+        zip_out = zipfile.ZipFile(tmp_file, 'w')
 
-        for item in zin.infolist():
-            buf = zin.read(item.filename)
+        for item in zip_in.infolist():
+            buf = zip_in.read(item.filename)
             for w in white_list:
                 if item.filename.startswith(w):
-                    zout.writestr(item, buf)
+                    zip_out.writestr(item, buf)
 
-        zout.close()
-        zin.close()
+        zip_out.close()
+        zip_in.close()
 
         os.remove(src_file)
         shutil.move(tmp_file, src_file)
@@ -1064,10 +1063,12 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
         copy_tree(runner_scripts_dir, pack_dir, update=True)
 
         if creator.platform == 'win':
-            script = 'golem.sh'
+            scripts = ['golem.sh', 'cli.sh']
         else:
-            script = 'golem.cmd'
-        os.remove(os.path.join(pack_dir, script))
+            scripts = ['golem.cmd', 'cli.cmd']
+
+        for script in scripts:
+            os.remove(os.path.join(pack_dir, script))
 
         for full_path, docker_file in docker_files:
             dst_path = os.path.join(pack_docker_dir, docker_file)
@@ -1087,9 +1088,9 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
         if os.path.exists(file_name):
             os.remove(file_name)
 
-        zipf = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
-        zip_dir(package_subdir, zipf)
-        zipf.close()
+        zip_f = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
+        zip_dir(package_subdir, zip_f)
+        zip_f.close()
 
         os.chdir(cwd)
 
@@ -1174,9 +1175,22 @@ def update_cx_freeze_config(options):
         options.update(linux_exe_options)
 
 
-base = 'Console'
-entrypoint = 'golemapp.py'
 update_cx_freeze_config(exe_options)
+
+apps = [
+    {
+        'base': 'Console',
+        'script': 'golemapp.py',
+        'init_script': 'Console.py'
+    },
+    {
+        'base': 'Console',
+        'script': 'golemcli.py',
+        'init_script': 'Console.py'
+    }
+]
+
+app_scripts = [app['script'] for app in apps]
 
 build_options = {
     "build_exe": exe_options,
@@ -1221,13 +1235,13 @@ build_options = {
             "gettext", "copy", "locale", "functools", 'pprint'
         ],
         # Extract files zipped by cx_Freeze
-        # Files beside *.py may not be resolved from an archive
+        # Files other than *.py will not load from an archive
         'extract_modules': [
             ZippedPackage("python" + PackageCreator.py_v + ".zip",
-                          exclude=entrypoint,
+                          exclude=app_scripts,
                           in_lib_dir=True),
             ZippedPackage("library.zip",
-                          exclude=entrypoint,
+                          exclude=app_scripts,
                           in_lib_dir=False)
         ],
         # Patch missing module files
@@ -1249,16 +1263,16 @@ build_options = {
             'linux': [
                 '_sha3.so',
                 '_cffi_backend.so',
+                'OpenEXR.so',
+                'netifaces.so',
+                'ld-linux-x86-64.so.*',
                 'libstdc++*',
                 'libc.so*',
                 'libpython2.7.so.1.0',
-                'ld-linux-x86-64.so.*',
                 'libHalf.so.*',
                 'libffi.so.*',
                 'libgssapi_krb5.so.*',
                 'libz.so.1',
-                'OpenEXR.so',
-                'netifaces.so',
                 'libraw.so.*',
                 'libgmp.so.*',
                 'libpng12.so.0',
@@ -1268,6 +1282,7 @@ build_options = {
                 'libpangoft2-1.0.so.0',
                 'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
+                'readline.x86_64-linux-gnu.so',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
@@ -1330,10 +1345,9 @@ build_options = {
 
 def update_setup_config(setup_dir, options=None, cmdclass=None, executables=None):
 
-    init_script = os.path.join(setup_dir, 'scripts', 'packaging',
-                               'cx_Freeze', 'initscripts', 'ConsoleCustom.py')
+    init_script_dir = os.path.join(setup_dir, 'scripts', 'packaging', 'cx_Freeze', 'initscripts')
 
-    PackageCreator.init_script = init_script
+    PackageCreator.init_script = os.path.join(init_script_dir, 'Console.py')
     PackageCreator.setup_dir = setup_dir
 
     if options is not None:
@@ -1343,8 +1357,9 @@ def update_setup_config(setup_dir, options=None, cmdclass=None, executables=None
         cmdclass.update({'pack': PackageCreator})
 
     if executables is not None:
-        executables.append(Executable(
-            base=base,
-            script=entrypoint,
-            initScript=init_script,
-        ))
+        for app in apps:
+            executables.append(Executable(
+                base=app['base'],
+                script=app['script'],
+                initScript=os.path.join(init_script_dir, app['init_script']),
+            ))

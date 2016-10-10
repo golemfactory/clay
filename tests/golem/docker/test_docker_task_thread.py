@@ -17,6 +17,8 @@ class TestDockerTaskThread(TestDockerJob):
 
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
+        task_server.config_desc.estimated_blender_performance = 2000.0
+        task_server.config_desc.estimated_lux_performance = 2000.0
         task_server.client.datadir = self.test_dir
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = task_server.client.datadir

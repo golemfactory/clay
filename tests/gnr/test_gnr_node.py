@@ -97,7 +97,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, self.args + ['--peer', addr1], catch_exceptions=False)
         assert mock_node.called
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
+        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().connect_with_peers' in call_names)
         peer_num = call_names.index('().connect_with_peers')
@@ -113,7 +113,7 @@ class TestNode(TestWithDatabase):
         args = self.args + ['--peer', addr1, '--peer', addr2]
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
+        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().connect_with_peers' in call_names)
         peer_num = call_names.index('().connect_with_peers')
@@ -141,7 +141,7 @@ class TestNode(TestWithDatabase):
             catch_exceptions=False
         )
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(), call().add_tasks([])], any_order=True)
+        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().connect_with_peers' in call_names)
         peer_num = call_names.index('().connect_with_peers')
@@ -167,7 +167,7 @@ class TestNode(TestWithDatabase):
         args = self.args + ['--task', dump, '--task', dump]
         return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run()])
+        mock_node.assert_has_calls([call().run(use_rpc=True)])
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().add_tasks' in call_names)
         task_num = call_names.index('().add_tasks')
@@ -193,7 +193,7 @@ class TestNode(TestWithDatabase):
             return_value = runner.invoke(start, args, catch_exceptions=False)
             self.assertEqual(return_value.exit_code, 0)
 
-            mock_node.assert_has_calls([call().run()])
+            mock_node.assert_has_calls([call().run(use_rpc=True)])
             call_names = [name for name, arg, kwarg in mock_node.mock_calls]
             self.assertTrue('().add_tasks' in call_names)
             add_tasks_num = call_names.index('().add_tasks')

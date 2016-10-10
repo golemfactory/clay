@@ -11,7 +11,7 @@ from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.fileshelper import get_dir_size
+from golem.core.fileshelper import get_dir_size, du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 
@@ -37,23 +37,6 @@ class ConfigurationDialogCustomizer(Customizer):
             self.docker_config_changed = False
 
         self.logic.get_config().addCallback(load)
-
-    @staticmethod
-    def du(path):
-        """ Imitates bash "du -h <path>" command behaviour. Returns the estiamted size of this directory
-        :param str path: path to directory which size should be measured
-        :return str: directory size in human readeable format (eg. 1 Mb) or "-1" if an error occurs.
-        """
-        try:
-            size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
-        except (OSError, subprocess.CalledProcessError):
-            try:
-                size = int(get_dir_size(path))
-            except OSError as err:
-                logger.info("Can't open dir {}: {}".format(path, str(err)))
-                return "-1"
-        human_readable_size, idx = dir_size_to_display(size)
-        return "{} {}".format(human_readable_size, translate_resource_index(idx))
 
     def _setup_connections(self):
         self.gui.ui.recountButton.clicked.connect(self.__recount_performance)
@@ -216,12 +199,12 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __refresh_disk_received(self):
         def change(res_dirs):
-            self.gui.ui.receivedResSize.setText(self.du(res_dirs['received']))
+            self.gui.ui.receivedResSize.setText(du(res_dirs['received']))
         self.logic.get_res_dirs().addCallback(change)
 
     def __refresh_disk_computed(self):
         def change(res_dirs):
-            self.gui.ui.computingResSize.setText(self.du(res_dirs['computing']))
+            self.gui.ui.computingResSize.setText(du(res_dirs['computing']))
         self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):

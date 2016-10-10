@@ -7,6 +7,7 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.ranking import RankingStats
+from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from taskcomputer import TaskComputer
 from taskkeeper import TaskHeaderKeeper
@@ -26,8 +27,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.node = node
         self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
-        self.task_manager = TaskManager(config_desc.node_name, self.node,
-                                        key_id=self.keys_auth.get_key_id(),
+        self.task_manager = TaskManager(config_desc.node_name, self.node, self.keys_auth,
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
                                         use_distributed_resources=config_desc.use_distributed_resource_management)
         self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
@@ -155,34 +155,29 @@ class TaskServer(PendingConnectionsServer):
 
     def get_tasks_headers(self):
         ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
-
-        ret = []
-
-        for th in ths:
-            ret.append({"id": th.task_id,
-                        "address": th.task_owner_address,
-                        "port": th.task_owner_port,
-                        "key_id": th.task_owner_key_id,
-                        "task_owner": th.task_owner,
-                        "ttl": th.ttl,
-                        "subtask_timeout": th.subtask_timeout,
-                        "node_name": th.node_name,
-                        "environment": th.environment,
-                        "min_version": th.min_version,
-                        "max_price": th.max_price})
-
-        return ret
+        return [th.to_dict() for th in ths]
 
     def add_task_header(self, th_dict_repr):
         try:
-            id_ = th_dict_repr["id"]
-            key_id = th_dict_repr["key_id"]
-            if id_ not in self.task_manager.tasks.keys() and key_id != self.node.key:  # not my current / previous task
+            if not self.verify_header_sig(th_dict_repr):
+                raise Exception("Invalid signature")
+
+            task_id = th_dict_repr["task_id"]
+            key_id = th_dict_repr["task_owner_key_id"]
+            task_ids = self.task_manager.tasks.keys()
+
+            if task_id not in task_ids and key_id != self.node.key:
                 self.task_keeper.add_task_header(th_dict_repr)
             return True
         except Exception as err:
             logger.error("Wrong task header received {}".format(err))
             return False
+
+    def verify_header_sig(self, th_dict_repr):
+        _bin = TaskHeader.dict_to_binary(th_dict_repr)
+        _sig = th_dict_repr["signature"]
+        _key = th_dict_repr["task_owner_key_id"]
+        return self.verify_sig(_sig, _bin, _key)
 
     def remove_task_header(self, task_id):
         self.task_keeper.remove_task_header(task_id)
@@ -758,7 +753,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     def __remove_old_tasks(self):
         self.task_keeper.remove_old_tasks()
-        nodes_with_timeouts = self.task_manager.remove_old_tasks()
+        nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
             self.client.decrease_trust(node_id, RankingStats.computed)
 

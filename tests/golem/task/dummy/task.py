@@ -61,7 +61,7 @@ class DummyTask(Task):
             client_id, task_id,
             owner_address, owner_port, owner_key_id, environment,
             task_owner=Node(),
-            ttl=14400,
+            deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,

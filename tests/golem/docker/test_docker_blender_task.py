@@ -8,6 +8,7 @@ import jsonpickle
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
@@ -83,7 +84,11 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node.client.monitor = Mock()
         self.node.initialize()
 
-        task_server = TaskServer(Mock(), Mock(), Mock(), self.node.client,
+        ccd = ClientConfigDescriptor()
+        ccd.estimated_blender_performance = 2000.0
+        ccd.estimated_lux_performance = 2000.0
+
+        task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
         task_computer = task_server.task_computer
 

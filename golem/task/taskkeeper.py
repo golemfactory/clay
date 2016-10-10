@@ -4,7 +4,7 @@ import random
 import time
 from math import ceil
 
-from golem.core.common import HandleKeyError
+from golem.core.common import HandleKeyError, get_current_time
 from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -21,7 +21,6 @@ class CompTaskInfo(object):
         self.header = header
         self.price = price
         self.requests = 1
-        self.timeout = time.time() + header.ttl
         self.subtasks = {}
 
 
@@ -94,9 +93,9 @@ class CompTaskKeeper(object):
         self.active_tasks[task_id].requests -= 1
 
     def remove_old_tasks(self):
-        time_ = time.time()
+        time_ = get_current_time()
         for task_id, task in self.active_tasks.items():
-            if time_ > task.timeout and len(task.subtasks) == 0:
+            if time_ > task.header.deadline and len(task.subtasks) == 0:
                 self.remove_task(task_id)
 
 
@@ -193,19 +192,10 @@ class TaskHeaderKeeper(object):
         :return bool: True if task header was well formatted and no error occurs, False otherwise
         """
         try:
-            id_ = th_dict_repr["id"]
+            id_ = th_dict_repr["task_id"]
             if id_ not in self.task_headers.keys():  # don't have it
                 if id_ not in self.removed_tasks.keys():  # not removed recently
-                    self.task_headers[id_] = TaskHeader(node_name=th_dict_repr["node_name"],
-                                                        task_id=id_,
-                                                        task_owner_address=th_dict_repr["address"],
-                                                        task_owner_port=th_dict_repr["port"],
-                                                        task_owner_key_id=th_dict_repr["key_id"],
-                                                        environment=th_dict_repr["environment"],
-                                                        task_owner=th_dict_repr["task_owner"],
-                                                        ttl=th_dict_repr["ttl"],
-                                                        subtask_timeout=th_dict_repr["subtask_timeout"],
-                                                        max_price=th_dict_repr["max_price"])
+                    self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                     is_supported = self.is_supported(th_dict_repr)
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     if is_supported:
@@ -235,10 +225,8 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
-            cur_time = time.time()
-            t.ttl = t.ttl - (cur_time - t.last_checking)
-            t.last_checking = cur_time
-            if t.ttl <= 0:
+            cur_time = get_current_time()
+            if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)
 
