@@ -12,7 +12,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
     MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
     MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
     MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask, \
-    MessageContestWinnerAck, MessageContestWinner
+    MessageContestWinnerAccept, MessageContestWinner, MessageContestWinnerReject
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
@@ -316,13 +316,10 @@ class TaskSession(MiddlemanSafeSession):
     def send_contest_winner(self, task_id):
         self.send(MessageContestWinner(task_id))
 
-    def send_task_to_compute(self, msg_dict_repr):
-        ctd = self.task_manager.get_next_subtask(self.key_id,
-                                                 msg_dict_repr['node_name'], msg_dict_repr['task_id'],
-                                                 msg_dict_repr['perf_index'], msg_dict_repr['price'],
-                                                 msg_dict_repr['max_res'], msg_dict_repr['max_mem'],
-                                                 msg_dict_repr['num_cores'],
-                                                 self.address)
+    def send_task_to_compute(self, msg):
+        ctd = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                                                 msg.price, msg.max_resource_size, msg.max_memory_size,
+                                                 msg.num_cores, self.address)
         self.send(MessageTaskToCompute(ctd))
 
     def send_cannot_assign_task(self, task_id, reason=None):
@@ -376,38 +373,51 @@ class TaskSession(MiddlemanSafeSession):
         logger.debug("Computing trust level: {}".format(trust))
 
         if not self.task_manager.has_task(msg.task_id):
-            logger.debug("Cannot assign task {}".format(msg.task_id))
-            self.send(MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
+            logger.debug("Unknown task {} (received from node {})".format(msg.task_id, self.key_id))
+            self.send(MessageCannotAssignTask(msg.task_id, "Not my task {}".format(msg.task_id)))
             self.dropped()
 
         elif not self.task_manager.has_subtasks(msg.task_id, msg.max_resource_size, msg.max_memory_size, msg.price):
-            logger.debug("No subtasks {}".format(msg.task_id))
+            logger.debug("No subtasks in task {}".format(msg.task_id))
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
             self.dropped()
 
         elif trust < self.task_server.config_desc.computing_trust:
-            logger.debug("Reputation too low {}".format(msg.task_id))
-            self.send(MessageCannotAssignTask(msg.task_id, "Reputation too low (min {}, got {})"
-                                              .format(self.task_server.config_desc.computing_trust, trust)))
+            message = "Reputation too low (min {}, got {})".format(self.task_server.config_desc.computing_trust, trust)
+            logger.debug(message + " for task {}".format(msg.task_id))
+            self.send(MessageCannotAssignTask(msg.task_id, message))
             self.dropped()
 
         elif self.task_manager.is_finishing(self.key_id, msg.task_id):
-            logger.debug("Waiting for results {}".format(msg.task_id))
+            logger.debug("Waiting for task {} results from node {}".format(msg.task_id, self.key_id))
             self.send(MessageWaitingForResults())
 
         else:
-            logger.debug("Adding contender for task {}".format(msg.task_id))
-            params = {k.lower(): v for k, v in msg.dict_repr().iteritems()}  # FIXME
-            params['computing_trust'] = self.task_server.client.get_computing_trust(self.key_id) or 0.
-            self.task_manager.contest_manager.add_contender(msg.task_id, self.key_id, session=self, params=params)
+            logger.debug("New contender {} for task {}".format(self.key_id, msg.task_id))
+            computing_trust = self.task_server.get_computing_trust(self.key_id) or 0.
+            self.task_manager.contest_manager.add_contender(msg.task_id, self.key_id, self,
+                                                            request_message=msg,
+                                                            computing_trust=computing_trust)
 
     def _react_to_contest_winner(self, msg):
-        if self.task_id == msg.task_id:
-            self.send(MessageContestWinnerAck(msg.task_id))
+        if self.task_id == msg.task_id and not self.task_computer.is_busy(msg.task_id):
+            self.send(MessageContestWinnerAccept(msg.task_id))
+        else:
+            self.send(MessageContestWinnerReject(msg.task_id))
+            self.dropped()
 
-    def _react_to_contest_winner_ack(self, msg):
+    def _react_to_contest_winner_accept(self, msg):
         if self.task_id == msg.task_id:
-            self.task_manager.contest_manager.winner_acknowledgment(msg.task_id, self.key_id)
+            self.task_manager.contest_manager.winner_accepts(msg.task_id, self.key_id)
+        else:
+            self.disconnect(self.DCRBadProtocol)
+
+    def _react_to_contest_winner_reject(self, msg):
+        if self.task_id == msg.task_id:
+            self.task_manager.contest_manager.winner_rejects(msg.task_id, self.key_id)
+            self.dropped()
+        else:
+            self.disconnect(self.DCRBadProtocol)
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
@@ -426,7 +436,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:
-            self.task_manager.contest_manager.remove_contender(self.key_id)
+            self.task_manager.contest_manager.winner_rejects(msg.task_id, self.key_id)
             self.task_manager.task_computation_failure(msg.subtask_id,
                                                        'Task computation rejected: {}'.format(msg.reason))
         self.dropped()
@@ -743,7 +753,8 @@ class TaskSession(MiddlemanSafeSession):
             MessageCannotComputeTask.Type: self._react_to_cannot_compute_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
             MessageContestWinner.Type: self._react_to_contest_winner,
-            MessageContestWinnerAck.Type: self._react_to_contest_winner_ack,
+            MessageContestWinnerAccept.Type: self._react_to_contest_winner_accept,
+            MessageContestWinnerReject.Type: self._react_to_contest_winner_reject,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
             MessageTaskResultHash.Type: self._react_to_task_result_hash,
             MessageGetResource.Type: self._react_to_get_resource,

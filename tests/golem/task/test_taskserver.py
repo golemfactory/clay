@@ -179,20 +179,18 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 1000
 
-        extra_data = Mock()
-        extra_data.ctd = ComputeTaskDef()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-        extra_data.ctd.environment = "DEFAULT"
-        extra_data.should_wait = False
+        ctd = ComputeTaskDef()
+        ctd.task_id = "xyz"
+        ctd.subtask_id = "xxyyzz"
+        ctd.environment = "DEFAULT"
 
-        task_mock.query_extra_data.return_value = extra_data
+        task_mock.query_extra_data.return_value = ctd
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
-                                                                     1000, 10,  5, 10, 2,
-                                                                     "10.10.10.10")
+        subtask = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
+                                                   1000, 10,  5, 10, 2,
+                                                   "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 10 / 3600)
@@ -222,19 +220,17 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 1000
 
-        extra_data = Mock()
-        extra_data.ctd = ComputeTaskDef()
-        extra_data.ctd.task_id = "xyz"
-        extra_data.ctd.subtask_id = "xxyyzz"
-        extra_data.ctd.environment = "DEFAULT"
-        extra_data.should_wait = False
+        ctd = ComputeTaskDef()
+        ctd.task_id = "xyz"
+        ctd.subtask_id = "xxyyzz"
+        ctd.environment = "DEFAULT"
+        should_wait = False
 
-        task_mock.query_extra_data.return_value = extra_data
+        task_mock.query_extra_data.return_value = ctd
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
-            "DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+        subtask = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
 
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         account_info = Mock()
@@ -546,6 +542,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         task_mock.header.resource_size = 2 * 1024
         task_mock.header.estimated_memory = 3 * 1024
         task_mock.header.max_price = 10000
-        task_mock.query_extra_data.return_value.ctd.task_id = task_id
-        task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+
+        ctd = ComputeTaskDef()
+        ctd.task_id = task_id
+        ctd.subtask_id = subtask_id
+
+        task_mock.query_extra_data.return_value = ctd
         return task_mock

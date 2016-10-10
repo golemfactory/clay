@@ -1697,27 +1697,50 @@ class MessageContestWinner(Message):
         return {MessageContestWinner.TASK_ID_STR: self.task_id}
 
 
-class MessageContestWinnerAck(Message):
+class MessageContestWinnerAccept(Message):
     Type = TASK_MSG_BASE + 28
 
     TASK_ID_STR = u"TASK_ID"
 
     def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
         """
-        Message informs that node is starting task computation
+        Message acknowledging task assignment
         :param str sig: signature
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageContestWinnerAck.Type, sig, timestamp)
+        Message.__init__(self, MessageContestWinnerAccept.Type, sig, timestamp)
 
         self.task_id = task_id
 
         if dict_repr:
-            self.task_id = dict_repr[MessageContestWinnerAck.TASK_ID_STR]
+            self.task_id = dict_repr[MessageContestWinnerAccept.TASK_ID_STR]
 
     def dict_repr(self):
-        return {MessageContestWinnerAck.TASK_ID_STR: self.task_id}
+        return {MessageContestWinnerAccept.TASK_ID_STR: self.task_id}
+
+
+class MessageContestWinnerReject(Message):
+    Type = TASK_MSG_BASE + 29
+
+    TASK_ID_STR = u"TASK_ID"
+
+    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Message rejecting task assignment
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, MessageContestWinnerReject.Type, sig, timestamp)
+
+        self.task_id = task_id
+
+        if dict_repr:
+            self.task_id = dict_repr[MessageContestWinnerReject.TASK_ID_STR]
+
+    def dict_repr(self):
+        return {MessageContestWinnerReject.TASK_ID_STR: self.task_id}
 
 
 RESOURCE_MSG_BASE = 3000
@@ -1956,7 +1979,8 @@ def init_messages():
     MessageResourceFormat()
     MessageAcceptResourceFormat()
     MessageContestWinner()
-    MessageContestWinnerAck()
+    MessageContestWinnerAccept()
+    MessageContestWinnerReject()
 
     # Resource messages
     MessageGetResource()

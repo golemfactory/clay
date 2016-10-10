@@ -6,16 +6,18 @@ import time
 import weakref
 from threading import RLock
 
+from golem.core.common import HandleKeyError
 
 logger = logging.getLogger(__name__)
 
 
 CONTENDER_LIFETIME = 30  # s
-WINDOW_DURATION_DEFAULT = 8  # s
-WINDOW_DURATION_MIN = 1  # s
-WINDOW_DURATION_MAX = 16  # s
-WINDOW_DURATION_SCALE_FACTOR = 0.75  # divisor
-WINNER_TIMEOUT = 10  # s
+WINNER_LIFETIME = 10  # s
+
+WINDOW_SIZE_DEFAULT = 8  # s
+WINDOW_SIZE_MIN = 1  # s
+WINDOW_SIZE_MAX = 16  # s
+WINDOW_SIZE_INCREASE_FACTOR = 0.75  # divisor
 
 
 def median(values):
@@ -32,7 +34,7 @@ def sigmoid(x):
 
 class Contender(object):
 
-    def __init__(self, id, session, req_msg, lifetime=CONTENDER_LIFETIME):
+    def __init__(self, id, session, request_message, computing_trust=-1.0, lifetime=CONTENDER_LIFETIME):
 
         self.id = id
         self.score = -1.0
@@ -41,13 +43,13 @@ class Contender(object):
         self.created = time.time()
         self.lifetime = lifetime
 
-        self.req_msg = req_msg
+        self.req_msg = request_message
         # min performance -> max penalty by default
-        self.performance = float(req_msg.get('perf_index', 0.0))
+        self.performance = float(request_message.perf_index or 0.0)
         # min trust -> max penalty by default
-        self.reputation = float(req_msg.get('computing_trust', -1.0))
+        self.reputation = float(computing_trust)
         # max price -> max penalty by default
-        self.price = float(req_msg.get('price', sys.maxint))
+        self.price = float(request_message.price or sys.maxint)
 
     def __lt__(self, other):
         return bool(other) and self.score < other.score
@@ -79,17 +81,18 @@ class Contender(object):
             price_score = sigmoid(ref_price / self.price) * (1. - perf_to_price)
             # number of accepted subtasks to total tasks bonus
             sub_score = sigmoid(accepted / total_subtasks)
-            #            <-1; 1>           <-1; 1>      <-1; 1>       <-1; 1>
-            self.score = self.reputation + perf_score + price_score + sub_score  # - 1.
+            #            <-1; 1>           <0; 1>       <0; 1>        <0; 1>
+            self.score = self.reputation + perf_score + price_score + sub_score - 1.
 
 
 class Contest(object):
 
-    def __init__(self, task, min_score):
+    def __init__(self, task, min_score, perf_to_price=0.5):
 
         self.task = task
-        self.total_subtasks = task.total_tasks
+        self.total_subtasks = task.get_total_tasks()
         self.min_score = min_score
+        self.perf_to_price = perf_to_price
 
         self.started = None
         self.winner = None
@@ -107,10 +110,11 @@ class Contest(object):
         with self._lock:
             return self.contenders.get(contender_id)
 
-    def add_contender(self, contender_id, session, params):
+    def add_contender(self, contender_id, session, request_message, computing_trust, lifetime=CONTENDER_LIFETIME):
         if contender_id not in self.contenders:
             with self._lock:
-                self.contenders[contender_id] = Contender(contender_id, session, params)
+                self.contenders[contender_id] = Contender(contender_id, session, request_message,
+                                                          computing_trust, lifetime)
                 self._rank_contenders()
 
     def remove_contender(self, contender_id):
@@ -128,7 +132,7 @@ class Contest(object):
         return self.extend_round()
 
     def extend_round(self):
-        return self._remove_old_contenders() + self._remove_low_score_contenders()
+        return self._cleanup_contenders()
 
     def _rank_contenders(self):
 
@@ -139,14 +143,15 @@ class Contest(object):
         for _id, contender in self.contenders.iteritems():
 
             node = self.task.counting_nodes.get(_id)
-            contender.update_score(node, self.total_subtasks, median_perf, self.task.header.max_price)
+            contender.update_score(node, self.total_subtasks, median_perf,
+                                   self.task.header.max_price, self.perf_to_price)
 
             if not contender.is_old():
                 bisect.insort_left(ranks, contender)
 
         self.ranks = ranks
 
-    def _remove_old_contenders(self):
+    def _cleanup_contenders(self):
 
         new = dict()
         removed = list()
@@ -154,7 +159,8 @@ class Contest(object):
         with self._lock:
 
             for _id, contender in self.contenders.iteritems():
-                if contender.is_old():
+                # remove old and low score contenders
+                if contender.is_old() or contender.score < self.min_score:
                     removed.append(contender)
                 else:
                     new[_id] = contender
@@ -164,24 +170,15 @@ class Contest(object):
 
         return removed
 
-    def _remove_low_score_contenders(self):
 
-        removed = list()
-
-        # ranks are sorted in asc order
-        for contender in self.ranks:
-
-            if contender.score < self.min_score:
-                removed.append(contender)
-                self.contenders.pop(contender.id, None)
-            else:
-                break
-
-        self._rank_contenders()
-        return removed
+def _log_key_error(*args, **_):
+    logger.warning("No contest for task {}".format(args[1]))
+    return False
 
 
 class ContestManager(object):
+
+    handle_key_error = HandleKeyError(_log_key_error)
 
     def __init__(self, tasks, contest_duration, min_score=0.0):
 
@@ -195,7 +192,7 @@ class ContestManager(object):
         self._lock = RLock()
         self._reactor = None
 
-    def add_contender(self, task_id, contender_id, session, params):
+    def add_contender(self, task_id, contender_id, session, request_message, computing_trust):
 
         task = self._tasks.get(task_id)
         create = task_id not in self._contests
@@ -203,38 +200,49 @@ class ContestManager(object):
         if create:
             self._contests[task_id] = Contest(task, self.min_score)
 
-        self._contests[task_id].add_contender(contender_id, session, params)
+        self._contests[task_id].add_contender(contender_id, session, request_message, computing_trust)
 
         if create:
             self._check_later(task_id, timeout=self.contest_duration)
 
+    @handle_key_error
     def remove_contender(self, task_id, contender_id):
-        contest = self._contests.get(task_id)
-        if contest:
-            if contest.winner and contest.winner.id == contender_id:
-                contest.winner = None
-            return contest.remove_contender(contender_id)
+        contest = self._contests[task_id]
+        if contest.winner and contest.winner.id == contender_id:
+            contest.winner = None
+        return contest.remove_contender(contender_id)
 
-    def winner_acknowledgment(self, task_id, contender_id):
-        contest = self._contests.get(task_id)
-        if not contest:
-            return
+    @handle_key_error
+    def winner_accepts(self, task_id, contender_id):
 
+        contest = self._contests[task_id]
         winner = contest.winner
 
         if winner and winner.id == contender_id:
+
             self._cancel_announcement(task_id)
             self._get_reactor().callLater(0, winner.session.send_task_to_compute, winner.req_msg)
 
             to_remove = contest.new_round()
             self._remove_contenders(task_id, to_remove)
-            self._check_later(task_id, self._calc_duration(contest))
+            self._check_later(task_id, self._calc_window_size(contest))
 
             # no deferred announcements and checks at this point
-            logger.debug("Contest round finished for task {}".format(task_id))
+            logger.debug("Contest round {} winner for task {}: {} (score: {})"
+                         .format(contest.rounds - 1, task_id, winner.id, winner.score))
 
+    @handle_key_error
+    def winner_rejects(self, task_id, contender_id):
+
+        contest = self._contests[task_id]
+        winner = contest.winner
+
+        if winner and winner.id == contender_id:
+            self._announce_winner(task_id)
+
+    @handle_key_error
     def finish(self, task_id):
-        logger.debug("Finishing contest for task {}".format(task_id))
+        logger.debug("Contest finished for task {}".format(task_id))
         self._cancel_check(task_id)
         return self._contests.pop(task_id, None)
 
@@ -242,21 +250,16 @@ class ContestManager(object):
 
         contest = self._contests.get(task_id)
         if contest:
-            # remove old + low score
+
             to_remove = contest.extend_round()
             self._remove_contenders(task_id, to_remove)
 
             if contest.ranks:
-                # useful contenders left
-                self._cancel_check(task_id)
                 self._announce_winner(task_id)
-                logger.debug("Contest round finished for task {}"
-                             .format(task_id))
             else:
-                # none of the contenders matches the criteria
-                self._check_later(task_id, self._calc_duration(contest))
-                logger.debug("Contenders' score below {}"
-                             .format(self.min_score))
+                # none of the contenders meets the criteria
+                self._check_later(task_id, self._calc_window_size(contest))
+                logger.debug("Extending round {}: no contenders".format(contest.rounds))
         else:
             # remove + cancel deferred checks
             self.finish(task_id)
@@ -268,40 +271,38 @@ class ContestManager(object):
         with self._lock:
             self._checks[task_id] = reactor.callLater(timeout, self._check, task_id)
 
-    def _announce_winner(self, task_id, timed_out=False):
+    @handle_key_error
+    def _announce_winner(self, task_id):
+        self._cancel_check(task_id)
         self._cancel_announcement(task_id)
+        contest = self._contests[task_id]
 
-        contest = self._contests.get(task_id)
-
-        if not contest:
-            logger.error("No contest for task {}".format(task_id))
-
-        elif not contest.ranks:
+        if not contest.ranks:
             logger.debug("No contenders for task {}".format(task_id))
-            self._check_later(task_id, self._calc_duration(contest))
+            self._check_later(task_id, self._calc_window_size(contest))
+            return
 
+        reactor = self._get_reactor()
+        winner = contest.remove_contender(contest.ranks[-1].id)
+        contest.winner = winner
+
+        logger.debug("Announcing round {} winner: {} (task {})"
+                     .format(contest.rounds, winner.id, task_id))
+
+        if winner.session:
+            # we have an active task session
+            reactor.callLater(0, winner.session.send_contest_winner, task_id)
+            self._announcements[task_id] = reactor.callLater(WINNER_LIFETIME, self._announce_winner, task_id)
         else:
-            reactor = self._get_reactor()
-
-            winner = contest.remove_contender(contest.ranks[-1].id)
-            contest.winner = winner
-
-            logger.debug("Announcing round {} winner: {} (task {})"
-                         .format(contest.rounds, winner.id, task_id))
-
-            if winner.session:
-                # we have an active task session
-                reactor.callLater(0, winner.session.send_contest_winner, task_id)
-                self._announcements[task_id] = reactor.callLater(WINNER_TIMEOUT, self._announce_winner,
-                                                                 task_id, timed_out=True)
-            else:
-                # contestant disconnected; select another one
-                reactor.callLater(0, self._announce_winner, task_id)
+            # contestant disconnected; select another one
+            reactor.callLater(0, self._announce_winner, task_id)
 
     def _remove_contenders(self, task_id, rejected, reason=None):
+        if not rejected:
+            return
+
         logger.debug("Removing contenders for task {}: {}"
                      .format(task_id, [(c.id, c.score) for c in rejected]))
-
         reactor = self._get_reactor()
 
         for r in rejected:
@@ -309,13 +310,13 @@ class ContestManager(object):
                 reason = reason or "Contest elimination (score {}; min {})".format(r.score, self.min_score)
                 reactor.callLater(0, r.session.send_cannot_assign_task, task_id, reason)
             else:
-                logger.debug("No session for contender {} (task {})"
-                             .format(r.id, task_id))
+                logger.debug("No session for contender {} (task {})".format(r.id, task_id))
 
-    def _calc_duration(self, contest):
+    def _calc_window_size(self, contest):
 
-        div = len(contest.ranks) or WINDOW_DURATION_SCALE_FACTOR
-        duration = max(min(self.contest_duration / div, WINDOW_DURATION_MAX), WINDOW_DURATION_MIN)
+        div = len(contest.ranks) or WINDOW_SIZE_INCREASE_FACTOR
+        duration = min(self.contest_duration / div, WINDOW_SIZE_MAX)
+        duration = max(duration, WINDOW_SIZE_MIN)
 
         logger.debug("Contest window duration: {} (task {})".format(duration, contest.task.header.task_id))
         return duration
