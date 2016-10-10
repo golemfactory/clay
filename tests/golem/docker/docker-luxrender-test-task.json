@@ -33,6 +33,7 @@
     "halttime":600,
     "haltspp":1
   },
+  "task_name": "Lux Render task",
   "task_type":null,
   "task_id":"afb97625-8731-4492-9321-c19b6bb479b4",
   "resources":{

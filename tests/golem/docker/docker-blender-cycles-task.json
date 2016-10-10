@@ -38,6 +38,7 @@
     ]
   },
   "task_type":null,
+  "task_name": "Blender Cycle Task",
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
