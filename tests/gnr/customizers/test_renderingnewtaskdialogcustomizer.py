@@ -26,6 +26,8 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         self.logic.client.config_desc = Mock()
         self.logic.client.config_desc.max_price = 0
         self.logic.client.get_config.return_value = self.logic.client.config_desc
+        self.logic.dir_manager = Mock()
+        self.logic.dir_manager.root_path = self.path
 
         register_rendering_task_types(self.logic)
         customizer = RenderingNewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)

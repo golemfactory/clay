@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+from PyQt4.QtCore import QSettings
 from PyQt4.QtGui import QMessageBox
 
 from golem.core.simpleexccmd import is_windows
@@ -39,3 +40,13 @@ class Customizer(object):
         ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()
+
+    def save_setting(self, name, value, sync=False):
+        settings = QSettings(os.path.join(self.logic.dir_manager.root_path, "gui_settings.ini"), QSettings.IniFormat)
+        settings.setValue(name, value)
+        if sync:
+            settings.sync()
+
+    def load_setting(self, name, default):
+        settings = QSettings(os.path.join(self.logic.dir_manager.root_path, "gui_settings.ini"), QSettings.IniFormat)
+        return settings.value(name, default)

@@ -2,7 +2,7 @@ import logging
 import os
 from copy import deepcopy
 
-from PyQt4 import QtCore
+from PyQt4.QtCore import QObject, SIGNAL
 from PyQt4.QtGui import QFileDialog
 
 from customizer import Customizer
@@ -98,9 +98,7 @@ class RendererCustomizer(Customizer):
 
         output_file_types = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
         filter_ = u"Scene files ({})".format(output_file_types)
-
-        settings = QtCore.QSettings()
-        path = u"{}".format(settings.value('main_scene_path', os.path.expanduser('~')).toString())
+        path = u"{}".format(self.load_setting('main_scene_path', os.path.expanduser('~')).toString())
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui,
                                                              "Choose main scene file",
@@ -108,16 +106,14 @@ class RendererCustomizer(Customizer):
                                                              filter_))
 
         if file_name != '':
-            settings.setValue('main_scene_path', os.path.dirname(file_name))
-            settings.sync()
+            self.save_setting('main_scene_path', os.path.dirname(file_name))
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
     def _choose_output_file_button_clicked(self):
         output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
         filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
 
-        settings = QtCore.QSettings()
-        path = u"{}".format(settings.value('output_file_path', os.path.expanduser('~')).toString())
+        path = u"{}".format(self.load_setting('output_file_path', os.path.expanduser('~')).toString())
 
         file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui,
                                                              "Choose output file",
@@ -125,7 +121,7 @@ class RendererCustomizer(Customizer):
                                                              filter_))
 
         if file_name != '':
-            settings.setValue('output_file_path', os.path.dirname(file_name))
+            self.save_setting('output_file_path', os.path.dirname(file_name))
             self.gui.ui.outputFileLineEdit.setText(file_name)
             self.logic.task_settings_changed()
 
@@ -142,7 +138,7 @@ class RendererCustomizer(Customizer):
 class FrameRendererCustomizer(RendererCustomizer):
     def _setup_connections(self):
         super(FrameRendererCustomizer, self)._setup_connections()
-        QtCore.QObject.connect(self.gui.ui.framesCheckBox, QtCore.SIGNAL("stateChanged(int) "),
+        QObject.connect(self.gui.ui.framesCheckBox, SIGNAL("stateChanged(int) "),
                                self._frames_check_box_changed)
         self.gui.ui.framesLineEdit.textChanged.connect(self._frames_changed)
         self.gui.ui.framesCheckBox.stateChanged.connect(self._frames_changed)

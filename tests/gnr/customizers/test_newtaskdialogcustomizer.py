@@ -1,11 +1,11 @@
 import re
-from unittest import TestCase
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import Mock
 
 from golem.core.common import is_windows
+from golem.testutils import TempDirFixture
 
 from gnr.application import GNRGui
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
@@ -15,7 +15,7 @@ from gnr.gnrtaskstate import GNRTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow
 
 
-class TestNewTaskDialogCustomizer(TestCase):
+class TestNewTaskDialogCustomizer(TempDirFixture):
 
     def setUp(self):
         super(TestNewTaskDialogCustomizer, self).setUp()
@@ -33,6 +33,8 @@ class TestNewTaskDialogCustomizer(TestCase):
         self.logic.client.config_desc = Mock()
         self.logic.client.config_desc.max_price = 0
         self.logic.client.get_config.return_value = self.logic.client.config_desc
+        self.logic.dir_manager = Mock()
+        self.logic.dir_manager.root_path = self.path
 
         register_rendering_task_types(self.logic)
         customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
