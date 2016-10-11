@@ -169,6 +169,19 @@
      <item row="6" column="1">
       <layout class="QHBoxLayout" name="horizontalLayout_4">
        <item>
+        <widget class="QCheckBox" name="paddingCheckBox">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="toolTip">
+          <string>Define length of the padding for frames number</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QSpinBox" name="paddingSpinBox">
          <property name="enabled">
           <bool>false</bool>
@@ -178,6 +191,13 @@
          </property>
          <property name="value">
           <number>3</number>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string/>
          </property>
         </widget>
        </item>
@@ -197,15 +217,12 @@
       </layout>
      </item>
      <item row="6" column="0">
-      <widget class="QCheckBox" name="paddingCheckBox">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
+      <widget class="QLabel" name="label_7">
        <property name="toolTip">
-        <string>Define length of the padding for frames number</string>
+        <string>If checked pads frame number in output file to given length with zeros. Eg. if checkbox is checked and len is set to 4 than output file for frame 5 will become outputname_0005.png</string>
        </property>
        <property name="text">
-        <string>Leading zeros</string>
+        <string>Pad frame number with 0s</string>
        </property>
       </widget>
      </item>

@@ -211,8 +211,8 @@ class NewTaskDialogCustomizer(Customizer):
         definition = GNRTaskDefinition()
         self._read_basic_task_params(definition)
         self._read_task_type(definition)
-        self._read_task_name(definition)
         self._read_price_params(definition)
+        self._read_task_name(definition)
         definition.options = self.options
         return definition
 
