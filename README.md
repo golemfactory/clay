@@ -54,5 +54,5 @@ Help us develop the application by submitting issues and bugs. See instruction
 [here](https://github.com/imapp-pl/golem/wiki/Testing). 
 
 You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
-Get an invitation [here](golemproject.org:3000).
+Get an invitation [here](http://golemproject.org:3000).
 
