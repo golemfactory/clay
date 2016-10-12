@@ -17,7 +17,6 @@ from threading import Thread
 
 from twisted.internet import reactor
 
-from golem.client import Client
 from golem.core.common import is_windows
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
@@ -39,7 +38,17 @@ def report(msg):
     print format_msg(node_kind, os.getpid(), msg)
 
 
+def override_ip_info(*_, **__):
+    from stun import OpenInternet
+    return OpenInternet, '1.2.3.4', 40102
+
+
 def create_client(datadir):
+    # executed in a subprocess
+    import stun
+    stun.get_ip_info = override_ip_info
+
+    from golem.client import Client
     return Client(datadir=datadir,
                   use_monitor=False,
                   transaction_system=False,
