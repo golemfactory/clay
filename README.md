@@ -44,6 +44,9 @@ Benchmarks:
 * General: [Minilight] (http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
 * Blender: [scene-Helicopter] (https://www.blender.org/download/demo-files/)
 * LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche
+
+Icons:
+* [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.
  
 ## Contact  
 
@@ -51,5 +54,5 @@ Help us develop the application by submitting issues and bugs. See instruction
 [here](https://github.com/imapp-pl/golem/wiki/Testing). 
 
 You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
-Get an invitation [here](golemproject.org:3000).
+Get an invitation [here](http://golemproject.org:3000).
 
