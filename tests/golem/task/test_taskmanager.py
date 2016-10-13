@@ -489,6 +489,20 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert t.header.deadline <= get_current_time() + timedelta(seconds=60)
         assert t.header.subtask_timeout == 10
 
+    @patch("golem.task.taskmanager.get_external_address")
+    def test_is_finishing(self, _):
+
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        tasks, tasks_states, task_id, subtask_id = self.__build_tasks(3)
+
+        tm.tasks = tasks
+        tm.tasks_states = tasks_states
+
+        assert not tm.is_finishing("invalid_task_id", "invalid_node_id")
+        assert not tm.is_finishing("task_0", "invalid_node_id")
+        assert not tm.is_finishing("task_0", "node_0")
+        assert tm.is_finishing("task_2", "node_2")
+
     @classmethod
     def __build_tasks(cls, n):
 
@@ -500,9 +514,15 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         for i in xrange(0, n):
 
             task = Mock()
-            task.header.task_id = str(uuid.uuid4())
+            task.header.task_id = "task_{}".format(i)
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
+            task.max_pending_client_results = 1
+
+            node_id = "node_{}".format(i)
+            task.counting_nodes = dict()
+            task.counting_nodes[node_id] = TaskClient(node_id)
+            task.counting_nodes[node_id]._finishing = i
 
             state = Mock()
             state.status = 'waiting'

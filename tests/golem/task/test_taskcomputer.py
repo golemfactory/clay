@@ -223,6 +223,25 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.toggle_config_dialog(False)
         client.toggle_config_dialog.assert_called_with(False)
 
+    def test_is_busy(self):
+        task_server = MagicMock()
+        task_server.config_desc = config_desc()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+
+        assert not tc.is_busy()
+        assert not tc.is_busy("task")
+
+        tc.waiting_for_task = "task_2"
+
+        assert not tc.is_busy("task_2")
+        assert tc.is_busy("task_3")
+
+        tc.waiting_for_task = None
+        tc.counting_task = True
+
+        assert tc.is_busy()
+
+
     @staticmethod
     def __wait_for_tasks(tc):
         [t.join() for t in tc.current_computations]
