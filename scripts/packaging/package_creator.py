@@ -139,7 +139,7 @@ class LicenseCollector(object):
         platform = get_platform()
 
         if platform != 'linux':
-            raise EnvironmentError("OS unsupported: {}".format(platform))
+            raise EnvironmentError("OS not supported: {}".format(platform))
 
         def write_license(f, p, lib):
             library_path = os.path.join(p, lib)
@@ -149,12 +149,12 @@ class LicenseCollector(object):
 
             try:
                 entry = self._get_linux_library_license(lib, library_path)
-            except:
+            except Exception:
                 entry = self.LICENSES.get(lib)
 
                 if not entry:
                     message = "Cannot retrieve a license for library {}.\n" \
-                              "It most likely comes from one of Python packages.\n" \
+                              "It most likely is included in one of Python packages.\n" \
                               "Please check the modules license file for the proper license.".format(lib)
                     entry = lib, message, None
 
@@ -183,6 +183,24 @@ class LicenseCollector(object):
                 for ff in filtered_files:
                     write_license(out_file, src_path, ff)
 
+    def write_misc_licenses(self, output_path, licenses):
+        print "Writing misc licenses to", output_path
+
+        for license in licenses:
+
+            title = license['title']
+            license_file = os.path.join(self.license_dir, license['file'])
+
+            with open(output_path, 'w') as f:
+
+                f.write("================================================\n\n")
+                f.write('{}\n'.format(title))
+                f.write("\n")
+
+                with open(license_file) as lf:
+                    for line in lf:
+                        f.write(line)
+
     def get_module_metadata(self, modules_path, module_repr, is_file=False):
 
         module_path = os.path.join(modules_path, module_repr)
@@ -202,7 +220,7 @@ class LicenseCollector(object):
 
         try:
             package = pkg_resources.get_distribution(module)
-        except:
+        except Exception:
 
             if self._get_package_plugin(module):
                 return None, None
@@ -223,7 +241,7 @@ class LicenseCollector(object):
                         package = item
                     if not package:
                         package = self._find_package(imported, is_file=is_file)
-            except:
+            except Exception:
                 pass
 
         if package:
@@ -349,7 +367,7 @@ class LicenseCollector(object):
         name = package_dir
         try:
             imp.find_module(package_dir)
-        except:
+        except Exception:
             name = inspect.getmodulename(package_path) or name
         return name
 
@@ -1138,17 +1156,27 @@ def all_assets(creator, exe_dir, lib_dir, x_dir):
 
 
 def all_licenses(creator, exe_dir, lib_dir, x_dir):
+
     package_dirs = [x_dir, exe_dir]
     library_dirs = [exe_dir, lib_dir, x_dir]
 
     package_output_file = os.path.join(exe_dir, 'LICENSE-PACKAGES.txt')
     library_output_file = os.path.join(exe_dir, 'LICENSE-LIBRARIES.txt')
+    misc_output_file = os.path.join(exe_dir, 'LICENSE-MISC.txt')
 
     lm = LicenseCollector(root_dir=creator.setup_dir,
                           package_dirs=package_dirs,
                           library_dirs=library_dirs)
 
+    misc_licenses = [
+        dict(
+            title='"Freeline" icons by Enes Dal (license: CC BY 3.0)',
+            file='CC-BY-3.0.txt'
+        )
+    ]
+
     lm.write_module_licenses(package_output_file)
+    lm.write_misc_licenses(misc_output_file, misc_licenses)
     if creator.platform != 'win':
         lm.write_library_licenses(library_output_file)
 
@@ -1235,7 +1263,6 @@ build_options = {
             "gettext", "copy", "locale", "functools", 'pprint'
         ],
         # Extract files zipped by cx_Freeze
-        # Files other than *.py will not load from an archive
         'extract_modules': [
             ZippedPackage("python" + PackageCreator.py_v + ".zip",
                           exclude=app_scripts,
