@@ -15,7 +15,7 @@ CONTENDER_LIFETIME = 30  # s
 WINNER_LIFETIME = 10  # s
 
 WINDOW_SIZE_DEFAULT = 8  # s
-WINDOW_SIZE_MIN = 1  # s
+WINDOW_SIZE_MIN = 0.5  # s
 WINDOW_SIZE_MAX = 16  # s
 WINDOW_SIZE_INCREASE_FACTOR = 0.75  # divisor
 
@@ -33,6 +33,9 @@ def sigmoid(x):
 
 
 class Contender(object):
+
+    _sigmoid_0 = sigmoid(0.)
+    _sigmoid_1 = sigmoid(1.)
 
     def __init__(self, id, session, request_message, computing_trust=-1.0, lifetime=CONTENDER_LIFETIME):
 
@@ -74,15 +77,27 @@ class Contender(object):
 
         if rejected:
             self.score = -rejected
-        else:
-            # higher perf => higher score
-            perf_score = sigmoid(self.performance / ref_performance) * perf_to_price
-            # lower price => higher score
-            price_score = sigmoid(ref_price / self.price) * (1. - perf_to_price)
-            # number of accepted subtasks to total tasks bonus
-            sub_score = sigmoid(accepted / total_subtasks)
-            #            <-1; 1>           <0; 1>       <0; 1>        <0; 1>
-            self.score = self.reputation + perf_score + price_score + sub_score - 1.
+            return
+
+        perf_to_price = max(perf_to_price, 0.)
+        price_to_perf = max(1. - perf_to_price, 0.)
+
+        # higher perf => higher score
+        perf_score = sigmoid(self.performance / ref_performance) * perf_to_price
+        perf_zero = self._sigmoid_1 * perf_to_price
+        # lower price => higher score
+        price_score = sigmoid(ref_price / self.price) * price_to_perf
+        price_zero = self._sigmoid_1 * price_to_perf
+        # number of accepted subtasks to total tasks bonus
+        sub_score = sigmoid(accepted / total_subtasks)
+        sub_zero = self._sigmoid_0
+
+        point_zero = perf_zero + price_zero + sub_zero
+        #            <-1; 1>           <0; 1>       <0; 1>        <0; 1>
+        self.score = self.reputation + perf_score + price_score + sub_score - point_zero
+
+        logger.debug("Score: rep [{}] + perf[{}] + price[{}] + sub[{}] - {} = {} ({})"
+                     .format(self.reputation, perf_score, price_score, sub_score, point_zero, self.score, self.id))
 
 
 class Contest(object):
