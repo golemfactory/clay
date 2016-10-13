@@ -8,12 +8,21 @@ from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
-                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask)
+                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
+                                             MessageWaitingForResults, MessageContestWinner, MessageContestWinnerAccept,
+                                             MessageContestWinnerReject)
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+
+
+def Instance(cls):
+    class _Instance(cls):
+        def __eq__(self, other):
+            return isinstance(other, cls)
+    return _Instance()
 
 
 class TestTaskSession(LogTestCase, TempDirFixture):
@@ -300,6 +309,158 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ctd.return_port = 1319
         ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
         conn.close.assert_not_called()
+
+    def test_react_to_want_to_compute_task(self):
+
+        ts = self.__create_task_session()
+        msg = MessageWantToComputeTask()
+
+        def __reset(has_task=True, has_subtasks=True, is_finishing=False, trust_value=1.):
+            tm = ts.task_manager
+            tm.has_task.return_value = has_task
+            tm.has_subtasks.return_value = has_subtasks
+            tm.is_finishing.return_value = is_finishing
+            tm.contest_manager.add_contender.called = False
+
+            tsrv = ts.task_server
+            tsrv.config_desc.computing_trust = 0.5
+            tsrv.get_computing_trust.return_value = trust_value
+
+            ts.send.called = False
+            ts.send.call_args = None
+            ts.dropped.called = False
+
+        __reset(has_task=False)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("Not my task")
+
+        __reset(has_subtasks=False)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("No more subtasks")
+
+        __reset(trust_value=0.1)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("Reputation")
+
+        __reset(is_finishing=True)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageWaitingForResults)
+
+        __reset()
+
+        ts._react_to_want_to_compute_task(msg)
+        assert not ts.send.called
+        assert ts.task_manager.contest_manager.add_contender.called
+
+    def test_send_task_to_compute(self):
+        ts = self.__create_task_session()
+        ts.send_task_to_compute(Mock())
+        assert ts.task_manager.get_next_subtask.called
+        ts.send.assert_called_with(Instance(MessageTaskToCompute))
+
+    def test_send_cannot_assign_task(self):
+        ts = self.__create_task_session()
+        ts.send_cannot_assign_task("deadbeef", "some reason")
+        ts.send.assert_called_with(Instance(MessageCannotAssignTask))
+        assert ts.send.call_args[0][0].task_id == "deadbeef"
+        assert ts.send.call_args[0][0].reason == "some reason"
+        ts.disconnect.assert_called_with(ts.DCRNoMoreMessages)
+
+    def test_send_contest_winner(self):
+        ts = self.__create_task_session()
+        ts.send_contest_winner("deadbeef")
+        ts.send.assert_called_with(Instance(MessageContestWinner))
+        assert ts.send.call_args[0][0].task_id == "deadbeef"
+
+    def test_react_to_contest_winner(self):
+        ts = self.__create_task_session()
+        ts.task_computer.is_busy.return_value = False
+        ts.task_id = "deadbeef"
+
+        msg = MessageContestWinner("deadbeef")
+        dict_repr = msg.dict_repr()
+        assert dict_repr == MessageContestWinner(dict_repr=dict_repr).dict_repr()
+
+        ts._react_to_contest_winner(msg)
+        ts.send.assert_called_with(Instance(MessageContestWinnerAccept))
+
+        ts.send.called = False
+        ts.task_id = "deadbeef_2"
+        ts._react_to_contest_winner(msg)
+        ts.send.assert_called_with(Instance(MessageContestWinnerReject))
+
+        ts.send.called = False
+        ts.task_id = "deadbeef"
+        ts.task_computer.is_busy.return_value = True
+        ts._react_to_contest_winner(msg)
+        ts.send.assert_called_with(Instance(MessageContestWinnerReject))
+
+    def test_react_to_contest_winner_accept(self):
+        ts = self.__create_task_session()
+        ts.task_id = "deadbeef"
+
+        msg = MessageContestWinnerAccept("deadbeef")
+        dict_repr = msg.dict_repr()
+        assert dict_repr == MessageContestWinnerAccept(dict_repr=dict_repr).dict_repr()
+
+        ts._react_to_contest_winner_accept(msg)
+        ts.task_manager.contest_manager.winner_accepts.assert_called_with("deadbeef", ts.key_id)
+
+        ts.task_id = "deadbeef_2"
+
+        ts._react_to_contest_winner_accept(msg)
+        ts.disconnect.assert_called_with(ts.DCRBadProtocol)
+
+    def test_react_to_contest_winner_reject(self):
+        ts = self.__create_task_session()
+        ts.task_id = "deadbeef"
+
+        msg = MessageContestWinnerReject("deadbeef")
+        dict_repr = msg.dict_repr()
+        assert dict_repr == MessageContestWinnerReject(dict_repr=dict_repr).dict_repr()
+
+        ts._react_to_contest_winner_reject(msg)
+        ts.task_manager.contest_manager.winner_rejects.assert_called_with("deadbeef", ts.key_id)
+
+        ts.task_id = "deadbeef_2"
+
+        ts._react_to_contest_winner_reject(msg)
+        ts.disconnect.assert_called_with(ts.DCRBadProtocol)
+
+    @staticmethod
+    def __create_task_session():
+        conn = Mock()
+        tm = Mock()
+        tc = Mock()
+        tsrv = Mock()
+
+        ts = TaskSession(conn)
+        ts.send = Mock()
+        ts.dropped = Mock()
+        ts.disconnect = Mock()
+        ts.key_id = "KEY_ID"
+        ts.task_manager = tm
+        ts.task_computer = tc
+        ts.task_server = tsrv
+
+        return ts
+
+
+
+
+
+
 
 
 def executor_success(req, success, error):
