@@ -90,7 +90,7 @@ class CBORCoder(object):
 
     @classmethod
     def _obj_to_dict(cls, obj):
-        """Stores object's public properties in a dictionary. Does not support cyclic references"""
+        """Stores object's public properties in a dictionary. Triggered by CBOR encoder."""
         result = cls._to_dict_traverse_dict(obj.__dict__)
         result[cls.cls_key] = cls._module_and_class(obj)
         return result
@@ -159,6 +159,38 @@ class CBORCoder(object):
     @staticmethod
     def _module_and_class(obj):
         return obj.__module__, obj.__class__.__name__
+
+
+def to_dict(obj, cls=None, _parents=None):
+
+    _parents = _parents or set()
+
+    if isinstance(obj, dict):
+        return {k: to_dict(v, cls, _parents=_parents) for k, v in obj.iteritems()}
+
+    elif isinstance(obj, collections.Iterable) and not isinstance(obj, basestring):
+        return obj.__class__([to_dict(v, cls, _parents=_parents) for v in obj])
+
+    elif hasattr(obj, "__dict__"):
+
+        _id = id(obj)
+        if _id in _parents:
+            raise Exception("Cycle detected")
+
+        _sub_parents = set(_parents)
+        _sub_parents.add(_id)
+
+        data = dict()
+        for k, v in obj.__dict__.iteritems():
+            if not callable(v) and not k.startswith('_'):
+                data[k] = to_dict(v, cls, _parents=_sub_parents)
+
+        if cls is not None and hasattr(obj, "__class__"):
+            data[cls] = obj.__class__.__name__
+
+        return data
+
+    return obj
 
 
 class CBORSerializer(object):

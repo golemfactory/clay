@@ -156,7 +156,12 @@ setup(
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
     packages=packages,
-    entry_points={'console_scripts': ['golemapp = golemapp:start']},
+    entry_points={
+        'console_scripts': [
+            'golemapp = golemapp:start',
+            'golemcli = golemcli:start',
+        ]
+    },
     install_requires=requirements,
     include_package_data=True,
     dependency_links=dependency_links,

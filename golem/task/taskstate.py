@@ -41,8 +41,7 @@ class SubtaskState(object):
         self.subtask_id = ""
         self.subtask_progress = 0.0
         self.time_started = 0
-        self.ttl = 0
-        self.last_checking = time.time()
+        self.deadline = 0
         self.extra_data = {}
         self.subtask_rem_time = 0
         self.subtask_status = ""

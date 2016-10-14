@@ -223,7 +223,7 @@ class RSAKeysAuth(KeysAuth):
         try:
             return public_key.verify(data, sig)
         except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc.message))
+            logger.error("Cannot verify signature: {}".format(exc))
         return False
 
     def generate_new(self, difficulty):
@@ -398,7 +398,7 @@ class EllipticalKeysAuth(KeysAuth):
         except AssertionError:
             logger.info("Wrong key format")
         except Exception as exc:
-            logger.error("Cannot verify signature: {}".format(exc.message))
+            logger.error("Cannot verify signature: {}".format(exc))
         return False
 
     def generate_new(self, difficulty):

@@ -1,25 +1,27 @@
 import os
 import time
 
-from mock import MagicMock, Mock
-
-from golem.core.common import timeout_to_deadline
 from golem.client import ClientTaskComputerEventListener
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
+from mock import MagicMock, Mock
 
 
 class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_init(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
+        task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
         task_server = MagicMock()
+        task_server.config_desc = config_desc()
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
         task_server.config_desc.waiting_for_task_timeout = 1
@@ -66,6 +68,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_resource_failure(self):
         task_server = MagicMock()
+        task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         task_id = 'xyz'
@@ -85,6 +88,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_computation(self):
         task_server = MagicMock()
         task_server.get_task_computer_root.return_value = self.path
+        task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         ctd = ComputeTaskDef()
@@ -181,6 +185,8 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_change_config(self):
         task_server = MagicMock()
+        task_server.config_desc = config_desc()
+
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = Mock()
 
@@ -202,6 +208,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_event_listeners(self):
         client = Mock()
         task_server = MagicMock()
+        task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         tc.toggle_config_dialog(True)
@@ -224,7 +231,9 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
-        tc = TaskComputer("ABC", MagicMock(), use_docker_machine_manager=False)
+        ts = MagicMock()
+        ts.config_desc = config_desc()
+        tc = TaskComputer("ABC", ts, use_docker_machine_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
         tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},
@@ -233,3 +242,10 @@ class TestTaskThread(TestDirFixture):
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
         self.assertTrue(tc.counting_task)
+
+
+def config_desc():
+    ccd = ClientConfigDescriptor()
+    ccd.estimated_blender_performance = 2000.0
+    ccd.estimated_lux_performance = 2000.0
+    return ccd

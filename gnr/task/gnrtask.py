@@ -2,9 +2,8 @@ import copy
 import logging
 import pickle
 import os
-import time
 
-from golem.core.common import HandleKeyError
+from golem.core.common import HandleKeyError, timeout_to_deadline
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.environments.environment import Environment
@@ -61,7 +60,7 @@ class GNRTask(Task):
     ################
 
     def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 ttl, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
+                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
 
         """ Create more specific task implementation
         :param src_code:
@@ -71,15 +70,16 @@ class GNRTask(Task):
         :param owner_port:
         :param owner_key_id:
         :param environment:
-        :param ttl:
+        :param task_timeout:
         :param subtask_timeout:
         :param resource_size:
         :param estimated_memory:
         :param float max_price: maximum price that this node may par for an hour of computation
         :param docker_images: docker image specification
         """
+        deadline = timeout_to_deadline(task_timeout)
         th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        ttl, subtask_timeout, resource_size, estimated_memory, max_price=max_price,
+                        deadline, subtask_timeout, resource_size, estimated_memory, max_price=max_price,
                         docker_images=docker_images)
 
         Task.__init__(self, th, src_code)
@@ -93,7 +93,7 @@ class GNRTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.full_task_timeout = 2200
+        self.full_task_timeout = task_timeout
         self.counting_nodes = {}
 
         self.root_path = None
