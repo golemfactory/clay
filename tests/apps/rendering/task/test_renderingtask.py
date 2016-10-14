@@ -9,6 +9,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions, RenderingTaskDefinition)
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
+from golem.task.taskstate import SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -76,6 +77,16 @@ class TestRenderingTask(TestDirFixture):
         task.preview_file_path = None
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_file"
+
+    def test_has_next_subtask(self):
+        rt = self._init_task()
+        assert rt.has_next_subtask()
+
+        rt.last_task = rt.total_tasks
+        assert not rt.has_next_subtask()
+
+        rt.subtasks_given['task_id'] = dict(status=SubtaskStatus.failure)
+        assert rt.has_next_subtask()
 
 
 class TestGetTaskBorder(unittest.TestCase):
