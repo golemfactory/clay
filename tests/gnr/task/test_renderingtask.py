@@ -6,6 +6,7 @@ from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
 from gnr.task.framerenderingtask import get_task_border
 from gnr.task.renderingtask import RenderingTask
 from golem.resource.dirmanager import DirManager
+from golem.task.taskstate import SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -57,6 +58,16 @@ class TestRenderingTask(TestDirFixture):
         assert img.getpixel((199, 4)) == (1, 255, 255)
         assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
+
+    def test_has_next_subtask(self):
+        rt = self._init_task()
+        assert rt.has_next_subtask()
+
+        rt.last_task = rt.total_tasks
+        assert not rt.has_next_subtask()
+
+        rt.subtasks_given['task_id'] = dict(status=SubtaskStatus.failure)
+        assert rt.has_next_subtask()
 
 
 class TestGetTaskBorder(unittest.TestCase):

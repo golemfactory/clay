@@ -49,13 +49,26 @@ class Contender(object):
         self.req_msg = request_message
         # min performance -> max penalty by default
         self.performance = float(request_message.perf_index or 0.0)
-        # min trust -> max penalty by default
-        self.reputation = float(computing_trust)
+        # neutral trust if unknown
+        self.reputation = float(computing_trust or 0.0)
         # max price -> max penalty by default
         self.price = float(request_message.price or sys.maxint)
 
     def __lt__(self, other):
-        return bool(other) and self.score < other.score
+        return other and self.score < other.score
+
+    def __eq__(self, other):
+        return other and self.score == other.score
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __cmp__(self, other):
+        if self < other:
+            return -1
+        elif self == other:
+            return 0
+        return 1
 
     @property
     def session(self):
@@ -96,7 +109,7 @@ class Contender(object):
         #            <-1; 1>           <0; 1>       <0; 1>        <0; 1>
         self.score = self.reputation + perf_score + price_score + sub_score - point_zero
 
-        logger.debug("Score: rep [{}] + perf[{}] + price[{}] + sub[{}] - {} = {} ({})"
+        logger.debug("Score: rep[{}] + perf[{}] + price[{}] + sub[{}] - {} = {} ({})"
                      .format(self.reputation, perf_score, price_score, sub_score, point_zero, self.score, self.id))
 
 
@@ -111,7 +124,6 @@ class Contest(object):
 
         self.started = None
         self.winner = None
-        self.winner_ack = False
         self.rounds = 0
 
         self.contenders = dict()
@@ -122,8 +134,7 @@ class Contest(object):
         self.new_round()
 
     def get_contender(self, contender_id):
-        with self._lock:
-            return self.contenders.get(contender_id)
+        return self.contenders.get(contender_id)
 
     def add_contender(self, contender_id, session, request_message, computing_trust, lifetime=CONTENDER_LIFETIME):
         if contender_id not in self.contenders:
@@ -135,13 +146,13 @@ class Contest(object):
     def remove_contender(self, contender_id):
         with self._lock:
             removed = self.contenders.pop(contender_id, None)
-            self._rank_contenders()
+            if removed:
+                self._rank_contenders()
         return removed
 
     def new_round(self):
         self.started = time.time()
         self.winner = None
-        self.winner_ack = False
         self.rounds += 1
 
         return self.extend_round()
@@ -344,10 +355,10 @@ class ContestManager(object):
 
     def _cancel_deferred(self, key, dictionary):
         with self._lock:
-            d = dictionary.get(key)
+            d = dictionary.pop(key, None)
             if d and d.active():
                 d.cancel()
-            return dictionary.pop(key, None)
+            return d
 
     def _get_reactor(self):
         if not self._reactor:
