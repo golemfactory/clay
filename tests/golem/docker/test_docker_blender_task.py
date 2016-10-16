@@ -73,8 +73,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def _run_docker_task(self, render_task, timeout=60*5):
         task_id = render_task.header.task_id
-        extra_data = render_task.query_extra_data(1.0)
-        ctd = extra_data.ctd
+        ctd = render_task.query_extra_data(1.0)
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
@@ -82,6 +81,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
         self.node.client.p2pservice = Mock()
+        self.node.client.monitor = Mock()
         self.node.initialize()
 
         ccd = ClientConfigDescriptor()
@@ -119,13 +119,14 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # Start task computation
         task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
-        self.assertTrue(result)
 
         # Thread for task computation should be created by now
         task_thread = None
         with task_computer.lock:
             if task_computer.current_computations:
                 task_thread = task_computer.current_computations[0]
+
+        self.assertTrue(result)
 
         if task_thread:
             started = time.time()
@@ -193,11 +194,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def test_blender_subtask_timeout(self):
         task = self._create_test_task()
-        task_thread, error_msg, out_dir = \
-            self._run_docker_task(task, timeout=1)
-        self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsInstance(task_thread.error_msg, str)
-        self.assertTrue(task_thread.error_msg.startswith("Task timed out"))
+        _, error_msg, out_dir = self._run_docker_task(task, timeout=1)
+        self.assertIsInstance(error_msg, str)
+        self.assertTrue(error_msg.startswith("Task timed out"))
 
     def test_wrong_image_repository_specified(self):
         task = self._create_test_task()

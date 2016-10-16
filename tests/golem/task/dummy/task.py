@@ -152,7 +152,7 @@ class DummyTask(Task):
         subtask_def.return_address = self.header.task_owner_address
         subtask_def.return_port = self.header.task_owner_port
         subtask_def.deadline = timeout_to_deadline(5 * 60)
-        return self.ExtraData(ctd=subtask_def)
+        return subtask_def
 
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
