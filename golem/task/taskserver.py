@@ -165,9 +165,15 @@ class TaskServer(PendingConnectionsServer):
             task_id = th_dict_repr["task_id"]
             key_id = th_dict_repr["task_owner_key_id"]
             task_ids = self.task_manager.tasks.keys()
+            new_sig = True
 
-            if task_id not in task_ids and key_id != self.node.key:
+            if task_id in task_ids:
+                header = self.task_manager.tasks[task_id].header
+                new_sig = th_dict_repr["signature"] != header.signature
+
+            if new_sig and key_id != self.node.key:
                 self.task_keeper.add_task_header(th_dict_repr)
+
             return True
         except Exception as err:
             logger.error("Wrong task header received {}".format(err))

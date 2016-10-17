@@ -185,21 +185,24 @@ class TaskHeaderKeeper(object):
                 self.supported_tasks.append(id_)
 
     def add_task_header(self, th_dict_repr):
-        """ This function will try to add a task header to a list of known headers. The header will be added only
-        if it isn't already placed in taks_headers or wasn't remove recently. If it's new and supported its id will be
-        put in supported task list.
+        """ This function will try to add to or update a task header in a list of known headers. The header will be
+        added / updated only if it hasn't been removed recently. If it's new and supported its id will be put in
+        supported task list.
         :param dict th_dict_repr: task dictionary representation
         :return bool: True if task header was well formatted and no error occurs, False otherwise
         """
         try:
             id_ = th_dict_repr["task_id"]
-            if id_ not in self.task_headers.keys():  # don't have it
-                if id_ not in self.removed_tasks.keys():  # not removed recently
-                    self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
-                    is_supported = self.is_supported(th_dict_repr)
+            update = id_ in self.task_headers.keys()
+
+            if id_ not in self.removed_tasks.keys():  # not removed recently
+                self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
+                is_supported = self.is_supported(th_dict_repr)
+
+                if is_supported and not update:
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
-                    if is_supported:
-                        self.supported_tasks.append(id_)
+                    self.supported_tasks.append(id_)
+
             return True
         except (KeyError, TypeError) as err:
             logger.error("Wrong task header received {}".format(err))
