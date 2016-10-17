@@ -167,11 +167,11 @@ class TaskServer(PendingConnectionsServer):
             task_ids = self.task_manager.tasks.keys()
             new_sig = True
 
-            if task_id in task_ids:
-                header = self.task_manager.tasks[task_id].header
+            if task_id in self.task_keeper.task_headers:
+                header = self.task_keeper.task_headers[task_id]
                 new_sig = th_dict_repr["signature"] != header.signature
 
-            if new_sig and key_id != self.node.key:
+            if task_id not in task_ids and key_id != self.node.key and new_sig:
                 self.task_keeper.add_task_header(th_dict_repr)
 
             return True

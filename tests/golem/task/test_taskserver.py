@@ -1,4 +1,6 @@
 from __future__ import division
+
+import os
 import uuid
 from collections import deque
 
@@ -162,6 +164,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
     def test_add_task_header(self):
         config = self.__get_config_desc()
         keys_auth = EllipticalKeysAuth(self.path)
+        keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "2"))
 
         self.ts = ts = TaskServer(Node(), config, keys_auth, self.client,
                                   use_docker_machine_manager=False)
@@ -174,30 +177,31 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             assert raised.exception.message == "Invalid signature"
         assert len(ts.get_tasks_headers()) == 0
 
-        task_header["task_owner_key_id"] = keys_auth.key_id
-        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+        task_header["task_owner_key_id"] = keys_auth_2.key_id
+        task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
-        ts.add_task_header(task_header)
+        assert ts.add_task_header(task_header)
         assert len(ts.get_tasks_headers()) == 1
 
         task_header = self.__get_example_task_header()
         task_header["task_id"] = "xyz_2"
-        task_header["task_owner_key_id"] = keys_auth.key_id
-        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+        task_header["task_owner_key_id"] = keys_auth_2.key_id
+        task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
-        ts.add_task_header(task_header)
+        assert ts.add_task_header(task_header)
         assert len(ts.get_tasks_headers()) == 2
 
-        ts.add_task_header(task_header)
+        assert ts.add_task_header(task_header)
         assert len(ts.get_tasks_headers()) == 2
 
-        task_header["task_owner"].pub_port = 9999
-        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+        new_header = dict(task_header)
+        new_header["task_owner"].pub_port = 9999
+        new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
 
-        ts.add_task_header(task_header)
+        assert ts.add_task_header(new_header)
         assert len(ts.get_tasks_headers()) == 2
         saved_task = next(th for th in ts.get_tasks_headers() if th["task_id"] == "xyz_2")
-        assert saved_task["signature"] == task_header["signature"]
+        assert saved_task["signature"] == new_header["signature"]
 
     def test_sync(self):
         ccd = self.__get_config_desc()
