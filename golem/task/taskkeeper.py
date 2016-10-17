@@ -199,7 +199,10 @@ class TaskHeaderKeeper(object):
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                 is_supported = self.is_supported(th_dict_repr)
 
-                if is_supported and not update:
+                if update:
+                    if not is_supported and id_ in self.supported_tasks:
+                        self.supported_tasks.remove(id_)
+                elif is_supported:
                     logger.info("Adding task {} is_supported={}".format(id_, is_supported))
                     self.supported_tasks.append(id_)
 
