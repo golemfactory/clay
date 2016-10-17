@@ -188,6 +188,17 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.add_task_header(task_header)
         assert len(ts.get_tasks_headers()) == 2
 
+        ts.add_task_header(task_header)
+        assert len(ts.get_tasks_headers()) == 2
+
+        task_header["task_owner"].pub_port = 9999
+        task_header["signature"] = keys_auth.sign(TaskHeader.dict_to_binary(task_header))
+
+        ts.add_task_header(task_header)
+        assert len(ts.get_tasks_headers()) == 2
+        saved_task = next(th for th in ts.get_tasks_headers() if th["task_id"] == "xyz_2")
+        assert saved_task["signature"] == task_header["signature"]
+
     def test_sync(self):
         ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
