@@ -3,6 +3,7 @@ import time
 import random
 import operator
 import datetime
+from threading import Lock
 
 from twisted.internet.task import deferLater
 from itertools import izip
@@ -189,12 +190,13 @@ class Ranking(object):
         self.initLocRankPush = True
         self.prev_loc_rank = {}
         self.loc_rank_push_delta = loc_rank_push_delta
+        self.lock = Lock()
 
     def run(self, reactor):
         self.reactor = reactor
-        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
+        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
 
-    def init_stage(self):
+    def __init_stage(self):
         try:
             logger.debug("New gossip stage")
             self.__push_local_ranks()
@@ -202,20 +204,21 @@ class Ranking(object):
             self.global_finished = False
             self.step = 0
             self.finished_neighbours = set()
-            self.init_working_vec()
+            self.__init_working_vec()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
-    def init_working_vec(self):
-        self.working_vec = {}
-        self.prevRank = {}
-        for loc_rank in self.db.get_all_local_rank():
-            comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
-            req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
-            self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
-            self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
+    def __init_working_vec(self):
+        with self.lock:
+            self.working_vec = {}
+            self.prevRank = {}
+            for loc_rank in self.db.get_all_local_rank():
+                comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
+                req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
+                self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
+                self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
-    def new_round(self):
+    def __new_round(self):
         logger.debug("New gossip round")
         try:
             self.__set_k()
@@ -226,9 +229,9 @@ class Ranking(object):
                 self.client.send_gossip(gossip, send_to)
             self.received_gossip = [gossip]
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.end_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.__end_round)
 
-    def end_round(self):
+    def __end_round(self):
         logger.debug("End gossip round")
         try:
             self.received_gossip = self.client.collect_gossip() + self.received_gossip
@@ -237,14 +240,14 @@ class Ranking(object):
             self.__add_gossip()
             self.__check_finished()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.make_break)
+            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.__make_break)
 
-    def make_break(self):
+    def __make_break(self):
         logger.debug("Gossip round finished")
         try:
             self.__check_global_finished()
         except Exception:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
             raise
 
         if self.global_finished:
@@ -253,45 +256,41 @@ class Ranking(object):
                 self.client.collect_stopped_peers()
                 self.__save_working_vec()
             finally:
-                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.init_stage)
+                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
         else:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.new_round)
+            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
+    # thread-safe
     def increase_trust(self, node_id, stat, mod):
-        if stat == RankingStats.computed:
-            self.db.increase_positive_computing(node_id, mod)
-        elif stat == RankingStats.requested:
-            self.db.increase_positive_requested(node_id, mod)
-        elif stat == RankingStats.payment:
-            self.db.increase_positive_payment(node_id, mod)
-        elif stat == RankingStats.resource:
-            self.db.increase_positive_resource(node_id, mod)
-        else:
-            logger.error("Wrong stat type {}".format(stat))
+        with self.lock:
+            if stat == RankingStats.computed:
+                self.db.increase_positive_computing(node_id, mod)
+            elif stat == RankingStats.requested:
+                self.db.increase_positive_requested(node_id, mod)
+            elif stat == RankingStats.payment:
+                self.db.increase_positive_payment(node_id, mod)
+            elif stat == RankingStats.resource:
+                self.db.increase_positive_resource(node_id, mod)
+            else:
+                logger.error("Wrong stat type {}".format(stat))
 
     def decrease_trust(self, node_id, stat, mod):
-        if stat == RankingStats.computed:
-            self.db.increase_negative_computing(node_id, mod)
-        elif stat == RankingStats.wrong_computed:
-            self.db.increase_wrong_computed(node_id, mod)
-        elif stat == RankingStats.requested:
-            self.db.increase_negative_requested(node_id, mod)
-        elif stat == RankingStats.payment:
-            self.db.increase_negative_payment(node_id, mod)
-        elif stat == RankingStats.resource:
-            self.db.increase_negative_resource(node_id, mod)
-        else:
-            logger.error("Wrong stat type {}".format(stat))
-
-    def get_loc_computing_trust(self, node_id):
-        local_rank = self.db.get_local_rank(node_id)
-        # Known node
-        if local_rank is not None:
-            return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank))
-        return None
+        with self.lock:
+            if stat == RankingStats.computed:
+                self.db.increase_negative_computing(node_id, mod)
+            elif stat == RankingStats.wrong_computed:
+                self.db.increase_wrong_computed(node_id, mod)
+            elif stat == RankingStats.requested:
+                self.db.increase_negative_requested(node_id, mod)
+            elif stat == RankingStats.payment:
+                self.db.increase_negative_payment(node_id, mod)
+            elif stat == RankingStats.resource:
+                self.db.increase_negative_resource(node_id, mod)
+            else:
+                logger.error("Wrong stat type {}".format(stat))
 
     def get_computing_trust(self, node_id):
-        local_rank = self.get_loc_computing_trust(node_id)
+        local_rank = self.__get_loc_computing_trust(node_id)
         if local_rank is not None:
             logger.debug("Using local rank {}".format(local_rank))
             return local_rank
@@ -306,15 +305,8 @@ class Ranking(object):
             return rank / float(weight_sum)
         return self.unknown_trust
 
-    def get_loc_requesting_trust(self, node_id):
-        local_rank = self.db.get_local_rank(node_id)
-        # Known node
-        if local_rank is not None:
-            return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank))
-        return None
-
     def get_requesting_trust(self, node_id):
-        local_rank = self.get_loc_requesting_trust(node_id)
+        local_rank = self.__get_loc_requesting_trust(node_id)
         if local_rank is not None:
             logger.debug("Using local rank {}".format(local_rank))
             return local_rank
@@ -331,38 +323,53 @@ class Ranking(object):
 
         return self.unknown_trust
 
-    def get_computing_neighbour_loc_trust(self, neighbour, about):
+    def sync_network(self):
+        neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
+        for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
+            with self.lock:
+                self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
+                                                            about_id, loc_rank)
+
+    def __get_loc_computing_trust(self, node_id):
+        local_rank = self.db.get_local_rank(node_id)
+        # Known node
+        if local_rank is not None:
+            return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank))
+        return None
+
+    def __get_loc_requesting_trust(self, node_id):
+        local_rank = self.db.get_local_rank(node_id)
+        # Known node
+        if local_rank is not None:
+            return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank))
+        return None
+
+    def __get_computing_neighbour_loc_trust(self, neighbour, about):
         rank = self.db.get_neighbour_loc_rank(neighbour, about)
         if rank is not None:
             return rank.computing_trust_value
         return self.unknown_trust
 
-    def get_requesting_neighbour_loc_trust(self, neighbour, about):
+    def __get_requesting_neighbour_loc_trust(self, neighbour, about):
         rank = self.db.get_neighbour_loc_rank(neighbour, about)
         if rank is not None:
             return rank.requesting_trust_value
         return self.unknown_trust
 
-    def neighbour_weight_base(self):
+    def __neighbour_weight_base(self):
         return 2
 
-    def neighbour_weight_power(self, node_id):
+    def __neighbour_weight_power(self, node_id):
         return 2
 
-    def count_neighbour_weight(self, node_id, computing=True):
+    def __count_neighbour_weight(self, node_id, computing=True):
         if computing:
-            loc_trust = self.get_loc_computing_trust(node_id)
+            loc_trust = self.__get_loc_computing_trust(node_id)
         else:
-            loc_trust = self.get_loc_requesting_trust(node_id)
+            loc_trust = self.__get_loc_requesting_trust(node_id)
         if loc_trust is None:
             loc_trust = self.unknown_trust
-        return self.neighbour_weight_base() ** (self.neighbour_weight_power(node_id) * loc_trust)
-
-    def sync_network(self):
-        neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
-        for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
-            self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
-                                                        about_id, loc_rank)
+        return self.__neighbour_weight_base() ** (self.__neighbour_weight_power(node_id) * loc_trust)
 
     def __push_local_ranks(self):
         for loc_rank in self.db.get_all_local_rank():
@@ -518,10 +525,10 @@ class Ranking(object):
         for n in self.neighbours:
             if n != node_id:
                 if computing:
-                    trust = self.get_computing_neighbour_loc_trust(n, node_id)
+                    trust = self.__get_computing_neighbour_loc_trust(n, node_id)
                 else:
-                    trust = self.get_requesting_neighbour_loc_trust(n, node_id)
-                weight = self.count_neighbour_weight(n, not computing)
+                    trust = self.__get_requesting_neighbour_loc_trust(n, node_id)
+                weight = self.__count_neighbour_weight(n, not computing)
                 sum_trust += (weight - 1) * trust
                 sum_weight += weight
         return sum_trust, sum_weight
@@ -552,15 +559,6 @@ class DiscreteTimeRoundOracle:
 
     def __time_mod(self):
         return time.time() % self.__sum_time()
-
-    def is_break(self):
-        return self.round_time + self.end_round_time < self.__time_mod()
-
-    def is_round(self):
-        return self.__time_mod() <= self.round_time
-
-    def is_end_round(self):
-        return self.round_time < self.__time_mod() <= self.round_time + self.end_round_time
 
     def sec_to_end_round(self):
         tm = self.__time_mod()

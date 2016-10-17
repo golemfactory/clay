@@ -37,4 +37,4 @@ def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork
         node.connect_with_peers(peer)
         node.add_tasks(task)
 
-        node.run()
+        node.run(use_rpc=True)

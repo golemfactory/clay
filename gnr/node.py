@@ -14,6 +14,7 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.rpc.websockets import WebSocketRPCServerFactory
 from golem.task.taskbase import Task
 
 
@@ -50,11 +51,16 @@ class Node(object):
                                                       self.client.datadir))
             self.client.enqueue_new_task(golem_task)
 
-    def run(self):
+    def run(self, use_rpc=False):
         try:
             # Import reactor locally because it also installs it and GUI
             # requires Qt reactor version.
             from twisted.internet import reactor
+            if use_rpc:
+                config = self.client.config_desc
+                reactor.callWhenRunning(self._start_rpc_server,
+                                        config.rpc_address,
+                                        config.rpc_port)
             reactor.run()
         except Exception as ex:
             logger = logging.getLogger("gnr.app")
@@ -62,6 +68,11 @@ class Node(object):
         finally:
             self.client.quit()
             sys.exit(0)
+
+    def _start_rpc_server(self, host, port):
+        rpc_server = WebSocketRPCServerFactory(interface=host, port=port)
+        rpc_server.listen()
+        self.client.set_rpc_server(rpc_server)
 
     @staticmethod
     def _get_task_builder(task_def):

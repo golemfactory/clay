@@ -5,7 +5,7 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-APP_VERSION = "0.2"
+APP_VERSION = "0.3"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
@@ -37,5 +37,5 @@ UNVERIFIED_CNT = 15
 #####################
 BREAK_TIME = 2400
 END_ROUND_TIME = 1200
-ROUND_TIME = 1800
+ROUND_TIME = 600
 STAGE_TIME = 36000

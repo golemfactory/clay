@@ -62,7 +62,7 @@ class BaseAbstractResourceManager(IClientHandler):
 
     def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("Resource manager: Error executing command '{}': {}"
-                     .format(self.commands.names[cmd], exc.message))
+                     .format(self.commands.names[cmd], exc))
 
     def copy_resources(self, from_dir):
         resource_dir = self.get_root_dir()

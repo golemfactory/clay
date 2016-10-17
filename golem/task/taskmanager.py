@@ -1,14 +1,14 @@
 import logging
 import time
 
-from golem.core.common import HandleKeyError
+from golem.core.common import HandleKeyError, get_current_time, timeout_to_deadline
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
-
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
@@ -43,11 +43,13 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
-    def __init__(self, node_name, node, listen_address="", listen_port=0, key_id="", root_path="res",
+    def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
                  use_distributed_resources=True):
         super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
+        self.keys_auth = keys_auth
+        self.key_id = keys_auth.get_key_id()
 
         self.tasks = {}
         self.tasks_states = {}
@@ -55,7 +57,6 @@ class TaskManager(TaskEventListener):
 
         self.listen_address = listen_address
         self.listen_port = listen_port
-        self.key_id = key_id
 
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
@@ -90,12 +91,16 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task):
         assert task.header.task_id not in self.tasks
+        assert self.key_id
+        assert SocketAddress.is_proper_address(self.listen_address, self.listen_port)
+
+        self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
 
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
         task.header.task_owner = self.node
+        task.header.signature = self.sign_task_header(task.header)
 
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
@@ -164,10 +169,15 @@ class TaskManager(TaskEventListener):
                 should_wait = extra_data.should_wait
                 ctd = extra_data.ctd
 
-                if ctd is None or ctd.subtask_id is None:
-                    return None, False, should_wait
+                if should_wait:
+                    return None, False, True
+                elif not self._check_compute_task_def(ctd, task_id):
+                    return None, False, False
 
                 ctd.key_id = th.task_owner_key_id
+                ctd.return_address = th.task_owner_address
+                ctd.return_port = th.task_owner_port
+                ctd.task_owner = th.task_owner
                 self.subtask2task_mapping[ctd.subtask_id] = task_id
                 self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
                 self.notice_task_updated(task_id)
@@ -194,6 +204,9 @@ class TaskManager(TaskEventListener):
         else:
             logger.error("This is not my subtask {}".format(subtask_id))
             return 0
+
+    def sign_task_header(self, task_header):
+        return self.keys_auth.sign(task_header.to_binary())
 
     def verify_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
@@ -301,27 +314,22 @@ class TaskManager(TaskEventListener):
                          .format(node_id, subtask_id))
 
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
-    def remove_old_tasks(self):
+    def check_timeouts(self):
         nodes_with_timeouts = []
-        self.comp_task_keeper.remove_old_tasks()
         for t in self.tasks.values():
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = time.time()
-            th.ttl = th.ttl - (cur_time - th.last_checking)
-            th.last_checking = cur_time
-            if th.ttl <= 0:
+            cur_time = get_current_time()
+            if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
-                self.tasks[th.task_id].unregister_listener(self)
-                del self.tasks[th.task_id]
-                continue
+                t.task_stats = TaskStatus.timeout
+                self.tasks_states[th.task_id].status = TaskStatus.timeout
+                self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
                 if s.subtask_status == SubtaskStatus.starting:
-                    s.ttl = s.ttl - (cur_time - s.last_checking)
-                    s.last_checking = cur_time
-                    if s.ttl <= 0:
+                    if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
@@ -446,25 +454,63 @@ class TaskManager(TaskEventListener):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
 
+    @handle_task_key_error
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
-            task.header.ttl = full_task_timeout
-            task.header.subtask_timeout = subtask_timeout
-            task.subtask_timeout = subtask_timeout
-            task.full_task_timeout = full_task_timeout
-            task.header.last_checking = time.time()
-            ts = self.tasks_states[task_id]
-            for s in ts.subtask_states.values():
-                s.ttl = subtask_timeout
-                s.last_checking = time.time()
-            return True
-        else:
-            logger.info("Cannot find task {} in my tasks".format(task_id))
-            return False
+        task = self.tasks[task_id]
+        task.header.deadline = timeout_to_deadline(full_task_timeout)
+        task.header.subtask_timeout = subtask_timeout
+        task.full_task_timeout = full_task_timeout
+        task.header.last_checking = time.time()
 
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
+
+    def get_dict_task(self, task_id):
+        return self._simple_task_repr(self.tasks_states, self.tasks[task_id])
+
+    def get_dict_tasks(self):
+        return [self._simple_task_repr(self.tasks_states, t) for task_id, t in self.tasks.iteritems()]
+
+    def get_dict_subtasks(self, task_id):
+        task_state = self.tasks_states[task_id]
+        return [self._simple_subtask_repr(subtask) for subtask_id, subtask in task_state.subtask_states.iteritems()]
+
+    def get_dict_subtask(self, subtask_id):
+        task_id = self.subtask2task_mapping[subtask_id]
+        task_state = self.tasks_states[task_id]
+        subtask = task_state.subtask_states[subtask_id]
+        return self._simple_subtask_repr(subtask)
+
+    @staticmethod
+    def _simple_task_repr(_states, _task):
+        if _task:
+            state = _states.get(_task.header.task_id,)
+            return dict(
+                id=_task.header.task_id,
+                time_remaining=state.remaining_time,
+                subtasks=_task.get_total_tasks(),
+                status=state.status,
+                progress=_task.get_progress()
+            )
+
+    @staticmethod
+    def _simple_subtask_repr(subtask):
+        if subtask:
+            return dict(
+                subtask_id=subtask.subtask_id,
+                node_name=subtask.computer.node_name,
+                node_id=subtask.computer.node_id,
+                node_performance=subtask.computer.performance,
+                node_ip_address=subtask.computer.ip_address,
+                node_port=subtask.computer.port,
+                status=subtask.subtask_status,
+                progress=subtask.subtask_progress,
+                time_started=subtask.time_started,
+                time_remaining=subtask.subtask_rem_time,
+                results=subtask.results,
+                stderr=subtask.stderr,
+                stdout=subtask.stdout
+            )
 
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):
@@ -505,7 +551,7 @@ class TaskManager(TaskEventListener):
             ss.computer.ip_address = address
             ss.computer.price = price
             ss.time_started = time.time()
-            ss.ttl = self.tasks[ctd.task_id].header.subtask_timeout
+            ss.deadline = ctd.deadline
             # TODO: read node ip address
             ss.subtask_definition = ctd.short_description
             ss.subtask_id = ctd.subtask_id
@@ -523,6 +569,15 @@ class TaskManager(TaskEventListener):
         # self.save_state()
         for l in self.listeners:
             l.task_status_updated(task_id)
+
+    def _check_compute_task_def(self, ctd, task_id):
+        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+            return False
+        if task_id != ctd.task_id or self.subtask2task_mapping.get(ctd.subtask_id) is not None:
+            return False
+        if self.tasks_states[ctd.task_id].subtask_states.get(ctd.subtask_id) is not None:
+            return False
+        return True
 
     def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
         if task_state.status not in self.activeStatus:

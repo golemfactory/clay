@@ -8,10 +8,10 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
-from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceMethodNamesProxy, ServiceHelper
+from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
-from mock import Mock, MagicMock
+from mock import Mock, MagicMock, ANY, call
 from twisted.internet.defer import Deferred
 
 
@@ -62,15 +62,21 @@ class RPCClient(object):
     def __init__(self):
         self.success = False
         self.error = False
+        self.started = False
 
     def test_task_computation_success(self, *args, **kwargs):
         self.success = True
         self.error = False
+        self.started = False
 
     def test_task_computation_error(self, *args, **kwargs):
         self.success = False
         self.error = True
+        self.started = False
 
+    def test_task_started(self, *args, **kwargs):
+        print "test_task_started {}".format(args)
+        self.started = args[0]
 
 class MockDeferred(Deferred):
     def __init__(self, result):
@@ -102,7 +108,7 @@ class MockRPCCallChain(object):
         return MockDeferred(self.results)
 
 
-class MockRPCClient(ServiceMethodNamesProxy):
+class MockRPCClient(RPCProxyClient):
     def __init__(self, service):
         self.methods = ServiceHelper.to_dict(service)
 
@@ -217,6 +223,9 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
     def setUp(self):
         super(TestGNRApplicationLogicWithGUI, self).setUp()
         self.client = Client.__new__(Client)
+        from threading import Lock
+        self.client.lock = Lock()
+        self.client.task_tester = None
         self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
 
@@ -273,6 +282,21 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
 
         assert rpc_client.success
 
+        assert not rpc_client.started
+        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        logic.run_test_task(ts)
+        time.sleep(1)
+        assert rpc_client.success
+
+        # since PythonTestVM does not support end_comp() method,
+        # this is only a smoke test instead of actual test
+        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        logic.run_test_task(ts)
+        assert rpc_client.started
+        logic.abort_test_task()
+        time.sleep(0.1)
+        # assert rpc_client.error
+
         ttb.src_code = "raise Exception('some error')"
         logic.run_test_task(ts)
         time.sleep(0.5)
@@ -292,3 +316,12 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic.clone_task("xyz")
 
         assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+
+    def test_main_window(self):
+        self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
+        self.app.main_window.show()
+
+        n = self.app.main_window.ui.taskTableWidget.columnCount()
+
+        set_width = self.app.main_window.ui.taskTableWidget.setColumnWidth
+        set_width.assert_has_calls([call(i, ANY) for i in xrange(0, n)])

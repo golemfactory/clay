@@ -3,14 +3,18 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, MagicMock
-
 from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
 from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ethereum.paymentmonitor import IncomingPayment
+from golem.network.p2p.node import Node
+from golem.resource.dirmanager import DirManager
+from golem.task.taskcomputer import TaskComputer
+from golem.task.taskmanager import TaskManager
+from golem.task.taskserver import TaskServer
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+from mock import Mock, MagicMock, patch
 
 
 class TestCreateClient(TestDirFixture):
@@ -190,6 +194,50 @@ class TestClient(TestWithDatabase):
         c = Client(datadir=self.path)
         c.db = None
         c.quit()
+
+
+class TestClientRPCMethods(TestWithDatabase):
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_node(self, _):
+        c = self.__new_client()
+        assert isinstance(c.get_node(), Node)
+        c.quit()
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_dir_manager(self, _):
+        c = self.__new_client()
+        assert isinstance(c.get_dir_manager(), Mock)
+
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
+        c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
+        c.task_server.task_computer.current_computations = []
+
+        assert isinstance(c.get_dir_manager(), DirManager)
+        c.quit()
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_update_setting(self, _):
+        c = self.__new_client()
+        new_node_name = str(uuid.uuid4())
+        c.update_setting('node_name', new_node_name)
+        assert c.config_desc.node_name == new_node_name
+        c.quit()
+
+    def __new_client(self):
+        client = Client(datadir=self.path,
+                        transaction_system=False,
+                        connect_to_known_hosts=False,
+                        use_docker_machine_manager=False,
+                        use_monitor=False)
+
+        client.p2pservice = Mock()
+        client.task_server = Mock()
+        client.monitor = Mock()
+
+        return client
 
 
 class TestEventListener(unittest.TestCase):

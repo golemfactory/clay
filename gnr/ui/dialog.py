@@ -1,6 +1,4 @@
 from PyQt4.QtGui import QDialog
-from PyQt4.QtCore import QTimer
-from threading import Lock
 
 from gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
@@ -20,7 +18,7 @@ from gnr.ui.gen.ui_UpdatingConfigDialog import Ui_updatingConfigDialog
 class Dialog(object):
     """ Basic dialog window extension, save specific given class as ui """
     def __init__(self, parent, ui_class):
-        self.window = QDialog(parent)
+        self.window = QDialogPlus(parent)
         self.ui = ui_class()
         self.ui.setupUi(self.window)
 
@@ -28,7 +26,25 @@ class Dialog(object):
         self.window.show()
 
     def close(self):
+        try:
+            self.ui.enable_close(True)
+        except AttributeError:
+            pass
         self.window.close()
+
+class QDialogPlus(QDialog):
+    def __init__(self, parent):
+        QDialog.__init__(self, parent)
+        self.can_be_closed = True
+
+    def closeEvent(self, event):
+        if self.can_be_closed:
+            event.accept()
+        else:
+            event.ignore()
+
+    def enable_close(self, enable):
+        self.can_be_closed = enable
 
 
 # TASK INFO DIALOGS
@@ -89,23 +105,11 @@ class NodeNameDialog(Dialog):
 class TestingTaskProgressDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_testingTaskProgressDialog)
-        self.lock = Lock()
-        self.timer = QTimer()
-        self.timer.start(25)
-        self.timer.timeout.connect(self._update_progress_bar)
-        self.ui.progressBar.setRange(0, 100)
-        self.ui.progressBar.setValue(0)
+        self.ui.progressBar.setRange(0, 0)
 
     def stop_progress_bar(self):
-        """ Stop progress bar and set value to 100 """
-        self.timer.stop()
-        self.ui.progressBar.setValue(100)
-
-    def _update_progress_bar(self):
-        """ Increase progress bar value by 1 """
-        with self.lock:
-            value = (self.ui.progressBar.value() + 1) % 100
-            self.ui.progressBar.setValue(value)
+        self.ui.progressBar.setRange(0, 1)
+        self.ui.progressBar.setVisible(False)
 
 
 class AddTaskResourcesDialog(Dialog):

@@ -1,8 +1,11 @@
 import os
+import errno
 import sys
+from datetime import datetime, timedelta
 from os import path
 
-import errno
+import pytz
+
 
 LOG_NAME = "golem.log"
 
@@ -44,6 +47,26 @@ def nt_path_to_posix_path(path):
     return path
 
 
+def get_current_time():
+    return datetime.now(pytz.utc)
+
+
+def deadline_to_timeout(deadline):
+    """ Return number of seconds from now to deadline
+    :param datetime deadline: UTC datetime
+    :return float:
+    """
+    return (deadline - get_current_time()).total_seconds()
+
+
+def timeout_to_deadline(timeout):
+    """ Return utctime <timeout> seconds from now
+    :param float timeout:
+    :return datetime:
+    """
+    return get_current_time() + timedelta(seconds=timeout)
+
+
 class HandleError(object):
     def __init__(self, error, handle_error):
         self.handle_error = handle_error
@@ -72,7 +95,12 @@ def config_logging(logname=LOG_NAME):
     """Config logger"""
 
     # \t and other special chars cause problems with log handlers
-    logname = logname.encode('string-escape')
+    if isinstance(logname, unicode):
+        escaping = 'unicode-escape'
+    else:
+        escaping = 'string-escape'
+
+    logname = logname.encode(escaping)
     directory = os.path.dirname(logname)
 
     if directory:

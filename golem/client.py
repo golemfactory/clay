@@ -3,6 +3,8 @@ import logging
 import sys
 import time
 import uuid
+from Queue import Queue
+from copy import copy
 from os import path, makedirs
 from threading import Lock
 
@@ -11,17 +13,18 @@ from twisted.internet import task
 from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.monitorconfig import monitor_config
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
-from golem.monitor.monitor import SystemMonitor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
+from golem.monitor.monitor import SystemMonitor
+from golem.monitorconfig import monitor_config
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -94,6 +97,8 @@ class Client(object):
 
         self.datadir = datadir
         self.__lock_datadir()
+        self.lock = Lock()
+        self.task_tester = None
 
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
@@ -113,12 +118,7 @@ class Client(object):
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
 
-        # FIXME: do in start()
-        self.node.collect_network_info(self.config_desc.seed_host,
-                                       use_ipv6=self.config_desc.use_ipv6)
-
         logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
-        logger.debug("Is super node? {}".format(self.node.is_super_node()))
 
         self.p2pservice = None
         self.diag_service = None
@@ -179,7 +179,9 @@ class Client(object):
 
     def start_network(self):
         logger.info("Starting network ...")
-
+        self.node.collect_network_info(self.config_desc.seed_host,
+                                       use_ipv6=self.config_desc.use_ipv6)
+        logger.debug("Is super node? {}".format(self.node.is_super_node()))
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
 
@@ -277,15 +279,34 @@ class Client(object):
 
     def run_test_task(self, t):
         def on_success(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_success(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_success(*args, **kwargs)
+                self.task_tester = None
 
         def on_error(*args, **kwargs):
-            for rpc_client in self.rpc_clients:
-                rpc_client.test_task_computation_error(*args, **kwargs)
+            with self.lock:
+                for rpc_client in self.rpc_clients:
+                    rpc_client.test_task_computation_error(*args, **kwargs)
+                self.task_tester = None
 
-        tt = TaskTester(t, self.datadir, on_success, on_error)
-        tt.run()
+        has_started = False
+        with self.lock:
+            if self.task_tester is None:
+                self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+                self.task_tester.run()
+                has_started = True
+
+        for rpc_client in self.rpc_clients:
+            rpc_client.test_task_started(has_started)
+        return has_started
+
+    def abort_test_task(self):
+        with self.lock:
+            if self.task_tester is not None:
+                self.task_tester.end_comp()
+                return True
+            return False
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
@@ -311,6 +332,9 @@ class Client(object):
 
     def decrease_trust(self, node_id, stat, mod=1.0):
         self.ranking.decrease_trust(node_id, stat, mod)
+
+    def get_node(self):
+        return self.node
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -340,6 +364,10 @@ class Client(object):
     def get_keys_auth(self):
         return self.keys_auth
 
+    def get_dir_manager(self):
+        if self.task_server:
+            return self.task_server.task_computer.dir_manager
+
     def load_keys_from_file(self, file_name):
         if file_name != "":
             return self.keys_auth.load_from_file(file_name)
@@ -363,6 +391,12 @@ class Client(object):
     def get_config(self):
         return self.config_desc
 
+    def update_setting(self, key, value):
+        if not hasattr(self.config_desc, key):
+            raise Exception("Unknown setting: {}".format(key))
+        setattr(self.config_desc, key, value)
+        self.change_config(self.config_desc)
+
     def get_datadir(self):
         return self.datadir
 
@@ -374,6 +408,26 @@ class Client(object):
 
     def get_task_count(self):
         return len(self.task_server.task_keeper.get_all_tasks())
+
+    def get_tasks(self, task_id=None):
+        if task_id:
+            return self.task_server.task_manager.get_dict_task(task_id)
+        return self.task_server.task_manager.get_dict_tasks()
+
+    def get_subtasks(self, task_id):
+        return self.task_server.task_manager.get_dict_subtasks(task_id)
+
+    def get_subtask(self, subtask_id):
+        return self.task_server.task_manager.get_dict_subtask(subtask_id)
+
+    def get_task_stats(self):
+        return dict(
+            in_network=self.get_task_count(),
+            supported=self.get_supported_task_count(),
+            subtasks_computed=self.get_computed_task_count(),
+            subtasks_with_errors=self.get_error_task_count(),
+            subtasks_with_timeout=self.get_timeout_task_count()
+        )
 
     def get_supported_task_count(self):
         return len(self.task_server.task_keeper.supported_tasks)
@@ -502,11 +556,12 @@ class Client(object):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def get_res_dirs(self):
-        dirs = {"computing": self.get_computed_files_dir(),
+        return {"computing": self.get_computed_files_dir(),
                 "received": self.get_received_files_dir(),
-                "distributed": self.get_distributed_files_dir()
-                }
-        return dirs
+                "distributed": self.get_distributed_files_dir()}
+
+    def get_res_dirs_sizes(self):
+        return {name: du(d) for name, d in self.get_res_dirs().iteritems()}
 
     def get_computed_files_dir(self):
         return self.task_server.get_task_computer_root()
@@ -537,6 +592,41 @@ class Client(object):
 
     def get_environments(self):
         return self.environments_manager.get_environments()
+
+    def get_environments_with_performances(self):
+        envs = copy(self.environments_manager.get_environments())
+        return [self._simple_env_repr(env) for env in envs]
+
+    def run_benchmark(self, env_id):
+        # TODO: move benchmarks to environments
+        from gnr.renderingenvironment import BlenderEnvironment
+        from gnr.renderingenvironment import LuxRenderEnvironment
+
+        queue = Queue()
+
+        def success(performance):
+            queue.put(performance)
+
+        def error(msg):
+            queue.put(msg)
+
+        if env_id == BlenderEnvironment.get_id():
+            self.task_server.task_computer.run_blender_benchmark(success, error)
+        elif env_id == LuxRenderEnvironment.get_id():
+            self.task_server.task_computer.run_lux_benchmark(success, error)
+        else:
+            queue.put("Unknown environment: {}".format(env_id))
+
+        return queue.get()
+
+    def _simple_env_repr(self, env):
+        return dict(
+            id=env.get_id(),
+            supported=env.supported(),
+            active=env.is_accepted(),
+            performance=env.get_performance(self.config_desc),
+            description=env.short_description
+        )
 
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)

@@ -2,6 +2,7 @@ import logging
 import time
 from collections import deque
 
+import sys
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketServerFactory, WebSocketClientFactory
@@ -13,7 +14,7 @@ from golem.core.simpleserializer import DILLSerializer
 from golem.rpc.exceptions import RPCNotConnected, RPCServiceError, RPCProtocolError, \
     RPCMessageError
 from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION, RPCBatchRequestMessage
-from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo
+from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo, RPCSimpleClient
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class SessionManager(SessionAwareMixin):
         addr = self.get_session_addr(session)
         return addr in self.sessions
 
-    def get_session(self, host, port):
+    def get_session(self, host, port, timeout=None):
         for session_key, session in self.sessions.items():
             if session_key == (host, port):
                 return session
@@ -230,6 +231,8 @@ class WebSocketRPCProtocol(object):
                                                        message.kwargs)
         except Exception as exc:
             errors = exc.message
+            import traceback
+            traceback.print_exc()
 
         response = RPCResponseMessage(request_id=message.id,
                                       result=results,
@@ -251,6 +254,10 @@ class WebSocketRPCProtocol(object):
 
             logger.error("RPC: error sending message: {}"
                          .format(exc))
+
+            import traceback
+            traceback.print_exc()
+
         else:
             self.sendMessage(prepared, isBinary=True)
 
@@ -348,7 +355,9 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
 
     protocol = WebSocketRPCClientProtocol
 
-    def __init__(self, remote_host, remote_port, serializer=None, keyring=None, *args, **kwargs):
+    def __init__(self, remote_host, remote_port, serializer=None, keyring=None,
+                 on_disconnect=None, *args, **kwargs):
+
         from twisted.internet import reactor
 
         WebSocketClientFactory.__init__(self, *args, **kwargs)
@@ -364,6 +373,7 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
         self.serializer = serializer or DILLSerializer
         self.keyring = keyring
 
+        self.on_disconnect = on_disconnect
         self._reconnect_timeout = kwargs.pop('reconnect_timeout', RECONNECT_TIMEOUT)
         self._deferred = None
 
@@ -378,13 +388,21 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
                                                  self, timeout=timeout)
         return self._deferred
 
+    def disconnect(self):
+        if self.connector:
+            self.connector.disconnect()
+
+    def build_simple_client(self, timeout=None):
+        rpc = RPC(self, self.remote_ws_address, conn_timeout=timeout)
+        return RPCSimpleClient(rpc)
+
     def add_session(self, session):
         WebSocketRPCFactory.add_session(self, session)
         if not self._deferred.called:
             self._deferred.callback(session)
 
     def _reconnect(self, *_):
-        logger.warn("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
+        logger.info("WebSocket RPC: reconnecting to {}".format(self.remote_ws_address))
         conn_deferred = task.deferLater(self.reactor, self._reconnect_timeout, self.connect)
         conn_deferred.addCallback(self._client_reconnected)
         conn_deferred.addErrback(self._reconnect)
@@ -401,8 +419,12 @@ class WebSocketRPCClientFactory(WebSocketRPCFactory, WebSocketClientFactory):
             session.retry_requests()
 
     def clientConnectionLost(self, connector, reason):
-        logger.warn("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
-        self._reconnect()
+        logger.info("WebSocket RPC: connection to {} lost".format(self.remote_ws_address))
+
+        if self.on_disconnect:
+            self.on_disconnect(reason)
+        else:
+            self._reconnect()
 
     def clientConnectionFailed(self, connector, reason):
         logger.error("WebSocket RPC: connection to {} failed".format(self.remote_ws_address))
