@@ -126,6 +126,36 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert len(tk.supported_tasks) == 1
         assert tk.supported_tasks[0] == "xyz"
 
+    def test_task_header_update(self):
+        e = Environment()
+        e.accept_tasks = True
+
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        tk.environments_manager.add_environment(e)
+
+        assert not tk.add_task_header(dict())
+
+        task_header = get_task_header()
+        task_id = task_header["task_id"]
+
+        task_header["deadline"] = timeout_to_deadline(10)
+        assert tk.add_task_header(task_header)
+        assert task_id in tk.supported_tasks
+        assert tk.add_task_header(task_header)
+        assert task_id in tk.supported_tasks
+
+        task_header["max_price"] = 1
+        assert tk.add_task_header(task_header)
+        assert task_id not in tk.supported_tasks
+
+        tk.task_headers = {}
+        tk.supported_tasks = []
+
+        task_header["max_price"] = 1
+        assert tk.add_task_header(task_header)
+        assert task_id not in tk.supported_tasks
+
+
 def get_task_header():
     return {
         "task_id": "xyz",
