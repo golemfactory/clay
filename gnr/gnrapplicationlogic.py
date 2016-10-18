@@ -503,7 +503,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.br.run()
 
-    @inlineCallbacks # dla yield self.get_config
+    @inlineCallbacks
     def _benchmark_computation_success(self, performance, label, cfg_param):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounted")
@@ -513,7 +513,7 @@ class GNRApplicationLogic(QtCore.QObject):
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
         
-        cfg_desc = yield self.client.get_config() # get_config jest asynchroniczny
+        cfg_desc = yield self.client.get_config()
         setattr(cfg_desc, cfg_param, perf)
         self.change_config(cfg_desc)
         label.setText(str(perf))
