@@ -512,10 +512,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
-        
-        cfg_desc = yield self.client.get_config()
-        setattr(cfg_desc, cfg_param, perf)
-        self.change_config(cfg_desc)
+        yield self.client.update_setting(cfg_param, perf)
         label.setText(str(perf))
 
     def _benchmark_computation_error(self, error):
