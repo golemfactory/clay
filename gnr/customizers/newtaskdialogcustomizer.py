@@ -149,6 +149,8 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _load_basic_task_params(self, definition):
         self._load_task_type(definition)
+        self.save_setting('main_scene_path', os.path.dirname(definition.main_scene_file))
+        self.save_setting('output_file_path', os.path.dirname(definition.output_file), sync=True)
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
         self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
