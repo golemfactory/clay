@@ -45,8 +45,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
         self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
-        #QtCore.QObject.connect(self.gui.ui.numCoresSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
-                               #self.__recount_performance)
         QtCore.QObject.connect(self.gui.ui.numCoresSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__docker_config_changed)
                
@@ -76,7 +74,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
 
     def __docker_config_changed(self):
-        print "KUPA KUPA KUPA KUPA KUPA LUPA"
         self.docker_config_changed = True
         
 
