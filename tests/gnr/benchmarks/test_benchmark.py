@@ -1,10 +1,7 @@
 from PIL import Image
-
-from golem.testutils import TempDirFixture
 from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
-
-from gnr.renderingdirmanager import get_benchmarks_path
+from golem.testutils import TempDirFixture
 
 
 class TestBlenderBenchmark(TempDirFixture):
