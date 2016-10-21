@@ -501,7 +501,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
-        self.br.run()
+        self.br.start()
 
     @inlineCallbacks
     def _benchmark_computation_success(self, performance, label, cfg_param):
