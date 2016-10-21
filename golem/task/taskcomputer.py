@@ -290,7 +290,6 @@ class TaskComputer(object):
         client = self.task_server.client
         node_name = client.get_node_name()
         datadir = client.datadir
-
         blender_benchmark = BlenderBenchmark()
         blender_builder = BlenderRenderTaskBuilder
         self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, success_callback, error_callback)
