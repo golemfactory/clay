@@ -1,6 +1,7 @@
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QSettings
 from PyQt4.QtTest import QTest
 from mock import Mock, patch
+import os
 
 from gnr.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
@@ -31,6 +32,8 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
     def test_lux_customizer(self, mock_file_dialog):
         self.logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.dir_manager = Mock()
+        self.logic.dir_manager.root_path = self.path
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
         self.logic.client.config_desc.use_ipv6 = False
@@ -50,8 +53,9 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         lux_customizer.get_task_specific_options(definition)
         lux_customizer.load_task_definition(definition)
 
+        path = u"{}".format(lux_customizer.load_setting('main_scene_path', os.path.expanduser('~')).toString())
         QTest.mouseClick(lux_customizer.gui.ui.chooseMainSceneFileButton, Qt.LeftButton)
         mock_file_dialog.getOpenFileName.assert_called_with(lux_customizer.gui,
                                                             "Choose main scene file",
-                                                            u"",
+                                                            path,
                                                             u"Scene files (*.LXS *.lxs)")

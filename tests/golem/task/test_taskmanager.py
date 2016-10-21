@@ -2,6 +2,7 @@ import time
 import uuid
 from datetime import timedelta
 
+from golem.core.keysauth import EllipticalKeysAuth
 from mock import Mock, patch
 
 from golem.core.common import get_current_time, timeout_to_deadline
@@ -495,6 +496,25 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert get_current_time() + timedelta(seconds=55) <= t.header.deadline
         assert t.header.deadline <= get_current_time() + timedelta(seconds=60)
         assert t.header.subtask_timeout == 10
+
+    @patch("golem.task.taskmanager.get_external_address", side_effect=lambda *a, **k: ('1.2.3.4', 40103, None))
+    def test_update_signatures(self, _):
+        node = Node("node", "key_id", "10.0.0.10", 40103, "1.2.3.4", 40103, None, 40102, 40102)
+        task = Mock()
+
+        task.header = TaskHeader("node", "task_id", "1.2.3.4", 1234, "key_id", "environment",
+                                 task_owner=node)
+
+        self.tm.keys_auth = EllipticalKeysAuth(self.path)
+        self.tm.add_new_task(task)
+        sig = task.header.signature
+
+        self.tm.update_task_signatures()
+        assert task.header.signature == sig
+
+        task.header.task_owner.pub_port = 40104
+        self.tm.update_task_signatures()
+        assert task.header.signature != sig
 
     @classmethod
     def __build_tasks(cls, n):
