@@ -64,7 +64,7 @@ class TestNewTaskDialogCustomizer(TestCase):
             assert td.resources == win_norm_resources
         else:
             assert td.resources == oth_norm_resources
-        self.assertEqual(td.task_name, task_name)
+        assert td.task_name == task_name
 
         reg = re.compile('Blender_[0-2]\d:[0-5]\d:[0-5]\d_20\d\d-[0-1]\d\-[0-3]\d')
         td.task_name = None

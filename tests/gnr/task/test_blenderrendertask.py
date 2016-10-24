@@ -89,8 +89,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
-        str_ = self.temp_file_name(self.bt.outfilebasename) + '_08.PNG'
-        print str_
+        str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
 
         assert len(self.bt.preview_file_path) == len(self.bt.frames)

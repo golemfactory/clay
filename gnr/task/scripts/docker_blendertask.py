@@ -17,13 +17,13 @@ def exec_cmd(cmd):
 
 
 def format_blender_render_cmd(outfilebasename, scene_file, script_file,
-                              start_task, frame, output_format, padding):
+                              start_task, frame, output_format):
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}_{}".format(OUTPUT_DIR, outfilebasename, start_task, '#'*padding),
+        "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
@@ -31,21 +31,20 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
 
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,
-                     frames, output_format, pad_to_length):
+                     frames, output_format):
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
         print("Scene file '{}' does not exist".format(scene_file),
               file=sys.stderr)
         sys.exit(1)
 
-    padding = max(pad_to_length, len(str(max(frames))))
     blender_script_path = WORK_DIR + "/blenderscript.py"
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
     for frame in frames:
         cmd = format_blender_render_cmd(outfilebasename, scene_file,
-                                        script_file.name, start_task, frame, output_format, padding)
+                                        script_file.name, start_task, frame, output_format)
         print(cmd, file=sys.stderr)
         exit_code = exec_cmd(cmd)
         if exit_code is not 0:
@@ -53,5 +52,5 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task, params.frames,
-                 params.output_format, params.pad_to_length)
+                 params.output_format)
 

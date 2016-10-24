@@ -50,7 +50,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
                                                    self.gui.ui.verificationSizeYSpinBox.valueChanged,
                                                    self.gui.ui.verificationForAllRadioButton.toggled,
                                                    self.gui.ui.verificationForFirstRadioButton.toggled,
-                                                   self.gui.ui.probabilityLineEdit.textChanged,
+                                                   self.gui.ui.probabilityLineEdit.textChanged
                                                    ])
 
     def _setup_verification_connections(self):

@@ -12,6 +12,7 @@ from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDia
 from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 from gnr.renderingdirmanager import get_preview_file
 from gnr.renderingtaskstate import RenderingTaskDefinition
+from gnr.task.framerenderingtask import get_frame_name
 from gnr.ui.dialog import ShowTaskResourcesDialog
 from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
@@ -153,11 +154,11 @@ class AbsRenderingMainWindowCustomizer(object):
             self.__update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
-    def __get_frame_name(self, definition, num):
+    @staticmethod
+    def __get_frame_name(definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
         frame_num = definition.renderer_options.frames[num]
-        padding = max(len(str(max(definition.renderer_options.frames))), definition.renderer_options.pad_to_length)
-        return "{}_{}{}".format(output_name, str(frame_num).zfill(padding), ext)
+        return get_frame_name(output_name, ext[1:], frame_num)
 
     def __update_output_file_color(self):
         if os.path.isfile(self.gui.ui.outputFile.text()):

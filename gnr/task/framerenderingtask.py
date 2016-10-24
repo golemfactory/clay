@@ -12,6 +12,8 @@ from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("gnr.task")
 
+DEFAULT_PADDING = 4
+
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def _calculate_total(self, defaults, definition):
@@ -246,7 +248,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
-        output_file_name = os.path.join(directory, self._get_output_name(frame_num, 4))
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -301,12 +303,23 @@ class FrameRenderingTask(RenderingTask):
         img_task.save(preview_task_file_path, "BMP")
         self.preview_task_file_path[idx] = preview_task_file_path
 
-    def _get_output_name(self, frame_num, padding):
-        return "{}_{}.{}".format(self.outfilebasename, str(frame_num).zfill(padding), self.output_format)
+    def _get_output_name(self, frame_num):
+        return get_frame_name(self.outfilebasename, self.output_format, frame_num)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         if not self.use_frames:
             RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
+
+
+def get_frame_name(output_name, ext, frame_num):
+    idr = output_name.rfind("#")
+    idl = idr
+    while idl > 0 and output_name[idl] == "#":
+        idl -= 1
+    if idr > 0:
+        return u"{}.{}".format(output_name[:idl+1] + str(frame_num).zfill(idr-idl) + output_name[idr+1:], ext)
+    else:
+        return u"{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
 
 
 def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,

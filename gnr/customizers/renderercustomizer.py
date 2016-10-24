@@ -155,8 +155,6 @@ class FrameRendererCustomizer(RendererCustomizer):
             self.gui.ui.framesLineEdit.setText("")
 
     def _change_renderer_options(self):
-        self.renderer_options.use_padding = self.gui.ui.paddingCheckBox.isChecked()
-        self.renderer_options.pad_to_length = self.gui.ui.paddingSpinBox.value()
         self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
         if self.renderer_options.use_frames:
             frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())
@@ -169,11 +167,7 @@ class FrameRendererCustomizer(RendererCustomizer):
         self.logic.task_settings_changed()
 
     def _frames_check_box_changed(self):
-        is_checked = self.gui.ui.framesCheckBox.isChecked()
-        self.gui.ui.framesLineEdit.setEnabled(is_checked)
-        self.gui.ui.paddingCheckBox.setEnabled(is_checked)
-        if not is_checked:
-            self.gui.ui.paddingCheckBox.setChecked(False)
+        self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
             self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.renderer_options.frames))
 

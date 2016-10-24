@@ -122,8 +122,6 @@ class BlenderRendererOptions(GNROptions):
         self.use_frames = False
         self.frames = range(1, 11)
         self.compositing = False
-        self.use_padding = False
-        self.pad_to_length = 0
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
@@ -155,8 +153,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.renderer_options.frames,
                                          self.task_definition.renderer_options.compositing,
                                          self.task_definition.max_price,
-                                         use_padding=self.task_definition.renderer_options.use_padding,
-                                         pad_to_length=self.task_definition.renderer_options.pad_to_length,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
         blender_task.initialize(self.dir_manager)
@@ -204,8 +200,6 @@ class BlenderRenderTask(FrameRenderingTask):
                  return_address="",
                  return_port=0,
                  key_id="",
-                 use_padding=False,
-                 pad_to_length=0,
                  docker_images=None):
 
         FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
@@ -223,8 +217,6 @@ class BlenderRenderTask(FrameRenderingTask):
             self.script_src = ""
 
         self.compositing = compositing
-        self.use_padding = use_padding
-        self.pad_to_length = pad_to_length
         self.frames_given = {}
         for frame in frames:
             self.frames_given[frame] = {}
@@ -304,8 +296,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "frames": frames,
-                      "output_format": self.output_format,
-                      "pad_to_length": self.pad_to_length
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -359,8 +350,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "frames": frames,
-                      "output_format": self.output_format,
-                      "pad_to_length": self.pad_to_length
+                      "output_format": self.output_format
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -511,8 +501,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
-        padding = self.pad_to_length if self.use_padding else len(str(max(self.frames)))
-        output_file_name = os.path.join(directory, self._get_output_name(frame_num, padding))
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():

@@ -34,9 +34,7 @@
       8,
       9,
       10
-    ],
-    "use_padding":false,
-    "pad_to_length":0
+    ]
   },
   "task_type":null,
   "task_id":"d2babb49-428a-48f0-b91a-febff5d8fde5",
@@ -73,6 +71,5 @@
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },
   "subtask_timeout":1200,
-  "total_subtasks":6,
-  "leading_zeros": 7
+  "total_subtasks":6
 }
