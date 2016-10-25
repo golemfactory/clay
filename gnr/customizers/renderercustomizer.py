@@ -76,6 +76,7 @@ class RendererCustomizer(Customizer):
             self.gui.ui.outputFormatsComboBox.currentIndexChanged,
             self.gui.ui.outputFileLineEdit.textChanged,
         ])
+        self.gui.ui.outputFileLineEdit.editingFinished.connect(self._add_ext_to_out_filename)
 
     def _add_ext_to_out_filename(self):
         chosen_ext = str(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
