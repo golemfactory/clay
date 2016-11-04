@@ -27,11 +27,14 @@ class BenchmarkRunner(LocalComputer):
             return LocalComputer._get_task_thread(self, ctd)
         else:
             raise Exception("No docker container found")
-    
-    def run(self):
+
+    def start(self):
         self.start_time = time.time()
         logger.debug("Started at {}".format(self.start_time))
         LocalComputer.run(self)
+
+    def run(self):
+        self.start()
         if self.tt:
             self.tt.join()
     

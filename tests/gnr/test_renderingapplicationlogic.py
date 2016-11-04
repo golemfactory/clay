@@ -15,13 +15,13 @@ from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.resource.dirmanager import DirManager
-from golem.tools.testdirfixture import TestDirFixture
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
-class TestRenderingApplicationLogic(TestDirFixture):
+class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
 
     def setUp(self):
-        super(TestRenderingApplicationLogic, self).setUp()
+        super(TestDirFixtureWithReactor, self).setUp()
         self.logic = RenderingApplicationLogic()
         self.logic.datadir = self.path
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
@@ -29,7 +29,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         self.logic.dir_manager = DirManager(self.path)
 
     def tearDown(self):
-        super(TestRenderingApplicationLogic, self).tearDown()
+        super(TestDirFixtureWithReactor, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
@@ -55,7 +55,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         logic._validate_task_state(rts)
         register_rendering_task_types(logic)
         m = Mock()
-        logic.run_benchmark(BlenderBenchmark(), m)
+        logic.run_benchmark(BlenderBenchmark(), m, m)
         if logic.br.tt:
             logic.br.tt.join()
         assert logic.progress_dialog_customizer.gui.ui.message.text() == u"Recounted"
@@ -70,14 +70,14 @@ class TestRenderingApplicationLogic(TestDirFixture):
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_program_file = u'Bździągwa'
         logic.show_error_window = Mock()
-        logic.run_benchmark(broken_benchmark, m)
+        logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
-        logic.run_benchmark(broken_benchmark, m)
+        logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
@@ -85,7 +85,7 @@ class TestRenderingApplicationLogic(TestDirFixture):
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
         broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
-        logic.run_benchmark(broken_benchmark, m)
+        logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
         logic.show_error_window.assert_called_with(u"Main scene file is not properly set")
