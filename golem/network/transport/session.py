@@ -107,17 +107,13 @@ class BasicSession(FileSession):
         self.conn.close_now()
 
     def disconnect(self, reason):
-        """ If it's called for the first time, send "disconnect" message to the peer. Otherwise, drops
-        connection.
+        """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting. Should use global class disconnect reasons, eg. DCRBadProtocol
         """
         logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
         if self.conn.opened:
-            if self.last_disconnect_time:
-                self.dropped()
-            else:
-                self.last_disconnect_time = time.time()
-                self._send_disconnect(reason)
+            self._send_disconnect(reason)
+            self.dropped()
 
     def send(self, message):
         """ Send given message.
