@@ -74,7 +74,6 @@ class BasicSession(FileSession):
         self.port = pp.port
 
         self.last_message_time = time.time()
-        self.last_disconnect_time = None
         self._interpretation = {MessageDisconnect.Type: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
