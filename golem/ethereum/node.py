@@ -54,7 +54,7 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.4.5'
-    MAX_GETH_VERSION = '1.4.999'
+    MAX_GETH_VERSION = '1.5.999'
 
     def __init__(self, nodes, datadir):
         self.__prog = find_program('geth')
