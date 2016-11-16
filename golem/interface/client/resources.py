@@ -20,7 +20,8 @@ class Resources(object):
 
     @doc("Show information on used resources")
     def show(self):
-        return CommandHelper.wait_for(Resources.client.get_res_dirs_sizes(), timeout=120)
+        return CommandHelper.wait_for(Resources.client.get_res_dirs_sizes(),
+                                      timeout=None)
 
     @command(arguments=(provider, requester), help="Clear provider / requester resources")
     def clear(self, provider, requester):
@@ -29,8 +30,11 @@ class Resources(object):
             return CommandResult(error="Target role was not specified (provider / requester)")
 
         if provider:
-            CommandHelper.wait_for(Resources.client.remove_received_files())
-            return CommandHelper.wait_for(Resources.client.remove_computed_files())
+            CommandHelper.wait_for(Resources.client.remove_received_files(),
+                                   timeout=None)
+            return CommandHelper.wait_for(Resources.client.remove_computed_files(),
+                                          timeout=None)
 
         elif requester:
-            return CommandHelper.wait_for(Resources.client.remove_distributed_files())
+            return CommandHelper.wait_for(Resources.client.remove_distributed_files(),
+                                          timeout=None)
