@@ -19,7 +19,7 @@ Follow the installation instruction from
 
 ## Warning
 
-Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured.
+Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured. Check [this list of issues](https://github.com/imapp-pl/golem/labels/security) for more details.
 Please be sure that you understand the risk before installing the software. 
  
 ## License
