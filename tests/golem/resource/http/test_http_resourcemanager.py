@@ -1,4 +1,5 @@
 import os
+import unittest
 import uuid
 
 from golem.resource.client import file_multihash
@@ -19,6 +20,7 @@ class TestHTTPClient(TempDirFixture):
             for _ in xrange(100):
                 f.write(str(uuid.uuid4()))
 
+    @unittest.skip("Test for a legacy server")
     def test(self):
         client = HTTPResourceManagerClient()
         options = client.build_options('node_id')
