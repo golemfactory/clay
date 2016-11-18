@@ -352,7 +352,7 @@ if __name__ == "__main__":
     # TODO: instead of waiting 60 sec we should monitor the logs to see when
     # the computation ends (or fails)
     if task_file:
-        wait_for_task_completion(args.requestr)
+        wait_for_task_completion(args.requestor)
 
     time.sleep(10)
     if not args.dont_terminate:
