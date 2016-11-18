@@ -725,7 +725,7 @@ class MessageSetTaskSession(Message):
         """
         Create message with information that node from node_info want to start task session with key_id node
         :param key_id: target node key
-        :param Node node_info: information about requester
+        :param Node node_info: information about requestor
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         :param str sig: signature
