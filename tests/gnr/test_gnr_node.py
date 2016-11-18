@@ -1,6 +1,5 @@
 import os
-import cPickle
-import jsonpickle
+import json
 from mock import patch, call
 from golemapp import start
 from click.testing import CliRunner
@@ -163,7 +162,7 @@ class TestNode(TestWithDatabase):
         a = A()
         dump = os.path.join(self.path, 'testcalssdump')
         with open(dump, 'w') as f:
-            cPickle.dump(a, f)
+            json.dump(a, f)
         args = self.args + ['--task', dump, '--task', dump]
         return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
@@ -184,7 +183,7 @@ class TestNode(TestWithDatabase):
         a2.child = a1
 
         with open(test_json_file, 'w') as f:
-            j = jsonpickle.encode(a2)
+            j = json.dumps(a2)
             f.write(j)
 
         try:

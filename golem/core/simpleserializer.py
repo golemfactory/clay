@@ -1,6 +1,5 @@
-import cPickle  # release version
 import collections
-import json   # debug version
+import json
 
 import types
 
@@ -10,11 +9,7 @@ import dill
 import pytz
 import sys
 
-
-IS_DEBUG = False  # True - json, False - CBOR
-
-
-class SimpleSerializerDebug(object):
+class SimpleSerializer(object):
     """ Simple meta-class that serialize and deserialize objects to a json format"""
     @classmethod
     def dumps(cls, obj):
@@ -33,27 +28,6 @@ class SimpleSerializerDebug(object):
         :return: deserialized Python object
         """
         return json.loads(data)
-
-
-class SimpleSerializerRelease(object):
-    """ Simple meta-class that serialize and deserialize objects to a pickle representation."""
-    @classmethod
-    def dumps(cls, obj):
-        """
-        Serialize obj to a pickle representation
-        :param obj: object to be serialized
-        :return str: serialized object in a pickle representation
-        """
-        return cPickle.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        """
-        Deserialize data to a Python object
-        :param str data: pickle representation to be deserialized
-        :return: deserialized Python object
-        """
-        return cPickle.loads(data)
 
 
 class DILLSerializer(object):
@@ -207,8 +181,3 @@ class CBORSerializer(object):
     def dumps(cls, obj):
         return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
 
-
-if IS_DEBUG:
-    SimpleSerializer = SimpleSerializerDebug
-else:
-    SimpleSerializer = CBORSerializer

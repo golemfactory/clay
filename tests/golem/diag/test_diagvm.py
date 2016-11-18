@@ -12,8 +12,6 @@ class TestVMDiagnosticProvider(TestCase):
         json.dumps(diag)
         diag = provider.get_diagnostics(DiagnosticsOutputFormat.json)
         json.dumps(diag)
-        diag = provider.get_diagnostics(DiagnosticsOutputFormat.pickle)
-        json.dumps(diag)
         diag = provider.get_diagnostics(DiagnosticsOutputFormat.data)
         json.dumps(diag)
 

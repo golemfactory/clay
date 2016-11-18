@@ -1,17 +1,16 @@
-import cPickle
+import json
 import zlib
 from gzip import GzipFile
 
 
-def save(obj, filename, protocol=-1):
+def l(obj, filename):
     """Save an object to a compressed disk file. Works well with huge objects.
     :param obj: object to be serialized and saved in zip file
     :param str filename: name of a file that should be used
-    :param int protocol: *Default: -1* pickle protocol version. If protocol is -1 then highest protocol version will
     be used
     """
     file_ = GzipFile(filename, 'wb')
-    cPickle.dump(obj, file_, protocol)
+    json.dump(obj, file_)
     file_.close()
 
 
@@ -21,7 +20,7 @@ def load(filename):
     :return: deserialized object that was saved in given file
     """
     file_ = GzipFile(filename, 'rb')
-    obj = cPickle.load(file_)
+    obj = json.load(file_)
     file_.close()
 
     return obj

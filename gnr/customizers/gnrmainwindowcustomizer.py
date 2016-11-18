@@ -1,5 +1,5 @@
 from __future__ import division
-import cPickle
+import json
 import logging
 import os
 from threading import Lock
@@ -219,10 +219,10 @@ class GNRMainWindowCustomizer(Customizer):
     def _load_task(self, file_path):
         try:
             f = open(file_path, 'r')
-            definition = cPickle.loads(f.read())
+            definition = json.loads(f.read())
         except Exception as err:
             definition = None
-            logger.error("Can't unpickle the file {}: {}".format(file_path, err))
+            logger.error("Can't load the file {}: {}".format(file_path, err))
             QMessageBox().critical(None, "Error", "This is not a proper gt file: {}".format(err))
         finally:
             f.close()

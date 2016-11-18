@@ -4,7 +4,7 @@ import shutil
 from os import makedirs, path, remove
 
 import gnr.node
-import jsonpickle
+import json
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -54,7 +54,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = jsonpickle.decode(f.read())
+            task_def = json.loads(f.read())
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()

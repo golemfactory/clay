@@ -1,5 +1,5 @@
 from __future__ import division
-import cPickle
+import json
 import logging
 import os
 
@@ -417,8 +417,8 @@ class GNRApplicationLogic(QtCore.QObject):
                 file_path += "."
             file_path += "gt"
         with open(file_path, "wb") as f:
-            tspickled = cPickle.dumps(task_state)
-            f.write(tspickled)
+            tsdupmed = json.dumps(task_state)
+            f.write(tsdupmed)
 
     @staticmethod
     def recount_performance(num_cores):

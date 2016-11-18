@@ -1,4 +1,5 @@
-import cPickle as pickle
+import json
+import cbor2 as cbor
 
 from mock import Mock
 
@@ -8,7 +9,14 @@ from golem.network.p2p.node import Node
 
 
 class TestTaskBase(LogTestCase):
+
     def test_task(self):
+        serializer = json
+        self.__test(serializer=serializer)
+        serializer = cbor
+        self.__test(serializer=serializer)
+
+    def __test(self, serializer):
         t = Task(Mock(), "")
         self.assertIsInstance(t, Task)
         self.assertEqual(t.get_stdout("abc"), "")
@@ -23,8 +31,8 @@ class TestTaskBase(LogTestCase):
         t.register_listener(tl1)
         t.register_listener(tl2)
         assert len(t.listeners) == 2
-        p = pickle.dumps(t)
-        u = pickle.loads(p)
+        p = serializer.dumps(t)
+        u = serializer.loads(p)
         assert t.src_code == u.src_code
         assert t.header.task_id == u.header.task_id
         assert t.header.task_owner.node_name == u.header.task_owner.node_name

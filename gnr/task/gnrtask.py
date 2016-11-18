@@ -1,6 +1,6 @@
 import copy
 import logging
-import pickle
+import cbor2 as cbor
 import os
 
 from golem.core.common import HandleKeyError, timeout_to_deadline
@@ -206,7 +206,7 @@ class GNRTask(Task):
         represents stdout and stderr from computing machine.
         :param subtask_id: id of a subtask for which results are received
         :param task_results: it may be a list of files if result_type is equal to result_types["files"] or
-        it may be a pickled zip file containing all files if result_type is equal to result_types["data"]
+        it may be a cbor serialized zip file containing all files if result_type is equal to result_types["data"]
         :param result_type: a number from result_types, it may represents data format or files format
         :return: list of files that don't have .log extension
         """
@@ -224,8 +224,8 @@ class GNRTask(Task):
     def load_task_results(self, task_result, result_type, subtask_id):
         """ Change results to a list of files. If result_type is equal to result_types["files"} this
         function only return task_results without making any changes. If result_type is equal to
-        result_types["data"] tham task_result is unpickled and unzipped and files are saved in tmp_dir.
-        :param task_result: list of files of pickles ziped file with files
+        result_types["data"] tham task_result is cbor and unzipped and files are saved in tmp_dir.
+        :param task_result: list of files of cbor serialized ziped file with files
         :param result_type: result_types element
         :param tmp_dir: directory where files should be written if result_type is equal to result_types["data"]
         :param str subtask_id:
@@ -307,7 +307,7 @@ class GNRTask(Task):
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
-        tr = pickle.loads(trp)
+        tr = cbor.loads(trp)
         with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
         return os.path.join(output_dir, tr[0])
