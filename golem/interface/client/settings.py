@@ -33,11 +33,11 @@ class Settings(object):
         default=False,
         help="Show provider settings"
     )
-    requester = Argument(
-        '--requester',
+    requestor = Argument(
+        '--requestor',
         optional=True,
         default=False,
-        help="Show requester settings"
+        help="Show requestor settings"
     )
 
     settings = {
@@ -96,7 +96,7 @@ class Settings(object):
             lambda x: x > 0
         ),
         'requesting_trust': Setting(
-            'Minimal requester trust',
+            'Minimal requestor trust',
             'int [-100, 100]',
             _int,
             lambda x: -100 <= x <= 100
@@ -114,7 +114,7 @@ class Settings(object):
             lambda x: x >= 0
         ),
         'max_price': Setting(
-            'Max ETH/h price (requester)',
+            'Max ETH/h price (requestor)',
             'float >= 0',
             lambda x: float(x) * denoms.ether,
             lambda x: x >= 0
@@ -170,18 +170,18 @@ class Settings(object):
         'use_ipv6', 'opt_peer_num', 'getting_peers_interval', 'p2p_session_timeout', 'send_pings', 'pings_interval'
     ]
 
-    requester_settings = [
+    requestor_settings = [
         'max_price', 'computing_trust'
     ]
 
     key = Argument('key', help='Setting name', optional=True)
     value = Argument('value', help='Setting value', optional=True)
 
-    @command(arguments=(basic, provider, requester), help="Show current settings")
-    def show(self, basic, provider, requester):
+    @command(arguments=(basic, provider, requestor), help="Show current settings")
+    def show(self, basic, provider, requestor):
 
         config = CommandHelper.wait_for(Settings.client.get_config())
-        if not (basic ^ provider) and not (provider ^ requester):
+        if not (basic ^ provider) and not (provider ^ requestor):
             return config.__dict__
 
         result = dict()
@@ -192,16 +192,16 @@ class Settings(object):
                 if k in Settings.basic_settings
             })
 
-        if requester:
+        if requestor:
             result.update({
                 k: v for k, v in config.__dict__.iteritems()
-                if k in Settings.requester_settings
+                if k in Settings.requestor_settings
             })
 
         if provider:
             result.update({
                 k: v for k, v in config.__dict__.iteritems()
-                if k not in Settings.basic_settings and k not in Settings.requester_settings
+                if k not in Settings.basic_settings and k not in Settings.requestor_settings
             })
 
         return result

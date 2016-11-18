@@ -23,7 +23,7 @@ from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
 
-REQUESTING_NODE_KIND = "requester"
+REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
 
@@ -67,7 +67,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     atexit.register(shutdown)
 
     global node_kind
-    node_kind = "REQUESTER"
+    node_kind = "REQUESTOR"
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
@@ -81,8 +81,8 @@ def run_requesting_node(datadir, num_subtasks=3):
     client.enqueue_new_task(task)
 
     port = client.p2pservice.cur_port
-    requester_addr = "{}:{}".format(client.node.prv_addr, port)
-    report("Listening on {}".format(requester_addr))
+    requestor_addr = "{}:{}".format(client.node.prv_addr, port)
+    report("Listening on {}".format(requestor_addr))
 
     def report_status():
         while True:
@@ -143,7 +143,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     return client  # Used in tests, with mocked reactor
 
 
-# Global var set by a thread monitoring the status of the requester node
+# Global var set by a thread monitoring the status of the requestor node
 task_finished = False
 
 
@@ -168,14 +168,14 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         stdout=subprocess.PIPE)
 
     # Scan the requesting node's stdout for the address
-    address_re = re.compile(".+REQUESTER.+Listening on (.+)")
+    address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:
             print line
             m = address_re.match(line)
             if m:
-                requester_address = m.group(1)
+                requestor_address = m.group(1)
                 break
 
     # Start computing nodes in a separate processes
@@ -183,7 +183,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     for n in range(0, num_computing_nodes):
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
-            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requester_address]
+            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requestor_address]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
             cmdline.append(str(node_failure_times[n]))
@@ -196,7 +196,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     all_procs = computing_procs + [requesting_proc]
     task_finished_status = format_msg(
-        "REQUESTER", requesting_proc.pid, "Task finished")
+        "REQUESTOR", requesting_proc.pid, "Task finished")
 
     global task_finished
     task_finished = False
