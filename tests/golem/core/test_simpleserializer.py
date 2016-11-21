@@ -4,8 +4,7 @@ import unittest
 from cbor2 import CBOREncoder, CBORDecoder
 from io import BytesIO
 
-from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer, CBORSerializer, \
-    CBORCoder, to_dict
+from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, CBORCoder, to_dict
 
 
 class Example:
@@ -31,23 +30,11 @@ class TestSimpleSerializer(unittest.TestCase):
     def testSerializer(self):
         self.assertTrue(isinstance(SimpleSerializer(), CBORSerializer))
 
-
-class TestSimpleSerializerDebug(unittest.TestCase):
-    def testSerializer(self):
-        data = ['foo', {'bar': ('baz', None, 1.0, 2)}]
-        ser = SimpleSerializerDebug.dumps(data)
-        self.assertTrue(isinstance(ser, str))
-        data2 = SimpleSerializerDebug.loads(ser)
-        self.assertTrue(isinstance(data2, list))
-        self.assertEqual(len(data2), len(data))
-
-
-class TestSimpleSerializerRelease(unittest.TestCase):
     def testSerializer(self):
         data = Example()
-        ser = SimpleSerializerRelease.dumps(data)
+        ser = SimpleSerializer.dumps(data)
         self.assertTrue(isinstance(ser, str))
-        data2 = SimpleSerializerRelease.loads(ser)
+        data2 = SimpleSerializer.loads(ser)
         self.assertTrue(isinstance(data2, Example))
         self.assertEqual(data, data2)
 

@@ -3,7 +3,7 @@ import zlib
 from gzip import GzipFile
 
 
-def l(obj, filename):
+def save(obj, filename):
     """Save an object to a compressed disk file. Works well with huge objects.
     :param obj: object to be serialized and saved in zip file
     :param str filename: name of a file that should be used

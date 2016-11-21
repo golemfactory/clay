@@ -123,7 +123,7 @@ class GNRNode(Node):
         for task_file in value:
             with open(task_file, 'r') as f:
                 try:
-                    task_def = json.loads(f.read())
+                    task_def = Task.__setattr__(json.loads(f.read()))
                 except ValueError as e:
                     raise click.BadParameter(
                         "Invalid task json file: {}".format(e.message))
