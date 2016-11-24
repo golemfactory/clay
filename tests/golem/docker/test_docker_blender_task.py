@@ -3,7 +3,7 @@ import time
 from os import makedirs, path
 
 import gnr.node
-import json
+import jsonpickle as json
 
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer

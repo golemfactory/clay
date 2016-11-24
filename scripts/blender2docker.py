@@ -3,7 +3,7 @@
 Converts an old-school Blender task definition in JSON format to
 an equivalent task definition that can be run with Docker image 'golem/blender'.
 """
-import json
+import jsonpickle as json
 import sys
 from os import path
 

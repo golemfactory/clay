@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 import os
 
 from golem.core.common import get_golem_path

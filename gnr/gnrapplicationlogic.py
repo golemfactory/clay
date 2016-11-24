@@ -1,5 +1,5 @@
 from __future__ import division
-import json
+import jsonpickle as json
 import logging
 import os
 
@@ -19,7 +19,6 @@ from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.resource.dirmanager import DirManager

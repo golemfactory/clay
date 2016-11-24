@@ -1,5 +1,5 @@
 import collections
-import json
+import jsonpickle as json
 
 import types
 

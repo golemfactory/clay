@@ -4,7 +4,7 @@ import shutil
 from os import makedirs, path, remove
 
 import gnr.node
-import json
+import jsonpickle as json
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
 from golem.clientconfigdescriptor import ClientConfigDescriptor

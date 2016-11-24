@@ -1,5 +1,5 @@
 import abc
-import json
+import jsonpickle as json
 
 import yaml
 from golem.core.simpleserializer import to_dict

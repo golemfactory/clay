@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 import zlib
 from gzip import GzipFile
 
@@ -9,9 +9,9 @@ def save(obj, filename):
     :param str filename: name of a file that should be used
     be used
     """
-    file_ = GzipFile(filename, 'wb')
-    json.dump(obj, file_)
-    file_.close()
+    with GzipFile(filename, 'wb') as file_:
+        json_str = json.encode(obj)
+        file_.write(json_str)
 
 
 def load(filename):
@@ -20,7 +20,8 @@ def load(filename):
     :return: deserialized object that was saved in given file
     """
     file_ = GzipFile(filename, 'rb')
-    obj = json.load(file_)
+    json_str = file_.read()
+    obj = json.decode(json_str)
     file_.close()
 
     return obj

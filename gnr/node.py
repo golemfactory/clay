@@ -5,10 +5,9 @@ import sys
 import uuid
 
 import click
-import json
+import jsonpickle as json
 
-from gnr.renderingenvironment import BlenderEnvironment, \
-    LuxRenderEnvironment
+from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
@@ -123,7 +122,7 @@ class GNRNode(Node):
         for task_file in value:
             with open(task_file, 'r') as f:
                 try:
-                    task_def = Task.__setattr__(json.loads(f.read()))
+                    task_def = json.loads(f.read())
                 except ValueError as e:
                     raise click.BadParameter(
                         "Invalid task json file: {}".format(e.message))

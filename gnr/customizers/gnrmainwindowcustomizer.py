@@ -1,5 +1,5 @@
 from __future__ import division
-import json
+import jsonpickle as json
 import logging
 import os
 from threading import Lock

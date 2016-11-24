@@ -33,3 +33,4 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.11
+jsonpickle

@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 import cbor2 as cbor
 
 from mock import Mock

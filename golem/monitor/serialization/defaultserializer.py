@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 
 
 def dict2json(d):

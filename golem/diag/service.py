@@ -1,6 +1,6 @@
 import abc
 
-import json
+import jsonpickle as json
 import logging
 from pprint import pformat
 
