@@ -147,7 +147,10 @@ def start_client_process(queue, start_ranking, datadir=None,
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)
 
-    def listen():
+    from twisted.internet import reactor
+    from golem.rpc.router import CrossbarRouter
+
+    def listen(*_):
         rpc_server = WebSocketRPCServerFactory(interface='localhost')
         rpc_server.listen()
 
@@ -156,12 +159,15 @@ def start_client_process(queue, start_ranking, datadir=None,
         queue.put(client_service_info)
         queue.close()
 
-    from twisted.internet import reactor
+    def shutdown(err):
+        queue.put(Exception("Error: {}".format(err)))
 
     if start_ranking:
         client.ranking.run(reactor)
 
-    reactor.callWhenRunning(listen)
+    router = CrossbarRouter(datadir=client.datadir)
+    router.start(reactor, listen, shutdown)
+
     if not reactor.running:
         reactor.run()
 
