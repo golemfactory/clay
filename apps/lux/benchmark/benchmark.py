@@ -13,7 +13,7 @@ class LuxBenchmark(Benchmark):
         
         self.normalization_constant = 9910
         
-        self.lux_task_path = os.path.join(get_benchmarks_path(), "luxrender", "lux_task")
+        self.lux_task_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_task")
         
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "lux_benchmark.png")
         self.task_definition.tasktype = "LuxRender"

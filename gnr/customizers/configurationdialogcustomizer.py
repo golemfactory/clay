@@ -8,7 +8,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
+from apps.lux.benchmark.benchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import get_dir_size, du
