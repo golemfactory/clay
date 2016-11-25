@@ -7,7 +7,7 @@ from ethereum.utils import denoms
 from PyQt4 import QtCore
 from PyQt4.QtGui import QMessageBox, QPalette
 
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from apps.blender.benchmark.benchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor

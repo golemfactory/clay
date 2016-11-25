@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from gnr.benchmarks.benchmark import Benchmark
-from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
+from gnr.renderingdirmanager import find_task_script
 from gnr.task.blenderrendertask import BlenderRendererOptions
 
 
@@ -13,7 +13,7 @@ class BlenderBenchmark(Benchmark):
         
         self.normalization_constant = 9360
         
-        self.blender_task_path = os.path.join(get_benchmarks_path(), "blender", "blender_task")
+        self.blender_task_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_task")
         
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "blender_benchmark.png")
         self.task_definition.tasktype = "Blender"

@@ -7,7 +7,7 @@ from random import randrange, shuffle
 
 from PIL import Image
 
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from apps.blender.benchmark.benchmark import BlenderBenchmark
 from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from gnr.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                         BlenderRendererOptions, PreviewUpdater, get_task_border,

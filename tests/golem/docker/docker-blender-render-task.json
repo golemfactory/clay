@@ -41,7 +41,7 @@
   "resources":{
     "py/set":[
       "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
-      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-internal.blend"
+      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend"
     ]
   },
   "docker_images":[
@@ -60,7 +60,7 @@
   "output_format":"PNG",
   "output_file":"hel.png",
   "optimize_total":false,
-  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-internal.blend",
+  "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend",
   "verification_options":null,
   "estimated_memory":0,
   "full_task_timeout":14400,

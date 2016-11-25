@@ -8,7 +8,7 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 from gnr.application import GNRGui
-from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
+from apps.blender.benchmark.benchmark import BlenderBenchmark
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrstartapp import register_rendering_task_types
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
