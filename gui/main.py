@@ -2,7 +2,7 @@ from multiprocessing import freeze_support
 
 import click
 
-from gnrstartapp import start_app
+from startapp import start_app
 
 
 @click.command()

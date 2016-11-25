@@ -2,7 +2,7 @@ from multiprocessing import freeze_support
 
 import click
 
-from gnr.gnrstartapp import start_app
+from gui.startapp import start_app
 from gnr.node import GNRNode  # TODO: This also configures the logging.
 from golem.core.common import config_logging
 
