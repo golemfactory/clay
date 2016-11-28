@@ -6,7 +6,7 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.tasktableelem import ItemMap

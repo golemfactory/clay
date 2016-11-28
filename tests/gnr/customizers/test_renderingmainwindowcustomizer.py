@@ -7,7 +7,7 @@ from PIL import Image
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow

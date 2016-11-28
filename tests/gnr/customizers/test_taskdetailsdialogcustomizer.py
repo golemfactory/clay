@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState

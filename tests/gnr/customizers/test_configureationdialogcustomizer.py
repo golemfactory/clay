@@ -6,7 +6,7 @@ from ethereum.utils import denoms
 from mock import MagicMock
 from twisted.internet.defer import Deferred
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.tools.assertlogs import LogTestCase

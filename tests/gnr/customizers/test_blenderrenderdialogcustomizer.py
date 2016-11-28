@@ -4,7 +4,7 @@ from mock import Mock, patch
 
 from gui.startapp import build_blender_renderer_info
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.renderercustomizer import FrameRendererCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer

@@ -9,7 +9,7 @@ from gui.startapp import register_rendering_task_types
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.gnrtaskstate import GNRTaskDefinition

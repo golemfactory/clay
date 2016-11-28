@@ -4,7 +4,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from gui.startapp import register_rendering_task_types
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskDefinition, RendererInfo, RendererDefaults

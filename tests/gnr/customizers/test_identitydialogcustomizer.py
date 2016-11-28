@@ -5,7 +5,7 @@ from golem.testutils import TempDirFixture
 
 from gnr.ui.appmainwindow import AppMainWindow
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 

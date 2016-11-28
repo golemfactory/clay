@@ -4,7 +4,7 @@ from mock import Mock
 
 from gui.startapp import register_rendering_task_types
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow

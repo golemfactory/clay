@@ -5,7 +5,7 @@ import os
 
 from gui.startapp import build_lux_render_info
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
