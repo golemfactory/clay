@@ -92,15 +92,22 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session = PeerSession(conn)
         peer_session.p2p_service = MagicMock()
         peer_session.dropped = MagicMock()
+        peer_session.send = MagicMock()
         peer_session.conn = Mock()
 
         peer_session.conn.opened = False
         peer_session.disconnect(PeerSession.DCRProtocolVersion)
         assert not peer_session.dropped.called
+        assert not peer_session.send.called
 
         peer_session.conn.opened = True
         peer_session.disconnect(PeerSession.DCRProtocolVersion)
         assert peer_session.dropped.called
+        assert peer_session.send.called
+
+        peer_session.send.called = False
+        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        assert not peer_session.send.called
 
     def test_dropped(self):
         conn = MagicMock()

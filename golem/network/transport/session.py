@@ -74,6 +74,7 @@ class BasicSession(FileSession):
         self.port = pp.port
 
         self.last_message_time = time.time()
+        self._disconnect_sent = False
         self._interpretation = {MessageDisconnect.Type: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
@@ -143,7 +144,9 @@ class BasicSession(FileSession):
 
     def _send_disconnect(self, reason):
         """ :param string reason: reason to disconnect """
-        self.send(MessageDisconnect(reason))
+        if not self._disconnect_sent:
+            self._disconnect_sent = True
+            self.send(MessageDisconnect(reason))
 
     def _check_msg(self, msg):
         if msg is None or not isinstance(msg, Message):
