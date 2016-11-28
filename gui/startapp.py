@@ -4,7 +4,6 @@ from os import path
 
 from twisted.internet.defer import inlineCallbacks
 
-from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
@@ -23,6 +22,7 @@ from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 
+from application import GNRGui
 
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"

@@ -3,7 +3,7 @@ import time
 import uuid
 
 from ethereum.utils import denoms
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow

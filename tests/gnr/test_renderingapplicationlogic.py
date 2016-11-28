@@ -10,7 +10,7 @@ from PyQt4.QtTest import QTest
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from gui.startapp import register_rendering_task_types
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskState

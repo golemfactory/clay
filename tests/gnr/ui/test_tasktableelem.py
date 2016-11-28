@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from mock import Mock
 
-from gnr.application import GNRGui
+from gui.application import GNRGui
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.tasktableelem import TaskTableElem, ItemMap
 
