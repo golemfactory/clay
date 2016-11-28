@@ -1118,7 +1118,7 @@ def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
     package_subdir = 'golem'
 
     runner_scripts_dir = os.path.join(scripts_dir, 'packaging', 'runner')
-    taskcollector_dir = os.path.join('gnr', 'taskcollector', 'Release')
+    taskcollector_dir = os.path.join('apps', 'rendering', 'resources', 'taskcollector', 'Release')
 
     task_dir = os.path.join('gnr', 'task')
     pack_dir = build_subdir(package_subdir)
