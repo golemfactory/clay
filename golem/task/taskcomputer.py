@@ -16,11 +16,11 @@ from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from gnr.renderingtaskstate import RenderingTaskState
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 
 

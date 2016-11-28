@@ -6,8 +6,8 @@ from contextlib import contextmanager
 
 from ethereum.utils import denoms
 from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -472,6 +472,7 @@ class TestTasks(TempDirFixture):
 
                 call_args = client.enqueue_new_task.call_args[0]
                 assert len(call_args) == 1
+                print call_args[0]
                 assert isinstance(call_args[0], BlenderRenderTask)
 
             with self._run_context(run_error):

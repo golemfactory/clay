@@ -1,7 +1,7 @@
 {
   "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
-    "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
+    "py/object":"apps.blender.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "compositing":false,
     "environment":{

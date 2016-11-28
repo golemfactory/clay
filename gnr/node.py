@@ -8,9 +8,9 @@ import uuid
 import click
 import jsonpickle
 
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.renderingenvironment import BlenderEnvironment, \
     LuxRenderEnvironment
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError

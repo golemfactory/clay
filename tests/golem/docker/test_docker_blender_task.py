@@ -5,7 +5,7 @@ from os import makedirs, path
 import gnr.node
 import jsonpickle
 
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.tasktester import TaskTester
 from golem.clientconfigdescriptor import ClientConfigDescriptor

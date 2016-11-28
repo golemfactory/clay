@@ -3,10 +3,10 @@ import tempfile
 import unittest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.blender.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition, RenderingTaskState
-from gnr.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task

@@ -7,7 +7,7 @@ p3
 ccopy_reg
 _reconstructor
 p4
-(cgnr.task.blenderrendertask
+(capps.blender.task.blenderrendertask
 BlenderRendererOptions
 p5
 c__builtin__

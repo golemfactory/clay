@@ -4,12 +4,12 @@ from os import path
 
 from twisted.internet.defer import inlineCallbacks
 
+from apps.blender.task.blenderrendertask import build_blender_renderer_info
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
-from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget

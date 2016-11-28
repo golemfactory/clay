@@ -2,8 +2,8 @@ import os
 import tempfile
 
 from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRendererOptions
 from gnr.renderingdirmanager import find_task_script
-from gnr.task.blenderrendertask import BlenderRendererOptions
 
 
 class BlenderBenchmark(Benchmark):
