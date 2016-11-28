@@ -10,8 +10,8 @@ from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
-from gnr.benchmarks.minilight.src.minilight import makePerfTest
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gnr.gnrtaskstate import GNRTaskState

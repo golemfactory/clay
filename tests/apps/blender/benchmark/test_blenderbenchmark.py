@@ -2,9 +2,9 @@ import os
 import tempfile
 import unittest
 
-from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from gnr.benchmarks.benchmark import Benchmark
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.benchmark.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition, RenderingTaskState
 from gnr.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 

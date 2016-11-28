@@ -27,7 +27,7 @@ class TestBlenderDockerJob(TestDockerJob):
 
         # copy the scene file to the resources dir
         benchmarks_dir = path.join(get_golem_path(),
-                                   path.normpath("gnr/benchmarks/blender"))
+                                   path.normpath("apps/blender/benchmark/"))
         scene_files = glob.glob(path.join(benchmarks_dir, "**/*.blend"))
         if len(scene_files) == 0:
             self.fail("No .blend files available")

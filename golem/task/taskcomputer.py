@@ -14,9 +14,9 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
-from apps.lux.benchmark.benchmark import LuxBenchmark
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from gnr.benchmarks.benchmarkrunner import BenchmarkRunner
+from apps.lux.benchmark.benchmark import LuxBenchmark
 from gnr.renderingtaskstate import RenderingTaskState
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task

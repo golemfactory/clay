@@ -2,8 +2,8 @@ import os
 import tempfile
 import unittest
 
+from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
-from gnr.benchmarks.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.task.luxrendertask import LuxRenderOptions
 

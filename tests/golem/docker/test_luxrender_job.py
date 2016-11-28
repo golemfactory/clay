@@ -21,7 +21,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
 
         # read the scene file and copy the resources to the resources dir
         lux_task_dir = path.join(get_golem_path(),
-                                 "gnr", "benchmarks", "luxrender", "lux_task")
+                                 "apps", "lux", "benchmark", "test_task")
         scene_src = None
         for f in os.listdir(lux_task_dir):
             task_file = path.join(lux_task_dir, f)

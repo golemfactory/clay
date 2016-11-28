@@ -1,5 +1,6 @@
 from PIL import Image
-from gnr.benchmarks.benchmark import Benchmark
+
+from apps.core.benchmark.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from golem.testutils import TempDirFixture
 

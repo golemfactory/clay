@@ -8,4 +8,4 @@ include gnr/logging.ini
 include gnr/ui/nopreview.png
 include gnr/ui/img/*
 include gnr/taskcollector/Release/*
-recursive-include gnr/benchmarks *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
+recursive-include apps *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt

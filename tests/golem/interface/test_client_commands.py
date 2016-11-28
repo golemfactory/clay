@@ -5,7 +5,7 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from gnr.benchmarks.benchmark import Benchmark
+from apps.core.benchmark.benchmark import Benchmark
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from gnr.task.tasktester import TaskTester

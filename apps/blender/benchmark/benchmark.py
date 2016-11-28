@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from gnr.benchmarks.benchmark import Benchmark
+from apps.core.benchmark.benchmark import Benchmark
 from gnr.renderingdirmanager import find_task_script
 from gnr.task.blenderrendertask import BlenderRendererOptions
 
