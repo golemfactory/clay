@@ -2,7 +2,7 @@ import os
 import tempfile
 
 from apps.core.benchmark.benchmark import Benchmark
-from gnr.renderingdirmanager import get_benchmarks_path, find_task_script
+from gnr.renderingdirmanager import find_task_script
 from gnr.task.luxrendertask import LuxRenderOptions
 
 

@@ -15,7 +15,6 @@ from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gnr.gnrtaskstate import GNRTaskState
-from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
@@ -422,7 +421,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @staticmethod
     def recount_performance(num_cores):
-        test_file = os.path.join(get_benchmarks_path(), 'minilight', 'cornellbox.ml.txt')
+        test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')
         result_file = SimpleEnv.env_file_name("minilight.ini")
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf

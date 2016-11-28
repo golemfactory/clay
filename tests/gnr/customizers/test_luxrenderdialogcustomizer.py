@@ -3,10 +3,11 @@ from PyQt4.QtTest import QTest
 from mock import Mock, patch
 import os
 
+from gui.startapp import build_lux_render_info
+
 from gnr.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.gnrstartapp import build_lux_render_info
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow

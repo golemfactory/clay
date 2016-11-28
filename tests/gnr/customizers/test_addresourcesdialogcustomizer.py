@@ -2,9 +2,10 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import Mock
 
+from gui.startapp import register_rendering_task_types
+
 from gnr.application import GNRGui
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from gnr.gnrstartapp import register_rendering_task_types
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.dialog import AddTaskResourcesDialog

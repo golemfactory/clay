@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from gnr.renderingdirmanager import get_task_scripts_path, get_benchmarks_path, find_task_script
+from gnr.renderingdirmanager import get_task_scripts_path, find_task_script
 
 
 class TestRenderingDirManager(unittest.TestCase):
@@ -12,6 +12,3 @@ class TestRenderingDirManager(unittest.TestCase):
         path = find_task_script("bla")
         self.assertTrue(os.path.isdir(os.path.dirname(path)))
         self.assertEqual(os.path.basename(path), "bla")
-
-    def test_get_benchmarks_path(self):
-        self.assertTrue(os.path.isdir(get_benchmarks_path()))

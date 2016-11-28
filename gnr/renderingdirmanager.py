@@ -25,10 +25,6 @@ def find_task_script(script_name):
     logger.error("Script file does not exist!")
 
 
-def get_benchmarks_path():
-    return path.join(get_golem_path(), "gnr", "benchmarks")
-
-
 def get_test_task_path(root_path):
     return path.join(root_path, "task_test")
 
