@@ -1,14 +1,17 @@
-import unittest
 import os
 
-from gnr.renderingdirmanager import get_task_scripts_path, find_task_script
+from gnr.renderingdirmanager import find_task_script
+from golem.testutils import TempDirFixture
 
 
-class TestRenderingDirManager(unittest.TestCase):
-    def test_get_task_scripts_path(self):
-        self.assertTrue(os.path.isdir(get_task_scripts_path()))
+class TestRenderingDirManager(TempDirFixture):
 
-    def find_task_script(self):
-        path = find_task_script("bla")
+    def test_find_task_script(self):
+        script_path = os.path.join(self.path, "resources", "scripts")
+        os.makedirs(script_path)
+        script = os.path.join(script_path, "bla")
+        open(script, "w").close()
+        task_file = os.path.join(self.path, "task", "testtask.py")
+        path = find_task_script(task_file, "bla")
         self.assertTrue(os.path.isdir(os.path.dirname(path)))
         self.assertEqual(os.path.basename(path), "bla")

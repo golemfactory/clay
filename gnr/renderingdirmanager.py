@@ -16,12 +16,12 @@ def get_task_scripts_path():
     return path.join(get_golem_path(), "gnr", "task", "scripts")
 
 
-def find_task_script(script_name):
-    scripts_path = get_task_scripts_path()
+def find_task_script(task__file__, script_name):
+    scripts_path = path.abspath(path.join(path.dirname(path.abspath(task__file__)), "..", "resources", "scripts"))
     files = listdir(scripts_path)
     for f in files:
         if f.lower() == script_name.lower():
-            return path.join(get_task_scripts_path(), f)
+            return path.join(scripts_path, f)
     logger.error("Script file does not exist!")
 
 

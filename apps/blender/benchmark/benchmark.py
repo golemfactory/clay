@@ -24,6 +24,6 @@ class BlenderBenchmark(Benchmark):
         
         self.task_definition.task_id = u"{}".format("blender_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.blender_task_path, "scene-Helicopter-27-cycles.blend")
-        self.task_definition.main_program_file = u"{}".format(find_task_script("docker_blendertask.py"))
+        self.task_definition.main_program_file = u"{}".format(find_task_script(__file__, "docker_blendertask.py"))
 
         self.task_definition.resources.add(os.path.normpath(self.task_definition.main_scene_file))

@@ -31,7 +31,7 @@ class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "exr"
-        self.main_program_file = find_task_script("docker_luxtask.py")
+        self.main_program_file = find_task_script(__file__, "docker_luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -363,7 +363,7 @@ class LuxTask(RenderingTask):
         return self.__get_merge_ctd(files)
 
     def __get_merge_ctd(self, files):
-        with open(find_task_script("docker_luxmerge.py")) as f:
+        with open(find_task_script(__file__, "docker_luxmerge.py")) as f:
             src_code = f.read()
         if src_code is None:
             logger.error("Cannot find merger script")

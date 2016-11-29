@@ -26,7 +26,7 @@ class BlenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = find_task_script("docker_blendertask.py")
+        self.main_program_file = find_task_script(__file__, "docker_blendertask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -212,7 +212,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
-        crop_task = find_task_script("blendercrop.py")
+        crop_task = find_task_script(__file__, "blendercrop.py")
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()
