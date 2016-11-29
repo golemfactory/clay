@@ -3,8 +3,7 @@ from golem.resource.dirmanager import DirManager
 
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.task.framerenderingtask import FrameRenderingTask, get_frame_name
-
+from apps.rendering.task.framerenderingtask import FrameRenderingTask, get_frame_name
 
 
 class TestFrameRenderingTask(TestDirFixture):

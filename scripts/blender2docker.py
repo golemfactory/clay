@@ -10,7 +10,7 @@ import sys
 from os import path
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.renderingenvironment import BlenderEnvironment
+from apps.blender.blenderenvironment import BlenderEnvironment
 
 output_file = None
 task_def = None

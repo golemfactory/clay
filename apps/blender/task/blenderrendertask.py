@@ -9,12 +9,12 @@ from PIL import Image, ImageChops
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtask import GNROptions
+from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder
 from apps.rendering.task.renderingtask import AcceptClientVerdict
 
 from gnr.renderingdirmanager import get_test_task_path, find_task_script
-from gnr.renderingenvironment import BlenderEnvironment
 from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.task.scenefileeditor import regenerate_blender_crop_file
 

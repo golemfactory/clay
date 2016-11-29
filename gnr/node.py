@@ -9,9 +9,10 @@ import click
 import jsonpickle
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
+from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from gnr.renderingenvironment import BlenderEnvironment, \
-    LuxRenderEnvironment
+from apps.lux.luxenvironment import LuxRenderEnvironment
+
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.rpc.websockets import WebSocketRPCServerFactory

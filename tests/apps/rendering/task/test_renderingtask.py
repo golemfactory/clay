@@ -1,12 +1,14 @@
 import unittest
 from os import makedirs, path
 
-from gnr.renderingdirmanager import get_tmp_path
-from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
-from gnr.task.framerenderingtask import get_task_border
-from gnr.task.renderingtask import RenderingTask
+from apps.rendering.task.framerenderingtask import get_task_border
+from apps.rendering.task.renderingtask import RenderingTask
+from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
+
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
+
+from gnr.renderingdirmanager import get_tmp_path
 
 
 class TestRenderingTask(TestDirFixture):

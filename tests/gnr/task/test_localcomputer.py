@@ -5,7 +5,7 @@ from mock import Mock
 from golem.task.taskbase import Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.renderingenvironment import BlenderEnvironment
+from apps.blender.blenderenvironment import BlenderEnvironment
 from gnr.task.localcomputer import LocalComputer
 
 

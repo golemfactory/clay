@@ -1,6 +1,7 @@
 import unittest
 
-from gnr.renderingenvironment import BlenderEnvironment, LuxRenderEnvironment
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.lux.luxenvironment import LuxRenderEnvironment
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 

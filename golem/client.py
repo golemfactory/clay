@@ -599,8 +599,8 @@ class Client(object):
 
     def run_benchmark(self, env_id):
         # TODO: move benchmarks to environments
-        from gnr.renderingenvironment import BlenderEnvironment
-        from gnr.renderingenvironment import LuxRenderEnvironment
+        from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.lux.luxenvironment import LuxRenderEnvironment
 
         queue = Queue()
 
