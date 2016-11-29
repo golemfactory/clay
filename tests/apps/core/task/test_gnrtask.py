@@ -13,7 +13,7 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.task.gnrtask import GNRTask, logger
+from apps.core.task.gnrtask import GNRTask, logger
 
 
 class TestGNRTask(LogTestCase, TestDirFixture):
