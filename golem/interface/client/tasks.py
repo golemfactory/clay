@@ -4,8 +4,8 @@ import uuid
 from Queue import Queue
 
 from apps.blender.task.blenderrendertask import build_blender_renderer_info
+from apps.lux.task.luxrendertask import build_lux_render_info
 from gnr.renderingtaskstate import RenderingTaskState
-from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.tasktester import TaskTester
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.task.taskbase import Task

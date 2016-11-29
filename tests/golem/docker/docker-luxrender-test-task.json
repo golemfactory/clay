@@ -1,7 +1,7 @@
 {
   "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
-    "py/object":"gnr.task.luxrendertask.LuxRenderOptions",
+    "py/object":"apps.lux.task.luxrendertask.LuxRenderOptions",
     "environment":{
 	"py/object":"gnr.renderingenvironment.LuxRenderEnvironment",
 	"docker_images":[

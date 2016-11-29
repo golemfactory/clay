@@ -2,15 +2,15 @@ import unittest
 import os
 from mock import Mock
 
-from gnr.task.renderingtask import AcceptClientVerdict
-
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
+from apps.lux.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
+
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
+from gnr.task.renderingtask import AcceptClientVerdict
 
 
 class TestLuxRenderDefaults(unittest.TestCase):
