@@ -5,7 +5,7 @@
     "use_frames":false,
     "compositing":false,
     "environment":{
-      "py/object":"gnr.renderingenvironment.BlenderEnvironment",
+      "py/object":"apps.blender.blenderenvironment.BlenderEnvironment",
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",

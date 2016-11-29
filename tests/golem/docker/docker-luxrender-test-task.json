@@ -3,7 +3,7 @@
   "renderer_options":{
     "py/object":"apps.lux.task.luxrendertask.LuxRenderOptions",
     "environment":{
-	"py/object":"gnr.renderingenvironment.LuxRenderEnvironment",
+	"py/object":"apps.lux.luxenvironment.LuxRenderEnvironment",
 	"docker_images":[
 	    {
 		"py/object": "golem.docker.image.DockerImage",
