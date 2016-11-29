@@ -40,7 +40,7 @@
   "task_id":"d2babb49-428a-48f0-b91a-febff5d8fde5",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
+      "$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
       "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend"
     ]
   },
@@ -66,7 +66,7 @@
   "full_task_timeout":14400,
   "max_price": 10.23,
   "renderer":"Blender",
-  "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
+  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "options":{
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },

@@ -42,7 +42,7 @@
   "resources":{
     "py/set":[
       "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
-      "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py"
+      "$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py"
     ]
   },
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
@@ -57,7 +57,7 @@
   "estimated_memory":0,
   "full_task_timeout":14400,
   "renderer":"Blender",
-  "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
+  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "options":{
     "py/type":"gnr.gnrtaskstate.GNROptions"
   },

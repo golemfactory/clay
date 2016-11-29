@@ -16,12 +16,13 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golem/blender"
 
     def test_blender_job(self):
-        task_script = find_task_script("docker_blendertask.py")
+        task_path = os.path.join(get_golem_path(), "apps", "blender", "task", "blendertask.py")
+        task_script = find_task_script(task_path, "docker_blendertask.py")
         with open(task_script) as f:
             task_script_src = f.read()
 
         # copy the blender script to the resources dir
-        crop_script = find_task_script("blendercrop.py")
+        crop_script = find_task_script(task_path, "blendercrop.py")
         with open(crop_script, 'r') as src:
             crop_script_src = src.read()
 

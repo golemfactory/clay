@@ -11,9 +11,9 @@ from golem.core.fileshelper import find_file_with_ext, common_dir
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from apps.blender.resources.scenefileeditor import regenerate_lux_file
 from apps.core.task.gnrtask import GNROptions
 from apps.lux.luxenvironment import LuxRenderEnvironment
+from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
