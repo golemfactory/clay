@@ -8,9 +8,9 @@ from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
 from apps.lux.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
+from apps.rendering.task.renderingtask import AcceptClientVerdict
 
 from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.renderingtask import AcceptClientVerdict
 
 
 class TestLuxRenderDefaults(unittest.TestCase):
