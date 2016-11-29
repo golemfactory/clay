@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from ethereum.utils import denoms
 from apps.core.benchmark.benchmark import Benchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor

@@ -8,13 +8,15 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from gui.startapp import register_rendering_task_types
+from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
+from gui.startapp import register_rendering_task_types
 from gui.application import GNRGui
+
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
+
 from golem.resource.dirmanager import DirManager
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 

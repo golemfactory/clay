@@ -4,12 +4,13 @@ from unittest import TestCase
 from mock import MagicMock, patch
 from PIL import Image
 
+from apps.rendering.task.renderingtaskstate import RenderingTaskState
+
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
 from gui.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
-from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.appmainwindow import AppMainWindow
 
 

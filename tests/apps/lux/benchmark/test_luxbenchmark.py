@@ -5,7 +5,7 @@ import unittest
 from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderOptions
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
 class TestLuxBenchmark(unittest.TestCase):

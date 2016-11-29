@@ -1,7 +1,7 @@
 from PIL import Image
 
 from apps.core.benchmark.benchmark import Benchmark
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.testutils import TempDirFixture
 
 

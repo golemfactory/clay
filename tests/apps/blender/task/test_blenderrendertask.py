@@ -11,7 +11,7 @@ from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
                                                  BlenderRendererOptions, PreviewUpdater, get_task_border,
                                                  generate_expected_offsets, get_task_num_from_pixels)
-from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus

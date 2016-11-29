@@ -14,10 +14,10 @@ from golem.task.taskstate import SubtaskStatus
 from apps.core.task.gnrtask import GNROptions
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
+from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 
 
 from gnr.renderingenvironment import LuxRenderEnvironment
-from gnr.renderingtaskstate import RendererDefaults, RendererInfo
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from gnr.task.localcomputer import LocalComputer
 from gnr.task.scenefileeditor import regenerate_lux_file

@@ -1,5 +1,5 @@
 {
-  "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
+  "py/object":"apps.rendering.task.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
     "py/object":"apps.blender.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,

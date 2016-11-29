@@ -1,5 +1,5 @@
 {
-  "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
+  "py/object":"apps.rendering.task.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
     "py/object":"apps.lux.task.luxrendertask.LuxRenderOptions",
     "environment":{

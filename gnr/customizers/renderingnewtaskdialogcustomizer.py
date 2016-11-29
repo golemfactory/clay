@@ -5,10 +5,12 @@ from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
 from copy import deepcopy
 
+from golem.task.taskstate import TaskStatus
+
+from apps.rendering.task.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
 
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from gnr.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
-from golem.task.taskstate import TaskStatus
+
 from timehelper import set_time_spin_boxes
 from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
     load_verification_params, verification_random_changed

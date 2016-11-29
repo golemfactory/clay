@@ -10,7 +10,7 @@ from golem.task.taskbase import ComputeTaskDef
 from apps.lux.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
 from apps.rendering.task.renderingtask import AcceptClientVerdict
 
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
 class TestLuxRenderDefaults(unittest.TestCase):

@@ -10,11 +10,13 @@ from PyQt4.QtCore import QString
 from PyQt4.QtGui import QFileDialog
 from twisted.internet.defer import inlineCallbacks
 
+from golem.task.taskstate import TaskStatus
+
+from apps.rendering.task.renderingtaskstate import RenderingTaskState
+
 from gnr.ui.dialog import AddTaskResourcesDialog
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from gnr.renderingtaskstate import RenderingTaskState
 from gnr.gnrtaskstate import GNRTaskDefinition
-from golem.task.taskstate import TaskStatus
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir

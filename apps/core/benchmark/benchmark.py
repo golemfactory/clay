@@ -2,7 +2,7 @@ import logging
 
 from PIL import Image
 
-from gnr.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 logger = logging.getLogger("gnr.benchmarks")
 

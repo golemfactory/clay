@@ -10,21 +10,22 @@ from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
-from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
-from gnr.gnrtaskstate import GNRTaskState
-from gnr.renderingtaskstate import RenderingTaskState
-from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
+
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.benchmark.minilight.src.minilight import makePerfTest
+from apps.rendering.task.renderingtaskstate import RenderingTaskState
+
+from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gnr.gnrtaskstate import GNRTaskState
+from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("gnr.app")
 

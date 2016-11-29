@@ -9,8 +9,8 @@ import pickle
 import sys
 from os import path
 
-from gnr.renderingtaskstate import RenderingTaskDefinition
 from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 output_file = None
 task_def = None

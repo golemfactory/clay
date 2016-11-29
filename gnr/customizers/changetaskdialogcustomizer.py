@@ -1,5 +1,7 @@
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+
 from gnr.customizers.customizer import Customizer
-from gnr.renderingtaskstate import RenderingTaskDefinition
+
 from timehelper import set_time_spin_boxes, get_time_values
 
 import logging

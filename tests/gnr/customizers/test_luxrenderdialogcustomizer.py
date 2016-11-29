@@ -3,16 +3,18 @@ from PyQt4.QtTest import QTest
 from mock import Mock, patch
 import os
 
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+
 from gui.startapp import build_lux_render_info
 
 from gui.application import GNRGui
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from gnr.renderingtaskstate import RenderingTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
+
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
 

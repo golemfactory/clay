@@ -1,7 +1,7 @@
 import logging
 from PyQt4 import QtCore
 
-from gnr.renderingtaskstate import AdvanceRenderingVerificationOptions
+from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 logger = logging.getLogger("gnr.gui")
 
