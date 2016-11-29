@@ -171,7 +171,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         extracted = etp.extract(path)
 
         self.assertIsInstance(extracted, ExtractedPackage)
-        self.assertTrue(len(extracted.files) == len(self.file_list))
+        self.assertEqual(len(extracted.files), len(self.file_list))
 
         shutil.rmtree(extracted.files_dir)
 
@@ -199,8 +199,8 @@ class TestExtractedPackage(TestDirFixture):
         extracted = etp.extract(path)
         extra_data = extracted.to_extra_data()
 
-        self.assertTrue(extra_data.get('result_type', None) == result_types['files'])
-        self.assertTrue(len(extra_data.get('result', [])) == len(self.file_list))
+        self.assertEqual(extra_data.get('result_type', None), result_types['files'])
+        self.assertEqual(len(extra_data.get('result', [])), len(self.file_list))
         self.assertIsNone(extra_data.get('data_type', None))
 
         for filename in extra_data.get('result', []):

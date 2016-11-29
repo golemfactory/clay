@@ -4,9 +4,8 @@ import uuid
 import zipfile
 
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import result_types
-
-import cbor2 as cbor
 
 
 class Packager(object):
@@ -25,7 +24,7 @@ class Packager(object):
 
             if cbor_files:
                 for file_name, file_data in cbor_files:
-                    cbor_data = cbor.dumps(file_data)
+                    cbor_data = CBORSerializer.dumps(file_data)
                     self.write_cbor_file(of, file_name, cbor_data)
 
         return output_path
@@ -167,10 +166,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
-
             with open(descriptor_path, 'r') as src:
-                descriptor = cbor.loads(src.read())
-
+                descriptor = CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
 
         except Exception as e:

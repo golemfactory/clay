@@ -1,11 +1,11 @@
 import copy
 import logging
-import cbor2 as cbor
 import os
 
 from golem.core.common import HandleKeyError, timeout_to_deadline
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
+from golem.core.simpleserializer import CBORSerializer
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
@@ -307,7 +307,7 @@ class GNRTask(Task):
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
-        tr = cbor.loads(trp)
+        tr = CBORSerializer.loads(trp)
         with open(os.path.join(output_dir, tr[0]), "wb") as fh:
             fh.write(decompress(tr[1]))
         return os.path.join(output_dir, tr[0])

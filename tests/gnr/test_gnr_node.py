@@ -6,6 +6,8 @@ from golem.core.compress import save
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithdatabase import TestWithDatabase
 
+from twisted.internet import reactor  # noqa
+
 
 class A(object):
     def __init__(self):

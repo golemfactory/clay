@@ -1,4 +1,3 @@
-import cbor2 as cbor
 import shutil
 import os
 import zlib
@@ -7,6 +6,7 @@ from copy import copy
 from mock import MagicMock
 
 from golem.core.fileshelper import outer_dir_path
+from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
@@ -189,5 +189,5 @@ class TestGNRTask(LogTestCase, TestDirFixture):
 
     def __compress_and_dump_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
-        return cbor.dumps((os.path.basename(file_name), file_data))
+        return CBORSerializer.dumps((os.path.basename(file_name), file_data))
 
