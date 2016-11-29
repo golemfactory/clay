@@ -1,22 +1,25 @@
+import jsonpickle
 import logging
 import os
 import shutil
 from os import makedirs, path, remove
 
-import gnr.node
-import jsonpickle
-from gnr.task.luxrendertask import LuxRenderTaskBuilder
-from gnr.task.tasktester import TaskTester
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 
+from mock import Mock
+
+from test_docker_image import DockerTestCase
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
-from mock import Mock
-from test_docker_image import DockerTestCase
+
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
+
+import gnr.node
+from gnr.task.tasktester import TaskTester
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")

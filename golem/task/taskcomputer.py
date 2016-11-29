@@ -18,11 +18,10 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from apps.lux.benchmark.benchmark import LuxBenchmark
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.renderingtaskstate import RenderingTaskState
 from golem.task.taskstate import TaskStatus
 from golem.task.taskbase import Task
-from gnr.task.luxrendertask import LuxRenderTaskBuilder
-
 
 logger = logging.getLogger(__name__)
 
