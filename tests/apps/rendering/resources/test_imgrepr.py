@@ -2,7 +2,8 @@ import os
 from PIL import Image
 
 from golem.testutils import TempDirFixture
-from gnr.task.imgrepr import verify_img
+
+from apps.rendering.resources.imgrepr import verify_img
 
 
 class TestImgrepr(TempDirFixture):

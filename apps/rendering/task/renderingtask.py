@@ -16,9 +16,9 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtask import GNRTask, GNRTaskBuilder
+from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
 
-from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.localcomputer import LocalComputer
 
 
