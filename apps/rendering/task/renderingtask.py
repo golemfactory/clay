@@ -15,10 +15,11 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
+from apps.rendering.resources.renderingtaskcollector import exr_to_pil
+
 from gnr.task.gnrtask import GNRTask, GNRTaskBuilder
 from gnr.task.imgrepr import verify_img, advance_verify_img
 from gnr.task.localcomputer import LocalComputer
-from gnr.task.renderingtaskcollector import exr_to_pil
 
 
 MIN_TIMEOUT = 2200.0

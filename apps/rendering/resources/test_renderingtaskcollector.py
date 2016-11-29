@@ -2,7 +2,7 @@ import os
 
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.task.renderingtaskcollector import get_exr_files
+from apps.rendering.resources.renderingtaskcollector import get_exr_files
 
 
 class TestRenderingTaskCollector(TestDirFixture):
