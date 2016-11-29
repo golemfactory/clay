@@ -73,7 +73,7 @@ class NodeProcess(object):
         assert path.isdir(datadir)
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
-            save(nodes, nodes_file)
+            save(nodes, nodes_file, False)
 
         # Init the ethereum node with genesis block information.
         # Do it always to overwrite invalid genesis block information

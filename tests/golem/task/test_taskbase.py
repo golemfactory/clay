@@ -39,35 +39,3 @@ class TestTaskBase(LogTestCase):
         assert len(t.listeners) == 0
         with self.assertLogs(logger, level="WARNING"):
             t.unregister_listener(tl1)
-
-    def test_task_cbor_serializer(self):
-        t = Task(Mock(), "")
-        self.assertIsInstance(t, Task)
-        self.assertEqual(t.get_stdout("abc"), "")
-        self.assertEqual(t.get_stderr("abc"), "")
-        self.assertEqual(t.get_results("abc"), [])
-
-        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
-                            Node()), "print 'Hello world'")
-
-        tl1 = TaskEventListener()
-        tl2 = TaskEventListener()
-        t.register_listener(tl1)
-        t.register_listener(tl2)
-        assert len(t.listeners) == 2
-        p = CBORSerializer.dumps(t)
-        u = CBORSerializer.loads(p)
-        assert t.src_code == u.src_code
-        assert t.header.task_id == u.header.task_id
-        assert t.header.task_owner.node_name == u.header.task_owner.node_name
-        assert u.get_results("abc") == []
-        assert len(t.listeners) == 2
-        assert len(u.listeners) == 0
-        t.unregister_listener(tl2)
-        assert len(t.listeners) == 1
-        assert t.listeners[0] == tl1
-        t.listeners[0].notify_update_task("abc")
-        t.unregister_listener(tl1)
-        assert len(t.listeners) == 0
-        with self.assertLogs(logger, level="WARNING"):
-            t.unregister_listener(tl1)

@@ -6,8 +6,6 @@ from golem.core.compress import save
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithdatabase import TestWithDatabase
 
-from twisted.internet import reactor  # noqa
-
 
 class A(object):
     def __init__(self):
@@ -161,7 +159,7 @@ class TestNode(TestWithDatabase):
     def test_task(self, mock_node):
         a = A()
         dump = os.path.join(self.path, 'testcalssdump')
-        save(a, dump)
+        save(a, dump, False)
         args = self.args + ['--task', dump, '--task', dump]
         return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
@@ -181,7 +179,7 @@ class TestNode(TestWithDatabase):
         a2 = A()
         a2.child = a1
 
-        save(a2, test_json_file)
+        save(a2, test_json_file, False)
         try:
             runner = CliRunner()
             args = self.args + ['--task', test_json_file]
