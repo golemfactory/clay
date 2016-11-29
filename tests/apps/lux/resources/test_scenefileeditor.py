@@ -1,7 +1,7 @@
 import re
 
 from golem.tools.testdirfixture import TestDirFixture
-from gnr.task.scenefileeditor import regenerate_lux_file
+from apps.lux.resources.scenefileeditor import regenerate_lux_file
 
 
 class TestSceneFileEditor(TestDirFixture):
