@@ -87,7 +87,7 @@ class AbsRenderingMainWindowCustomizer(object):
         show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
 
     def update_task_additional_info(self, t):
-        from gnr.renderingtaskstate import RenderingTaskState
+        from apps.rendering.task.renderingtaskstate import RenderingTaskState
         assert isinstance(t, RenderingTaskState)
 
         self.current_task_highlighted = t

@@ -6,6 +6,8 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from gui.application import GNRGui
 
+from gnr.customizers.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer
+from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.dialog import TaskDetailsDialog
 
