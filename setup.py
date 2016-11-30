@@ -38,7 +38,7 @@ def try_building_docker_images():
               ***************************************************************"
               """.format(err))
         return
-    images_dir = path.join('gnr', 'task')
+    images_dir = 'apps'
     cwd = os.getcwdu()
 
     with open(path.join(images_dir,  'images.ini')) as f:
