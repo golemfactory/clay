@@ -8,7 +8,7 @@ from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationO
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
-from gnr.renderingdirmanager import get_tmp_path
+from apps.rendering.task.renderingdirmanager import get_tmp_path
 
 
 class TestRenderingTask(TestDirFixture):

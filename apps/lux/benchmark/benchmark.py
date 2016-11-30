@@ -3,7 +3,7 @@ import tempfile
 
 from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.task.luxrendertask import LuxRenderOptions
-from gnr.renderingdirmanager import find_task_script
+from apps.rendering.task.renderingdirmanager import find_task_script
 
 
 class LuxBenchmark(Benchmark):

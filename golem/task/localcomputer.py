@@ -7,7 +7,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.task.taskbase import Task, resource_types
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 
-from gnr.renderingdirmanager import get_test_task_path, get_test_task_tmp_path
+from apps.rendering.task.renderingdirmanager import get_test_task_path, get_test_task_tmp_path
 
 logger = logging.getLogger("golem.task")
 

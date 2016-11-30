@@ -1,6 +1,6 @@
 import os
 
-from gnr.renderingdirmanager import find_task_script
+from apps.rendering.task.renderingdirmanager import find_task_script
 from golem.testutils import TempDirFixture
 
 

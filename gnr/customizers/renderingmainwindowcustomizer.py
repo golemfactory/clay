@@ -7,13 +7,13 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QIcon, QPixmapCache
 
 from apps.rendering.task.framerenderingtask import get_frame_name
+from apps.rendering.task.renderingdirmanager import get_preview_file
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gnr.customizers.memoryhelper import resource_size_to_display, translate_resource_index
 from gnr.customizers.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
-from gnr.renderingdirmanager import get_preview_file
 from gnr.ui.dialog import ShowTaskResourcesDialog
 from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
