@@ -14,12 +14,12 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
+from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 
 import gnr.node
-from gnr.task.tasktester import TaskTester
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")

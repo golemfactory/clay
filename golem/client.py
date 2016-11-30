@@ -10,7 +10,6 @@ from threading import Lock
 
 from twisted.internet import task
 
-from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
@@ -36,6 +35,7 @@ from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
+from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 

@@ -11,6 +11,7 @@ from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
@@ -18,8 +19,6 @@ from golem.task.taskstate import SubtaskStatus
 from apps.core.task.gnrtask import GNRTask, GNRTaskBuilder
 from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
-
-from gnr.task.localcomputer import LocalComputer
 
 
 MIN_TIMEOUT = 2200.0

@@ -8,6 +8,7 @@ from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
@@ -19,7 +20,7 @@ from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilde
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 
 from gnr.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
-from gnr.task.localcomputer import LocalComputer
+
 
 
 logger = logging.getLogger("gnr.task")

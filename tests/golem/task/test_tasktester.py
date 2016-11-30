@@ -1,9 +1,9 @@
 from mock import Mock
 
-from gnr.task.tasktester import TaskTester, logger
+from golem.task.taskbase import Task
+from golem.task.tasktester import TaskTester, logger
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.task.taskbase import Task
 
 
 class TaskThread:

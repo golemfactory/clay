@@ -1,7 +1,7 @@
 import logging
 import time
 
-from gnr.task.localcomputer import LocalComputer
+from golem.task.localcomputer import LocalComputer
 
 
 logger = logging.getLogger("gnr.benchmarks")

@@ -2,21 +2,25 @@ import shutil
 import time
 from os import makedirs, path
 
-import gnr.node
+
 import jsonpickle
+from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from gnr.task.localcomputer import LocalComputer
-from gnr.task.tasktester import TaskTester
+
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
+from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from mock import Mock
+
+import gnr.node
+
 from test_docker_image import DockerTestCase
 
 

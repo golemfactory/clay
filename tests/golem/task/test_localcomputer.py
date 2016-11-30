@@ -2,11 +2,11 @@ from os import path
 
 from mock import Mock
 
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task, ComputeTaskDef
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from gnr.task.localcomputer import LocalComputer
 
 
 class TestLocalComputer(TestDirFixture):
