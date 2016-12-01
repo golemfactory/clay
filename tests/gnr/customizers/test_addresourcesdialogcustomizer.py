@@ -2,14 +2,15 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import Mock
 
-from gui.startapp import register_rendering_task_types
+from golem.tools.testdirfixture import TestDirFixture
 
 from gui.application import GNRGui
+from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.startapp import register_rendering_task_types
+
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.dialog import AddTaskResourcesDialog
-from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestAddResourcesDialogCustomizer(TestDirFixture):

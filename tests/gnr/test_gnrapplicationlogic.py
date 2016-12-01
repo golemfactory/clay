@@ -5,7 +5,7 @@ import uuid
 from ethereum.utils import denoms
 from gui.application import GNRGui
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.gnrapplicationlogic import GNRApplicationLogic
+from gui.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient

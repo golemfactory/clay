@@ -10,10 +10,10 @@ from golem.testutils import TempDirFixture
 from apps.core.task.gnrtaskstate import GNRTaskDefinition
 
 from gui.application import GNRGui
+from gui.renderingapplicationlogic import RenderingApplicationLogic
 from gui.startapp import register_rendering_task_types
 
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 
 

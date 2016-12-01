@@ -2,19 +2,19 @@ import unittest
 
 from mock import Mock, patch
 
-from gui.startapp import build_blender_renderer_info
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.tools.testdirfixture import TestDirFixture
 
 from gui.application import GNRGui
+from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.startapp import build_blender_renderer_info
+
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.renderercustomizer import FrameRendererCustomizer
 from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.widget import TaskWidget
-
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestFramesConversion(unittest.TestCase):

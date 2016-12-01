@@ -3,7 +3,7 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
+from gui.gnrapplicationlogic import GNRClientRemoteEventListener
 from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ethereum.paymentmonitor import IncomingPayment

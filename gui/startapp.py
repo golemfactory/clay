@@ -4,25 +4,27 @@ from os import path
 
 from twisted.internet.defer import inlineCallbacks
 
-from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.task.blenderrendertask import build_blender_renderer_info
-from apps.lux.luxenvironment import LuxRenderEnvironment
-from apps.lux.task.luxrendertask import build_lux_render_info
-
-from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
-from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
-from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
-from gnr.ui.widget import TaskWidget
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
+
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.task.blenderrendertask import build_blender_renderer_info
+from apps.lux.luxenvironment import LuxRenderEnvironment
+from apps.lux.task.luxrendertask import build_lux_render_info
+
+from gui.renderingapplicationlogic import RenderingApplicationLogic
+
+from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gnr.ui.appmainwindow import AppMainWindow
+from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
+from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
+from gnr.ui.widget import TaskWidget
 
 from application import GNRGui
 
