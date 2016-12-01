@@ -19,7 +19,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-import gnr.node
+import gui.node
 
 from test_docker_image import DockerTestCase
 
@@ -82,7 +82,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node = gui.node.GNRNode(datadir=self.path)
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
         self.node.client.p2pservice = Mock()

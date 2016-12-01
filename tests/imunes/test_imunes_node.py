@@ -1,10 +1,13 @@
 import unittest
+
 from mock import patch
-from gnr.node import GNRNode
 from click.testing import CliRunner
-from apps.blender.blenderenvironment import BlenderEnvironment
+
 from golem.testutils import DatabaseFixture
 
+from apps.blender.blenderenvironment import BlenderEnvironment
+
+from gui.node import GNRNode
 
 # Do not remove! (even if pycharm complains that this import is not used)
 from node import immunes_start
@@ -54,8 +57,8 @@ class TestNode(DatabaseFixture):
         self.assertTrue(BlenderEnvironment not in env_types)
 
     @unittest.expectedFailure
-    @patch('gnr.node.Node.initialize')
-    @patch('gnr.node.Node.run', autospec=True)
+    @patch('gui.node.Node.initialize')
+    @patch('gui.node.Node.run', autospec=True)
     def test_public_address(self, mock_run, mock_initialize):
         public_address = '1.0.0.1'
         runner = CliRunner()
