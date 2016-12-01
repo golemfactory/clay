@@ -4,14 +4,14 @@ from unittest import TestCase
 from mock import MagicMock, patch
 from PIL import Image
 
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
 from gui.application import GNRGui
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
-from gnr.ui.appmainwindow import AppMainWindow
+from gui.view.appmainwindow import AppMainWindow
 
 
 class TestRenderingMainWindowCustomizer(TestDirFixture):
@@ -26,9 +26,9 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
-    @patch('gnr.customizers.gnrmainwindowcustomizer.QtCore')
-    @patch('gnr.customizers.renderingmainwindowcustomizer.QtCore')
-    @patch('gnr.customizers.gnrmainwindowcustomizer.QPalette')
+    @patch('gui.controller.gnrmainwindowcustomizer.QtCore')
+    @patch('apps.rendering.gui.controller.renderingmainwindowcustomizer.QtCore')
+    @patch('gui.controller.gnrmainwindowcustomizer.QPalette')
     def test_preview(self, mock_palette, mock_core, mock_core2):
         customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
         self.assertTrue(os.path.isfile(customizer.preview_path))

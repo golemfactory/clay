@@ -5,16 +5,16 @@ from mock import Mock, patch
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
 
+from apps.blender.gui.controller.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from apps.blender.gui.view.gen.ui_BlenderWidget import Ui_BlenderWidget
+from apps.rendering.gui.controller.renderercustomizer import FrameRendererCustomizer
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
 from gui.startapp import build_blender_renderer_info
-
-from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
-from gnr.customizers.renderercustomizer import FrameRendererCustomizer
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
-from gnr.ui.widget import TaskWidget
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.widget import TaskWidget
 
 
 class TestFramesConversion(unittest.TestCase):

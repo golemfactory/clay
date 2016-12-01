@@ -1,7 +1,10 @@
 import unittest
-from golem.model import PaymentStatus
-from gnr.customizers.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem, SmartTableItem
+
 from PyQt4.QtGui import QTableWidgetItem
+
+from golem.model import PaymentStatus
+
+from gui.controller.paymentsdialogcustomizer import PaymentTableElem, IncomeTableElem, SmartTableItem
 
 
 class TestTableElem(unittest.TestCase):

@@ -5,11 +5,10 @@ from golem.task.taskstate import SubtaskState, SubtaskStatus
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from gui.application import GNRGui
+from gui.controller.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer
 from gui.renderingapplicationlogic import RenderingApplicationLogic
-
-from gnr.customizers.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.dialog import TaskDetailsDialog
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.dialog import TaskDetailsDialog
 
 
 class TestTaskDetailsDialogCustomizer(TestCase):

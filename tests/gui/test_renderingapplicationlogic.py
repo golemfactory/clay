@@ -14,8 +14,8 @@ from gui.startapp import register_rendering_task_types
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
 
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gui.view.appmainwindow import AppMainWindow
 
 from golem.resource.dirmanager import DirManager
 from golem.tools.testwithreactor import TestDirFixtureWithReactor

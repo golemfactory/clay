@@ -3,8 +3,8 @@ from unittest import TestCase
 from mock import Mock
 
 from gui.application import GNRGui
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.tasktableelem import TaskTableElem, ItemMap
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.tasktableelem import TaskTableElem, ItemMap
 
 
 class TestTaskTableElem(TestCase):

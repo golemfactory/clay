@@ -19,10 +19,8 @@ except ImportError:
     use_cx_Freeze = False
 
 
-def generate_ui_files():
-    ui_path = path.normpath(path.join(path.abspath(path.dirname(__file__)), "gnr/ui"))
-    from golem.tools.uigen import gen_ui_files
-    gen_ui_files(ui_path)
+from gui.view.generateui import generate_ui_files
+
 
 generate_ui_files()
 

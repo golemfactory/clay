@@ -1,17 +1,15 @@
-
 import time
 
-from golem.testutils import TempDirFixture
-
-from gnr.ui.appmainwindow import AppMainWindow
-
-from gui.application import GNRGui
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
-from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer, SaveKeysDialogCustomizer
-from gnr.ui.dialog import IdentityDialog, SaveKeysDialog
+from golem.testutils import TempDirFixture
 from golem.tools.testwithreactor import TestWithReactor
+
+from gui.application import GNRGui
+from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer, SaveKeysDialogCustomizer
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.dialog import IdentityDialog, SaveKeysDialog
 
 
 class TestIdentityDialogCustomizer(TempDirFixture):

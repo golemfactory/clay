@@ -7,9 +7,9 @@ from PyQt4.QtTest import QTest
 
 
 from gui.application import GNRGui
-from gnr.customizers.gnrmainwindowcustomizer import GNRMainWindowCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.tasktableelem import ItemMap
+from gui.controller.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.tasktableelem import ItemMap
 
 
 class TestGNRMainWindowCustomizer(TestCase):

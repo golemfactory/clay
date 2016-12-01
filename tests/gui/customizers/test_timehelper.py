@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from mock import Mock
 
-from gnr.customizers.timehelper import get_subtask_hours, get_time_values
+from gui.controller.timehelper import get_subtask_hours, get_time_values
 
 
 class TestTimeHelper(TestCase):

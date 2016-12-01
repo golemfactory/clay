@@ -7,8 +7,8 @@ from mock import MagicMock
 from twisted.internet.defer import Deferred
 
 from gui.application import GNRGui
-from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
-from gnr.ui.appmainwindow import AppMainWindow
+from gui.controller.configurationdialogcustomizer import ConfigurationDialogCustomizer, logger
+from gui.view.appmainwindow import AppMainWindow
 from golem.tools.assertlogs import LogTestCase
 
 

@@ -23,9 +23,9 @@ from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.gnrtaskstate import GNRTaskState
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
-from gui.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gui.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
-from gui.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
+from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("gnr.app")
 
@@ -65,7 +65,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.test_tasks = {}
         self.task_types = {}
         self.customizer = None
-        self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gnr'))
+        self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gui'))
         self.nodes_manager_client = None
         self.client = None
         self.progress_dialog = None

@@ -4,7 +4,7 @@ import os
 
 from mock import Mock, patch
 
-from gnr.customizers.customizer import Customizer
+from gui.controller.customizer import Customizer
 
 
 class TestCustomizer(unittest.TestCase):
@@ -12,9 +12,9 @@ class TestCustomizer(unittest.TestCase):
         customizer = Customizer(Mock(), Mock())
         self.assertIsInstance(customizer, Customizer)
 
-    @patch("gnr.customizers.customizer.subprocess")
-    @patch("gnr.customizers.customizer.is_windows")
-    @patch("gnr.customizers.customizer.os")
+    @patch("gui.controller.customizer.subprocess")
+    @patch("gui.controller.customizer.is_windows")
+    @patch("gui.controller.customizer.os")
     def test_show_file(self, mock_os, mock_is_windows, mock_subprocess):
         with tempfile.NamedTemporaryFile(prefix="golem", delete=False) as file_:
             file_name = file_.name

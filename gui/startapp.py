@@ -12,18 +12,18 @@ from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.gui.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from apps.blender.gui.controller.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
+from apps.blender.gui.view.gen.ui_BlenderWidget import Ui_BlenderWidget
 from apps.blender.task.blenderrendertask import build_blender_renderer_info
-from apps.lux.gui.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.task.luxrendertask import build_lux_render_info
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
-from gui.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gui.renderingapplicationlogic import RenderingApplicationLogic
-from gui.ui.appmainwindow import AppMainWindow
-from gui.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
-from gui.ui.gen.ui_LuxWidget import Ui_LuxWidget
-from gui.ui.widget import TaskWidget
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.widget import TaskWidget
 
 from application import GNRGui
 

@@ -6,17 +6,16 @@ import os
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
 
+from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
+from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
 from gui.startapp import build_lux_render_info
-
-from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
-from gnr.ui.widget import TaskWidget
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.widget import TaskWidget
 
 
 class TestLuxRenderDialogCustomizer(TestDirFixture):
@@ -31,7 +30,7 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
-    @patch("gnr.customizers.renderercustomizer.QFileDialog")
+    @patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
         self.logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)

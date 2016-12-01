@@ -4,13 +4,13 @@ from mock import Mock
 
 from golem.tools.testdirfixture import TestDirFixture
 
+from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
+
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
 from gui.startapp import register_rendering_task_types
-
-from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.dialog import AddTaskResourcesDialog
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.dialog import AddTaskResourcesDialog
 
 
 class TestAddResourcesDialogCustomizer(TestDirFixture):

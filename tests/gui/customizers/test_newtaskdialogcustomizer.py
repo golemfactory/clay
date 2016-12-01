@@ -7,14 +7,13 @@ from mock import Mock
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 
+from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from apps.core.task.gnrtaskstate import GNRTaskDefinition
 
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
 from gui.startapp import register_rendering_task_types
-
-from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
+from gui.view.appmainwindow import AppMainWindow
 
 
 class TestNewTaskDialogCustomizer(TempDirFixture):

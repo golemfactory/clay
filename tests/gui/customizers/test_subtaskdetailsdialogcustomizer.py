@@ -3,11 +3,10 @@ from unittest import TestCase
 from golem.task.taskstate import SubtaskState
 
 from gui.application import GNRGui
+from gui.controller.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gui.renderingapplicationlogic import RenderingApplicationLogic
-
-from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
-from gnr.ui.appmainwindow import AppMainWindow
-from gnr.ui.dialog import SubtaskDetailsDialog
+from gui.view.appmainwindow import AppMainWindow
+from gui.view.dialog import SubtaskDetailsDialog
 
 
 class TestSubtaskDetailsDialogCustomizer(TestCase):

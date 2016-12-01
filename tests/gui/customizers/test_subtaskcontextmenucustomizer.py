@@ -4,11 +4,11 @@ from mock import Mock, patch
 
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 
-from gnr.customizers.subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
+from gui.controller.subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 
 
 class TestSubtaskContextMenuCustomizer(TestCase):
-    @patch("gnr.customizers.subtaskcontextmenucustomizer.QAction")
+    @patch("gui.controller.subtaskcontextmenucustomizer.QAction")
     def test_restarted(self, mock_action):
         menu = SubtaskContextMenuCustomizer(Mock(), Mock(), "xxyyzz", SubtaskStatus.restarted)
         assert isinstance(menu, SubtaskContextMenuCustomizer)
