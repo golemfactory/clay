@@ -27,7 +27,7 @@ from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDial
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
-logger = logging.getLogger("gnr.app")
+logger = logging.getLogger("app")
 
 
 class GNRClientEventListener(GolemClientEventListener):

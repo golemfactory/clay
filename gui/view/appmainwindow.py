@@ -33,7 +33,7 @@ class AppMainWindow(object):
         self.window.resizeEvent = types.MethodType(window_resize, self.window, MainWindow)
 
         self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
-        self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gnr", "ui", "nopreview.png")))
+        self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gui", "view", "nopreview.png")))
 
         self.__new_task_buttons = [
                 self.ui.showAdvanceNewTaskButton,

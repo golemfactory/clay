@@ -11,7 +11,7 @@ from apps.core.task.gnrtask import GNRTask
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.rendering")
 
 DEFAULT_PADDING = 4
 

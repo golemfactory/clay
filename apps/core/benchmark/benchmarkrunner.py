@@ -4,7 +4,7 @@ import time
 from golem.task.localcomputer import LocalComputer
 
 
-logger = logging.getLogger("gnr.benchmarks")
+logger = logging.getLogger("apps.core")
 
 
 class BenchmarkRunner(LocalComputer):

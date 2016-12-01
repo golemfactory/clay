@@ -90,7 +90,7 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         log_name = GUI_LOG_NAME
 
     config_logging(log_name)
-    logger = logging.getLogger("gnr.app")
+    logger = logging.getLogger("app")
 
     client_service_info = queue.get(True, 3600)
 

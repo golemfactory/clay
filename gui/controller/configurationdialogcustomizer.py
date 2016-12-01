@@ -15,7 +15,7 @@ from golem.core.fileshelper import get_dir_size, du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 
 class ConfigurationDialogCustomizer(Customizer):

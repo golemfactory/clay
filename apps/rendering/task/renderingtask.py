@@ -24,7 +24,7 @@ from apps.rendering.resources.renderingtaskcollector import exr_to_pil
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.rendering")
 
 
 MAX_PENDING_CLIENT_RESULTS = 1

@@ -29,7 +29,7 @@ from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDia
     EnvironmentsDialog, IdentityDialog, NodeNameDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 
 class GNRMainWindowCustomizer(Customizer):

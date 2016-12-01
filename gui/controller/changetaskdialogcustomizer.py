@@ -6,7 +6,7 @@ from timehelper import set_time_spin_boxes, get_time_values
 
 import logging
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 
 class ChangeTaskDialogCustomizer(Customizer):

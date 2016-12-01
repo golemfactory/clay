@@ -7,7 +7,7 @@ import OpenEXR
 import Imath
 from PIL import Image
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.rendering")
 
 
 class ImgRepr(object):

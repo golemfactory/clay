@@ -1,7 +1,7 @@
 from os import path, listdir
 import logging
 
-logger = logging.getLogger("gnr.app")
+logger = logging.getLogger("apps.rendering")
 
 PREV_FILE = "ui/nopreview.png"
 

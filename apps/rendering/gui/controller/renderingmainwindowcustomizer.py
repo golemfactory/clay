@@ -53,7 +53,7 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        self.preview_path = os.path.join(get_golem_path(), "gnr", get_preview_file())
+        self.preview_path = os.path.join(get_golem_path(), "gui", get_preview_file())
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
@@ -63,7 +63,7 @@ class AbsRenderingMainWindowCustomizer(object):
         icons = ["new.png", "task.png", "eye.png", "settings.png", "user.png"]
         for i in range(len(icons)):
             item = self.gui.ui.listWidget.item(i)
-            icon_path = os.path.join(get_golem_path(), "gnr", "ui", "img", icons[i])
+            icon_path = os.path.join(get_golem_path(), "gui", "view", "img", icons[i])
             icon = QIcon()
             icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
             item.setIcon(icon)
@@ -153,7 +153,7 @@ class AbsRenderingMainWindowCustomizer(object):
             self.__update_img(QPixmap(file_path))
             self.last_preview_path = file_path
         else:
-            self.preview_path = os.path.join(get_golem_path(), "gnr", get_preview_file())
+            self.preview_path = os.path.join(get_golem_path(), "gui", get_preview_file())
             self.__update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
@@ -302,7 +302,7 @@ class AbsRenderingMainWindowCustomizer(object):
                                                       res_y)
 
                 if os.path.isfile(self.last_preview_path) and \
-                   self.last_preview_path != os.path.join(get_golem_path(), "gnr", get_preview_file()):
+                   self.last_preview_path != os.path.join(get_golem_path(), "gui", get_preview_file()):
                     self.__draw_border(border)
 
     def __draw_border(self, border):

@@ -64,7 +64,7 @@ class Node(object):
                                         config.rpc_port)
             reactor.run()
         except Exception as ex:
-            logger = logging.getLogger("gnr.app")
+            logger = logging.getLogger("app")
             logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()

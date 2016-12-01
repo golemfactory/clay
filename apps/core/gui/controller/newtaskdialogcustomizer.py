@@ -21,7 +21,7 @@ from gui.controller.customizer import Customizer
 from gui.controller.common import get_save_dir
 from gui.view.dialog import AddTaskResourcesDialog
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("apps.core")
 
 
 class NewTaskDialogCustomizer(Customizer):

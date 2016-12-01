@@ -24,7 +24,7 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInf
 
 
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.lux")
 
 MERGE_TIMEOUT = 7200
 

@@ -14,7 +14,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtaskstate import AdvanceVerificationOptions
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.core")
 
 
 def log_key_error(*args, **kwargs):

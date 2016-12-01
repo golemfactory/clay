@@ -19,7 +19,7 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInf
 
 
 
-logger = logging.getLogger("gnr.task")
+logger = logging.getLogger("apps.blender")
 
 
 class BlenderDefaults(RendererDefaults):

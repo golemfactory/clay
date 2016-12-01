@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 options = {
     0: 'kB',

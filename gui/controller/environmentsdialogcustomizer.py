@@ -7,7 +7,7 @@ from PyQt4 import QtCore
 from PyQt4.Qt import Qt
 import logging
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 
 class EnvironmentsDialogCustomizer(Customizer):

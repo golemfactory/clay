@@ -13,7 +13,7 @@ from subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 from gui.view.subtasktableentry import SubtaskTableElem
 
 
-logger = logging.getLogger("gnr.gui")
+logger = logging.getLogger("gui")
 
 
 class SortingOrder(object):

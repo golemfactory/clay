@@ -60,7 +60,7 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
-    @patch("gnr.customizers.customizer.QMessageBox")
+    @patch("gui.controller.customizer.QMessageBox")
     def test_blender_customizer(self, mock_messagebox):
         self.logic.register_new_renderer_type(
             build_blender_renderer_info(TaskWidget(Ui_BlenderWidget), BlenderRenderDialogCustomizer))

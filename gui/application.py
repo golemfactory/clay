@@ -8,7 +8,7 @@ from PyQt4.QtGui import QApplication, QIcon
 
 from golem.core.common import get_golem_path
 
-logger = logging.getLogger("gnr.app")
+logger = logging.getLogger("gui")
 
 
 class GNRGui:
@@ -21,7 +21,7 @@ class GNRGui:
 
         self.app = QApplication(sys.argv)
         app_icon = QIcon()
-        icon_path = path.join(get_golem_path(), "gnr", "ui", "img")
+        icon_path = path.join(get_golem_path(), "gui", "view", "img")
         app_icon.addFile(path.join(icon_path, "favicon-32x32.png"), QSize(32, 32))
         app_icon.addFile(path.join(icon_path, "favicon-48x48.png"), QSize(48, 48))
         app_icon.addFile(path.join(icon_path, "favicon-256x256.png"), QSize(256, 256))
