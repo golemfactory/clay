@@ -11,25 +11,25 @@ from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
 
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
-from gnr.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
+from gui.ui.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
                           EnvironmentsDialog, IdentityDialog, NodeNameDialog
 
 from twisted.internet.defer import inlineCallbacks
 
-from gnr.ui.tasktableelem import TaskTableElem, ItemMap
+from gui.ui.tasktableelem import TaskTableElem, ItemMap
 
-from gnr.customizers.customizer import Customizer
-from gnr.customizers.common import get_save_dir
-from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from gnr.customizers.nodenamedialogcustomizer import NodeNameDialogCustomizer
-from gnr.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
-from gnr.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
-from gnr.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
-from gnr.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
-from gnr.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
-from gnr.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
-from gnr.customizers.identitydialogcustomizer import IdentityDialogCustomizer
-from gnr.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
+from gui.customizers.customizer import Customizer
+from gui.customizers.common import get_save_dir
+from gui.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from gui.customizers.nodenamedialogcustomizer import NodeNameDialogCustomizer
+from gui.customizers.taskcontexmenucustomizer import TaskContextMenuCustomizer
+from gui.customizers.taskdetailsdialogcustomizer import TaskDetailsDialogCustomizer
+from gui.customizers.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
+from gui.customizers.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
+from gui.customizers.configurationdialogcustomizer import ConfigurationDialogCustomizer
+from gui.customizers.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
+from gui.customizers.identitydialogcustomizer import IdentityDialogCustomizer
+from gui.customizers.paymentsdialogcustomizer import PaymentsDialogCustomizer
 
 logger = logging.getLogger("gnr.gui")
 

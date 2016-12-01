@@ -9,7 +9,7 @@ from golem.task.taskstate import TaskStatus
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
 
-from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from gui.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
 from timehelper import set_time_spin_boxes
 from verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \

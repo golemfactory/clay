@@ -1,8 +1,8 @@
 from twisted.internet.defer import inlineCallbacks
 
-from gnr.customizers.customizer import Customizer
+from gui.customizers.customizer import Customizer
 
-from gnr.ui.envtableelem import EnvTableElem
+from gui.ui.envtableelem import EnvTableElem
 from PyQt4 import QtCore
 from PyQt4.Qt import Qt
 import logging

@@ -1,7 +1,7 @@
 from PyQt4.QtGui import QMessageBox, QFileDialog
 from twisted.internet.defer import inlineCallbacks
 
-from gnr.ui.dialog import SaveKeysDialog, GeneratingKeyWindow
+from gui.ui.dialog import SaveKeysDialog, GeneratingKeyWindow
 from customizer import Customizer
 from generatenewkeywindowcustomizer import GenerateNewKeyWindowCustomizer
 

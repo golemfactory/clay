@@ -1,8 +1,8 @@
 from PyQt4 import QtCore
 from PyQt4.QtGui import QHeaderView
 
-from gnr.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
-from gnr.ui.checkabledirmodel import CheckableDirModel
+from gui.customizers.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
+from gui.ui.checkabledirmodel import CheckableDirModel
 
 
 class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):

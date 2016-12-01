@@ -23,10 +23,9 @@ from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.gnrtaskstate import GNRTaskState
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
-from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
-
-from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
+from gui.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gui.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gui.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("gnr.app")
 

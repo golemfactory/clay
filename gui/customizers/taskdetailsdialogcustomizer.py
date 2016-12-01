@@ -5,12 +5,12 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QMenu
 
 from golem.task.taskstate import ComputerState
-from gnr.ui.dialog import SubtaskDetailsDialog
+from gui.ui.dialog import SubtaskDetailsDialog
 from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
 from customizer import Customizer
 from subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 
-from gnr.ui.subtasktableentry import SubtaskTableElem
+from gui.ui.subtasktableentry import SubtaskTableElem
 
 
 logger = logging.getLogger("gnr.gui")

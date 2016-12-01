@@ -1,4 +1,4 @@
-from gnr.customizers.customizer import Customizer
+from gui.customizers.customizer import Customizer
 
 
 class NodeNameDialogCustomizer(Customizer):

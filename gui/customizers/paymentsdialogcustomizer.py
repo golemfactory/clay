@@ -1,6 +1,6 @@
 from __future__ import division
 
-from gnr.customizers.customizer import Customizer
+from gui.customizers.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
 from ethereum.utils import denoms
