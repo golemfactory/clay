@@ -1,4 +1,4 @@
 [submodule "golem/ethereum/contracts"]
 	path = golem/ethereum/contracts
-	url = https://github.com/imapp-pl/ethereum-contracts.git
+	url = https://github.com/golemfactory/ethereum-contracts.git
 	branch = master
