@@ -12,7 +12,7 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 
-from gnr.gnrtaskstate import AdvanceVerificationOptions
+from apps.core.task.gnrtaskstate import AdvanceVerificationOptions
 
 logger = logging.getLogger("gnr.task")
 

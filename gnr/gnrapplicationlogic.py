@@ -20,11 +20,12 @@ from golem.task.taskstate import TaskStatus
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
+from apps.core.task.gnrtaskstate import GNRTaskState
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from gnr.customizers.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gnr.customizers.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
-from gnr.gnrtaskstate import GNRTaskState
+
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("gnr.app")

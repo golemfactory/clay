@@ -12,11 +12,11 @@ from twisted.internet.defer import inlineCallbacks
 
 from golem.task.taskstate import TaskStatus
 
+from apps.core.task.gnrtaskstate import GNRTaskDefinition
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from gnr.ui.dialog import AddTaskResourcesDialog
 from gnr.customizers.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from gnr.gnrtaskstate import GNRTaskDefinition
 from gnr.customizers.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gnr.customizers.customizer import Customizer
 from gnr.customizers.common import get_save_dir

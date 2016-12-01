@@ -87,7 +87,7 @@ VPNG
 p38
 sS'main_scene_file'
 p39
-Vgnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend
+Vapps/blender/benchmark/test_task/scene-Helicopter-27.blend
 p40
 sS'estimated_memory'
 p41
@@ -118,14 +118,14 @@ p51
 I1200
 sS'main_program_file'
 p52
-Vgnr/task/scripts/blendertask.py
+Vapps/blender/resources/scripts/blendertask.py
 p53
 sS'min_subtask_time'
 p54
 I60
 sS'options'
 p55
-cgnr.gnrtaskstate
+capps.core.task.gnrtaskstate
 GNROptions
 p56
 sS'resources'
@@ -134,9 +134,9 @@ c__builtin__
 set
 p58
 ((lp59
-Vgnr/task/scripts/blendertask.py
+Vapps/blender/resources/scripts/blendertask.py
 p60
-aVgnr/benchmarks/blender/blender_task/scene-Helicopter-27.blend
+aVapps/blender/benchmark/test_task/scene-Helicopter-27.blend
 p61
 atRp62
 sS'total_subtasks'

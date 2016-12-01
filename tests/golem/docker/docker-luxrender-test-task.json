@@ -98,7 +98,7 @@
   "main_program_file":"$GOLEM_DIR/apps/lux/resources/scripts/docker_luxtask.py",
   "max_price": 10.2,
   "options":{
-    "py/type":"gnr.gnrtaskstate.GNROptions"
+    "py/type":"apps.core.task.gnrtaskstate.GNROptions"
   },
   "subtask_timeout":1200,
   "total_subtasks":3,

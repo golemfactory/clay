@@ -227,7 +227,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # produce errors when run in the task environment:
         task.src_code = 'main :: IO()\nmain = putStrLn "Hello, Haskell World"\n'
         task.main_program_file = path.join(
-            path.join(get_golem_path(), "gnr"), "node.py")
+            path.join(get_golem_path(), "gui"), "node.py")
         task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)

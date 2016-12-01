@@ -59,7 +59,7 @@
   "renderer":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "options":{
-    "py/type":"gnr.gnrtaskstate.GNROptions"
+    "py/type":"apps.core.task.gnrtaskstate.GNROptions"
   },
   "subtask_timeout":1200,
   "total_subtasks":6,

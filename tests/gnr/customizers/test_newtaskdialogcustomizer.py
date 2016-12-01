@@ -4,15 +4,16 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 from mock import Mock
 
-from gui.startapp import register_rendering_task_types
-
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 
+from apps.core.task.gnrtaskstate import GNRTaskDefinition
+
 from gui.application import GNRGui
+from gui.startapp import register_rendering_task_types
+
 from gnr.customizers.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from gnr.renderingapplicationlogic import RenderingApplicationLogic
-from gnr.gnrtaskstate import GNRTaskDefinition
 from gnr.ui.appmainwindow import AppMainWindow
 
 

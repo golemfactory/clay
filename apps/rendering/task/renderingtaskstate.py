@@ -1,5 +1,6 @@
 from golem.task.taskstate import TaskState
-from gnr.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
+
+from apps.core.task.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
 
 
 class RendererInfo:
