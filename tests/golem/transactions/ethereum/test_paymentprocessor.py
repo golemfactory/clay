@@ -54,14 +54,14 @@ class PaymentProcessorTest(DatabaseFixture):
         assert b == expected_balance
         b = self.pp.balance()
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
 
     def test_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.client.get_balance.return_value = expected_balance
         b = self.pp.balance()
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
         b = self.pp.balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
@@ -71,7 +71,7 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_balance.return_value = expected_balance
         b = self.pp.balance(refresh=True)
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
 
         expected_balance += random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
@@ -85,7 +85,7 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_balance.return_value = expected_balance
         b = self.pp.balance(refresh=True)
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
 
         expected_balance -= random.randint(0, expected_balance)
         assert expected_balance >= 0
@@ -122,7 +122,7 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_balance.return_value = 0
         assert self.pp.add(p1) is False
         assert self.pp.add(p2) is False
-        self.client.get_balance.assert_called_once_with(self.addr.encode('hex'))
+        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
 
         assert p1.status is PaymentStatus.awaiting
         assert p2.status is PaymentStatus.awaiting
