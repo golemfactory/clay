@@ -38,7 +38,7 @@ class Faucet(object):
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       addr.encode('hex'), h))
+                                                       '0x' + addr.encode('hex'), h))
         h = h[2:].decode('hex')
         assert h == tx.hash
         return h
