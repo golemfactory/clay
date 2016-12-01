@@ -45,9 +45,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
         self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__recount_performance)
-        QtCore.QObject.connect(self.gui.ui.numCoresSlider, QtCore.SIGNAL("valueChanged(const int)"),
+        QtCore.QObject.connect(self.gui.ui.numCoresSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
                                self.__docker_config_changed)
                
         QtCore.QObject.connect(self.gui.ui.maxMemoryUsageComboBox, QtCore.SIGNAL("currentIndexChanged(QString)"),
@@ -94,15 +92,15 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_num_cores(self, config_desc):
         max_num_cores = multiprocessing.cpu_count()
-        self.gui.ui.numCoresSlider.setMaximum(max_num_cores)
-        self.gui.ui.coresMaxLabel.setText(u"{}".format(max_num_cores))
+        self.gui.ui.numCoresSpinBox.setMaximum(max_num_cores)
+        self.gui.ui.numCoresRangeLabel.setText(u"Range: 1 - {}".format(max_num_cores))
 
         try:
             num_cores = int(config_desc.num_cores)
         except (ValueError, AttributeError, TypeError) as err:
             num_cores = 1
             logger.error("Wrong value for number of cores: {}".format(err))
-        self.gui.ui.numCoresSlider.setValue(num_cores)
+        self.gui.ui.numCoresSpinBox.setValue(num_cores)
 
     def __load_memory_config(self, config_desc):
         mem_tab = ["kB", "MB", "GB"]
@@ -272,6 +270,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__read_advance_config(cfg_desc)
         self.__read_payment_config(cfg_desc)
         self.logic.change_config(cfg_desc, run_benchmarks=self.docker_config_changed)
+        self.__recount_performance()
         self.load_data()
         self.docker_config_changed = False
         
@@ -284,7 +283,7 @@ class ConfigurationDialogCustomizer(Customizer):
         except ValueError:
             cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
 
-        cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSlider.value())
+        cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSpinBox.value())
         cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
         cfg_desc.estimated_lux_performance = u"{}".format(self.gui.ui.luxPerformanceLabel.text())
         cfg_desc.estimated_blender_performance = u"{}".format(self.gui.ui.blenderPerformanceLabel.text())
@@ -337,7 +336,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __recount_performance(self):
         try:
-            num_cores = int(self.gui.ui.numCoresSlider.value())
+            num_cores = int(self.gui.ui.numCoresSpinBox.value())
         except ValueError:
             num_cores = 1
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))

@@ -21,9 +21,9 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
-        "-y", # enable scripting by default
+        "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}{}".format(OUTPUT_DIR, outfilebasename, start_task),
+        "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-F", "{}".format(output_format.upper()),
         "-f", "{}".format(frame)
     ]
@@ -32,7 +32,6 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
 
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,
                      frames, output_format):
-
     scene_file = os.path.normpath(scene_file)
     if not os.path.exists(scene_file):
         print("Scene file '{}' does not exist".format(scene_file),
@@ -45,13 +44,13 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
     for frame in frames:
         cmd = format_blender_render_cmd(outfilebasename, scene_file,
-              script_file.name, start_task, frame, output_format)
+                                        script_file.name, start_task, frame, output_format)
         print(cmd, file=sys.stderr)
         exit_code = exec_cmd(cmd)
         if exit_code is not 0:
             sys.exit(exit_code)
 
 
-run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
-                 params.start_task, params.frames, params.output_format)
+run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task, params.frames,
+                 params.output_format)
 

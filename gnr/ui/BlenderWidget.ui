@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>397</width>
-    <height>200</height>
+    <height>220</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -145,17 +145,20 @@
        </item>
       </layout>
      </item>
+     <item row="10" column="0">
+      <widget class="QLabel" name="label_6">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayout_4"/>
+     </item>
      <item row="5" column="0">
       <widget class="QLabel" name="compositingLabel">
        <property name="text">
         <string>Use compositing</string>
-       </property>
-      </widget>
-     </item>
-     <item row="7" column="0">
-      <widget class="QLabel" name="label_6">
-       <property name="text">
-        <string/>
        </property>
       </widget>
      </item>

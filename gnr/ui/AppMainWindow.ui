@@ -102,7 +102,7 @@
             <set>AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset resource="icons.qrc">
+            <iconset>
              <normaloff>:/img/new.png</normaloff>:/img/new.png</iconset>
            </property>
            <property name="flags">
@@ -117,7 +117,7 @@
             <set>AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset resource="icons.qrc">
+            <iconset>
              <normaloff>:/img/task.png</normaloff>:/img/task.png</iconset>
            </property>
            <property name="flags">
@@ -132,7 +132,7 @@
             <set>AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset resource="icons.qrc">
+            <iconset>
              <normaloff>:/img/eye.png</normaloff>:/img/eye.png</iconset>
            </property>
            <property name="flags">
@@ -147,7 +147,7 @@
             <set>AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset resource="icons.qrc">
+            <iconset>
              <normaloff>:/img/settings.png</normaloff>:/img/settings.png</iconset>
            </property>
            <property name="flags">
@@ -162,7 +162,7 @@
             <set>AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset resource="icons.qrc">
+            <iconset>
              <normaloff>:/img/user.png</normaloff>:/img/user.png</iconset>
            </property>
            <property name="flags">
@@ -183,7 +183,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -381,9 +381,6 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
-                  <widget class="QWidget" name="advancVerificationWidget" native="true"/>
-                 </item>
                  <item row="1" column="0">
                   <widget class="QLabel" name="label_58">
                    <property name="toolTip">
@@ -407,6 +404,16 @@
                     </widget>
                    </item>
                   </layout>
+                 </item>
+                 <item row="2" column="0">
+                  <widget class="QLabel" name="label_51">
+                   <property name="toolTip">
+                    <string>After this time subtask computation will be aborted</string>
+                   </property>
+                   <property name="text">
+                    <string>Subtask timeout</string>
+                   </property>
+                  </widget>
                  </item>
                  <item row="2" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_19">
@@ -460,16 +467,6 @@
                    </item>
                   </layout>
                  </item>
-                 <item row="2" column="0">
-                  <widget class="QLabel" name="label_51">
-                   <property name="toolTip">
-                    <string>After this time subtask computation will be aborted</string>
-                   </property>
-                   <property name="text">
-                    <string>Subtask timeout</string>
-                   </property>
-                  </widget>
-                 </item>
                  <item row="3" column="0">
                   <widget class="QLabel" name="label_59">
                    <property name="toolTip">
@@ -486,6 +483,9 @@
                     <string/>
                    </property>
                   </widget>
+                 </item>
+                 <item row="5" column="1">
+                  <widget class="QWidget" name="advancVerificationWidget" native="true"/>
                  </item>
                 </layout>
                </item>
@@ -898,7 +898,7 @@
                <bool>true</bool>
               </property>
               <attribute name="horizontalHeaderVisible">
-               <bool>true</bool>
+               <bool>false</bool>
               </attribute>
               <attribute name="horizontalHeaderCascadingSectionResizes">
                <bool>false</bool>
@@ -1604,13 +1604,62 @@
           </widget>
           <widget class="QWidget" name="preferencePage">
            <layout class="QGridLayout" name="gridLayout_5">
+            <item row="1" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_7">
+              <item>
+               <spacer name="horizontalSpacer">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>40</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="settingsOkButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>Save new settings</string>
+                </property>
+                <property name="text">
+                 <string>Change</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="settingsCancelButton">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="toolTip">
+                 <string>Restore previous values</string>
+                </property>
+                <property name="text">
+                 <string>Cancel</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
             <item row="0" column="0">
              <widget class="QTabWidget" name="settingsTab">
               <property name="toolTip">
                <string/>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>1</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">
@@ -1964,7 +2013,11 @@
                     <item row="0" column="1">
                      <layout class="QHBoxLayout" name="horizontalLayout_14">
                       <item>
-                       <widget class="QLineEdit" name="minPriceLineEdit"/>
+                       <widget class="QLineEdit" name="minPriceLineEdit">
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
+                       </widget>
                       </item>
                       <item>
                        <widget class="QLabel" name="label_31">
@@ -1992,6 +2045,9 @@
                      <layout class="QHBoxLayout" name="horizontalLayout_5">
                       <item>
                        <widget class="QSpinBox" name="maxResourceSizeSpinBox">
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
                         <property name="maximum">
                          <number>999999</number>
                         </property>
@@ -2016,6 +2072,9 @@
                      <layout class="QHBoxLayout" name="horizontalLayout_6">
                       <item>
                        <widget class="QSpinBox" name="maxMemoryUsageSpinBox">
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
                         <property name="maximum">
                          <number>999999</number>
                         </property>
@@ -2039,56 +2098,27 @@
                     <item row="3" column="1">
                      <layout class="QVBoxLayout" name="verticalLayout">
                       <item>
-                       <widget class="QSlider" name="numCoresSlider">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>4</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>4</number>
-                        </property>
-                        <property name="pageStep">
-                         <number>1</number>
-                        </property>
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="tickPosition">
-                         <enum>QSlider::TicksBelow</enum>
-                        </property>
-                        <property name="tickInterval">
-                         <number>1</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
                        <layout class="QHBoxLayout" name="horizontalLayout_2">
                         <item>
-                         <widget class="QLabel" name="coresMinLabel">
-                          <property name="text">
-                           <string>1</string>
+                         <widget class="QSpinBox" name="numCoresSpinBox">
+                          <property name="alignment">
+                           <set>Qt::AlignCenter</set>
+                          </property>
+                          <property name="minimum">
+                           <number>1</number>
+                          </property>
+                          <property name="maximum">
+                           <number>4</number>
                           </property>
                          </widget>
                         </item>
                         <item>
-                         <spacer name="horizontalSpacer_2">
-                          <property name="orientation">
-                           <enum>Qt::Horizontal</enum>
-                          </property>
-                          <property name="sizeHint" stdset="0">
-                           <size>
-                            <width>40</width>
-                            <height>20</height>
-                           </size>
-                          </property>
-                         </spacer>
-                        </item>
-                        <item>
-                         <widget class="QLabel" name="coresMaxLabel">
+                         <widget class="QLabel" name="numCoresRangeLabel">
                           <property name="text">
-                           <string>1</string>
+                           <string>Range: 1 - 2</string>
+                          </property>
+                          <property name="alignment">
+                           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                           </property>
                          </widget>
                         </item>
@@ -2115,6 +2145,9 @@
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
                         </property>
                        </widget>
                       </item>
@@ -2217,6 +2250,9 @@
                         <property name="text">
                          <string>2220.0</string>
                         </property>
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
                        </widget>
                       </item>
                       <item>
@@ -2251,6 +2287,9 @@
                         <property name="text">
                          <string>22220.0</string>
                         </property>
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
+                        </property>
                        </widget>
                       </item>
                       <item>
@@ -2284,6 +2323,9 @@
                        <widget class="QLabel" name="blenderPerformanceLabel">
                         <property name="text">
                          <string>2220.0</string>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignCenter</set>
                         </property>
                        </widget>
                       </item>
@@ -2473,55 +2515,6 @@
                </layout>
               </widget>
              </widget>
-            </item>
-            <item row="1" column="0">
-             <layout class="QHBoxLayout" name="horizontalLayout_7">
-              <item>
-               <spacer name="horizontalSpacer">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-                <property name="sizeHint" stdset="0">
-                 <size>
-                  <width>40</width>
-                  <height>20</height>
-                 </size>
-                </property>
-               </spacer>
-              </item>
-              <item>
-               <widget class="QPushButton" name="settingsOkButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="toolTip">
-                 <string>Save new settings</string>
-                </property>
-                <property name="text">
-                 <string>Change</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="settingsCancelButton">
-                <property name="sizePolicy">
-                 <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
-                  <horstretch>0</horstretch>
-                  <verstretch>0</verstretch>
-                 </sizepolicy>
-                </property>
-                <property name="toolTip">
-                 <string>Restore previous values</string>
-                </property>
-                <property name="text">
-                 <string>Cancel</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
             </item>
            </layout>
           </widget>
@@ -2913,7 +2906,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="icons.qrc"/>
+  <include location="gnr/ui/icons.qrc"/>
  </resources>
  <connections/>
 </ui>

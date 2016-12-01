@@ -21,7 +21,7 @@ def account():
     return dict(
         node_name=node.node_name,
         Golem_ID=node.key,
-        requester_reputation=int(requesting_trust * 100),
+        requestor_reputation=int(requesting_trust * 100),
         provider_reputation=int(computing_trust * 100),
         finances=dict(
             eth_address=payment_address,

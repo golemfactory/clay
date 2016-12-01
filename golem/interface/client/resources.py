@@ -12,10 +12,10 @@ class Resources(object):
         help="For provider role"
     )
 
-    requester = Argument(
-        "--requester",
+    requestor = Argument(
+        "--requestor",
         optional=True,
-        help="For requester role"
+        help="For requestor role"
     )
 
     @doc("Show information on used resources")
@@ -23,11 +23,11 @@ class Resources(object):
         return CommandHelper.wait_for(Resources.client.get_res_dirs_sizes(),
                                       timeout=None)
 
-    @command(arguments=(provider, requester), help="Clear provider / requester resources")
-    def clear(self, provider, requester):
+    @command(arguments=(provider, requestor), help="Clear provider / requestor resources")
+    def clear(self, provider, requestor):
 
-        if not provider and not requester:
-            return CommandResult(error="Target role was not specified (provider / requester)")
+        if not provider and not requestor:
+            return CommandResult(error="Target role was not specified (provider / requestor)")
 
         if provider:
             CommandHelper.wait_for(Resources.client.remove_received_files(),
@@ -35,6 +35,6 @@ class Resources(object):
             return CommandHelper.wait_for(Resources.client.remove_computed_files(),
                                           timeout=None)
 
-        elif requester:
+        elif requestor:
             return CommandHelper.wait_for(Resources.client.remove_distributed_files(),
                                           timeout=None)

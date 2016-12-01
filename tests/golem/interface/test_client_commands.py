@@ -50,7 +50,7 @@ class TestAccount(unittest.TestCase):
             assert result == {
                 'node_name': 'node1',
                 'provider_reputation': 1,
-                'requester_reputation': 2,
+                'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
                     'available_balance': '2.000000 ETH',
@@ -311,18 +311,18 @@ class TestResources(unittest.TestCase):
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=True, requester=False)
+            res.clear(provider=True, requestor=False)
 
             assert client.remove_received_files.called
             assert client.remove_computed_files.called
             assert not client.remove_distributed_files.called
 
-    def test_clear_requester(self):
+    def test_clear_requestor(self):
         client = Mock()
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=False, requester=True)
+            res.clear(provider=False, requestor=True)
 
             assert not client.remove_received_files.called
             assert not client.remove_computed_files.called
@@ -333,7 +333,7 @@ class TestResources(unittest.TestCase):
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=True, requester=True)
+            res.clear(provider=True, requestor=True)
 
             assert client.remove_received_files.called
             assert client.remove_computed_files.called
@@ -580,11 +580,11 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(True, True, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings) - len(Settings.requester_settings)
+            assert len(result) >= len(Settings.settings) - len(Settings.requestor_settings)
 
             result = settings.show(True, False, True)
             assert isinstance(result, dict)
-            assert len(result) == len(Settings.basic_settings) + len(Settings.requester_settings)
+            assert len(result) == len(Settings.basic_settings) + len(Settings.requestor_settings)
 
     def test_set(self):
 

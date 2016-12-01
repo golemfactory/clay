@@ -52,7 +52,3 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         customizer.gui.ui.taskNameLineEdit.setText("NEW NAME")
         definition2 = customizer._query_task_definition()
         assert definition2.task_name == "NEW NAME"
-
-
-
-

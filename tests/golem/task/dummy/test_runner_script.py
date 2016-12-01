@@ -92,5 +92,5 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         mock_process = mock.MagicMock()
         mock_popen.return_value = mock_process
         mock_process.stdout.readline.return_value = runner.format_msg(
-            "REQUESTER", 12345, "Listening on 1.2.3.4:5678")
+            "REQUESTOR", 12345, "Listening on 1.2.3.4:5678")
         runner.run_simulation()
