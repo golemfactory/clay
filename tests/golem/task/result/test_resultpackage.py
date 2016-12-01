@@ -143,7 +143,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         path = etp.create(self.out_path,
                           node=node,
                           task_result=tr,
-                          pickle_files=self.pickle_files)
+                          cbor_files=self.pickle_files)
 
         self.assertTrue(os.path.exists(path))
         os.remove(path)
@@ -166,7 +166,7 @@ class TestEncryptingTaskResultPackager(TestDirFixture):
         path = etp.create(self.out_path,
                           node=node,
                           task_result=tr,
-                          pickle_files=self.pickle_files)
+                          cbor_files=self.pickle_files)
 
         extracted = etp.extract(path)
 
@@ -194,7 +194,7 @@ class TestExtractedPackage(TestDirFixture):
         path = etp.create(self.out_path,
                           node=node,
                           task_result=tr,
-                          pickle_files=self.pickle_files)
+                          cbor_files=self.pickle_files)
 
         extracted = etp.extract(path)
         extra_data = extracted.to_extra_data()
