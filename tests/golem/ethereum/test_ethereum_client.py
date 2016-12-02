@@ -18,7 +18,7 @@ class EthereumClientTest(TempDirFixture):
         assert type(s) is bool
         addr = b'FakeEthereumAddress!'
         assert len(addr) == 20
-        c = client.get_transaction_count(addr.encode('hex'))
+        c = client.get_transaction_count('0x' + addr.encode('hex'))
         assert type(c) is int
         assert c == 0
 

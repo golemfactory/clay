@@ -287,6 +287,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y,
                                                   self.compositing)
+
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
@@ -484,8 +485,7 @@ class BlenderRenderTask(FrameRenderingTask):
         for i in range(0, res_x):
                 for j in range(lower, upper):
                     img_task.putpixel((i, j), color)
-        
-                       
+
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
             self.mark_part_on_preview(subtask['start_task'], img_task, color, self.preview_updater)
@@ -499,10 +499,9 @@ class BlenderRenderTask(FrameRenderingTask):
             part = (subtask['start_task'] - 1) % parts + 1
             self.mark_part_on_preview(part, img_task, color, pu)
 
-                    
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
-        output_file_name = os.path.join(directory, self._get_output_name(frame_num, num_start))
+        output_file_name = os.path.join(directory, self._get_output_name(frame_num))
         collected = self.frames_given[frame_num]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -523,7 +522,6 @@ class CustomCollector(RenderingTaskCollector):
         self.current_offset = 0
     
     def _paste_image(self, final_img, new_part, num):
-        res_y = self.height
         img_offset = Image.new("RGB", (self.width, self.height))
         offset = self.current_offset
         _, new_img_res_y = new_part.size
@@ -542,14 +540,15 @@ def generate_expected_offsets(parts, res_x, res_y):
     for i in range(1, parts + 1):
         low, high = get_min_max_y(i, parts, res_y) 
         low *= scale_factor * res_y
-        high *=  scale_factor * res_y
+        high *= scale_factor * res_y
         height = int(math.floor(high - low))
         expected_offsets[i] = previous_end
         previous_end += height
     
     expected_offsets[parts + 1] = previous_end
     return expected_offsets
-    
+
+
 def get_min_max_y(task_num, parts, res_y):
     if res_y % parts == 0:
         min_y = (parts - task_num) * (1.0 / float(parts))
@@ -569,6 +568,7 @@ def get_min_max_y(task_num, parts, res_y):
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = float(max_y) / float(res_y)
     return min_y, max_y
+
 
 def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
     if not use_frames:
@@ -605,7 +605,8 @@ def __num_from_pixel(p_y, res_x, res_y, tasks):
         if p_y >= low and p_y < high:
             return task_num
     return tasks
-    
+
+
 def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
                     frame_num=1):
     if not use_frames:
@@ -617,6 +618,7 @@ def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use
         border = []
 
     return border
+
 
 def __get_border(start_task, end_task, parts, res_x, res_y):
     border = []
