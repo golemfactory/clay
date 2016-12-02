@@ -87,7 +87,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = gui.node.GNRNode(datadir=self.path)
+        self.node = gui.node.OptNode(datadir=self.path)
         self.node.client.start = Mock()
         self.node.initialize()
 

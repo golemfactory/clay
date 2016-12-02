@@ -14,7 +14,7 @@ from golem.testutils import DatabaseFixture
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.application import GNRGui
-from gui.gnrapplicationlogic import GNRApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 
 

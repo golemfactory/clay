@@ -63,8 +63,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self._set_max_price()
         self.gui.ui.resourceFilesLabel.setText("0")
 
-        renderers = self.logic.get_renderers()
-        dr = self.logic.get_default_renderer()
+        renderers = self.logic.get_task_types()
+        dr = self.logic.get_default_task_type()
         self.logic.renderer_options = dr.renderer_options()
 
         for k in renderers:
@@ -98,7 +98,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __update_renderer_options(self, name):
         r = self.logic.get_renderer(name)
         if r:
-            self.logic.set_current_renderer(name)
+            self.logic.set_current_task_type(name)
             self.logic.renderer_options = r.renderer_options()
             self._change_task_widget(name)
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
@@ -112,10 +112,10 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             assert False, "Unreachable"
 
     def __reset_to_defaults(self):
-        dr = self.__get_current_renderer()
+        dr = self.__get_current_task_type()
 
         self.logic.renderer_options = dr.renderer_options()
-        self.logic.set_current_renderer(dr.name)
+        self.logic.set_current_task_type(dr.name)
 
         self.task_customizer.load_data()
 
@@ -239,7 +239,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __reset_to_default_button_clicked(self):
         self.__reset_to_defaults()
 
-    def __get_current_renderer(self):
+    def __get_current_task_type(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
         renderer_name = self.gui.ui.taskTypeComboBox.itemText(index)
         return self.logic.get_renderer(u"{}".format(renderer_name))
@@ -258,7 +258,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _read_renderer_params(self, definition):
-        definition.renderer = self.__get_current_renderer().name
+        definition.renderer = self.__get_current_task_type().name
         definition.renderer_options = deepcopy(self.logic.renderer_options)
         self.get_task_specific_options(definition)
         self.logic.renderer_options = definition.renderer_options

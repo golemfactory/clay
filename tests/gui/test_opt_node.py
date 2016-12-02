@@ -41,7 +41,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     @patch('twisted.internet.reactor')
     def test_node_address_valid(self, mock_reactor, mock_node):
         node_address = '1.2.3.4'
@@ -90,7 +90,7 @@ class TestNode(TestWithDatabase):
         self.assertEquals(return_value.exit_code, 2)
         assert 'Error: --node-address' in return_value.output
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
@@ -105,7 +105,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(peer_arg), 1)
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node):
         addr1 = '10.30.10.216:40111'
         addr2 = '10.30.10.214:3333'
@@ -122,7 +122,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
         self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_bad_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
@@ -131,7 +131,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_peers(self, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(
@@ -151,14 +151,14 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
         self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_wrong_task(self, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--task', 'testtask.gt'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_task(self, mock_node):
         a = A()
         dump = os.path.join(self.path, 'testcalssdump')
@@ -175,7 +175,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(task_arg), 2)
         self.assertIsInstance(task_arg[0], A)
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_task_from_json(self, mock_node):
         test_json_file = os.path.join(self.path, 'task.json')
         a1 = A()
@@ -205,7 +205,7 @@ class TestNode(TestWithDatabase):
             if os.path.exists(test_json_file):
                 os.remove(test_json_file)
 
-    @patch('golemapp.GNRNode')
+    @patch('golemapp.OptNode')
     def test_task_from_invalid_json(self, mock_node):
         test_json_file = os.path.join(self.path, 'task.json')
         with open(test_json_file, 'w') as f:

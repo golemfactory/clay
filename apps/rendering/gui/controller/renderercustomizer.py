@@ -88,7 +88,7 @@ class RendererCustomizer(Customizer):
         self.gui.ui.outputResYSpinBox.valueChanged.connect(self._res_y_changed)
 
     def _choose_main_scene_file_button_clicked(self):
-        tmp_scene_file_ext = self.logic.get_current_renderer().scene_file_ext
+        tmp_scene_file_ext = self.logic.get_current_task_type().scene_file_ext
         scene_file_ext = []
         for ext in tmp_scene_file_ext:
             scene_file_ext.append(ext.upper())

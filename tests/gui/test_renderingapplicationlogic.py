@@ -72,18 +72,18 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_program_file = u'Bździągwa'
-        logic.show_error_window = Mock()
+        logic.customizer.show_error_window = Mock()
         logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
-        logic.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
+        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
         logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
-        logic.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
+        logic.customizer.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
@@ -91,7 +91,7 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
         logic.run_benchmark(broken_benchmark, m, m)
         if logic.br.tt:
             logic.br.tt.join()
-        logic.show_error_window.assert_called_with(u"Main scene file is not properly set")
+        logic.customizer.show_error_window.assert_called_with(u"Main scene file is not properly set")
 
         logic.test_task_computation_error(u"Bździągwa")
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"

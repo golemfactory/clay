@@ -80,7 +80,7 @@ class Node(object):
         raise NotImplementedError
 
 
-class GNRNode(Node):
+class OptNode(Node):
     default_environments = [
         BlenderEnvironment(),
         LuxRenderEnvironment()

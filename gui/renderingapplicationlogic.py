@@ -3,7 +3,7 @@ import os
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
-from gui.gnrapplicationlogic import GNRApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 
 logger = logging.getLogger("app")
 
@@ -11,10 +11,8 @@ logger = logging.getLogger("app")
 class AbsRenderingApplicationLogic(object):
     def __init__(self):
         self.renderers = {}
-        self.current_renderer = None
-        self.default_renderer = None
 
-    def get_renderers(self):
+    def get_task_types(self):
         return self.renderers
 
     def get_renderer(self, name):
@@ -23,25 +21,19 @@ class AbsRenderingApplicationLogic(object):
         else:
             assert False, "Renderer {} not registered".format(name)
 
-    def get_default_renderer(self):
-        return self.default_renderer
-
     def register_new_renderer_type(self, renderer):
         if renderer.name not in self.renderers:
             self.renderers[renderer.name] = renderer
             if len(self.renderers) == 1:
-                self.default_renderer = renderer
+                self.default_task_type = renderer
         else:
             assert False, "Renderer {} already registered".format(renderer.name)
 
-    def set_current_renderer(self, rname):
+    def set_current_task_type(self, rname):
         if rname in self.renderers:
-            self.current_renderer = self.renderers[rname]
+            self.current_task_type = self.renderers[rname]
         else:
             assert False, "Unreachable"
-
-    def get_current_renderer(self):
-        return self.current_renderer
 
     def _get_new_task_state(self):
         return RenderingTaskState()
@@ -57,14 +49,14 @@ class AbsRenderingApplicationLogic(object):
         if td.renderer in self.renderers:
 
             if not os.path.exists(td.main_program_file):
-                self.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
+                self.customizer.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
                 return False
 
             if not self.__check_output_file(td.output_file):
                 return False
 
             if not os.path.exists(td.main_scene_file):
-                self.show_error_window(u"Main scene file is not properly set")
+                self.customizer.show_error_window(u"Main scene file is not properly set")
                 return False
         else:
             return False
@@ -81,10 +73,10 @@ class AbsRenderingApplicationLogic(object):
                 os.remove(output_file)
             return True
         except IOError:
-            self.show_error_window(u"Cannot open output file: {}".format(output_file))
+            self.customizer.show_error_window(u"Cannot open output file: {}".format(output_file))
             return False
         except (OSError, TypeError) as err:
-            self.show_error_window(u"Output file {} is not properly set: {}".format(output_file, err))
+            self.customizer.show_error_window(u"Output file {} is not properly set: {}".format(output_file, err))
             return False
 
 
