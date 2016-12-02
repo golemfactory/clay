@@ -7,7 +7,6 @@ from golem.testutils import DatabaseFixture
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 
-from golem.node import OptNode
 
 # Do not remove! (even if pycharm complains that this import is not used)
 from node import immunes_start
@@ -15,14 +14,6 @@ from twisted.internet import reactor  # noqa
 
 
 class TestNode(DatabaseFixture):
-
-    def setUp(self):
-        super(TestNode, self).setUp()
-        self.saved_default_environments = OptNode.default_environments
-
-    def tearDown(self):
-        OptNode.default_environments = self.saved_default_environments
-        super(TestNode, self).tearDown()
 
     @unittest.expectedFailure
     @patch('golem.client.Client')

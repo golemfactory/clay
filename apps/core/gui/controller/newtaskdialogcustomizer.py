@@ -86,6 +86,13 @@ class NewTaskDialogCustomizer(Customizer):
         for t in task_types.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
+        default_task = self.logic.get_default_task_type()
+        task_item = self.gui.ui.taskTypeComboBox.findText(default_task.name)
+        if task_item >= 0:
+            self.gui.ui.taskTypeComboBox.setCurrentIndex(task_item)
+        else:
+            logger.error("Cannot load task, wrong task type {}".format(default_task.name))
+
     @inlineCallbacks
     def _set_max_price(self):
         max_price = yield self.logic.get_max_price()

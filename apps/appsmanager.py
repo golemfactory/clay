@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from ConfigParser import ConfigParser
 from os import path
 
@@ -17,7 +18,7 @@ class App(object):
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
     def __init__(self):
-        self.apps = {}
+        self.apps = OrderedDict()
 
     def load_apps(self):
         parser = ConfigParser()
@@ -35,6 +36,7 @@ class AppsManager(object):
                 el = getattr(el_mod, name)
                 setattr(app, opt, el)
             self.apps[section] = app
+
 
 
 

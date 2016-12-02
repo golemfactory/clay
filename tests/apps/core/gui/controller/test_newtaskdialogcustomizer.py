@@ -39,9 +39,8 @@ class TestNewTaskDialogCustomizer(TempDirFixture):
 
         register_rendering_task_types(self.logic)
         customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
+        print customizer.gui.ui.taskTypeComboBox.currentText()
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
-        customizer.gui.ui.taskTypeComboBox.addItem("Blender")
-        customizer.gui.ui.taskTypeComboBox.setCurrentIndex(0)
         assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]
         assert not customizer.gui.ui.advanceNewTaskWidget.isVisible()
         customizer._advance_settings_button_clicked()

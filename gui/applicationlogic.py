@@ -399,6 +399,8 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_new_task_type(self, task_type):
         if task_type.name not in self.task_types:
             self.task_types[task_type.name] = task_type
+            if len(self.task_types) == 1:
+                self.default_task_type = task_type
         else:
             assert False, "Task type {} already registered".format(task_type.name)
 
