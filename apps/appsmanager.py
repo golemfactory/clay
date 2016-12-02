@@ -8,27 +8,33 @@ from golem.core.common import get_golem_path
 REGISTERED_CONFIG_FILE = 'apps/registered.ini'
 
 
+class App(object):
+    def __init__(self):
+        self.env = None
+        self.builder = None
+
+
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
-
     def __init__(self):
         self.apps = {}
 
-    @classmethod
-    def load_envs(cls):
+    def load_apps(self):
         parser = ConfigParser()
         config_path = path.join(get_golem_path(), REGISTERED_CONFIG_FILE)
         parser.readfp(open(config_path))
         envs = []
         for section in parser.sections():
-            full_env_name = parser.get(section, 'env')
-            last_sep = full_env_name.rfind(".")
-            env_name = full_env_name[last_sep+1:]
-            env_mod_name = full_env_name[:last_sep]
-            env_mod = import_module(env_mod_name)
-            env = getattr(env_mod, env_name)
-            envs.append(env())
-        return envs
+            app = App()
+            for opt in vars(App):
+                full_name = parser.get(section, opt)
+                last_sep = full_name.rfind(".")
+                name = full_name[last_sep+1:]
+                mod_name = full_name[:last_sep]
+                el_mod = import_module(mod_name)
+                el = getattr(el_mod, name)
+                setattr(app, opt, el)
+            self.apps[section] = app
 
 
 

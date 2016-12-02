@@ -258,7 +258,8 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _read_renderer_params(self, definition):
-        definition.renderer = self.__get_current_task_type().name
+        definition.task_type = self.__get_current_task_type().name
+        definition.render = self.__get_current_task_type().name
         definition.renderer_options = deepcopy(self.logic.renderer_options)
         self.get_task_specific_options(definition)
         self.logic.renderer_options = definition.renderer_options

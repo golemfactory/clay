@@ -59,7 +59,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
-    @patch('gui.node.Client')
+    @patch('golem.node.Client')
     @patch('twisted.internet.reactor')
     def test_node_address_passed_to_client(self, mock_reactor, mock_client):
         """Test that with '--node-address <addr>' arg the client is started with

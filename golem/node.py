@@ -1,4 +1,4 @@
-"""GNR Compute Node"""
+"""Compute Node"""
 
 import cPickle as pickle
 import logging
@@ -9,8 +9,6 @@ import click
 import jsonpickle
 
 from apps.appsmanager import AppsManager
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
@@ -22,11 +20,11 @@ class Node(object):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
-    default_environments = []
 
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
 
+        self.default_environments = []
         self.client = Client(datadir=datadir,
                              transaction_system=transaction_system,
                              **config_overrides)
@@ -74,21 +72,18 @@ class Node(object):
         rpc_server.listen()
         self.client.set_rpc_server(rpc_server)
 
-    @staticmethod
-    def _get_task_builder(task_def):
+    def _get_task_builder(self, task_def):
         raise NotImplementedError
 
 
 class OptNode(Node):
-    default_environments = AppsManager.load_envs()
+    def __init__(self, datadir=None, transaction_system=False, **config_overrides):
+        super(OptNode, self).__init__(datadir, transaction_system, **config_overrides)
+        self.apps_manager = AppsManager()
+        self.default_environments = [app.env() for app in self.apps_manager.apps]
 
-    @staticmethod
-    def _get_task_builder(task_def):
-        # FIXME: Add information about builder in task_def
-        if task_def.main_scene_file.endswith('.blend'):
-            return BlenderRenderTaskBuilder
-        else:
-            return LuxRenderTaskBuilder
+    def _get_task_builder(self, task_def):
+        return self.apps_manager.apps[task_def.task_type].builder
 
     @staticmethod
     def parse_node_addr(ctx, param, value):
