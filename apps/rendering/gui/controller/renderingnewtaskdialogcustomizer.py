@@ -63,12 +63,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self._set_max_price()
         self.gui.ui.resourceFilesLabel.setText("0")
 
-        renderers = self.logic.get_task_types()
+        task_types = self.logic.get_task_types()
         dr = self.logic.get_default_task_type()
         self.logic.renderer_options = dr.renderer_options()
 
-        for k in renderers:
-            r = renderers[k]
+        for k in task_types:
+            r = task_types[k]
             self.gui.ui.taskTypeComboBox.addItem(r.name)
 
         renderer_item = self.gui.ui.taskTypeComboBox.findText(dr.name)
@@ -91,12 +91,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _change_task_widget(self, name):
         for i in reversed(range(self.gui.ui.taskSpecificLayout.count())):
             self.gui.ui.taskSpecificLayout.itemAt(i).widget().setParent(None)
-        task = self.logic.get_renderer(u"{}".format(name))
+        task = self.logic.get_task_type(u"{}".format(name))
         self.task_customizer = task.dialog_customizer(task.dialog, self.logic)
         self.gui.ui.taskSpecificLayout.addWidget(task.dialog, 0, 0, 1, 1)
 
     def __update_renderer_options(self, name):
-        r = self.logic.get_renderer(name)
+        r = self.logic.get_task_type(name)
         if r:
             self.logic.set_current_task_type(name)
             self.logic.renderer_options = r.renderer_options()
@@ -199,7 +199,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.logic.renderer_options = deepcopy(definition.renderer_options)
 
     def _load_basic_task_params(self, definition):
-        r = self.logic.get_renderer(definition.renderer)
+        r = self.logic.get_task_type(definition.renderer)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
         self.gui.ui.taskNameLineEdit.setText(definition.task_name if definition.task_name else u"{}_{}".format(
             self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
@@ -242,7 +242,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __get_current_task_type(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
         renderer_name = self.gui.ui.taskTypeComboBox.itemText(index)
-        return self.logic.get_renderer(u"{}".format(renderer_name))
+        return self.logic.get_task_type(u"{}".format(renderer_name))
 
     def _query_task_definition(self):
         definition = RenderingTaskDefinition()
@@ -278,7 +278,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def _open_options(self):
         renderer_name = self.gui.ui.taskTypeComboBox.itemText(self.gui.ui.taskTypeComboBox.currentIndex())
-        renderer = self.logic.get_renderer(u"{}".format(renderer_name))
+        renderer = self.logic.get_task_type(u"{}".format(renderer_name))
         dialog = renderer.dialog
         dialog_customizer = renderer.dialog_customizer
         renderer_dialog = dialog(self.gui.window)

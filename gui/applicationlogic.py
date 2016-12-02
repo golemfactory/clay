@@ -260,9 +260,8 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.quit()
 
     def get_task_type(self, name):
-        task_type = self.tasksType[name]
-        if task_type:
-            return task_type
+        if name in self.task_types:
+            return self.task_types[name]
         else:
             assert False, "Task {} not registered".format(name)
 

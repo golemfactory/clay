@@ -55,9 +55,9 @@ def load_environments():
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_renderer_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
+    logic.register_new_task_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
                                                                  BlenderRenderDialogCustomizer))
-    logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
+    logic.register_new_task_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
                                                            LuxRenderDialogCustomizer))
 
 

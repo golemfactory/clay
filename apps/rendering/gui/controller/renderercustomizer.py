@@ -20,7 +20,7 @@ class RendererCustomizer(Customizer):
         raise NotImplementedError
 
     def load_data(self):
-        r = self.logic.get_renderer(self.get_task_name())
+        r = self.logic.get_task_type(self.get_task_name())
 
         self.gui.ui.outputResXSpinBox.setValue(r.defaults.resolution[0])
         self.gui.ui.outputResYSpinBox.setValue(r.defaults.resolution[1])

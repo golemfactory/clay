@@ -32,7 +32,7 @@ class TestLuxRenderDialogCustomizer(TestDirFixture):
 
     @patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
-        self.logic.register_new_renderer_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
+        self.logic.register_new_task_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
         self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path

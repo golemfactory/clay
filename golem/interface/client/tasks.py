@@ -19,15 +19,15 @@ class RendererLogic(object):
         self.node_name = node_name
         self.datadir = datadir
         self.dir_manager = dir_manager
-        self.renderers = {}
+        self.task_types = {}
 
     def get_builder(self, task_state):
         renderer = task_state.definition.renderer
-        return self.renderers[renderer].task_builder_type(self.node_name, task_state.definition,
+        return self.task_types[renderer].task_builder_type(self.node_name, task_state.definition,
                                                           self.datadir, self.dir_manager)
 
-    def register_new_renderer_type(self, renderer):
-        self.renderers[renderer.name] = renderer
+    def register_new_task_type(self, task_type):
+        self.task_types[task_type.name] = task_type
 
     @staticmethod
     def instantiate(client, datadir):
@@ -36,8 +36,8 @@ class RendererLogic(object):
         dir_manager = CommandHelper.wait_for(client.get_dir_manager())
 
         logic = RendererLogic(node_name, datadir, dir_manager)
-        logic.register_new_renderer_type(build_blender_renderer_info(*args))
-        logic.register_new_renderer_type(build_lux_render_info(*args))
+        logic.register_new_task_type(build_blender_renderer_info(*args))
+        logic.register_new_task_type(build_lux_render_info(*args))
 
         return logic
 

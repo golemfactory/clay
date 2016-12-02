@@ -47,7 +47,7 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         definition.renderer_options.add_to_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)
         self.logic.customizer = Mock()
-        self.logic.renderers[renderer.name] = renderer
+        self.logic.task_types[renderer.name] = renderer
         customizer.load_task_definition(definition)
         assert len(definition.resources) == 3
         customizer.gui.ui.taskNameLineEdit.setText("NEW NAME")
