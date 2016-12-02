@@ -11,6 +11,7 @@ from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
+from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import result_types
@@ -19,7 +20,6 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-import gui.node
 
 from test_docker_image import DockerTestCase
 
@@ -82,7 +82,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = gui.node.OptNode(datadir=self.path)
+        self.node = OptNode(datadir=self.path)
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
         self.node.client.p2pservice = Mock()
@@ -227,7 +227,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # produce errors when run in the task environment:
         task.src_code = 'main :: IO()\nmain = putStrLn "Hello, Haskell World"\n'
         task.main_program_file = path.join(
-            path.join(get_golem_path(), "gui"), "node.py")
+            path.join(get_golem_path(), "golem"), "node.py")
         task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)

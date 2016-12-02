@@ -8,10 +8,9 @@ import uuid
 import click
 import jsonpickle
 
+from apps.appsmanager import AppsManager
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from apps.lux.luxenvironment import LuxRenderEnvironment
 
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
@@ -81,10 +80,7 @@ class Node(object):
 
 
 class OptNode(Node):
-    default_environments = [
-        BlenderEnvironment(),
-        LuxRenderEnvironment()
-    ]
+    default_environments = AppsManager.load_envs()
 
     @staticmethod
     def _get_task_builder(task_def):

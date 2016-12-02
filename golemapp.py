@@ -2,9 +2,10 @@ from multiprocessing import freeze_support
 
 import click
 
-from gui.startapp import start_app
-from gui.node import OptNode  # TODO: This also configures the logging.
 from golem.core.common import config_logging
+from golem.node import OptNode  # TODO: This also configures the logging.
+
+from gui.startapp import start_app
 
 
 @click.command()

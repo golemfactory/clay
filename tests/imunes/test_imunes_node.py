@@ -7,7 +7,7 @@ from golem.testutils import DatabaseFixture
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 
-from gui.node import OptNode
+from golem.node import OptNode
 
 # Do not remove! (even if pycharm complains that this import is not used)
 from node import immunes_start

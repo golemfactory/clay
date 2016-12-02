@@ -10,6 +10,7 @@ from mock import Mock
 from test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
@@ -19,7 +20,6 @@ from golem.testutils import TempDirFixture
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 
-import gui.node
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
@@ -87,7 +87,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = gui.node.OptNode(datadir=self.path)
+        self.node = OptNode(datadir=self.path)
         self.node.client.start = Mock()
         self.node.initialize()
 

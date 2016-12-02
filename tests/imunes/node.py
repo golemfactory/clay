@@ -1,7 +1,7 @@
 import click
 
 from golemapp import start
-from gui.node import OptNode
+from golem.node import OptNode
 
 
 def disable_blender(ctx, param, value):
