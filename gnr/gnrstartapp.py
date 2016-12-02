@@ -2,8 +2,6 @@ import logging
 from multiprocessing import Process, Queue
 from os import path
 
-from twisted.internet.defer import inlineCallbacks
-
 from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
@@ -16,13 +14,10 @@ from gnr.ui.appmainwindow import AppMainWindow
 from gnr.ui.gen.ui_BlenderWidget import Ui_BlenderWidget
 from gnr.ui.gen.ui_LuxWidget import Ui_LuxWidget
 from gnr.ui.widget import TaskWidget
-from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
-from golem.rpc.service import RPCServiceInfo
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
-
+from twisted.internet.defer import inlineCallbacks
 
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
@@ -72,11 +67,16 @@ class GUIApp(object):
 
     @inlineCallbacks
     def start(self, client, logic_service_info):
-        self.client = client
-        yield self.logic.register_client(self.client, logic_service_info)
-        yield self.logic.start()
-        yield self.logic.check_network_state()
-        self.app.execute(True)
+        try:
+            self.client = client
+            self.logic.client = client
+            # yield self.logic.register_client(self.client, logic_service_info)
+            yield self.logic.start()
+            # yield self.logic.check_network_state()
+            self.app.execute(True)
+        except Exception as exc:
+            import traceback
+            traceback.print_exc()
 
 
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
@@ -89,32 +89,33 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
     config_logging(log_name)
     logger = logging.getLogger("gnr.app")
 
-    client_service_info = queue.get(True, 3600)
-
-    if not isinstance(client_service_info, RPCServiceInfo):
-        logger.error("GUI process error: {}".format(client_service_info))
-        return
+    rpc_address = queue.get(True, 3600)
 
     if not gui_app:
         gui_app = GUIApp(rendering)
     if not reactor:
         reactor = install_qt4_reactor()
 
-    rpc_address = client_service_info.rpc_address
-    rpc_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
+    from golem.rpc.session import SessionConnector, Session, Client
+    from golem.rpc.mapping.core import CORE_METHOD_MAP
 
-    def on_connected(_):
-        golem_client = rpc_client.build_client(client_service_info)
-        logic_service_info = rpc_client.add_service(gui_app.logic)
-        gui_app.start(client=golem_client, logic_service_info=logic_service_info)
+    connector = SessionConnector(Session, rpc_address)
 
-    def on_error(error):
-        if reactor.running:
-            reactor.stop()
-        logger.error("GUI process error: {}".format(error))
+    def session_ready(*_):
+        try:
+            core_client = Client(connector.session, CORE_METHOD_MAP)
+            gui_app.start(client=core_client, logic_service_info=None)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+    def shutdown(err):
+        logger.error("GUI process error: {}".format(err))
 
     def connect():
-        rpc_client.connect().addCallbacks(on_connected, on_error)
+        connector.session.ready.addCallbacks(session_ready, shutdown)
+        deferred = connector.connect()
+        deferred.addErrback(shutdown)
 
     reactor.callWhenRunning(connect)
     if not reactor.running:
@@ -123,6 +124,8 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
 
 def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
+
+    from golem.client import Client
 
     if datadir:
         log_name = path.join(datadir, CLIENT_LOG_NAME)
@@ -149,24 +152,30 @@ def start_client_process(queue, start_ranking, datadir=None,
 
     from twisted.internet import reactor
     from golem.rpc.router import CrossbarRouter
+    from golem.rpc.session import SessionConnector, Session, object_method_map
+    from golem.rpc.mapping.core import CORE_METHOD_MAP
 
-    def listen(*_):
-        rpc_server = WebSocketRPCServerFactory(interface='localhost')
-        rpc_server.listen()
+    router = CrossbarRouter(datadir=client.datadir)
 
-        client_service_info = client.set_rpc_server(rpc_server)
+    def router_ready(*_):
+        connector = SessionConnector(Session, router.address)
+        connector.session.methods = object_method_map(client, CORE_METHOD_MAP)
+        connector.session.ready.addCallbacks(session_ready, shutdown)
 
-        queue.put(client_service_info)
+        deferred = connector.connect()
+        deferred.addErrback(shutdown)
+
+    def session_ready(*_):
+        queue.put(router.address)
         queue.close()
 
     def shutdown(err):
         queue.put(Exception("Error: {}".format(err)))
 
+    router.start(reactor, router_ready, shutdown)
+
     if start_ranking:
         client.ranking.run(reactor)
-
-    router = CrossbarRouter(datadir=client.datadir)
-    router.start(reactor, listen, shutdown)
 
     if not reactor.running:
         reactor.run()

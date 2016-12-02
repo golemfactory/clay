@@ -14,7 +14,7 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
-from golem.rpc.websockets import WebSocketRPCServerFactory
+from golem.rpc.legacy.websockets import WebSocketRPCServerFactory
 from golem.task.taskbase import Task
 
 

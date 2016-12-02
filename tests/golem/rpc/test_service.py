@@ -1,6 +1,6 @@
 import unittest
 
-from golem.rpc.service import ServiceHelper, ServiceMethods
+from golem.rpc.legacy.service import ServiceHelper, ServiceMethods
 
 
 class MockService(object):

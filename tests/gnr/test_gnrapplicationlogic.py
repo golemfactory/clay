@@ -8,7 +8,7 @@ from gnr.customizers.renderingmainwindowcustomizer import RenderingMainWindowCus
 from gnr.gnrapplicationlogic import GNRApplicationLogic
 from gnr.ui.appmainwindow import AppMainWindow
 from golem.client import Client
-from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
+from golem.rpc.legacy.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
 from mock import Mock, MagicMock, ANY, call

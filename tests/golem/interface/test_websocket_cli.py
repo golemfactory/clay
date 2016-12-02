@@ -2,7 +2,7 @@ import unittest
 from contextlib import contextmanager
 
 from golem.interface.websockets import WebSocketCLI
-from golem.rpc.websockets import WebSocketRPCClientFactory
+from golem.rpc.legacy.websockets import WebSocketRPCClientFactory
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure

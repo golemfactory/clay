@@ -5,6 +5,7 @@ from collections import namedtuple
 from crossbar.common import checkconfig
 from crossbar.controller.cli import run_command_stop
 from crossbar.controller.node import Node
+from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
 
@@ -22,7 +23,10 @@ class LoggerBridge(object):
 
 class CrossbarRouter(object):
 
-    def __init__(self, datadir=None, crossbar_dir='crossbar', crossbar_log_level='trace'):
+    serializers = [u'msgpack']
+
+    def __init__(self, host='localhost', port=61000, realm=u'golem', datadir=None,
+                 crossbar_dir='crossbar', crossbar_log_level='trace'):
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -31,18 +35,20 @@ class CrossbarRouter(object):
 
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
-
-        if not os.path.isdir(self.working_dir):
+        elif not os.path.isdir(self.working_dir):
             raise Exception("'{}' is not a directory".format(self.working_dir))
 
+        self.address = WebSocketAddress(host, port, realm)
         self.log_level = crossbar_log_level
+
         self.options = self._build_options()
-        self.config = self._build_config()
+        self.config = self._build_config(self.address, self.serializers)
         self.node = None
         self.pubkey = None
 
     def start(self, reactor, callback, errback):
-        reactor.callWhenRunning(self._start, self.options,
+        reactor.callWhenRunning(self._start,
+                                self.options,
                                 reactor,
                                 callback, errback)
 
@@ -63,18 +69,18 @@ class CrossbarRouter(object):
 
         return self.node.start(cdc_mode=options.cdc)
 
-    def _build_options(self):
+    def _build_options(self, cdc=False, argv=None, config=None):
         return CrossbarRouterOptions(
             self.working_dir,
             None,
             self.log_level,
-            cdc=False,
-            argv=None,
-            config=None
+            cdc=cdc,
+            argv=argv,
+            config=config
         )
 
     @staticmethod
-    def _build_config(host='localhost', port=61000):
+    def _build_config(address, serializers, allowed_origins=u'*', enable_webstatus=True):
         return {
             'version': 2,
             'workers': [{
@@ -85,19 +91,33 @@ class CrossbarRouter(object):
                 'transports': [
                     {
                         'type': u'websocket',
-                        'serializers': [u'msgpack'],
+                        'serializers': serializers,
                         'endpoint': {
                             'type': u'tcp',
-                            'port': port
+                            'port': address.port
                         },
-                        'url': u'ws://{}:{}'.format(host, port),
+                        'url': unicode(address),
                         'options': {
-                            # FIXME: contstrain origins
-                            'allowed_origins': u'*',
-                            'enable_webstatus': True,
+                            'allowed_origins': allowed_origins,
+                            'enable_webstatus': enable_webstatus,
                         }
                     }
                 ],
-                'components': []
+                'components': [],
+                "realms": [{
+                    "name": u'golem',
+                    "roles": [{
+                        "name": u'anonymous',
+                        "permissions": [{
+                            "uri": u'*',
+                            "allow": {
+                                "call": True,
+                                "register": True,
+                                "publish": True,
+                                "subscribe": True
+                            }
+                        }]
+                    }]
+                }],
             }]
         }

@@ -1,5 +1,4 @@
 import os
-from mock import Mock, patch
 from multiprocessing import Queue
 
 from gnr.gnrstartapp import load_environments, start_client_process, \
@@ -7,8 +6,9 @@ from gnr.gnrstartapp import load_environments, start_client_process, \
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.environments.environment import Environment
-from golem.rpc.websockets import WebSocketRPCServerFactory
+from golem.rpc.legacy.websockets import WebSocketRPCServerFactory
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from mock import Mock, patch
 
 
 class MockService(object):

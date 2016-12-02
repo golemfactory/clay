@@ -2,19 +2,17 @@ import logging
 import time
 from collections import deque
 
-import sys
 from autobahn.twisted import WebSocketServerProtocol
 from autobahn.twisted.websocket import WebSocketClientProtocol, \
     WebSocketServerFactory, WebSocketClientFactory
+from golem.core.simpleserializer import DILLSerializer
+from golem.rpc.legacy.exceptions import RPCNotConnected, RPCServiceError, RPCProtocolError, \
+    RPCMessageError
+from golem.rpc.legacy.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo, RPCSimpleClient
+from golem.rpc.legacy.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION, RPCBatchRequestMessage
 from twisted.internet import task
 from twisted.internet.defer import Deferred
 from twisted.internet.tcp import Port
-
-from golem.core.simpleserializer import DILLSerializer
-from golem.rpc.exceptions import RPCNotConnected, RPCServiceError, RPCProtocolError, \
-    RPCMessageError
-from golem.rpc.messages import RPCRequestMessage, RPCResponseMessage, PROTOCOL_VERSION, RPCBatchRequestMessage
-from golem.rpc.service import RPCProxyService, RPCProxyClient, RPCAddress, RPC, RPCServiceInfo, RPCSimpleClient
 
 logger = logging.getLogger(__name__)
 
@@ -49,28 +47,6 @@ class WebSocketAddress(RPCAddress):
         return WebSocketAddress(host, port)
 
 
-class IKeyring(object):
-
-    def encrypt(self, message, identifier):
-        raise NotImplementedError()
-
-    def decrypt(self, message, identifier):
-        raise NotImplementedError()
-
-
-class KeyringMixin(object):
-
-    def encrypt(self, message, _):
-        if self.keyring:
-            return self.keyring.encrypt(message)
-        return message
-
-    def decrypt(self, message, _):
-        if self.keyring:
-            return self.keyring.decrypt(message)
-        return message
-
-
 class SerializerMixin(object):
 
     def serialize(self, message):
@@ -78,7 +54,7 @@ class SerializerMixin(object):
             return None
         return self.serializer.dumps(message)
 
-    def deserialize(self, message):
+    def deserialize(self, message, _):
         if message is None:
             return None
         elif isinstance(message, basestring):
@@ -86,10 +62,10 @@ class SerializerMixin(object):
         return self.serializer.loads(str(message))
 
 
-class MessageParserMixin(KeyringMixin, SerializerMixin):
+class MessageParserMixin(SerializerMixin):
 
     def receive_message(self, message, session_id):
-        msg = self.deserialize(self.decrypt(message, session_id))
+        msg = self.deserialize(message, session_id)
 
         if msg.protocol_version != PROTOCOL_VERSION:
             raise RPCProtocolError("Invalid protocol version")
@@ -98,8 +74,8 @@ class MessageParserMixin(KeyringMixin, SerializerMixin):
 
         return msg
 
-    def prepare_message(self, message, session_id):
-        return self.encrypt(self.serialize(message), session_id)
+    def prepare_message(self, message, _):
+        return self.serialize(message)
 
 
 class SessionAwareMixin(object):

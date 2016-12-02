@@ -1,4 +1,4 @@
-from golem.rpc.websockets import WebSocketRPCClientFactory
+from golem.rpc.legacy.websockets import WebSocketRPCClientFactory
 
 
 class WebSocketCLI(object):

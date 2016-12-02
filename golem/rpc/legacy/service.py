@@ -1,9 +1,8 @@
 import collections
 
+from golem.rpc.legacy.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
-
-from golem.rpc.messages import RPCBatchCall, RPCBatchRequestMessage, RPCRequestMessage
 
 CONNECTION_RETRY_TIMEOUT = 0.1  # s
 CONNECTION_TIMEOUT = 3  # s

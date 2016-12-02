@@ -354,7 +354,13 @@ class Client(object):
     def get_peers(self):
         return self.p2pservice.peers.values()
 
-    def get_peer_info(self):
+    def get_known_peers(self):
+        peers, info = self.p2pservice.free_peers, []
+        for p in peers:
+            info.append(PeerSessionInfo(p))
+        return info
+
+    def get_connected_peers(self):
         peers, info = self.get_peers(), []
         for p in peers:
             info.append(PeerSessionInfo(p))
@@ -363,6 +369,9 @@ class Client(object):
     # TODO: simplify
     def get_keys_auth(self):
         return self.keys_auth
+
+    def get_public_key(self):
+        return self.keys_auth.public_key
 
     def get_dir_manager(self):
         if self.task_server:
@@ -391,6 +400,11 @@ class Client(object):
     def get_config(self):
         return self.config_desc
 
+    def get_setting(self, key):
+        if not hasattr(self.config_desc, key):
+            raise Exception("Unknown setting: {}".format(key))
+        return getattr(self.config_desc, key)
+
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
             raise Exception("Unknown setting: {}".format(key))
@@ -408,6 +422,9 @@ class Client(object):
 
     def get_task_count(self):
         return len(self.task_server.task_keeper.get_all_tasks())
+
+    def get_task(self, task_id):
+        return self.task_server.task_manager.get_dict_task(task_id)
 
     def get_tasks(self, task_id=None):
         if task_id:
@@ -589,6 +606,9 @@ class Client(object):
 
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
+
+    def get_known_tasks(self):
+        return self.task_server.task_keeper.task_headers
 
     def get_environments(self):
         return self.environments_manager.get_environments()

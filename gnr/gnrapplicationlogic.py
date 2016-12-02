@@ -158,7 +158,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
             returnValue(None)
 
-        peer_info = yield self.client.get_peer_info()
+        peer_info = yield self.client.get_connected_peers()
         peers_num = len(peer_info)
 
         if peers_num == 0:
@@ -181,7 +181,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
     def update_peers_view(self):
-        self.client.get_peer_info().addCallback(self._update_peers_view)
+        self.client.get_connected_peers().addCallback(self._update_peers_view)
 
     def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable

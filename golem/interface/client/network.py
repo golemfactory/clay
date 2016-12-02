@@ -41,7 +41,7 @@ class Network(object):
     def show(self, sort, full):
         values = []
 
-        deferred = Network.client.get_peer_info()
+        deferred = Network.client.get_connected_peers()
         peers = CommandHelper.wait_for(deferred) or []
 
         for peer in peers:

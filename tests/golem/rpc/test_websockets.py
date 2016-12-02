@@ -1,16 +1,15 @@
 import time
 import unittest
 import uuid
-from mock import Mock
-
-from twisted.internet.defer import Deferred
 
 from golem.core.simpleserializer import SimpleSerializer
-from golem.rpc.messages import RPCRequestMessage
-from golem.rpc.service import RPC
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager, \
+from golem.rpc.legacy.service import RPC
+from golem.rpc.legacy.messages import RPCRequestMessage
+from golem.rpc.legacy.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory, MessageLedger, SessionManager, \
     WebSocketRPCProtocol
 from golem.tools.testwithreactor import TestWithReactor
+from mock import Mock
+from twisted.internet.defer import Deferred
 
 
 class MockService(object):
