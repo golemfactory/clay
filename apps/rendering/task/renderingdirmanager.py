@@ -3,7 +3,7 @@ import logging
 
 logger = logging.getLogger("apps.rendering")
 
-PREV_FILE = "ui/nopreview.png"
+PREV_FILE = "view/nopreview.png"
 
 
 def get_preview_file():

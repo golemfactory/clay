@@ -1,6 +1,6 @@
 import logging
 
-from gui.controller.renderercustomizer import RendererCustomizer
+from apps.rendering.gui.controller.renderercustomizer import RendererCustomizer
 
 
 logger = logging.getLogger("apps.lux")

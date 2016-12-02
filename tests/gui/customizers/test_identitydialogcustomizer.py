@@ -24,7 +24,7 @@ class TestIdentityDialogCustomizer(TempDirFixture):
         self.gnrgui.app.deleteLater()
         super(TestIdentityDialogCustomizer, self).tearDown()
 
-    @patch('gnr.ui.dialog.GeneratingKeyWindow.show')
+    @patch('gui.view.dialog.GeneratingKeyWindow.show')
     def test(self, *_):
         self.gnrgui.show = Mock()
         self.gnrgui.main_window.show = Mock()

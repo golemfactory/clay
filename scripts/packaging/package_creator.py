@@ -1147,7 +1147,7 @@ def all_assets(creator, exe_dir, lib_dir, x_dir):
     copy_tree(images_dir, images_dest_dir, update=True)
     copy_tree(benchmarks_dir, benchmarks_dest_dir, update=True)
 
-    no_preview_path = os.path.join('gnr', 'ui', 'nopreview.png')
+    no_preview_path = os.path.join('gui', 'view', 'nopreview.png')
     no_preview_dest_path = os.path.join(x_dir, no_preview_path)
 
     if os.path.exists(no_preview_dest_path):
