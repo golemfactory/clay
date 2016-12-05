@@ -1,7 +1,6 @@
 """GNR Compute Node"""
 
 import cPickle as pickle
-import logging
 import sys
 import uuid
 
@@ -14,7 +13,6 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
-from golem.rpc.legacy.websockets import WebSocketRPCServerFactory
 from golem.task.taskbase import Task
 
 
@@ -63,6 +61,7 @@ class Node(object):
                                         config.rpc_port)
             reactor.run()
         except Exception as ex:
+            import logging
             logger = logging.getLogger("gnr.app")
             logger.error("Reactor error: {}".format(ex))
         finally:
@@ -70,9 +69,7 @@ class Node(object):
             sys.exit(0)
 
     def _start_rpc_server(self, host, port):
-        rpc_server = WebSocketRPCServerFactory(interface=host, port=port)
-        rpc_server.listen()
-        self.client.set_rpc_server(rpc_server)
+        pass
 
     @staticmethod
     def _get_task_builder(task_def):

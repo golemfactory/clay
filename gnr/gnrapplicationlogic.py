@@ -87,11 +87,12 @@ class GNRApplicationLogic(QtCore.QObject):
         task_payments = task.LoopingCall(self.update_payments_view)
         task_computing_stats = task.LoopingCall(self.update_stats)
         task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
-        task_status.start(3.0)
-        task_peers.start(3.0)
-        task_payments.start(5.0)
-        task_computing_stats.start(3.0)
-        task_estimated_reputation.start(60.0)
+        # FIXME: subscribe to events
+        # task_status.start(3.0)
+        # task_peers.start(3.0)
+        # task_payments.start(5.0)
+        # task_computing_stats.start(3.0)
+        # task_estimated_reputation.start(60.0)
         self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats, task_estimated_reputation)
 
     def stop(self):
@@ -102,35 +103,27 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer = customizer_class(gui, self)
 
     @inlineCallbacks
-    def register_client(self, client, logic_service_info):
-        event_listener = GNRClientRemoteEventListener(logic_service_info)
+    def register_client(self, client):
+        #event_listener = GNRClientRemoteEventListener(logic_service_info)
+
+        datadir = yield client.get_datadir()
+        config_dict = yield client.get_config()
+        client_id = yield client.get_key_id()
+        payment_address = yield client.get_payment_address()
+        description = yield client.get_description()
+
+        config = ClientConfigDescriptor()
+        config.__dict__ = config_dict
 
         self.client = client
-        self.client.register_listener(event_listener)
+        self.datadir = datadir
+        self.node_name = config.node_name
+
         self.customizer.init_config()
-
-        use_transaction_system = yield client.use_transaction_system()
-        if use_transaction_system:
-            payment_address = yield client.get_payment_address()
-        else:
-            payment_address = ""
-
-        config = yield self.get_config()
-        response = yield self.client.start_batch() \
-            .get_description() \
-            .get_client_id() \
-            .get_datadir()   \
-            .get_node_name() \
-            .call()
-
-        self.node_name = response.pop()
-        self.datadir = response.pop()
-        client_id = response.pop()
-        description = response.pop()
-
         self.customizer.set_options(config, client_id, payment_address, description)
         if not self.node_name:
-            self.customizer.prompt_node_name(config)
+            self.customizer.prompt_node_name(self.node_name)
+
         self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
@@ -196,10 +189,10 @@ class GNRApplicationLogic(QtCore.QObject):
                 table.insertRow(i)
 
         for i, peer in enumerate(peers):
-            table.setItem(i, 0, QTableWidgetItem(peer.address))
-            table.setItem(i, 1, QTableWidgetItem(str(peer.port)))
-            table.setItem(i, 2, QTableWidgetItem(peer.key_id))
-            table.setItem(i, 3, QTableWidgetItem(peer.node_name))
+            table.setItem(i, 0, QTableWidgetItem(peer['address']))
+            table.setItem(i, 1, QTableWidgetItem(str(peer['port'])))
+            table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
+            table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
         self.client.get_balance().addCallback(self._update_payments_view)
@@ -269,6 +262,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
+
+    def change_node_name(self, node_name):
+        yield self.client.update_setting('node_name', node_name)
+        self.node_name = node_name
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     @inlineCallbacks
     def change_config(self, cfg_desc, run_benchmarks=False):
@@ -600,8 +598,8 @@ class GNRApplicationLogic(QtCore.QObject):
         """ Return suggested max price per hour of computation
         :return:
         """
-        config = yield self.get_config()
-        returnValue(config.max_price)
+        max_price = yield self.client.get_setting('max_price')
+        returnValue(max_price)
 
     @inlineCallbacks
     def get_cost_for_task_id(self, task_id):

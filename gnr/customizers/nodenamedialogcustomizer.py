@@ -2,9 +2,9 @@ from gnr.customizers.customizer import Customizer
 
 
 class NodeNameDialogCustomizer(Customizer):
-    def __init__(self, gui, logic, cfg_desc):
+    def __init__(self, gui, logic, node_name):
         super(NodeNameDialogCustomizer, self).__init__(gui, logic)
-        self.cfg_desc = cfg_desc
+        self.node_name = node_name
 
     def load_data(self):
         pass
@@ -13,9 +13,9 @@ class NodeNameDialogCustomizer(Customizer):
         self.gui.ui.okButton.clicked.connect(lambda: self._save_node_name())
 
     def _save_node_name(self):
-        self.cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
-        if self.cfg_desc.node_name == "":
+        self.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
+        if not self.node_name:
             self.show_error_window(u"Empty name")
         else:
-            self.logic.change_config(self.cfg_desc)
+            self.logic.change_node_name(self.node_name)
             self.gui.window.close()

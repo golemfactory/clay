@@ -16,6 +16,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
+from golem.core.simpleserializer import to_dict
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -33,6 +34,8 @@ from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.rpc.mapping.aliases import Task
+from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
@@ -157,8 +160,7 @@ class Client(object):
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
-        self.rpc_server = None
-        self.rpc_clients = []
+        self.rpc_publisher = None
 
         self.ipfs_manager = None
         self.resource_server = None
@@ -170,6 +172,9 @@ class Client(object):
         self.session_id = uuid.uuid4().get_hex()
 
         atexit.register(self.quit)
+
+    def configure_rpc(self, rpc_session):
+        self.rpc_publisher = Publisher(rpc_session)
 
     def start(self):
         if self.use_monitor:
@@ -280,26 +285,23 @@ class Client(object):
     def run_test_task(self, t):
         def on_success(*args, **kwargs):
             with self.lock:
-                for rpc_client in self.rpc_clients:
-                    rpc_client.test_task_computation_success(*args, **kwargs)
                 self.task_tester = None
+            self.rpc_publisher.publish(Task.evt_task_check_success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
             with self.lock:
-                for rpc_client in self.rpc_clients:
-                    rpc_client.test_task_computation_error(*args, **kwargs)
                 self.task_tester = None
+            self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        has_started = False
         with self.lock:
             if self.task_tester is None:
                 self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
                 self.task_tester.run()
-                has_started = True
+                self.rpc_publisher.publish(Task.evt_task_check_started, True)
+                return True
 
-        for rpc_client in self.rpc_clients:
-            rpc_client.test_task_started(has_started)
-        return has_started
+        self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
 
     def abort_test_task(self):
         with self.lock:
@@ -355,16 +357,12 @@ class Client(object):
         return self.p2pservice.peers.values()
 
     def get_known_peers(self):
-        peers, info = self.p2pservice.free_peers, []
-        for p in peers:
-            info.append(PeerSessionInfo(p))
-        return info
+        peers = self.p2pservice.free_peers or []
+        return [to_dict(PeerSessionInfo(p)) for p in peers]
 
     def get_connected_peers(self):
-        peers, info = self.get_peers(), []
-        for p in peers:
-            info.append(PeerSessionInfo(p))
-        return info
+        peers = self.get_peers() or []
+        return [to_dict(PeerSessionInfo(p)) for p in peers]
 
     # TODO: simplify
     def get_keys_auth(self):
@@ -398,7 +396,7 @@ class Client(object):
         return self.node.key
 
     def get_config(self):
-        return self.config_desc
+        return to_dict(self.config_desc)
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
@@ -528,19 +526,6 @@ class Client(object):
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
     # CLIENT CONFIGURATION
-    def register_listener(self, listener):
-        assert isinstance(listener, GolemClientEventListener)
-
-        if self.rpc_server:
-            if isinstance(listener, GolemClientRemoteEventListener):
-                self.rpc_clients.append(listener.build(self.rpc_server))
-
-        self.listeners.append(listener)
-
-    def set_rpc_server(self, rpc_server):
-        self.rpc_server = rpc_server
-        return self.rpc_server.add_service(self)
-
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)

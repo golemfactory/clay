@@ -29,7 +29,9 @@ class ConfigurationDialogCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
 
     def load_data(self):
-        def load(config_desc):
+        def load(config_dict):
+            config_desc = ClientConfigDescriptor()
+            config_desc.__dict__ = config_dict
             self.__load_basic_config(config_desc)
             self.__load_advance_config(config_desc)
             self.__load_resource_config()
@@ -75,7 +77,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __docker_config_changed(self):
         self.docker_config_changed = True
-        
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))

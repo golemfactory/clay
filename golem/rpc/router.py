@@ -71,16 +71,16 @@ class CrossbarRouter(object):
 
     def _build_options(self, cdc=False, argv=None, config=None):
         return CrossbarRouterOptions(
-            self.working_dir,
-            None,
-            self.log_level,
+            cbdir=self.working_dir,
+            logdir=None,
+            loglevel=self.log_level,
             cdc=cdc,
             argv=argv,
             config=config
         )
 
     @staticmethod
-    def _build_config(address, serializers, allowed_origins=u'*', enable_webstatus=True):
+    def _build_config(address, serializers, allowed_origins=u'*', realm=u'golem', enable_webstatus=True):
         return {
             'version': 2,
             'workers': [{
@@ -105,7 +105,7 @@ class CrossbarRouter(object):
                 ],
                 'components': [],
                 "realms": [{
-                    "name": u'golem',
+                    "name": realm,
                     "roles": [{
                         "name": u'anonymous',
                         "permissions": [{

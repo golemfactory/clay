@@ -2,6 +2,8 @@ import logging
 from multiprocessing import Process, Queue
 from os import path
 
+from twisted.internet.defer import inlineCallbacks
+
 from gnr.application import GNRGui
 from gnr.customizers.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from gnr.customizers.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
@@ -17,10 +19,15 @@ from gnr.ui.widget import TaskWidget
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
-from twisted.internet.defer import inlineCallbacks
 
+DEBUG_DEFERRED = True
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
+
+
+if DEBUG_DEFERRED:
+    from twisted.internet.defer import setDebugging
+    setDebugging(True)
 
 
 def install_qt4_reactor():
@@ -60,23 +67,21 @@ class GUIApp(object):
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 RenderingMainWindowCustomizer)
-        self.client = None
 
         if rendering:
             register_rendering_task_types(self.logic)
 
     @inlineCallbacks
-    def start(self, client, logic_service_info):
+    def start(self, client):
         try:
-            self.client = client
-            self.logic.client = client
-            # yield self.logic.register_client(self.client, logic_service_info)
+            yield self.logic.register_client(client)
             yield self.logic.start()
-            # yield self.logic.check_network_state()
-            self.app.execute(True)
-        except Exception as exc:
+            yield self.logic.check_network_state()
+            self.app.execute(using_qt4_reactor=True)
+        except Exception:
             import traceback
             traceback.print_exc()
+            raise
 
 
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
@@ -89,33 +94,34 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
     config_logging(log_name)
     logger = logging.getLogger("gnr.app")
 
-    rpc_address = queue.get(True, 3600)
+    rpc_address = queue.get(True, 240)
 
     if not gui_app:
         gui_app = GUIApp(rendering)
     if not reactor:
         reactor = install_qt4_reactor()
 
-    from golem.rpc.session import SessionConnector, Session, Client
+    from golem.rpc.session import SessionConnector, Session, Client, object_method_map
     from golem.rpc.mapping.core import CORE_METHOD_MAP
+    from golem.rpc.mapping.gui import GUI_EVENT_MAP
 
     connector = SessionConnector(Session, rpc_address)
 
     def session_ready(*_):
         try:
             core_client = Client(connector.session, CORE_METHOD_MAP)
-            gui_app.start(client=core_client, logic_service_info=None)
+            gui_app.start(core_client)
         except Exception:
             import traceback
             traceback.print_exc()
 
     def shutdown(err):
-        logger.error("GUI process error: {}".format(err))
+        logger.error(u"GUI process error: {}".format(err))
 
     def connect():
+        connector.session.events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
         connector.session.ready.addCallbacks(session_ready, shutdown)
-        deferred = connector.connect()
-        deferred.addErrback(shutdown)
+        connector.connect().addErrback(shutdown)
 
     reactor.callWhenRunning(connect)
     if not reactor.running:
@@ -142,7 +148,7 @@ def start_client_process(queue, start_ranking, datadir=None,
             client = Client(datadir=datadir, transaction_system=transaction_system)
             client.start()
         except Exception as exc:
-            logger.error("Client process error: {}".format(exc))
+            logger.error(u"Client process error: {}".format(exc))
             queue.put(exc)
             return
 
@@ -161,16 +167,14 @@ def start_client_process(queue, start_ranking, datadir=None,
         connector = SessionConnector(Session, router.address)
         connector.session.methods = object_method_map(client, CORE_METHOD_MAP)
         connector.session.ready.addCallbacks(session_ready, shutdown)
-
-        deferred = connector.connect()
-        deferred.addErrback(shutdown)
+        connector.connect().addErrback(shutdown)
 
     def session_ready(*_):
         queue.put(router.address)
         queue.close()
 
     def shutdown(err):
-        queue.put(Exception("Error: {}".format(err)))
+        queue.put(Exception(u"Error: {}".format(err)))
 
     router.start(reactor, router_ready, shutdown)
 
@@ -181,7 +185,7 @@ def start_client_process(queue, start_ranking, datadir=None,
         reactor.run()
 
 
-def start_app(datadir=None, rendering=False,
+def start_app(gui=True, datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
 
     queue = Queue()
@@ -198,6 +202,6 @@ def start_app(datadir=None, rendering=False,
     try:
         start_client_process(queue, start_ranking, datadir, transaction_system)
     except Exception as exc:
-        print "Exception in Client process: {}".format(exc)
+        print(u"Exception in Client process: {}".format(exc))
 
     process_monitor.exit()
