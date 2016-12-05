@@ -7,6 +7,9 @@ CORE_METHOD_MAP = dict(
     get_datadir=            Environment.datadir,
     get_description=        Environment.opt_description,
 
+    use_ranking=            Environment.use_ranking,
+    use_transaction_system= Environment.use_transaction_system,
+
     get_key_id=             Crypto.key_id,
     get_public_key=         Crypto.pub_key,
     get_difficulty=         Crypto.difficulty,
@@ -31,6 +34,7 @@ CORE_METHOD_MAP = dict(
     remove_task_header=     Task.tasks_known_delete,
 
     get_task=               Task.task,
+    query_task_state=       Task.task_state,
     enqueue_new_task=       Task.task_create,
     remove_task=            Task.task_delete,
     abort_task=             Task.task_abort,
@@ -49,6 +53,7 @@ CORE_METHOD_MAP = dict(
     get_environments=       Computation.environments,
 
     get_payment_address=    Payments.ident,
+    get_balance=            Payments.balance,
     get_payments_list=      Payments.payments,
     get_incomes_list=       Payments.incomes,
 

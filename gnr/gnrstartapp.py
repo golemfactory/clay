@@ -76,7 +76,6 @@ class GUIApp(object):
         try:
             yield self.logic.register_client(client)
             yield self.logic.start()
-            yield self.logic.check_network_state()
             self.app.execute(using_qt4_reactor=True)
         except Exception:
             import traceback
@@ -144,32 +143,35 @@ def start_client_process(queue, start_ranking, datadir=None,
     environments = load_environments()
 
     if not client:
-        try:
-            client = Client(datadir=datadir, transaction_system=transaction_system)
-            client.start()
-        except Exception as exc:
-            logger.error(u"Client process error: {}".format(exc))
-            queue.put(exc)
-            return
-
-    for env in environments:
-        client.environments_manager.add_environment(env)
-    client.environments_manager.load_config(client.datadir)
+        client = Client(datadir=datadir, transaction_system=transaction_system)
 
     from twisted.internet import reactor
     from golem.rpc.router import CrossbarRouter
     from golem.rpc.session import SessionConnector, Session, object_method_map
     from golem.rpc.mapping.core import CORE_METHOD_MAP
 
+    for env in environments:
+        client.environments_manager.add_environment(env)
+    client.environments_manager.load_config(client.datadir)
+
     router = CrossbarRouter(datadir=client.datadir)
 
     def router_ready(*_):
         connector = SessionConnector(Session, router.address)
+        client.configure_rpc(connector.session)
+
         connector.session.methods = object_method_map(client, CORE_METHOD_MAP)
         connector.session.ready.addCallbacks(session_ready, shutdown)
         connector.connect().addErrback(shutdown)
 
     def session_ready(*_):
+        try:
+            client.start()
+        except Exception as exc:
+            logger.error(u"Client process error: {}".format(exc))
+            queue.put(exc)
+            return
+
         queue.put(router.address)
         queue.close()
 

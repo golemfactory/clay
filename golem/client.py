@@ -16,7 +16,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
-from golem.core.simpleserializer import to_dict
+from golem.core.simpleserializer import to_dict, DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -34,7 +34,7 @@ from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
-from golem.rpc.mapping.aliases import Task
+from golem.rpc.mapping.aliases import Task, Network
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
@@ -45,28 +45,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger("golem.client")
 
 
-class GolemClientEventListener:
-    def __init__(self):
-        pass
-
-    def task_updated(self, task_id):
-        pass
-
-    def network_connected(self):
-        pass
-
-
-class GolemClientRemoteEventListener(GolemClientEventListener):
-    def __init__(self, service_info):
-        GolemClientEventListener.__init__(self)
-        self.service_info = service_info
-        self.remote_client = None
-
-    def build(self, client_builder):
-        self.remote_client = client_builder.build_client(self.service_info)
-        return self.remote_client
-
-
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
         TaskManagerEventListener.__init__(self)
@@ -75,6 +53,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
     def task_status_updated(self, task_id):
         for l in self.client.listeners:
             l.task_updated(task_id)
+        self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
 
 class ClientTaskComputerEventListener(object):
@@ -282,7 +261,7 @@ class Client(object):
         self.resource_port = resource_port
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
-    def run_test_task(self, t):
+    def run_test_task(self, t_dict):
         def on_success(*args, **kwargs):
             with self.lock:
                 self.task_tester = None
@@ -295,6 +274,7 @@ class Client(object):
 
         with self.lock:
             if self.task_tester is None:
+                t = DictSerializer.load(t_dict)
                 self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
                 self.task_tester.run()
                 self.rpc_publisher.publish(Task.evt_task_check_started, True)
@@ -396,7 +376,7 @@ class Client(object):
         return self.node.key
 
     def get_config(self):
-        return to_dict(self.config_desc)
+        return DictSerializer.dump(self.config_desc)
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
@@ -461,7 +441,8 @@ class Client(object):
 
     def get_balance(self):
         if self.use_transaction_system():
-            return self.transaction_system.get_balance()
+            b, ab, d = self.transaction_system.get_balance()
+            return str(b), str(ab), str(d)
         return None, None, None
 
     def get_payments_list(self):
@@ -540,13 +521,6 @@ class Client(object):
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
-
-    def unregister_listener(self, listener):
-        assert isinstance(listener, GolemClientEventListener)
-        if listener in self.listeners:
-            self.listeners.remove(listener)
-        else:
-            logger.warning("listener {} not registered".format(listener))
 
     def query_task_state(self, task_id):
         return self.task_server.task_manager.query_task_state(task_id)
@@ -712,9 +686,13 @@ class Client(object):
                 self.last_nss_time = time.time()
 
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
-                for l in self.listeners:
-                    l.check_network_state()
-                self.last_net_check_time = time.time()
+                try:
+                    self.last_net_check_time = time.time()
+                    self.rpc_publisher.publish(Network.evt_connection, self.__connection_status())
+                except Exception as exc:
+                    print "EXCEPTION {}".format(exc)
+                    import traceback
+                    traceback.print_exc()
 
     def __make_node_state_snapshot(self, is_running=True):
 
@@ -741,6 +719,19 @@ class Client(object):
 
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
+
+    def __connection_status(self):
+        listen_port = self.get_p2p_port()
+        task_server_port = self.get_task_server_port()
+
+        if listen_port == 0 or task_server_port == 0:
+            message = u"Application not listening, check config file."
+        else:
+            if not self.get_connected_peers():
+                message = u"Not connected to Golem Network. Check seed parameters."
+            else:
+                message = u"Connected"
+        return message
 
     def get_metadata(self):
         metadata = dict()

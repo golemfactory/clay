@@ -95,7 +95,7 @@ class TestCBORSerializer(unittest.TestCase):
 
     def testConversion(self):
         obj = MockSerializationSubject()
-        dict_repr = CBORCoder._obj_to_dict(obj)
+        dict_repr = CBORCoder.obj_to_dict(obj)
 
         assert 'property_1' in dict_repr
         assert 'property_2' in dict_repr
@@ -103,7 +103,7 @@ class TestCBORSerializer(unittest.TestCase):
         assert 'method_1' not in dict_repr
         assert '_method_2' not in dict_repr
 
-        reconstructed = CBORCoder._obj_from_dict(dict_repr)
+        reconstructed = CBORCoder.obj_from_dict(dict_repr)
 
         assert reconstructed.__class__ == obj.__class__
         assert reconstructed.property_1 == obj.property_1

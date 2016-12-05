@@ -1,12 +1,13 @@
 from __future__ import division
+
 import cPickle
 import logging
 import os
-
-from ethereum.utils import denoms
 from PyQt4 import QtCore
+
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
+from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -18,41 +19,15 @@ from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
-from golem.client import GolemClientEventListener, GolemClientRemoteEventListener
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
+from golem.core.simpleserializer import DictSerializer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger("gnr.app")
-
-
-class GNRClientEventListener(GolemClientEventListener):
-    def __init__(self, logic):
-        self.logic = logic
-        GolemClientEventListener.__init__(self)
-
-    def task_updated(self, task_id):
-        self.logic.task_status_changed(task_id)
-
-    def check_network_state(self):
-        self.logic.check_network_state()
-
-
-class GNRClientRemoteEventListener(GolemClientRemoteEventListener):
-    def __init__(self, service_info):
-        GolemClientRemoteEventListener.__init__(self, service_info)
-
-    def task_updated(self, task_id):
-        assert self.remote_client
-        self.remote_client.task_status_changed(task_id)
-
-    def check_network_state(self):
-        assert self.remote_client
-        self.remote_client.check_network_state()
 
 
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
@@ -87,12 +62,11 @@ class GNRApplicationLogic(QtCore.QObject):
         task_payments = task.LoopingCall(self.update_payments_view)
         task_computing_stats = task.LoopingCall(self.update_stats)
         task_estimated_reputation = task.LoopingCall(self.update_estimated_reputation)
-        # FIXME: subscribe to events
-        # task_status.start(3.0)
-        # task_peers.start(3.0)
-        # task_payments.start(5.0)
-        # task_computing_stats.start(3.0)
-        # task_estimated_reputation.start(60.0)
+        task_status.start(3.0)
+        task_peers.start(3.0)
+        task_payments.start(5.0)
+        task_computing_stats.start(3.0)
+        task_estimated_reputation.start(60.0)
         self.__looping_calls = (task_peers, task_status, task_payments, task_computing_stats, task_estimated_reputation)
 
     def stop(self):
@@ -104,7 +78,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def register_client(self, client):
-        #event_listener = GNRClientRemoteEventListener(logic_service_info)
 
         datadir = yield client.get_datadir()
         config_dict = yield client.get_config()
@@ -112,8 +85,7 @@ class GNRApplicationLogic(QtCore.QObject):
         payment_address = yield client.get_payment_address()
         description = yield client.get_description()
 
-        config = ClientConfigDescriptor()
-        config.__dict__ = config_dict
+        config = DictSerializer.load(config_dict)
 
         self.client = client
         self.datadir = datadir
@@ -143,26 +115,11 @@ class GNRApplicationLogic(QtCore.QObject):
     def remove_received_files(self):
         self.client.remove_received_files()
 
-    @inlineCallbacks
-    def check_network_state(self):
-        listen_port = yield self.client.get_p2p_port()
-        task_server_port = yield self.client.get_task_server_port()
-        if listen_port == 0 or task_server_port == 0:
-            self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
-            returnValue(None)
-
-        peer_info = yield self.client.get_connected_peers()
-        peers_num = len(peer_info)
-
-        if peers_num == 0:
-            self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
-            returnValue(None)
-
-        self.customizer.gui.ui.errorLabel.setText("")
+    def connection_status_changed(self, message):
+        self.customizer.gui.ui.errorLabel.setText(message)
 
     def get_task(self, task_id):
         assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
-
         return self.tasks[task_id]
 
     def get_task_types(self):
@@ -201,6 +158,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if any(b is None for b in result_tuple):
             return
         b, ab, deposit = result_tuple
+        b, ab, deposit = int(b), int(ab), int(deposit)
 
         rb = b - ab
         total = deposit + b
@@ -461,7 +419,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             tb = self.get_builder(task_state)
             t = Task.build_task(tb)
-            self.client.run_test_task(t)
+            self.client.run_test_task(DictSerializer.dump(t))
 
             return True
 

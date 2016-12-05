@@ -1,19 +1,20 @@
 from __future__ import division
+
 import logging
 import multiprocessing
-import subprocess
-
-from ethereum.utils import denoms
 from PyQt4 import QtCore
+
 from PyQt4.QtGui import QMessageBox, QPalette
+from ethereum.utils import denoms
 
 from gnr.benchmarks.blender.blenderbenchmark import BlenderBenchmark
 from gnr.benchmarks.luxrender.luxbenchmark import LuxBenchmark
 from gnr.customizers.customizer import Customizer
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.fileshelper import get_dir_size, du
+from golem.core.fileshelper import du
+from golem.core.simpleserializer import DictSerializer
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
-from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
+from memoryhelper import resource_size_to_display
 
 logger = logging.getLogger("gnr.gui")
 
@@ -30,8 +31,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def load_data(self):
         def load(config_dict):
-            config_desc = ClientConfigDescriptor()
-            config_desc.__dict__ = config_dict
+            config_desc = DictSerializer.load(config_dict)
             self.__load_basic_config(config_desc)
             self.__load_advance_config(config_desc)
             self.__load_resource_config()

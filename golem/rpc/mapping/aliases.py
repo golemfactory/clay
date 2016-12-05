@@ -4,8 +4,11 @@ class Environment(object):
     opt                     = 'env.opt'
     opt_update              = 'env.opt.update'
 
-    # FIXME: description is managed in the DB, not the config file
+    # FIXME: description is saved in DB, not config file
     opt_description         = 'env.opt.description'
+    # FIXME: refactor
+    use_ranking             = 'env.use_ranking'
+    use_transaction_system  = 'env.use_transaction_system'
 
     datadir                 = 'env.datadir'
 
@@ -58,6 +61,7 @@ class Task(object):
     tasks_known_delete      = 'comp.tasks.known.delete'
 
     task                    = 'comp.task'
+    task_state              = 'comp.task.state'
     task_create             = 'comp.task.create'
     task_delete             = 'comp.task.delete'
     task_abort              = 'comp.task.abort'
@@ -99,6 +103,7 @@ class Computation(object):
 class Payments(object):
 
     ident                   = 'pay.ident'
+    balance                 = 'pay.balance'
 
     payments                = 'pay.payments'
     payment                 = 'pay.payment'
