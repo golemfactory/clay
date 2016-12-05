@@ -68,3 +68,33 @@ class Client(object):
         :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
         """
         return self.web3.eth.sendTransaction(transaction)
+
+    def get_balance(self, account):
+        """
+        Returns the balance of the given account
+        :param account: Account
+        :return: Balance
+        """
+        return self.web3.eth.getBalance(account)
+
+    def call(self, obj):
+        """
+        Executes a message call transaction, which is directly executed in the VM of the node,
+        but never mined into the blockchain
+        :param obj: A transaction object see web3.eth.sendTransaction, with the difference
+        that for calls the from property is optional as well
+        :return: The returned data of the call, e.g. a codes functions return value
+        """
+        return self.web3.eth.call(obj)
+
+    def get_transaction_receipt(self, hash):
+        """
+        Returns the receipt of a transaction by transaction hash.
+        :param hash: The transaction hash
+        :return: Receipt of a transaction
+        """
+        return self.web3.eth.getTransactionReceipt(hash)
+
+    def new_filter(self, array):
+        """ https://github.com/ethereum/wiki/wiki/JavaScript-API#web3ethfilter """
+        return self.web3.eth.filter(array)
