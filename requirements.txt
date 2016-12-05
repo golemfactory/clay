@@ -19,7 +19,7 @@ qt4reactor==1.6
 requests==2.8.1
 six==1.10.0
 Twisted>=15.4
-ethereum-rpc-client
+web3
 devp2p>=0.5.1
 cffi>=1.1.2
 ethereum>=1.1.0

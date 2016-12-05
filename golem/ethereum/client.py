@@ -1,14 +1,14 @@
 import logging
 
 import rlp
-from eth_rpc_client import Client as EthereumRpcClient
+from web3 import Web3, KeepAliveRPCProvider
 
 from .node import NodeProcess
 
 log = logging.getLogger('golem.ethereum')
 
 
-class Client(EthereumRpcClient):
+class Client(object):
     """ RPC interface client for Ethereum node."""
 
     STATIC_NODES = ["enode://f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e@94.23.17.170:30900"]  # noqa
@@ -22,10 +22,10 @@ class Client(EthereumRpcClient):
             Client.node = NodeProcess(nodes, datadir)
         else:
             assert Client.node.datadir == datadir, \
-                   "Ethereum node's datadir cannot be changed"
+                "Ethereum node's datadir cannot be changed"
         if not Client.node.is_running():
             Client.node.start(rpc=True)
-        super(Client, self).__init__(port=Client.node.rpcport)
+        self.web3 = Web3(KeepAliveRPCProvider(host='localhost', port=Client.node.rpcport))
 
     @staticmethod
     def _kill_node():
@@ -36,29 +36,35 @@ class Client(EthereumRpcClient):
 
     def get_peer_count(self):
         """
-        https://github.com/ethereum/wiki/wiki/JSON-RPC#net_peerCount
+        Get peers count
+        :return: The number of peers currently connected to the client
         """
-        response = self.make_request("net_peerCount", [])
-        return int(response['result'], 16)
+        return self.web3.net.peerCount
 
     def is_syncing(self):
         """
-        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_syncing
+        :return: Returns either False if the node is not syncing, True otherwise
         """
-        response = self.make_request("eth_syncing", [])
-        result = response['result']
-        return bool(result)
+        return bool(self.web3.eth.syncing)
 
     def get_transaction_count(self, address):
         """
-        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_gettransactioncount
+        Returns the number of transactions that have been sent from account
+        :param address: account address
+        :return: number of transactions
         """
-        response = self.make_request("eth_getTransactionCount", [address, "pending"])
-        return int(response['result'], 16)
+        return self.web3.eth.getTransactionCount(address)
 
     def send_raw_transaction(self, data):
-        response = self.make_request("eth_sendRawTransaction", [data])
-        return response['result']
+        """
+        Sends a signed and serialized transaction
+        :param data: signed and serialized transaction
+        """
+        return self.web3.eth.sendRawTransaction(data)
 
     def send(self, transaction):
-        return self.send_raw_transaction(rlp.encode(transaction).encode('hex'))
+        """
+        Signs and sends the given transaction
+        :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
+        """
+        return self.web3.eth.sendTransaction(transaction)
