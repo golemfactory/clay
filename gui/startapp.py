@@ -7,18 +7,10 @@ from twisted.internet.defer import inlineCallbacks
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
-from golem.environments.environment import Environment
 from golem.rpc.service import RPCServiceInfo
 from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
 
-from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.gui.controller.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
-from apps.blender.gui.view.gen.ui_BlenderWidget import Ui_BlenderWidget
-from apps.blender.task.blenderrendertask import build_blender_renderer_info
-from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
-from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
-from apps.lux.luxenvironment import LuxRenderEnvironment
-from apps.lux.task.luxrendertask import build_lux_render_info
+from apps.appsmanager import AppsManager
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.renderingapplicationlogic import RenderingApplicationLogic
@@ -29,6 +21,9 @@ from application import GNRGui
 
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
+
+apps_manager = AppsManager()
+apps_manager.load_apps()
 
 
 def install_qt4_reactor():
@@ -49,16 +44,12 @@ def stop_reactor():
 
 
 def load_environments():
-    return [LuxRenderEnvironment(),
-            BlenderEnvironment(),
-            Environment()]
+    return apps_manager.get_env_list()
 
 
 def register_rendering_task_types(logic):
-    logic.register_new_task_type(build_blender_renderer_info(TaskWidget(Ui_BlenderWidget),
-                                                                 BlenderRenderDialogCustomizer))
-    logic.register_new_task_type(build_lux_render_info(TaskWidget(Ui_LuxWidget),
-                                                           LuxRenderDialogCustomizer))
+    for app in apps_manager.apps.values():
+        logic.register_new_task_type(app.build_info(TaskWidget(app.widget), app.controller))
 
 
 class GUIApp(object):
@@ -68,6 +59,7 @@ class GUIApp(object):
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 RenderingMainWindowCustomizer)
+
         self.client = None
 
         if rendering:

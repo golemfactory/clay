@@ -13,6 +13,9 @@ class App(object):
     def __init__(self):
         self.env = None
         self.builder = None
+        self.widget = None
+        self.controller = None
+        self.build_info = None
 
 
 class AppsManager(object):
@@ -27,7 +30,7 @@ class AppsManager(object):
         envs = []
         for section in parser.sections():
             app = App()
-            for opt in vars(App):
+            for opt in vars(app):
                 full_name = parser.get(section, opt)
                 last_sep = full_name.rfind(".")
                 name = full_name[last_sep+1:]
@@ -36,6 +39,9 @@ class AppsManager(object):
                 el = getattr(el_mod, name)
                 setattr(app, opt, el)
             self.apps[section] = app
+
+    def get_env_list(self):
+        return [app.env() for app in self.apps.values()]
 
 
 

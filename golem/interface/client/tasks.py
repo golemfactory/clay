@@ -3,8 +3,7 @@ import os
 import uuid
 from Queue import Queue
 
-from apps.blender.task.blenderrendertask import build_blender_renderer_info
-from apps.lux.task.luxrendertask import build_lux_render_info
+from apps.appsmanager import AppsManager
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
@@ -36,9 +35,10 @@ class RendererLogic(object):
         dir_manager = CommandHelper.wait_for(client.get_dir_manager())
 
         logic = RendererLogic(node_name, datadir, dir_manager)
-        logic.register_new_task_type(build_blender_renderer_info(*args))
-        logic.register_new_task_type(build_lux_render_info(*args))
-
+        apps_manager = AppsManager()
+        apps_manager.load_apps()
+        for app in apps_manager.apps.values():
+            logic.register_new_task_type(app.build_info(*args))
         return logic
 
 

@@ -8,12 +8,12 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer
 from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
+from apps.lux.task.luxrendertask import build_lux_render_info
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
-from gui.startapp import build_lux_render_info
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 

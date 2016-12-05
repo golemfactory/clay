@@ -28,7 +28,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         envs = load_environments()
         for el in envs:
             assert isinstance(el, Environment)
-        assert len(envs) > 2
+        assert len(envs) >= 2
 
     @patch('logging.config.fileConfig')
     def test_start_client(self, *_):

@@ -80,7 +80,7 @@ class OptNode(Node):
     def __init__(self, datadir=None, transaction_system=False, **config_overrides):
         super(OptNode, self).__init__(datadir, transaction_system, **config_overrides)
         self.apps_manager = AppsManager()
-        self.default_environments = [app.env() for app in self.apps_manager.apps]
+        self.default_environments = self.apps_manager.get_env_list()
 
     def _get_task_builder(self, task_def):
         return self.apps_manager.apps[task_def.task_type].builder
