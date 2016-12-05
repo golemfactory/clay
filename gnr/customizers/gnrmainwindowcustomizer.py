@@ -279,7 +279,10 @@ class GNRMainWindowCustomizer(Customizer):
             self.update_task_additional_info(t)
 
     def _task_table_item_changed(self):
-        index = self.gui.ui.taskTableWidget.selectedIndexes()[0]
+        try:
+            index = self.gui.ui.taskTableWidget.selectedIndexes()[0]
+        except IndexError:
+            return
         if index:
             self._task_table_row_clicked(index.row(), 0)
 
