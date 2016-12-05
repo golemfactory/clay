@@ -1,6 +1,7 @@
 import os
 import errno
 import sys
+from calendar import timegm
 from datetime import datetime, timedelta
 from os import path
 
@@ -65,6 +66,14 @@ def timeout_to_deadline(timeout):
     :return datetime:
     """
     return get_current_time() + timedelta(seconds=timeout)
+
+
+def deadline_to_timestamp(deadline):
+    """ Return timestamp in UTC tz
+    :param datetime deadline: UTC datetime
+    :return float:
+    """
+    return timegm(deadline.utctimetuple()) + deadline.microsecond // 1000000
 
 
 class HandleError(object):

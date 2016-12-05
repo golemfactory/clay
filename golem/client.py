@@ -241,7 +241,8 @@ class Client(object):
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, task):
+    def enqueue_new_task(self, task_dict):
+        task = DictSerializer.load(task_dict)
         task_id = task.header.task_id
         self.task_server.task_manager.add_new_task(task)
         files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])

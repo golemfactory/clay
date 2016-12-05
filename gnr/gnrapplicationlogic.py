@@ -19,7 +19,7 @@ from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, deadline_to_timestamp
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
 from golem.resource.dirmanager import DirManager
@@ -246,10 +246,11 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self.get_builder(ts)
         t = Task.build_task(tb)
+        t.header.deadline = deadline_to_timestamp(t.header.deadline)
         ts.task_state.status = TaskStatus.starting
-        self.customizer.update_tasks(self.tasks)
 
-        self.client.enqueue_new_task(t)
+        self.customizer.update_tasks(self.tasks)
+        self.client.enqueue_new_task(DictSerializer.dump(t))
 
     def get_builder(self, task_state):
         # FIXME This is just temporary for solution for Brass
@@ -404,21 +405,23 @@ class GNRApplicationLogic(QtCore.QObject):
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
 
+            def on_abort():
+                self.progress_dialog_customizer.show_message("Aborting test...")
+                self.abort_test_task()
+
             self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
             self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
             self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
             self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
             self.progress_dialog_customizer.enable_close(False)        # prevent from closing
             self.progress_dialog_customizer.show_message("Preparing test...")
-            def on_abort():
-                self.progress_dialog_customizer.show_message("Aborting test...")
-                self.abort_test_task()
             self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
             tb = self.get_builder(task_state)
             t = Task.build_task(tb)
+            t.header.deadline = deadline_to_timestamp(t.header.deadline)
             self.client.run_test_task(DictSerializer.dump(t))
 
             return True

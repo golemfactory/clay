@@ -69,12 +69,13 @@ class DILLSerializer(object):
 class DictCoder(object):
 
     cls_key = '_cls'
-    deep = True
+    deep_serialization = True
+
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
     def obj_to_dict(cls, obj):
-        """Stores object's public properties in a dictionary. Triggered by CBOR encoder."""
+        """Stores object's public properties in a dictionary"""
         result = cls._to_dict_traverse_dict(obj.__dict__)
         result[cls.cls_key] = cls._module_and_class(obj)
         return result
@@ -111,8 +112,9 @@ class DictCoder(object):
             return obj
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._to_dict_traverse_obj(o) for o in obj])
-        elif cls.deep and hasattr(obj, '__dict__') and not cls._is_builtin(obj):
-            return cls.obj_to_dict(obj)
+        elif cls.deep_serialization:
+            if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
+                return cls.obj_to_dict(obj)
         return obj
 
     @classmethod
@@ -150,7 +152,8 @@ class DictCoder(object):
 class CBORCoder(DictCoder):
 
     tag = 0xef
-    deep = False
+    # Leave nested and special object serialization to CBOR
+    deep_serialization = False
     disable_value_sharing = True
 
     @classmethod

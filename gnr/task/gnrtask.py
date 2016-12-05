@@ -84,7 +84,7 @@ class GNRTask(Task):
 
         Task.__init__(self, th, src_code)
 
-        self.task_resources = set()
+        self.task_resources = list()
 
         self.total_tasks = 0
         self.last_task = 0
