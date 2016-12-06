@@ -577,7 +577,7 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.client.remove_task_header(task_id)
                 self.client.remove_task(task_id)
         else:
-            assert False, "Should never be here!"
+            logger.warning("Unknown task_id {}".format(task_id))
 
         if self.customizer.current_task_highlighted.definition.task_id == task_id:
             self.customizer.update_task_additional_info(self.tasks[task_id])

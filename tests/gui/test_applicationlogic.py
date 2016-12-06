@@ -10,11 +10,13 @@ from golem.client import Client
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
+from golem.tools.assertlogs import LogTestCase
 
+from apps.core.task.gnrtaskstate import GNRTaskState
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic, logger
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -158,7 +160,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
 
 
-class TestGNRApplicationLogicWithClient(DatabaseFixture):
+class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def setUp(self):
         super(TestGNRApplicationLogicWithClient, self).setUp()
@@ -219,6 +221,34 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture):
         golem_client.change_description("NEW DESC")
         time.sleep(0.5)
         assert golem_client.get_description() == "NEW DESC"
+
+    def test_messages(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        assert logic._format_stats_message(("STAT1", 2424)) == u"Session: STAT1; All time: 2424"
+        assert logic._format_stats_message(["STAT1"]) == u"Error"
+        assert logic._format_stats_message(13131) == u"Error"
+
+        ts = GNRTaskState()
+        ts.definition.main_program_file = "nonexisting"
+        assert not logic._validate_task_state(ts)
+        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
+
+        with self.assertLogs(logger, level="WARNING"):
+            logic.set_current_task_type("unknown task")
+
+        with self.assertLogs(logger, level="WARNING"):
+            logic.task_status_changed("unknown id")
+
+        task_type = Mock()
+        task_type.name = "NAME1"
+        logic.register_new_task_type(task_type)
+        with self.assertRaises(AssertionError):
+            logic.register_new_task_type(task_type)
+
+        logic.register_new_test_task_type(task_type)
+        with self.assertRaises(AssertionError):
+            logic.register_new_test_task_type(task_type)
 
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture):
