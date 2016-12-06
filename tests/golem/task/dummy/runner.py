@@ -18,7 +18,6 @@ from threading import Thread
 from twisted.internet import reactor
 
 from golem.core.common import is_windows
-from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -79,7 +78,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
     task.initialize(DirManager(datadir))
-    client.enqueue_new_task(DictSerializer.dump(task))
+    client.enqueue_new_task(task)
 
     port = client.p2pservice.cur_port
     requestor_addr = "{}:{}".format(client.node.prv_addr, port)
