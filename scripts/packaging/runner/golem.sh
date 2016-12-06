@@ -20,7 +20,7 @@ IPFS_TAG="ipfs"
 IPFS_LOG="/tmp/ipfs-daemon.log"
 IPFS_DIR="./${IPFS_TAG}"
 
-GETH_URL="https://github.com/ethereum/go-ethereum/releases/download/v1.4.5/geth-Linux64-20160524084000-1.4.5-a269a71.tar.bz2"
+GETH_URL="https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.5.4-b70acf3c.tar.gz"
 GETH_TAG="geth"
 GETH_DIR="./${GETH_TAG}"
 
@@ -85,6 +85,7 @@ function download {
         mkdir -p "${DIR}"
         mv "${TMP}" "${DIR}/${OUTPUT}"
     else
+        OUTPUT=$(ls -d *${TAG}*)
         mv -f "${OUTPUT}" "${DIR}"
     fi
 }
