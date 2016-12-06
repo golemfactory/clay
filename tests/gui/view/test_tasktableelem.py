@@ -35,4 +35,13 @@ class TestTaskTableElem(TestCase):
 
         assert ItemMap.count() == 6
 
+        with self.assertRaises(AssertionError):
+            tte.setProgress(10)
+        tte.setProgress(0.0)
+        assert tte.progress == 0.0
+        tte.setProgress(1.0)
+        assert tte.progress == 1.0
+        tte.setProgress(0.4)
+        assert tte.progress == 0.4
+
 

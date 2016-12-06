@@ -358,3 +358,30 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
 
         set_width = self.app.main_window.ui.taskTableWidget.setColumnWidth
         set_width.assert_has_calls([call(i, ANY) for i in xrange(0, n)])
+
+    def test_update_peers_view(self):
+        logic = self.logic
+        gnrgui = self.app
+        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer.new_task_dialog_customizer = Mock()
+        peer = Mock()
+        peer.address = "10.10.10.10"
+        peer.port = 1031
+        peer.key_id = "KEYID"
+        peer.node_name = "NODE 1"
+        peer2 = Mock()
+        peer2.address = "10.10.10.20"
+        peer2.port = 1034
+        peer2.key_id = "KEYID2"
+        peer2.node_name = "NODE 2"
+        logic._update_peers_view([peer, peer2])
+        table = logic.customizer.gui.ui.connectedPeersTable
+        assert table.rowCount() == 2
+        assert table.item(0, 0).text() == "10.10.10.10"
+        assert table.item(1, 0).text() == "10.10.10.20"
+        assert table.item(0, 1).text() == "1031"
+        assert table.item(1, 1).text() == "1034"
+        assert table.item(0, 2).text() == "KEYID"
+        assert table.item(1, 2).text() == "KEYID2"
+        assert table.item(0, 3).text() == "NODE 1"
+        assert table.item(1, 3).text() == "NODE 2"

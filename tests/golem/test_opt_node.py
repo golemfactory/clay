@@ -1,9 +1,12 @@
 import os
 import cPickle
 import jsonpickle
-from mock import patch, call
-from golemapp import start
+from unittest import TestCase
+
 from click.testing import CliRunner
+from mock import patch, call, Mock
+
+from golemapp import start, OptNode
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.tools.testwithdatabase import TestWithDatabase
 
@@ -221,3 +224,11 @@ class TestNode(TestWithDatabase):
         finally:
             if os.path.exists(test_json_file):
                 os.remove(test_json_file)
+
+
+class TestOptNode(TestCase):
+    def test_task_builder(self):
+        node = OptNode()
+        task_def = Mock()
+        task_def.task_type = "Blender"
+        assert node._get_task_builder(task_def) is not None

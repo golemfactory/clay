@@ -8,13 +8,13 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
+
 
 from gui.startapp import register_rendering_task_types
 from gui.application import GNRGui
 from gui.renderingapplicationlogic import RenderingApplicationLogic
-
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from gui.view.appmainwindow import AppMainWindow
 
 from golem.resource.dirmanager import DirManager
@@ -54,7 +54,8 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
     def test_messages(self):
         logic = self.logic
         logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, logic)
-        rts = RenderingTaskState()
+        rts = logic._get_new_task_state()
+        assert isinstance(rts, RenderingTaskState)
         logic._validate_task_state(rts)
         register_rendering_task_types(logic)
         m = Mock()
@@ -102,3 +103,8 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. "
         logic.test_task_computation_success([], 10000)
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"
+        rts.output_file = 1313
+        assert not logic._validate_task_state(rts)
+
+    def test_task_state(self):
+        assert isinstance(self.logic._get_new_task_state(), RenderingTaskState)
