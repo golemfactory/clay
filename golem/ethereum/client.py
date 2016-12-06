@@ -77,14 +77,32 @@ class Client(object):
         """
         return self.web3.eth.getBalance(account)
 
-    def call(self, obj):
+    def call(self, _from=None, to=None, gas=None, gasPrice=None, value=None, data=None, nonce=None):
         """
         Executes a message call transaction, which is directly executed in the VM of the node,
         but never mined into the blockchain
-        :param obj: A transaction object see web3.eth.sendTransaction, with the difference
-        that for calls the from property is optional as well
+        :param _from: The address for the sending account
+        :param to: The destination address of the message, left undefined for a contract-creation transaction
+        :param gas: The value transferred for the transaction in Wei,
+        also the endowment if it's a contract-creation transaction
+        :param gasPrice: The amount of gas to use for the transaction (unused gas is refunded)
+        :param value: The price of gas for this transaction in wei, defaults to the mean network gas price
+        :param data: Either a byte string containing the associated data of the message,
+        or in the case of a contract-creation transaction, the initialisation code
+        :param nonce: Integer of a nonce. This allows to overwrite your own pending transactions that use the same nonce
         :return: The returned data of the call, e.g. a codes functions return value
         """
+        if not _from:
+            _from = self.web3.eth.defaultAccount
+        obj = dict(
+            _from=_from,
+            to=to,
+            gas=gas,
+            gasPrice=gasPrice,
+            value=value,
+            data=data,
+            nonce=nonce
+        )
         return self.web3.eth.call(obj)
 
     def get_transaction_receipt(self, hash):
