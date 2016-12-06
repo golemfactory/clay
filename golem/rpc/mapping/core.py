@@ -1,11 +1,13 @@
 from golem.rpc.mapping.aliases import *
 
 CORE_METHOD_MAP = dict(
-    get_config=             Environment.opts,
+    get_settings=           Environment.opts,
+    update_settings=        Environment.opts_update,
     get_setting=            Environment.opt,
     update_setting=         Environment.opt_update,
     get_datadir=            Environment.datadir,
     get_description=        Environment.opt_description,
+    change_description=     Environment.opt_description_update,
 
     use_ranking=            Environment.use_ranking,
     use_transaction_system= Environment.use_transaction_system,
@@ -29,13 +31,14 @@ CORE_METHOD_MAP = dict(
 
     get_tasks=              Task.tasks,
     run_test_task=          Task.tasks_check,
+    abort_test_task=        Task.tasks_check_abort,
     get_task_stats=         Task.tasks_stats,
     get_known_tasks=        Task.tasks_known,
     remove_task_header=     Task.tasks_known_delete,
 
     get_task=               Task.task,
     query_task_state=       Task.task_state,
-    enqueue_new_task=       Task.task_create,
+    create_task=            Task.task_create,
     remove_task=            Task.task_delete,
     abort_task=             Task.task_abort,
     restart_task=           Task.task_restart,

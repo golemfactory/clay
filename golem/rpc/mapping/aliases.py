@@ -1,11 +1,13 @@
 class Environment(object):
 
     opts                    = 'env.opts'
+    opts_update             = 'env.opts.update'
     opt                     = 'env.opt'
     opt_update              = 'env.opt.update'
 
     # FIXME: description is saved in DB, not config file
     opt_description         = 'env.opt.description'
+    opt_description_update  = 'env.opt.description.update'
     # FIXME: refactor
     use_ranking             = 'env.use_ranking'
     use_transaction_system  = 'env.use_transaction_system'
@@ -56,6 +58,7 @@ class Task(object):
 
     tasks                   = 'comp.tasks'
     tasks_check             = 'comp.tasks.check'
+    tasks_check_abort       = 'comp.tasks.check.abort'
     tasks_stats             = 'comp.tasks.stats'
     tasks_known             = 'comp.tasks.known'
     tasks_known_delete      = 'comp.tasks.known.delete'

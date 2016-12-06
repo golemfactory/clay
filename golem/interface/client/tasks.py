@@ -7,7 +7,6 @@ from gnr.renderingtaskstate import RenderingTaskState
 from gnr.task.blenderrendertask import build_blender_renderer_info
 from gnr.task.luxrendertask import build_lux_render_info
 from gnr.task.tasktester import TaskTester
-from golem.core.common import deadline_to_timestamp
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.task.taskbase import Task
@@ -146,7 +145,6 @@ class Tasks(object):
         task_builder = Tasks.application_logic.get_builder(rendering_task_state)
         task = Task.build_task(task_builder)
         task.header.task_id = str(uuid.uuid4())
-        task.header.deadline = deadline_to_timestamp(task.header.deadline)
 
         if not skip_test:
 
@@ -164,7 +162,8 @@ class Tasks(object):
             if test_result is not True:
                 return CommandResult(error="Test failed: {}".format(test_result))
 
-        deferred = Tasks.client.enqueue_new_task(DictSerializer.dump(task))
+        task_dict = DictSerializer.dump(task)
+        deferred = Tasks.client.create_task(task_dict)
         return CommandHelper.wait_for(deferred, timeout=1800)
 
     @command(argument=id_req, help="Restart a task")

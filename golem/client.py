@@ -53,7 +53,8 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
     def task_status_updated(self, task_id):
         for l in self.client.listeners:
             l.task_updated(task_id)
-        self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
+        if self.client.rpc_publisher:
+            self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
 
 class ClientTaskComputerEventListener(object):
@@ -241,8 +242,7 @@ class Client(object):
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, task_dict):
-        task = DictSerializer.load(task_dict)
+    def enqueue_new_task(self, task):
         task_id = task.header.task_id
         self.task_server.task_manager.add_new_task(task)
         files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
@@ -264,24 +264,27 @@ class Client(object):
 
     def run_test_task(self, t_dict):
         def on_success(*args, **kwargs):
-            with self.lock:
-                self.task_tester = None
-            self.rpc_publisher.publish(Task.evt_task_check_success, *args, **kwargs)
+            self.task_tester = None
+            if self.rpc_publisher:
+                self.rpc_publisher.publish(Task.evt_task_check_success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
-            with self.lock:
-                self.task_tester = None
-            self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
+            self.task_tester = None
+            if self.rpc_publisher:
+                self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        with self.lock:
-            if self.task_tester is None:
-                t = DictSerializer.load(t_dict)
-                self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-                self.task_tester.run()
+        if self.task_tester is None:
+            t = DictSerializer.load(t_dict)
+            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+            self.task_tester.run()
+
+            if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_started, True)
-                return True
 
-        self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
         return False
 
     def abort_test_task(self):
@@ -290,6 +293,10 @@ class Client(object):
                 self.task_tester.end_comp()
                 return True
             return False
+
+    def create_task(self, t_dict):
+        new_task = DictSerializer.load(t_dict)
+        self.enqueue_new_task(new_task)
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
@@ -376,7 +383,7 @@ class Client(object):
     def get_node_key(self):
         return self.node.key
 
-    def get_config(self):
+    def get_settings(self):
         return DictSerializer.dump(self.config_desc)
 
     def get_setting(self, key):
@@ -389,6 +396,10 @@ class Client(object):
             raise Exception("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
+
+    def update_settings(self, settings_dict, run_benchmarks=False):
+        cfg_desc = DictSerializer.load(settings_dict)
+        self.change_config(cfg_desc, run_benchmarks)
 
     def get_datadir(self):
         return self.datadir
@@ -524,7 +535,9 @@ class Client(object):
         self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
     def query_task_state(self, task_id):
-        return self.task_server.task_manager.query_task_state(task_id)
+        state = self.task_server.task_manager.query_task_state(task_id)
+        if state:
+            return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, list_files, client_options=None):
         self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
@@ -687,13 +700,9 @@ class Client(object):
                 self.last_nss_time = time.time()
 
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
-                try:
-                    self.last_net_check_time = time.time()
+                self.last_net_check_time = time.time()
+                if self.rpc_publisher:
                     self.rpc_publisher.publish(Network.evt_connection, self.__connection_status())
-                except Exception as exc:
-                    print "EXCEPTION {}".format(exc)
-                    import traceback
-                    traceback.print_exc()
 
     def __make_node_state_snapshot(self, is_running=True):
 
@@ -726,13 +735,10 @@ class Client(object):
         task_server_port = self.get_task_server_port()
 
         if listen_port == 0 or task_server_port == 0:
-            message = u"Application not listening, check config file."
-        else:
-            if not self.get_connected_peers():
-                message = u"Not connected to Golem Network. Check seed parameters."
-            else:
-                message = u"Connected"
-        return message
+            return u"Application not listening, check config file."
+        elif not self.get_connected_peers():
+            return u"Not connected to Golem Network. Check seed parameters."
+        return u"Connected"
 
     def get_metadata(self):
         metadata = dict()

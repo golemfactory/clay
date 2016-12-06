@@ -11,6 +11,7 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderer
 from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
@@ -149,7 +150,7 @@ class TestNetwork(unittest.TestCase):
         ]
 
         client = Mock()
-        client.get_peer_info.return_value = peer_info
+        client.get_connected_peers.return_value = peer_info
 
         cls.n_clients = len(peer_info)
         cls.client = client
@@ -463,16 +464,17 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
 
             with self._run_context(run_success):
-
                 client.enqueue_new_task.call_args = None
                 client.enqueue_new_task.called = False
 
                 tasks = Tasks()
                 tasks.load(task_file_name, True)
 
-                call_args = client.enqueue_new_task.call_args[0]
+                call_args = client.create_task.call_args[0]
+                task = DictSerializer.load(call_args[0])
+
                 assert len(call_args) == 1
-                assert isinstance(call_args[0], BlenderRenderTask)
+                assert isinstance(task, BlenderRenderTask)
 
             with self._run_context(run_error):
                 client.enqueue_new_task.call_args = None
@@ -481,10 +483,11 @@ class TestTasks(TempDirFixture):
                 tasks = Tasks()
                 tasks.load(task_file_name, True)
 
-                call_args = client.enqueue_new_task.call_args[0]
+                call_args = client.create_task.call_args[0]
+                task = DictSerializer.load(call_args[0])
 
                 assert len(call_args) == 1
-                assert isinstance(call_args[0], BlenderRenderTask)
+                assert isinstance(task, BlenderRenderTask)
 
             with self._run_context(run_error):
                 client.enqueue_new_task.call_args = None

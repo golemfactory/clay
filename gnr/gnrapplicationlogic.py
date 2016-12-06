@@ -19,7 +19,7 @@ from gnr.gnrtaskstate import GNRTaskState
 from gnr.renderingdirmanager import get_benchmarks_path
 from gnr.renderingtaskstate import RenderingTaskState
 from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
-from golem.core.common import get_golem_path, deadline_to_timestamp
+from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
 from golem.resource.dirmanager import DirManager
@@ -90,13 +90,13 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client = client
         self.datadir = datadir
         self.node_name = config.node_name
+        self.dir_manager = DirManager(self.datadir)
 
         self.customizer.init_config()
         self.customizer.set_options(config, client_id, payment_address, description)
+
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
-
-        self.dir_manager = DirManager(self.datadir)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -202,8 +202,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def get_config(self):
-        config = yield self.client.get_config()
-        returnValue(config)
+        config_dict = yield self.client.get_config()
+        returnValue(DictSerializer.load(config_dict))
 
     def change_description(self, description):
         self.client.change_description(description)
@@ -228,8 +228,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def change_config(self, cfg_desc, run_benchmarks=False):
-        yield self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
-        self.node_name = yield self.client.get_node_name()
+        cfg_dict = DictSerializer.dump(cfg_desc)
+        yield self.client.update_settings(cfg_dict, run_benchmarks=run_benchmarks)
+        self.node_name = yield self.client.get_setting('node_name')
         self.customizer.set_name(u"{}".format(self.node_name))
 
     def _get_new_task_state(self):
@@ -246,11 +247,10 @@ class GNRApplicationLogic(QtCore.QObject):
 
         tb = self.get_builder(ts)
         t = Task.build_task(tb)
-        t.header.deadline = deadline_to_timestamp(t.header.deadline)
         ts.task_state.status = TaskStatus.starting
 
         self.customizer.update_tasks(self.tasks)
-        self.client.enqueue_new_task(DictSerializer.dump(t))
+        self.client.create_task(DictSerializer.dump(t))
 
     def get_builder(self, task_state):
         # FIXME This is just temporary for solution for Brass
@@ -421,9 +421,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
             tb = self.get_builder(task_state)
             t = Task.build_task(tb)
-            t.header.deadline = deadline_to_timestamp(t.header.deadline)
             self.client.run_test_task(DictSerializer.dump(t))
-
             return True
 
         return False

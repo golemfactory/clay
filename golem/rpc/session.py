@@ -35,52 +35,35 @@ class WebSocketAddress(RPCAddress):
         )
 
 
-class SessionConnector(object):
-
-    def __init__(self, session_class, address, extra=None, serializers=None, ssl=None,
-                 proxy=None, headers=None, auto_reconnect=True, log_level='info'):
-
-        self.session = session_class(realm=address.realm)
-        self.address = address
-        self.extra = extra
-        self.serializers = serializers
-        self.ssl = ssl
-        self.proxy = proxy
-        self.headers = headers
-        self.log_level = log_level
-        self.auto_reconnect = auto_reconnect
-
-    def connect(self):
-
-        runner = ApplicationRunner(
-            unicode(self.address),
-            realm=self.address.realm,
-            extra=self.extra,
-            serializers=self.serializers,
-            ssl=self.ssl,
-            proxy=self.proxy,
-            headers=self.headers
-        )
-
-        return runner.run(
-            self.session,
-            start_reactor=False,
-            auto_reconnect=self.auto_reconnect,
-            log_level=self.log_level
-        )
-
-
 class Session(ApplicationSession):
 
-    def __init__(self, realm, methods=None, events=None):
+    def __init__(self, address, methods=None, events=None):
+        self.address = address
         self.methods = methods or []
         self.events = events or []
 
         self.ready = Deferred()
         self.connected = False
 
-        self.config = types.ComponentConfig(realm=realm)
+        self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
+
+    def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True, log_level='info'):
+
+        runner = ApplicationRunner(
+            unicode(self.address),
+            realm=self.address.realm,
+            ssl=ssl,
+            proxy=proxy,
+            headers=headers
+        )
+
+        return runner.run(
+            self,
+            start_reactor=False,
+            auto_reconnect=auto_reconnect,
+            log_level=log_level
+        )
 
     @inlineCallbacks
     def onJoin(self, details):

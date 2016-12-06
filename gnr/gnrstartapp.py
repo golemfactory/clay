@@ -100,15 +100,17 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
     if not reactor:
         reactor = install_qt4_reactor()
 
-    from golem.rpc.session import SessionConnector, Session, Client, object_method_map
+    from golem.rpc.session import Session, Client, object_method_map
     from golem.rpc.mapping.core import CORE_METHOD_MAP
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
 
-    connector = SessionConnector(Session, rpc_address)
+    methods = []
+    events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
+    session = Session(rpc_address, methods=methods, events=events)
 
     def session_ready(*_):
         try:
-            core_client = Client(connector.session, CORE_METHOD_MAP)
+            core_client = Client(session, CORE_METHOD_MAP)
             gui_app.start(core_client)
         except Exception:
             import traceback
@@ -118,9 +120,8 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         logger.error(u"GUI process error: {}".format(err))
 
     def connect():
-        connector.session.events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
-        connector.session.ready.addCallbacks(session_ready, shutdown)
-        connector.connect().addErrback(shutdown)
+        session.ready.addCallbacks(session_ready, shutdown)
+        session.connect().addErrback(shutdown)
 
     reactor.callWhenRunning(connect)
     if not reactor.running:
@@ -147,7 +148,7 @@ def start_client_process(queue, start_ranking, datadir=None,
 
     from twisted.internet import reactor
     from golem.rpc.router import CrossbarRouter
-    from golem.rpc.session import SessionConnector, Session, object_method_map
+    from golem.rpc.session import Session, object_method_map
     from golem.rpc.mapping.core import CORE_METHOD_MAP
 
     for env in environments:
@@ -157,12 +158,14 @@ def start_client_process(queue, start_ranking, datadir=None,
     router = CrossbarRouter(datadir=client.datadir)
 
     def router_ready(*_):
-        connector = SessionConnector(Session, router.address)
-        client.configure_rpc(connector.session)
+        events = []
+        methods = object_method_map(client, CORE_METHOD_MAP)
+        session = Session(router.address, methods=methods, events=events)
 
-        connector.session.methods = object_method_map(client, CORE_METHOD_MAP)
-        connector.session.ready.addCallbacks(session_ready, shutdown)
-        connector.connect().addErrback(shutdown)
+        client.configure_rpc(session)
+
+        session.ready.addCallbacks(session_ready, shutdown)
+        session.connect().addErrback(shutdown)
 
     def session_ready(*_):
         try:
