@@ -48,32 +48,21 @@ def nt_path_to_posix_path(path):
     return path
 
 
-def get_current_time():
-    return datetime.now(pytz.utc)
-
-
-def deadline_to_timeout(deadline):
-    """ Return number of seconds from now to deadline
-    :param datetime deadline: UTC datetime
-    :return float:
-    """
-    return (deadline - get_current_time()).total_seconds()
+def get_timestamp_utc():
+    now = datetime.now(pytz.utc)
+    return timegm(now.utctimetuple()) + now.microsecond / 1000000.0
 
 
 def timeout_to_deadline(timeout):
-    """ Return utctime <timeout> seconds from now
-    :param float timeout:
-    :return datetime:
-    """
-    return get_current_time() + timedelta(seconds=timeout)
+    return get_timestamp_utc() + timeout
 
 
-def deadline_to_timestamp(deadline):
-    """ Return timestamp in UTC tz
-    :param datetime deadline: UTC datetime
-    :return float:
-    """
-    return timegm(deadline.utctimetuple()) + deadline.microsecond // 1000000
+def deadline_to_timeout(timestamp):
+    return timestamp - get_timestamp_utc()
+
+
+def timestamp_to_datetime(ts):
+    return datetime.fromtimestamp(ts, pytz.utc)
 
 
 class HandleError(object):

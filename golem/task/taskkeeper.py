@@ -1,10 +1,11 @@
 from __future__ import division
+
 import logging
 import random
 import time
 from math import ceil
 
-from golem.core.common import HandleKeyError, get_current_time
+from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -93,7 +94,7 @@ class CompTaskKeeper(object):
         self.active_tasks[task_id].requests -= 1
 
     def remove_old_tasks(self):
-        time_ = get_current_time()
+        time_ = get_timestamp_utc()
         for task_id, task in self.active_tasks.items():
             if time_ > task.header.deadline and len(task.subtasks) == 0:
                 self.remove_task(task_id)
@@ -231,7 +232,7 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
-            cur_time = get_current_time()
+            cur_time = get_timestamp_utc()
             if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)

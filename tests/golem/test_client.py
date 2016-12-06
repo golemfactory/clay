@@ -3,8 +3,7 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
-from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
+from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
@@ -241,26 +240,6 @@ class TestClientRPCMethods(TestWithDatabase):
 
 
 class TestEventListener(unittest.TestCase):
-
-    def test_remote_event_listener(self):
-
-        builder = Mock()
-        builder.build_client = lambda x: Mock()
-        listener = GolemClientRemoteEventListener(Mock())
-
-        assert listener.build(builder)
-        assert listener.remote_client
-
-        gnr_listener = GNRClientRemoteEventListener(Mock())
-
-        assert gnr_listener.build(builder)
-        assert gnr_listener.remote_client
-
-        gnr_listener.task_updated('xyz')
-        assert gnr_listener.remote_client.task_status_changed.called
-
-        gnr_listener.check_network_state()
-        assert gnr_listener.remote_client.check_network_state.called
 
     def test_task_computer_event_listener(self):
 

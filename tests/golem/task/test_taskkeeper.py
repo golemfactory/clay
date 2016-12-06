@@ -1,15 +1,13 @@
 import time
-from datetime import timedelta
 from unittest import TestCase
 
-from mock import Mock
-
-from golem.core.common import get_current_time, timeout_to_deadline
+from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
 from golem.tools.assertlogs import LogTestCase
+from mock import Mock
 
 
 class TestTaskHeaderKeeper(LogTestCase):
@@ -221,7 +219,7 @@ class TestCompTaskKeeper(LogTestCase):
             ctk.remove_task("xyz")
         self.assertIsNone(ctk.active_tasks.get("xyz"))
 
-        header.deadline = get_current_time() - timedelta(seconds=1)
+        header.deadline = get_timestamp_utc() - 1
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         ctk.remove_old_tasks()
