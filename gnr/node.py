@@ -12,7 +12,6 @@ from gnr.renderingenvironment import BlenderEnvironment, \
 from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
-from golem.core.common import deadline_to_timestamp
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.task.taskbase import Task
 
@@ -48,7 +47,6 @@ class Node(object):
             task_builder = self._get_task_builder(task_def)
             golem_task = Task.build_task(task_builder(self.client.get_node_name(), task_def,
                                                       self.client.datadir))
-            golem_task.header.deadline = deadline_to_timestamp(golem_task.header.deadline)
             self.client.enqueue_new_task(golem_task)
 
     def run(self, use_rpc=False):

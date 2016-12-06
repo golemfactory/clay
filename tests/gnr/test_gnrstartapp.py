@@ -6,7 +6,7 @@ from gnr.gnrstartapp import load_environments, start_client_process, \
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.environments.environment import Environment
-from golem.rpc.legacy.websockets import WebSocketRPCServerFactory
+from golem.rpc.session import WebSocketAddress
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from mock import Mock, patch
 
@@ -45,21 +45,18 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                                  client=client,
                                  start_ranking=False)
         except Exception as exc:
-            self.fail("Cannot start client process: {}".format(exc))
+            self.fail(u"Cannot start client process: {}".format(exc))
         finally:
             if client:
                 client.quit()
 
     @patch('logging.config.fileConfig')
     def test_start_gui(self, *_):
+
+        address = WebSocketAddress('127.0.0.1', 50000, realm=u'golem')
+
         queue = Queue()
-
-        rpc_server = WebSocketRPCServerFactory()
-        rpc_server.local_host = '127.0.0.1'
-
-        mock_service_info = rpc_server.add_service(MockService())
-        queue.put(mock_service_info)
-
+        queue.put(address)
         gui_app = None
 
         try:
@@ -70,8 +67,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             start_gui_process(queue, self.path,
                               gui_app=gui_app,
                               reactor=reactor)
+
         except Exception as exc:
-            self.fail("Cannot start gui process: {}".format(exc))
+            import traceback
+            traceback.print_exc()
+            self.fail(u"Cannot start gui process: {}".format(exc))
         finally:
             if gui_app and gui_app.app and gui_app.app.app:
                 gui_app.app.app.exit(0)
