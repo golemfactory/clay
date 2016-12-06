@@ -38,3 +38,6 @@ def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork
         node.add_tasks(task)
 
         node.run(use_rpc=True)
+
+if __name__ == '__main__':
+    start()
