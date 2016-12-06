@@ -28,6 +28,9 @@ class Client(object):
 
     @staticmethod
     def _kill_node():
+        """
+        Stop node if is running
+        """
         # FIXME: Keeping the node as a static object might not be the best.
         if Client.node:
             Client.node.stop()
@@ -94,20 +97,18 @@ class Client(object):
         :param block: integer block number, or the string "latest", "earliest" or "pending"
         :return: The returned data of the call, e.g. a codes functions return value
         """
-        if not _from:
-            _from = self.web3.eth.defaultAccount
-        if not block:
-            block = self.web3.eth.defaultBlock
+        _from = _from or self.web3.eth.defaultAccount
+        block = block or self.web3.eth.defaultBlock
 
-        obj = dict(
-            _from=_from,
-            to=to,
-            gas=gas,
-            gasPrice=gas_price,
-            value=value,
-            data=data,
-            nonce=nonce
-        )
+        obj = {
+            'from': _from,
+            'to': to,
+            'gas': gas,
+            'gasPrice': gas_price,
+            'value': value,
+            'data': data,
+            'nonce': nonce
+        }
         return self.web3.eth.call(obj, block)
 
     def get_transaction_receipt(self, tx_hash):
@@ -130,12 +131,12 @@ class Client(object):
         Each topic can also be an array of DATA with "or" options
         :return: https://github.com/ethereum/wiki/wiki/JavaScript-API#web3ethfilter
         """
-        obj = dict(
-            fromBlock=from_block,
-            toBlock=to_block,
-            address=address,
-            topics=topics
-        )
+        obj = {
+            'fromBlock': from_block,
+            'toBlock': to_block,
+            'address': address,
+            'topics': topics
+        }
         return self.web3.eth.filter(obj)
 
     def get_filter_changes(self, filer_id):
