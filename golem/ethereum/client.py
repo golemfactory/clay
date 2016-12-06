@@ -69,15 +69,19 @@ class Client(object):
         """
         return self.web3.eth.sendTransaction(transaction)
 
-    def get_balance(self, account):
+    def get_balance(self, account, block_identifier=None):
         """
-        Returns the balance of the given account
-        :param account: Account
+        Returns the balance of the given account at the block specified by block_identifier
+        :param account: The address to get the balance of
+        :param block_identifier: If you pass this parameter it will not use the default block
+        set with web3.eth.defaultBlock
         :return: Balance
         """
-        return self.web3.eth.getBalance(account)
+        if not block_identifier:
+            block_identifier = self.web3.eth.defaultBlock
+        return self.web3.eth.getBalance(account, block_identifier)
 
-    def call(self, _from=None, to=None, gas=None, gasPrice=None, value=None, data=None, nonce=None):
+    def call(self, _from=None, to=None, gas=None, gasPrice=None, value=None, data=None, nonce=None, block=None):
         """
         Executes a message call transaction, which is directly executed in the VM of the node,
         but never mined into the blockchain
@@ -90,10 +94,14 @@ class Client(object):
         :param data: Either a byte string containing the associated data of the message,
         or in the case of a contract-creation transaction, the initialisation code
         :param nonce: Integer of a nonce. This allows to overwrite your own pending transactions that use the same nonce
+        :param block: integer block number, or the string "latest", "earliest" or "pending"
         :return: The returned data of the call, e.g. a codes functions return value
         """
         if not _from:
             _from = self.web3.eth.defaultAccount
+        if not block:
+            block = self.web3.eth.defaultBlock
+
         obj = dict(
             _from=_from,
             to=to,
@@ -103,7 +111,7 @@ class Client(object):
             data=data,
             nonce=nonce
         )
-        return self.web3.eth.call(obj)
+        return self.web3.eth.call(obj, block)
 
     def get_transaction_receipt(self, hash):
         """
@@ -113,6 +121,30 @@ class Client(object):
         """
         return self.web3.eth.getTransactionReceipt(hash)
 
-    def new_filter(self, array):
-        """ https://github.com/ethereum/wiki/wiki/JavaScript-API#web3ethfilter """
-        return self.web3.eth.filter(array)
+    def new_filter(self, from_block="latest", to_block="latest", address=None, topics=None):
+        """
+        Creates a filter object, based on filter options, to notify when the state changes (logs)
+        :param from_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param to_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param address: Contract address or a list of addresses from which logs should originate
+        :param topics: Array of 32 Bytes DATA topics. Topics are order-dependent.
+        Each topic can also be an array of DATA with "or" options
+        :return: https://github.com/ethereum/wiki/wiki/JavaScript-API#web3ethfilter
+        """
+        obj = dict(
+            fromBlock=from_block,
+            toBlock=to_block,
+            address=address,
+            topics=topics
+        )
+        return self.web3.eth.filter(obj)
+
+    def get_filter_changes(self, filer_id):
+        """
+        Polling method for a filter, which returns an array of logs which occurred since last poll
+        :param filer_id: the filter id
+        :return: https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterchanges
+        """
+        return # self.web3.eth.getFilterChanges(filer_id)
