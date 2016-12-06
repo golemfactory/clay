@@ -1,6 +1,5 @@
 import logging
 
-import rlp
 from web3 import Web3, KeepAliveRPCProvider
 
 from .node import NodeProcess
@@ -77,11 +76,9 @@ class Client(object):
         set with web3.eth.defaultBlock
         :return: Balance
         """
-        if not block_identifier:
-            block_identifier = self.web3.eth.defaultBlock
-        return self.web3.eth.getBalance(account, block_identifier)
+        return self.web3.eth.getBalance(account, block_identifier or self.web3.eth.defaultBlock)
 
-    def call(self, _from=None, to=None, gas=None, gasPrice=None, value=None, data=None, nonce=None, block=None):
+    def call(self, _from=None, to=None, gas=None, gas_price=None, value=None, data=None, nonce=None, block=None):
         """
         Executes a message call transaction, which is directly executed in the VM of the node,
         but never mined into the blockchain
@@ -89,7 +86,7 @@ class Client(object):
         :param to: The destination address of the message, left undefined for a contract-creation transaction
         :param gas: The value transferred for the transaction in Wei,
         also the endowment if it's a contract-creation transaction
-        :param gasPrice: The amount of gas to use for the transaction (unused gas is refunded)
+        :param gas_price: The amount of gas to use for the transaction (unused gas is refunded)
         :param value: The price of gas for this transaction in wei, defaults to the mean network gas price
         :param data: Either a byte string containing the associated data of the message,
         or in the case of a contract-creation transaction, the initialisation code
@@ -106,20 +103,20 @@ class Client(object):
             _from=_from,
             to=to,
             gas=gas,
-            gasPrice=gasPrice,
+            gasPrice=gas_price,
             value=value,
             data=data,
             nonce=nonce
         )
         return self.web3.eth.call(obj, block)
 
-    def get_transaction_receipt(self, hash):
+    def get_transaction_receipt(self, tx_hash):
         """
         Returns the receipt of a transaction by transaction hash.
-        :param hash: The transaction hash
+        :param tx_hash: The transaction hash
         :return: Receipt of a transaction
         """
-        return self.web3.eth.getTransactionReceipt(hash)
+        return self.web3.eth.getTransactionReceipt(tx_hash)
 
     def new_filter(self, from_block="latest", to_block="latest", address=None, topics=None):
         """
@@ -147,4 +144,4 @@ class Client(object):
         :param filer_id: the filter id
         :return: https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterchanges
         """
-        return # self.web3.eth.getFilterChanges(filer_id)
+        return self.web3.eth.getFilterChanges(filer_id)
