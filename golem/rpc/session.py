@@ -103,9 +103,10 @@ class Session(ApplicationSession):
 
 class Client(object):
 
-    def __init__(self, session, method_map):
+    def __init__(self, session, method_map, timeout=2):
 
         self.session = session
+        self.timeout = timeout
 
         for method_name, method_alias in method_map.items():
             setattr(self, method_name, self.make_call(method_alias))
@@ -115,11 +116,14 @@ class Client(object):
 
     def _call(self, method_alias, *args, **kwargs):
         if self.session.connected:
+            # if 'options' not in kwargs or not kwargs.get('options'):
+            #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
             deferred = self.session.call(method_alias, *args, **kwargs)
             deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
             deferred.errback(ProtocolError(u"Session is not yet established"))
+
         return deferred
 
     @staticmethod

@@ -7,6 +7,7 @@ from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
+from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
@@ -218,21 +219,81 @@ class TestClientRPCMethods(TestWithDatabase):
         c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_update_setting(self, _):
+    def test_misc(self, _):
         c = self.__new_client()
-        new_node_name = str(uuid.uuid4())
-        c.update_setting('node_name', new_node_name)
-        assert c.config_desc.node_name == new_node_name
-        c.quit()
+        c.enqueue_new_task = Mock()
+
+        try:
+            # settings
+            new_node_name = str(uuid.uuid4())
+            assert c.get_setting('node_name') != new_node_name
+            c.update_setting('node_name', new_node_name)
+            assert c.get_setting('node_name') == new_node_name
+            assert c.get_settings()['node_name'] == new_node_name
+
+            newer_node_name = str(uuid.uuid4())
+            assert c.get_setting('node_name') != newer_node_name
+            settings = c.get_settings()
+            settings['node_name'] = newer_node_name
+            c.update_settings(settings)
+            assert c.get_setting('node_name') == newer_node_name
+
+            # configure rpc
+            rpc_session = Mock()
+            assert c.rpc_publisher is None
+            c.configure_rpc(rpc_session)
+            assert c.rpc_publisher.session is rpc_session
+
+            # create task rpc
+            task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
+            c.create_task(task_dict)
+            assert c.enqueue_new_task.called
+
+            # status without peers
+            assert c._Client__connection_status().startswith(u"Not connected")
+
+            # peers
+            c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
+            c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
+
+            known_peers = c.get_known_peers()
+            assert len(known_peers) == 3
+            assert all(peer for peer in known_peers)
+
+            connected_peers = c.get_connected_peers()
+            assert len(connected_peers) == 4
+            assert all(peer for peer in connected_peers)
+
+            # status with peers
+            assert c._Client__connection_status().startswith(u"Connected")
+            # status without ports
+            c.p2pservice.cur_port = 0
+            assert c._Client__connection_status().startswith(u"Application not listening")
+
+            # public key
+            assert c.get_public_key() == c.keys_auth.public_key
+
+        except:
+            raise
+        finally:
+            c.quit()
+
+    @staticmethod
+    def __new_session():
+        session = Mock()
+        for attr in PeerSessionInfo.attributes:
+            setattr(session, attr, str(uuid.uuid4()))
+        return session
 
     def __new_client(self):
         client = Client(datadir=self.path,
-                        transaction_system=False,
+                        transaction_system=True,
                         connect_to_known_hosts=False,
                         use_docker_machine_manager=False,
                         use_monitor=False)
 
         client.p2pservice = Mock()
+        client.p2pservice.peers = {}
         client.task_server = Mock()
         client.monitor = Mock()
 

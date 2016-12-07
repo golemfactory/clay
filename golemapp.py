@@ -25,7 +25,7 @@ def start(gui, payments, datadir, node_address, peer, task, multiprocessing_fork
     freeze_support()
 
     if gui:
-        start_app(gui=True, datadir=datadir, rendering=True,
+        start_app(datadir=datadir, rendering=True,
                   transaction_system=payments)
     else:
         config_logging()

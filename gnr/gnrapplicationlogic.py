@@ -202,7 +202,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def get_config(self):
-        config_dict = yield self.client.get_config()
+        config_dict = yield self.client.get_settings()
         returnValue(DictSerializer.load(config_dict))
 
     def change_description(self, description):

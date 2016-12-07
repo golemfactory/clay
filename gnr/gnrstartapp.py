@@ -104,17 +104,12 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
     from golem.rpc.mapping.core import CORE_METHOD_MAP
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
 
-    methods = []
     events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
-    session = Session(rpc_address, methods=methods, events=events)
+    session = Session(rpc_address, events=events)
 
     def session_ready(*_):
-        try:
-            core_client = Client(session, CORE_METHOD_MAP)
-            gui_app.start(core_client)
-        except Exception:
-            import traceback
-            traceback.print_exc()
+        core_client = Client(session, CORE_METHOD_MAP)
+        gui_app.start(core_client)
 
     def shutdown(err):
         logger.error(u"GUI process error: {}".format(err))
@@ -157,12 +152,12 @@ def start_client_process(queue, start_ranking, datadir=None,
     router = CrossbarRouter(datadir=client.datadir)
 
     def router_ready(*_):
-        events = []
         methods = object_method_map(client, CORE_METHOD_MAP)
-        session = Session(router.address, methods=methods, events=events)
-
+        session = Session(router.address, methods=methods)
         client.configure_rpc(session)
-        session.connect().addCallbacks(session_ready, shutdown)
+
+        deferred = session.connect()
+        deferred.addCallbacks(session_ready, shutdown)
 
     def session_ready(*_):
         try:
@@ -187,7 +182,7 @@ def start_client_process(queue, start_ranking, datadir=None,
         reactor.run()
 
 
-def start_app(gui=True, datadir=None, rendering=False,
+def start_app(datadir=None, rendering=False,
               start_ranking=True, transaction_system=False):
 
     queue = Queue()
