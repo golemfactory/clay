@@ -129,7 +129,8 @@ class Client(object):
         :param address: Contract address or a list of addresses from which logs should originate
         :param topics: Array of 32 Bytes DATA topics. Topics are order-dependent.
         Each topic can also be an array of DATA with "or" options
-        :return: https://github.com/ethereum/wiki/wiki/JavaScript-API#web3ethfilter
+        :return: web3.utils.filters.Filter object which can then be used to either directly fetch the results
+        of the filter or to register callbacks which will be called with each result of the filter
         """
         obj = {
             'fromBlock': from_block,
@@ -143,6 +144,10 @@ class Client(object):
         """
         Polling method for a filter, which returns an array of logs which occurred since last poll
         :param filer_id: the filter id
-        :return: https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getfilterchanges
+        :return: Returns all new entries which occurred since the last call to this method for the given filter_id
         """
+        if hasattr(filer_id, 'filter_id'):  # in case of passing filter object
+            filer_id = filer_id.filter_id
+        if isinstance(filer_id, basestring):
+            filer_id = int(filer_id, 16)
         return self.web3.eth.getFilterChanges(filer_id)

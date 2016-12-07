@@ -103,6 +103,7 @@ class NodeProcess(object):
             '--datadir', self.datadir,
             '--networkid', '9',
             '--port', str(self.port),
+            '--etherbase', '0x6528d9354356d7f668c75e9ed97f792bf910c8e5',
             '--nodiscover',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
