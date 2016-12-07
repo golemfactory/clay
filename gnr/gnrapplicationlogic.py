@@ -80,7 +80,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def register_client(self, client):
 
         datadir = yield client.get_datadir()
-        config_dict = yield client.get_config()
+        config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
         payment_address = yield client.get_payment_address()
         description = yield client.get_description()
