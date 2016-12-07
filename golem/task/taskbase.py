@@ -49,9 +49,11 @@ class TaskHeader(object):
         clean.pop('last_checking', None)
 
         task_header = TaskHeader(**clean)
-        task_owner = Node()
-        task_owner.__dict__ = task_header.task_owner
-        task_header.task_owner = task_owner
+
+        if isinstance(task_header.task_owner, dict):
+            task_owner = Node()
+            task_owner.__dict__ = task_header.task_owner
+            task_header.task_owner = task_owner
 
         return task_header
 

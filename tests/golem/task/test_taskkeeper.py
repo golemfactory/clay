@@ -7,6 +7,7 @@ from mock import Mock
 from golem.core.common import get_current_time, timeout_to_deadline
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
 from golem.tools.assertlogs import LogTestCase
@@ -160,7 +161,7 @@ def get_task_header():
     return {
         "task_id": "xyz",
         "node_name": "ABC",
-        "task_owner": "task_owner",
+        "task_owner": Node(),
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
