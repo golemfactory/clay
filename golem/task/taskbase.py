@@ -3,8 +3,9 @@ import logging
 import time
 from copy import deepcopy
 
-from golem.core.simpleserializer import CBORSerializer
+from golem.core.simpleserializer import CBORSerializer, to_dict
 from golem.core.variables import APP_VERSION
+from golem.network.p2p.node import Node
 
 logger = logging.getLogger("golem.task")
 
@@ -37,16 +38,22 @@ class TaskHeader(object):
         self.signature = signature
 
     def to_binary(self):
-        return self.dict_to_binary(vars(self))
+        return self.dict_to_binary(self.to_dict())
 
     def to_dict(self):
-        return dict(vars(self))
+        return to_dict(self)
 
     @staticmethod
     def from_dict(dictionary):
         clean = dict(dictionary)
         clean.pop('last_checking', None)
-        return TaskHeader(**clean)
+
+        task_header = TaskHeader(**clean)
+        task_owner = Node()
+        task_owner.__dict__ = task_header.task_owner
+        task_header.task_owner = task_owner
+
+        return task_header
 
     @classmethod
     def dict_to_binary(cls, dictionary):
@@ -58,11 +65,11 @@ class TaskHeader(object):
 
         task_owner = self_dict.get('task_owner')
         if task_owner:
-            self_dict['task_owner'] = cls._ordered(vars(task_owner))
+            self_dict['task_owner'] = cls._ordered(to_dict(task_owner))
 
         docker_images = self_dict.get('docker_images')
         if docker_images:
-            self_dict['docker_images'] = [cls._ordered(vars(d)) for d in docker_images]
+            self_dict['docker_images'] = [cls._ordered(to_dict(d)) for d in docker_images]
 
         return CBORSerializer.dumps(cls._ordered(self_dict))
 

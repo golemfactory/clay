@@ -140,9 +140,15 @@ def to_dict(obj, cls=None, _parents=None):
     _parents = _parents or set()
 
     if isinstance(obj, dict):
-        return {k: to_dict(v, cls, _parents=_parents) for k, v in obj.iteritems()}
+        return {unicode(k): to_dict(v, cls, _parents=_parents) for k, v in obj.iteritems()}
 
-    elif isinstance(obj, collections.Iterable) and not isinstance(obj, basestring):
+    elif isinstance(obj, basestring):
+        try:
+            return unicode(obj)
+        except UnicodeDecodeError:
+            return obj
+
+    elif isinstance(obj, collections.Iterable):
         return obj.__class__([to_dict(v, cls, _parents=_parents) for v in obj])
 
     elif hasattr(obj, "__dict__"):
@@ -157,10 +163,10 @@ def to_dict(obj, cls=None, _parents=None):
         data = dict()
         for k, v in obj.__dict__.iteritems():
             if not callable(v) and not k.startswith('_'):
-                data[k] = to_dict(v, cls, _parents=_sub_parents)
+                data[unicode(k)] = to_dict(v, cls, _parents=_sub_parents)
 
         if cls is not None and hasattr(obj, "__class__"):
-            data[cls] = obj.__class__.__name__
+            data[CBORCoder.cls_key] = obj.__class__.__name__
 
         return data
 
