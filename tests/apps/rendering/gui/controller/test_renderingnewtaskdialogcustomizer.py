@@ -1,8 +1,10 @@
 from mock import Mock, patch
 
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
+from apps.core.task.gnrtaskstate import GNROptions
+from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer, logger
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererInfo, RendererDefaults
 
 from gui.application import GNRGui
@@ -11,7 +13,7 @@ from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
-class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
+class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingNewTaskDialogCustomizer, self).setUp()
         self.logic = RenderingApplicationLogic()
@@ -60,3 +62,22 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         file_dialog_mock.getOpenFileName.return_value = ""
         customizer._choose_main_program_file_button_clicked()
         assert customizer.gui.ui.mainProgramFileLineEdit.text() == u"/abc/def/ghi"
+
+        definition.task_type = "UNKNOWN"
+        with self.assertLogs(logger, level="ERROR"):
+            customizer._load_task_type(definition)
+
+        options = GNROptions()
+        customizer.set_renderer_options(options)
+        assert customizer.logic.renderer_options == options
+        assert customizer.get_renderer_options() == options
+        assert isinstance(customizer.get_renderer_options(), GNROptions)
+
+        customizer._RenderingNewTaskDialogCustomizer__test_task_button_clicked()
+        customizer.test_task_computation_finished(True, 103139)
+        assert customizer.task_state.definition.estimated_memory == 103139
+        assert customizer.gui.ui.finishButton.isEnabled()
+        customizer._show_add_resource_dialog()
+        assert not customizer.gui.ui.finishButton.isEnabled()
+
+        customizer._open_options()

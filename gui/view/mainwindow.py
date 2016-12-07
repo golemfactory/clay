@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QMainWindow, QPixmap, QMessageBox
+from PyQt4.QtGui import QMainWindow, QMessageBox
 from gui.view.gen.ui_AppMainWindow import Ui_MainWindow
 
 

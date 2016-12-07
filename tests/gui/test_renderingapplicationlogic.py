@@ -103,7 +103,9 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. "
         logic.test_task_computation_success([], 10000)
         logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"
-        rts.output_file = 1313
+
+        rts.definition = BlenderBenchmark().task_definition
+        rts.definition.output_file = 1342
         assert not logic._validate_task_state(rts)
 
     def test_task_state(self):

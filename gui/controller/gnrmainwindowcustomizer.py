@@ -46,6 +46,7 @@ class GNRMainWindowCustomizer(Customizer):
         self.timer = QtCore.QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
+        self.change_task_dialog = None
 
     def init_config(self):
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
@@ -156,11 +157,11 @@ class GNRMainWindowCustomizer(Customizer):
         subtask_details_dialog.show()
 
     def show_change_task_dialog(self, task_id):
-        change_task_dialog = ChangeTaskDialog(self.gui.window)
+        self.change_task_dialog = ChangeTaskDialog(self.gui.window)
         change_task_dialog_customizer = ChangeTaskDialogCustomizer(self.change_task_dialog, self.logic)
         ts = self.logic.get_task(task_id)
         change_task_dialog_customizer.load_task_definition(ts.definition)
-        change_task_dialog.show()
+        self.change_task_dialog.show()
 
     def change_page(self, current, previous):
         if not current:

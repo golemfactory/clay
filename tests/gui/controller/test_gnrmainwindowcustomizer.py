@@ -6,6 +6,8 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 
+from apps.core.task.gnrtaskstate import GNRTaskState
+
 from gui.application import GNRGui
 from gui.controller.gnrmainwindowcustomizer import GNRMainWindowCustomizer
 from gui.view.appmainwindow import AppMainWindow
@@ -82,5 +84,8 @@ class TestGNRMainWindowCustomizer(TestCase):
         assert customizer.gui.ui.taskTableWidget.item(1, ItemMap.Cost).text() == "2.342000"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Time).text() != "00:00:00"
         assert customizer.gui.ui.taskTableWidget.item(1, ItemMap.Time).text() == time_
+        customizer.remove_task("TASK ID 2")
 
-
+        customizer.logic.get_task.return_value = GNRTaskState()
+        customizer.show_change_task_dialog("ABC")
+        customizer.change_task_dialog.close()
