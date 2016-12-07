@@ -12,7 +12,7 @@ logger = logging.getLogger('golem.rpc')
 class RPCAddress(object):
 
     def __init__(self, protocol, host, port):
-        self.protocol = protocol or 'tcp'
+        self.protocol = protocol
         self.host = host
         self.port = port
         self.address = u'{}://{}:{}'.format(self.protocol,
@@ -28,7 +28,7 @@ class RPCAddress(object):
 class WebSocketAddress(RPCAddress):
 
     def __init__(self, host, port, realm, ssl=False):
-        self.realm = realm
+        self.realm = unicode(realm)
         super(WebSocketAddress, self).__init__(
             u'wss' if ssl else u'ws',
             host, port
