@@ -58,12 +58,15 @@ class Session(ApplicationSession):
             headers=headers
         )
 
-        return runner.run(
+        deferred = runner.run(
             self,
             start_reactor=False,
             auto_reconnect=auto_reconnect,
             log_level=log_level
         )
+
+        deferred.addErrback(lambda err: self.ready.errback(err))
+        return self.ready
 
     @inlineCallbacks
     def onJoin(self, details):

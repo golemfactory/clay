@@ -120,8 +120,7 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
         logger.error(u"GUI process error: {}".format(err))
 
     def connect():
-        session.ready.addCallbacks(session_ready, shutdown)
-        session.connect().addErrback(shutdown)
+        session.connect().addCallbacks(session_ready, shutdown)
 
     reactor.callWhenRunning(connect)
     if not reactor.running:
@@ -163,9 +162,7 @@ def start_client_process(queue, start_ranking, datadir=None,
         session = Session(router.address, methods=methods, events=events)
 
         client.configure_rpc(session)
-
-        session.ready.addCallbacks(session_ready, shutdown)
-        session.connect().addErrback(shutdown)
+        session.connect().addCallbacks(session_ready, shutdown)
 
     def session_ready(*_):
         try:

@@ -75,12 +75,12 @@ class TestRouter(TestDirFixtureWithReactor):
         )
 
         self.state.backend_deferred = self.state.backend_session.connect()
-        self.state.backend_session.ready.addCallbacks(self._backend_session_started, self.state.add_errors)
+        self.state.backend_deferred.addCallbacks(self._backend_session_started, self.state.add_errors)
 
     def _backend_session_started(self, *_):
         self.state.frontend_session = Session(self.state.router.address)
         self.state.frontend_deferred = self.state.frontend_session.connect()
-        self.state.frontend_session.ready.addCallbacks(self._frontend_session_started, self.state.add_errors)
+        self.state.frontend_deferred.addCallbacks(self._frontend_session_started, self.state.add_errors)
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
