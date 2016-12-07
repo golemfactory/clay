@@ -8,4 +8,4 @@ class TestRendererLogic(TestDirFixture):
     def test_renderer_logic(self):
         rl = RendererLogic.instantiate(Mock(), self.path)
         assert rl.task_types['Blender'] is not None
-        assert rl.task_types['Lux'] is not None
+        assert rl.task_types['LuxRender'] is not None

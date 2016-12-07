@@ -56,7 +56,7 @@
   "verification_options":null,
   "estimated_memory":0,
   "full_task_timeout":14400,
-  "renderer":"Blender",
+  "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "options":{
     "py/type":"apps.core.task.gnrtaskstate.GNROptions"

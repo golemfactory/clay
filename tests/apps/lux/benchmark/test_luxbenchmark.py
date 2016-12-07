@@ -23,7 +23,6 @@ class TestLuxBenchmark(unittest.TestCase):
         self.assertTrue(os.path.isdir(self.lb.lux_task_path))
         self.assertTrue(self.lb.task_definition.output_file == os.path.join(tempfile.gettempdir(), "lux_benchmark.png"))
         self.assertTrue(self.lb.task_definition.tasktype == "LuxRender")
-        self.assertTrue(self.lb.task_definition.renderer == "LuxRender")
         self.assertTrue(self.lb.task_definition.output_format == "png")
         self.assertTrue(self.lb.task_definition.task_id == u"{}".format("lux_benchmark"))
         self.assertTrue(os.path.isfile(self.lb.task_definition.main_scene_file))

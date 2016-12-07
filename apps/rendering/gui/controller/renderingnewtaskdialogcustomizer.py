@@ -188,7 +188,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         pass
 
     def _load_task_type(self, definition):
-        renderer_item = self.gui.ui.taskTypeComboBox.findText(definition.renderer)
+        renderer_item = self.gui.ui.taskTypeComboBox.findText(definition.task_type)
         if renderer_item >= 0:
             self.gui.ui.taskTypeComboBox.setCurrentIndex(renderer_item)
         else:
@@ -199,7 +199,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.logic.renderer_options = deepcopy(definition.renderer_options)
 
     def _load_basic_task_params(self, definition):
-        r = self.logic.get_task_type(definition.renderer)
+        r = self.logic.get_task_type(definition.task_type)
         self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
         self.gui.ui.taskNameLineEdit.setText(definition.task_name if definition.task_name else u"{}_{}".format(
             self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))

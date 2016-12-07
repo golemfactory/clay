@@ -509,7 +509,7 @@ class TestTasks(TempDirFixture):
         task = builder.build()
         task.__dict__.update(Benchmark().query_benchmark_task_definition().__dict__)
         task.task_id = "deadbeef"
-        task.renderer = "Blender"
+        task.task_type = "Blender"
         task.docker_images = None
         task.renderer_options = BlenderRendererOptions()
 

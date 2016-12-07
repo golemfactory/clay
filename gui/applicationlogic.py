@@ -294,10 +294,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.client.enqueue_new_task(t)
 
     def get_builder(self, task_state):
-        # FIXME This is just temporary for solution for Brass
-        if hasattr(task_state.definition, "renderer"):
-            task_state.definition.task_type = task_state.definition.renderer
-
         builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
                                                                                      task_state.definition,
                                                                                      self.datadir, self.dir_manager)

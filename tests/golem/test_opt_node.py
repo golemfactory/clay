@@ -1,14 +1,15 @@
 import os
 import cPickle
 import jsonpickle
-from unittest import TestCase
 
 from click.testing import CliRunner
 from mock import patch, call, Mock
 
 from golemapp import start, OptNode
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.testutils import TempDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+
 
 from twisted.internet import reactor  # noqa
 
@@ -226,9 +227,12 @@ class TestNode(TestWithDatabase):
                 os.remove(test_json_file)
 
 
-class TestOptNode(TestCase):
+class TestOptNode(TempDirFixture):
     def test_task_builder(self):
-        node = OptNode()
+        node = OptNode(self.path)
+        print node.default_environments
+        print node.apps_manager.apps
         task_def = Mock()
         task_def.task_type = "Blender"
         assert node._get_task_builder(task_def) is not None
+        node.client.quit()

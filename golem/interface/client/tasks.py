@@ -21,8 +21,8 @@ class RendererLogic(object):
         self.task_types = {}
 
     def get_builder(self, task_state):
-        renderer = task_state.definition.renderer
-        return self.task_types[renderer].task_builder_type(self.node_name, task_state.definition,
+        task_type = task_state.definition.task_type
+        return self.task_types[task_type].task_builder_type(self.node_name, task_state.definition,
                                                           self.datadir, self.dir_manager)
 
     def register_new_task_type(self, task_type):

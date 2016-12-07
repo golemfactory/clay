@@ -39,7 +39,7 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture):
         renderer = RendererInfo("Blender", RendererDefaults(), Mock(), Mock(), Mock(), Mock())
         assert renderer.name == "Blender"
         assert renderer.renderer_options is not None
-        definition.renderer = renderer.name
+        definition.task_type = renderer.name
         definition.renderer_options = Mock()
         definition.renderer_options.use_frames = False
         definition.renderer_options.compositing = False

@@ -17,7 +17,7 @@ class LuxBenchmark(Benchmark):
         
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "lux_benchmark.png")
         self.task_definition.tasktype = "LuxRender"
-        self.task_definition.renderer = "LuxRender"
+        self.task_definition.task_type = "LuxRender"
         self.task_definition.output_format = "png"
         self.task_definition.renderer_options = LuxRenderOptions()
         self.task_definition.renderer_options.haltspp = 5

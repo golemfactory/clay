@@ -25,7 +25,7 @@ class RenderingApplicationLogic(GNRApplicationLogic):
     def _validate_task_state(self, task_state):
 
         td = task_state.definition
-        if td.renderer in self.task_types:
+        if td.task_type in self.task_types:
 
             if not os.path.exists(td.main_program_file):
                 self.customizer.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))

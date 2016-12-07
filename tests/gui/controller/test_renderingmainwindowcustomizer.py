@@ -68,7 +68,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         assert customizer.gui.ui.previewLabel.pixmap().width() == 301
         assert customizer.gui.ui.previewLabel.pixmap().height() == 206
 
-        rts.definition.renderer = u"Blender"
+        rts.definition.task_type = u"Blender"
         rts.definition.renderer_options = MagicMock()
         rts.definition.renderer_options.use_frames = True
         rts.definition.renderer_options.frames = range(10)

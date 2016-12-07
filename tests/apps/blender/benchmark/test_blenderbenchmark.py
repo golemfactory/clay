@@ -30,7 +30,6 @@ class TestBlenderBenchmark(unittest.TestCase):
         self.assertTrue(self.bb.task_definition.output_file == os.path.join(tempfile.gettempdir(),
                                                                             "blender_benchmark.png"))
         self.assertTrue(self.bb.task_definition.tasktype == "Blender")
-        self.assertTrue(self.bb.task_definition.renderer == "Blender")
         self.assertTrue(self.bb.task_definition.output_format == "png")
         self.assertTrue(self.bb.task_definition.task_id == u"{}".format("blender_benchmark"))
         self.assertTrue(os.path.isfile(self.bb.task_definition.main_scene_file))

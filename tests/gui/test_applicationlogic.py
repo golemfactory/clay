@@ -303,7 +303,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         ts = Mock()
         files = self.additional_dir_content([1])
         ts.definition.main_program_file = files[0]
-        ts.definition.renderer = "TESTTASK"
+        ts.definition.task_type = "TESTTASK"
 
         task_type = Mock()
         ttb = TTaskBuilder(self.path)

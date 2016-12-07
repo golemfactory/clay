@@ -100,7 +100,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
         self.__set_renderer_params(t)
 
-        if t.definition.renderer in frame_renderers and t.definition.renderer_options.use_frames:
+        if t.definition.task_type in frame_renderers and t.definition.renderer_options.use_frames:
             self.__set_frame_preview(t)
         else:
             self.__set_preview(t)
@@ -109,7 +109,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
-        if t.definition.renderer in frame_renderers and t.definition.renderer_options.use_frames:
+        if t.definition.task_type in frame_renderers and t.definition.renderer_options.use_frames:
             file_ = self.__get_frame_name(t.definition, 0)
         else:
             file_ = t.definition.output_file
@@ -131,8 +131,6 @@ class AbsRenderingMainWindowCustomizer(object):
     def __set_renderer_params(self, t):
         mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
-        #self.gui.ui.resolution.setText("{} x {}".format(t.definition.resolution[0], t.definition.resolution[1]))
-        #self.gui.ui.renderer.setText("{}".format(t.definition.renderer))
 
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
@@ -219,7 +217,7 @@ class AbsRenderingMainWindowCustomizer(object):
         if t is None or not isinstance(t.definition, RenderingTaskDefinition):
             return
 
-        if t.definition.renderer:
+        if t.definition.task_type:
             definition = t.definition
             
             scaled_size = self.gui.ui.previewLabel.pixmap().size()
@@ -241,10 +239,10 @@ class AbsRenderingMainWindowCustomizer(object):
             y = (y - margin_top) + 1
             task_id = definition.task_id
             task = self.logic.get_task(task_id)
-            renderer = self.logic.get_renderer(definition.renderer)
+            renderer = self.logic.get_task_type(definition.task_type)
             if len(task.task_state.subtask_states) > 0:
                 total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
-                if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
+                if definition.task_type in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, 
@@ -279,11 +277,11 @@ class AbsRenderingMainWindowCustomizer(object):
             definition = self.current_task_highlighted.definition
             if not isinstance(definition, RenderingTaskDefinition):
                 return
-            renderer = self.logic.get_renderer(definition.renderer)
+            renderer = self.logic.get_task_type(definition.task_type)
             subtask = self.__get_subtask(num)
             if subtask is not None:
                 res_x, res_y = self.current_task_highlighted.definition.resolution
-                if definition.renderer in frame_renderers and definition.renderer_options.use_frames:
+                if definition.task_type in frame_renderers and definition.renderer_options.use_frames:
                     frames = len(definition.renderer_options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     border = renderer.get_task_border(subtask.extra_data['start_task'],

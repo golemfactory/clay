@@ -17,7 +17,7 @@ class BlenderBenchmark(Benchmark):
         
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "blender_benchmark.png")
         self.task_definition.tasktype = "Blender"
-        self.task_definition.renderer = "Blender"
+        self.task_definition.task_type = "Blender"
         self.task_definition.output_format = "png"
         self.task_definition.renderer_options = BlenderRendererOptions()
         self.task_definition.renderer_options.frames = [1]
