@@ -5,6 +5,7 @@ from copy import deepcopy
 
 from golem.core.simpleserializer import CBORSerializer, to_dict
 from golem.core.variables import APP_VERSION
+from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 
 logger = logging.getLogger("golem.task")
@@ -54,6 +55,13 @@ class TaskHeader(object):
             task_owner = Node()
             task_owner.__dict__ = task_header.task_owner
             task_header.task_owner = task_owner
+
+        if task_header.docker_images:
+            for i, image in enumerate(task_header.docker_images):
+                if isinstance(image, dict):
+                    di = DockerImage()
+                    di.__dict__ = image
+                    task_header.docker_images[i] = di
 
         return task_header
 
