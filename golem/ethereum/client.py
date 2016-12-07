@@ -148,6 +148,4 @@ class Client(object):
         """
         if hasattr(filer_id, 'filter_id'):  # in case of passing filter object
             filer_id = filer_id.filter_id
-        if isinstance(filer_id, basestring):
-            filer_id = int(filer_id, 16)
         return self.web3.eth.getFilterChanges(filer_id)
