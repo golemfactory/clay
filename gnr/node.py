@@ -13,6 +13,9 @@ from gnr.task.blenderrendertask import BlenderRenderTaskBuilder
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from golem.client import Client
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
+from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.router import CrossbarRouter
+from golem.rpc.session import object_method_map, Session
 from golem.task.taskbase import Task
 
 
@@ -25,9 +28,15 @@ class Node(object):
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
 
+        import logging
+
+        self.logger = logging.getLogger("gnr.node")
         self.client = Client(datadir=datadir,
                              transaction_system=transaction_system,
                              **config_overrides)
+
+        self.rpc_router = None
+        self.rpc_session = None
 
     def initialize(self):
         self.load_environments(self.default_environments)
@@ -61,15 +70,24 @@ class Node(object):
                                         config.rpc_port)
             reactor.run()
         except Exception as ex:
-            import logging
-            logger = logging.getLogger("gnr.app")
-            logger.error("Reactor error: {}".format(ex))
+            self.logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()
             sys.exit(0)
 
     def _start_rpc_server(self, host, port):
-        pass
+        from twisted.internet import reactor
+        self.rpc_router = CrossbarRouter(host=host, port=port, datadir=self.client.datadir)
+        self.rpc_router.start(reactor, self._router_ready, self._rpc_error)
+
+    def _router_ready(self, *_):
+        methods = object_method_map(self.client, CORE_METHOD_MAP)
+        self.rpc_session = Session(self.rpc_router.address, methods=methods)
+        self.client.configure_rpc(self.rpc_session)
+        self.rpc_session.connect().addErrback(self._rpc_error)
+
+    def _rpc_error(self, err):
+        self.logger.error(u"RPC error: {}".format(err))
 
     @staticmethod
     def _get_task_builder(task_def):
