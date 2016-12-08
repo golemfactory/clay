@@ -684,12 +684,26 @@ class Client(object):
             if self.config_desc.send_pings:
                 self.p2pservice.ping_peers(self.config_desc.pings_interval)
 
-            self.p2pservice.sync_network()
-            self.task_server.sync_network()
-            self.resource_server.sync_network()
-            self.ranking.sync_network()
-
-            self.check_payments()
+            try:
+                self.p2pservice.sync_network()
+            except Exception as exc:
+                logger.error("p2pservice.sync_network failed: {}".format(exc))
+            try:
+                self.task_server.sync_network()
+            except Exception as exc:
+                logger.error("task_server.sync_network failed: {}".format(exc))
+            try:
+                self.resource_server.sync_network()
+            except Exception as exc:
+                logger.error("resource_server.sync_network failed: {}".format(exc))
+            try:
+                self.ranking.sync_network()
+            except Exception as exc:
+                logger.error("ranking.sync_network failed: {}".format(exc))
+            try:
+                self.check_payments()
+            except Exception as exc:
+                logger.error("check_payments failed: {}".format(exc))
 
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
