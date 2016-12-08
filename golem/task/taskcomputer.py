@@ -255,7 +255,7 @@ class TaskComputer(object):
             cfg_desc = client.config_desc
             cfg_desc.estimated_lux_performance = performance
             client.change_config(cfg_desc)
-            self.docker_config_changed()
+            self.config_changed()
             if success:
                 success(performance)
 
@@ -278,7 +278,7 @@ class TaskComputer(object):
             cfg_desc = client.config_desc
             cfg_desc.estimated_blender_performance = performance
             client.change_config(cfg_desc)
-            self.docker_config_changed()
+            self.config_changed()
             if success:
                 success(performance)
 
@@ -298,9 +298,9 @@ class TaskComputer(object):
         self.run_lux_benchmark()
         self.run_blender_benchmark()
 
-    def docker_config_changed(self):
+    def config_changed(self):
         for l in self.listeners:
-            l.docker_config_changed()
+            l.config_changed()
         
     def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
         dm = self.docker_manager
@@ -312,7 +312,7 @@ class TaskComputer(object):
         
         if dm.docker_machine_available and self.use_docker_machine_manager:
 
-            self.toggle_config_dialog(True)
+            self.lock_config(True)
 
             def status_callback():
                 return self.counting_task
@@ -321,7 +321,7 @@ class TaskComputer(object):
                 if run_benchmarks:
                     self.run_benchmarks()
                 logger.debug("Resuming new task computation")
-                self.toggle_config_dialog(False)
+                self.lock_config(False)
                 self.runnable = True
 
             self.runnable = False
@@ -332,9 +332,9 @@ class TaskComputer(object):
     def register_listener(self, listener):
         self.listeners.append(listener)
 
-    def toggle_config_dialog(self, on=True):
+    def lock_config(self, on=True):
         for l in self.listeners:
-            l.toggle_config_dialog(on)
+            l.lock_config(on)
 
     def session_timeout(self):
         self.session_closed()

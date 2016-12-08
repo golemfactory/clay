@@ -34,7 +34,7 @@ from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
-from golem.rpc.mapping.aliases import Task, Network
+from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
@@ -61,11 +61,11 @@ class ClientTaskComputerEventListener(object):
     def __init__(self, client):
         self.client = client
 
-    def toggle_config_dialog(self, on=True):
-        self.client.toggle_config_dialog(on)
+    def lock_config(self, on=True):
+        self.client.lock_config(on)
 
-    def docker_config_changed(self):
-        self.client.docker_config_changed()
+    def config_changed(self):
+        self.client.config_changed()
 
 
 class Client(object):
@@ -351,10 +351,6 @@ class Client(object):
     def get_connected_peers(self):
         peers = self.get_peers() or []
         return [to_dict(PeerSessionInfo(p)) for p in peers]
-
-    # TODO: simplify
-    def get_keys_auth(self):
-        return self.keys_auth
 
     def get_public_key(self):
         return self.keys_auth.public_key
@@ -649,13 +645,13 @@ class Client(object):
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
 
-    def toggle_config_dialog(self, on=True):
-        for rpc_client in self.rpc_clients:
-            rpc_client.toggle_config_dialog(on)
+    def lock_config(self, on=True):
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(UI.evt_lock_config, on)
 
-    def docker_config_changed(self):
-        for rpc_client in self.rpc_clients:
-            rpc_client.docker_config_changed()
+    def config_changed(self):
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,

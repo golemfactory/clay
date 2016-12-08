@@ -14,6 +14,8 @@ class Environment(object):
 
     datadir                 = 'env.datadir'
 
+    evt_opts_changed        = 'evt.env.opts'
+
 
 class Crypto(object):
 
@@ -121,6 +123,8 @@ class Payments(object):
 class UI(object):
 
     quit                    = 'ui.quit'
+
+    evt_lock_config         = 'evt.ui.widget.config.lock'
 
 
 class Applications(object):

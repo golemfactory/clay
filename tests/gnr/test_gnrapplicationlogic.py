@@ -212,14 +212,14 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic.register_gui(app.get_main_window(),
                            RenderingMainWindowCustomizer)
 
-        logic.toggle_config_dialog(True)
+        logic.lock_config(True)
 
         assert not logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert not logic.customizer.gui.ui.settingsCancelButton.isEnabled()
 
-        logic.toggle_config_dialog(True)
-        logic.toggle_config_dialog(False)
-        logic.toggle_config_dialog(False)
+        logic.lock_config(True)
+        logic.lock_config(False)
+        logic.lock_config(False)
 
         assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()

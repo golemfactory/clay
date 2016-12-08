@@ -294,11 +294,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.show_task_result(task_id)
 
     @inlineCallbacks
-    def get_keys_auth(self):
-        keys_auth = yield self.client.get_keys_auth()
-        returnValue(keys_auth)
-
-    @inlineCallbacks
     def get_key_id(self):
         key_id = yield self.client.get_key_id()
         returnValue(key_id)
@@ -384,7 +379,7 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-    def toggle_config_dialog(self, on=True):
+    def lock_config(self, on=True):
         self.customizer.gui.setEnabled('new_task', not on)
         self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
 
@@ -399,7 +394,7 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer = None
                 self.config_dialog = None
 
-    def docker_config_changed(self):
+    def config_changed(self):
         self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):

@@ -20,7 +20,7 @@ from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.environments.environment import Environment
 
-DEBUG_DEFERRED = True
+DEBUG_DEFERRED = False
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
 

@@ -307,8 +307,8 @@ class TestEventListener(unittest.TestCase):
         client = Mock()
         listener = ClientTaskComputerEventListener(client)
 
-        listener.toggle_config_dialog(True)
-        client.toggle_config_dialog.assert_called_with(True)
+        listener.lock_config(True)
+        client.lock_config.assert_called_with(True)
 
-        listener.toggle_config_dialog(False)
-        client.toggle_config_dialog.assert_called_with(False)
+        listener.lock_config(False)
+        client.lock_config.assert_called_with(False)
