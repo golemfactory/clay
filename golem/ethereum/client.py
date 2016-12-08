@@ -81,7 +81,7 @@ class Client(object):
         """
         return self.web3.eth.getBalance(account, block_identifier or self.web3.eth.defaultBlock)
 
-    def call(self, _from=None, to=None, gas=None, gas_price=None, value=None, data=None, nonce=None, block=None):
+    def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0, data=None, nonce=0, block=None):
         """
         Executes a message call transaction, which is directly executed in the VM of the node,
         but never mined into the blockchain
