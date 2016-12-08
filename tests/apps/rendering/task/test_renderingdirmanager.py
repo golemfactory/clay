@@ -12,6 +12,6 @@ class TestRenderingDirManager(TempDirFixture):
         script = os.path.join(script_path, "bla")
         open(script, "w").close()
         task_file = os.path.join(self.path, "task", "testtask.py")
-        path = find_task_script(task_file, "bla")
+        path = find_task_script(self.path, "bla")
         self.assertTrue(os.path.isdir(os.path.dirname(path)))
         self.assertEqual(os.path.basename(path), "bla")

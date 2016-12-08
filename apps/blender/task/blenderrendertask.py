@@ -6,6 +6,7 @@ from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
+from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtask import GNROptions
@@ -18,15 +19,17 @@ from apps.rendering.task.renderingtask import AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 
 
-
 logger = logging.getLogger("apps.blender")
+
+APP_DIR = os.path.join(get_golem_path(), 'apps', 'blender')
 
 
 class BlenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
-        self.main_program_file = find_task_script(__file__, "docker_blendertask.py")
+
+        self.main_program_file = find_task_script(APP_DIR, "docker_blendertask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -212,7 +215,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
-        crop_task = find_task_script(__file__, "blendercrop.py")
+        crop_task = find_task_script(APP_DIR, "blendercrop.py")
         try:
             with open(crop_task) as f:
                 self.script_src = f.read()

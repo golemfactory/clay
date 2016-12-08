@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.common import timeout_to_deadline
+from golem.core.common import timeout_to_deadline, get_golem_path
 from golem.core.fileshelper import find_file_with_ext, common_dir
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
@@ -20,20 +20,18 @@ from apps.rendering.task.renderingdirmanager import get_test_task_path, find_tas
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 
-
-
-
-
 logger = logging.getLogger("apps.lux")
 
 MERGE_TIMEOUT = 7200
+
+APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
 
 
 class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "exr"
-        self.main_program_file = find_task_script(__file__, "docker_luxtask.py")
+        self.main_program_file = find_task_script(APP_DIR, "docker_luxtask.py")
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -365,7 +363,7 @@ class LuxTask(RenderingTask):
         return self.__get_merge_ctd(files)
 
     def __get_merge_ctd(self, files):
-        with open(find_task_script(__file__, "docker_luxmerge.py")) as f:
+        with open(find_task_script(APP_DIR, "docker_luxmerge.py")) as f:
             src_code = f.read()
         if src_code is None:
             logger.error("Cannot find merger script")

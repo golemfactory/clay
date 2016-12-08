@@ -38,16 +38,7 @@
       <property name="sizeConstraint">
        <enum>QLayout::SetNoConstraint</enum>
       </property>
-      <property name="leftMargin">
-       <number>5</number>
-      </property>
-      <property name="topMargin">
-       <number>5</number>
-      </property>
-      <property name="rightMargin">
-       <number>5</number>
-      </property>
-      <property name="bottomMargin">
+      <property name="margin">
        <number>5</number>
       </property>
       <item>
@@ -99,10 +90,10 @@
             <string>New Task</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
+            <iconset resource="icons.qrc">
              <normaloff>:/img/new.png</normaloff>:/img/new.png</iconset>
            </property>
            <property name="flags">
@@ -114,10 +105,10 @@
             <string>Tasks</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
+            <iconset resource="icons.qrc">
              <normaloff>:/img/task.png</normaloff>:/img/task.png</iconset>
            </property>
            <property name="flags">
@@ -129,10 +120,10 @@
             <string>Status</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
+            <iconset resource="icons.qrc">
              <normaloff>:/img/eye.png</normaloff>:/img/eye.png</iconset>
            </property>
            <property name="flags">
@@ -144,10 +135,10 @@
             <string>Preferences</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
+            <iconset resource="icons.qrc">
              <normaloff>:/img/settings.png</normaloff>:/img/settings.png</iconset>
            </property>
            <property name="flags">
@@ -159,10 +150,10 @@
             <string>Account</string>
            </property>
            <property name="textAlignment">
-            <set>AlignCenter</set>
+            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
            </property>
            <property name="icon">
-            <iconset>
+            <iconset resource="icons.qrc">
              <normaloff>:/img/user.png</normaloff>:/img/user.png</iconset>
            </property>
            <property name="flags">
@@ -823,16 +814,7 @@
             <enum>Qt::LeftToRight</enum>
            </property>
            <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,0" columnstretch="5,0">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
+            <property name="margin">
              <number>0</number>
             </property>
             <property name="spacing">
@@ -961,16 +943,7 @@
               <property name="sizeConstraint">
                <enum>QLayout::SetFixedSize</enum>
               </property>
-              <property name="leftMargin">
-               <number>5</number>
-              </property>
-              <property name="topMargin">
-               <number>5</number>
-              </property>
-              <property name="rightMargin">
-               <number>5</number>
-              </property>
-              <property name="bottomMargin">
+              <property name="margin">
                <number>5</number>
               </property>
               <item>
@@ -1900,16 +1873,7 @@
                 </item>
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_7">
-                  <property name="leftMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="bottomMargin">
+                  <property name="margin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -1983,16 +1947,7 @@
                <layout class="QGridLayout" name="gridLayout_10">
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_6">
-                  <property name="leftMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>5</number>
-                  </property>
-                  <property name="bottomMargin">
+                  <property name="margin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -2525,16 +2480,7 @@
               <property name="fieldGrowthPolicy">
                <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
               </property>
-              <property name="leftMargin">
-               <number>10</number>
-              </property>
-              <property name="topMargin">
-               <number>10</number>
-              </property>
-              <property name="rightMargin">
-               <number>10</number>
-              </property>
-              <property name="bottomMargin">
+              <property name="margin">
                <number>10</number>
               </property>
               <item row="0" column="0">
@@ -2845,16 +2791,7 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="footerLayout">
-        <property name="leftMargin">
-         <number>5</number>
-        </property>
-        <property name="topMargin">
-         <number>5</number>
-        </property>
-        <property name="rightMargin">
-         <number>5</number>
-        </property>
-        <property name="bottomMargin">
+        <property name="margin">
          <number>5</number>
         </property>
         <item>
@@ -2906,7 +2843,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="gui.ui/icons.qrc"/>
+  <include location="icons.qrc"/>
  </resources>
  <connections/>
 </ui>

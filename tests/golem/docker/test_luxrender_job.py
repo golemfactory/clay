@@ -15,8 +15,8 @@ class TestLuxRenderDockerJob(TestDockerJob):
         return "golem/luxrender"
 
     def test_luxrender_job(self):
-        lux_task_file = path.join(get_golem_path(), "apps", "lux", "task", "luxtask.py")
-        task_script = find_task_script(lux_task_file, "docker_luxtask.py")
+        app_dir = path.join(get_golem_path(), "apps", "lux")
+        task_script = find_task_script(app_dir, "docker_luxtask.py")
 
         with open(task_script) as f:
             task_script_src = f.read()

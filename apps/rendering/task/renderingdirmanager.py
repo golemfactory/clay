@@ -10,8 +10,8 @@ def get_preview_file():
     return path.normpath(PREV_FILE)
 
 
-def find_task_script(task__file__, script_name):
-    scripts_path = path.abspath(path.join(path.dirname(path.abspath(task__file__)), "..", "resources", "scripts"))
+def find_task_script(task_dir, script_name):
+    scripts_path = path.abspath(path.join(task_dir, "resources", "scripts"))
     files = listdir(scripts_path)
     for f in files:
         if f.lower() == script_name.lower():

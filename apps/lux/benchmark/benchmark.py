@@ -1,9 +1,13 @@
 import os
 import tempfile
 
+from golem.core.common import get_golem_path
+
 from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.task.luxrendertask import LuxRenderOptions
 from apps.rendering.task.renderingdirmanager import find_task_script
+
+APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
 
 
 class LuxBenchmark(Benchmark):
@@ -16,7 +20,6 @@ class LuxBenchmark(Benchmark):
         self.lux_task_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test_task")
         
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "lux_benchmark.png")
-        self.task_definition.tasktype = "LuxRender"
         self.task_definition.task_type = "LuxRender"
         self.task_definition.output_format = "png"
         self.task_definition.renderer_options = LuxRenderOptions()
@@ -24,7 +27,7 @@ class LuxBenchmark(Benchmark):
         self.task_definition.renderer_options.halttime = 0        
         self.task_definition.task_id = u"{}".format("lux_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.lux_task_path, "schoolcorridor.lxs")
-        self.task_definition.main_program_file = u"{}".format(find_task_script(__file__, "docker_luxtask.py"))
+        self.task_definition.main_program_file = u"{}".format(find_task_script(APP_DIR, "docker_luxtask.py"))
         self.task_definition.resources = self.find_resources()
 
     def find_resources(self):
