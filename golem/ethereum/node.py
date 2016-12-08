@@ -32,7 +32,7 @@ class Faucet(object):
 
     @staticmethod
     def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
+        nonce = ethnode.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
         addr = normalize_address(addr)
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
