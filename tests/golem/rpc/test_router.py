@@ -2,6 +2,7 @@ import time
 from threading import Thread
 
 from autobahn.twisted import util
+from autobahn.wamp import ApplicationError
 
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map, Client, Publisher
@@ -17,6 +18,7 @@ class MockService(object):
         multiply='mock.multiply',
         divide='mock.divide',
         ping='mock.ping',
+        exception='mock.exception'
     )
 
     events = dict(
@@ -34,6 +36,12 @@ class MockService(object):
 
     def ping(self):
         return u'pong'
+
+    def exception(self):
+        n = 2
+        if n % 2 == 0:
+            raise AttributeError("Mock error raised")
+        return 2
 
     def on_hello(self):
         self.n_hello_received += 1
@@ -115,13 +123,16 @@ class TestRouter(TestDirFixtureWithReactor):
         divide_result = yield client.divide(8, 4)
         assert divide_result == 2
 
-        ping_result = yield client.ping()
-        assert ping_result == u'pong'
-
         assert self.state.frontend.n_hello_received == 0
         yield publisher.publish('mock.event.hello')
         yield util.sleep(0.5)
         assert self.state.frontend.n_hello_received > 0
+
+        with self.assertRaises(ApplicationError):
+            yield client.exception()
+
+        ping_result = yield client.ping()
+        assert ping_result == u'pong'
 
         self.state.done = True
 

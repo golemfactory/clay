@@ -2,6 +2,7 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.wamp import ApplicationRunner
+from autobahn.wamp import ApplicationError
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.internet.defer import inlineCallbacks, Deferred
@@ -29,10 +30,10 @@ class WebSocketAddress(RPCAddress):
 
     def __init__(self, host, port, realm, ssl=False):
         self.realm = unicode(realm)
-        super(WebSocketAddress, self).__init__(
-            u'wss' if ssl else u'ws',
-            host, port
-        )
+        self.ssl = ssl
+
+        protocol = u'wss' if ssl else u'ws'
+        super(WebSocketAddress, self).__init__(protocol, host, port)
 
 
 class Session(ApplicationSession):
@@ -49,9 +50,8 @@ class Session(ApplicationSession):
         super(Session, self).__init__(self.config)
 
     def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True, log_level='info'):
-
         runner = ApplicationRunner(
-            unicode(self.address),
+            url=unicode(self.address),
             realm=self.address.realm,
             ssl=ssl,
             proxy=proxy,
@@ -59,13 +59,13 @@ class Session(ApplicationSession):
         )
 
         deferred = runner.run(
-            self,
+            make=self,
             start_reactor=False,
             auto_reconnect=auto_reconnect,
             log_level=log_level
         )
 
-        deferred.addErrback(lambda err: self.ready.errback(err))
+        deferred.addErrback(self.ready.errback)
         return self.ready
 
     @inlineCallbacks
@@ -119,16 +119,11 @@ class Client(object):
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
             deferred = self.session.call(method_alias, *args, **kwargs)
-            deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
             deferred.errback(ProtocolError(u"Session is not yet established"))
 
         return deferred
-
-    @staticmethod
-    def _on_error(error):
-        logger.error(u"Error in RPC call: {}".format(error))
 
 
 class Publisher(object):
