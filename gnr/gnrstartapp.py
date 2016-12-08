@@ -73,14 +73,9 @@ class GUIApp(object):
 
     @inlineCallbacks
     def start(self, client):
-        try:
-            yield self.logic.register_client(client)
-            yield self.logic.start()
-            self.app.execute(using_qt4_reactor=True)
-        except Exception:
-            import traceback
-            traceback.print_exc()
-            raise
+        yield self.logic.register_client(client)
+        yield self.logic.start()
+        self.app.execute(using_qt4_reactor=True)
 
 
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):

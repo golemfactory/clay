@@ -6,8 +6,11 @@ import time
 from gnr.gnrstartapp import load_environments, start_client_process, \
     start_gui_process, GUIApp
 from golem.client import Client
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import config_logging
+from golem.core.simpleserializer import to_dict, DictSerializer
 from golem.environments.environment import Environment
+from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from mock import Mock, patch
@@ -15,7 +18,7 @@ from twisted.internet.defer import Deferred
 
 
 def router_start(fail_on_start):
-    def start(_self, _reactor, callback, errback):
+    def start(_, _reactor, callback, errback):
         if fail_on_start:
             errback(u"Router error")
         else:
@@ -24,14 +27,28 @@ def router_start(fail_on_start):
 
 
 def session_connect(fail_on_start):
-    def connect(*args, **kwargs):
+    def connect(instance, *args, **kwargs):
         deferred = Deferred()
         if fail_on_start:
             deferred.errback(u"Session error")
         else:
+            instance.connected = True
             deferred.callback(Mock())
         return deferred
     return connect
+
+
+def session_call(resolve_fn):
+    def call(_, alias, *args, **kwargs):
+        deferred = Deferred()
+        try:
+            result = resolve_fn(alias, *args, **kwargs)
+        except Exception as exc:
+            deferred.errback(exc)
+        else:
+            deferred.callback(result)
+        return deferred
+    return call
 
 
 class TestStartAppFunc(TestDirFixtureWithReactor):
@@ -92,41 +109,70 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         logger = Mock()
 
+        def resolve_call(alias, *args, **kwargs):
+            if alias == aliases.Environment.datadir:
+                return self.path
+            elif alias == aliases.Environment.opts:
+                return DictSerializer.dump(ClientConfigDescriptor())
+            elif alias == aliases.Environment.opt_description:
+                return u'test description'
+            elif alias == aliases.Payments.ident:
+                return u'0xdeadbeef'
+            elif alias == aliases.Crypto.key_id:
+                return u'0xbadfad'
+            elif alias == aliases.Task.tasks_stats:
+                return dict(
+                    in_network=0,
+                    supported=0,
+                    subtasks_computed=0,
+                    subtasks_with_errors=0,
+                    subtasks_with_timeout=0
+                )
+            elif alias == aliases.Payments.balance:
+                return 0, 0, 0
+            elif alias == aliases.Network.peers_connected:
+                return []
+            elif alias == aliases.Computation.status:
+                return u''
+            return 1
+
         with patch('logging.getLogger', return_value=logger):
             with patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
-                try:
-                    gui_app = GUIApp(rendering=True)
-                    gui_app.start = lambda *_: logger.error(u"Success")
+                with patch('golem.rpc.session.Session.call', session_call(resolve_call)):
+                    try:
+                        gui_app = GUIApp(rendering=True)
+                        gui_app.app.execute = lambda *a, **kw: logger.error(u"Success")
+                        gui_app.logic.customizer = Mock()
 
-                    thread = Thread(target=lambda: start_gui_process(queue,
-                                                                     datadir=self.path,
-                                                                     gui_app=gui_app,
-                                                                     reactor=self._get_reactor()))
-                    thread.daemon = True
-                    thread.start()
+                        thread = Thread(target=lambda: start_gui_process(queue,
+                                                                         datadir=self.path,
+                                                                         gui_app=gui_app,
+                                                                         reactor=self._get_reactor()))
+                        thread.daemon = True
+                        thread.start()
 
-                    started = time.time()
-                    while True:
+                        started = time.time()
+                        while True:
 
-                        if logger.error.called:
-                            if not logger.error.call_args:
-                                raise Exception(u"Invalid result: {}".format(logger.error.call_args))
+                            if logger.error.called:
+                                if not logger.error.call_args:
+                                    raise Exception(u"Invalid result: {}".format(logger.error.call_args))
 
-                            message = logger.error.call_args[0][0]
-                            assert unicode(message).find(expected_result) != -1
-                            break
+                                message = logger.error.call_args[0][0]
+                                assert unicode(message).find(expected_result) != -1
+                                break
 
-                        elif time.time() > started + 10:
-                            raise Exception(u"Test timed out")
-                        else:
-                            time.sleep(0.1)
+                            elif time.time() > started + 10:
+                                raise Exception(u"Test timed out")
+                            else:
+                                time.sleep(0.1)
 
-                except Exception as exc:
-                    self.fail(u"Cannot start gui process: {}".format(exc))
-                finally:
-                    if gui_app and gui_app.app and gui_app.app.app:
-                        gui_app.app.app.exit(0)
-                        gui_app.app.app.deleteLater()
+                    except Exception as exc:
+                        self.fail(u"Cannot start gui process: {}".format(exc))
+                    finally:
+                        if gui_app and gui_app.app and gui_app.app.app:
+                            gui_app.app.app.exit(0)
+                            gui_app.app.app.deleteLater()
 
     @patch('logging.config.fileConfig')
     def test_start_client_success(self, *_):

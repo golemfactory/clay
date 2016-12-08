@@ -1,8 +1,10 @@
 import time
 from threading import Thread
 
+from autobahn.twisted import util
+
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import Session, object_method_map, Client
+from golem.rpc.session import Session, object_method_map, Client, Publisher
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
@@ -11,11 +13,18 @@ setDebugging(True)
 
 class MockService(object):
 
-    mapping = dict(
+    methods = dict(
         multiply='mock.multiply',
         divide='mock.divide',
         ping='mock.ping',
     )
+
+    events = dict(
+        on_hello='mock.event.hello'
+    )
+
+    def __init__(self):
+        self.n_hello_received = 0
 
     def multiply(self, arg1, arg2):
         return arg1 * arg2
@@ -26,8 +35,11 @@ class MockService(object):
     def ping(self):
         return u'pong'
 
+    def on_hello(self):
+        self.n_hello_received += 1
 
-TIMEOUT = 30
+
+TIMEOUT = 10
 
 
 class TestRouter(TestDirFixtureWithReactor):
@@ -42,10 +54,10 @@ class TestRouter(TestDirFixtureWithReactor):
             self.router = None
 
             self.backend = MockService()
-            self.frontend = None
             self.backend_session = None
-            self.frontend_session = None
             self.backend_deferred = None
+            self.frontend = MockService()
+            self.frontend_session = None
             self.frontend_deferred = None
 
         def add_errors(self, *errors):
@@ -68,9 +80,9 @@ class TestRouter(TestDirFixtureWithReactor):
     def _start_backend_session(self, *_):
         self.state.backend_session = Session(
             self.state.router.address,
-            object_method_map(
+            methods=object_method_map(
                 self.state.backend,
-                MockService.mapping
+                MockService.methods
             )
         )
 
@@ -78,26 +90,38 @@ class TestRouter(TestDirFixtureWithReactor):
         self.state.backend_deferred.addCallbacks(self._backend_session_started, self.state.add_errors)
 
     def _backend_session_started(self, *_):
-        self.state.frontend_session = Session(self.state.router.address)
+        self.state.frontend_session = Session(
+            self.state.router.address,
+            events=object_method_map(
+                self.state.frontend,
+                MockService.events
+            )
+        )
+
         self.state.frontend_deferred = self.state.frontend_session.connect()
         self.state.frontend_deferred.addCallbacks(self._frontend_session_started, self.state.add_errors)
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
-        self.state.frontend = Client(self.state.frontend_session, MockService.mapping)
-        fe = self.state.frontend
+        client = Client(self.state.frontend_session, MockService.methods)
+        publisher = Publisher(self.state.backend_session)
 
-        multiply_result = yield fe.multiply(2, 3)
+        multiply_result = yield client.multiply(2, 3)
         assert multiply_result == 6
 
-        divide_result = yield fe.divide(4)
+        divide_result = yield client.divide(4)
         assert divide_result == 2
 
-        divide_result = yield fe.divide(8, 4)
+        divide_result = yield client.divide(8, 4)
         assert divide_result == 2
 
-        ping_result = yield fe.ping()
+        ping_result = yield client.ping()
         assert ping_result == u'pong'
+
+        assert self.state.frontend.n_hello_received == 0
+        yield publisher.publish('mock.event.hello')
+        yield util.sleep(0.5)
+        assert self.state.frontend.n_hello_received > 0
 
         self.state.done = True
 
@@ -116,8 +140,12 @@ class TestRouter(TestDirFixtureWithReactor):
             if self.state.errors or self.state.done:
                 break
 
-        self.state.frontend_session.disconnect()
-        self.state.backend_session.disconnect()
+        if self.state.frontend_session:
+            self.state.frontend_session.disconnect()
+
+        if self.state.backend_session:
+            self.state.backend_session.disconnect()
+
         time.sleep(0.5)
 
         if self.state.errors:
