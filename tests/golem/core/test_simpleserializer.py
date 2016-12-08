@@ -131,23 +131,23 @@ class TestToDict(unittest.TestCase):
     def test_serialization(self):
         obj = MockSerializationSubject()
         assert to_dict(obj) == {
-            'property_1': {
-                'k': 'v',
-                'u': {
-                    'property_1': obj.property_1['u'].property_1,
-                    'property_3': 'string',
-                    'property_4': ['list', 'of', ('items',), obj.property_1['u'].property_4[-1]]
+            u'property_1': {
+                u'k': u'v',
+                u'u': {
+                    u'property_1': obj.property_1[u'u'].property_1,
+                    u'property_3': u'string',
+                    u'property_4': [u'list', u'of', (u'items',), obj.property_1[u'u'].property_4[-1]]
                 }
             },
-            'property_2': {
-                'property_1': obj.property_2.property_1,
-                'property_3': 'string',
-                'property_4': ['list', 'of', ('items',), obj.property_2.property_4[-1]]
+            u'property_2': {
+                u'property_1': obj.property_2.property_1,
+                u'property_3': u'string',
+                u'property_4': [u'list', u'of', (u'items',), obj.property_2.property_4[-1]]
             },
-            'property_4': ['v', 1, (1, 2, 3), {
-                'property_1': obj.property_4[-1].property_1,
-                'property_3': 'string',
-                'property_4': ['list', 'of', ('items',), obj.property_4[-1].property_4[-1]]
+            u'property_4': [u'v', 1, (1, 2, 3), {
+                u'property_1': obj.property_4[-1].property_1,
+                u'property_3': u'string',
+                u'property_4': [u'list', u'of', (u'items',), obj.property_4[-1].property_4[-1]]
             }]
         }
 

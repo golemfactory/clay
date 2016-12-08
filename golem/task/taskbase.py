@@ -75,11 +75,11 @@ class TaskHeader(object):
 
         task_owner = self_dict.get('task_owner')
         if task_owner:
-            self_dict['task_owner'] = cls._ordered(to_dict(task_owner))
+            self_dict['task_owner'] = cls._ordered(to_dict(task_owner, Node))
 
         docker_images = self_dict.get('docker_images')
         if docker_images:
-            self_dict['docker_images'] = [cls._ordered(to_dict(d)) for d in docker_images]
+            self_dict['docker_images'] = [cls._ordered(to_dict(d, DockerImage)) for d in docker_images]
 
         return CBORSerializer.dumps(cls._ordered(self_dict))
 

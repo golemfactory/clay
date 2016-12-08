@@ -66,7 +66,7 @@ class CBORCoder(object):
     def _obj_to_dict(cls, obj):
         """Stores object's public properties in a dictionary. Triggered by CBOR encoder."""
         result = cls._to_dict_traverse_dict(obj.__dict__)
-        result[cls.cls_key] = cls._module_and_class(obj)
+        result[cls.cls_key] = cls.module_and_class(obj)
         return result
 
     @classmethod
@@ -131,7 +131,7 @@ class CBORCoder(object):
         return type(obj) in cls.builtin_types and not isinstance(obj, types.InstanceType)
 
     @staticmethod
-    def _module_and_class(obj):
+    def module_and_class(obj):
         return obj.__module__, obj.__class__.__name__
 
 
@@ -140,7 +140,10 @@ def to_dict(obj, cls=None, _parents=None):
     _parents = _parents or set()
 
     if isinstance(obj, dict):
-        return {unicode(k): to_dict(v, cls, _parents=_parents) for k, v in obj.iteritems()}
+        return {
+            unicode(k): to_dict(v, v.__class__ if cls else None, _parents=_parents)
+            for k, v in obj.iteritems()
+        }
 
     elif isinstance(obj, basestring):
         try:
@@ -149,10 +152,12 @@ def to_dict(obj, cls=None, _parents=None):
             return obj
 
     elif isinstance(obj, collections.Iterable):
-        return obj.__class__([to_dict(v, cls, _parents=_parents) for v in obj])
+        return obj.__class__([
+            to_dict(v, v.__class__ if cls else None, _parents=_parents)
+            for v in obj
+        ])
 
     elif hasattr(obj, "__dict__"):
-
         _id = id(obj)
         if _id in _parents:
             raise Exception("Cycle detected")
@@ -163,10 +168,10 @@ def to_dict(obj, cls=None, _parents=None):
         data = dict()
         for k, v in obj.__dict__.iteritems():
             if not callable(v) and not k.startswith('_'):
-                data[unicode(k)] = to_dict(v, cls, _parents=_sub_parents)
+                data[unicode(k)] = to_dict(v, v.__class__ if cls else None, _parents=_sub_parents)
 
-        if cls is not None and hasattr(obj, "__class__"):
-            data[CBORCoder.cls_key] = obj.__class__.__name__
+        if cls and hasattr(obj, "__class__"):
+            data[CBORCoder.cls_key] = CBORCoder.module_and_class(obj)
 
         return data
 
