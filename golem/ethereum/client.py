@@ -1,5 +1,7 @@
 import logging
 
+import rlp
+from ethereum.transactions import Transaction
 from web3 import Web3, KeepAliveRPCProvider
 
 from .node import NodeProcess
@@ -69,6 +71,10 @@ class Client(object):
         Signs and sends the given transaction
         :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
         """
+        if isinstance(transaction, Transaction):
+            raw_data = rlp.encode(transaction)
+            hex_data = self.web3.toHex(raw_data)
+            return self.send_raw_transaction(hex_data)
         return self.web3.eth.sendTransaction(transaction)
 
     def get_balance(self, account, block_identifier=None):
