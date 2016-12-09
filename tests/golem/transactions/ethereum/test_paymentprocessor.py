@@ -1,4 +1,3 @@
-import mock
 import random
 import time
 import unittest
@@ -6,7 +5,6 @@ from os import urandom
 
 from ethereum.keys import privtoaddr
 from ethereum.utils import denoms
-
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -39,11 +37,7 @@ class PaymentProcessorTest(DatabaseFixture):
         DatabaseFixture.setUp(self)
         self.privkey = urandom(32)
         self.addr = privtoaddr(self.privkey)
-        self.client = mock.MagicMock(spec=Client)
-        self.client.get_balance.return_value = 0
-        self.client.send.side_effect = lambda tx: "0x" + tx.hash.encode('hex')
-        self.nonce = random.randint(0, 9999)
-        self.client.get_transaction_count.return_value = self.nonce
+        self.client = Client(datadir=self.tempdir)
         # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.client, self.privkey)
 
