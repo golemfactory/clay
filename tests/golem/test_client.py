@@ -3,7 +3,7 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from gnr.gnrapplicationlogic import GNRClientRemoteEventListener
+from gui.applicationlogic import ClientRemoteEventListener
 from golem.client import Client, GolemClientRemoteEventListener, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.ethereum.paymentmonitor import IncomingPayment
@@ -251,7 +251,7 @@ class TestEventListener(unittest.TestCase):
         assert listener.build(builder)
         assert listener.remote_client
 
-        gnr_listener = GNRClientRemoteEventListener(Mock())
+        gnr_listener = ClientRemoteEventListener(Mock())
 
         assert gnr_listener.build(builder)
         assert gnr_listener.remote_client

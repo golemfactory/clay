@@ -3,8 +3,9 @@ import shutil
 
 import subprocess
 
-from gnr.customizers.memoryhelper import dir_size_to_display, translate_resource_index
 from golem.core.common import is_windows
+
+from gui.controller.memoryhelper import dir_size_to_display, translate_resource_index
 
 
 def copy_file_tree(src, dst, exclude=None):

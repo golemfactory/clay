@@ -47,5 +47,5 @@ ${CMD} exec %{container} sh -c "rm -rf /opt/golem/gnr/benchmarks"
 
 echo "   [i] Executing GNR node"
 ${CMD} exec %{container} sh -c "rm -rf /root/.local/golem/keys"
-${CMD} exec %{container} sh -c "echo 'cd /opt/golem && nohup python gnr/node.py -a %{ip} -p ${DOCKER_ADDR}:40102 >/tmp/gnr-node.log 2>&1 &' > /root/gnr-node.sh"
+${CMD} exec %{container} sh -c "echo 'cd /opt/golem && nohup python gui/node.py -a %{ip} -p ${DOCKER_ADDR}:40102 >/tmp/gnr-node.log 2>&1 &' > /root/gnr-node.sh"
 ${CMD} exec -d %{container} sh /root/gnr-node.sh

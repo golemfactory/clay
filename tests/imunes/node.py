@@ -1,17 +1,17 @@
 import click
 
 from golemapp import start
-from gnr.node import GNRNode
+from golem.node import OptNode
 
 
 def disable_blender(ctx, param, value):
     del ctx, param
     if not value:
-        GNRNode.default_environments = []
+        OptNode.default_environments = []
 
 
 def set_network_info(ctx, param, value):
-    addr = GNRNode.parse_node_addr(ctx, param, value)
+    addr = OptNode.parse_node_addr(ctx, param, value)
     if addr:
         import golem.network.p2p.node
         # Patch the Node.collect_network_info() method to set the provided
@@ -40,7 +40,7 @@ def immunes_start(ctx):
 
 
 # Copy the extra options from `dummy_cli` to the `node_cli`
-# group defined in `gnr.node`.
+# group defined in `gui.node`.
 # This is probably a lame way of adding options to an existing command...
 # FIXME: See above
 # start_command = node_cli.commands['start']
