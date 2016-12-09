@@ -22,6 +22,7 @@ CORE_METHOD_MAP = dict(
     get_connected_peers=    Network.peers_connected,
 
     connect=                Network.peer_connect,
+    connection_status=      Network.status,
 
     get_p2p_port=           Network.p2p_port,
     get_task_server_port=   Network.tasks_port,
@@ -49,11 +50,17 @@ CORE_METHOD_MAP = dict(
     get_subtask=            Task.subtask,
     restart_subtask=        Task.subtask_restart,
 
-    get_res_dirs=           Resources.dirs,
-    get_res_dirs_sizes=     Resources.dir_sizes,
+    get_res_dirs=           Resources.directories,
+    get_res_dir=            Resources.directory,
+    get_res_dirs_sizes=     Resources.directories_size,
+    clear_dir=              Resources.clear_directory,
 
     get_status=             Computation.status,
     get_environments=       Computation.environments,
+    get_environments_perf=  Computation.environments_perf,
+    enable_environment=     Computation.enable_environment,
+    disable_environment=    Computation.disable_environment,
+    run_benchmark=          Computation.benchmark_environment,
 
     get_payment_address=    Payments.ident,
     get_balance=            Payments.balance,

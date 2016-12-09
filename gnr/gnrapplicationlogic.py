@@ -22,7 +22,7 @@ from gnr.ui.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
@@ -107,13 +107,13 @@ class GNRApplicationLogic(QtCore.QObject):
         returnValue(dirs)
 
     def remove_computed_files(self):
-        self.client.remove_computed_files()
+        self.client.clear_dir(DirectoryType.COMPUTED)
 
     def remove_distributed_files(self):
-        self.client.remove_distributed_files()
+        self.client.clear_dir(DirectoryType.DISTRIBUTED)
 
     def remove_received_files(self):
-        self.client.remove_received_files()
+        self.client.clear_dir(DirectoryType.RECEIVED)
 
     def connection_status_changed(self, message):
         self.customizer.gui.ui.errorLabel.setText(message)
@@ -478,8 +478,11 @@ class GNRApplicationLogic(QtCore.QObject):
         environments = yield self.client.get_environments()
         returnValue(environments)
 
-    def change_accept_tasks_for_environment(self, env_id, state):
-        self.client.change_accept_tasks_for_environment(env_id, state)
+    def enable_environment(self, env_id):
+        self.client.enable_environment(env_id)
+
+    def disable_environment(self, env_id):
+        self.client.disable_environment(env_id)
 
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100

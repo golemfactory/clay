@@ -180,7 +180,7 @@ class Settings(object):
     @command(arguments=(basic, provider, requestor), help="Show current settings")
     def show(self, basic, provider, requestor):
 
-        config = CommandHelper.wait_for(Settings.client.get_config())
+        config = CommandHelper.wait_for(Settings.client.get_settings())
         if not (basic ^ provider) and not (provider ^ requestor):
             return config.__dict__
 

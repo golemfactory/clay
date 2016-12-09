@@ -26,7 +26,7 @@ class Network(object):
 
     @doc("Show client status")
     def status(self):
-        deferred = Network.client.get_status()
+        deferred = Network.client.connection_status()
         status = CommandHelper.wait_for(deferred) or "unknown"
         return status
 
@@ -39,10 +39,19 @@ class Network(object):
 
     @command(arguments=(sort_nodes, full_table), help="Show connected nodes")
     def show(self, sort, full):
-        values = []
-
         deferred = Network.client.get_connected_peers()
         peers = CommandHelper.wait_for(deferred) or []
+        return self.__peers(peers, sort, full)
+
+    @command(arguments=(sort_nodes, full_table), help="Show known nodes")
+    def dht(self, sort, full):
+        deferred = Network.client.get_known_peers()
+        peers = CommandHelper.wait_for(deferred) or []
+        return self.__peers(peers, sort, full)
+
+    @staticmethod
+    def __peers(peers, sort, full):
+        values = []
 
         for peer in peers:
             values.append([

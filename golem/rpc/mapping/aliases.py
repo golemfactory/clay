@@ -28,6 +28,7 @@ class Network(object):
 
     ident                   = 'net.ident'
     ident_key               = 'net.ident.key'
+    status                  = 'net.status'
 
     peers_known             = 'net.peers.known'
     peers_connected         = 'net.peers.connected'
@@ -90,8 +91,11 @@ class Task(object):
 
 class Resources(object):
 
-    dirs                    = 'res.dirs'
-    dir_sizes               = 'res.dirs.sizes'
+    directories             = 'res.dirs'
+    directories_size        = 'res.dirs.size'
+    directory               = 'res.dir'
+
+    clear_directory         = 'res.dir.clear'
 
     evt_limit_exceeded      = 'evt.res.limit.exceeded'
 
@@ -100,6 +104,10 @@ class Computation(object):
 
     status                  = 'comp.status'
     environments            = 'comp.environments'
+    environments_perf       = 'comp.environments.perf'
+    enable_environment      = 'comp.environment.enable'
+    disable_environment     = 'comp.environment.disable'
+    benchmark_environment   = 'comp.environment.benchmark'
 
     evt_comp_started        = 'comp.started'
     evt_comp_finished       = 'comp.finished'

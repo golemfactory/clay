@@ -32,7 +32,7 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
@@ -549,6 +549,15 @@ class Client(object):
     def get_res_dirs_sizes(self):
         return {name: du(d) for name, d in self.get_res_dirs().iteritems()}
 
+    def get_res_dir(self, dir_type):
+        if dir_type == DirectoryType.COMPUTED:
+            return self.get_computed_files_dir()
+        elif dir_type == DirectoryType.DISTRIBUTED:
+            return self.get_distributed_files_dir()
+        elif dir_type == DirectoryType.RECEIVED:
+            return self.get_received_files_dir()
+        raise Exception(u"Unknown dir type: {}".format(dir_type))
+
     def get_computed_files_dir(self):
         return self.task_server.get_task_computer_root()
 
@@ -557,6 +566,15 @@ class Client(object):
 
     def get_distributed_files_dir(self):
         return self.resource_server.get_distributed_resource_root()
+
+    def clear_dir(self, dir_type):
+        if dir_type == DirectoryType.COMPUTED:
+            return self.remove_computed_files()
+        elif dir_type == DirectoryType.DISTRIBUTED:
+            return self.remove_distributed_files()
+        elif dir_type == DirectoryType.RECEIVED:
+            return self.remove_received_files()
+        raise Exception(u"Unknown dir type: {}".format(dir_type))
 
     def remove_computed_files(self):
         dir_manager = DirManager(self.datadir)
@@ -582,7 +600,7 @@ class Client(object):
     def get_environments(self):
         return self.environments_manager.get_environments()
 
-    def get_environments_with_performances(self):
+    def get_environments_perf(self):
         envs = copy(self.environments_manager.get_environments())
         return [self._simple_env_repr(env) for env in envs]
 
@@ -616,6 +634,12 @@ class Client(object):
             performance=env.get_performance(self.config_desc),
             description=env.short_description
         )
+
+    def enable_environment(self, env_id):
+        self.environments_manager.change_accept_tasks(env_id, True)
+
+    def disable_environment(self, env_id):
+        self.environments_manager.change_accept_tasks(env_id, False)
 
     def change_accept_tasks_for_environment(self, env_id, state):
         self.environments_manager.change_accept_tasks(env_id, state)
@@ -698,7 +722,7 @@ class Client(object):
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
                 self.last_net_check_time = time.time()
                 if self.rpc_publisher:
-                    self.rpc_publisher.publish(Network.evt_connection, self.__connection_status())
+                    self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
 
     def __make_node_state_snapshot(self, is_running=True):
 
@@ -726,7 +750,7 @@ class Client(object):
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
 
-    def __connection_status(self):
+    def connection_status(self):
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 

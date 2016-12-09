@@ -250,7 +250,7 @@ class TestClientRPCMethods(TestWithDatabase):
             assert c.enqueue_new_task.called
 
             # status without peers
-            assert c._Client__connection_status().startswith(u"Not connected")
+            assert c.connection_status().startswith(u"Not connected")
 
             # peers
             c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
@@ -265,10 +265,10 @@ class TestClientRPCMethods(TestWithDatabase):
             assert all(peer for peer in connected_peers)
 
             # status with peers
-            assert c._Client__connection_status().startswith(u"Connected")
+            assert c.connection_status().startswith(u"Connected")
             # status without ports
             c.p2pservice.cur_port = 0
-            assert c._Client__connection_status().startswith(u"Application not listening")
+            assert c.connection_status().startswith(u"Application not listening")
 
             # public key
             assert c.get_public_key() == c.keys_auth.public_key

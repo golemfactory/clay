@@ -21,7 +21,7 @@ from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.testutils import TempDirFixture
 from mock import Mock
 
@@ -88,19 +88,19 @@ class TestEnvironments(unittest.TestCase):
 
         client = Mock()
         client.run_benchmark = lambda x: x
-        client.get_environments_with_performances.return_value = environments
+        client.get_environments_perf.return_value = environments
 
         cls.client = client
 
     def test_enable(self):
         with client_ctx(Environments, self.client):
             Environments().enable('Name')
-            self.client.change_accept_tasks_for_environment.assert_called_with('Name', True)
+            self.client.enable_environment.assert_called_with('Name')
 
     def test_disable(self):
         with client_ctx(Environments, self.client):
             Environments().disable('Name')
-            self.client.change_accept_tasks_for_environment.assert_called_with('Name', False)
+            self.client.disable_environment.assert_called_with('Name')
 
     def test_show(self):
         with client_ctx(Environments, self.client):
@@ -120,7 +120,7 @@ class TestEnvironments(unittest.TestCase):
             assert result_2.data
             assert result_1.data != result_2.data
 
-            self.client.get_environments_with_performances.return_value = None
+            self.client.get_environments_perf.return_value = None
 
             result_3 = Environments().show(sort=None)
             result_4 = Environments().show(sort='name')
@@ -159,15 +159,15 @@ class TestNetwork(unittest.TestCase):
 
         with client_ctx(Network, self.client):
 
-            self.client.get_status.return_value = 'Status'
+            self.client.connection_status.return_value = 'Status'
             result = Network().status()
 
-            assert self.client.get_status.called
+            assert self.client.connection_status.called
             assert isinstance(result, basestring)
             assert result
             assert result != 'unknown'
 
-            self.client.get_status.return_value = None
+            self.client.connection_status.return_value = None
             result = Network().status()
 
             assert isinstance(result, basestring)
@@ -241,8 +241,8 @@ class TestPayments(unittest.TestCase):
         ]
 
         client = Mock()
-        client.get_incomes_list.return_value = incomes_list
-        client.get_payments_list.return_value = payments_list
+        client.get_incomes.return_value = incomes_list
+        client.get_payments.return_value = payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
@@ -303,9 +303,7 @@ class TestResources(unittest.TestCase):
             with self.assertRaises(CommandException):
                 res.clear(False, False)
 
-            assert not client.remove_received_files.called
-            assert not client.remove_computed_files.called
-            assert not client.remove_distributed_files.called
+            assert not client.clear_dir.called
 
     def test_clear_provider(self):
         client = Mock()
@@ -314,9 +312,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert client.remove_received_files.called
-            assert client.remove_computed_files.called
-            assert not client.remove_distributed_files.called
+            assert len(client.clear_dir.mock_calls) == 2
 
     def test_clear_requestor(self):
         client = Mock()
@@ -325,9 +321,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=False, requestor=True)
 
-            assert not client.remove_received_files.called
-            assert not client.remove_computed_files.called
-            assert client.remove_distributed_files.called
+            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_all(self):
         client = Mock()
@@ -336,9 +330,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=True)
 
-            assert client.remove_received_files.called
-            assert client.remove_computed_files.called
-            assert not client.remove_distributed_files.called
+            assert len(client.clear_dir.mock_calls) == 2
 
 
 def _has_subtask(id):
@@ -560,7 +552,7 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.get_config.return_value = config_desc
+        client.get_settings.return_value = config_desc
 
         self.client = client
 

@@ -169,3 +169,10 @@ class DirManager(object):
 
     def __get_global_resource_path(self):
         return os.path.join(self.root_path, self.global_resource)
+
+
+class DirectoryType(object):
+
+    COMPUTED = 0
+    DISTRIBUTED = 1
+    RECEIVED = 2
