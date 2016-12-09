@@ -151,6 +151,7 @@ class TestNetwork(unittest.TestCase):
 
         client = Mock()
         client.get_connected_peers.return_value = peer_info
+        client.get_known_peers.return_value = peer_info
 
         cls.n_clients = len(peer_info)
         cls.client = client
@@ -189,32 +190,43 @@ class TestNetwork(unittest.TestCase):
             result_1 = net.show(None, full=False)
             result_2 = net.show(None, full=True)
 
-            assert result_1.data[1][0] == [
-                '10.0.0.1',
-                '25001',
-                'deadbeef01deadbe...beef01deadbeef01',
-                u'node_1'
-            ]
+            self.__assert_peer_result(result_1, result_2)
 
-            assert result_2.data[1][0] == [
-                '10.0.0.1',
-                '25001',
-                'deadbeef01' * 8,
-                u'node_1'
-            ]
+    def test_dht(self):
+        with client_ctx(Network, self.client):
+            net = Network()
 
-            assert isinstance(result_1, CommandResult)
-            assert isinstance(result_2, CommandResult)
-            assert result_1.type == CommandResult.TABULAR
-            assert result_2.type == CommandResult.TABULAR
-            assert result_1.data[0] == result_2.data[0]
-            assert result_1.data[1] != result_2.data[1]
-            assert len(result_1.data[1]) == len(result_1.data[1]) == self.n_clients
+            result_1 = net.dht(None, full=False)
+            result_2 = net.dht(None, full=True)
 
-            for r1, r2 in zip(result_1.data[1], result_2.data[1]):
-                # 'id' (node's key) column
-                assert len(r2[2]) > len(r1[2])
+            self.__assert_peer_result(result_1, result_2)
 
+    def __assert_peer_result(self, result_1, result_2):
+        assert result_1.data[1][0] == [
+            '10.0.0.1',
+            '25001',
+            'deadbeef01deadbe...beef01deadbeef01',
+            u'node_1'
+        ]
+
+        assert result_2.data[1][0] == [
+            '10.0.0.1',
+            '25001',
+            'deadbeef01' * 8,
+            u'node_1'
+        ]
+
+        assert isinstance(result_1, CommandResult)
+        assert isinstance(result_2, CommandResult)
+        assert result_1.type == CommandResult.TABULAR
+        assert result_2.type == CommandResult.TABULAR
+        assert result_1.data[0] == result_2.data[0]
+        assert result_1.data[1] != result_2.data[1]
+        assert len(result_1.data[1]) == len(result_1.data[1]) == self.n_clients
+
+        for r1, r2 in zip(result_1.data[1], result_2.data[1]):
+            # 'id' (node's key) column
+            assert len(r2[2]) > len(r1[2])
 
 class TestPayments(unittest.TestCase):
 
