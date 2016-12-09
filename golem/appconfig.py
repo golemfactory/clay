@@ -109,10 +109,6 @@ class AppConfig:
     __loaded_configs = set()
 
     @classmethod
-    def manager_port(cls):
-        return MANAGER_PORT
-
-    @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
         # FIXME: This check is only for transition to separeted datadirs.
@@ -120,9 +116,7 @@ class AppConfig:
         assert cfg_file not in cls.__loaded_configs, "Config has been loaded: " + cfg_file
         cls.__loaded_configs.add(cfg_file)
 
-        common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
-                                     manager_port=MANAGER_PORT,
-                                     start_port=START_PORT,
+        common_config = CommonConfig(start_port=START_PORT,
                                      end_port=END_PORT,
                                      opt_peer_num=OPTIMAL_PEER_NUM,
                                      dist_res_num=DISTRIBUTED_RES_NUM)

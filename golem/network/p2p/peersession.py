@@ -89,7 +89,7 @@ class PeerSession(BasicSafeSession):
         :param Message msg: Message to interpret and react to.
         :return None:
         """
-        self.p2p_service.set_last_message("<-", self.key_id, time.localtime(), msg, self.address, self.port)
+        self.p2p_service.set_last_message(self.key_id)
         BasicSafeSession.interpret(self, msg)
 
     def send(self, message, send_unverified=False):
@@ -98,7 +98,7 @@ class PeerSession(BasicSafeSession):
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
         """
         BasicSafeSession.send(self, message, send_unverified)
-        self.p2p_service.set_last_message("->", self.key_id, time.localtime(), message, self.address, self.port)
+        self.p2p_service.set_last_message(self.key_id)
 
     def sign(self, msg):
         """ Sign given message

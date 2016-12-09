@@ -20,7 +20,6 @@ from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -127,8 +126,6 @@ class Client(object):
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
 
-        self.last_node_state_snapshot = None
-
         self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
@@ -136,8 +133,6 @@ class Client(object):
         self.listeners = []
 
         self.cfg = config
-        self.send_snapshot = False
-        self.snapshot_lock = Lock()
 
         self.db = Database(datadir)
 
@@ -715,41 +710,12 @@ class Client(object):
                                                            self.task_server.task_computer.task_requested,
                                                            self.task_server.task_computer.compute_tasks,
                                                            self.task_server.task_computer.assigned_subtasks.keys())
-                # with self.snapshot_lock:
-                #     self.__make_node_state_snapshot()
-                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
                 for l in self.listeners:
                     l.check_network_state()
                 self.last_net_check_time = time.time()
-
-    def __make_node_state_snapshot(self, is_running=True):
-
-        peers_num = len(self.p2pservice.peers)
-        last_network_messages = self.p2pservice.get_last_messages()
-
-        if self.task_server:
-            tasks_num = len(self.task_server.task_keeper.task_headers)
-            remote_tasks_progresses = self.task_server.task_computer.get_progresses()
-            local_tasks_progresses = self.task_server.task_manager.get_progresses()
-            last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(is_running,
-                                                              self.config_desc.node_name,
-                                                              peers_num,
-                                                              tasks_num,
-                                                              self.p2pservice.node.pub_addr,
-                                                              self.p2pservice.node.pub_port,
-                                                              last_network_messages,
-                                                              last_task_messages,
-                                                              remote_tasks_progresses,
-                                                              local_tasks_progresses)
-        else:
-            self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.node_name, peers_num)
-
-        if self.nodes_manager_client:
-            self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
 
     def get_metadata(self):
         metadata = dict()

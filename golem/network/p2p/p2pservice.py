@@ -86,8 +86,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.last_tasks_request = time.time()
         self.last_refresh_peers = time.time()
 
-        self.last_messages = []
-
     def new_connection(self, session):
         session.start()
 
@@ -313,26 +311,11 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         with self._peer_lock:
             return len(self.peers) >= self.config_desc.opt_peer_num
 
-    def set_last_message(self, type_, client_key_id, t, msg, address, port):
-        """ Add given message to last message buffer and inform peer keeper about it
-        :param int type_: message time
+    def set_last_message(self, client_key_id):
+        """ Inform peer keeper about last message
         :param client_key_id: public key of a message sender
-        :param float t: time of receiving message
-        :param Message msg: received message
-        :param str address: sender address
-        :param int port: sender port
         """
         self.peer_keeper.set_last_message_time(client_key_id)
-        if len(self.last_messages) >= self.last_message_buffer_len:
-            self.last_messages = self.last_messages[-(self.last_message_buffer_len - 1):]
-
-        self.last_messages.append([type_, t, address, port, msg])
-
-    def get_last_messages(self):
-        """ Return list of a few recent messages
-        :return list: last messages
-        """
-        return self.last_messages
 
     def manager_session_disconnect(self, uid):
         """ Remove manager session
