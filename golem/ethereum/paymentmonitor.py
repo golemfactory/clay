@@ -65,6 +65,6 @@ class PaymentMonitor(object):
                              'tx_hash': tx_hash}
             self.__payments.append(payment)
             log.info("Incoming payment: {} -> ({} ETH)".format(
-                     payer.encode('hex'), value / denoms.ether))
+                payer.encode('hex'), value / denoms.ether))
 
         return self.__payments
