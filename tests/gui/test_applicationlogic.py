@@ -1,4 +1,5 @@
 import os
+import tempfile
 import time
 import uuid
 
@@ -7,12 +8,18 @@ from mock import Mock, MagicMock, ANY, call
 from twisted.internet.defer import Deferred
 
 from golem.client import Client
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.keysauth import EllipticalKeysAuth
+from golem.network.p2p.node import Node
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.testutils import DatabaseFixture
+from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskStatus
+from golem.testutils import DatabaseFixture, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
-from apps.core.task.gnrtaskstate import GNRTaskState
+
+from apps.core.task.gnrtaskstate import GNRTaskState, GNRTaskDefinition
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.application import GNRGui
@@ -46,7 +53,6 @@ class TTask(Task):
 
 
 class TTaskBuilder(TaskBuilder):
-
     def __init__(self, path):
         self.path = path
         self.src_code = "output = {'data': n, 'result_type': 0}"
@@ -63,7 +69,6 @@ class TTaskBuilder(TaskBuilder):
 
 
 class RPCClient(object):
-
     def __init__(self):
         self.success = False
         self.error = False
@@ -82,6 +87,7 @@ class RPCClient(object):
     def test_task_started(self, *args, **kwargs):
         print "test_task_started {}".format(args)
         self.started = args[0]
+
 
 class MockDeferred(Deferred):
     def __init__(self, result):
@@ -114,7 +120,7 @@ class MockRPCCallChain(object):
 
 
 class MockRPCClient(RPCProxyClient):
-    def __init__(self, service):
+    def __init__(self, service, path):
         self.methods = ServiceHelper.to_dict(service)
 
     def call_batch(self, batch):
@@ -126,6 +132,7 @@ class MockRPCClient(RPCProxyClient):
     def wrap(self, name, _):
         def return_deferred(*args, **kwargs):
             return MockDeferred('value')
+
         return return_deferred
 
 
@@ -135,7 +142,6 @@ class MockService(object):
 
 
 class TestGNRApplicationLogic(DatabaseFixture):
-
     def test_root_path(self):
         logic = GNRApplicationLogic()
         self.assertTrue(os.path.isdir(logic.root_path))
@@ -161,7 +167,6 @@ class TestGNRApplicationLogic(DatabaseFixture):
 
 
 class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
-
     def setUp(self):
         super(TestGNRApplicationLogicWithClient, self).setUp()
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -173,7 +178,6 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         super(TestGNRApplicationLogicWithClient, self).tearDown()
 
     def test_inline_callbacks(self):
-
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
 
@@ -222,6 +226,46 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         time.sleep(0.5)
         assert golem_client.get_description() == "NEW DESC"
 
+    def test_add_tasks(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        golem_client = self.client
+        client = MockRPCClient(golem_client, self.path)
+        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
+        logic.register_client(client, service_info)
+
+        td = TestGNRApplicationLogicWithClient._get_task_definition()
+        logic.add_task_from_definition(td)
+        assert "xyz" in logic.tasks, "Task was not added"
+        task_state1 = TestGNRApplicationLogicWithClient._get_task_state()
+        task_state2 = TestGNRApplicationLogicWithClient._get_task_state(task_id="abc")
+        task_state3 = TestGNRApplicationLogicWithClient._get_task_state(task_id="def")
+        logic.add_tasks([task_state1, task_state2, task_state3])
+        self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
+        assert "xyz" in logic.tasks, "Task was not added"
+        assert "abc" in logic.tasks, "Task was not added"
+        assert "def" in logic.tasks, "Task was not added"
+        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
+
+    @staticmethod
+    def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+        task_state = GNRTaskState()
+        td = TestGNRApplicationLogicWithClient._get_task_definition(task_id=task_id,
+                                                                    full_task_timeout=full_task_timeout,
+                                                                    subtask_timeout=subtask_timeout)
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = td
+        return task_state
+
+    @staticmethod
+    def _get_task_definition(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+        td = GNRTaskDefinition()
+        td.task_id = task_id
+        td.full_task_timeout = full_task_timeout
+        td.subtask_timeout = subtask_timeout
+        return td
+
     def test_messages(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
@@ -252,7 +296,6 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture):
-
     def setUp(self):
         super(TestGNRApplicationLogicWithGUI, self).setUp()
         self.client = Client.__new__(Client)
@@ -311,6 +354,8 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic.task_types["TESTTASK"] = task_type
 
         logic.run_test_task(ts)
+        logic.test_task_started(True)
+        assert logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
         time.sleep(0.5)
 
         assert rpc_client.success
