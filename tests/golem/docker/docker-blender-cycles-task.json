@@ -1,11 +1,11 @@
 {
-  "py/object":"gnr.renderingtaskstate.RenderingTaskDefinition",
+  "py/object":"apps.rendering.task.renderingtaskstate.RenderingTaskDefinition",
   "renderer_options":{
-    "py/object":"gnr.task.blenderrendertask.BlenderRendererOptions",
+    "py/object":"apps.blender.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "compositing":false,
     "environment":{
-      "py/object":"gnr.renderingenvironment.BlenderEnvironment",
+      "py/object":"apps.blender.blenderenvironment.BlenderEnvironment",
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",
@@ -41,11 +41,11 @@
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-cycles.blend",
-      "$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py"
+      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
+      "$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py"
     ]
   },
-  "main_scene_file":"$GOLEM_DIR/gnr/benchmarks/blender/blender_task/scene-Helicopter-27-cycles.blend",
+  "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
   "resolution":[
     800,
     600
@@ -56,10 +56,10 @@
   "verification_options":null,
   "estimated_memory":0,
   "full_task_timeout":14400,
-  "renderer":"Blender",
-  "main_program_file":"$GOLEM_DIR/gnr/task/scripts/docker_blendertask.py",
+  "task_type":"Blender",
+  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "options":{
-    "py/type":"gnr.gnrtaskstate.GNROptions"
+    "py/type":"apps.core.task.gnrtaskstate.GNROptions"
   },
   "subtask_timeout":1200,
   "total_subtasks":6,

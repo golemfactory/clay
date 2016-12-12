@@ -17,6 +17,6 @@ coverage:
     - "tests/*"
     - "scripts/*"
     - "save/*"
-    - "gnr/taskcollector/*"
+    - "apps/rendering/resources/taskcollector/*"
 comment:
   layout: header, diff, changes, sunburst, uncovered

@@ -3,19 +3,21 @@ import os
 import shutil
 from os import makedirs, path, remove
 
-import gnr.node
 import jsonpickle as json
 from gnr.task.luxrendertask import LuxRenderTaskBuilder
 from gnr.task.tasktester import TaskTester
-from golem.clientconfigdescriptor import ClientConfigDescriptor
+from mock import Mock
 
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
+from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from mock import Mock
 from test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
@@ -84,7 +86,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = gnr.node.GNRNode(datadir=self.path)
+        self.node = OptNode(datadir=self.path)
         self.node.client.start = Mock()
         self.node.initialize()
 
