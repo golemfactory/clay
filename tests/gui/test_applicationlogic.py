@@ -1,5 +1,4 @@
 import os
-import tempfile
 import time
 import uuid
 
@@ -7,21 +6,14 @@ from ethereum.utils import denoms
 from mock import Mock, MagicMock, ANY, call
 from twisted.internet.defer import Deferred
 
-from golem.client import Client
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.keysauth import EllipticalKeysAuth
-from golem.network.p2p.node import Node
-from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
-from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
-from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskStatus
-from golem.testutils import DatabaseFixture, TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-
-
 from apps.core.task.gnrtaskstate import GNRTaskState, GNRTaskDefinition
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-
+from golem.client import Client
+from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
+from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
+from golem.task.taskstate import TaskStatus
+from golem.testutils import DatabaseFixture
+from golem.tools.assertlogs import LogTestCase
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger
 from gui.view.appmainwindow import AppMainWindow
