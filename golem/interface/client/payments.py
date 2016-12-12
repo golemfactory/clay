@@ -31,7 +31,7 @@ def __value(value):
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
 def incomes(sort):
-    deferred = incomes.client.get_incomes()
+    deferred = incomes.client.get_incomes_list()
     result = CommandHelper.wait_for(deferred) or []
 
     values = []
@@ -51,7 +51,7 @@ def incomes(sort):
 @command(argument=sort_payments, help="Display payments", root=True)
 def payments(sort):
 
-    deferred = payments.client.get_payments()
+    deferred = payments.client.get_payments_list()
     result = CommandHelper.wait_for(deferred) or []
 
     values = []

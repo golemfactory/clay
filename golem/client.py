@@ -116,8 +116,6 @@ class Client(object):
 
         self.do_work_task = task.LoopingCall(self.__do_work)
 
-        self.listeners = []
-
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
@@ -515,6 +513,10 @@ class Client(object):
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
     # CLIENT CONFIGURATION
+    def set_rpc_server(self, rpc_server):
+        self.rpc_server = rpc_server
+        return self.rpc_server.add_service(self)
+
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
