@@ -5,10 +5,12 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from gnr.benchmarks.benchmark import Benchmark
-from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
-from gnr.task.tasktester import TaskTester
+from mock import Mock
+
+from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
@@ -22,8 +24,8 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from mock import Mock
 
 
 def dbg(result):
@@ -253,8 +255,8 @@ class TestPayments(unittest.TestCase):
         ]
 
         client = Mock()
-        client.get_incomes.return_value = incomes_list
-        client.get_payments.return_value = payments_list
+        client.get_incomes_list.return_value = incomes_list
+        client.get_payments_list.return_value = payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
@@ -513,7 +515,7 @@ class TestTasks(TempDirFixture):
         task = builder.build()
         task.__dict__.update(Benchmark().query_benchmark_task_definition().__dict__)
         task.task_id = "deadbeef"
-        task.renderer = "Blender"
+        task.task_type = "Blender"
         task.docker_images = None
         task.renderer_options = BlenderRendererOptions()
 

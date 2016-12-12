@@ -32,7 +32,7 @@ class Faucet(object):
 
     @staticmethod
     def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
+        nonce = ethnode.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
         addr = normalize_address(addr)
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
@@ -104,6 +104,7 @@ class NodeProcess(object):
             '--networkid', '9',
             '--port', str(self.port),
             '--nodiscover',
+            '--etherbase', '0x6528d9354356d7f668c75e9ed97f792bf910c8e5',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
             '--verbosity', '3',

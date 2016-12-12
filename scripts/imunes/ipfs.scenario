@@ -94,7 +94,7 @@ start %{net_path}
 
     copy    host    %{task_path} %{task_dest}
 
-    node    host    /bin/bash -c "echo 'cd /opt/golem && nohup python gnr/node.py -t %{task_dest} >%{node_log} 2>&1 &' > /root/gnr-node.sh"
+    node    host    /bin/bash -c "echo 'cd /opt/golem && nohup python gui/node.py -t %{task_dest} >%{node_log} 2>&1 &' > /root/gnr-node.sh"
       # -d stands for 'detached' execution
     node-d  host    /bin/bash /root/gnr-node.sh
 
@@ -102,7 +102,7 @@ start %{net_path}
 
 # start worker nodes
 
-    node    pc      /bin/bash -c "echo 'cd /opt/golem && nohup python gnr/node.py -p %{host_addr}:40102 >%{node_log} 2>&1 &' > /root/gnr-node.sh"
+    node    pc      /bin/bash -c "echo 'cd /opt/golem && nohup python gui/node.py -p %{host_addr}:40102 >%{node_log} 2>&1 &' > /root/gnr-node.sh"
       # -d stands for 'detached' execution
     node-d  pc      /bin/bash /root/gnr-node.sh
 

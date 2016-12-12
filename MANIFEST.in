@@ -2,10 +2,10 @@ include golemapp.py
 include requirements.txt
 include README.md
 include LICENSE.txt
+include logging.ini
 include golem/ethereum/genesis_golem.json
 include golem/ethereum/mine_pending_transactions.js
-include gnr/logging.ini
-include gnr/ui/nopreview.png
-include gnr/ui/img/*
-include gnr/taskcollector/Release/*
-recursive-include gnr/benchmarks *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
+include gui/view/nopreview.png
+include gui/view/img/*
+include apps/rendering/resources/taskcollector/Release/*
+recursive-include apps *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
