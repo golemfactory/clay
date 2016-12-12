@@ -184,7 +184,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         golem_client.p2pservice.get_peers.return_value = {}
         golem_client.resource_server.get_distributed_resource_root.return_value = self.path
 
-        client = MockRPCClient(golem_client)
+        client = MockRPCClient(golem_client, self.path)
         service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
 
         logic.register_client(client, service_info)
@@ -211,7 +211,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
         golem_client = self.client
-        client = MockRPCClient(golem_client)
+        client = MockRPCClient(golem_client, self.path)
         service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
         logic.register_client(client, service_info)
         golem_client.change_description("NEW DESC")
