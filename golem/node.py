@@ -23,8 +23,6 @@ class Node(object):
     def __init__(self, datadir=None, transaction_system=False,
                  **config_overrides):
 
-        import logging
-        self.logger = logging.getLogger("gnr.node")
         self.default_environments = []
         self.client = Client(datadir=datadir,
                              transaction_system=transaction_system,
@@ -65,7 +63,9 @@ class Node(object):
                                         config.rpc_port)
             reactor.run()
         except Exception as ex:
-            self.logger.error("Reactor error: {}".format(ex))
+            import logging
+            logger = logging.getLogger("app")
+            logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()
             sys.exit(0)
@@ -83,7 +83,7 @@ class Node(object):
         self.rpc_session.connect().addErrback(self._rpc_error)
 
     def _rpc_error(self, err):
-        self.logger.error(u"RPC error: {}".format(err))
+        self.logger.error("RPC error: {}".format(err))
 
     def _get_task_builder(self, task_def):
         raise NotImplementedError

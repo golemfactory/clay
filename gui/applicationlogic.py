@@ -229,6 +229,7 @@ class GNRApplicationLogic(QtCore.QObject):
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
+    @inlineCallbacks
     def change_node_name(self, node_name):
         yield self.client.update_setting('node_name', node_name)
         self.node_name = node_name

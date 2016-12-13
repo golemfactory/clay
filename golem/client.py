@@ -51,8 +51,6 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         self.client = client
 
     def task_status_updated(self, task_id):
-        for l in self.client.listeners:
-            l.task_updated(task_id)
         if self.client.rpc_publisher:
             self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
@@ -642,9 +640,6 @@ class Client(object):
 
     def disable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, False)
-
-    def change_accept_tasks_for_environment(self, env_id, state):
-        self.environments_manager.change_accept_tasks(env_id, state)
 
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)

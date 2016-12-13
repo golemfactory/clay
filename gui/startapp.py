@@ -1,4 +1,3 @@
-import logging
 from multiprocessing import Process, Queue
 from os import path
 
@@ -15,18 +14,19 @@ from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
 from application import GNRGui
+from twisted.internet.error import ReactorAlreadyRunning
 
-DEBUG_DEFERRED = True
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
 
-apps_manager = AppsManager()
-apps_manager.load_apps()
-
-
+DEBUG_DEFERRED = False
 if DEBUG_DEFERRED:
     from twisted.internet.defer import setDebugging
     setDebugging(True)
+
+
+apps_manager = AppsManager()
+apps_manager.load_apps()
 
 
 def install_qt4_reactor():
@@ -73,22 +73,23 @@ class GUIApp(object):
         self.app.execute(using_qt4_reactor=True)
 
 
-def start_gui_process(queue, datadir, rendering=True, reactor=None):
+def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
 
     if datadir:
         log_name = path.join(datadir, GUI_LOG_NAME)
     else:
         log_name = GUI_LOG_NAME
 
+    import logging
     config_logging(log_name)
     logger = logging.getLogger("app")
 
     rpc_address = queue.get(True, 240)
 
+    if not gui_app:
+        gui_app = GUIApp(rendering)
     if not reactor:
         reactor = install_qt4_reactor()
-
-    gui_app = GUIApp(rendering)
 
     from golem.rpc.session import Session, Client, object_method_map
     from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -108,19 +109,23 @@ def start_gui_process(queue, datadir, rendering=True, reactor=None):
         session.connect().addCallbacks(session_ready, shutdown)
 
     reactor.callWhenRunning(connect)
-    if not reactor.running:
+
+    try:
         reactor.run()
+    except ReactorAlreadyRunning:
+        logger.debug(u"GUI process: reactor is already running")
 
 
 def start_client_process(queue, start_ranking, datadir=None,
                          transaction_system=False, client=None):
 
-    from golem.client import Client
-
     if datadir:
         log_name = path.join(datadir, CLIENT_LOG_NAME)
     else:
         log_name = CLIENT_LOG_NAME
+
+    from golem.client import Client
+    import logging
 
     config_logging(log_name)
     logger = logging.getLogger("golem.client")
@@ -145,20 +150,16 @@ def start_client_process(queue, start_ranking, datadir=None,
         methods = object_method_map(client, CORE_METHOD_MAP)
         session = Session(router.address, methods=methods)
         client.configure_rpc(session)
+        session.connect().addCallbacks(session_ready, shutdown)
 
-        deferred = session.connect()
-        deferred.addCallbacks(session_ready, shutdown)
-
-    def session_ready(*_):
+    def session_ready(*n):
         try:
             client.start()
         except Exception as exc:
             logger.error(u"Client process error: {}".format(exc))
             queue.put(exc)
-            return
-
-        queue.put(router.address)
-        queue.close()
+        else:
+            queue.put(router.address)
 
     def shutdown(err):
         queue.put(Exception(u"Error: {}".format(err)))
@@ -168,8 +169,10 @@ def start_client_process(queue, start_ranking, datadir=None,
     if start_ranking:
         client.ranking.run(reactor)
 
-    if not reactor.running:
+    try:
         reactor.run()
+    except ReactorAlreadyRunning:
+        logger.debug(u"Client process: reactor is already running")
 
 
 def start_app(datadir=None, rendering=False,
