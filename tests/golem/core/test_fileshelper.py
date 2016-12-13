@@ -4,6 +4,7 @@
 import os
 import re
 import shutil
+import getpass
 
 from golem.core.common import get_golem_path, is_windows
 from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path, du
@@ -43,10 +44,11 @@ class TestDirSize(TestDirFixture):
             new_size = get_dir_size(self.testdir)
             self.assertGreaterEqual(new_size, size)
 
-            errors = []
-            get_dir_size(self.testdir, report_error=errors.append)
-            self.assertEqual(len(errors), 1)
-            self.assertIs(type(errors[0]), OSError)
+            if getpass.getuser() != 'root':
+                errors = []
+                get_dir_size(self.testdir, report_error=errors.append)
+                self.assertEqual(len(errors), 1)
+                self.assertIs(type(errors[0]), OSError)
 
     def testOuterInnerDir(self):
         path = os.path.join('dir', 'subdir', 'file')
