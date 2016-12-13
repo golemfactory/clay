@@ -207,6 +207,20 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
         logic.get_cost_for_task_id("unknown task")
 
+        td = self._get_task_definition()
+        logic.add_task_from_definition(td)
+        logic.task_status_changed(td.task_id)
+
+        logic.change_config(Mock())
+
+        with self.assertLogs(logger, level="WARNING"):
+            logic.task_status_changed("invalid")
+
+        logic.client.ranking = None
+        logic.update_estimated_reputation()
+
+        logic.change_description(Mock())
+
     def test_change_description(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
@@ -239,6 +253,14 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         assert "def" in logic.tasks, "Task was not added"
         self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
         self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
+        result = logic.add_tasks([])
+        self.assertIsNone(result, "Returned value [{}] is not None".format(result))
+        result = logic.get_test_tasks()
+        self.assertEqual(result, {}, "Returned value is not empty")
+        with self.assertLogs(logger):
+            logic.change_timeouts("invalid", 10, 10)
+
+        logic.docker_config_changed()
 
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
@@ -285,6 +307,10 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.register_new_test_task_type(task_type)
         with self.assertRaises(AssertionError):
             logic.register_new_test_task_type(task_type)
+
+        self.assertIsNotNone(logic.get_task_type("NAME1"), "Task type not found")
+        with self.assertRaises(AssertionError):
+            logic.get_task_type("abc")
 
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture):
