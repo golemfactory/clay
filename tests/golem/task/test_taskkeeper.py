@@ -1,5 +1,5 @@
 import time
-from datetime import timedelta
+from datetime import datetime, timedelta
 from unittest import TestCase
 
 from mock import Mock
@@ -155,6 +155,43 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert tk.add_task_header(task_header)
         assert task_id not in tk.supported_tasks
 
+        task_header['task_id'] = "newtaskID"
+        task_header['deadline'] = "WRONG DEADLINE"
+        assert not tk.add_task_header(task_header)
+
+    def test_is_correct(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
+        th = get_task_header()
+
+        correct, err = tk.is_correct(th)
+        assert correct
+        assert err is None
+
+        th['deadline'] = time.time()
+        correct, err = tk.is_correct(th)
+        assert not correct
+        assert err == "Deadline is not a datetime"
+
+        th['deadline'] = get_current_time() - timedelta(seconds=10)
+        correct, err = tk.is_correct(th)
+        assert not correct
+        assert err == "Deadline already passed"
+
+        th['deadline'] = get_current_time() + timedelta(seconds=20)
+        correct, err = tk.is_correct(th)
+        assert correct
+        assert err is None
+
+        th['subtask_timeout'] = "abc"
+        correct, err = tk.is_correct(th)
+        assert not correct
+        assert err == "Subtask timeout is not a number"
+
+        th['subtask_timeout'] = -131
+        correct, err = tk.is_correct(th)
+        assert not correct
+        assert err == "Subtask timeout is less than 0"
+
 
 def get_task_header():
     return {
@@ -169,6 +206,7 @@ def get_task_header():
         "subtask_timeout": 120,
         "max_price": 10
     }
+
 
 class TestCompSubtaskInfo(TestCase):
     def test_init(self):
