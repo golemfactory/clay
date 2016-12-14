@@ -1,8 +1,10 @@
 # Generating, solving and checking solutions of crypto-puzzles for proof of work system
 
-from random import randint, sample
+from random import sample
 from hashlib import sha256
 import time
+
+from golem.core.keysauth import get_random
 
 __author__ = 'Magda.Stasiewicz'
 
@@ -30,7 +32,7 @@ def create_challenge(history, prev):
                           "".join(sample(str(h[1]), min(CHALLENGE_HISTORY_LIMIT, len(h[1]))))
     if prev:
         concat += "".join(sample(str(prev), min(CHALLENGE_HISTORY_LIMIT, len(prev))))
-    concat += str(randint(0, MAX_RANDINT))
+    concat += str(get_random(0, MAX_RANDINT))
     return concat
 
 
