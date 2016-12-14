@@ -11,7 +11,7 @@ logger = logging.getLogger("app")
 class RenderingApplicationLogic(GNRApplicationLogic):
     def __init__(self):
         GNRApplicationLogic.__init__(self)
-        self.renderer_options = None
+        self.options = None
 
     def change_verification_option(self, size_x_max=None, size_y_max=None):
         if size_x_max:

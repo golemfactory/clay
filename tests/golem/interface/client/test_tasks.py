@@ -1,11 +1,11 @@
 from mock import Mock
 
-from golem.interface.client.tasks import RendererLogic
+from golem.interface.client.tasks import CommandAppLogic
 from golem.tools.testdirfixture import TestDirFixture
 
 
-class TestRendererLogic(TestDirFixture):
+class TestCommandAppLogic(TestDirFixture):
     def test_renderer_logic(self):
-        rl = RendererLogic.instantiate(Mock(), self.path)
-        assert rl.task_types['Blender'] is not None
-        assert rl.task_types['LuxRender'] is not None
+        lgc = CommandAppLogic.instantiate(Mock(), self.path)
+        assert lgc.task_types['Blender'] is not None
+        assert lgc.task_types['LuxRender'] is not None

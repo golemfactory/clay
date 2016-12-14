@@ -13,6 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from golem.client import GolemClientRemoteEventListener
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
+from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
@@ -46,12 +47,12 @@ class ClientRemoteEventListener(GolemClientRemoteEventListener):
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
-class GNRApplicationLogic(QtCore.QObject):
+class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def __init__(self):
         QtCore.QObject.__init__(self)
+        AppLogic.__init__(self)
         self.tasks = {}
         self.test_tasks = {}
-        self.task_types = {}
         self.customizer = None
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gui'))
         self.nodes_manager_client = None
@@ -61,12 +62,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.config_dialog = None
         self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
-        self.datadir = None
         self.res_dirs = None
-        self.node_name = None
         self.br = None
         self.__looping_calls = None
-        self.dir_manager = None
         self.reactor = None
         self.current_task_type = None  # Which task type is currently active
         self.default_task_type = None  # Which task type should be displayed first
@@ -293,12 +291,6 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.client.enqueue_new_task(t)
 
-    def get_builder(self, task_state):
-        builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
-                                                                                     task_state.definition,
-                                                                                     self.datadir, self.dir_manager)
-        return builder
-
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
 
@@ -392,12 +384,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.listWidget.setCurrentItem(self.customizer.gui.ui.listWidget.item(1))
 
     def register_new_task_type(self, task_type):
-        if task_type.name not in self.task_types:
-            self.task_types[task_type.name] = task_type
-            if len(self.task_types) == 1:
+        AppLogic.register_new_task_type(self, task_type)
+        if len(self.task_types) == 1:
                 self.default_task_type = task_type
-        else:
-            assert False, "Task type {} already registered".format(task_type.name)
 
     def register_new_test_task_type(self, test_task_info):
         if test_task_info.name not in self.test_tasks:
