@@ -1,6 +1,6 @@
 import abc
 import copy
-import json
+import jsonpickle as json
 import logging
 import os
 import shutil

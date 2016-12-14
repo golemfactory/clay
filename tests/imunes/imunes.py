@@ -1,5 +1,5 @@
 import argparse
-import json
+import jsonpickle as json
 import os
 import re
 import subprocess

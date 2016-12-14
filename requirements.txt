@@ -5,7 +5,6 @@ pyvbox
 enum34
 ipaddress
 ipfs-api
-jsonpickle
 netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1
@@ -34,3 +33,4 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.11
+jsonpickle
