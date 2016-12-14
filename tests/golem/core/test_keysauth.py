@@ -1,10 +1,10 @@
 import time
 from os import path
-from random import random
+from random import random, randint
 
 from devp2p.crypto import ECCx
 
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random
 from golem.core.simpleserializer import SimpleSerializer
 from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -36,6 +36,17 @@ class KeysAuthTest(TestWithKeysAuth):
         with self.assertRaises(AssertionError):
             km = KeysAuth(self.path)
             km.set_keys_dir(file_)
+
+    def test_random_number_generator(self):
+        with self.assertRaises(ArithmeticError):
+            get_random(30, 10)
+        self.assertEqual(10, get_random(10, 10))
+        for _ in xrange(10):
+            a = randint(10, 100)
+            b = randint(a + 1, 2 * a)
+            r = get_random(a, b)
+            self.assertGreater(r, a)
+            self.assertGreater(b, r)
 
 
 class TestRSAKeysAuth(TestWithKeysAuth):

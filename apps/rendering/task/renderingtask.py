@@ -9,6 +9,7 @@ from PIL import Image, ImageChops
 
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
+from golem.core.keysauth import get_random
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.localcomputer import LocalComputer
@@ -348,8 +349,8 @@ class RenderingTask(GNRTask):
     def _get_box_start(self, x0, y0, x1, y1):
         ver_x = min(self.verification_options.box_size[0], x1 - x0)
         ver_y = min(self.verification_options.box_size[1], y1 - y0)
-        start_x = random.randint(x0, x1 - ver_x)
-        start_y = random.randint(y0, y1 - ver_y)
+        start_x = get_random(x0, x1 - ver_x)
+        start_y = get_random(y0, y1 - ver_y)
         return start_x, start_y
 
     @GNRTask.handle_key_error
@@ -390,7 +391,7 @@ class RenderingTask(GNRTask):
         if self.verification_options.type == 'forFirst':
             if self.subtasks_given[subtask_id]['node_id'] not in self.verified_clients:
                 return True
-        if self.verification_options.type == 'random' and random.random() < self.verification_options.probability:
+        if self.verification_options.type == 'random' and get_random() < self.verification_options.probability:
             return True
         return False
 

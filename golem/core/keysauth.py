@@ -28,6 +28,18 @@ def sha2(seed):
     return int("0x" + sha256(seed).hexdigest(), 16)
 
 
+def get_random(min_value=0, max_value=None):
+    from os import urandom
+    from sys import getsizeof, maxint
+    if max_value is None:
+        max_value = maxint
+    if min_value > max_value:
+        raise ArithmeticError("max_value should be greater than min_value")
+    if min_value == max_value:
+        return min_value
+    return (int(urandom(getsizeof(max_value)).encode('hex'), 16) % (max_value - min_value)) + min_value
+
+
 class KeysAuth(object):
     """ Cryptographic authorization manager. Create and keeps private and public keys."""
 
@@ -406,10 +418,10 @@ class EllipticalKeysAuth(KeysAuth):
         :param int difficulty: desired key difficulty level
         """
         min_hash = self._count_min_hash(difficulty)
-        priv_key = mk_privkey(str(random()))
+        priv_key = mk_privkey(str(get_random()))
         pub_key = privtopub(priv_key)
         while sha2(self.cnt_key_id(pub_key)) > min_hash:
-            priv_key = mk_privkey(str(random()))
+            priv_key = mk_privkey(str(get_random()))
             pub_key = privtopub(priv_key)
         self._set_and_save(priv_key, pub_key)
 
@@ -481,7 +493,7 @@ class EllipticalKeysAuth(KeysAuth):
 
     @staticmethod
     def _generate_keys(private_key_loc, public_key_loc):
-        key = mk_privkey(str(random()))
+        key = mk_privkey(str(get_random()))
         pub_key = privtopub(key)
 
         # Create dir for the keys.
