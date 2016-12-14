@@ -4,7 +4,7 @@ from random import random, randint
 
 from devp2p.crypto import ECCx
 
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float
 from golem.core.simpleserializer import SimpleSerializer
 from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -45,8 +45,13 @@ class KeysAuthTest(TestWithKeysAuth):
             a = randint(10, 100)
             b = randint(a + 1, 2 * a)
             r = get_random(a, b)
-            self.assertGreater(r, a)
-            self.assertGreater(b, r)
+            self.assertGreaterEqual(r, a)
+            self.assertGreaterEqual(b, r)
+
+        for _ in xrange(10):
+            r = get_random_float()
+            self.assertGreaterEqual(r, 0)
+            self.assertGreaterEqual(1, r)
 
 
 class TestRSAKeysAuth(TestWithKeysAuth):

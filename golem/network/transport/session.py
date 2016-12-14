@@ -3,7 +3,7 @@ import logging
 import random
 import time
 
-from golem.core.keysauth import get_random
+from golem.core.keysauth import get_random_float
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 from golem.network.transport.message import MessageDisconnect, Message
 from network import Session
@@ -179,7 +179,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.message_ttl = MSG_TTL  # how old messages should be accepted
         self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
-        self.rand_val = get_random()  # TODO: change rand val to hashcash
+        self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
         self.can_be_unverified = [MessageDisconnect.Type]  # React to message even if it's self.verified is set to False
         self.can_be_unsigned = [MessageDisconnect.Type]  # React to message even if it's not signed.
