@@ -50,8 +50,8 @@ class KeysAuthTest(TestWithKeysAuth):
 
         for _ in xrange(10):
             r = get_random_float()
-            self.assertGreaterEqual(r, 0)
-            self.assertGreaterEqual(1, r)
+            self.assertGreater(r, 0)
+            self.assertGreater(1, r)
 
 
 class TestRSAKeysAuth(TestWithKeysAuth):

@@ -30,7 +30,7 @@ def sha2(seed):
 
 def get_random(min_value=0, max_value=None):
     """
-    Get cryptographically secure random number in range
+    Get cryptographically secure random integer in range
     :param min_value: Minimal value
     :param max_value: Maximum value
     :return: Random number in range <min_value, max_value>
@@ -43,16 +43,16 @@ def get_random(min_value=0, max_value=None):
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
         return min_value
-    return (int(urandom(getsizeof(max_value)).encode('hex'), 16) % (max_value - min_value)) + min_value
+    return int((int(urandom(getsizeof(max_value)).encode('hex'), 16) % (max_value - min_value)) + min_value)
 
 
 def get_random_float():
     """
-    Get random number in range <0, 1>
-    :return: Random number in range <0, 1>
+    Get random number in range (0, 1)
+    :return: Random number in range (0, 1)
     """
-    result = get_random()
-    return result / (10 ** len(str(result)))
+    result = get_random(min_value=2)
+    return float(result - 1) / float(10 ** len(str(result)))
 
 
 class KeysAuth(object):
