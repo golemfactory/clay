@@ -19,13 +19,13 @@ DEFAULT_PADDING = 4
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def _calculate_total(self, defaults, definition):
         if definition.optimize_total:
-            if self.task_definition.renderer_options.use_frames:
-                return len(self.task_definition.renderer_options.frames)
+            if self.task_definition.options.use_frames:
+                return len(self.task_definition.options.frames)
             else:
                 return defaults.default_subtasks
 
-        if self.task_definition.renderer_options.use_frames:
-            num_frames = len(self.task_definition.renderer_options.frames)
+        if self.task_definition.options.use_frames:
+            num_frames = len(self.task_definition.options.frames)
             if definition.total_subtasks > num_frames:
                 est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
                 if est != definition.total_subtasks:

@@ -65,20 +65,20 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
 
         lux_customizer.gui.ui.stopByTimeRadioButton.setChecked(True)
         lux_customizer.gui.ui.haltTimeLineEdit.setText("60")
-        lux_customizer._change_renderer_options()
-        assert lux_customizer.renderer_options.haltspp == 0
-        assert lux_customizer.renderer_options.halttime == 60
+        lux_customizer._change_options()
+        assert lux_customizer.options.haltspp == 0
+        assert lux_customizer.options.halttime == 60
         lux_customizer.gui.ui.haltTimeLineEdit.setText("XYZ")
         with self.assertLogs(logger, level="ERROR"):
-            lux_customizer._change_renderer_options()
-        assert lux_customizer.renderer_options.haltspp == 0
+            lux_customizer._change_options()
+        assert lux_customizer.options.haltspp == 0
         lux_customizer.gui.ui.stopBySppRadioButton.setChecked(True)
         lux_customizer.gui.ui.haltTimeLineEdit.setText("30")
         lux_customizer.gui.ui.haltSppLineEdit.setText("ABC")
         with self.assertLogs(logger, level="ERROR"):
-            lux_customizer._change_renderer_options()
-        assert lux_customizer.renderer_options.halttime == 0
+            lux_customizer._change_options()
+        assert lux_customizer.options.halttime == 0
         lux_customizer.gui.ui.haltSppLineEdit.setText("25")
-        lux_customizer._change_renderer_options()
-        assert lux_customizer.renderer_options.halttime == 0
-        assert lux_customizer.renderer_options.haltspp == 25
+        lux_customizer._change_options()
+        assert lux_customizer.options.halttime == 0
+        assert lux_customizer.options.haltspp == 25

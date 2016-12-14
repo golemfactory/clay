@@ -7,6 +7,7 @@ from mock import Mock, MagicMock, ANY, call
 from twisted.internet.defer import Deferred
 
 from golem.client import Client
+from golem.interface.client.logic import logger as int_logger
 from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
@@ -243,7 +244,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         task_type = Mock()
         task_type.name = "NAME1"
         logic.register_new_task_type(task_type)
-        with self.assertRaises(AssertionError):
+        with self.assertLogs(int_logger, level="ERROR"):
             logic.register_new_task_type(task_type)
 
         logic.register_new_test_task_type(task_type)

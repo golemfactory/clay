@@ -408,7 +408,7 @@ class TestPreviewUpdater(TempDirFixture):
 class TestBlenderRenderTaskBuilder(TempDirFixture):
     def test_build(self):
         definition = RenderingTaskDefinition()
-        definition.renderer_options = BlenderRendererOptions()
+        definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition, root_path=self.tempdir,
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()

@@ -1,6 +1,6 @@
 {
   "py/object":"apps.rendering.task.renderingtaskstate.RenderingTaskDefinition",
-  "renderer_options":{
+  "options":{
     "py/object":"apps.blender.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "compositing":false,
@@ -36,7 +36,6 @@
       10
     ]
   },
-  "task_type":null,
   "task_id":"d2babb49-428a-48f0-b91a-febff5d8fde5",
   "resources":{
     "py/set":[
@@ -67,9 +66,6 @@
   "max_price": 10.23,
   "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
-  "options":{
-    "py/type":"apps.core.task.gnrtaskstate.GNROptions"
-  },
   "subtask_timeout":1200,
   "total_subtasks":6
 }

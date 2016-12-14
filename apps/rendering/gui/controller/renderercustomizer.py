@@ -13,7 +13,7 @@ logger = logging.getLogger("apps.rendering")
 
 class RendererCustomizer(Customizer):
     def __init__(self, gui, logic):
-        self.renderer_options = logic.renderer_options
+        self.options = logic.options
         Customizer.__init__(self, gui, logic)
 
     def get_task_name(self):
@@ -33,10 +33,10 @@ class RendererCustomizer(Customizer):
 
         self.gui.ui.mainSceneFileLineEdit.clear()
         self.gui.ui.outputFileLineEdit.clear()
-        self.renderer_options = self.logic.renderer_options
+        self.options = self.logic.options
 
     def load_task_definition(self, definition):
-        self.renderer_options = deepcopy(definition.renderer_options)
+        self.options = deepcopy(definition.options)
         self.gui.ui.mainSceneFileLineEdit.setText(definition.main_scene_file)
         self.gui.ui.outputResXSpinBox.setValue(definition.resolution[0])
         self.gui.ui.outputResYSpinBox.setValue(definition.resolution[1])
@@ -54,15 +54,15 @@ class RendererCustomizer(Customizer):
             definition.resources.remove(os.path.normpath(definition.main_scene_file))
 
     def get_task_specific_options(self, definition):
-        self._change_renderer_options()
-        definition.renderer_options = self.renderer_options
+        self._change_options()
+        definition.options = self.options
         definition.resolution = [self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value()]
         definition.output_file = u"{}".format(self.gui.ui.outputFileLineEdit.text())
         definition.output_format = u"{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
         definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
 
-    def _change_renderer_options(self):
+    def _change_options(self):
         pass
 
     def _setup_connections(self):
@@ -150,21 +150,21 @@ class FrameRendererCustomizer(RendererCustomizer):
         self._set_frames_from_options()
 
     def _set_frames_from_options(self):
-        self.gui.ui.framesCheckBox.setChecked(self.renderer_options.use_frames)
-        self.gui.ui.framesLineEdit.setEnabled(self.renderer_options.use_frames)
-        if self.renderer_options.use_frames:
-            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.renderer_options.frames))
+        self.gui.ui.framesCheckBox.setChecked(self.options.use_frames)
+        self.gui.ui.framesLineEdit.setEnabled(self.options.use_frames)
+        if self.options.use_frames:
+            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.options.frames))
         else:
             self.gui.ui.framesLineEdit.setText("")
 
-    def _change_renderer_options(self):
-        self.renderer_options.use_frames = self.gui.ui.framesCheckBox.isChecked()
-        if self.renderer_options.use_frames:
+    def _change_options(self):
+        self.options.use_frames = self.gui.ui.framesCheckBox.isChecked()
+        if self.options.use_frames:
             frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())
             if not frames:
                 self.show_error_window(u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
                 return
-            self.renderer_options.frames = frames
+            self.options.frames = frames
 
     def _frames_changed(self):
         self.logic.task_settings_changed()
@@ -172,7 +172,7 @@ class FrameRendererCustomizer(RendererCustomizer):
     def _frames_check_box_changed(self):
         self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
-            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.renderer_options.frames))
+            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.options.frames))
 
     @staticmethod
     def frames_to_string(frames):

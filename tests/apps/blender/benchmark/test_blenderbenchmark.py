@@ -22,7 +22,7 @@ class TestBlenderBenchmark(unittest.TestCase):
         self.assertIsInstance(self.bb, BlenderBenchmark)
         self.assertIsInstance(self.bb, Benchmark)
         self.assertIsInstance(self.bb.task_definition, RenderingTaskDefinition)
-        self.assertIsInstance(self.bb.task_definition.renderer_options, BlenderRendererOptions)
+        self.assertIsInstance(self.bb.task_definition.options, BlenderRendererOptions)
     
     def test_task_settings(self):
         self.assertTrue(self.bb.normalization_constant == 9360)

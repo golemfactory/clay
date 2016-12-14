@@ -22,8 +22,8 @@ class BlenderBenchmark(Benchmark):
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "blender_benchmark.png")
         self.task_definition.task_type = "Blender"
         self.task_definition.output_format = "png"
-        self.task_definition.renderer_options = BlenderRendererOptions()
-        self.task_definition.renderer_options.frames = [1]
+        self.task_definition.options = BlenderRendererOptions()
+        self.task_definition.options.frames = [1]
         self.task_definition.task_id = u"{}".format("blender_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.blender_task_path, "scene-Helicopter-27-cycles.blend")
         self.task_definition.main_program_file = u"{}".format(find_task_script(APP_DIR, "docker_blendertask.py"))

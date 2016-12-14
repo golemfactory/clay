@@ -30,7 +30,7 @@ if not isinstance(task_def, RenderingTaskDefinition):
     sys.exit(1)
 
 # Replace BlenderEnvironment with BlenderDockerEnvironment
-task_def.renderer_options.environment = BlenderEnvironment()
+task_def.options.environment = BlenderEnvironment()
 
 BLENDER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/blendertask.py")
 DOCKER_TASK_SCRIPT = path.normpath("/gnr/task/scripts/docker_blendertask.py")

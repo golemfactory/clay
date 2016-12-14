@@ -76,15 +76,15 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
 
         assert isinstance(customizer, FrameRendererCustomizer)
         assert not customizer.gui.ui.framesCheckBox.isChecked()
-        customizer._change_renderer_options()
-        assert customizer.renderer_options.frames == range(1, 11)
+        customizer._change_options()
+        assert customizer.options.frames == range(1, 11)
         customizer.gui.ui.framesCheckBox.setChecked(True)
         customizer.gui.ui.framesLineEdit.setText(u"{}".format("1;3;5-12"))
-        customizer._change_renderer_options()
-        assert customizer.renderer_options.frames == [1, 3] + range(5, 13)
+        customizer._change_options()
+        assert customizer.options.frames == [1, 3] + range(5, 13)
         customizer.gui.ui.framesLineEdit.setText(u"{}".format("Not proper frames"))
-        customizer._change_renderer_options()
-        assert customizer.renderer_options.frames == [1, 3] + range(5, 13)
+        customizer._change_options()
+        assert customizer.options.frames == [1, 3] + range(5, 13)
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
 
