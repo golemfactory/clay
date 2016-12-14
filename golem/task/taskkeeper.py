@@ -2,6 +2,7 @@ from __future__ import division
 import logging
 import random
 import time
+from datetime import datetime
 from math import ceil
 
 from golem.core.common import HandleKeyError, get_current_time
@@ -127,6 +128,23 @@ class TaskHeaderKeeper(object):
         supported = supported and self.check_price(th_dict_repr)
         return supported and self.check_version(th_dict_repr)
 
+    @staticmethod
+    def is_correct(th_dict_repr):
+        """ Checks if task described with given taks header dict represenation has correctly defined parameters
+         :param dict th_dict_repr: task header dictionary representation
+         :return (bool, error): First element is True if task is properly defined (the second element is then None).
+         Otheriwse first element is False and the second is the string describing wrong element
+        """
+        if not isinstance(th_dict_repr['deadline'], datetime):
+            return False, "Deadline is not a datetime"
+        if th_dict_repr['deadline'] < get_current_time():
+            return False, "Deadline already passed"
+        if not isinstance(th_dict_repr['subtask_timeout'], int):
+            return False, "Subtask timeout is not a number"
+        if th_dict_repr['subtask_timeout'] < 0:
+            return False, "Subtask timeout is less than 0"
+        return True, None
+
     def check_environment(self, th_dict_repr):
         """ Checks if this node supports environment necessary to compute task described with task header.
         :param dict th_dict_repr: task header dictionary representation
@@ -194,6 +212,9 @@ class TaskHeaderKeeper(object):
         try:
             id_ = th_dict_repr["task_id"]
             update = id_ in self.task_headers.keys()
+            is_correct, err = self.is_correct(th_dict_repr)
+            if not is_correct:
+                raise TypeError(err)
 
             if id_ not in self.removed_tasks.keys():  # not removed recently
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
