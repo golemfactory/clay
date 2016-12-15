@@ -1,7 +1,6 @@
 from __future__ import division
 
 import atexit
-import jsonpickle as json
 import logging
 import os
 import re
@@ -105,7 +104,6 @@ class NodeProcess(object):
             '--networkid', '9',
             '--port', str(self.port),
             '--nodiscover',
-            '--etherbase', '0x6528d9354356d7f668c75e9ed97f792bf910c8e5',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
             '--verbosity', '3',

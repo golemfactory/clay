@@ -25,7 +25,7 @@ class Client(object):
             assert Client.node.datadir == datadir, \
                 "Ethereum node's datadir cannot be changed"
         if not Client.node.is_running():
-            Client.node.start(rpc=True)
+            Client.node.start(rpc=True, mining=True)
         self.web3 = Web3(KeepAliveRPCProvider(host='localhost', port=Client.node.rpcport))
 
     @staticmethod
