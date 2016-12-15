@@ -152,3 +152,10 @@ class Client(object):
         :return: Returns all new entries which occurred since the last call to this method for the given filter_id
         """
         return self.web3.eth.getFilterChanges(filer_id)
+
+    def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
+        """
+        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
+        """
+        filter_id = self.new_filter(from_block, to_block, address, topics)
+        return self.web3.eth.getFilterLogs(filter_id)
