@@ -1,17 +1,13 @@
 import os
-import cPickle
-import jsonpickle
 
 from click.testing import CliRunner
 from mock import patch, call, Mock
 
-from golemapp import start, OptNode
+from golem.core.compress import save
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import TempDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
-
-
-from twisted.internet import reactor  # noqa
+from golemapp import start, OptNode
 
 
 class A(object):
@@ -166,8 +162,7 @@ class TestNode(TestWithDatabase):
     def test_task(self, mock_node):
         a = A()
         dump = os.path.join(self.path, 'testcalssdump')
-        with open(dump, 'w') as f:
-            cPickle.dump(a, f)
+        save(a, dump, False)
         args = self.args + ['--task', dump, '--task', dump]
         return_value = CliRunner().invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
@@ -187,10 +182,7 @@ class TestNode(TestWithDatabase):
         a2 = A()
         a2.child = a1
 
-        with open(test_json_file, 'w') as f:
-            j = jsonpickle.encode(a2)
-            f.write(j)
-
+        save(a2, test_json_file, False)
         try:
             runner = CliRunner()
             args = self.args + ['--task', test_json_file]

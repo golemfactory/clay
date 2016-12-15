@@ -1,21 +1,24 @@
 import os
 import time
 
-import golem
-from apps.core.task.gnrtaskstate import GNRTaskState
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from ethereum.utils import denoms
+from mock import Mock, ANY, call
+from twisted.internet.defer import Deferred
+
+import golem
+from apps.core.task.gnrtaskstate import GNRTaskState, GNRTaskDefinition
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
+from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger
 from gui.view.appmainwindow import AppMainWindow
-from mock import Mock, ANY, call
-from twisted.internet.defer import Deferred
 
 
 class TTask(Task):
@@ -190,6 +193,49 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.change_description(description)
         assert self.client.get_description() == description
 
+    def test_add_tasks(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        td = TestGNRApplicationLogicWithClient._get_task_definition()
+        logic.add_task_from_definition(td)
+        assert "xyz" in logic.tasks, "Task was not added"
+        task_state1 = TestGNRApplicationLogicWithClient._get_task_state()
+        task_state2 = TestGNRApplicationLogicWithClient._get_task_state(task_id="abc")
+        task_state3 = TestGNRApplicationLogicWithClient._get_task_state(task_id="def")
+        logic.add_tasks([task_state1, task_state2, task_state3])
+        self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
+        assert "xyz" in logic.tasks, "Task was not added"
+        assert "abc" in logic.tasks, "Task was not added"
+        assert "def" in logic.tasks, "Task was not added"
+        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
+        result = logic.add_tasks([])
+        self.assertIsNone(result, "Returned value [{}] is not None".format(result))
+        result = logic.get_test_tasks()
+        self.assertEqual(result, {}, "Returned value is not empty")
+        with self.assertLogs(logger):
+            logic.change_timeouts("invalid", 10, 10)
+
+        logic.config_changed()
+
+    @staticmethod
+    def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+        task_state = GNRTaskState()
+        td = TestGNRApplicationLogicWithClient._get_task_definition(task_id=task_id,
+                                                                    full_task_timeout=full_task_timeout,
+                                                                    subtask_timeout=subtask_timeout)
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = td
+        return task_state
+
+    @staticmethod
+    def _get_task_definition(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+        td = GNRTaskDefinition()
+        td.task_id = task_id
+        td.full_task_timeout = full_task_timeout
+        td.subtask_timeout = subtask_timeout
+        return td
+
     def test_messages(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
@@ -214,6 +260,10 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.register_new_test_task_type(task_type)
         with self.assertRaises(AssertionError):
             logic.register_new_test_task_type(task_type)
+
+        self.assertIsNotNone(logic.get_task_type("NAME1"), "Task type not found")
+        with self.assertRaises(AssertionError):
+            logic.get_task_type("abc")
 
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture):
@@ -281,6 +331,8 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
 
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.test_task_started(True)
+        assert logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
         time.sleep(0.5)
         assert rpc_publisher.success
 

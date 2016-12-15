@@ -1,12 +1,10 @@
 import abc
 
-import cPickle
+import jsonpickle as json
 import logging
 from pprint import pformat
 
 from twisted.internet.task import LoopingCall
-
-from jsonpickle import json
 
 
 __all__ = ['DiagnosticsOutputFormat', 'DiagnosticsProvider', 'DiagnosticsService']
@@ -17,8 +15,7 @@ logger = logging.getLogger(__name__)
 class DiagnosticsOutputFormat(object):
     string = 0
     json = 1
-    pickle = 2
-    data = 3
+    data = 2
 
 
 class DiagnosticsProvider(object):
@@ -36,8 +33,6 @@ class DiagnosticsProvider(object):
             return pformat(data)
         elif output_format == DiagnosticsOutputFormat.json:
             return json.dumps(data)
-        elif output_format == DiagnosticsOutputFormat.pickle:
-            return cPickle.dumps(data)
         elif output_format == DiagnosticsOutputFormat.data:
             return data
         raise ValueError("Unknown output format")

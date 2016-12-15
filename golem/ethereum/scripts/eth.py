@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 import logging
 import os
 from os import path

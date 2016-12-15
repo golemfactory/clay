@@ -1,4 +1,4 @@
-import cPickle as pickle
+import jsonpickle as json
 import os
 
 from golem.core.common import get_golem_path
@@ -10,7 +10,7 @@ RESULT_GT = os.path.join(get_local_datadir("save"), "testtask.gt")
 
 def read_task(file_, file_dest):
     with open(file_) as f:
-        task = pickle.load(f)
+        task = json.load(f)
     task.main_scene_file = os.path.normpath(os.path.join(get_golem_path(), task.main_scene_file))
     assert os.path.isfile(task.main_scene_file)
     task.main_program_file = os.path.normpath(os.path.join(get_golem_path(), task.main_program_file))
@@ -23,7 +23,7 @@ def read_task(file_, file_dest):
         os.makedirs(os.path.dirname(file_dest))
 
     with open(file_dest, 'w') as f:
-        pickle.dump(task, f)
+        json.dump(task, f)
 
 if __name__ == "__main__":
     read_task(TEMPLATE, RESULT_GT)

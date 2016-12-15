@@ -1,4 +1,3 @@
-import cPickle as pickle
 import shutil
 import os
 import zlib
@@ -7,6 +6,7 @@ from copy import copy
 from mock import MagicMock
 
 from golem.core.fileshelper import outer_dir_path
+from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
@@ -139,11 +139,11 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3]+"err.log")
         files[3] += "err.log"
 
-        res = [self.__compress_and_pickle_file(files[0], "abc"*1000),
-               self.__compress_and_pickle_file(files[1], "def"*100),
-               self.__compress_and_pickle_file(files[2], "outputlog"),
-               self.__compress_and_pickle_file(files[3], "errlog"),
-               self.__compress_and_pickle_file(files[4], "ghi")]
+        res = [self.__compress_and_dump_file(files[0], "abc"*1000),
+               self.__compress_and_dump_file(files[1], "def"*100),
+               self.__compress_and_dump_file(files[2], "outputlog"),
+               self.__compress_and_dump_file(files[3], "errlog"),
+               self.__compress_and_dump_file(files[4], "ghi")]
 
         task.interpret_task_results(subtask_id, res, result_types["data"])
 
@@ -187,7 +187,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         assert task.subtasks_given["def"]["status"] == SubtaskStatus.restarted
         assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.resent
 
-    def __compress_and_pickle_file(self, file_name, data):
+    def __compress_and_dump_file(self, file_name, data):
         file_data = zlib.compress(data, 9)
-        return pickle.dumps((os.path.basename(file_name), file_data))
+        return CBORSerializer.dumps((os.path.basename(file_name), file_data))
 

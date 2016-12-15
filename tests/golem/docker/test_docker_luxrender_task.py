@@ -1,4 +1,4 @@
-import jsonpickle
+import jsonpickle as json
 import logging
 import os
 import shutil
@@ -57,7 +57,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = jsonpickle.decode(f.read())
+            task_def = json.decode(f.read())
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()

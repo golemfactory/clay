@@ -1,10 +1,10 @@
-import cPickle as pickle
 import logging
 import os
 import struct
 import time
 
 from golem.core.common import HandleAttributeError
+from golem.core.simpleserializer import CBORSerializer
 from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
     MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
     MessageGetTaskResult, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
@@ -210,9 +210,9 @@ class TaskSession(MiddlemanSafeSession):
             try:
                 if decrypt:
                     result = self.decrypt(result)
-                result = pickle.loads(result)
+                result = CBORSerializer.loads(result)
             except Exception as err:
-                logger.error("Can't unpickle result data {}".format(err))
+                logger.error("Can't load result data {}".format(err))
                 self._reject_subtask_result(subtask_id)
                 self.dropped()
                 return
@@ -253,7 +253,7 @@ class TaskSession(MiddlemanSafeSession):
         :param ResourceHeader resource_header: description of resources that current node has
         :return:
         """
-        self.send(MessageGetResource(task_id, pickle.dumps(resource_header)))
+        self.send(MessageGetResource(task_id, CBORSerializer.dumps(resource_header)))
 
     # TODO address, port and eth_account should be in node_info (or shouldn't be here at all)
     def send_report_computed_task(self, task_result, address, port, eth_account, node_info):
@@ -602,7 +602,7 @@ class TaskSession(MiddlemanSafeSession):
         return True
 
     def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+        res_file_path = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),
                                                         resource_types["zip"])
 
         if not res_file_path:
@@ -614,7 +614,7 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(msg.task_id, pickle.loads(msg.resource_header),
+        res = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),
                                               resource_types["parts"])
         if res is None:
             return
@@ -638,7 +638,7 @@ class TaskSession(MiddlemanSafeSession):
         self.send(MessageAcceptResourceFormat())
 
     def __send_data_results(self, res):
-        result = pickle.dumps(res.result)
+        result = CBORSerializer.dumps(res.result)
         extra_data = {"subtask_id": res.subtask_id, "data_type": "result"}
         self.conn.producer = EncryptDataProducer(self.encrypt(result), self, extra_data=extra_data)
 

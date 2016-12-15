@@ -1,11 +1,10 @@
 """Compute Node"""
 
-import cPickle as pickle
 import sys
 import uuid
 
 import click
-import jsonpickle
+import jsonpickle as json
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -129,14 +128,11 @@ class OptNode(Node):
         tasks = []
         for task_file in value:
             with open(task_file, 'r') as f:
-                if f.name.endswith('.json'):
-                    try:
-                        task_def = jsonpickle.decode(f.read())
-                    except ValueError as e:
-                        raise click.BadParameter(
-                            "Invalid task json file: {}".format(e.message))
-                else:
-                    task_def = pickle.loads(f.read())
+                try:
+                    task_def = json.loads(f.read())
+                except ValueError as e:
+                    raise click.BadParameter(
+                        "Invalid task json file: {}".format(e.message))
             task_def.task_id = str(uuid.uuid4())
             tasks.append(task_def)
         return tasks

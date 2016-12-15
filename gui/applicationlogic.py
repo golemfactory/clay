@@ -326,7 +326,7 @@ class GNRApplicationLogic(QtCore.QObject):
             self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout)
             self.customizer.update_task_additional_info(task)
         else:
-            logger.error("It's not my task: {} ", task_id)
+            logger.error("It's not my task: {}".format(task_id))
 
     def get_test_tasks(self):
         return self.test_tasks
