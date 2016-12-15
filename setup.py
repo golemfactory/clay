@@ -124,7 +124,7 @@ def current_dir():
 #     history = history_file.read().replace('.. :changelog:', '')
 
 requirements, dependency_links = parse_requirements('requirements.txt')
-test_requirements = ['mock', 'pytest']
+test_requirements = ['mock', 'pytest', 'populus']
 
 options = {}
 executables = []
