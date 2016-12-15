@@ -305,8 +305,8 @@ class ChunkStream:
             # read remaining data
             try:
                 self.__read(drain=True)
-            except StopIteration as ste:
-                logger.debug("Cannot read remaining data: {}".format(ste.message))
+            except StopIteration:
+                pass
             except socket.error:
                 logger.debug("Socket error")
             logger.debug("Disconnecting socket: closing socket")
