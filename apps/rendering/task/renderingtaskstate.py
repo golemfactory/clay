@@ -42,12 +42,6 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.task_name = ""
 
 
-class RenderingTaskState:
-    def __init__(self):
-        self.definition = RenderingTaskDefinition()
-        self.task_state = TaskState()
-
-
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
     def __init__(self):
         AdvanceVerificationOptions.__init__(self)

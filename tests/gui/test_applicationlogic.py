@@ -13,7 +13,7 @@ from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
 from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 
-from apps.core.task.gnrtaskstate import GNRTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.application import GNRGui
@@ -230,7 +230,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         assert logic._format_stats_message(["STAT1"]) == u"Error"
         assert logic._format_stats_message(13131) == u"Error"
 
-        ts = GNRTaskState()
+        ts = TaskDesc()
         ts.definition.main_program_file = "nonexisting"
         assert not logic._validate_task_state(ts)
         logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")

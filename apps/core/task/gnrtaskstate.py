@@ -31,10 +31,10 @@ class AdvanceVerificationOptions:
         self.type = 'forFirst'
 
 
-class GNRTaskState:
-    def __init__(self):
-        self.definition = GNRTaskDefinition()
-        self.task_state = TaskState()
+class TaskDesc(object):
+    def __init__(self, definition_class=GNRTaskDefinition, state_class=TaskState):
+        self.definition = definition_class()
+        self.task_state = state_class()
 
 
 class GNROptions:

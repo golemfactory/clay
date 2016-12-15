@@ -13,8 +13,7 @@ from twisted.internet.defer import inlineCallbacks
 from golem.task.taskstate import TaskStatus
 
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from apps.core.task.gnrtaskstate import GNRTaskDefinition
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import GNRTaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gui.controller.customizer import Customizer
@@ -193,7 +192,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._set_new_pessimistic_cost()
 
     def _finish_button_clicked(self):
-        self.task_state = RenderingTaskState()
+        self.task_state = TaskDesc()
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
         self._add_current_task()

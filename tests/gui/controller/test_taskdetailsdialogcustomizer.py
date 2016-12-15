@@ -3,7 +3,7 @@ from PyQt4.QtCore import QPoint
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.application import GNRGui
 from gui.controller.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer, logger
@@ -26,7 +26,7 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
 
     def __init_basic_customizer(self):
         task_dialog = TaskDetailsDialog(self.gnrgui.main_window.window)
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         ss1 = SubtaskState()
         ss1.subtask_id = "abc"
         ss1.computer.node_name ="ABC"
@@ -59,7 +59,7 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
 
     def test_sorting(self):
         task_dialog = TaskDetailsDialog(self.gnrgui.main_window.window)
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         customizer = TaskDetailsDialogCustomizer(task_dialog, self.logic, task_state)
         assert customizer.sorting == -1
         assert customizer.sorting_order is None

@@ -4,7 +4,7 @@ import uuid
 from Queue import Queue
 
 from apps.appsmanager import AppsManager
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
 
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.interface.client.logic import AppLogic
@@ -126,7 +126,7 @@ class Tasks(object):
 
         # TODO: unify GUI and CLI logic
 
-        rendering_task_state = RenderingTaskState()
+        rendering_task_state = TaskDesc()
         rendering_task_state.definition = definition
         rendering_task_state.task_state.status = TaskStatus.starting
 

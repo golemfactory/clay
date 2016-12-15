@@ -6,7 +6,7 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 
-from apps.core.task.gnrtaskstate import GNRTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.application import GNRGui
 from gui.controller.gnrmainwindowcustomizer import GNRMainWindowCustomizer
@@ -86,6 +86,6 @@ class TestGNRMainWindowCustomizer(TestCase):
         assert customizer.gui.ui.taskTableWidget.item(1, ItemMap.Time).text() == time_
         customizer.remove_task("TASK ID 2")
 
-        customizer.logic.get_task.return_value = GNRTaskState()
+        customizer.logic.get_task.return_value = TaskDesc()
         customizer.show_change_task_dialog("ABC")
         customizer.change_task_dialog.close()

@@ -8,9 +8,8 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
-
 
 from gui.startapp import register_rendering_task_types
 from gui.application import GNRGui
@@ -54,8 +53,8 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
     def test_messages(self):
         logic = self.logic
         logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, logic)
-        rts = logic._get_new_task_state()
-        assert isinstance(rts, RenderingTaskState)
+        rts = TaskDesc()
+        assert isinstance(rts, TaskDesc)
         logic._validate_task_state(rts)
         register_rendering_task_types(logic)
         m = Mock()
@@ -107,6 +106,3 @@ class TestRenderingApplicationLogic(TestDirFixtureWithReactor):
         rts.definition = BlenderBenchmark().task_definition
         rts.definition.output_file = 1342
         assert not logic._validate_task_state(rts)
-
-    def test_task_state(self):
-        assert isinstance(self.logic._get_new_task_state(), RenderingTaskState)

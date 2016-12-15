@@ -21,8 +21,7 @@ from golem.task.taskstate import TaskStatus
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
-from apps.core.task.gnrtaskstate import GNRTaskState
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
@@ -66,6 +65,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         self.br = None
         self.__looping_calls = None
         self.reactor = None
+        self.options = None  # Current task options #FIXME - is it really needed?
         self.current_task_type = None  # Which task type is currently active
         self.default_task_type = None  # Which task type should be displayed first
 
@@ -272,9 +272,6 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         self.node_name = yield self.client.get_node_name()
         self.customizer.set_name(u"{}".format(self.node_name))
 
-    def _get_new_task_state(self):
-        return GNRTaskState()
-
     def start_task(self, task_id):
         ts = self.get_task(task_id)
 
@@ -361,7 +358,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         return self.test_tasks
 
     def add_task_from_definition(self, definition):
-        task_state = self._get_new_task_state()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
 
         task_state.definition = definition
@@ -463,7 +460,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
 
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label, cfg_param_name):
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)

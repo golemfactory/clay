@@ -7,8 +7,9 @@ from copy import deepcopy
 
 from golem.task.taskstate import TaskStatus
 
+from apps.core.task.gnrtaskstate import TaskDesc
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from apps.rendering.task.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.controller.timehelper import set_time_spin_boxes
 from apps.core.gui.verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
@@ -216,7 +217,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         set_verification_widgets_state(self.gui, state)
 
     def __test_task_button_clicked(self):
-        self.task_state = RenderingTaskState()
+        self.task_state = TaskDesc()
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
 
