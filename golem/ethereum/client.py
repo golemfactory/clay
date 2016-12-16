@@ -155,7 +155,15 @@ class Client(object):
 
     def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
         """
-        https://github.com/ethereum/wiki/wiki/JSON-RPC#eth_getlogs
+        Retrieves logs based on filter options
+        :param from_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param to_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param address: Contract address or a list of addresses from which logs should originate
+        :param topics: Array of 32 Bytes DATA topics. Topics are order-dependent.
+        Each topic can also be an array of DATA with "or" options
+        :return: Returns log entries described by filter options
         """
         filter_id = self.new_filter(from_block, to_block, address, topics)
         return self.web3.eth.getFilterLogs(filter_id)
