@@ -181,8 +181,10 @@ class Client(object):
         :return: Padded address
         """
         from eth_abi.utils import zpad
-        if address is None or address.startswith('0x'):
+        if address is None:
             return address
-        if not isinstance(address, basestring):
-            raise TypeError('Address must be a string')
-        return '0x' + zpad(address, 32)
+        elif isinstance(address, basestring):
+            if address.startswith('0x'):
+                return address
+            return '0x' + zpad(address, 32)
+        raise TypeError('Address must be a string')
