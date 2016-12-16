@@ -104,7 +104,7 @@ class Client(object):
         :return: The returned data of the call, e.g. a codes functions return value
         """
         _from = Client.__add_padding(_from) or self.web3.eth.defaultAccount
-        block = Client.__add_padding(block) or self.web3.eth.defaultBlock
+        block = block or self.web3.eth.defaultBlock
 
         obj = {
             'from': _from,
@@ -183,6 +183,6 @@ class Client(object):
         from eth_abi.utils import zpad
         if not isinstance(address, basestring):
             raise TypeError('Address must be a string')
-        if address is None or address.startsWith('0x'):
+        if address is None or address.startswith('0x'):
             return address
         return '0x' + zpad(address, 32)
