@@ -144,7 +144,9 @@ def start_client_process(queue, start_ranking, datadir=None,
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)
 
-    router = CrossbarRouter(datadir=client.datadir)
+    config = client.config_desc
+    host, port = config.rpc_address, config.rpc_port
+    router = CrossbarRouter(host=host, port=port, datadir=client.datadir)
 
     def router_ready(*_):
         methods = object_method_map(client, CORE_METHOD_MAP)
@@ -152,7 +154,7 @@ def start_client_process(queue, start_ranking, datadir=None,
         client.configure_rpc(session)
         session.connect().addCallbacks(session_ready, shutdown)
 
-    def session_ready(*n):
+    def session_ready(*_):
         try:
             client.start()
         except Exception as exc:

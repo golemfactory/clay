@@ -30,6 +30,9 @@ class Node(object):
         self.rpc_router = None
         self.rpc_session = None
 
+        import logging
+        self.logger = logging.getLogger("app")
+
     def initialize(self):
         self.load_environments(self.default_environments)
         self.client.start()
@@ -59,12 +62,10 @@ class Node(object):
                 config = self.client.config_desc
                 reactor.callWhenRunning(self._start_rpc_server,
                                         config.rpc_address,
-                                        config.rpc_port)
+                                        int(config.rpc_port))
             reactor.run()
         except Exception as ex:
-            import logging
-            logger = logging.getLogger("app")
-            logger.error("Reactor error: {}".format(ex))
+            self.logger.error("Reactor error: {}".format(ex))
         finally:
             self.client.quit()
             sys.exit(0)
