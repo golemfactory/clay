@@ -2,7 +2,6 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.wamp import ApplicationRunner
-from autobahn.wamp import ApplicationError
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.internet.defer import inlineCallbacks, Deferred
@@ -42,6 +41,7 @@ class Session(ApplicationSession):
         self.address = address
         self.methods = methods or []
         self.events = events or []
+        self.subs = {}
 
         self.ready = Deferred()
         self.connected = False
@@ -94,34 +94,43 @@ class Session(ApplicationSession):
         for method, rpc_name in events:
             deferred = self.subscribe(method, rpc_name)
             deferred.addErrback(self._on_error)
-            yield deferred
+            self.subs[rpc_name] = yield deferred
+
+    @inlineCallbacks
+    def unregister_events(self, event_names):
+        for event_name in event_names:
+            if event_name in self.subs:
+                yield self.subs[event_name].unsubscibe()
+                self.subs.pop(event_name, None)
+            else:
+                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error(u"Error in RPC Session: {}".format(err))
+        logger.error(u"RPC: Session error: {}".format(err))
 
 
 class Client(object):
 
     def __init__(self, session, method_map, timeout=2):
 
-        self.session = session
-        self.timeout = timeout
+        self._session = session
+        self._timeout = timeout
 
         for method_name, method_alias in method_map.items():
-            setattr(self, method_name, self.make_call(method_alias))
+            setattr(self, method_name, self._make_call(method_alias))
 
-    def make_call(self, method_alias):
+    def _make_call(self, method_alias):
         return lambda *a, **kw: self._call(method_alias, *a, **kw)
 
     def _call(self, method_alias, *args, **kwargs):
-        if self.session.connected:
+        if self._session.connected:
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
-            deferred = self.session.call(method_alias, *args, **kwargs)
+            deferred = self._session.call(method_alias, *args, **kwargs)
         else:
             deferred = Deferred()
-            deferred.errback(ProtocolError(u"Session is not yet established"))
+            deferred.errback(ProtocolError(u"RPC: session is not yet established"))
 
         return deferred
 
@@ -135,7 +144,7 @@ class Publisher(object):
         if self.session.connected:
             self.session.publish(event_alias, *args, **kwargs)
         else:
-            logger.warn(u"Cannot publish '{}': session is not yet established"
+            logger.warn(u"RPC: Cannot publish '{}', session is not yet established"
                         .format(event_alias))
 
 
