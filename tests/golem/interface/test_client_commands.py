@@ -1,19 +1,19 @@
-import cPickle
+import json
 import os
 import unittest
 from collections import namedtuple
 from contextlib import contextmanager
 
+import jsonpickle
 from ethereum.utils import denoms
-from mock import Mock
+from mock import Mock, patch
 
-from apps.core.benchmark.benchmark import Benchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
+from apps.core.benchmark.benchmark import Benchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.simpleserializer import DictSerializer
+from golem.core.simpleserializer import DictSerializer, to_dict
 from golem.interface.client.account import account
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
@@ -24,24 +24,30 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
+reference_client = Client(Mock(), CORE_METHOD_MAP)
 
-def dbg(result):
-    import pprint
-    pprint.pprint(result)
+
+def assert_client_method(instance, name):
+    assert hasattr(reference_client, name)
+    return super(Mock, instance).__getattribute__(name)
 
 
 class TestAccount(unittest.TestCase):
 
     def test(self):
 
-        node = Mock()
-        node.node_name = 'node1'
-        node.key = 'deadbeef'
+        node = dict(
+            node_name='node1',
+            key='deadbeef'
+        )
 
         client = Mock()
+        client.__getattribute__ = assert_client_method
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
@@ -89,6 +95,7 @@ class TestEnvironments(unittest.TestCase):
         ]
 
         client = Mock()
+        client.__getattribute__ = assert_client_method
         client.run_benchmark = lambda x: x
         client.get_environments_perf.return_value = environments
 
@@ -152,6 +159,7 @@ class TestNetwork(unittest.TestCase):
         ]
 
         client = Mock()
+        client.__getattribute__ = assert_client_method
         client.get_connected_peers.return_value = peer_info
         client.get_known_peers.return_value = peer_info
 
@@ -230,6 +238,7 @@ class TestNetwork(unittest.TestCase):
             # 'id' (node's key) column
             assert len(r2[2]) > len(r1[2])
 
+
 class TestPayments(unittest.TestCase):
 
     @classmethod
@@ -255,6 +264,7 @@ class TestPayments(unittest.TestCase):
         ]
 
         client = Mock()
+        client.__getattribute__ = assert_client_method
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
 
@@ -295,21 +305,25 @@ class TestPayments(unittest.TestCase):
 
 class TestResources(unittest.TestCase):
 
+    def setUp(self):
+        super(TestResources, self).setUp()
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
     def test_show(self):
         dirs = dict(
             example_1='100MB',
             example_2='200MB',
         )
 
-        client = Mock()
+        client = self.client
         client.get_res_dirs_sizes.return_value = dirs
 
         with client_ctx(Resources, client):
             assert Resources().show() == dirs
 
     def test_clear_none(self):
-        client = Mock()
-
+        client = self.client
         with client_ctx(Resources, client):
 
             res = Resources()
@@ -320,8 +334,7 @@ class TestResources(unittest.TestCase):
             assert not client.clear_dir.called
 
     def test_clear_provider(self):
-        client = Mock()
-
+        client = self.client
         with client_ctx(Resources, client):
             res = Resources()
             res.clear(provider=True, requestor=False)
@@ -329,8 +342,7 @@ class TestResources(unittest.TestCase):
             assert len(client.clear_dir.mock_calls) == 2
 
     def test_clear_requestor(self):
-        client = Mock()
-
+        client = self.client
         with client_ctx(Resources, client):
             res = Resources()
             res.clear(provider=False, requestor=True)
@@ -338,8 +350,7 @@ class TestResources(unittest.TestCase):
             client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_all(self):
-        client = Mock()
-
+        client = self.client
         with client_ctx(Resources, client):
             res = Resources()
             res.clear(provider=True, requestor=True)
@@ -386,6 +397,7 @@ class TestTasks(TempDirFixture):
         super(TestTasks, self).setUp()
 
         client = Mock()
+        client.__getattribute__ = assert_client_method
 
         client.get_dir_manager.return_value = DirManager(self.path)
         client.get_node_name.return_value = 'test_node'
@@ -457,52 +469,34 @@ class TestTasks(TempDirFixture):
         yield
         TaskTester.run = run
 
-    def test_load(self):
+    def test_start(self):
         client = self.client
         task_file_name = self._create_blender_task(client.get_dir_manager())
 
         def run_success(instance):
             instance.success_callback()
 
-        def run_error(instance):
-            instance.error_callback()
-
         with client_ctx(Tasks, client):
 
             with self._run_context(run_success):
-                client.enqueue_new_task.call_args = None
-                client.enqueue_new_task.called = False
-
                 tasks = Tasks()
-                tasks.load(task_file_name, True)
+                tasks.start(task_file_name)
 
-                call_args = client.create_task.call_args[0]
-                task = DictSerializer.load(call_args[0])
+            tasks = Tasks()
+            with self.assertRaises(CommandException):
+                tasks.start(task_file_name + ".invalid")
 
-                assert len(call_args) == 1
-                assert isinstance(task, BlenderRenderTask)
+    def test_test(self):
+        client = self.client
+        task_file_name = self._create_blender_task(client.get_dir_manager())
 
-            with self._run_context(run_error):
-                client.enqueue_new_task.call_args = None
-                client.enqueue_new_task.called = False
-
+        with client_ctx(Tasks, client):
+            with patch('Queue.Queue.get'):
                 tasks = Tasks()
-                tasks.load(task_file_name, True)
+                tasks.test(task_file_name)
 
-                call_args = client.create_task.call_args[0]
-                task = DictSerializer.load(call_args[0])
-
-                assert len(call_args) == 1
-                assert isinstance(task, BlenderRenderTask)
-
-            with self._run_context(run_error):
-                client.enqueue_new_task.call_args = None
-                client.enqueue_new_task.called = False
-
-                tasks = Tasks()
-
-                with self.assertRaises(CommandException):
-                    tasks.load(task_file_name, False)
+        assert client.run_test_task.called
+        assert client._session.unregister_events.called
 
     def _create_blender_task(self, dir_manager):
 
@@ -522,16 +516,22 @@ class TestTasks(TempDirFixture):
         task_file_name = os.path.join(self.path, 'task_file.gt')
 
         with open(task_file_name, 'wb') as task_file:
-            task_file.write(cPickle.dumps(task))
+            print str(DictSerializer.dump(task))
+            task_file.write(jsonpickle.dumps(task))
 
         return task_file_name
 
 
 class TestSubtasks(unittest.TestCase):
 
-    def test_show(self):
+    def setUp(self):
+        super(TestSubtasks, self).setUp()
 
-        client = Mock()
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    def test_show(self):
+        client = self.client
 
         with client_ctx(Subtasks, client):
             subtasks = Subtasks()
@@ -543,7 +543,7 @@ class TestSubtasks(unittest.TestCase):
             client.get_subtask.assert_called_with('invalid')
 
     def test_restart(self):
-        client = Mock()
+        client = self.client
 
         with client_ctx(Subtasks, client):
             subtasks = Subtasks()
@@ -566,7 +566,8 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.get_settings.return_value = config_desc
+        client.__getattribute__ = assert_client_method
+        client.get_settings.return_value = config_desc.__dict__
 
         self.client = client
 
@@ -604,7 +605,7 @@ class TestSettings(TempDirFixture):
         _bool = Values([0, 1], bad_common_values)
         _int_gt0 = Values([1], bad_common_values + [0])
         _float_gte0 = Values([1.0, 0.0], bad_common_values)
-        _int_m100_100 = Values([-100, 0, 100], bad_common_values)
+        _float_m1_1 = Values([-1.0, 1.0], bad_common_values)
 
         _setting_values = {
             'node_name': Values(['node'], ['', None, 12, lambda x: x]),
@@ -616,8 +617,8 @@ class TestSettings(TempDirFixture):
             'getting_peers_interval': _int_gt0,
             'task_session_timeout': _int_gt0,
             'p2p_session_timeout': _int_gt0,
-            'requesting_trust': _int_m100_100,
-            'computing_trust': _int_m100_100,
+            'requesting_trust': _float_m1_1,
+            'computing_trust': _float_m1_1,
             'min_price': _float_gte0,
             'max_price': _float_gte0,
             'use_ipv6': _bool,
