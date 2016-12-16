@@ -531,9 +531,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def task_status_changed(self, task_id):
-
         if task_id in self.tasks:
-            ts = yield self.client.query_task_state(task_id)
+            ts_dict = yield self.client.query_task_state(task_id)
+            ts = DictSerializer.load(ts_dict)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
