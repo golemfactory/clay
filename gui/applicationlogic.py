@@ -1,17 +1,20 @@
 from __future__ import division
 
-import cPickle
 import logging
 import os
 from PyQt4 import QtCore
 
+import jsonpickle as json
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
+from ethereum.utils import denoms
+from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
+
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.gnrtaskstate import GNRTaskState
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
-from ethereum.utils import denoms
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
@@ -22,8 +25,6 @@ from golem.task.taskstate import TaskStatus
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
-from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 logger = logging.getLogger("app")
 
@@ -376,8 +377,8 @@ class GNRApplicationLogic(QtCore.QObject):
                 file_path += "."
             file_path += "gt"
         with open(file_path, "wb") as f:
-            tspickled = cPickle.dumps(task_state)
-            f.write(tspickled)
+            data = json.dumps(task_state)
+            f.write(data)
 
     @staticmethod
     def recount_performance(num_cores):
