@@ -4,7 +4,11 @@ import signal
 import subprocess
 import unittest
 
-from golem.ethereum.node import FullNode
+from golem.ethereum.node import FullNode, Faucet
+from golem.ethereum import Client
+from golem.testutils import TempDirFixture
+
+from ethereum.utils import denoms
 
 
 class EthereumClientTest(unittest.TestCase):
@@ -39,3 +43,17 @@ class EthereumClientTest(unittest.TestCase):
         log = proc.stdout.read()
         assert "terminated" in log
         assert proc.returncode is 0
+
+
+class EthereumFaucetTest(TempDirFixture):
+    def setUp(self):
+        super(EthereumFaucetTest, self).setUp()
+        self.n = FullNode()
+        self.eth_node = Client(datadir=self.tempdir)
+
+    def teardown(self):
+        self.n.proc.stop()
+
+    def test_faucet_gimme_money(self):
+        BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
+        Faucet.gimme_money(self.eth_node, BANK_ADDR, 3 * denoms.ether)

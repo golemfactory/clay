@@ -1,5 +1,9 @@
 import logging
 
+from eth_abi.utils import zpad
+from mock import patch
+from web3 import TestRPCProvider
+
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
 
@@ -18,7 +22,7 @@ class EthereumClientTest(TempDirFixture):
         assert type(s) is bool
         addr = b'FakeEthereumAddress!'
         assert len(addr) == 20
-        c = client.get_transaction_count(addr.encode('hex'))
+        c = client.get_transaction_count('0x' + addr.encode('hex'))
         assert type(c) is int
         assert c == 0
 
@@ -37,3 +41,12 @@ class EthereumClientTest(TempDirFixture):
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
+
+    @patch('web3.KeepAliveRPCProvider', new=TestRPCProvider)
+    def test_get_logs(self):
+        addr = '0x' + zpad('deadbeef', 32).encode('hex')
+        log_id = '0x' + zpad('beefbeef', 32).encode('hex')
+
+        client = Client(self.tempdir)
+        assert client.get_logs(from_block='earliest', to_block='latest',
+                               topics=[log_id, addr]) == []

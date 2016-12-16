@@ -10,7 +10,6 @@ from threading import Lock
 
 from twisted.internet import task
 
-from gnr.task.tasktester import TaskTester
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
@@ -36,6 +35,7 @@ from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
+from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
@@ -599,8 +599,8 @@ class Client(object):
 
     def run_benchmark(self, env_id):
         # TODO: move benchmarks to environments
-        from gnr.renderingenvironment import BlenderEnvironment
-        from gnr.renderingenvironment import LuxRenderEnvironment
+        from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.lux.luxenvironment import LuxRenderEnvironment
 
         queue = Queue()
 
@@ -684,12 +684,26 @@ class Client(object):
             if self.config_desc.send_pings:
                 self.p2pservice.ping_peers(self.config_desc.pings_interval)
 
-            self.p2pservice.sync_network()
-            self.task_server.sync_network()
-            self.resource_server.sync_network()
-            self.ranking.sync_network()
-
-            self.check_payments()
+            try:
+                self.p2pservice.sync_network()
+            except Exception as exc:
+                logger.error("p2pservice.sync_network failed: {}".format(exc))
+            try:
+                self.task_server.sync_network()
+            except Exception as exc:
+                logger.error("task_server.sync_network failed: {}".format(exc))
+            try:
+                self.resource_server.sync_network()
+            except Exception as exc:
+                logger.error("resource_server.sync_network failed: {}".format(exc))
+            try:
+                self.ranking.sync_network()
+            except Exception as exc:
+                logger.error("ranking.sync_network failed: {}".format(exc))
+            try:
+                self.check_payments()
+            except Exception as exc:
+                logger.error("check_payments failed: {}".format(exc))
 
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:

@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 from unittest import TestCase
 from uuid import uuid4
 

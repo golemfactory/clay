@@ -35,7 +35,7 @@ SET IPFS_VER=v0.4.2
 SET IPFS_URL=%IPFS_DIST_SRV%/go-ipfs/%IPFS_VER%/go-ipfs_%IPFS_VER%_windows-%IPFS_ARCH%.zip
 SET IPFS_DIR=go-ipfs
 
-SET GETH_URL=http://52.40.149.24:9999/Geth-Win64-20160524084915-1.4.5-a269a71.zip
+SET GETH_URL=http://gethstore.blob.core.windows.net/builds/geth-windows-386-1.5.4-b70acf3c.zip
 SET GETH_DIR=geth
 
 SET DOCKER_INI_FILE=%DOCKER_DIR%\images.ini
@@ -175,14 +175,22 @@ if not exist %GETH_DIR% (
     ECHO Downloading Geth
     cscript.exe //B "%UTILS_DIR%\download.vbs" "%GETH_URL%" "%~dp0\geth.zip"
     cscript.exe //B "%UTILS_DIR%\unzip.vbs" geth.zip
-    mkdir %GETH_DIR%
-    move geth.exe "%GETH_DIR%/geth.exe"
+
+    set "i="
+    set "GETH_EX_DIR="
+    for /F "delims=" %%i in ('dir /b geth-*') DO (
+        set GETH_EX_DIR=%%i
+        goto MOVE_GETH
+    )
+
+    :MOVE_GETH
+    ren "%GETH_EX_DIR%" "%GETH_DIR%"
     del geth.zip
 )
 
-IF not exist %GETH_DIR% (
+if not exist %GETH_DIR% (
     cscript.exe "%UTILS_DIR%\notify.vbs" "Error downloading geth"
-    GOTO END
+    goto END
 )
 
 ::----------------------------------------------------------------------------------------------------------------------

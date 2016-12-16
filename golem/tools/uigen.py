@@ -2,10 +2,12 @@ import os
 
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
+
 def call_pyrcc(py_file, qrc_file):
     cmd = "pyrcc4 -o " + py_file + " " + qrc_file
     print cmd
     os.system(cmd)
+
 
 def regenerate_ui_files(root_path):
     """ Find all files in given directory that ends with ".ui" and have later date than generated user interfaces python

@@ -1,5 +1,5 @@
 import datetime
-import json
+import jsonpickle as json
 import logging
 from enum import Enum
 from os import path

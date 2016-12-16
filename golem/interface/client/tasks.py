@@ -3,12 +3,12 @@ import os
 import uuid
 from Queue import Queue
 
-from gnr.renderingtaskstate import RenderingTaskState
-from gnr.task.blenderrendertask import build_blender_renderer_info
-from gnr.task.luxrendertask import build_lux_render_info
-from gnr.task.tasktester import TaskTester
+from apps.appsmanager import AppsManager
+from apps.rendering.task.renderingtaskstate import RenderingTaskState
+
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.task.taskbase import Task
+from golem.task.tasktester import TaskTester
 from golem.task.taskstate import TaskStatus
 
 
@@ -18,15 +18,15 @@ class RendererLogic(object):
         self.node_name = node_name
         self.datadir = datadir
         self.dir_manager = dir_manager
-        self.renderers = {}
+        self.task_types = {}
 
     def get_builder(self, task_state):
-        renderer = task_state.definition.renderer
-        return self.renderers[renderer].task_builder_type(self.node_name, task_state.definition,
+        task_type = task_state.definition.task_type
+        return self.task_types[task_type].task_builder_type(self.node_name, task_state.definition,
                                                           self.datadir, self.dir_manager)
 
-    def register_new_renderer_type(self, renderer):
-        self.renderers[renderer.name] = renderer
+    def register_new_task_type(self, task_type):
+        self.task_types[task_type.name] = task_type
 
     @staticmethod
     def instantiate(client, datadir):
@@ -35,9 +35,10 @@ class RendererLogic(object):
         dir_manager = CommandHelper.wait_for(client.get_dir_manager())
 
         logic = RendererLogic(node_name, datadir, dir_manager)
-        logic.register_new_renderer_type(build_blender_renderer_info(*args))
-        logic.register_new_renderer_type(build_lux_render_info(*args))
-
+        apps_manager = AppsManager()
+        apps_manager.load_apps()
+        for app in apps_manager.apps.values():
+            logic.register_new_task_type(app.build_info(*args))
         return logic
 
 
