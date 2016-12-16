@@ -428,28 +428,28 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):
-        if self._validate_task_state(task_state):
+        if not self._validate_task_state(task_state):
+            return False
 
-            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
-            self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
-            self.progress_dialog_customizer.enable_close(False)        # prevent from closing
-            self.progress_dialog_customizer.show_message("Preparing test...")
-            def on_abort():
-                self.progress_dialog_customizer.show_message("Aborting test...")
-                self.abort_test_task()
-            self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
-            self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
-            self.progress_dialog.show()
+        self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+        self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
+        self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
+        self.progress_dialog_customizer.enable_close(False)        # prevent from closing
+        self.progress_dialog_customizer.show_message("Preparing test...")
+        def on_abort():
+            self.progress_dialog_customizer.show_message("Aborting test...")
+            self.abort_test_task()
+        self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
+        self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
+        self.progress_dialog.show()
 
-            tb = self.get_builder(task_state)
-            t = Task.build_task(tb)
-            self.client.run_test_task(t)
+        tb = self.get_builder(task_state)
+        t = Task.build_task(tb)
+        self.client.run_test_task(t)
 
-            return True
+        return True
 
-        return False
 
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")
@@ -511,13 +511,17 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def change_accept_tasks_for_environment(self, env_id, state):
         self.client.change_accept_tasks_for_environment(env_id, state)
 
+    # TODO Move this function to new task daiglo
+    def change_verification_option(self, size_x_max=None, size_y_max=None):
+        if size_x_max:
+            self.customizer.gui.ui.verificationSizeXSpinBox.setMaximum(size_x_max)
+        if size_y_max:
+            self.customizer.gui.ui.verificationSizeYSpinBox.setMaximum(size_y_max)
+
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
-            from PyQt4.QtGui import QMessageBox
-            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
-            ms_box.exec_()
-            ms_box.show()
+            self.customizer.show_error_window(u"{}".format(msg))
         msg = u"Task tested successfully"
         self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button
@@ -603,10 +607,15 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
-        if not os.path.exists(td.main_program_file):
-            self.customizer.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
+        if td.task_type not in self.task_types:
+            self.customizer.show_error_window(u"{}".format("Task {} is not registered".format(td.task_type)))
             return False
-        return True
+        is_valid, err = td.is_valid()
+        if is_valid and err:
+            self.customizer.show_warning_window(u"{}".format(err))
+        if not is_valid:
+            self.customizer.show_error_window(u"{}".format(err))
+        return is_valid
 
     @staticmethod
     def _format_stats_message(stat):
@@ -621,3 +630,4 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
             from twisted.internet import reactor
             self.reactor = reactor
         return self.reactor
+

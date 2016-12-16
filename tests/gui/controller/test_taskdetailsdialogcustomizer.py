@@ -7,7 +7,7 @@ from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.application import GNRGui
 from gui.controller.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer, logger
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import TaskDetailsDialog
 
@@ -16,7 +16,7 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
 
     def setUp(self):
         super(TestTaskDetailsDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):

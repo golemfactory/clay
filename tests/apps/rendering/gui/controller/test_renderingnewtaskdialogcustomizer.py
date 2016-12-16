@@ -8,7 +8,7 @@ from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import Rende
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererInfo, RendererDefaults
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -16,7 +16,7 @@ from gui.view.appmainwindow import AppMainWindow
 class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingNewTaskDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):

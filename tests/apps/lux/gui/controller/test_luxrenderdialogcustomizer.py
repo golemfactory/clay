@@ -14,7 +14,7 @@ from apps.rendering.gui.controller.renderingmainwindowcustomizer import Renderin
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
@@ -23,7 +23,7 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
 
     def setUp(self):
         super(TestLuxRenderDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(Mock(), AppMainWindow)
 
     def tearDown(self):

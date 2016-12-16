@@ -12,7 +12,7 @@ from apps.rendering.gui.controller.renderercustomizer import FrameRendererCustom
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
@@ -52,7 +52,7 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
 
     def setUp(self):
         super(TestBlenderRenderDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(Mock(), AppMainWindow)
 
     def tearDown(self):

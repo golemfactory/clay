@@ -13,7 +13,7 @@ from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFa
 from apps.appsmanager import AppsManager
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
@@ -55,7 +55,7 @@ def register_rendering_task_types(logic):
 class GUIApp(object):
 
     def __init__(self, rendering):
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 RenderingMainWindowCustomizer)

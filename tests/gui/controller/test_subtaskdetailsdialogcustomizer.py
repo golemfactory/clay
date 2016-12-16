@@ -4,7 +4,7 @@ from golem.task.taskstate import SubtaskState
 
 from gui.application import GNRGui
 from gui.controller.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import SubtaskDetailsDialog
 
@@ -13,7 +13,7 @@ class TestSubtaskDetailsDialogCustomizer(TestCase):
 
     def setUp(self):
         super(TestSubtaskDetailsDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):

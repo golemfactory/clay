@@ -1,4 +1,4 @@
-from golem.task.taskstate import TaskState
+from os import path
 
 from apps.core.task.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
 
@@ -37,10 +37,15 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.options = None
 
         self.main_scene_file = ""
-        self.output_file = ""
+
         self.output_format = ""
         self.task_name = ""
 
+    def is_valid(self):
+        is_valid, err = super(RenderingTaskDefinition, self).is_valid()
+        if is_valid and not path.exists(self.main_scene_file):
+            return False, u"Main scene file {} is not properly set".format(self.main_scene_file)
+        return is_valid, err
 
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
     def __init__(self):
