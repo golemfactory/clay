@@ -4,6 +4,7 @@ import sys
 import time
 import uuid
 from Queue import Queue
+from collections import Iterable
 from copy import copy
 from os import path, makedirs
 from threading import Lock
@@ -29,6 +30,7 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -209,6 +211,9 @@ class Client(object):
         self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
+        if isinstance(socket_address, Iterable):
+            socket_address = SocketAddress(socket_address[0], int(socket_address[1]))
+
         logger.debug("P2pservice connecting to {} on port {}".format(
                      socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
@@ -276,7 +281,6 @@ class Client(object):
 
             if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_started, True)
-
             return True
 
         if self.rpc_publisher:
@@ -320,7 +324,7 @@ class Client(object):
         self.ranking.decrease_trust(node_id, stat, mod)
 
     def get_node(self):
-        return self.node
+        return DictSerializer.dump(self.node)
 
     def get_node_name(self):
         return self.config_desc.node_name

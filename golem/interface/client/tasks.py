@@ -1,4 +1,4 @@
-import cPickle
+import json
 import os
 import uuid
 from Queue import Queue
@@ -31,7 +31,7 @@ class RendererLogic(object):
     @staticmethod
     def instantiate(client, datadir):
         args = (None, None)
-        node_name = CommandHelper.wait_for(client.get_node_name())
+        node_name = CommandHelper.wait_for(client.get_setting('node_name'))
         dir_manager = CommandHelper.wait_for(client.get_dir_manager())
 
         logic = RendererLogic(node_name, datadir, dir_manager)
@@ -207,7 +207,7 @@ class Tasks(object):
     @staticmethod
     def __read_from_file(file_name):
         with open(file_name) as task_file:
-            return cPickle.loads(task_file.read())
+            return json.loads(task_file.read())
 
 
 @group(help="Manage subtasks")

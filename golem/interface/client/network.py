@@ -33,7 +33,7 @@ class Network(object):
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port):
         try:
-            Network.client.connect(SocketAddress(ip, int(port)))
+            Network.client.connect((ip, int(port)))
         except Exception as exc:
             return CommandResult(error="Cannot connect to {}:{}: {}".format(ip, port, exc))
 
