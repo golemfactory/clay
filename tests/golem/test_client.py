@@ -5,6 +5,7 @@ import uuid
 from ethereum.utils import denoms
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.simpleserializer import DictSerializer
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -201,7 +202,8 @@ class TestClientRPCMethods(TestWithDatabase):
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_node(self, _):
         c = self.__new_client()
-        assert isinstance(c.get_node(), Node)
+        assert isinstance(c.get_node(), dict)
+        assert isinstance(DictSerializer.load(c.get_node()), Node)
         c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')

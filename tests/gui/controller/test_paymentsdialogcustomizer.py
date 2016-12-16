@@ -11,14 +11,15 @@ class TestTableElem(unittest.TestCase):
     def test_payment_table_elem(self):
         ethereum_address_hex = "aabbccddeeffaabbccddeeffaabbccddeeff0011"
         ethereum_address = ethereum_address_hex.decode('hex')
-        a = PaymentTableElem({"status": "STATE1", "payee": ethereum_address,
+        a = PaymentTableElem({"status": PaymentStatus.awaiting.value,
+                              "payee": ethereum_address,
                               "subtask": "ABC", "value": 209*10**15,
                               "fee": None})
         for i in range(len(a.cols)):
             self.assertIsInstance(a.get_column_item(i), QTableWidgetItem)
         self.assertEqual(a.get_column_item(0).text(), "ABC")
         self.assertEqual(a.get_column_item(1).text(), ethereum_address_hex)
-        self.assertEqual(a.get_column_item(2).text(), "STATE1")
+        self.assertEqual(a.get_column_item(2).text(), "awaiting")
         self.assertEqual(a.get_column_item(3).text(), "0.209000 ETH")
 
     def test_income_table_elem(self):
@@ -32,6 +33,7 @@ class TestTableElem(unittest.TestCase):
         self.assertEqual(b.get_column_item(1).text(), "confirmed")
         self.assertEqual(b.get_column_item(2).text(), "2.110000 ETH")
         self.assertEqual(b.get_column_item(3).text(), "ABB")
+
 
 class TestSmartTableItem(unittest.TestCase):
     def test_comparison(self):
@@ -81,6 +83,3 @@ class TestSmartTableItem(unittest.TestCase):
         i1 = SmartTableItem("123 ETH")
         i2 = None
         self.assertTrue(i2 < i1)
-        
-        
-        
