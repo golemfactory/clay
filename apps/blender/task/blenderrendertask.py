@@ -168,8 +168,8 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
         if new_task.advanceVerification:
-            box_x = max(new_task.verification_options.box_size[0], 8)
-            box_y = max(new_task.verification_options.box_size[1], 8)
+            box_x = min(new_task.verification_options.box_size[0], new_task.res_x)
+            box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
             new_task.box_size = (box_x, box_y)
         return new_task
 

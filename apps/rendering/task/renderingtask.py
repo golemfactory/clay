@@ -47,8 +47,7 @@ class RenderingTaskBuilder(GNRTaskBuilder):
         else:
             new_task.advanceVerification = True
             new_task.verification_options.type = self.task_definition.verification_options.type
-            new_task.verification_options.box_size = (self.task_definition.verification_options.box_size[0],
-                                                      (self.task_definition.verification_options.box_size[1] / 2) * 2)
+            new_task.verification_options.box_size = self.task_definition.verification_options.box_size
             new_task.verification_options.probability = self.task_definition.verification_options.probability
         return new_task
 
