@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 import logging
 import os
 from os import path
@@ -64,12 +64,18 @@ def node(o):
     print "MY ADDRESS", o.me.address.encode('hex')
 
 
+@node.command('balance')
+@click.pass_obj
+def node_balance(o):
+    print "BALANCE", o.eth.get_balance('0x' + o.me.address.encode('hex'))
+
+
 @node.command()
 @click.pass_obj
 @click.argument('recipient')
 @click.argument('value', type=int)
 def direct(o, recipient, value):
-    nonce = o.eth.get_transaction_count(o.me.address.encode('hex'))
+    nonce = o.eth.get_transaction_count('0x' + o.me.address.encode('hex'))
     print "NONCE", nonce
     print "VALUE", value
     tx = Transaction(nonce, 1, 21000, to=recipient, value=value,
@@ -106,7 +112,7 @@ def multi(o, payments):
         encp.append(encode_payment(p[0], p[1]))
         value += long(p[1])
 
-    nonce = o.eth.get_transaction_count(o.me.address.encode('hex'))
+    nonce = o.eth.get_transaction_count('0x' + o.me.address.encode('hex'))
     translator = abi.ContractTranslator(BankOfDeposit.ABI)
     data = translator.encode('transfer', [encp])
     print "DATA: ", data.encode('hex')
@@ -120,11 +126,12 @@ def multi(o, payments):
 @node.command()
 @click.pass_obj
 def history(o):
-    id = hex(100389287136786176327247604509743168900146139575972864366142685224231313322991L)
-    outgoing = o.eth.get_logs(from_block='earliest', topics=[id, o.me.address.encode('hex')])
-    incomming = o.eth.get_logs(from_block='earliest', topics=[id, None, o.me.address.encode('hex')])
+    log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+    my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
+    outgoing = o.eth.get_logs(from_block='earliest', topics=[log_id, my_addr])
+    incomming = o.eth.get_logs(from_block='earliest', topics=[log_id, None, my_addr])
 
-    balance = o.eth.get_balance(o.me.address.encode('hex'))
+    balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
     print "BALANCE", balance
 
     print "OUTGOING"
@@ -139,7 +146,7 @@ def history(o):
 @app.group()
 @click.pass_obj
 def faucet(o):
-    nonce = o.eth.get_transaction_count(Faucet.ADDR.encode('hex'))
+    nonce = o.eth.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
     print "NONCE", nonce
     if nonce == 0:  # Deploy Bank of Deposit contract
         tx = Transaction(nonce, 1, 3141592, to='', value=0,
@@ -154,7 +161,7 @@ def faucet(o):
 @faucet.command('balance')
 @click.pass_obj
 def faucet_balance(o):
-    print o.eth.get_balance(Faucet.ADDR.encode('hex'))
+    print o.eth.get_balance('0x' + Faucet.ADDR.encode('hex'))
 
 
 @faucet.command('send')
@@ -163,7 +170,7 @@ def faucet_balance(o):
 @click.argument('value', default=1)
 def faucet_send(o, to, value):
     value = int(value * denoms.ether)
-    nonce = o.eth.get_transaction_count(Faucet.ADDR.encode('hex'))
+    nonce = o.eth.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
     to = normalize_address(to)
     tx = Transaction(nonce, 1, 21000, to, value, '')
     tx.sign(Faucet.PRIVKEY)

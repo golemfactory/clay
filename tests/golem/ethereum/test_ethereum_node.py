@@ -44,6 +44,7 @@ class EthereumClientTest(unittest.TestCase):
         assert "terminated" in log
         assert proc.returncode is 0
 
+
 class EthereumFaucetTest(TempDirFixture):
     def setUp(self):
         super(EthereumFaucetTest, self).setUp()
@@ -54,5 +55,5 @@ class EthereumFaucetTest(TempDirFixture):
         self.n.proc.stop()
 
     def test_faucet_gimme_money(self):
-        BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+        BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
         Faucet.gimme_money(self.eth_node, BANK_ADDR, 3 * denoms.ether)

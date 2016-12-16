@@ -2,12 +2,10 @@ import shutil
 import time
 from os import makedirs, path
 
-
-import jsonpickle
+import jsonpickle as json
 from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
-
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
@@ -19,8 +17,6 @@ from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-
-
 from test_docker_image import DockerTestCase
 
 
@@ -53,7 +49,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _load_test_task_definition(self, task_file):
         task_file = path.join(path.dirname(__file__), task_file)
         with open(task_file, "r") as f:
-            task_def = jsonpickle.decode(f.read())
+            task_def = json.loads(f.read())
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()

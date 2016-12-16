@@ -25,7 +25,7 @@ class Client(object):
             assert Client.node.datadir == datadir, \
                 "Ethereum node's datadir cannot be changed"
         if not Client.node.is_running():
-            Client.node.start(rpc=True)
+            Client.node.start(rpc=True, mining=True)
         self.web3 = Web3(KeepAliveRPCProvider(host='localhost', port=Client.node.rpcport))
 
     @staticmethod
@@ -57,7 +57,7 @@ class Client(object):
         :param address: account address
         :return: number of transactions
         """
-        return self.web3.eth.getTransactionCount(address)
+        return self.web3.eth.getTransactionCount(Client.__add_padding(address))
 
     def send_raw_transaction(self, data):
         """
@@ -85,7 +85,7 @@ class Client(object):
         set with web3.eth.defaultBlock
         :return: Balance
         """
-        return self.web3.eth.getBalance(account, block_identifier or self.web3.eth.defaultBlock)
+        return self.web3.eth.getBalance(Client.__add_padding(account), block_identifier or self.web3.eth.defaultBlock)
 
     def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0, data=None, nonce=0, block=None):
         """
@@ -103,7 +103,7 @@ class Client(object):
         :param block: integer block number, or the string "latest", "earliest" or "pending"
         :return: The returned data of the call, e.g. a codes functions return value
         """
-        _from = _from or self.web3.eth.defaultAccount
+        _from = Client.__add_padding(_from) or self.web3.eth.defaultAccount
         block = block or self.web3.eth.defaultBlock
 
         obj = {
@@ -137,10 +137,13 @@ class Client(object):
         Each topic can also be an array of DATA with "or" options
         :return: filter id
         """
+        if topics is not None:
+            for i in xrange(len(topics)):
+                topics[i] = Client.__add_padding(topics[i])
         obj = {
             'fromBlock': from_block,
             'toBlock': to_block,
-            'address': address,
+            'address': Client.__add_padding(address),
             'topics': topics
         }
         return self.web3.eth.filter(obj).filter_id
@@ -151,4 +154,37 @@ class Client(object):
         :param filer_id: the filter id
         :return: Returns all new entries which occurred since the last call to this method for the given filter_id
         """
-        return self.web3.eth.getFilterChanges(filer_id)
+        return self.web3.eth.getFilterChanges(Client.__add_padding(filer_id))
+
+    def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
+        """
+        Retrieves logs based on filter options
+        :param from_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param to_block: Integer block number, or "latest" for the last mined block
+        or "pending", "earliest" for not yet mined transactions
+        :param address: Contract address or a list of addresses from which logs should originate
+        :param topics: Array of 32 Bytes DATA topics. Topics are order-dependent.
+        Each topic can also be an array of DATA with "or" options
+        :return: Returns log entries described by filter options
+        """
+        for i in xrange(len(topics)):
+            topics[i] = Client.__add_padding(topics[i])
+        filter_id = self.new_filter(from_block, to_block, Client.__add_padding(address), topics)
+        return self.web3.eth.getFilterLogs(filter_id)
+
+    @staticmethod
+    def __add_padding(address):
+        """
+        Provide proper length of address and add 0x to it
+        :param address: Address to validation
+        :return: Padded address
+        """
+        from eth_abi.utils import zpad
+        if address is None:
+            return address
+        elif isinstance(address, basestring):
+            if address.startswith('0x'):
+                return address
+            return '0x' + zpad(address, 32)
+        raise TypeError('Address must be a string')

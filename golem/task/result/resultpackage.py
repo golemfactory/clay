@@ -1,18 +1,18 @@
 import abc
 import os
-import pickle
 import uuid
 import zipfile
 
 from golem.core.fileencrypt import AESFileEncryptor
+from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import result_types
 
 
 class Packager(object):
 
-    def create(self, output_path, disk_files=None, pickle_files=None, **kwargs):
+    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
 
-        if not disk_files and not pickle_files:
+        if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
 
         with self.generator(output_path) as of:
@@ -22,10 +22,10 @@ class Packager(object):
                     file_name = os.path.basename(file_path)
                     self.write_disk_file(of, file_path, file_name)
 
-            if pickle_files:
-                for file_name, file_data in pickle_files:
-                    pickled_data = pickle.dumps(file_data)
-                    self.write_pickle_file(of, file_name, pickled_data)
+            if cbor_files:
+                for file_name, file_data in cbor_files:
+                    cbor_data = CBORSerializer.dumps(file_data)
+                    self.write_cbor_file(of, file_name, cbor_data)
 
         return output_path
 
@@ -42,7 +42,7 @@ class Packager(object):
         pass
 
     @abc.abstractmethod
-    def write_pickle_file(self, obj, file_name, pickled_data):
+    def write_cbor_file(self, obj, file_name, cbor_data):
         pass
 
 
@@ -68,8 +68,8 @@ class ZipPackager(Packager):
     def write_disk_file(self, obj, file_path, file_name):
         obj.write(file_path, file_name)
 
-    def write_pickle_file(self, obj, file_name, pickled_data):
-        obj.writestr(file_name, pickled_data)
+    def write_cbor_file(self, obj, file_name, cbord_data):
+        obj.writestr(file_name, cbord_data)
 
 
 class EncryptingPackager(Packager):
@@ -82,13 +82,13 @@ class EncryptingPackager(Packager):
         self._creator = self.creator_class()
         self.key_or_secret = key_or_secret
 
-    def create(self, output_path, disk_files=None, pickle_files=None, **kwargs):
+    def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
 
         output_dir = os.path.dirname(output_path)
         tmp_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".enc")
         out_file_path = super(EncryptingPackager, self).create(output_path,
                                                                disk_files=disk_files,
-                                                               pickle_files=pickle_files)
+                                                               cbor_files=cbor_files)
 
         self.encryptor_class.encrypt(out_file_path,
                                      tmp_file_path,
@@ -119,8 +119,8 @@ class EncryptingPackager(Packager):
     def write_disk_file(self, obj, file_path, file_name):
         self._creator.write_disk_file(obj, file_path, file_name)
 
-    def write_pickle_file(self, obj, file_name, pickled_data):
-        self._creator.write_pickle_file(obj, file_name, pickled_data)
+    def write_cbor_file(self, obj, file_name, cbord_data):
+        self._creator.write_cbor_file(obj, file_name, cbord_data)
 
 
 class TaskResultDescriptor(object):
@@ -139,26 +139,26 @@ class TaskResultDescriptor(object):
 class EncryptingTaskResultPackager(EncryptingPackager):
 
     descriptor_file_name = '.package_desc'
-    result_file_name = '.result_pickle'
+    result_file_name = '.result_cbor'
 
     def __init__(self, key_or_secret):
         self.parent = super(EncryptingTaskResultPackager, self)
         self.parent.__init__(key_or_secret)
 
     def create(self, output_path,
-               disk_files=None, pickle_files=None,
+               disk_files=None, cbor_files=None,
                node=None, task_result=None, **kwargs):
 
-        disk_files, pickle_files = self.__collect_files(task_result,
+        disk_files, cbor_files = self.__collect_files(task_result,
                                                         disk_files=disk_files,
-                                                        pickle_files=pickle_files)
+                                                        cbor_files=cbor_files)
 
         descriptor = TaskResultDescriptor(node, task_result)
-        pickle_files.append((self.descriptor_file_name, descriptor))
+        cbor_files.append((self.descriptor_file_name, descriptor))
 
         return self.parent.create(output_path,
                                   disk_files=disk_files,
-                                  pickle_files=pickle_files)
+                                  cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
 
@@ -166,10 +166,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
-
             with open(descriptor_path, 'r') as src:
-                descriptor = pickle.loads(src.read())
-
+                descriptor = CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
 
         except Exception as e:
@@ -192,19 +190,19 @@ class EncryptingTaskResultPackager(EncryptingPackager):
 
         return extracted
 
-    def __collect_files(self, result, disk_files=None, pickle_files=None):
+    def __collect_files(self, result, disk_files=None, cbor_files=None):
 
         disk_files = disk_files[:] if disk_files else []
-        pickle_files = pickle_files[:] if pickle_files else []
+        cbor_files = cbor_files[:] if cbor_files else []
 
         if result.result_type == result_types['data']:
-            pickle_files.append((self.result_file_name, result.result))
+            cbor_files.append((self.result_file_name, result.result))
         elif result.result_type == result_types['files']:
             disk_files.extend(result.result)
         else:
             raise ValueError("Invalid result type {}".format(result.result_type))
 
-        return disk_files, pickle_files
+        return disk_files, cbor_files
 
 
 class ExtractedPackage:

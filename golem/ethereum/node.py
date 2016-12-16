@@ -1,7 +1,6 @@
 from __future__ import division
 
 import atexit
-import json
 import logging
 import os
 import re
@@ -19,6 +18,7 @@ from ethereum.utils import normalize_address, denoms
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
+from golem.core.compress import save
 from golem.core.simpleenv import get_local_datadir
 
 log = logging.getLogger('golem.ethereum')
@@ -72,7 +72,7 @@ class NodeProcess(object):
         assert path.isdir(datadir)
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
-            json.dump(nodes, open(nodes_file, 'w'))
+            save(nodes, nodes_file, False)
 
         # Init the ethereum node with genesis block information.
         # Do it always to overwrite invalid genesis block information
@@ -104,7 +104,6 @@ class NodeProcess(object):
             '--networkid', '9',
             '--port', str(self.port),
             '--nodiscover',
-            '--etherbase', '0x6528d9354356d7f668c75e9ed97f792bf910c8e5',
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--gasprice', '0',
             '--verbosity', '3',
