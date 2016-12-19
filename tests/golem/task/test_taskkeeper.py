@@ -89,17 +89,16 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header["task_id"] = "xyz"
         self.assertTrue(tk.add_task_header(task_header))
         th = tk.get_task()
+        assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header["task_id"], th.task_id)
         self.assertEqual(task_header["max_price"], th.max_price)
         self.assertEqual(task_header["node_name"], th.node_name)
         self.assertEqual(task_header["task_owner_port"], th.task_owner_port)
         self.assertEqual(task_header["task_owner_key_id"], th.task_owner_key_id)
         self.assertEqual(task_header["environment"], th.environment)
-        self.assertEqual(task_header["task_owner"], th.task_owner)
         self.assertEqual(task_header["deadline"], th.deadline)
         self.assertEqual(task_header["subtask_timeout"], th.subtask_timeout)
         self.assertEqual(task_header["max_price"], th.max_price)
-        th = tk.get_task()
         self.assertEqual(task_header["task_id"], th.task_id)
 
     def test_old_tasks(self):
@@ -198,11 +197,12 @@ def get_task_header():
     return {
         "task_id": "xyz",
         "node_name": "ABC",
-        "task_owner": Node(),
+        "task_owner": dict(),
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
         "environment": "DEFAULT",
+        "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 10

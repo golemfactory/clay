@@ -1,7 +1,7 @@
-from golem.docker.image import DockerImage
 from mock import Mock
 
 from golem.core.simpleserializer import CBORSerializer, SimpleSerializer
+from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, TaskEventListener, logger
 from golem.tools.assertlogs import LogTestCase
@@ -42,11 +42,13 @@ class TestTaskBase(LogTestCase):
             t.unregister_listener(tl1)
 
     def test_header_serialization(self):
-        node = Node(node_name="test node")
+        node = dict(node_name="test node")
         docker_images = [
-            DockerImage("repo_{}".format(i),
-                        "id_{}".format(i),
-                        "tag_{}".format(i))
+            dict(
+                repository="repo_{}".format(i),
+                id="id_{}".format(i),
+                tag="tag_{}".format(i)
+            )
             for i in xrange(4)
         ]
 

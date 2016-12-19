@@ -1,4 +1,5 @@
 import collections
+import inspect
 import sys
 import types
 
@@ -20,13 +21,16 @@ class DictCoder(object):
         return cls._to_dict_traverse_obj(obj, typed)
 
     @classmethod
-    def from_dict(cls, dictionary):
+    def from_dict(cls, dictionary, as_class=None):
+        if as_class:
+            dictionary = dict(dictionary)
+            dictionary[cls.cls_key] = cls.module_and_class(as_class)
         return cls._from_dict_traverse_obj(dictionary)
 
     @classmethod
     def obj_to_dict(cls, obj, typed=True):
         """Stores object's public properties in a dictionary"""
-        result = cls._to_dict_traverse_dict(obj.__dict__)
+        result = cls._to_dict_traverse_dict(obj.__dict__, typed)
         if typed:
             result[cls.cls_key] = cls.module_and_class(obj)
         return result
@@ -88,7 +92,10 @@ class DictCoder(object):
                 return cls.obj_from_dict(obj)
             return cls._from_dict_traverse_dict(obj)
         elif isinstance(obj, basestring):
-            return obj
+            try:
+                return unicode(obj)
+            except UnicodeDecodeError:
+                return obj
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
         return obj
@@ -103,7 +110,10 @@ class DictCoder(object):
 
     @staticmethod
     def module_and_class(obj):
-        return u'{}.{}'.format(obj.__module__, obj.__class__.__name__)
+        fmt = u'{}.{}'
+        if inspect.isclass(obj):
+            return fmt.format(obj.__module__, obj.__name__)
+        return fmt.format(obj.__module__, obj.__class__.__name__)
 
 
 class CBORCoder(DictCoder):
@@ -163,13 +173,14 @@ class DictSerializer(object):
         return DictCoder.to_dict(obj, typed=typed)
 
     @staticmethod
-    def load(dictionary):
+    def load(dictionary, as_class=None):
         """
         Deserialize dictionary to a Python object
+        :param as_class: create a specified class instance
         :param dict dictionary: dictionary to deserialize
         :return: deserialized Python object
         """
-        return DictCoder.from_dict(dictionary)
+        return DictCoder.from_dict(dictionary, as_class=as_class)
 
 
 class CBORSerializer(object):
