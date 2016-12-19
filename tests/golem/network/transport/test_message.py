@@ -91,7 +91,10 @@ class TestMessages(unittest.TestCase):
         epoch_t = 1475238345.0
         def set_tz(tz):
             os.environ['TZ'] = tz
-            time.tzset()
+            try:
+                time.tzset()
+            except AttributeError:
+                raise unittest.SkipTest("tzset required")
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
         m = MessageHello(timestamp = epoch_t)
