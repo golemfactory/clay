@@ -4,7 +4,7 @@ coverage:
     gitter:
       default:
         threshold: 0
-        url: https://gitter.im/imapp-pl/golem
+        url: https://gitter.im/golemfactory/golem
   status:
     patch:
       default:
@@ -17,6 +17,6 @@ coverage:
     - "tests/*"
     - "scripts/*"
     - "save/*"
-    - "gnr/taskcollector/*"
+    - "apps/rendering/resources/taskcollector/*"
 comment:
   layout: header, diff, changes, sunburst, uncovered

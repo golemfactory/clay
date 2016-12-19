@@ -5,10 +5,12 @@ from collections import namedtuple
 from contextlib import contextmanager
 
 from ethereum.utils import denoms
-from gnr.benchmarks.benchmark import Benchmark
-from gnr.renderingtaskstate import RenderingTaskDefinition
-from gnr.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
-from gnr.task.tasktester import TaskTester
+from mock import Mock
+
+from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.interface.client.account import account
@@ -21,8 +23,8 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager
+from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from mock import Mock
 
 
 def dbg(result):
@@ -50,7 +52,7 @@ class TestAccount(unittest.TestCase):
             assert result == {
                 'node_name': 'node1',
                 'provider_reputation': 1,
-                'requester_reputation': 2,
+                'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
                     'available_balance': '2.000000 ETH',
@@ -311,18 +313,18 @@ class TestResources(unittest.TestCase):
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=True, requester=False)
+            res.clear(provider=True, requestor=False)
 
             assert client.remove_received_files.called
             assert client.remove_computed_files.called
             assert not client.remove_distributed_files.called
 
-    def test_clear_requester(self):
+    def test_clear_requestor(self):
         client = Mock()
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=False, requester=True)
+            res.clear(provider=False, requestor=True)
 
             assert not client.remove_received_files.called
             assert not client.remove_computed_files.called
@@ -333,7 +335,7 @@ class TestResources(unittest.TestCase):
 
         with client_ctx(Resources, client):
             res = Resources()
-            res.clear(provider=True, requester=True)
+            res.clear(provider=True, requestor=True)
 
             assert client.remove_received_files.called
             assert client.remove_computed_files.called
@@ -472,6 +474,7 @@ class TestTasks(TempDirFixture):
 
                 call_args = client.enqueue_new_task.call_args[0]
                 assert len(call_args) == 1
+                print call_args[0]
                 assert isinstance(call_args[0], BlenderRenderTask)
 
             with self._run_context(run_error):
@@ -506,7 +509,7 @@ class TestTasks(TempDirFixture):
         task = builder.build()
         task.__dict__.update(Benchmark().query_benchmark_task_definition().__dict__)
         task.task_id = "deadbeef"
-        task.renderer = "Blender"
+        task.task_type = "Blender"
         task.docker_images = None
         task.renderer_options = BlenderRendererOptions()
 
@@ -580,11 +583,11 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(True, True, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings) - len(Settings.requester_settings)
+            assert len(result) >= len(Settings.settings) - len(Settings.requestor_settings)
 
             result = settings.show(True, False, True)
             assert isinstance(result, dict)
-            assert len(result) == len(Settings.basic_settings) + len(Settings.requester_settings)
+            assert len(result) == len(Settings.basic_settings) + len(Settings.requestor_settings)
 
     def test_set(self):
 

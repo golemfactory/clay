@@ -1,6 +1,5 @@
-import cPickle  # release version
 import collections
-import json   # debug version
+import jsonpickle as json
 
 import types
 
@@ -10,11 +9,7 @@ import dill
 import pytz
 import sys
 
-
-IS_DEBUG = False  # True - json, False - CBOR
-
-
-class SimpleSerializerDebug(object):
+class SimpleSerializer(object):
     """ Simple meta-class that serialize and deserialize objects to a json format"""
     @classmethod
     def dumps(cls, obj):
@@ -33,27 +28,6 @@ class SimpleSerializerDebug(object):
         :return: deserialized Python object
         """
         return json.loads(data)
-
-
-class SimpleSerializerRelease(object):
-    """ Simple meta-class that serialize and deserialize objects to a pickle representation."""
-    @classmethod
-    def dumps(cls, obj):
-        """
-        Serialize obj to a pickle representation
-        :param obj: object to be serialized
-        :return str: serialized object in a pickle representation
-        """
-        return cPickle.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        """
-        Deserialize data to a Python object
-        :param str data: pickle representation to be deserialized
-        :return: deserialized Python object
-        """
-        return cPickle.loads(data)
 
 
 class DILLSerializer(object):
@@ -92,7 +66,7 @@ class CBORCoder(object):
     def _obj_to_dict(cls, obj):
         """Stores object's public properties in a dictionary. Triggered by CBOR encoder."""
         result = cls._to_dict_traverse_dict(obj.__dict__)
-        result[cls.cls_key] = cls._module_and_class(obj)
+        result[cls.cls_key] = cls.module_and_class(obj)
         return result
 
     @classmethod
@@ -157,7 +131,7 @@ class CBORCoder(object):
         return type(obj) in cls.builtin_types and not isinstance(obj, types.InstanceType)
 
     @staticmethod
-    def _module_and_class(obj):
+    def module_and_class(obj):
         return obj.__module__, obj.__class__.__name__
 
 
@@ -166,13 +140,24 @@ def to_dict(obj, cls=None, _parents=None):
     _parents = _parents or set()
 
     if isinstance(obj, dict):
-        return {k: to_dict(v, cls, _parents=_parents) for k, v in obj.iteritems()}
+        return {
+            unicode(k): to_dict(v, v.__class__ if cls else None, _parents=_parents)
+            for k, v in obj.iteritems()
+        }
 
-    elif isinstance(obj, collections.Iterable) and not isinstance(obj, basestring):
-        return obj.__class__([to_dict(v, cls, _parents=_parents) for v in obj])
+    elif isinstance(obj, basestring):
+        try:
+            return unicode(obj)
+        except UnicodeDecodeError:
+            return obj
+
+    elif isinstance(obj, collections.Iterable):
+        return obj.__class__([
+            to_dict(v, v.__class__ if cls else None, _parents=_parents)
+            for v in obj
+        ])
 
     elif hasattr(obj, "__dict__"):
-
         _id = id(obj)
         if _id in _parents:
             raise Exception("Cycle detected")
@@ -183,10 +168,10 @@ def to_dict(obj, cls=None, _parents=None):
         data = dict()
         for k, v in obj.__dict__.iteritems():
             if not callable(v) and not k.startswith('_'):
-                data[k] = to_dict(v, cls, _parents=_sub_parents)
+                data[unicode(k)] = to_dict(v, v.__class__ if cls else None, _parents=_sub_parents)
 
-        if cls is not None and hasattr(obj, "__class__"):
-            data[cls] = obj.__class__.__name__
+        if cls and hasattr(obj, "__class__"):
+            data[CBORCoder.cls_key] = CBORCoder.module_and_class(obj)
 
         return data
 
@@ -207,8 +192,3 @@ class CBORSerializer(object):
     def dumps(cls, obj):
         return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
 
-
-if IS_DEBUG:
-    SimpleSerializer = SimpleSerializerDebug
-else:
-    SimpleSerializer = CBORSerializer

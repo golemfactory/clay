@@ -1,4 +1,4 @@
-import json
+import jsonpickle as json
 from unittest import TestCase
 
 from golem.diag.service import DiagnosticsOutputFormat
@@ -11,8 +11,6 @@ class TestVMDiagnosticProvider(TestCase):
         diag = provider.get_diagnostics(DiagnosticsOutputFormat.string)
         json.dumps(diag)
         diag = provider.get_diagnostics(DiagnosticsOutputFormat.json)
-        json.dumps(diag)
-        diag = provider.get_diagnostics(DiagnosticsOutputFormat.pickle)
         json.dumps(diag)
         diag = provider.get_diagnostics(DiagnosticsOutputFormat.data)
         json.dumps(diag)

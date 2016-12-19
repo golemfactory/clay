@@ -1,7 +1,6 @@
 from __future__ import division
 
 import atexit
-import json
 import logging
 import os
 import re
@@ -19,6 +18,7 @@ from ethereum.utils import normalize_address, denoms
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
+from golem.core.compress import save
 from golem.core.simpleenv import get_local_datadir
 
 log = logging.getLogger('golem.ethereum')
@@ -32,13 +32,13 @@ class Faucet(object):
 
     @staticmethod
     def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
+        nonce = ethnode.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
         addr = normalize_address(addr)
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       addr.encode('hex'), h))
+                                                       '0x' + addr.encode('hex'), h))
         h = h[2:].decode('hex')
         assert h == tx.hash
         return h
@@ -54,7 +54,7 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.4.5'
-    MAX_GETH_VERSION = '1.4.999'
+    MAX_GETH_VERSION = '1.5.999'
 
     def __init__(self, nodes, datadir):
         self.__prog = find_program('geth')
@@ -72,7 +72,7 @@ class NodeProcess(object):
         assert path.isdir(datadir)
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
-            json.dump(nodes, open(nodes_file, 'w'))
+            save(nodes, nodes_file, False)
 
         # Init the ethereum node with genesis block information.
         # Do it always to overwrite invalid genesis block information

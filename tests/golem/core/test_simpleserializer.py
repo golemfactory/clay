@@ -4,8 +4,7 @@ import unittest
 from cbor2 import CBOREncoder, CBORDecoder
 from io import BytesIO
 
-from golem.core.simpleserializer import SimpleSerializerDebug, SimpleSerializerRelease, SimpleSerializer, CBORSerializer, \
-    CBORCoder, to_dict
+from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, CBORCoder, to_dict
 
 
 class Example:
@@ -31,23 +30,11 @@ class TestSimpleSerializer(unittest.TestCase):
     def testSerializer(self):
         self.assertTrue(isinstance(SimpleSerializer(), CBORSerializer))
 
-
-class TestSimpleSerializerDebug(unittest.TestCase):
-    def testSerializer(self):
-        data = ['foo', {'bar': ('baz', None, 1.0, 2)}]
-        ser = SimpleSerializerDebug.dumps(data)
-        self.assertTrue(isinstance(ser, str))
-        data2 = SimpleSerializerDebug.loads(ser)
-        self.assertTrue(isinstance(data2, list))
-        self.assertEqual(len(data2), len(data))
-
-
-class TestSimpleSerializerRelease(unittest.TestCase):
     def testSerializer(self):
         data = Example()
-        ser = SimpleSerializerRelease.dumps(data)
+        ser = SimpleSerializer.dumps(data)
         self.assertTrue(isinstance(ser, str))
-        data2 = SimpleSerializerRelease.loads(ser)
+        data2 = SimpleSerializer.loads(ser)
         self.assertTrue(isinstance(data2, Example))
         self.assertEqual(data, data2)
 
@@ -144,23 +131,23 @@ class TestToDict(unittest.TestCase):
     def test_serialization(self):
         obj = MockSerializationSubject()
         assert to_dict(obj) == {
-            'property_1': {
-                'k': 'v',
-                'u': {
-                    'property_1': obj.property_1['u'].property_1,
-                    'property_3': 'string',
-                    'property_4': ['list', 'of', ('items',), obj.property_1['u'].property_4[-1]]
+            u'property_1': {
+                u'k': u'v',
+                u'u': {
+                    u'property_1': obj.property_1[u'u'].property_1,
+                    u'property_3': u'string',
+                    u'property_4': [u'list', u'of', (u'items',), obj.property_1[u'u'].property_4[-1]]
                 }
             },
-            'property_2': {
-                'property_1': obj.property_2.property_1,
-                'property_3': 'string',
-                'property_4': ['list', 'of', ('items',), obj.property_2.property_4[-1]]
+            u'property_2': {
+                u'property_1': obj.property_2.property_1,
+                u'property_3': u'string',
+                u'property_4': [u'list', u'of', (u'items',), obj.property_2.property_4[-1]]
             },
-            'property_4': ['v', 1, (1, 2, 3), {
-                'property_1': obj.property_4[-1].property_1,
-                'property_3': 'string',
-                'property_4': ['list', 'of', ('items',), obj.property_4[-1].property_4[-1]]
+            u'property_4': [u'v', 1, (1, 2, 3), {
+                u'property_1': obj.property_4[-1].property_1,
+                u'property_3': u'string',
+                u'property_4': [u'list', u'of', (u'items',), obj.property_4[-1].property_4[-1]]
             }]
         }
 

@@ -2,7 +2,7 @@ import os
 from os import path
 import shutil
 
-from gnr.renderingdirmanager import find_task_script
+from apps.rendering.task.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
 
 from test_docker_job import TestDockerJob
@@ -15,13 +15,15 @@ class TestLuxRenderDockerJob(TestDockerJob):
         return "golem/luxrender"
 
     def test_luxrender_job(self):
-        task_script = find_task_script("docker_luxtask.py")
+        app_dir = path.join(get_golem_path(), "apps", "lux")
+        task_script = find_task_script(app_dir, "docker_luxtask.py")
+
         with open(task_script) as f:
             task_script_src = f.read()
 
         # read the scene file and copy the resources to the resources dir
         lux_task_dir = path.join(get_golem_path(),
-                                 "gnr", "benchmarks", "luxrender", "lux_task")
+                                 "apps", "lux", "benchmark", "test_task")
         scene_src = None
         for f in os.listdir(lux_task_dir):
             task_file = path.join(lux_task_dir, f)

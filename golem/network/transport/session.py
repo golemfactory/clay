@@ -3,6 +3,7 @@ import logging
 import random
 import time
 
+from golem.core.keysauth import get_random_float
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
 from golem.network.transport.message import MessageDisconnect, Message
 from network import Session
@@ -74,7 +75,7 @@ class BasicSession(FileSession):
         self.port = pp.port
 
         self.last_message_time = time.time()
-        self.last_disconnect_time = None
+        self._disconnect_sent = False
         self._interpretation = {MessageDisconnect.Type: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
@@ -107,17 +108,13 @@ class BasicSession(FileSession):
         self.conn.close_now()
 
     def disconnect(self, reason):
-        """ If it's called for the first time, send "disconnect" message to the peer. Otherwise, drops
-        connection.
+        """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting. Should use global class disconnect reasons, eg. DCRBadProtocol
         """
         logger.info("Disconnecting {} : {} reason: {}".format(self.address, self.port, reason))
         if self.conn.opened:
-            if self.last_disconnect_time:
-                self.dropped()
-            else:
-                self.last_disconnect_time = time.time()
-                self._send_disconnect(reason)
+            self._send_disconnect(reason)
+            self.dropped()
 
     def send(self, message):
         """ Send given message.
@@ -148,7 +145,9 @@ class BasicSession(FileSession):
 
     def _send_disconnect(self, reason):
         """ :param string reason: reason to disconnect """
-        self.send(MessageDisconnect(reason))
+        if not self._disconnect_sent:
+            self._disconnect_sent = True
+            self.send(MessageDisconnect(reason))
 
     def _check_msg(self, msg):
         if msg is None or not isinstance(msg, Message):
@@ -180,7 +179,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.message_ttl = MSG_TTL  # how old messages should be accepted
         self.future_time_tolerance = FUTURE_TIME_TOLERANCE  # how much greater time than current time should be accepted
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
-        self.rand_val = random.random()  # TODO: change rand val to hashcash
+        self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
         self.can_be_unverified = [MessageDisconnect.Type]  # React to message even if it's self.verified is set to False
         self.can_be_unsigned = [MessageDisconnect.Type]  # React to message even if it's not signed.

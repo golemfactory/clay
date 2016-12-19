@@ -1,6 +1,6 @@
 import unittest
 
-from mock import MagicMock
+from mock import MagicMock, Mock
 
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.network.p2p.node import Node
@@ -87,12 +87,33 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
 
+    def test_disconnect(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.p2p_service = MagicMock()
+        peer_session.dropped = MagicMock()
+        peer_session.send = MagicMock()
+        peer_session.conn = Mock()
+
+        peer_session.conn.opened = False
+        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        assert not peer_session.dropped.called
+        assert not peer_session.send.called
+
+        peer_session.conn.opened = True
+        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        assert peer_session.dropped.called
+        assert peer_session.send.called
+
+        peer_session.send.called = False
+        peer_session.disconnect(PeerSession.DCRProtocolVersion)
+        assert not peer_session.send.called
+
     def test_dropped(self):
         conn = MagicMock()
         peer_session = PeerSession(conn)
         peer_session.p2p_service = MagicMock()
 
-        peer_session.remove_on_disconnect = True
         peer_session.dropped()
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called

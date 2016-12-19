@@ -1,5 +1,5 @@
 import argparse
-import json
+import jsonpickle as json
 import os
 import re
 import subprocess
@@ -50,11 +50,11 @@ def prepare_task_resources(task):
     """Prepare a new task file with paths rewritten to match location of
     of resource file at the target node:
     - main scene file <scene-dir>/<scene>.blend will be copied to
-      IMUNES_TEST_DIR/scene-<scene>.blend at the requester node
+      IMUNES_TEST_DIR/scene-<scene>.blend at the requestor node
     - main program file <prog-path>/<program>.py will be copied to
-      IMUNES_TEST_DIR/program-<program>.py at the requester node
+      IMUNES_TEST_DIR/program-<program>.py at the requestor node
     - task file <task-path>/<task>.json will be copied to
-      IMUNES_TEST_DIR/task.json at the requester node
+      IMUNES_TEST_DIR/task.json at the requestor node
     - modified task file <task-dir>/<task>.json is stored locally as
       imunes-<task>.json in the current working dir
     For now we assume there are no resource files other than program
@@ -127,7 +127,7 @@ def create_node_infos(node_names, args):
                 node, address,
                 ", super node" if is_supernode else "",
                 ", seed node" if node in args.seed else "",
-                ", requester" if node is args.requester else "",
+                ", requestor" if node is args.requestor else "",
                 ", blender disabled" if disable_blender else "")
         if node in args.seed:
             peer_addrs.append(address)
@@ -222,15 +222,15 @@ class IllegalStateException(Exception):
         Exception.__init__(self, msg)
 
 
-def wait_for_task_completion(requester_name, num_tasks=1):
+def wait_for_task_completion(requestor_name, num_tasks=1):
     """
-    Watch log file /log/golem.log at the node requester_name for events related
+    Watch log file /log/golem.log at the node requestor_name for events related
     to task progress.
-    :param str requester_name: name of the task requester node
+    :param str requestor_name: name of the task requestor node
     :param num_tasks: number of tasks to watch
     """
     print "Waiting for tasks to complete..."
-    with open("/tmp/imunes/" + requester_name + "/golem.log", 'r') as log_file:
+    with open("/tmp/imunes/" + requestor_name + "/golem.log", 'r') as log_file:
         done = False
         started_tasks = []
         finished_tasks = []
@@ -296,8 +296,8 @@ if __name__ == "__main__":
                         default=[], help="Name of a super node")
     parser.add_argument("--seed", action="append", metavar="<node-name>",
                         default=[], help="Name of a seed node")
-    parser.add_argument("--requester", metavar="<node-name>",
-                        help="Name of the requester node")
+    parser.add_argument("--requestor", metavar="<node-name>",
+                        help="Name of the requestor node")
     parser.add_argument("--disable-blender", action="append",
                         default=[], metavar="<node-name>",
                         help="Name of a node with Blender not available")
@@ -308,11 +308,11 @@ if __name__ == "__main__":
     topology_file = args.topology_file
     task_file = getattr(args, "task_file", None)
 
-    if task_file and not args.requester:
-        print "Task file specified but no requester node (use --requester)"
+    if task_file and not args.requestor:
+        print "Task file specified but no requestor node (use --requestor)"
         sys.exit(1)
-    if args.requester and not task_file:
-        print "Requester node specified but no task file"
+    if args.requestor and not task_file:
+        print "Requestor node specified but no task file"
         sys.exit(1)
 
     # clean up whatever remained from previous experiments
@@ -323,7 +323,7 @@ if __name__ == "__main__":
             task_json = json.load(tf)
 
         # Convert paths in the task file to match resource file locations
-        # at the requester node
+        # at the requestor node
         converted_task_file, files_to_copy = prepare_task_resources(task_json)
 
     # Start imunes
@@ -334,16 +334,16 @@ if __name__ == "__main__":
 
     infos = create_node_infos(names, args)
 
-    if args.requester and args.requester not in infos:
-        print "Invalid requester node specified"
+    if args.requestor and args.requestor not in infos:
+        print "Invalid requestor node specified"
         sys.exit(1)
 
     if task_file:
-        infos[args.requester].tasks = [converted_task_file]
+        infos[args.requestor].tasks = [converted_task_file]
 
-        # Copy resource files to the requester node
+        # Copy resource files to the requestor node
         for src, dst in files_to_copy.iteritems():
-            copy_file(args.requester, src, dst)
+            copy_file(args.requestor, src, dst)
 
     # 3... 2... 1...
     time.sleep(1)
@@ -352,7 +352,7 @@ if __name__ == "__main__":
     # TODO: instead of waiting 60 sec we should monitor the logs to see when
     # the computation ends (or fails)
     if task_file:
-        wait_for_task_completion(args.requester)
+        wait_for_task_completion(args.requestor)
 
     time.sleep(10)
     if not args.dont_terminate:

@@ -3,6 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 ui_*.py
+*.exe
+
+
+#VB files
+*.obj
+*.pdb
+*.sdf
+*.suo
+*.tlog
+
 
 # C extensions
 *.so
@@ -27,6 +37,8 @@ sdist/
 # Golem files
 *.db
 *.log
+*.log.20*
+gui/view/gen/icons_rc.py
 
 # Project structure parse results
 lextab.py
