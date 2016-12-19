@@ -469,34 +469,51 @@ class TestTasks(TempDirFixture):
         yield
         TaskTester.run = run
 
-    def test_start(self):
+    def test_load(self):
         client = self.client
         task_file_name = self._create_blender_task(client.get_dir_manager())
 
         def run_success(instance):
             instance.success_callback()
 
+        def run_error(instance):
+            instance.error_callback()
+
         with client_ctx(Tasks, client):
 
             with self._run_context(run_success):
+
+                client.create_task.call_args = None
+                client.create_task.called = False
+
                 tasks = Tasks()
-                tasks.start(task_file_name)
+                tasks.load(task_file_name, True)
 
-            tasks = Tasks()
-            with self.assertRaises(CommandException):
-                tasks.start(task_file_name + ".invalid")
+                call_args = client.create_task.call_args[0]
+                assert len(call_args) == 1
+                print call_args[0]
+                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
 
-    def test_test(self):
-        client = self.client
-        task_file_name = self._create_blender_task(client.get_dir_manager())
+            with self._run_context(run_error):
+                client.create_task.call_args = None
+                client.create_task.called = False
 
-        with client_ctx(Tasks, client):
-            with patch('Queue.Queue.get'):
                 tasks = Tasks()
-                tasks.test(task_file_name)
+                tasks.load(task_file_name, True)
 
-        assert client.run_test_task.called
-        assert client._session.unregister_events.called
+                call_args = client.create_task.call_args[0]
+
+                assert len(call_args) == 1
+                assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
+
+            with self._run_context(run_error):
+                client.create_task.call_args = None
+                client.create_task.called = False
+
+                tasks = Tasks()
+
+                with self.assertRaises(CommandException):
+                    tasks.load(task_file_name, False)
 
     def _create_blender_task(self, dir_manager):
 
