@@ -102,7 +102,25 @@ class TestDictSerializer(unittest.TestCase):
         deserialized = DictSerializer.load(dict_repr)
         assert_properties(deserialized, obj)
 
-    def test_serialization(self):
+    def test_serialization_as_class(self):
+
+        obj = MockSerializationSubject()
+        dict_repr = DictSerializer.dump(obj)
+
+        assert DictCoder.cls_key in dict_repr
+        assert 'property_1' in dict_repr
+        assert 'property_2' in dict_repr
+        assert isinstance(DictSerializer.load(dict_repr), MockSerializationSubject)
+
+        dict_repr = DictSerializer.dump(obj, typed=False)
+
+        assert DictCoder.cls_key not in dict_repr
+        assert 'property_1' in dict_repr
+        assert 'property_2' in dict_repr
+        assert isinstance(DictSerializer.load(dict_repr), dict)
+        assert isinstance(DictSerializer.load(dict_repr, as_class=MockSerializationSubject), MockSerializationSubject)
+
+    def test_serialization_result(self):
         obj = MockSerializationSubject()
         assert DictSerializer.dump(obj) == {u'property_1': {u'k': u'v',
              u'u': {
