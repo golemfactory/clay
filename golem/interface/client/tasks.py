@@ -1,7 +1,9 @@
-import json
 from Queue import Queue
 from contextlib import contextmanager
 
+import jsonpickle
+
+from golem.core.simpleserializer import DictSerializer
 from golem.rpc.mapping.aliases import Task
 
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
@@ -90,6 +92,7 @@ class Tasks(object):
     def test(self, file_name):
         try:
             definition = self.__read_from_file(file_name)
+            serialized = DictSerializer.dump(definition)
         except Exception as exc:
             return CommandResult(error="Error reading task from file '{}': {}".format(file_name, exc))
 
@@ -109,7 +112,7 @@ class Tasks(object):
             ])
 
         with subscribe_context():
-            Tasks.client.run_test_task(definition)
+            Tasks.client.run_test_task(serialized)
             result = queue.get(block=True, timeout=300)
 
         return CommandResult("{}".format(result))
@@ -118,10 +121,11 @@ class Tasks(object):
     def start(self, file_name):
         try:
             definition = self.__read_from_file(file_name)
+            serialized = DictSerializer.dump(definition)
         except Exception as exc:
             return CommandResult(error="Error reading task from file '{}': {}".format(file_name, exc))
 
-        deferred = Tasks.client.create_task(definition)
+        deferred = Tasks.client.create_task(serialized)
         return CommandHelper.wait_for(deferred)
 
     @command(argument=id_req, help="Restart a task")
@@ -165,7 +169,10 @@ class Tasks(object):
     @staticmethod
     def __read_from_file(file_name):
         with open(file_name) as task_file:
-            return json.loads(task_file.read())
+            data = jsonpickle.loads(task_file.read())
+        if hasattr(data, 'resources'):
+            data.resources = list(data.resources)
+        return data
 
 
 @group(help="Manage subtasks")
