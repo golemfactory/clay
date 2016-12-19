@@ -1,7 +1,7 @@
 import jsonpickle as json
 import unittest
 
-from golem.core.simpleserializer import to_dict
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import CommandResult
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
@@ -19,7 +19,7 @@ class TestFormatters(unittest.TestCase):
             assert formatter.format('Some text') == 'Some text'
 
             if not prettify:
-                assert formatter.format(formatter) == to_dict(formatter)
+                assert formatter.format(formatter) == DictSerializer.dump(formatter, typed=False)
 
         table_headers = ['First', 'Second', 'Third']
         table_values = [

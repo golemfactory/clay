@@ -13,7 +13,7 @@ from apps.core.benchmark.benchmark import Benchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.simpleserializer import DictSerializer, to_dict
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network

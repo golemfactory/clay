@@ -3,62 +3,43 @@ import sys
 import types
 
 import cbor2
-import dill
-import jsonpickle as json
+import jsonpickle
 import pytz
-
-
-class SimpleSerializer(object):
-    """ Simple meta-class that serialize and deserialize objects to a json format"""
-    @classmethod
-    def dumps(cls, obj):
-        """
-        Serialize obj to a JSON format
-        :param obj: object to be serialized
-        :return str: serialized object in json format
-        """
-        return json.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        """
-        Deserialize data to a Python object
-        :param str data: json object to be deserialized
-        :return: deserialized Python object
-        """
-        return json.loads(data)
-
-
-class DILLSerializer(object):
-    @classmethod
-    def dumps(cls, obj):
-        return dill.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        return dill.loads(data)
 
 
 class DictCoder(object):
 
-    cls_key = u'_cls'
+    cls_key = u'py/object'
     deep_serialization = True
 
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
-    def obj_to_dict(cls, obj):
+    def to_dict(cls, obj, typed=True):
+        assert cls.deep_serialization
+        return cls._to_dict_traverse_obj(obj, typed)
+
+    @classmethod
+    def from_dict(cls, dictionary):
+        return cls._from_dict_traverse_obj(dictionary)
+
+    @classmethod
+    def obj_to_dict(cls, obj, typed=True):
         """Stores object's public properties in a dictionary"""
         result = cls._to_dict_traverse_dict(obj.__dict__)
-        result[cls.cls_key] = cls.module_and_class(obj)
+        if typed:
+            result[cls.cls_key] = cls.module_and_class(obj)
         return result
 
     @classmethod
     def obj_from_dict(cls, dictionary):
-        module_name, cls_name = dictionary.pop(cls.cls_key)
-        module = sys.modules[module_name]
+        cls_path = dictionary.pop(cls.cls_key)
 
+        _idx = cls_path.rfind(u'.')
+        module_name, cls_name = cls_path[:_idx], cls_path[_idx+1:]
+        module = sys.modules[module_name]
         sub_cls = getattr(module, cls_name)
+
         obj = sub_cls.__new__(sub_cls)
 
         for k, v in dictionary.iteritems():
@@ -69,25 +50,28 @@ class DictCoder(object):
         return obj
 
     @classmethod
-    def _to_dict_traverse_dict(cls, dictionary):
+    def _to_dict_traverse_dict(cls, dictionary, typed=True):
         result = dict()
         for k, v in dictionary.iteritems():
             if (isinstance(k, basestring) and k.startswith('_')) or callable(v):
                 continue
-            result[k] = cls._to_dict_traverse_obj(v)
+            result[unicode(k)] = cls._to_dict_traverse_obj(v, typed)
         return result
 
     @classmethod
-    def _to_dict_traverse_obj(cls, obj):
+    def _to_dict_traverse_obj(cls, obj, typed=True):
         if isinstance(obj, dict):
-            return cls._to_dict_traverse_dict(obj)
+            return cls._to_dict_traverse_dict(obj, typed)
         elif isinstance(obj, basestring):
-            return obj
+            try:
+                return unicode(obj)
+            except UnicodeDecodeError:
+                return obj
         elif isinstance(obj, collections.Iterable):
-            return obj.__class__([cls._to_dict_traverse_obj(o) for o in obj])
+            return obj.__class__([cls._to_dict_traverse_obj(o, typed) for o in obj])
         elif cls.deep_serialization:
             if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
-                return cls.obj_to_dict(obj)
+                return cls.obj_to_dict(obj, typed)
         return obj
 
     @classmethod
@@ -119,7 +103,7 @@ class DictCoder(object):
 
     @staticmethod
     def module_and_class(obj):
-        return obj.__module__, obj.__class__.__name__
+        return u'{}.{}'.format(obj.__module__, obj.__class__.__name__)
 
 
 class CBORCoder(DictCoder):
@@ -145,51 +129,51 @@ class CBORCoder(DictCoder):
         return obj
 
 
-def to_dict(obj, cls=None, _parents=None):
+class SimpleSerializer(object):
+    """ Simple meta-class that serialize and deserialize objects to a json format"""
+    @classmethod
+    def dumps(cls, obj):
+        """
+        Serialize obj to a JSON format
+        :param obj: object to be serialized
+        :return str: serialized object in json format
+        """
+        return jsonpickle.dumps(obj)
 
-    _parents = _parents or set()
+    @classmethod
+    def loads(cls, data):
+        """
+        Deserialize data to a Python object
+        :param str data: json object to be deserialized
+        :return: deserialized Python object
+        """
+        return jsonpickle.loads(data)
 
-    if isinstance(obj, dict):
-        return {
-            unicode(k): to_dict(v, v.__class__ if cls else None, _parents=_parents)
-            for k, v in obj.iteritems()
-        }
 
-    elif isinstance(obj, basestring):
-        try:
-            return unicode(obj)
-        except UnicodeDecodeError:
-            return obj
+class DictSerializer(object):
+    """ Serialize and deserialize objects to a dictionary"""
+    @staticmethod
+    def dump(obj, typed=True):
+        """
+        Serialize obj to dictionary
+        :param obj: object to be serialized
+        :param bool typed: simple serialization does not include type information
+        :return str: serialized object in json format
+        """
+        return DictCoder.to_dict(obj, typed=typed)
 
-    elif isinstance(obj, collections.Iterable):
-        return obj.__class__([
-            to_dict(v, v.__class__ if cls else None, _parents=_parents)
-            for v in obj
-        ])
-
-    elif hasattr(obj, "__dict__"):
-        _id = id(obj)
-        if _id in _parents:
-            raise Exception("Cycle detected")
-
-        _sub_parents = set(_parents)
-        _sub_parents.add(_id)
-
-        data = dict()
-        for k, v in obj.__dict__.iteritems():
-            if not callable(v) and not k.startswith('_'):
-                data[unicode(k)] = to_dict(v, v.__class__ if cls else None, _parents=_sub_parents)
-
-        if cls and hasattr(obj, "__class__"):
-            data[DictCoder.cls_key] = CBORCoder.module_and_class(obj)
-
-        return data
-
-    return obj
+    @staticmethod
+    def load(dictionary):
+        """
+        Deserialize dictionary to a Python object
+        :param dict dictionary: dictionary to deserialize
+        :return: deserialized Python object
+        """
+        return DictCoder.from_dict(dictionary)
 
 
 class CBORSerializer(object):
-
+    """ Serialize and deserialize objects to and from CBOR"""
     decoders = dict()
     decoders[CBORCoder.tag] = CBORCoder.decode
     encoders = {(object, CBORCoder.encode)}
@@ -201,14 +185,3 @@ class CBORSerializer(object):
     @classmethod
     def dumps(cls, obj):
         return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
-
-
-class DictSerializer(object):
-
-    @staticmethod
-    def load(dictionary):
-        return DictCoder.obj_from_dict(dictionary)
-
-    @staticmethod
-    def dump(obj):
-        return DictCoder.obj_to_dict(obj)

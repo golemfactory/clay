@@ -19,7 +19,7 @@ from twisted.internet.error import ReactorAlreadyRunning
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
 
-DEBUG_DEFERRED = False
+DEBUG_DEFERRED = True
 if DEBUG_DEFERRED:
     from twisted.internet.defer import setDebugging
     setDebugging(True)

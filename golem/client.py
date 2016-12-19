@@ -16,7 +16,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
-from golem.core.simpleserializer import to_dict, DictSerializer
+from golem.core.simpleserializer import DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -53,6 +53,7 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         self.client = client
 
     def task_status_updated(self, task_id):
+        print ":::: ClientTaskManagerEventListener task_status_updated", bool(self.client.rpc_publisher)
         if self.client.rpc_publisher:
             self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
@@ -346,11 +347,11 @@ class Client(object):
 
     def get_known_peers(self):
         peers = self.p2pservice.free_peers or []
-        return [to_dict(PeerSessionInfo(p)) for p in peers]
+        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
 
     def get_connected_peers(self):
         peers = self.get_peers() or []
-        return [to_dict(PeerSessionInfo(p)) for p in peers]
+        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
 
     def get_public_key(self):
         return self.keys_auth.public_key
