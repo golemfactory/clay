@@ -54,7 +54,7 @@ class PaymentMonitor(object):
             payee = l['topics'][2][26:].decode('hex')
             assert payee == self.__addr
             value = int(l['data'], 16)
-            block_number = int(l['blockNumber'], 16)
+            block_number = l['blockNumber']
             block_hash = l['blockHash'][2:].decode('hex')
             assert len(block_hash) == 32
             tx_hash = l['transactionHash'][2:].decode('hex')

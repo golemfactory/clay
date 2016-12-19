@@ -197,14 +197,14 @@ class PaymentProcessor(object):
     def monitor_progress(self):
         confirmed = []
         for h, payments in self.__inprogress.iteritems():
-            hstr = h.encode('hex')
+            hstr = '0x' + h.encode('hex')
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
                 block_hash = receipt['blockHash'][2:]
                 assert len(block_hash) == 2 * 32
-                block_number = int(receipt['blockNumber'], 16)
-                gas_used = int(receipt['gasUsed'], 16)
+                block_number = receipt['blockNumber']
+                gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE
                 fee = total_fee // len(payments)
                 log.info("Confirmed {:.6}: block {} ({}), gas {}, fee {}"
