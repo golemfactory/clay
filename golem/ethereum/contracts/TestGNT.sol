@@ -22,6 +22,28 @@ contract TestGNT {
         return false;
     }
 
+    // This function allows batch payments using sent value and
+    // sender's balance.
+    // Cost: 21000 + (5000 + ~2000) * n
+    function batchTransfer(bytes32[] payments) external {
+        uint balance = balances[msg.sender];
+
+        for (uint i = 0; i < payments.length; ++i) {
+            // A payment contains compressed data:
+            // first 96 bits (12 bytes) is a value,
+            // following 160 bits (20 bytes) is an address.
+            bytes32 payment = payments[i];
+            address addr = address(payment);
+            uint v = uint(payment) / 2**160;
+            if (v > balance) throw;
+            balances[addr] += v;
+            balance -= v;
+            Transfer(msg.sender, addr, v);
+        }
+
+        balances[msg.sender] = balance;
+    }
+
     function balanceOf(address _owner) external constant returns (uint256) {
         return balances[_owner];
     }
