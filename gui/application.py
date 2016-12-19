@@ -19,7 +19,7 @@ class GNRGui:
         except Exception as ex:
             from sys import platform
             if platform != "win32":
-                logger.warning("Error occurred when setting up Qt: {}".format(ex.message))
+                logger.warning("Error occurred when setting up Qt: {}".format(ex))
 
         self.app = QApplication(sys.argv)
         app_icon = QIcon()

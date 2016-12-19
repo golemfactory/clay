@@ -241,7 +241,7 @@ class LicenseCollector(object):
                     if not package:
                         package = self._find_package(imported, is_file=is_file)
             except Exception as ex:
-                print "Error occurred during getting module license {}".format(ex.message)
+                print "Error occurred during getting module license {}".format(ex)
 
         if package:
             meta, lic = self._get_metadata_and_license(package)
@@ -390,7 +390,7 @@ class LicenseCollector(object):
                     if k == "License":
                         return '\n'.join(metadata), v
             except Exception as ex:
-                print "Error occurred during getting metadata: {}".format(ex.message)
+                print "Error occurred during getting metadata: {}".format(ex)
 
         return None, None
 
@@ -622,7 +622,7 @@ class PackageCreator(Command):
                     output = subprocess.check_output(('grep', base_name), stdin=proc.stdout)
                     proc.wait()
             except Exception as ex:
-                print "Subprocess error: {}".format(ex.message)
+                print "Subprocess error: {}".format(ex)
 
             if output:
                 split = output.strip().split('->')
@@ -758,7 +758,7 @@ class PackageCreator(Command):
                 try:
                     os.makedirs(dest_path, 0755)
                 except OSError as ex:
-                    print "Cannot create directory: {}".format(ex.me)
+                    print "Cannot create directory: {}".format(ex)
                 zf.extractall(dest_path)
 
     @staticmethod

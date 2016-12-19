@@ -164,7 +164,7 @@ class OrContextEntry(ContextEntryType):
             try:
                 arg.validate(key, value)
             except Exception as ex:
-                print "Error occurred during arguments validation: {}".format(ex.message)
+                print "Error occurred during arguments validation: {}".format(ex)
             else:
                 result = True
                 break
@@ -734,7 +734,7 @@ class SimulatorStartCommand(SimulatorCommand):
                 sim_name = subprocess.check_output(["himage", "-v", node])
                 node_map[node] = sim_name.replace("\n", '').strip()
             except Exception as ex:
-                print "Subprocess error: {}".format(ex.message)
+                print "Subprocess error: {}".format(ex)
 
         context_update = {
             'state': SimulatorState.started,
