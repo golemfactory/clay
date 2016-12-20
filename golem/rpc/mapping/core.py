@@ -38,6 +38,7 @@ CORE_METHOD_MAP = dict(
     remove_task_header=     Task.tasks_known_delete,
 
     get_task=               Task.task,
+    get_task_cost=          Task.task_cost,
     query_task_state=       Task.task_state,
     create_task=            Task.task_create,
     delete_task=            Task.task_delete,

@@ -67,6 +67,7 @@ class Task(object):
     tasks_known_delete      = 'comp.tasks.known.delete'
 
     task                    = 'comp.task'
+    task_cost               = 'comp.task.cost'
     task_state              = 'comp.task.state'
     task_create             = 'comp.task.create'
     task_delete             = 'comp.task.delete'

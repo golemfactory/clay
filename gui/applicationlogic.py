@@ -574,7 +574,7 @@ class GNRApplicationLogic(QtCore.QObject):
         :param task_id: Task ID
         :return: Cost of the task
         """
-        cost = yield self.client.get_payment_for_task_id(task_id)
+        cost = yield self.client.get_task_cost(task_id)
         returnValue(cost)
 
     def set_current_task_type(self, name):

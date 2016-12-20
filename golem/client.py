@@ -53,7 +53,6 @@ class ClientTaskManagerEventListener(TaskManagerEventListener):
         self.client = client
 
     def task_status_updated(self, task_id):
-        print ":::: ClientTaskManagerEventListener task_status_updated", bool(self.client.rpc_publisher)
         if self.client.rpc_publisher:
             self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
@@ -467,7 +466,7 @@ class Client(object):
         #    return self.transaction_system.get_incomes_list()
         return ()
 
-    def get_payment_for_task_id(self, task_id):
+    def get_task_cost(self, task_id):
         """
         Get current cost of the task defined by @task_id
         :param task_id: Task ID
