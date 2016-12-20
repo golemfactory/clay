@@ -1,4 +1,3 @@
-import logging
 import sys
 from PyQt4 import QtCore
 from os import path
@@ -7,8 +6,6 @@ from PyQt4.QtCore import QSize
 from PyQt4.QtGui import QApplication, QIcon
 
 from golem.core.common import get_golem_path
-
-logger = logging.getLogger("gui")
 
 
 class GNRGui:
@@ -40,6 +37,8 @@ class GNRGui:
             try:
                 self.app_logic.quit()
             except Exception as err:
+                import logging
+                logger = logging.getLogger("gui")
                 logger.error("{}".format(err))
             finally:
                 sys.exit(res)

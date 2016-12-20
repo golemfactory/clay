@@ -211,17 +211,17 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
-        tc.toggle_config_dialog(True)
-        tc.toggle_config_dialog(False)
+        tc.lock_config(True)
+        tc.lock_config(False)
 
         listener = ClientTaskComputerEventListener(client)
         tc.register_listener(listener)
 
-        tc.toggle_config_dialog(True)
-        client.toggle_config_dialog.assert_called_with(True)
+        tc.lock_config(True)
+        client.lock_config.assert_called_with(True)
 
-        tc.toggle_config_dialog(False)
-        client.toggle_config_dialog.assert_called_with(False)
+        tc.lock_config(False)
+        client.lock_config.assert_called_with(False)
 
     @staticmethod
     def __wait_for_tasks(tc):

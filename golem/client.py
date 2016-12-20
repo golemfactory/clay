@@ -4,6 +4,7 @@ import sys
 import time
 import uuid
 from Queue import Queue
+from collections import Iterable
 from copy import copy
 from os import path, makedirs
 from threading import Lock
@@ -15,6 +16,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
+from golem.core.simpleserializer import DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -28,10 +30,13 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking, RankingStats
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.rpc.mapping.aliases import Task, Network, Environment, UI
+from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
@@ -42,47 +47,25 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 logger = logging.getLogger("golem.client")
 
 
-class GolemClientEventListener:
-    def __init__(self):
-        pass
-
-    def task_updated(self, task_id):
-        pass
-
-    def network_connected(self):
-        pass
-
-
-class GolemClientRemoteEventListener(GolemClientEventListener):
-    def __init__(self, service_info):
-        GolemClientEventListener.__init__(self)
-        self.service_info = service_info
-        self.remote_client = None
-
-    def build(self, client_builder):
-        self.remote_client = client_builder.build_client(self.service_info)
-        return self.remote_client
-
-
 class ClientTaskManagerEventListener(TaskManagerEventListener):
     def __init__(self, client):
         TaskManagerEventListener.__init__(self)
         self.client = client
 
     def task_status_updated(self, task_id):
-        for l in self.client.listeners:
-            l.task_updated(task_id)
+        if self.client.rpc_publisher:
+            self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
 
 class ClientTaskComputerEventListener(object):
     def __init__(self, client):
         self.client = client
 
-    def toggle_config_dialog(self, on=True):
-        self.client.toggle_config_dialog(on)
+    def lock_config(self, on=True):
+        self.client.lock_config(on)
 
-    def docker_config_changed(self):
-        self.client.docker_config_changed()
+    def config_changed(self):
+        self.client.config_changed()
 
 
 class Client(object):
@@ -133,8 +116,6 @@ class Client(object):
 
         self.do_work_task = task.LoopingCall(self.__do_work)
 
-        self.listeners = []
-
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
@@ -157,8 +138,7 @@ class Client(object):
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
 
-        self.rpc_server = None
-        self.rpc_clients = []
+        self.rpc_publisher = None
 
         self.ipfs_manager = None
         self.resource_server = None
@@ -170,6 +150,9 @@ class Client(object):
         self.session_id = uuid.uuid4().get_hex()
 
         atexit.register(self.quit)
+
+    def configure_rpc(self, rpc_session):
+        self.rpc_publisher = Publisher(rpc_session)
 
     def start(self):
         if self.use_monitor:
@@ -228,6 +211,9 @@ class Client(object):
         self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
+        if isinstance(socket_address, Iterable):
+            socket_address = SocketAddress(socket_address[0], int(socket_address[1]))
+
         logger.debug("P2pservice connecting to {} on port {}".format(
                      socket_address.address, socket_address.port))
         self.p2pservice.connect(socket_address)
@@ -277,29 +263,29 @@ class Client(object):
         self.resource_port = resource_port
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
-    def run_test_task(self, t):
+    def run_test_task(self, t_dict):
         def on_success(*args, **kwargs):
-            with self.lock:
-                for rpc_client in self.rpc_clients:
-                    rpc_client.test_task_computation_success(*args, **kwargs)
-                self.task_tester = None
+            self.task_tester = None
+            if self.rpc_publisher:
+                self.rpc_publisher.publish(Task.evt_task_check_success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
-            with self.lock:
-                for rpc_client in self.rpc_clients:
-                    rpc_client.test_task_computation_error(*args, **kwargs)
-                self.task_tester = None
+            self.task_tester = None
+            if self.rpc_publisher:
+                self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        has_started = False
-        with self.lock:
-            if self.task_tester is None:
-                self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-                self.task_tester.run()
-                has_started = True
+        if self.task_tester is None:
+            t = DictSerializer.load(t_dict)
+            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+            self.task_tester.run()
 
-        for rpc_client in self.rpc_clients:
-            rpc_client.test_task_started(has_started)
-        return has_started
+            if self.rpc_publisher:
+                self.rpc_publisher.publish(Task.evt_task_check_started, True)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
 
     def abort_test_task(self):
         with self.lock:
@@ -307,6 +293,10 @@ class Client(object):
                 self.task_tester.end_comp()
                 return True
             return False
+
+    def create_task(self, t_dict):
+        new_task = DictSerializer.load(t_dict)
+        self.enqueue_new_task(new_task)
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
@@ -334,7 +324,7 @@ class Client(object):
         self.ranking.decrease_trust(node_id, stat, mod)
 
     def get_node(self):
-        return self.node
+        return DictSerializer.dump(self.node)
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -354,15 +344,16 @@ class Client(object):
     def get_peers(self):
         return self.p2pservice.peers.values()
 
-    def get_peer_info(self):
-        peers, info = self.get_peers(), []
-        for p in peers:
-            info.append(PeerSessionInfo(p))
-        return info
+    def get_known_peers(self):
+        peers = self.p2pservice.free_peers or []
+        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
 
-    # TODO: simplify
-    def get_keys_auth(self):
-        return self.keys_auth
+    def get_connected_peers(self):
+        peers = self.get_peers() or []
+        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
+
+    def get_public_key(self):
+        return self.keys_auth.public_key
 
     def get_dir_manager(self):
         if self.task_server:
@@ -388,14 +379,23 @@ class Client(object):
     def get_node_key(self):
         return self.node.key
 
-    def get_config(self):
-        return self.config_desc
+    def get_settings(self):
+        return DictSerializer.dump(self.config_desc)
+
+    def get_setting(self, key):
+        if not hasattr(self.config_desc, key):
+            raise Exception("Unknown setting: {}".format(key))
+        return getattr(self.config_desc, key)
 
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
             raise Exception("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
+
+    def update_settings(self, settings_dict, run_benchmarks=False):
+        cfg_desc = DictSerializer.load(settings_dict)
+        self.change_config(cfg_desc, run_benchmarks)
 
     def get_datadir(self):
         return self.datadir
@@ -408,6 +408,9 @@ class Client(object):
 
     def get_task_count(self):
         return len(self.task_server.task_keeper.get_all_tasks())
+
+    def get_task(self, task_id):
+        return self.task_server.task_manager.get_dict_task(task_id)
 
     def get_tasks(self, task_id=None):
         if task_id:
@@ -446,7 +449,8 @@ class Client(object):
 
     def get_balance(self):
         if self.use_transaction_system():
-            return self.transaction_system.get_balance()
+            b, ab, d = self.transaction_system.get_balance()
+            return str(b), str(ab), str(d)
         return None, None, None
 
     def get_payments_list(self):
@@ -462,7 +466,7 @@ class Client(object):
         #    return self.transaction_system.get_incomes_list()
         return ()
 
-    def get_payment_for_task_id(self, task_id):
+    def get_task_cost(self, task_id):
         """
         Get current cost of the task defined by @task_id
         :param task_id: Task ID
@@ -511,15 +515,6 @@ class Client(object):
         self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
 
     # CLIENT CONFIGURATION
-    def register_listener(self, listener):
-        assert isinstance(listener, GolemClientEventListener)
-
-        if self.rpc_server:
-            if isinstance(listener, GolemClientRemoteEventListener):
-                self.rpc_clients.append(listener.build(self.rpc_server))
-
-        self.listeners.append(listener)
-
     def set_rpc_server(self, rpc_server):
         self.rpc_server = rpc_server
         return self.rpc_server.add_service(self)
@@ -539,15 +534,10 @@ class Client(object):
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
         self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
 
-    def unregister_listener(self, listener):
-        assert isinstance(listener, GolemClientEventListener)
-        if listener in self.listeners:
-            self.listeners.remove(listener)
-        else:
-            logger.warning("listener {} not registered".format(listener))
-
     def query_task_state(self, task_id):
-        return self.task_server.task_manager.query_task_state(task_id)
+        state = self.task_server.task_manager.query_task_state(task_id)
+        if state:
+            return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, list_files, client_options=None):
         self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
@@ -563,6 +553,15 @@ class Client(object):
     def get_res_dirs_sizes(self):
         return {name: du(d) for name, d in self.get_res_dirs().iteritems()}
 
+    def get_res_dir(self, dir_type):
+        if dir_type == DirectoryType.COMPUTED:
+            return self.get_computed_files_dir()
+        elif dir_type == DirectoryType.DISTRIBUTED:
+            return self.get_distributed_files_dir()
+        elif dir_type == DirectoryType.RECEIVED:
+            return self.get_received_files_dir()
+        raise Exception(u"Unknown dir type: {}".format(dir_type))
+
     def get_computed_files_dir(self):
         return self.task_server.get_task_computer_root()
 
@@ -571,6 +570,15 @@ class Client(object):
 
     def get_distributed_files_dir(self):
         return self.resource_server.get_distributed_resource_root()
+
+    def clear_dir(self, dir_type):
+        if dir_type == DirectoryType.COMPUTED:
+            return self.remove_computed_files()
+        elif dir_type == DirectoryType.DISTRIBUTED:
+            return self.remove_distributed_files()
+        elif dir_type == DirectoryType.RECEIVED:
+            return self.remove_received_files()
+        raise Exception(u"Unknown dir type: {}".format(dir_type))
 
     def remove_computed_files(self):
         dir_manager = DirManager(self.datadir)
@@ -590,10 +598,13 @@ class Client(object):
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
 
+    def get_known_tasks(self):
+        return self.task_server.task_keeper.task_headers
+
     def get_environments(self):
         return self.environments_manager.get_environments()
 
-    def get_environments_with_performances(self):
+    def get_environments_perf(self):
         envs = copy(self.environments_manager.get_environments())
         return [self._simple_env_repr(env) for env in envs]
 
@@ -628,8 +639,11 @@ class Client(object):
             description=env.short_description
         )
 
-    def change_accept_tasks_for_environment(self, env_id, state):
-        self.environments_manager.change_accept_tasks(env_id, state)
+    def enable_environment(self, env_id):
+        self.environments_manager.change_accept_tasks(env_id, True)
+
+    def disable_environment(self, env_id):
+        self.environments_manager.change_accept_tasks(env_id, False)
 
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
@@ -656,13 +670,13 @@ class Client(object):
         for node_id in after_deadline_nodes:
             self.decrease_trust(node_id, RankingStats.payment)
 
-    def toggle_config_dialog(self, on=True):
-        for rpc_client in self.rpc_clients:
-            rpc_client.toggle_config_dialog(on)
+    def lock_config(self, on=True):
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(UI.evt_lock_config, on)
 
-    def docker_config_changed(self):
-        for rpc_client in self.rpc_clients:
-            rpc_client.docker_config_changed()
+    def config_changed(self):
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
@@ -721,9 +735,9 @@ class Client(object):
                 self.last_nss_time = time.time()
 
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
-                for l in self.listeners:
-                    l.check_network_state()
                 self.last_net_check_time = time.time()
+                if self.rpc_publisher:
+                    self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
 
     def __make_node_state_snapshot(self, is_running=True):
 
@@ -750,6 +764,16 @@ class Client(object):
 
         if self.nodes_manager_client:
             self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
+
+    def connection_status(self):
+        listen_port = self.get_p2p_port()
+        task_server_port = self.get_task_server_port()
+
+        if listen_port == 0 or task_server_port == 0:
+            return u"Application not listening, check config file."
+        elif not self.get_connected_peers():
+            return u"Not connected to Golem Network. Check seed parameters."
+        return u"Connected"
 
     def get_metadata(self):
         metadata = dict()

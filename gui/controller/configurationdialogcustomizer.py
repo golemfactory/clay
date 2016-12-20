@@ -1,19 +1,18 @@
 from __future__ import division
+
 import logging
 import multiprocessing
-import subprocess
-
-from ethereum.utils import denoms
 from PyQt4 import QtCore
-from PyQt4.QtGui import QMessageBox, QPalette
 
+from PyQt4.QtGui import QMessageBox, QPalette
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
-from gui.controller.customizer import Customizer
+from ethereum.utils import denoms
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.fileshelper import get_dir_size, du
+from golem.core.fileshelper import du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
-from memoryhelper import resource_size_to_display, translate_resource_index, dir_size_to_display
+from gui.controller.customizer import Customizer
+from memoryhelper import resource_size_to_display
 
 logger = logging.getLogger("gui")
 
@@ -75,7 +74,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __docker_config_changed(self):
         self.docker_config_changed = True
-        
 
     def __load_basic_config(self, config_desc):
         self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))

@@ -1,4 +1,5 @@
-from golem.rpc.websockets import WebSocketRPCClientFactory
+from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.session import Session, Client, WebSocketAddress
 
 
 class WebSocketCLI(object):
@@ -7,22 +8,18 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    def __init__(self, cli, address, port):
+    def __init__(self, cli, host, port, realm, ssl=False):
+        address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
-        self.rpc = None
-        self.address = address
-        self.port = port
+        self.session = Session(address)
 
     def execute(self, *args, **kwargs):
         from twisted.internet import reactor, threads
 
-        self.rpc = WebSocketRPCClientFactory(self.address, self.port,
-                                             on_disconnect=self.shutdown)
-
         def on_connected(_):
-            rpc_client = self.rpc.build_simple_client()
-            self.cli.register_client(rpc_client)
+            core_client = Client(self.session, CORE_METHOD_MAP)
+            self.cli.register_client(core_client)
             threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
 
         def on_error(_):
@@ -31,7 +28,7 @@ class WebSocketCLI(object):
             self.shutdown()
 
         def connect():
-            self.rpc.connect().addCallbacks(on_connected, on_error)
+            self.session.connect().addCallbacks(on_connected, on_error)
 
         reactor.callWhenRunning(connect)
         reactor.run()
@@ -42,8 +39,8 @@ class WebSocketCLI(object):
 
         if self.cli:
             self.cli.shutdown()
-        if self.rpc:
-            self.rpc.disconnect()
+        if self.session:
+            self.session.disconnect()
 
         try:
             reactor.stop()

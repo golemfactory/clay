@@ -1,15 +1,16 @@
-import cPickle
 import os
 import uuid
 from Queue import Queue
 
+import jsonpickle
+
 from apps.appsmanager import AppsManager
 from apps.rendering.task.renderingtaskstate import RenderingTaskState
-
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.task.taskbase import Task
-from golem.task.tasktester import TaskTester
 from golem.task.taskstate import TaskStatus
+from golem.task.tasktester import TaskTester
 
 
 class RendererLogic(object):
@@ -162,7 +163,8 @@ class Tasks(object):
             if test_result is not True:
                 return CommandResult(error="Test failed: {}".format(test_result))
 
-        deferred = Tasks.client.enqueue_new_task(task)
+        task_dict = DictSerializer.dump(task)
+        deferred = Tasks.client.create_task(task_dict)
         return CommandHelper.wait_for(deferred, timeout=1800)
 
     @command(argument=id_req, help="Restart a task")
@@ -206,7 +208,7 @@ class Tasks(object):
     @staticmethod
     def __read_from_file(file_name):
         with open(file_name) as task_file:
-            return cPickle.loads(task_file.read())
+            return jsonpickle.loads(task_file.read())
 
 
 @group(help="Manage subtasks")

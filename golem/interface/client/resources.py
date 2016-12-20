@@ -1,4 +1,5 @@
 from golem.interface.command import doc, group, command, CommandResult, Argument, CommandHelper
+from golem.resource.dirmanager import DirectoryType
 
 
 @group(name="res", help="Manage resources")
@@ -30,11 +31,8 @@ class Resources(object):
             return CommandResult(error="Target role was not specified (provider / requestor)")
 
         if provider:
-            CommandHelper.wait_for(Resources.client.remove_received_files(),
-                                   timeout=None)
-            return CommandHelper.wait_for(Resources.client.remove_computed_files(),
-                                          timeout=None)
+            CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.RECEIVED), timeout=None)
+            return CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.COMPUTED), timeout=None)
 
         elif requestor:
-            return CommandHelper.wait_for(Resources.client.remove_distributed_files(),
-                                          timeout=None)
+            return CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.DISTRIBUTED), timeout=None)

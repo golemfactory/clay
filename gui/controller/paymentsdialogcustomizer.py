@@ -1,5 +1,6 @@
 from __future__ import division
 
+from golem.model import PaymentStatus
 from gui.controller.customizer import Customizer
 from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
@@ -34,6 +35,7 @@ class PaymentsDialogCustomizer(Customizer):
         for col in range(len(income_table_elem.cols)):
             self.gui.ui.incomesTable.setItem(current_row_count, col, income_table_elem.get_column_item(col))
 
+
 class SmartTableItem(QTableWidgetItem):
     def __lt__(self, other):
         t1 = str(self.text())
@@ -52,19 +54,19 @@ class SmartTableItem(QTableWidgetItem):
             return float(t)
         except Exception:
             return 0.0
-            
-            
+
 
 class PaymentTableElem(object):
     def __init__(self, payment_info):
         fee = payment_info["fee"]
         value = payment_info["value"]
         fee = "{:.1f}%".format(float(fee * 100) / value) if fee else ""
+        payment_status = PaymentStatus(payment_info["status"])
 
         subtask = SmartTableItem(payment_info["subtask"])
         payee = SmartTableItem(payment_info["payee"].encode('hex'))
         value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
-        status = SmartTableItem(str(payment_info["status"]).replace("PaymentStatus.", ""))
+        status = SmartTableItem(str(payment_status).replace("PaymentStatus.", ""))
         fee = SmartTableItem(fee)
         self.cols = [subtask, payee, status, value, fee]
 
@@ -74,9 +76,10 @@ class PaymentTableElem(object):
 
 class IncomeTableElem(object):
     def __init__(self, income_info):
+        payment_status = PaymentStatus(income_info["status"])
         value = income_info["value"]
         payer = SmartTableItem(income_info["payer"].encode('hex'))
-        status = SmartTableItem(str(income_info["status"]).replace("PaymentStatus.", ""))
+        status = SmartTableItem(str(payment_status).replace("PaymentStatus.", ""))
         value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
         block_number = SmartTableItem(str(income_info["block_number"]))
         self.cols = [payer, status, value, block_number]

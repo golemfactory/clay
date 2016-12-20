@@ -54,7 +54,7 @@ class EthereumTransactionSystem(TransactionSystem):
         pass
 
     def get_incoming_payments(self):
-        return [{'status': payment.status,
+        return [{'status': payment.status.value,
                  'payer': payment.payer,
                  'value': payment.value,
                  'block_number': payment.extra['block_number']

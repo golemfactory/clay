@@ -1,16 +1,18 @@
 import os
 import time
-import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, MagicMock, ANY, call
+from mock import Mock, ANY, call
 from twisted.internet.defer import Deferred
 
+import golem
 from apps.core.task.gnrtaskstate import GNRTaskState, GNRTaskDefinition
 from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from golem import rpc
 from golem.client import Client
-from golem.rpc.service import RPCServiceInfo, RPCAddress, ServiceHelper, RPCProxyClient
-from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef
+from golem.core.simpleserializer import DictSerializer
+from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
@@ -45,6 +47,7 @@ class TTask(Task):
 
 
 class TTaskBuilder(TaskBuilder):
+
     def __init__(self, path):
         self.path = path
         self.src_code = "output = {'data': n, 'result_type': 0}"
@@ -52,8 +55,14 @@ class TTaskBuilder(TaskBuilder):
 
     def build(self):
         t = TTask()
-        t.header.node_name = "node1"
-        t.header.task_id = "xyz"
+        t.header = TaskHeader(
+            node_name="node1",
+            task_id="xyz",
+            task_owner_address="127.0.0.1",
+            task_owner_port=45000,
+            task_owner_key_id="key2",
+            environment="test"
+        )
         t.header.root_path = self.path
         t.src_code = self.src_code
         t.extra_data = self.extra_data
@@ -61,6 +70,7 @@ class TTaskBuilder(TaskBuilder):
 
 
 class RPCClient(object):
+
     def __init__(self):
         self.success = False
         self.error = False
@@ -81,59 +91,59 @@ class RPCClient(object):
         self.started = args[0]
 
 
-class MockDeferred(Deferred):
-    def __init__(self, result):
-        Deferred.__init__(self)
-        self.result = result
-        self.called = True
+class MockRPCSession(object):
+
+    def __init__(self, called_object, method_map):
+
+        self.connected = True
+        self.success = None
+
+        self.called_object = called_object
+        self.method_map = method_map
+        self.reverse_map = dict()
+
+        for k, v in method_map.iteritems():
+            self.reverse_map[v] = k
+
+    def call(self, alias, *args, **kwargs):
+
+        self.success = None
+        method = getattr(self.called_object, self.reverse_map[alias])
+
+        deferred = Deferred()
+
+        try:
+            result = method(*args, **kwargs)
+        except Exception as exc:
+            self.success = False
+            deferred.errback(exc)
+        else:
+            self.success = True
+            deferred.callback(result)
+
+        return deferred
 
 
-class MockDeferredCallable(MagicMock):
-    def __call__(self, *args, **kwargs):
-        return MockDeferred(MagicMock())
+class MockRPCPublisher(object):
 
+    def __init__(self, success_aliases, error_aliases):
+        self.success_aliases = success_aliases
+        self.error_aliases = error_aliases
+        self.success = None
 
-class MockRPCCallChain(object):
-    def __init__(self, parent):
-        self.parent = parent
-        self.results = []
+    def publish(self, alias, *args, **kwargs):
 
-    def __getattribute__(self, item):
-        if item in ['call', 'parent', 'results'] or item.startswith('_'):
-            return object.__getattribute__(self, item)
-        return self
+        if alias in self.success_aliases:
+            self.success = True
+        elif alias in self.error_aliases:
+            self.success = False
 
-    def __call__(self, *args, **kwargs):
-        self.results.append('value')
-        return self
-
-    def call(self):
-        return MockDeferred(self.results)
-
-
-class MockRPCClient(RPCProxyClient):
-    def __init__(self, service, path):
-        self.methods = ServiceHelper.to_dict(service)
-
-    def call_batch(self, batch):
-        return MockDeferred(MagicMock())
-
-    def start_batch(self):
-        return MockRPCCallChain(self)
-
-    def wrap(self, name, _):
-        def return_deferred(*args, **kwargs):
-            return MockDeferred('value')
-
-        return return_deferred
-
-
-class MockService(object):
-    def method_1(self):
-        return 1
+    def reset(self):
+        self.success = None
 
 
 class TestGNRApplicationLogic(DatabaseFixture):
+
     def test_root_path(self):
         logic = GNRApplicationLogic()
         self.assertTrue(os.path.isdir(logic.root_path))
@@ -159,6 +169,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
 
 
 class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
+
     def setUp(self):
         super(TestGNRApplicationLogicWithClient, self).setUp()
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -169,77 +180,22 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         self.client.quit()
         super(TestGNRApplicationLogicWithClient, self).tearDown()
 
-    def test_inline_callbacks(self):
-        logic = GNRApplicationLogic()
-        logic.customizer = Mock()
-
-        golem_client = self.client
-        golem_client.task_server = Mock()
-        golem_client.p2pservice = Mock()
-        golem_client.resource_server = Mock()
-
-        golem_client.task_server.get_task_computer_root.return_value = MockDeferred(self.path)
-        golem_client.task_server.task_computer.get_progresses.return_value = {}
-        golem_client.p2pservice.peers = {}
-        golem_client.p2pservice.get_peers.return_value = {}
-        golem_client.resource_server.get_distributed_resource_root.return_value = self.path
-
-        client = MockRPCClient(golem_client, self.path)
-        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
-
-        logic.register_client(client, service_info)
-        logic.get_res_dirs()
-        logic.check_network_state()
-        logic.get_status()
-        logic.update_estimated_reputation()
-        logic.update_stats()
-        logic.get_keys_auth()
-        logic.save_task('any', os.path.join(self.path, str(uuid.uuid4())))
-        logic.save_task('any', os.path.join(self.path, str(uuid.uuid4()) + ".gt"))
-        logic.recount_performance(1)
-        logic.get_environments()
-        logic.get_payments()
-        logic.get_incomes()
-        logic.get_key_id()
-        logic.get_difficulty()
-        logic.load_keys_from_file('invalid')
-        logic.save_keys_to_files(os.path.join(self.path, 'invalid_1'), os.path.join(self.path, 'invalid_2'))
-
-        logic.get_cost_for_task_id("unknown task")
-
-        td = self._get_task_definition()
-        logic.add_task_from_definition(td)
-        logic.task_status_changed(td.task_id)
-
-        logic.change_config(Mock())
-
-        with self.assertLogs(logger, level="WARNING"):
-            logic.task_status_changed("invalid")
-
-        logic.client.ranking = None
-        logic.update_estimated_reputation()
-
-        logic.change_description(Mock())
-
     def test_change_description(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
-        golem_client = self.client
-        client = MockRPCClient(golem_client, self.path)
-        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
-        logic.register_client(client, service_info)
-        golem_client.change_description("NEW DESC")
-        time.sleep(0.5)
-        assert golem_client.get_description() == "NEW DESC"
+
+        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
+        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+
+        description = u"New description"
+
+        logic.client = rpc_client
+        logic.change_description(description)
+        assert self.client.get_description() == description
 
     def test_add_tasks(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
-        golem_client = self.client
-        client = MockRPCClient(golem_client, self.path)
-        service_info = RPCServiceInfo(MockService(), RPCAddress('127.0.0.1', 10000))
-        logic.register_client(client, service_info)
-
         td = TestGNRApplicationLogicWithClient._get_task_definition()
         logic.add_task_from_definition(td)
         assert "xyz" in logic.tasks, "Task was not added"
@@ -260,7 +216,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         with self.assertLogs(logger):
             logic.change_timeouts("invalid", 10, 10)
 
-        logic.docker_config_changed()
+        logic.config_changed()
 
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
@@ -295,9 +251,6 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         with self.assertLogs(logger, level="WARNING"):
             logic.set_current_task_type("unknown task")
 
-        with self.assertLogs(logger, level="WARNING"):
-            logic.task_status_changed("unknown id")
-
         task_type = Mock()
         task_type.name = "NAME1"
         logic.register_new_task_type(task_type)
@@ -314,6 +267,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture):
+
     def setUp(self):
         super(TestGNRApplicationLogicWithGUI, self).setUp()
         self.client = Client.__new__(Client)
@@ -335,14 +289,14 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic.register_gui(app.get_main_window(),
                            RenderingMainWindowCustomizer)
 
-        logic.toggle_config_dialog(True)
+        logic.lock_config(True)
 
         assert not logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert not logic.customizer.gui.ui.settingsCancelButton.isEnabled()
 
-        logic.toggle_config_dialog(True)
-        logic.toggle_config_dialog(False)
-        logic.toggle_config_dialog(False)
+        logic.lock_config(True)
+        logic.lock_config(False)
+        logic.lock_config(False)
 
         assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
         assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
@@ -351,12 +305,16 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         logic = self.logic
         gnrgui = self.app
 
-        rpc_client = RPCClient()
+        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
+        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_publisher = MockRPCPublisher(success_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_success],
+                                         error_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_error])
 
         logic.root_path = self.path
-        logic.client = self.client
-        logic.client.datadir = logic.root_path
-        logic.client.rpc_clients = [rpc_client]
+        logic.client = rpc_client
+
+        self.client.datadir = logic.root_path
+        self.client.rpc_publisher = rpc_publisher
 
         logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
@@ -371,38 +329,36 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         task_type.task_builder_type.return_value = ttb
         logic.task_types["TESTTASK"] = task_type
 
+        rpc_publisher.reset()
         logic.run_test_task(ts)
         logic.test_task_started(True)
         assert logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
         time.sleep(0.5)
+        assert rpc_publisher.success
 
-        assert rpc_client.success
-
-        assert not rpc_client.started
         ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        rpc_publisher.reset()
         logic.run_test_task(ts)
-        time.sleep(1)
-        assert rpc_client.success
+        time.sleep(0.5)
+        assert rpc_publisher.success
 
         # since PythonTestVM does not support end_comp() method,
         # this is only a smoke test instead of actual test
         ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        rpc_publisher.reset()
         logic.run_test_task(ts)
-        assert rpc_client.started
+        time.sleep(0.5)
         logic.abort_test_task()
-        time.sleep(0.1)
-        # assert rpc_client.error
 
         ttb.src_code = "raise Exception('some error')"
+        rpc_publisher.reset()
         logic.run_test_task(ts)
-        time.sleep(0.5)
+        time.sleep(1)
+        assert not rpc_publisher.success
 
-        assert rpc_client.error
-
+        rpc_publisher.reset()
         logic.run_test_task(ts)
-        time.sleep(0.5)
-
-        assert rpc_client.error
+        assert not rpc_publisher.success
 
         prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
         logic.task_settings_changed()
@@ -437,7 +393,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         peer2.port = 1034
         peer2.key_id = "KEYID2"
         peer2.node_name = "NODE 2"
-        logic._update_peers_view([peer, peer2])
+        logic._update_peers_view([DictSerializer.dump(peer), DictSerializer.dump(peer2)])
         table = logic.customizer.gui.ui.connectedPeersTable
         assert table.rowCount() == 2
         assert table.item(0, 0).text() == "10.10.10.10"

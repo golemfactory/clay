@@ -1,19 +1,16 @@
 import time
 import uuid
-from datetime import timedelta
 
+from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
-from mock import Mock, patch
-
-from golem.core.common import get_current_time, timeout_to_deadline
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus, ComputerState
-
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
+from mock import Mock, patch
 
 
 class TestTaskManager(LogTestCase, TestDirFixture):
@@ -26,7 +23,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.addr_return = ("10.10.10.10", 1111, "Full NAT")
 
     @staticmethod
-    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", timeout=120, subtask_timeout=120):
+    def _get_task_mock(task_id="xyz", subtask_id="xxyyzz", timeout=120.0, subtask_timeout=120.0):
         task_mock = Mock()
         task_mock.header.task_id = task_id
         task_mock.header.resource_size = 2 * 1024
@@ -346,7 +343,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         mock_addr.return_value = self.addr_return
         self.tm.listeners.append(Mock())
         # Task with timeout
-        t = self._get_task_mock(timeout=0.1)
+        t = self._get_task_mock(timeout=0.05)
         self.tm.add_new_task(t)
         assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
         time.sleep(0.1)
@@ -489,12 +486,12 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         mock_addr.return_value = self.addr_return
         t = self._get_task_mock(timeout=20, subtask_timeout=40)
         self.tm.add_new_task(t)
-        assert get_current_time() + timedelta(seconds=15) <= t.header.deadline
-        assert t.header.deadline <= get_current_time() + timedelta(seconds=20)
+        assert get_timestamp_utc() + 15 <= t.header.deadline
+        assert t.header.deadline <= get_timestamp_utc() + 20
         assert t.header.subtask_timeout == 40
         self.tm.change_timeouts("xyz", 60, 10)
-        assert get_current_time() + timedelta(seconds=55) <= t.header.deadline
-        assert t.header.deadline <= get_current_time() + timedelta(seconds=60)
+        assert get_timestamp_utc() + 55 <= t.header.deadline
+        assert t.header.deadline <= get_timestamp_utc() + 60
         assert t.header.subtask_timeout == 10
 
     @patch("golem.task.taskmanager.get_external_address", side_effect=lambda *a, **k: ('1.2.3.4', 40103, None))

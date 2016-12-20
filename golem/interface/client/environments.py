@@ -19,7 +19,7 @@ class Environments(object):
     @command(argument=sort, help="Show environments")
     def show(self, sort):
 
-        deferred = Environments.client.get_environments_with_performances()
+        deferred = Environments.client.get_environments_perf()
         result = CommandHelper.wait_for(deferred) or []
 
         values = []
@@ -37,12 +37,12 @@ class Environments(object):
 
     @command(argument=name, help="Enable environment")
     def enable(self, name):
-        deferred = Environments.client.change_accept_tasks_for_environment(name, True)
+        deferred = Environments.client.enable_environment(name)
         return CommandHelper.wait_for(deferred)
 
     @command(argument=name, help="Disable environment")
     def disable(self, name):
-        deferred = Environments.client.change_accept_tasks_for_environment(name, False)
+        deferred = Environments.client.disable_environment(name)
         return CommandHelper.wait_for(deferred)
 
     @command(argument=name, help="Recount performance for an environment")
