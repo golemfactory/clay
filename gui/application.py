@@ -16,8 +16,10 @@ class GNRGui:
         try:
             # Linux check might suffice if X11 was the only option available
             QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
-        except Exception:
-            pass
+        except Exception as ex:
+            from sys import platform
+            if platform != "win32":
+                logger.warning("Error occurred when setting up Qt: {}".format(ex))
 
         self.app = QApplication(sys.argv)
         app_icon = QIcon()
