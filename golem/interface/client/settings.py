@@ -12,6 +12,10 @@ Setting = namedtuple('Setting', ['help', 'type', 'converter', 'validator'])
 def _int(x):
     return int(x)
 
+
+def _float(x):
+    return float(x)
+
 _cpu_count = multiprocessing.cpu_count()
 _virtual_mem = int(virtual_memory().total / 1024)
 
@@ -97,15 +101,15 @@ class Settings(object):
         ),
         'requesting_trust': Setting(
             'Minimal requestor trust',
-            'int [-100, 100]',
-            _int,
-            lambda x: -100 <= x <= 100
+            'float [-1., 1.]',
+            _float,
+            lambda x: -1. <= x <= 1.
         ),
         'computing_trust': Setting(
             'Minimal provider trust',
-            'int [-100, 100]',
-            _int,
-            lambda x: -100 <= x <= 100
+            'float [-1., 1.]',
+            _float,
+            lambda x: -1. <= x <= 1.
         ),
         'min_price': Setting(
             'Min ETH/h price (provider)',
@@ -180,27 +184,27 @@ class Settings(object):
     @command(arguments=(basic, provider, requestor), help="Show current settings")
     def show(self, basic, provider, requestor):
 
-        config = CommandHelper.wait_for(Settings.client.get_config())
+        config = CommandHelper.wait_for(Settings.client.get_settings())
         if not (basic ^ provider) and not (provider ^ requestor):
-            return config.__dict__
+            return config
 
         result = dict()
 
         if basic:
             result.update({
-                k: v for k, v in config.__dict__.iteritems()
+                k: v for k, v in config.iteritems()
                 if k in Settings.basic_settings
             })
 
         if requestor:
             result.update({
-                k: v for k, v in config.__dict__.iteritems()
+                k: v for k, v in config.iteritems()
                 if k in Settings.requestor_settings
             })
 
         if provider:
             result.update({
-                k: v for k, v in config.__dict__.iteritems()
+                k: v for k, v in config.iteritems()
                 if k not in Settings.basic_settings and k not in Settings.requestor_settings
             })
 

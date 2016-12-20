@@ -98,8 +98,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.dirs_to_remove.append(temp_dir)
 
         # Copy the task resources
-        all_resources = render_task.task_resources.copy()
-        all_resources.add(render_task.main_program_file)
+        all_resources = list(render_task.task_resources)
+        all_resources.append(render_task.main_program_file)
         common_prefix = path.commonprefix(all_resources)
         common_prefix = path.dirname(common_prefix)
 

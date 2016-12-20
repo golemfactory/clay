@@ -47,8 +47,7 @@ class RenderingTaskBuilder(GNRTaskBuilder):
         else:
             new_task.advanceVerification = True
             new_task.verification_options.type = self.task_definition.verification_options.type
-            new_task.verification_options.box_size = (self.task_definition.verification_options.box_size[0],
-                                                      (self.task_definition.verification_options.box_size[1] / 2) * 2)
+            new_task.verification_options.box_size = self.task_definition.verification_options.box_size
             new_task.verification_options.probability = self.task_definition.verification_options.probability
         return new_task
 
@@ -101,13 +100,13 @@ class RenderingTask(GNRTask):
         self.preview_file_path = None
         self.preview_task_file_path = None
 
-        self.task_resources = deepcopy(task_resources)
+        self.task_resources = deepcopy(list(task_resources))
 
         self.collected_file_names = {}
 
         self.advanceVerification = False
 
-        self.verified_clients = set()
+        self.verified_clients = list()
         self.max_pending_client_results = max_pending_client_results
         preview_x = 300
         preview_y = 200
@@ -335,7 +334,7 @@ class RenderingTask(GNRTask):
                                           cmp_file, cmp_start_box):
                     return False
                 else:
-                    self.verified_clients.add(self.subtasks_given[subtask_id]['node_id'])
+                    self.verified_clients.append(self.subtasks_given[subtask_id]['node_id'])
             if not self._verify_img(tr_file, res_x, res_y):
                 return False
 

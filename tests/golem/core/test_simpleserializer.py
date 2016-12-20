@@ -1,10 +1,7 @@
 import random
 import unittest
 
-from cbor2 import CBOREncoder, CBORDecoder
-from io import BytesIO
-
-from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, CBORCoder, to_dict
+from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, DictCoder, DictSerializer
 
 
 class Example:
@@ -27,8 +24,6 @@ class Example:
 
 
 class TestSimpleSerializer(unittest.TestCase):
-    def testSerializer(self):
-        self.assertTrue(isinstance(SimpleSerializer(), CBORSerializer))
 
     def testSerializer(self):
         data = Example()
@@ -78,11 +73,25 @@ class MockSerializationSubject(object):
             self.property_4 == other.property_4
 
 
-class TestCBORSerializer(unittest.TestCase):
+def assert_properties(first, second):
 
-    def testConversion(self):
+    assert first.__class__ == second.__class__
+    assert first.property_2.__class__ == second.property_2.__class__
+    assert first.property_2.__class__ == MockSerializationInnerSubject
+
+    inner = first.property_2
+
+    assert inner.property_1
+    assert inner.property_1 == second.property_2.property_1
+    assert isinstance(inner.property_3, basestring)
+    assert isinstance(inner.property_4, list)
+
+
+class TestDictSerializer(unittest.TestCase):
+
+    def test_properties(self):
         obj = MockSerializationSubject()
-        dict_repr = CBORCoder._obj_to_dict(obj)
+        dict_repr = DictSerializer.dump(obj)
 
         assert 'property_1' in dict_repr
         assert 'property_2' in dict_repr
@@ -90,81 +99,72 @@ class TestCBORSerializer(unittest.TestCase):
         assert 'method_1' not in dict_repr
         assert '_method_2' not in dict_repr
 
-        reconstructed = CBORCoder._obj_from_dict(dict_repr)
+        deserialized = DictSerializer.load(dict_repr)
+        assert_properties(deserialized, obj)
 
-        assert reconstructed.__class__ == obj.__class__
-        assert reconstructed.property_1 == obj.property_1
-        assert reconstructed.property_2.__class__ == obj.property_2.__class__
-        assert reconstructed.property_2 == obj.property_2
-        assert reconstructed.property_4 == obj.property_4
-        assert reconstructed.property_2.__class__ == MockSerializationInnerSubject
+    def test_serialization_as_class(self):
 
-        inner = reconstructed.property_2
-
-        assert inner.property_1
-        assert inner.property_1 == obj.property_2.property_1
-        assert isinstance(inner.property_3, basestring)
-        assert isinstance(inner.property_4, list)
-
-    def testSerialization(self):
         obj = MockSerializationSubject()
+        dict_repr = DictSerializer.dump(obj)
 
-        decoders = CBORSerializer.decoders
-        encoders = CBORSerializer.encoders
+        assert DictCoder.cls_key in dict_repr
+        assert 'property_1' in dict_repr
+        assert 'property_2' in dict_repr
+        assert isinstance(DictSerializer.load(dict_repr), MockSerializationSubject)
 
-        # encode
-        buf = BytesIO()
-        CBOREncoder(encoders=encoders).encode(obj, buf)
-        serialized = buf.getvalue()
+        dict_repr = DictSerializer.dump(obj, typed=False)
 
-        # decode
-        buf = BytesIO(serialized)
-        decoder = CBORDecoder(semantic_decoders=decoders)
-        deserialized = decoder.decode(buf)
+        assert DictCoder.cls_key not in dict_repr
+        assert 'property_1' in dict_repr
+        assert 'property_2' in dict_repr
+        assert isinstance(DictSerializer.load(dict_repr), dict)
+        assert isinstance(DictSerializer.load(dict_repr, as_class=MockSerializationSubject), MockSerializationSubject)
 
-        assert deserialized.__class__ == obj.__class__
-        assert CBORSerializer.loads(CBORSerializer.dumps(obj)).__class__ == obj.__class__
-
-
-class TestToDict(unittest.TestCase):
-
-    def test_serialization(self):
+    def test_serialization_result(self):
         obj = MockSerializationSubject()
-        assert to_dict(obj) == {
-            u'property_1': {
-                u'k': u'v',
-                u'u': {
-                    u'property_1': obj.property_1[u'u'].property_1,
-                    u'property_3': u'string',
-                    u'property_4': [u'list', u'of', (u'items',), obj.property_1[u'u'].property_4[-1]]
-                }
-            },
-            u'property_2': {
-                u'property_1': obj.property_2.property_1,
-                u'property_3': u'string',
-                u'property_4': [u'list', u'of', (u'items',), obj.property_2.property_4[-1]]
-            },
-            u'property_4': [u'v', 1, (1, 2, 3), {
-                u'property_1': obj.property_4[-1].property_1,
-                u'property_3': u'string',
-                u'property_4': [u'list', u'of', (u'items',), obj.property_4[-1].property_4[-1]]
-            }]
+        assert DictSerializer.dump(obj) == {u'property_1': {u'k': u'v',
+             u'u': {
+                 u'property_1': obj.property_1[u'u'].property_1,
+                 u'property_3': u'string',
+                 u'property_4': [u'list',
+                                 u'of',
+                                 (u'items',),
+                                 obj.property_1[u'u'].property_4[-1]],
+                 DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'}
+             },
+             u'property_2': {
+                 u'property_1': obj.property_2.property_1,
+                 u'property_3': u'string',
+                 u'property_4': [u'list',
+                                 u'of',
+                                 (u'items',),
+                                 obj.property_2.property_4[-1]],
+                 DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'},
+             u'property_4': [
+                 u'v',
+                 1,
+                 (1, 2, 3),
+                 {
+                     u'property_1': obj.property_4[-1].property_1,
+                     u'property_3': u'string',
+                     u'property_4': [u'list',
+                                     u'of',
+                                     (u'items',),
+                                     obj.property_4[-1].property_4[-1]],
+                     DictCoder.cls_key: u'test_simpleserializer.MockSerializationInnerSubject'
+                 }
+             ],
+             DictCoder.cls_key: u'test_simpleserializer.MockSerializationSubject'
         }
 
-    def test_cycle_detection(self):
+        assert DictCoder.cls_key not in DictSerializer.dump(obj, typed=False)
+
+
+class TestCBORSerializer(unittest.TestCase):
+
+    def test(self):
         obj = MockSerializationSubject()
-        obj.property_4 = obj
+        serialized = CBORSerializer.dumps(obj)
+        deserialized = CBORSerializer.loads(serialized)
+        assert_properties(deserialized, obj)
 
-        with self.assertRaises(Exception) as exc_ctx:
-            to_dict(obj)
-
-        exc = exc_ctx.exception
-        assert exc.message == "Cycle detected"
-
-        obj = MockSerializationSubject()
-        inner = MockSerializationInnerSubject()
-        obj.property_1 = inner
-        obj.property_4 = inner
-
-        assert to_dict(obj, cls=MockSerializationSubject)
-        assert to_dict(obj, MockSerializationSubject)

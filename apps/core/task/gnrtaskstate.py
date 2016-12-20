@@ -50,7 +50,7 @@ class GNRTaskDefinition(object):
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
 
-class AdvanceVerificationOptions:
+class AdvanceVerificationOptions(object):
     def __init__(self):
         self.type = 'forFirst'
 
@@ -61,6 +61,6 @@ class TaskDesc(object):
         self.task_state = state_class()
 
 
-class GNROptions:
+class GNROptions(object):
     def __init__(self):
         self.name = ''

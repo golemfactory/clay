@@ -1,7 +1,8 @@
 import logging
 import time
 
-from golem.core.common import HandleKeyError, get_current_time, timeout_to_deadline
+from golem.core.common import HandleKeyError, get_timestamp_utc, \
+    timeout_to_deadline
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -11,7 +12,6 @@ from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
-
 
 logger = logging.getLogger(__name__)
 
@@ -330,7 +330,7 @@ class TaskManager(TaskEventListener):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = get_current_time()
+            cur_time = get_timestamp_utc()
             if cur_time > th.deadline:
                 logger.info("Task {} dies".format(th.task_id))
                 t.task_stats = TaskStatus.timeout

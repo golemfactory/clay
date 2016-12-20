@@ -1,10 +1,10 @@
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from unittest import TestCase
 
 from mock import Mock
 
-from golem.core.common import get_current_time, timeout_to_deadline
+from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
@@ -89,17 +89,16 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header["task_id"] = "xyz"
         self.assertTrue(tk.add_task_header(task_header))
         th = tk.get_task()
+        assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header["task_id"], th.task_id)
         self.assertEqual(task_header["max_price"], th.max_price)
         self.assertEqual(task_header["node_name"], th.node_name)
         self.assertEqual(task_header["task_owner_port"], th.task_owner_port)
         self.assertEqual(task_header["task_owner_key_id"], th.task_owner_key_id)
         self.assertEqual(task_header["environment"], th.environment)
-        self.assertEqual(task_header["task_owner"], th.task_owner)
         self.assertEqual(task_header["deadline"], th.deadline)
         self.assertEqual(task_header["subtask_timeout"], th.subtask_timeout)
         self.assertEqual(task_header["max_price"], th.max_price)
-        th = tk.get_task()
         self.assertEqual(task_header["task_id"], th.task_id)
 
     def test_old_tasks(self):
@@ -168,17 +167,17 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert correct
         assert err is None
 
-        th['deadline'] = time.time()
+        th['deadline'] = datetime.now()
         correct, err = tk.is_correct(th)
         assert not correct
-        assert err == "Deadline is not a datetime"
+        assert err == "Deadline is not a timestamp"
 
-        th['deadline'] = get_current_time() - timedelta(seconds=10)
+        th['deadline'] = get_timestamp_utc() - 10
         correct, err = tk.is_correct(th)
         assert not correct
         assert err == "Deadline already passed"
 
-        th['deadline'] = get_current_time() + timedelta(seconds=20)
+        th['deadline'] = get_timestamp_utc() + 20
         correct, err = tk.is_correct(th)
         assert correct
         assert err is None
@@ -198,11 +197,12 @@ def get_task_header():
     return {
         "task_id": "xyz",
         "node_name": "ABC",
-        "task_owner": Node(),
+        "task_owner": dict(),
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
         "environment": "DEFAULT",
+        "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 10
@@ -260,7 +260,7 @@ class TestCompTaskKeeper(LogTestCase):
             ctk.remove_task("xyz")
         self.assertIsNone(ctk.active_tasks.get("xyz"))
 
-        header.deadline = get_current_time() - timedelta(seconds=1)
+        header.deadline = get_timestamp_utc() - 1
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         ctk.remove_old_tasks()

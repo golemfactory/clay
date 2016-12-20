@@ -265,7 +265,7 @@ class PaymentProcessorTest(DatabaseFixture):
         assert len(inprogress) == 1
         assert reserved() == v
 
-        receipt = {'blockNumber': '0x2016', 'blockHash': '0x' + 64*'f', 'gasUsed': '0xd6d9'}
+        receipt = {'blockNumber': 8214, 'blockHash': '0x' + 64*'f', 'gasUsed': 55001}
         self.client.get_transaction_receipt.return_value = receipt
         self.pp.monitor_progress()
         assert len(inprogress) == 0
