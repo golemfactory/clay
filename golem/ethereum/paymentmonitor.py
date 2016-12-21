@@ -50,15 +50,19 @@ class PaymentMonitor(object):
 
         for l in new_logs:
             payer = l['topics'][1][26:].decode('hex')
-            assert len(payer) == 20
+            if len(payer) != 20:
+                raise ValueError("Incorrect payer length: {}. Should be 20".format(len(payer)))
             payee = l['topics'][2][26:].decode('hex')
-            assert payee == self.__addr
+            if payee != self.__addr:
+                raise ValueError("Payee should be: {}, but is: {}".format(self.__addr, payee))
             value = int(l['data'], 16)
             block_number = l['blockNumber']
             block_hash = l['blockHash'][2:].decode('hex')
-            assert len(block_hash) == 32
+            if len(block_hash) != 32:
+                raise ValueError("Incorrect block hash length: {} .Should be 32".format(len(block_hash)))
             tx_hash = l['transactionHash'][2:].decode('hex')
-            assert len(tx_hash) == 32
+            if len(tx_hash) != 32:
+                raise ValueError("Incorrect tx length: {}. Should be 32".format(len(tx_hash)))
             payment = IncomingPayment(payer, value)
             payment.extra = {'block_number': block_number,
                              'block_hash': block_hash,

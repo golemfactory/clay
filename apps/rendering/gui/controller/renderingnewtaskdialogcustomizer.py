@@ -98,19 +98,15 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def __update_options(self, name):
         r = self.logic.get_task_type(name)
-        if r:
-            self.logic.set_current_task_type(name)
-            self.logic.options = r.options()
-            self._change_task_widget(name)
-            self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
-            set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
-            self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
-            self.gui.ui.taskNameLineEdit.setText(u"{}_{}".format(
-                self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
-            self._clear_resources()
-
-        else:
-            assert False, "Unreachable"
+        self.logic.set_current_task_type(name)
+        self.logic.options = r.options()
+        self._change_task_widget(name)
+        self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
+        set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
+        self.gui.ui.totalSpinBox.setRange(r.defaults.min_subtasks, r.defaults.max_subtasks)
+        self.gui.ui.taskNameLineEdit.setText(u"{}_{}".format(
+            self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
+        self._clear_resources()
 
     def __reset_to_defaults(self):
         dr = self.__get_current_task_type()
@@ -172,7 +168,9 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self._change_finish_state(False)
 
     def load_task_definition(self, task_definition):
-        assert isinstance(task_definition, RenderingTaskDefinition)
+        if not isinstance(task_definition, RenderingTaskDefinition):
+            raise TypeError(
+                "Incorrect task definition type: {}. Should be RenderingTaskDefinition".format(type(task_definition)))
 
         definition = deepcopy(task_definition)
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())

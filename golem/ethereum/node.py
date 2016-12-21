@@ -26,7 +26,6 @@ log = logging.getLogger('golem.ethereum')
 
 class Faucet(object):
     PRIVKEY = "{:32}".format("Golem Faucet")
-    assert len(PRIVKEY) == 32
     PUBKEY = privtopub(PRIVKEY)
     ADDR = privtoaddr(PRIVKEY)
 

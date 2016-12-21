@@ -66,7 +66,8 @@ def get_single_rgbf_extrema(rgbf):
 
 
 def get_list_rgbf_extrema(rgbf_list):
-    assert len(rgbf_list) > 0
+    if len(rgbf_list) == 0:
+        raise AttributeError("rgbf_list is empty")
 
     darkest, lightest = get_single_rgbf_extrema(rgbf_list[0])
 

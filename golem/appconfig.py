@@ -192,7 +192,9 @@ class AppConfig:
         return getattr(self._cfg.get_node_config(), "set_{}".format(prop))
 
     def change_config(self, cfg_desc):
-        assert isinstance(cfg_desc, ClientConfigDescriptor)
+        if not isinstance(cfg_desc, ClientConfigDescriptor):
+            raise TypeError(
+                "Incorrect config descriptor type: {}. Should be ClientConfigDescriptor".format(type(cfg_desc)))
 
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))

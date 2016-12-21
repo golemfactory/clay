@@ -39,7 +39,8 @@ def subtasks_priority(sub):
 
 
 def insert_item(root, path_table):
-    assert isinstance(root, QTreeWidgetItem)
+    if not isinstance(root, QTreeWidgetItem):
+        raise TypeError("Incorrect root type: {}. Should be QTreeWidgetItem".format(type(root)))
 
     if len(path_table) > 0:
         for i in range(root.childCount()):
@@ -87,10 +88,11 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def _set_show_task_resource_dialog(self):
         self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
-        show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
+        ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
 
     def update_task_additional_info(self, t):
-        assert isinstance(t, TaskDesc)
+        if not isinstance(t, TaskDesc):
+            raise TypeError("Incorrect argument type: {}. Should be TaskDesc".format(type(t)))
 
         self.current_task_highlighted = t
         self.__set_time_params(t)
