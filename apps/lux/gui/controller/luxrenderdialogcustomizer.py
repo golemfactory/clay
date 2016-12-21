@@ -27,9 +27,9 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
                                                   self.gui.ui.haltSppLineEdit.textChanged])
 
     def _change_halts_values(self):
-        set_haltspp = self.renderer_options.haltspp > 0
-        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.renderer_options.halttime))
-        self.gui.ui.haltSppLineEdit.setText(u"{}".format(self.renderer_options.haltspp))
+        set_haltspp = self.options.haltspp > 0
+        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.options.halttime))
+        self.gui.ui.haltSppLineEdit.setText(u"{}".format(self.options.haltspp))
         if self.gui.ui.stopBySppRadioButton.isChecked() and not set_haltspp:
             self.gui.ui.stopByTimeRadioButton.setChecked(True)
         if not self.gui.ui.stopBySppRadioButton.isChecked() and set_haltspp:
@@ -41,16 +41,16 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
         self.gui.ui.haltSppLineEdit.setEnabled(spp_checked)
         self.gui.ui.haltTimeLineEdit.setEnabled(not spp_checked)
 
-    def _change_renderer_options(self):
+    def _change_options(self):
         if self.gui.ui.stopByTimeRadioButton.isChecked():
-            self.renderer_options.haltspp = 0
+            self.options.haltspp = 0
             try:
-                self.renderer_options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
+                self.options.halttime = int(self.gui.ui.haltTimeLineEdit.text())
             except ValueError:
                 logger.error("{} is not proper halttime value".format(self.gui.ui.haltTimeLineEdit.text()))
         else:
-            self.renderer_options.halttime = 0
+            self.options.halttime = 0
             try:
-                self.renderer_options.haltspp = int(self.gui.ui.haltSppLineEdit.text())
+                self.options.haltspp = int(self.gui.ui.haltSppLineEdit.text())
             except ValueError:
                 logger.error("{} in not proper haltspp value".format(self.gui.ui.haltSppLineEdit.text()))

@@ -7,8 +7,9 @@ from copy import deepcopy
 
 from golem.task.taskstate import TaskStatus
 
+from apps.core.task.gnrtaskstate import TaskDesc
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from apps.rendering.task.renderingtaskstate import RenderingTaskState, RenderingTaskDefinition
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.controller.timehelper import set_time_spin_boxes
 from apps.core.gui.verificationparamshelper import read_advance_verification_params, set_verification_widgets_state, \
@@ -23,7 +24,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
     def __init__(self, gui, logic):
         NewTaskDialogCustomizer.__init__(self, gui, logic)
-        self.logic.renderer_options = None
+        self.logic.options = None
         self.gui.ui.taskNameLineEdit.setText(
             u"{}_{}".format(self.gui.ui.taskTypeComboBox.currentText(), time.strftime("%H:%M:%S_%Y-%m-%d")))
 
@@ -65,7 +66,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
 
         task_types = self.logic.get_task_types()
         dr = self.logic.get_default_task_type()
-        self.logic.renderer_options = dr.renderer_options()
+        self.logic.options = dr.options()
 
         for k in task_types:
             r = task_types[k]
@@ -95,11 +96,11 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         self.task_customizer = task.dialog_customizer(task.dialog, self.logic)
         self.gui.ui.taskSpecificLayout.addWidget(task.dialog, 0, 0, 1, 1)
 
-    def __update_renderer_options(self, name):
+    def __update_options(self, name):
         r = self.logic.get_task_type(name)
         if r:
             self.logic.set_current_task_type(name)
-            self.logic.renderer_options = r.renderer_options()
+            self.logic.options = r.options()
             self._change_task_widget(name)
             self.gui.ui.mainProgramFileLineEdit.setText(r.defaults.main_program_file)
             set_time_spin_boxes(self.gui, r.defaults.full_task_timeout, r.defaults.subtask_timeout)
@@ -114,7 +115,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def __reset_to_defaults(self):
         dr = self.__get_current_task_type()
 
-        self.logic.renderer_options = dr.renderer_options()
+        self.logic.options = dr.options()
         self.logic.set_current_task_type(dr.name)
 
         self.task_customizer.load_data()
@@ -145,7 +146,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     # SLOTS
 
     def __renderer_combo_box_value_changed(self, name):
-        self.__update_renderer_options("{}".format(name))
+        self.__update_options("{}".format(name))
 
     def task_settings_changed(self, name=None):
         self._change_finish_state(False)
@@ -196,7 +197,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
             return
 
     def _load_renderer_params(self, definition):
-        self.logic.renderer_options = deepcopy(definition.renderer_options)
+        self.logic.options = deepcopy(definition.options)
 
     def _load_basic_task_params(self, definition):
         r = self.logic.get_task_type(definition.task_type)
@@ -206,7 +207,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         NewTaskDialogCustomizer._load_basic_task_params(self, definition)
 
     def _load_resources(self, definition):
-        definition.resources = definition.renderer_options.remove_from_resources(definition.resources)
+        definition.resources = definition.options.remove_from_resources(definition.resources)
         NewTaskDialogCustomizer._load_resources(self, definition)
 
     def _load_verification_params(self, definition):
@@ -216,7 +217,7 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
         set_verification_widgets_state(self.gui, state)
 
     def __test_task_button_clicked(self):
-        self.task_state = RenderingTaskState()
+        self.task_state = TaskDesc()
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
 
@@ -260,12 +261,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def _read_renderer_params(self, definition):
         definition.task_type = self.__get_current_task_type().name
         definition.render = self.__get_current_task_type().name
-        definition.renderer_options = deepcopy(self.logic.renderer_options)
+        definition.options = deepcopy(self.logic.options)
         self.get_task_specific_options(definition)
-        self.logic.renderer_options = definition.renderer_options
+        self.logic.options = definition.options
 
         if self.add_task_resource_dialog_customizer:
-            definition.resources = self.logic.renderer_options.add_to_resources(definition.resources)
+            definition.resources = self.logic.options.add_to_resources(definition.resources)
             definition.resources.add(os.path.normpath(definition.main_scene_file))
             self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(len(definition.resources)))
 
@@ -288,12 +289,12 @@ class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer):
     def get_task_specific_options(self, definition):
         self.task_customizer.get_task_specific_options(definition)
 
-    def set_renderer_options(self, options):
-        self.logic.renderer_options = options
+    def set_options(self, options):
+        self.logic.options = options
         self.task_settings_changed()
 
-    def get_renderer_options(self):
-        return self.logic.renderer_options
+    def get_options(self):
+        return self.logic.options
 
     def __advance_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()

@@ -6,7 +6,8 @@ from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.benchmark import Benchmark
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -22,7 +23,7 @@ class TestBlenderBenchmark(unittest.TestCase):
         self.assertIsInstance(self.bb, BlenderBenchmark)
         self.assertIsInstance(self.bb, Benchmark)
         self.assertIsInstance(self.bb.task_definition, RenderingTaskDefinition)
-        self.assertIsInstance(self.bb.task_definition.renderer_options, BlenderRendererOptions)
+        self.assertIsInstance(self.bb.task_definition.options, BlenderRendererOptions)
     
     def test_task_settings(self):
         self.assertTrue(self.bb.normalization_constant == 9360)
@@ -42,7 +43,7 @@ class TestBenchmarkRunner(TempDirFixture):
         benchmark = BlenderBenchmark()
         task_definition = benchmark.query_benchmark_task_definition()
 
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = task_definition
 

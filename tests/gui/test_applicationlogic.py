@@ -1,23 +1,33 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 import os
 import time
+import uuid
 
 from ethereum.utils import denoms
 from mock import Mock, ANY, call
 from twisted.internet.defer import Deferred
 
 import golem
-from apps.core.task.gnrtaskstate import GNRTaskState, GNRTaskDefinition
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
+from golem.interface.client.logic import logger as int_logger
+from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
+
+from apps.core.task.gnrtaskstate import TaskDesc, GNRTaskDefinition
+from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger
+from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -220,7 +230,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
-        task_state = GNRTaskState()
+        task_state = TaskDesc()
         td = TestGNRApplicationLogicWithClient._get_task_definition(task_id=task_id,
                                                                     full_task_timeout=full_task_timeout,
                                                                     subtask_timeout=subtask_timeout)
@@ -236,38 +246,8 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         td.subtask_timeout = subtask_timeout
         return td
 
-    def test_messages(self):
-        logic = GNRApplicationLogic()
-        logic.customizer = Mock()
-        assert logic._format_stats_message(("STAT1", 2424)) == u"Session: STAT1; All time: 2424"
-        assert logic._format_stats_message(["STAT1"]) == u"Error"
-        assert logic._format_stats_message(13131) == u"Error"
 
-        ts = GNRTaskState()
-        ts.definition.main_program_file = "nonexisting"
-        assert not logic._validate_task_state(ts)
-        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
-
-        with self.assertLogs(logger, level="WARNING"):
-            logic.set_current_task_type("unknown task")
-
-        task_type = Mock()
-        task_type.name = "NAME1"
-        logic.register_new_task_type(task_type)
-        with self.assertRaises(AssertionError):
-            logic.register_new_task_type(task_type)
-
-        logic.register_new_test_task_type(task_type)
-        with self.assertRaises(AssertionError):
-            logic.register_new_test_task_type(task_type)
-
-        self.assertIsNotNone(logic.get_task_type("NAME1"), "Task type not found")
-        with self.assertRaises(AssertionError):
-            logic.get_task_type("abc")
-
-
-class TestGNRApplicationLogicWithGUI(DatabaseFixture):
-
+class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def setUp(self):
         super(TestGNRApplicationLogicWithGUI, self).setUp()
         self.client = Client.__new__(Client)
@@ -318,11 +298,15 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
 
         logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
+        logic.customizer.show_warning_window = Mock()
 
-        ts = Mock()
+        ts = TaskDesc()
         files = self.additional_dir_content([1])
         ts.definition.main_program_file = files[0]
         ts.definition.task_type = "TESTTASK"
+        f = self.additional_dir_content([2])
+        ts.definition.output_file = f[0]
+        ts.definition.main_scene_file = f[1]  # FIXME Remove me
 
         task_type = Mock()
         ttb = TTaskBuilder(self.path)
@@ -404,3 +388,103 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture):
         assert table.item(1, 2).text() == "KEYID2"
         assert table.item(0, 3).text() == "NODE 1"
         assert table.item(1, 3).text() == "NODE 2"
+
+    def test_change_verification_options(self):
+        logic = self.logic
+        logic.client = Mock()
+        logic.client.datadir = self.path
+        self.logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, self.logic)
+        prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
+        logic.change_verification_option(size_x_max=914)
+        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 914
+        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == prev_y
+        logic.change_verification_option(size_y_max=123)
+        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 914
+        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == 123
+        logic.change_verification_option(size_y_max=3190, size_x_max=134)
+        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 134
+        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == 3190
+
+    def test_messages(self):
+        logic = self.logic
+        self.logic.datadir = self.path
+        logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, logic)
+        logic.customizer.show_error_window = Mock()
+        logic.customizer.show_warning_window =  Mock()
+        self.logic.dir_manager = DirManager(self.path)
+        register_rendering_task_types(logic)
+
+        rts = TaskDesc()
+        assert isinstance(rts, TaskDesc)
+        f = self.additional_dir_content([3])
+        rts.definition.task_type = "Blender"
+        rts.definition.output_file = f[0]
+        rts.definition.main_program_file = f[1]
+        rts.definition.main_scene_file = f[2]
+        assert logic._validate_task_state(rts)
+        m = Mock()
+
+        broken_benchmark = BlenderBenchmark()
+        broken_benchmark.task_definition.main_program_file = u'Bździągwa'
+        logic.customizer.show_error_window = Mock()
+        logic.run_benchmark(broken_benchmark, m, m)
+        if logic.br.tt:
+            logic.br.tt.join()
+        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
+
+        broken_benchmark = BlenderBenchmark()
+        broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
+        logic.run_benchmark(broken_benchmark, m, m)
+        if logic.br.tt:
+            logic.br.tt.join()
+        logic.customizer.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
+
+        broken_benchmark = BlenderBenchmark()
+        broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
+        broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
+        logic.run_benchmark(broken_benchmark, m, m)
+        if logic.br.tt:
+            logic.br.tt.join()
+        logic.customizer.show_error_window.assert_called_with(u"Main scene file NOT EXISTING is not properly set")
+
+        logic.test_task_computation_error(u"Bździągwa")
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"
+        logic.test_task_computation_error(u"500 server error")
+        logic.progress_dialog_customizer.gui.ui.message.text() == \
+            u"Task test computation failure. [500 server error] There is a chance that you RAM limit is too low. " \
+            u"Consider increasing max memory usage"
+        logic.test_task_computation_error(None)
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. "
+        logic.test_task_computation_success([], 10000)
+        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"
+
+        rts.definition = BlenderBenchmark().task_definition
+        rts.definition.output_file = 1342
+        assert not logic._validate_task_state(rts)
+
+        assert logic._format_stats_message(("STAT1", 2424)) == u"Session: STAT1; All time: 2424"
+        assert logic._format_stats_message(["STAT1"]) == u"Error"
+        assert logic._format_stats_message(13131) == u"Error"
+
+        ts = TaskDesc()
+        ts.definition.task_type = "Blender"
+        ts.definition.main_program_file = "nonexisting"
+        assert not logic._validate_task_state(ts)
+        print logic.customizer.show_error_window
+        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
+
+        with self.assertLogs(logger, level="WARNING"):
+            logic.set_current_task_type("unknown task")
+
+        with self.assertLogs(logger, level="WARNING"):
+            logic.task_status_changed("unknown id")
+
+        task_type = Mock()
+        task_type.name = "NAME1"
+        logic.register_new_task_type(task_type)
+        with self.assertLogs(int_logger, level="ERROR"):
+            logic.register_new_task_type(task_type)
+
+        logic.register_new_test_task_type(task_type)
+        with self.assertRaises(AssertionError):
+            logic.register_new_test_task_type(task_type)

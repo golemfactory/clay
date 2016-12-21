@@ -9,6 +9,7 @@ from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessa
 from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
+from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from apps.rendering.task.framerenderingtask import get_frame_name
 from apps.rendering.task.renderingdirmanager import get_preview_file
@@ -89,8 +90,7 @@ class AbsRenderingMainWindowCustomizer(object):
         show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog, self)
 
     def update_task_additional_info(self, t):
-        from apps.rendering.task.renderingtaskstate import RenderingTaskState
-        assert isinstance(t, RenderingTaskState)
+        assert isinstance(t, TaskDesc)
 
         self.current_task_highlighted = t
         self.__set_time_params(t)
@@ -100,7 +100,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
         self.__set_renderer_params(t)
 
-        if t.definition.task_type in frame_renderers and t.definition.renderer_options.use_frames:
+        if t.definition.task_type in frame_renderers and t.definition.options.use_frames:
             self.__set_frame_preview(t)
         else:
             self.__set_preview(t)
@@ -109,7 +109,7 @@ class AbsRenderingMainWindowCustomizer(object):
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
-        if t.definition.task_type in frame_renderers and t.definition.renderer_options.use_frames:
+        if t.definition.task_type in frame_renderers and t.definition.options.use_frames:
             file_ = self.__get_frame_name(t.definition, 0)
         else:
             file_ = t.definition.output_file
@@ -136,7 +136,7 @@ class AbsRenderingMainWindowCustomizer(object):
         if "resultPreview" in t.task_state.extra_data:
             self.slider_previews = t.task_state.extra_data["resultPreview"]
         self.gui.ui.frameSlider.setVisible(True)
-        self.gui.ui.frameSlider.setRange(1, len(t.definition.renderer_options.frames))
+        self.gui.ui.frameSlider.setRange(1, len(t.definition.options.frames))
         self.gui.ui.frameSlider.setSingleStep(1)
         self.gui.ui.frameSlider.setPageStep(1)
         self.__update_slider_preview()
@@ -158,7 +158,7 @@ class AbsRenderingMainWindowCustomizer(object):
     @staticmethod
     def __get_frame_name(definition, num):
         output_name, ext = os.path.splitext(definition.output_file)
-        frame_num = definition.renderer_options.frames[num]
+        frame_num = definition.options.frames[num]
         return get_frame_name(output_name, ext[1:], frame_num)
 
     def __update_output_file_color(self):
@@ -242,8 +242,8 @@ class AbsRenderingMainWindowCustomizer(object):
             renderer = self.logic.get_task_type(definition.task_type)
             if len(task.task_state.subtask_states) > 0:
                 total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
-                if definition.task_type in frame_renderers and definition.renderer_options.use_frames:
-                    frames = len(definition.renderer_options.frames)
+                if definition.task_type in frame_renderers and definition.options.use_frames:
+                    frames = len(definition.options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, 
                                                             frames=frames, frame_num=frame_num, 
@@ -281,8 +281,8 @@ class AbsRenderingMainWindowCustomizer(object):
             subtask = self.__get_subtask(num)
             if subtask is not None:
                 res_x, res_y = self.current_task_highlighted.definition.resolution
-                if definition.task_type in frame_renderers and definition.renderer_options.use_frames:
-                    frames = len(definition.renderer_options.frames)
+                if definition.task_type in frame_renderers and definition.options.use_frames:
+                    frames = len(definition.options.frames)
                     frame_num = self.gui.ui.frameSlider.value()
                     border = renderer.get_task_border(subtask.extra_data['start_task'],
                                                       subtask.extra_data['end_task'],

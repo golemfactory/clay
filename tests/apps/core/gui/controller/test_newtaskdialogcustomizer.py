@@ -11,7 +11,7 @@ from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustom
 from apps.core.task.gnrtaskstate import GNRTaskDefinition
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -20,7 +20,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture):
 
     def setUp(self):
         super(TestNewTaskDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):

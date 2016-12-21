@@ -36,8 +36,13 @@ class Customizer(object):
 
     @staticmethod
     def show_error_window(text):
-
         ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
+        ms_box.exec_()
+        ms_box.show()
+
+    @staticmethod
+    def show_warning_window(text):
+        ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(text))
         ms_box.exec_()
         ms_box.show()
 
