@@ -120,7 +120,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.ui.errorLabel.setText(message)
 
     def get_task(self, task_id):
-        assert task_id in self.tasks, "GNRApplicationLogic: tas>>>>>>> developk {} not added".format(task_id)
+        assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
         return self.tasks[task_id]
 
     def get_task_types(self):
