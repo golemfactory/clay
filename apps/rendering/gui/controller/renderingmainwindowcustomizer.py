@@ -110,15 +110,13 @@ class AbsRenderingMainWindowCustomizer(object):
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
         if t.definition.task_type in frame_renderers and t.definition.options.use_frames:
-            file_ = self.__get_frame_name(t.definition, 0)
+            file_ = self.__get_frame_name(t.definition, self.gui.ui.frameSlider.value() - 1)
         else:
             file_ = t.definition.output_file
         if os.path.isfile(file_):
             self.show_file(file_)
         else:
-            msg_box = QMessageBox()
-            msg_box.setText("No output file defined.")
-            msg_box.exec_()
+            self.show_error_window(u"{} is not a file".format(file_))
 
     def __set_time_params(self, t):
         self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtask_timeout / 60.0)))
@@ -140,8 +138,8 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.frameSlider.setSingleStep(1)
         self.gui.ui.frameSlider.setPageStep(1)
         self.__update_slider_preview()
-        first_frame_name = self.__get_frame_name(t.definition, 0)
-        self.gui.ui.outputFile.setText(u"{}".format(first_frame_name))
+        frame_num = self.__get_frame_name(t.definition, self.gui.ui.frameSlider.value() - 1)
+        self.gui.ui.outputFile.setText(u"{}".format(frame_num))
 
     def __set_preview(self, t):
         self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
