@@ -40,6 +40,7 @@ class MainWindowCustomizer(Customizer):
         self.current_task_highlighted = None
         self.preview_path = get_preview_file()
         self.last_preview_path = self.preview_path
+        self.slider_previews = {}
 
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
@@ -53,7 +54,6 @@ class MainWindowCustomizer(Customizer):
         self.timer = QtCore.QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
-
 
     def init_config(self):
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)

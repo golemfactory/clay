@@ -54,9 +54,7 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        self.last_preview_path = self.preview_path
-        self.slider_previews = {}
-        self.gui.ui.frameSlider.setVisible(False)
+        self.gui.ui.previewsSlider.setVisible(False)
         self._set_icons()
 
     def _set_icons(self):
@@ -69,7 +67,7 @@ class AbsRenderingMainWindowCustomizer(object):
             item.setIcon(icon)
 
     def _setup_rendering_connections(self):
-        QtCore.QObject.connect(self.gui.ui.frameSlider, QtCore.SIGNAL("valueChanged(int)"), self.__update_slider_preview)
+        QtCore.QObject.connect(self.gui.ui.previewsSlider, QtCore.SIGNAL("valueChanged(int)"), self.__update_slider_preview)
         QtCore.QObject.connect(self.gui.ui.outputFile, QtCore.SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
                                self.__open_output_file)
         QtCore.QObject.connect(self.gui.ui.previewLabel, QtCore.SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
@@ -132,17 +130,17 @@ class AbsRenderingMainWindowCustomizer(object):
     def __set_frame_preview(self, t):
         if "resultPreview" in t.task_state.extra_data:
             self.slider_previews = t.task_state.extra_data["resultPreview"]
-        self.gui.ui.frameSlider.setVisible(True)
-        self.gui.ui.frameSlider.setRange(1, len(t.definition.options.frames))
-        self.gui.ui.frameSlider.setSingleStep(1)
-        self.gui.ui.frameSlider.setPageStep(1)
+        self.gui.ui.previewsSlider.setVisible(True)
+        self.gui.ui.previewsSlider.setRange(1, len(t.definition.options.frames))
+        self.gui.ui.previewsSlider.setSingleStep(1)
+        self.gui.ui.previewsSlider.setPageStep(1)
         self.__update_slider_preview()
         frame_num = self.__get_frame_name(t.definition, self.gui.ui.frameSlider.value() - 1)
         self.gui.ui.outputFile.setText(u"{}".format(frame_num))
 
     def __set_preview(self, t):
         self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
-        self.gui.ui.frameSlider.setVisible(False)
+        self.gui.ui.previewsSlider.setVisible(False)
         if "resultPreview" in t.task_state.extra_data and os.path.exists(os.path.abspath(t.task_state.extra_data["resultPreview"])):
             file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
             self.__update_img(QPixmap(file_path))
@@ -189,7 +187,7 @@ class AbsRenderingMainWindowCustomizer(object):
         self.show_task_resources_dialog.window.close()
 
     def __update_slider_preview(self):
-        num = self.gui.ui.frameSlider.value() - 1
+        num = self.gui.ui.previewsSlider.value() - 1
         self.gui.ui.outputFile.setText(self.__get_frame_name(self.current_task_highlighted.definition, num))
         self.__update_output_file_color()
         if len(self.slider_previews) > num:
@@ -241,7 +239,7 @@ class AbsRenderingMainWindowCustomizer(object):
                 total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
                 if definition.task_type in frame_renderers and definition.options.use_frames:
                     frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.frameSlider.value()
+                    frame_num = self.gui.ui.previewsSlider.value()
                     num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, 
                                                             frames=frames, frame_num=frame_num, 
                                                             res_x=self.current_task_highlighted.definition.resolution[0], 
@@ -280,7 +278,7 @@ class AbsRenderingMainWindowCustomizer(object):
                 res_x, res_y = self.current_task_highlighted.definition.resolution
                 if definition.task_type in frame_renderers and definition.options.use_frames:
                     frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.frameSlider.value()
+                    frame_num = self.gui.ui.previewsSlider.value()
                     border = renderer.get_task_border(subtask.extra_data['start_task'],
                                                       subtask.extra_data['end_task'],
                                                       subtask.extra_data['total_tasks'],

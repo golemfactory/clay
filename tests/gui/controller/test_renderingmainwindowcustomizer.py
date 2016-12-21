@@ -51,7 +51,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
         assert customizer.gui.ui.outputFile.text() == "bla"
-        assert not customizer.gui.ui.frameSlider.isVisible()
+        assert not customizer.gui.ui.previewsSlider.isVisible()
         assert customizer.last_preview_path == customizer.preview_path
         assert customizer.gui.ui.previewLabel.pixmap().width() == 298
         assert customizer.gui.ui.previewLabel.pixmap().height() == 200
