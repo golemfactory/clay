@@ -9,26 +9,26 @@ from PyQt4.QtTest import QTest
 from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.application import GNRGui
-from gui.controller.mainwindowcustomizer import GNRMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.tasktableelem import ItemMap
 
 
-class TestGNRMainWindowCustomizer(TestCase):
+class TestMainWindowCustomizer(TestCase):
 
     def setUp(self):
-        super(TestGNRMainWindowCustomizer, self).setUp()
+        super(TestMainWindowCustomizer, self).setUp()
         self.logic = MagicMock()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestGNRMainWindowCustomizer, self).tearDown()
+        super(TestMainWindowCustomizer, self).tearDown()
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
     def test_description(self):
-        customizer = GNRMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
-        assert isinstance(customizer, GNRMainWindowCustomizer)
+        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        assert isinstance(customizer, MainWindowCustomizer)
         customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC1")
         assert customizer.gui.ui.descriptionTextEdit.toPlainText() == "DESC1"
         customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC2")
@@ -48,7 +48,7 @@ class TestGNRMainWindowCustomizer(TestCase):
         assert not customizer.gui.ui.descriptionTextEdit.isEnabled()
 
     def test_table(self):
-        customizer = GNRMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         task1 = MagicMock()
         task1.definition.task_id = "TASK ID 1"
         task1.status = "Finished"

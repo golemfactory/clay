@@ -12,12 +12,12 @@ from golem.task.taskstate import SubtaskStatus
 from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 from apps.rendering.task.framerenderingtask import get_frame_name
-from apps.rendering.task.renderingdirmanager import get_preview_file
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
-from gui.controller.mainwindowcustomizer import GNRMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from gui.controller.memoryhelper import resource_size_to_display, translate_resource_index
 from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
+from gui.guidirmanager import get_preview_file
 from gui.view.dialog import ShowTaskResourcesDialog
 
 
@@ -54,7 +54,6 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
     def _set_rendering_variables(self):
-        self.preview_path = os.path.join(get_golem_path(), "gui", get_preview_file())
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
         self.gui.ui.frameSlider.setVisible(False)
@@ -149,7 +148,7 @@ class AbsRenderingMainWindowCustomizer(object):
             self.__update_img(QPixmap(file_path))
             self.last_preview_path = file_path
         else:
-            self.preview_path = os.path.join(get_golem_path(), "gui", get_preview_file())
+            self.preview_path = get_preview_file()
             self.__update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
@@ -318,16 +317,16 @@ class AbsRenderingMainWindowCustomizer(object):
         QPixmapCache.clear()
 
 
-class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, GNRMainWindowCustomizer):
+class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, MainWindowCustomizer):
     def __init__(self, gui, logic):
-        GNRMainWindowCustomizer.__init__(self, gui, logic)
+        MainWindowCustomizer.__init__(self, gui, logic)
         self._set_rendering_variables()
         self._setup_rendering_connections()
         self._setup_advance_task_connections()
 
     def init_config(self):
-        GNRMainWindowCustomizer.init_config(self)
+        MainWindowCustomizer.init_config(self)
 
     def update_task_additional_info(self, t):
-        GNRMainWindowCustomizer.update_task_additional_info(self, t)
+        MainWindowCustomizer.update_task_additional_info(self, t)
         AbsRenderingMainWindowCustomizer.update_task_additional_info(self, t)

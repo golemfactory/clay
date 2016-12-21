@@ -2,8 +2,6 @@ import os
 import logging
 import shutil
 
-from golem.core.simpleexccmd import is_windows
-
 logger = logging.getLogger(__name__)
 
 
@@ -18,6 +16,28 @@ def split_path(path):
     if not head:
         return [tail]
     return split_path(head) + [tail]
+
+
+def find_task_script(task_dir, script_name):
+    scripts_path = os.path.abspath(os.path.join(task_dir, "resources", "scripts"))
+    files = os.listdir(scripts_path)
+    for f in files:
+        if f.lower() == script_name.lower():
+            return os.path.join(scripts_path, f)
+    logger.error("Script file does not exist!")
+
+
+def get_test_task_path(root_path):
+    return os.path.join(root_path, "task_test")
+
+
+def get_test_task_tmp_path(root_path):
+    return os.path.join(root_path, "task_tmp")
+
+
+def get_tmp_path(task_id, root_path):
+    # TODO: Is node name still needed?
+    return os.path.join(root_path, "task", task_id, "tmp")
 
 
 class DirManager(object):

@@ -8,6 +8,7 @@ from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline, get_golem_path
 from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.resource.dirmanager import get_test_task_path, find_task_script, get_tmp_path
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -16,7 +17,6 @@ from apps.core.task.gnrtask import GNROptions
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
-from apps.rendering.task.renderingdirmanager import get_test_task_path, find_task_script, get_tmp_path
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
 

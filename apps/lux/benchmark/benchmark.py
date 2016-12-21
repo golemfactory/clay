@@ -2,10 +2,10 @@ import os
 import tempfile
 
 from golem.core.common import get_golem_path
+from golem.resource.dirmanager import find_task_script
 
 from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.task.luxrendertask import LuxRenderOptions
-from apps.rendering.task.renderingdirmanager import find_task_script
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
 

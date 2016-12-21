@@ -25,6 +25,7 @@ from gui.controller.configurationdialogcustomizer import ConfigurationDialogCust
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
+from gui.guidirmanager import get_preview_file
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
     EnvironmentsDialog, IdentityDialog, NodeNameDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
@@ -32,21 +33,27 @@ from gui.view.tasktableelem import TaskTableElem, ItemMap
 logger = logging.getLogger("gui")
 
 
-class GNRMainWindowCustomizer(Customizer):
+class MainWindowCustomizer(Customizer):
     def __init__(self, gui, logic):
+        Customizer.__init__(self, gui, logic)
+
         self.current_task_highlighted = None
+        self.preview_path = get_preview_file()
+        self.last_preview_path = self.preview_path
+
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
         self.new_task_dialog_customizer = None
         self.configuration_dialog_customizer = None
-        Customizer.__init__(self, gui, logic)
+        self.change_task_dialog = None
+
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
         self.lock = Lock()
         self.timer = QtCore.QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
-        self.change_task_dialog = None
+
 
     def init_config(self):
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
