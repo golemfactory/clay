@@ -28,9 +28,9 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
-    @patch('gui.controller.gnrmainwindowcustomizer.QtCore')
+    @patch('gui.controller.mainwindowcustomizer.QtCore')
     @patch('apps.rendering.gui.controller.renderingmainwindowcustomizer.QtCore')
-    @patch('gui.controller.gnrmainwindowcustomizer.QPalette')
+    @patch('gui.controller.mainwindowcustomizer.QPalette')
     def test_preview(self, mock_palette, mock_core, mock_core2):
         customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
         self.assertTrue(os.path.isfile(customizer.preview_path))

@@ -15,7 +15,7 @@ from apps.rendering.task.framerenderingtask import get_frame_name
 from apps.rendering.task.renderingdirmanager import get_preview_file
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
-from gui.controller.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import GNRMainWindowCustomizer
 from gui.controller.memoryhelper import resource_size_to_display, translate_resource_index
 from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 from gui.view.dialog import ShowTaskResourcesDialog

@@ -9,7 +9,7 @@ from PyQt4.QtTest import QTest
 from apps.core.task.gnrtaskstate import TaskDesc
 
 from gui.application import GNRGui
-from gui.controller.gnrmainwindowcustomizer import GNRMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import GNRMainWindowCustomizer
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.tasktableelem import ItemMap
 
