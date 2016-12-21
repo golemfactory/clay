@@ -57,7 +57,7 @@ class RendererCustomizer(Customizer):
         self._change_renderer_options()
         definition.renderer_options = self.renderer_options
         definition.resolution = [self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value()]
-        definition.output_file = u"{}".format(self.gui.ui.outputFileLineEdit.text())
+        definition.output_file = self._add_ext_to_out_filename()
         definition.output_format = u"{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
         definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
@@ -76,6 +76,19 @@ class RendererCustomizer(Customizer):
             self.gui.ui.outputFormatsComboBox.currentIndexChanged,
             self.gui.ui.outputFileLineEdit.textChanged,
         ])
+        self.gui.ui.outputFormatsComboBox.currentIndexChanged.connect(self._add_ext_to_out_filename)
+        self.gui.ui.outputFileLineEdit.editingFinished.connect(self._add_ext_to_out_filename)
+
+    def _add_ext_to_out_filename(self):
+        chosen_ext = str(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
+        out_file_name = str(self.gui.ui.outputFileLineEdit.text())
+        file_name, ext = os.path.splitext(out_file_name)
+        ext = ext[1:]
+        if self.gui.ui.outputFormatsComboBox.findText(ext.upper()) != -1:
+            self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(file_name, chosen_ext))
+        else:
+            self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(out_file_name, chosen_ext))
+        return u"{}".format(str(self.gui.ui.outputFileLineEdit.text()))
 
     def _connect_with_task_settings_changed(self, list_gui_el):
         for gui_el in list_gui_el:
