@@ -6,7 +6,7 @@ from threading import Lock
 
 from ethereum.utils import denoms
 from PyQt4 import QtCore
-from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
+from PyQt4.QtGui import QFileDialog, QIcon, QPalette, QPixmap, QPixmapCache, QMenu, QMessageBox
 from twisted.internet.defer import inlineCallbacks
 
 from golem.core.variables import APP_NAME, APP_VERSION
@@ -25,7 +25,7 @@ from gui.controller.configurationdialogcustomizer import ConfigurationDialogCust
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
-from gui.guidirmanager import get_preview_file
+from gui.guidirmanager import get_preview_file, get_icons_list
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
     EnvironmentsDialog, IdentityDialog, NodeNameDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
@@ -48,6 +48,8 @@ class MainWindowCustomizer(Customizer):
         self.configuration_dialog_customizer = None
         self.change_task_dialog = None
 
+        self.gui.ui.previewsSlider.setVisible(False)
+        self._set_icons()
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
         self.lock = Lock()
@@ -188,12 +190,11 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
         selection_model = self.gui.ui.taskTableWidget.selectionModel()
         selection_model.selectionChanged.connect(self._task_table_item_changed)
-        QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
-                               self._task_table_row_clicked)
-        QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
-                               self._task_table_row_double_clicked)
+        self.gui.ui.taskTableWidget.cellClicked.connect(self._task_table_row_clicked)
+        self.gui.ui.taskTableWidget.doubleClicked.connect(self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
         self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
+        self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
 
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
@@ -307,6 +308,45 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.saveDescriptionButton.setEnabled(False)
         self.gui.ui.descriptionTextEdit.setEnabled(False)
         self.logic.change_description(u"{}".format(self.gui.ui.descriptionTextEdit.toPlainText()))
+
+    def _set_icons(self):
+        icons = get_icons_list()
+        for i, icon_path in enumerate(icons):
+            item = self.gui.ui.listWidget.item(i)
+            icon = QIcon()
+            icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
+            item.setIcon(icon)
+
+    def _update_slider_preview(self):
+        num = self.gui.ui.previewsSlider.value() - 1
+        print self.current_task_highlighted.task_state.outputs
+        if len(self.current_task_highlighted.task_state.outputs) > num:
+
+            self.gui.ui.outputFile.setText(self.current_task_highlighted.task_state.outputs[num])
+        else:
+            logger.warning("Output file name for {} output result hasn't been set yet".format(num))
+            self.gui.ui.outputFile.setText(u"")
+        self.__update_output_file_color()
+        if len(self.slider_previews) > num:
+            if self.slider_previews[num]:
+                if os.path.exists(self.slider_previews[num]):
+                    self._update_img(QPixmap(self.slider_previews[num]))
+                    self.last_preview_path = self.slider_previews[num]
+                    return
+
+        self._update_img(QPixmap(self.preview_path))
+        self.last_preview_path = self.preview_path
+
+    def __update_output_file_color(self):
+        if os.path.isfile(self.gui.ui.outputFile.text()):
+            self.gui.ui.outputFile.setStyleSheet('color: blue')
+        else:
+            self.gui.ui.outputFile.setStyleSheet('color: black')
+
+    def _update_img(self, img):
+        self.gui.ui.previewLabel.setScaledContents(False)
+        self.gui.ui.previewLabel.setPixmap(img)
+        QPixmapCache.clear()
 
     def __show_task_context_menu(self, p):
 

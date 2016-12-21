@@ -97,7 +97,6 @@ class RPCClient(object):
         self.started = False
 
     def test_task_started(self, *args, **kwargs):
-        print "test_task_started {}".format(args)
         self.started = args[0]
 
 

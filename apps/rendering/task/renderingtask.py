@@ -141,6 +141,9 @@ class RenderingTask(GNRTask):
         elif self.preview_file_path:
             task_state.extra_data['resultPreview'] = self.preview_file_path
 
+    def get_output_names(self):
+        return [self.output_file]
+
     #########################
     # Specific task methods #
     #########################

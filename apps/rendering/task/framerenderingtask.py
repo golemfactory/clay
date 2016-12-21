@@ -129,6 +129,13 @@ class FrameRenderingTask(RenderingTask):
         else:
             self._update_task_preview()
 
+    def get_output_names(self):
+        if self.use_frames:
+            dir_ = os.path.dirname(self.output_file)
+            return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
+        else:
+            return super(FrameRenderingTask, self).get_output_names()
+
     #########################
     # Specific task methods #
     #########################

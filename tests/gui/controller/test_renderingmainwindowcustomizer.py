@@ -87,18 +87,18 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         td.definition.options.frames = [11, 14, 17]
         customizer.logic.get_task.return_value = td
         customizer.current_task_highlighted = td
-        customizer.gui.ui.frameSlider.setRange(1, 3)
+        customizer.gui.ui.previewsSlider.setRange(1, 3)
         mock_messagebox.Critical = "CRITICAL"
         customizer.show_task_result("abc")
         expected_file = os.path.join(self.path, u"output0011.png")
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + u" is not a file")
-        customizer.gui.ui.frameSlider.setValue(2)
+        customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
         expected_file = os.path.join(self.path, u"output0014.png")
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + u" is not a file")
-        customizer.gui.ui.frameSlider.setValue(3)
+        customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
         expected_file = os.path.join(self.path, u"output0017.png")
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
