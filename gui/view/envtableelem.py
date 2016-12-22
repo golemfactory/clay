@@ -26,7 +26,7 @@ class EnvTableElem:
             if EnvTableElem.colItem[col] in self.column_item_translation:
                 return self.column_item_translation[EnvTableElem.colItem[col]]()
 
-        raise RuntimeError("Wrong column index")
+        raise ValueError("Wrong column index")
 
     def change_accept_task(self, state):
         self.accept_tasks = state

@@ -29,7 +29,7 @@ class TestEnvTableElem(TestCase):
         assert "SUPPORTED TOO" == elem.get_column_item(1).text()
         assert not elem.get_column_item(2).checkState()
         assert "SOME ENV2" == elem.get_column_item(3).text()
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             elem.get_column_item(4)
 
 

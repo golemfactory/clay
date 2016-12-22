@@ -49,12 +49,12 @@ class TestCommandResult(unittest.TestCase):
         for data in ['result', '']:
             result = CommandResult(data)
             assert result.type is CommandResult.PLAIN
-            with self.assertRaises(AssertionError):
+            with self.assertRaises(TypeError):
                 result.from_tabular()
 
         result = CommandResult()
         assert result.type is CommandResult.NONE
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(TypeError):
             result.from_tabular()
 
     def test_tabular(self):

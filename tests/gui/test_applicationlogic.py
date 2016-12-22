@@ -486,5 +486,5 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
             logic.register_new_task_type(task_type)
 
         logic.register_new_test_task_type(task_type)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(RuntimeError):
             logic.register_new_test_task_type(task_type)
