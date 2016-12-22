@@ -1,6 +1,5 @@
 from multiprocessing import Process, Queue
 from os import path
-
 from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -51,10 +50,10 @@ class GUIApp(object):
     def __init__(self, rendering):
         from application import GNRGui
         from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
-        from gui.renderingapplicationlogic import RenderingApplicationLogic
+        from gui.applicationlogic import GNRApplicationLogic
         from gui.view.appmainwindow import AppMainWindow
 
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 RenderingMainWindowCustomizer)

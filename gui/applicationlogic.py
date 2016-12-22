@@ -1,27 +1,29 @@
 from __future__ import division
 
+import jsonpickle as json
 import logging
 import os
-from PyQt4 import QtCore
 
-import jsonpickle as json
+from ethereum.utils import denoms
+from PyQt4 import QtCore
 from PyQt4.QtCore import QObject
 from PyQt4.QtGui import QTableWidgetItem
-from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
-from apps.core.task.gnrtaskstate import GNRTaskState
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
+
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
+from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
+
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
@@ -32,12 +34,12 @@ logger = logging.getLogger("app")
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
-class GNRApplicationLogic(QtCore.QObject):
+class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def __init__(self):
         QtCore.QObject.__init__(self)
+        AppLogic.__init__(self)
         self.tasks = {}
         self.test_tasks = {}
-        self.task_types = {}
         self.customizer = None
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gui'))
         self.nodes_manager_client = None
@@ -47,13 +49,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.config_dialog = None
         self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
-        self.datadir = None
         self.res_dirs = None
-        self.node_name = None
         self.br = None
         self.__looping_calls = None
-        self.dir_manager = None
         self.reactor = None
+        self.options = None  # Current task options #FIXME - is it really needed?
         self.current_task_type = None  # Which task type is currently active
         self.default_task_type = None  # Which task type should be displayed first
 
@@ -243,9 +243,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.node_name = yield self.client.get_setting('node_name')
         self.customizer.set_name(u"{}".format(self.node_name))
 
-    def _get_new_task_state(self):
-        return GNRTaskState()
-
     def start_task(self, task_id):
         ts = self.get_task(task_id)
 
@@ -258,15 +255,8 @@ class GNRApplicationLogic(QtCore.QObject):
         tb = self.get_builder(ts)
         t = Task.build_task(tb)
         ts.task_state.status = TaskStatus.starting
-
         self.customizer.update_tasks(self.tasks)
         self.client.create_task(DictSerializer.dump(t))
-
-    def get_builder(self, task_state):
-        task_type = task_state.definition.task_type
-        return self.task_types[task_type].task_builder_type(self.node_name,
-                                                            task_state.definition,
-                                                            self.datadir, self.dir_manager)
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -333,7 +323,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return self.test_tasks
 
     def add_task_from_definition(self, definition):
-        task_state = self._get_new_task_state()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
 
         task_state.definition = definition
@@ -356,12 +346,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.listWidget.setCurrentItem(self.customizer.gui.ui.listWidget.item(1))
 
     def register_new_task_type(self, task_type):
-        if task_type.name not in self.task_types:
-            self.task_types[task_type.name] = task_type
-            if len(self.task_types) == 1:
-                self.default_task_type = task_type
-        else:
-            assert False, "Task type {} already registered".format(task_type.name)
+        AppLogic.register_new_task_type(self, task_type)
+        if len(self.task_types) == 1:
+            self.default_task_type = task_type
 
     def register_new_test_task_type(self, test_task_info):
         if test_task_info.name not in self.test_tasks:
@@ -388,6 +375,7 @@ class GNRApplicationLogic(QtCore.QObject):
         return estimated_perf
 
     def lock_config(self, on=True):
+
         self.customizer.gui.setEnabled('new_task', not on)
         self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
 
@@ -439,7 +427,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label, cfg_param_name):
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
@@ -451,7 +439,7 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.br = BenchmarkRunner(t, self.datadir,
                                   lambda p: reactor.callFromThread(self._benchmark_computation_success, 
-                                                                   performance=p, label=label, 
+                                                                   performance=p, label=label,
                                                                    cfg_param=cfg_param_name),
                                   self._benchmark_computation_error,
                                   benchmark)
@@ -486,6 +474,13 @@ class GNRApplicationLogic(QtCore.QObject):
     def get_environments(self):
         environments = yield self.client.get_environments()
         returnValue(environments)
+
+    # TODO Move this function to new task dialog
+    def change_verification_option(self, size_x_max=None, size_y_max=None):
+        if size_x_max:
+            self.customizer.gui.ui.verificationSizeXSpinBox.setMaximum(size_x_max)
+        if size_y_max:
+            self.customizer.gui.ui.verificationSizeYSpinBox.setMaximum(size_y_max)
 
     def enable_environment(self, env_id):
         self.client.enable_environment(env_id)
@@ -574,6 +569,7 @@ class GNRApplicationLogic(QtCore.QObject):
         :param task_id: Task ID
         :return: Cost of the task
         """
+
         cost = yield self.client.get_task_cost(task_id)
         returnValue(cost)
 
@@ -585,10 +581,15 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
-        if not os.path.exists(td.main_program_file):
-            self.customizer.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
+        if td.task_type not in self.task_types:
+            self.customizer.show_error_window(u"{}".format("Task {} is not registered".format(td.task_type)))
             return False
-        return True
+        is_valid, err = td.is_valid()
+        if is_valid and err:
+            self.customizer.show_warning_window(u"{}".format(err))
+        if not is_valid:
+            self.customizer.show_error_window(u"{}".format(err))
+        return is_valid
 
     @staticmethod
     def _format_stats_message(stat):

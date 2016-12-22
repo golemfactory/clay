@@ -8,7 +8,7 @@ from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import Rende
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererInfo, RendererDefaults
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -16,7 +16,7 @@ from gui.view.appmainwindow import AppMainWindow
 class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingNewTaskDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
@@ -40,14 +40,14 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         definition = RenderingTaskDefinition()
         renderer = RendererInfo("Blender", RendererDefaults(), Mock(), Mock(), Mock(), Mock())
         assert renderer.name == "Blender"
-        assert renderer.renderer_options is not None
+        assert renderer.options is not None
         definition.task_type = renderer.name
-        definition.renderer_options = Mock()
-        definition.renderer_options.use_frames = False
-        definition.renderer_options.compositing = False
+        definition.options = Mock()
+        definition.options.use_frames = False
+        definition.options.compositing = False
         resources = self.additional_dir_content([3])
-        definition.renderer_options.remove_from_resources.return_value = set(resources[0:1])
-        definition.renderer_options.add_to_resources.return_value = set(resources[0:1])
+        definition.options.remove_from_resources.return_value = set(resources[0:1])
+        definition.options.add_to_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)
         self.logic.customizer = Mock()
         self.logic.task_types[renderer.name] = renderer
@@ -68,10 +68,10 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
             customizer._load_task_type(definition)
 
         options = GNROptions()
-        customizer.set_renderer_options(options)
-        assert customizer.logic.renderer_options == options
-        assert customizer.get_renderer_options() == options
-        assert isinstance(customizer.get_renderer_options(), GNROptions)
+        customizer.set_options(options)
+        assert customizer.logic.options == options
+        assert customizer.get_options() == options
+        assert isinstance(customizer.get_options(), GNROptions)
 
         customizer._RenderingNewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)

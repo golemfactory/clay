@@ -16,7 +16,7 @@ class TestLuxBenchmark(unittest.TestCase):
         self.assertIsInstance(self.lb, LuxBenchmark)
         self.assertIsInstance(self.lb, Benchmark)
         self.assertIsInstance(self.lb.task_definition, RenderingTaskDefinition)
-        self.assertIsInstance(self.lb.task_definition.renderer_options, LuxRenderOptions)
+        self.assertIsInstance(self.lb.task_definition.options, LuxRenderOptions)
     
     def test_task_settings(self):
         self.assertTrue(self.lb.normalization_constant == 9910)

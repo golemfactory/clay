@@ -2,7 +2,7 @@
 RenderingTaskDefinition
 p1
 (dp2
-S'renderer_options'
+S'options'
 p3
 ccopy_reg
 _reconstructor

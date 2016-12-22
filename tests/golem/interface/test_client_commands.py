@@ -518,7 +518,7 @@ class TestTasks(TempDirFixture):
     def _create_blender_task(self, dir_manager):
 
         definition = RenderingTaskDefinition()
-        definition.renderer_options = BlenderRendererOptions()
+        definition.options = BlenderRendererOptions()
 
         builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition,
                                            root_path=self.tempdir, dir_manager=dir_manager)
@@ -528,7 +528,7 @@ class TestTasks(TempDirFixture):
         task.task_id = "deadbeef"
         task.task_type = "Blender"
         task.docker_images = None
-        task.renderer_options = BlenderRendererOptions()
+        task.options = BlenderRendererOptions()
 
         task_file_name = os.path.join(self.path, 'task_file.gt')
 

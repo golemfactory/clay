@@ -5,37 +5,29 @@ from Queue import Queue
 import jsonpickle
 
 from apps.appsmanager import AppsManager
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
+from apps.core.task.gnrtaskstate import TaskDesc
+
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
+from golem.interface.client.logic import AppLogic
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 
 
-class RendererLogic(object):
+class CommandAppLogic(AppLogic):
 
-    def __init__(self, node_name, datadir, dir_manager):
-        self.node_name = node_name
+    def __init__(self, client, datadir):
+        super(CommandAppLogic, self).__init__()
+
+        self.node_name = CommandHelper.wait_for(client.get_node_name())
+        self.dir_manager = CommandHelper.wait_for(client.get_dir_manager())
         self.datadir = datadir
-        self.dir_manager = dir_manager
-        self.task_types = {}
-
-    def get_builder(self, task_state):
-        task_type = task_state.definition.task_type
-        return self.task_types[task_type].task_builder_type(self.node_name, task_state.definition,
-                                                          self.datadir, self.dir_manager)
-
-    def register_new_task_type(self, task_type):
-        self.task_types[task_type.name] = task_type
 
     @staticmethod
     def instantiate(client, datadir):
         args = (None, None)
-        node_name = CommandHelper.wait_for(client.get_node_name())
-        dir_manager = CommandHelper.wait_for(client.get_dir_manager())
-
-        logic = RendererLogic(node_name, datadir, dir_manager)
+        logic = CommandAppLogic(client, datadir)
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in apps_manager.apps.values():
@@ -136,12 +128,12 @@ class Tasks(object):
 
         # TODO: unify GUI and CLI logic
 
-        rendering_task_state = RenderingTaskState()
+        rendering_task_state = TaskDesc()
         rendering_task_state.definition = definition
         rendering_task_state.task_state.status = TaskStatus.starting
 
         if not Tasks.application_logic:
-            Tasks.application_logic = RendererLogic.instantiate(Tasks.client, datadir)
+            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client, datadir)
 
         task_builder = Tasks.application_logic.get_builder(rendering_task_state)
         task = Task.build_task(task_builder)

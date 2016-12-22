@@ -22,9 +22,9 @@ class LuxBenchmark(Benchmark):
         self.task_definition.output_file = os.path.join(tempfile.gettempdir(), "lux_benchmark.png")
         self.task_definition.task_type = "LuxRender"
         self.task_definition.output_format = "png"
-        self.task_definition.renderer_options = LuxRenderOptions()
-        self.task_definition.renderer_options.haltspp = 5
-        self.task_definition.renderer_options.halttime = 0        
+        self.task_definition.options = LuxRenderOptions()
+        self.task_definition.options.haltspp = 5
+        self.task_definition.options.halttime = 0
         self.task_definition.task_id = u"{}".format("lux_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.lux_task_path, "schoolcorridor.lxs")
         self.task_definition.main_program_file = u"{}".format(find_task_script(APP_DIR, "docker_luxtask.py"))

@@ -125,6 +125,7 @@ def build_blender_renderer_info(dialog, customizer):
 
 class BlenderRendererOptions(GNROptions):
     def __init__(self):
+        super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
         self.use_frames = False
         self.frames = range(1, 11)
@@ -156,9 +157,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.resources,
                                          self.task_definition.estimated_memory,
                                          self.root_path,
-                                         self.task_definition.renderer_options.use_frames,
-                                         self.task_definition.renderer_options.frames,
-                                         self.task_definition.renderer_options.compositing,
+                                         self.task_definition.options.use_frames,
+                                         self.task_definition.options.frames,
+                                         self.task_definition.options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
