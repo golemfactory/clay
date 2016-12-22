@@ -112,6 +112,16 @@ class OptNode(Node):
         return ''
 
     @staticmethod
+    def parse_rpc_address(ctx, param, value):
+        del ctx, param
+        if value:
+            try:
+                return SocketAddress.parse(value)
+            except AddressValueError as e:
+                raise click.BadParameter(
+                    "Invalid RPC address specified: {}".format(e.message))
+
+    @staticmethod
     def parse_peer(ctx, param, value):
         del ctx, param
         addresses = []
