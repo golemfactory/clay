@@ -70,6 +70,7 @@ class Client(object):
         """
         Signs and sends the given transaction
         :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
+        :return The 32 Bytes transaction hash as HEX string
         """
         if isinstance(transaction, Transaction):
             raw_data = rlp.encode(transaction)

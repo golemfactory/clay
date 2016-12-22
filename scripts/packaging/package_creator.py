@@ -264,7 +264,8 @@ class LicenseCollector(object):
         package_desc = subprocess.check_output(package_cmd)
 
         license_file = os.path.join('/usr/share/doc', package, 'copyright')
-        assert os.path.exists(license_file)
+        if not os.path.exists(license_file):
+            raise IOError("Incorrect license file path: {}".format(license_file))
         return package, package_desc, license_file
 
     def _get_package_plugin(self, module):

@@ -122,8 +122,7 @@ class TaskServer(PendingConnectionsServer):
                      node_name):
 
         if 'data' not in result or 'result_type' not in result:
-            logger.error("Wrong result format")
-            assert False
+            raise AttributeError("Wrong result format")
 
         self.client.increase_trust(owner_key_id, RankingStats.requested)
 
@@ -140,7 +139,7 @@ class TaskServer(PendingConnectionsServer):
                                                                  last_sending_trial, delay_time,
                                                                  owner_address, owner_port, owner_key_id, owner)
         else:
-            assert False
+            raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         return True
 

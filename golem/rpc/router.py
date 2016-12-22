@@ -36,8 +36,8 @@ class CrossbarRouter(object):
         if not os.path.exists(self.working_dir):
             os.makedirs(self.working_dir)
 
-        assert_msg = u"'{}' is not a directory".format(self.working_dir)
-        assert os.path.isdir(self.working_dir), assert_msg
+        if not os.path.isdir(self.working_dir)
+            raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.address = WebSocketAddress(host, port, realm)
         self.log_level = crossbar_log_level

@@ -38,7 +38,8 @@ def regenerate_ui_files(root_path):
                     if os.path.getsize(out_file_path) > 0:
                         continue
 
-            assert os.path.exists(pyuic_path), "Can't open file " + pyuic_path
+            if not os.path.exists(pyuic_path):
+                raise IOError("Can't open file " + pyuic_path)
 
             os.system("python " + pyuic_path + " " + os.path.join(root_path, file_) + " > " + os.path.join(root_path,
                                                                                                            out_file))
@@ -46,7 +47,7 @@ def regenerate_ui_files(root_path):
 
 
 def gen_ui_files(path):
-    """ If path doesn't exist throw assert error. Otherwise regenerate all user interface python files that may be
+    """ If path doesn't exist throw IOError. Otherwise regenerate all user interface python files that may be
     needed. Find all files in given path that ends with ui and compare their date with generated python user interface
     files with similiar name. If ui files are newer that regenerate python user interface files (generate new if they
     don't exist). If they are older don't do anything.
@@ -57,4 +58,4 @@ def gen_ui_files(path):
         regenerate_ui_files(path)
     else:
         cwd = os.getcwd()
-        assert False, "uigen: Cannot find " + path + " dir or wrong working directory: " + cwd
+        raise IOError("uigen: Cannot find {} dir or wrong working directory: {}".format(path, cwd))

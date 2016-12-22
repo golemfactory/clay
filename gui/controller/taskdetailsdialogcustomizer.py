@@ -98,7 +98,8 @@ class TaskDetailsDialogCustomizer(Customizer):
             ss = self.gnr_task_state.task_state.subtask_states[subtask_id]
             comp = ss.computer
 
-            assert isinstance(comp, ComputerState)
+            if not isinstance(comp, ComputerState):
+                raise TypeError("Incorrect computer type: {}. Should be ComputerState".format(type(comp)))
 
             self.gui.ui.nodeNameLabel.setText(node_name)
             self.gui.ui.nodeIpAddressLabel.setText(comp.ip_address)

@@ -87,14 +87,16 @@ def direct(o, recipient, value):
 
 def encode_payment(to, value):
     value = long(value)
-    assert value < 2**96
+    max_value = 2**96
+    if value >= max_value:
+        raise ValueError("value: {}, should be less than: {}".format(value, max_value))
     value = zpad(int_to_big_endian(value), 12)
-    assert type(value) is str
-    assert len(value) == 12
+    if len(value) != 12:
+        raise ValueError("Incorrect 'value' length: {}, should be 12".format(len(value)))
     to = normalize_address(to)
-    assert len(to) == 20
+    if len(to) != 20:
+        raise ValueError("Incorrect 'to' length: {}, should be 20".format(len(to)))
     mix = value + to
-    assert len(mix) == 32
     return mix
 
 
@@ -103,7 +105,6 @@ def encode_payment(to, value):
 @click.argument('payments', nargs=-1, required=True)
 def multi(o, payments):
     print "multi payment"
-    data = ''
     encp = []
     value = 0
     for p in payments:
@@ -154,7 +155,9 @@ def faucet(o):
         tx.sign(Faucet.PRIVKEY)
         o.eth.send(tx)
         addr = tx.creates
-        assert addr == "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+        expected = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+        if addr != expected:
+            raise ValueError("Incorrect address: {}. Expected: {}".format(addr, expected.encode('hex')))
         print "ADDR", addr.encode('hex')
 
 

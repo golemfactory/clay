@@ -29,9 +29,11 @@ class TransactionSystem(object):
                                subtask this payment is for.
         :param int value:      Aggreed value of the computed subtask.
         :param AccountInfo account_info: Billing account.
+        :raise ValueError:     In case of incorrect payee address
         """
         payee = account_info.eth_account.address
-        assert len(payee) == 20
+        if len(payee) != 20:
+            raise ValueError("Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
         return Payment.create(subtask=subtask_id, payee=payee, value=value)
 
     def get_payments_list(self):

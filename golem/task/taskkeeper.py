@@ -51,8 +51,10 @@ class CompTaskKeeper(object):
         self.subtask_to_task = {}  # maps subtasks id to tasks id
 
     def add_request(self, theader, price):
-        assert type(price) in (int, long)
-        assert price >= 0
+        if not type(price) in (int, long):
+            raise TypeError("Incorrect 'price' type: {}. Should be int or long".format(type(price)))
+        if price < 0:
+            raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
@@ -82,7 +84,8 @@ class CompTaskKeeper(object):
     @handle_key_error
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
-        assert type(price) in (int, long)
+        if not type(price) in (int, long):
+            raise TypeError("Incorrect 'price' type: {}. Should be int or long".format(type(price)))
         return compute_subtask_value(price, computing_time)
 
     @handle_key_error

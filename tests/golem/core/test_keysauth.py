@@ -33,7 +33,7 @@ class KeysAuthTest(TestWithKeysAuth):
 
     def test_keys_dir_file(self):
         file_ = self.additional_dir_content([1])[0]
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(IOError):
             km = KeysAuth(self.path)
             km.set_keys_dir(file_)
 
