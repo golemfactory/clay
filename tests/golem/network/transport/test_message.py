@@ -97,7 +97,7 @@ class TestMessages(unittest.TestCase):
                 raise unittest.SkipTest("tzset required")
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
-        m = MessageHello(timestamp = epoch_t)
+        m = MessageHello(timestamp=epoch_t)
         db = DataBuffer()
         m.serialize_to_buffer(db)
         set_tz('US/Eastern')
@@ -147,3 +147,12 @@ class TestMessages(unittest.TestCase):
         result = Message.decrypt_and_deserialize(db, server)
 
         assert len(result) == 0
+
+    def test_message_errors(self):
+        m = MessageReportComputedTask()
+        with self.assertRaises(TypeError):
+            m.serialize_to_buffer("not a db")
+        with self.assertRaises(TypeError):
+            m.decrypt_and_deserialize("not a db")
+        with self.assertRaises(TypeError):
+            m.deserialize("not a db")

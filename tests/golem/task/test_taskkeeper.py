@@ -224,6 +224,10 @@ class TestCompTaskKeeper(LogTestCase):
                             header["task_owner"], header["deadline"], header["subtask_timeout"],
                             1024, 1.0, 1000)
         header.task_id = "xyz"
+        with self.assertRaises(TypeError):
+            ctk.add_request(header, "not a number")
+        with self.assertRaises(ValueError):
+            ctk.add_request(header, -2)
         ctk.add_request(header, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)

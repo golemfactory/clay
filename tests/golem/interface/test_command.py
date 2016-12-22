@@ -4,7 +4,7 @@ from mock import Mock
 from twisted.internet.defer import Deferred, TimeoutError
 
 from golem.interface.command import Argument, CommandResult, CommandHelper, group, doc, command, client_ctx, \
-    CommandStorage, storage_context
+    CommandStorage, storage_context, CommandException
 
 
 class TestArgument(unittest.TestCase):
@@ -44,7 +44,7 @@ class TestArgument(unittest.TestCase):
 
 class TestCommandResult(unittest.TestCase):
 
-    def test(self):
+    def test_command_result(self):
 
         for data in ['result', '']:
             result = CommandResult(data)
@@ -56,6 +56,9 @@ class TestCommandResult(unittest.TestCase):
         assert result.type is CommandResult.NONE
         with self.assertRaises(TypeError):
             result.from_tabular()
+
+        with self.assertRaises(CommandException):
+            CommandResult(error=1)
 
     def test_tabular(self):
 
@@ -94,6 +97,11 @@ class TestCommandResult(unittest.TestCase):
             ['a', 'e', 'c'],
             ['d', 'b', 'f'],
         ]
+
+        CommandResult.type = CommandResult.NONE
+        with self.assertRaises(TypeError):
+            CommandResult.from_tabular()
+        CommandResult.type = CommandResult.TABULAR
 
 
 class TestCommandHelper(unittest.TestCase):

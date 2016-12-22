@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class TaskResourceHeader(object):
+    def __init__(self, dir_name):
+        self.sub_dir_headers = []
+        self.files_data = []
+        self.dir_name = dir_name
+
     def __eq__(self, other):
         if self.dir_name != other.dir_name:
             return False
@@ -87,7 +92,7 @@ class TaskResourceHeader(object):
         return cur_th
 
     @classmethod
-    def build_header_delta_from_chosen(cls, header, absolute_root, chosen_files=None):
+    def build_header_delta_from_chosen(cls, header, absolute_root, chosen_files=[]):
         if not isinstance(header, TaskResourceHeader):
             raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
         cur_th = TaskResourceHeader(header.dir_name)
@@ -196,11 +201,6 @@ class TaskResourceHeader(object):
                 else:
                     ref_header_found = False
         return last_header, last_ref_header, ref_header_found
-
-    def __init__(self, dir_name):
-        self.sub_dir_headers = []
-        self.files_data = []
-        self.dir_name = dir_name
 
     def to_string(self):
         out = u"\nROOT '{}' \n".format(self.dir_name)

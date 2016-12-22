@@ -10,6 +10,10 @@ from golem.tools.assertlogs import LogTestCase
 class TestTaskBase(LogTestCase):
 
     def test_task_simple_serializer(self):
+        with self.assertRaises(TypeError):
+            Task.build_task("Not Task Builder")
+        with self.assertRaises(TypeError):
+            Task.register_listener("Not Listener")
         t = Task(Mock(), "")
         self.assertIsInstance(t, Task)
         self.assertEqual(t.get_stdout("abc"), "")

@@ -78,6 +78,20 @@ class TestRouter(TestDirFixtureWithReactor):
         super(TestRouter, self).setUp()
         self.state = TestRouter.State(self.reactor_thread.reactor)
 
+    def _test_init(self):
+        from os.path import join
+        with self.assertRaises(IOError):
+            CrossbarRouter(datadir=join(self.path, 'definitely_not_exists'))
+        router = CrossbarRouter(datadir=self.path)
+        self.assertIsInstance(router, CrossbarRouter, "Something went really wrong...")
+        self.assertEqual(router.working_dir == join(self.path, 'crossbar'))
+        router = CrossbarRouter(crossbar_dir='/home/', datadir=self.path)
+        self.assertEqual(router.working_dir == '/home/crossbar')
+        router = CrossbarRouter(crossbar_dir='/home/')
+        self.assertEqual(router.working_dir == '/home/')
+        self.assertIsNone(router.node)
+        self.assertIsNone(router.pubkey)
+
     def _start_router(self):
         self.state.router = CrossbarRouter(datadir=self.path)
         self.state.router.start(

@@ -513,6 +513,23 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.tm.update_task_signatures()
         assert task.header.signature != sig
 
+    def test_errors(self):
+        with self.assertRaises(TypeError):
+            self.tm.register_listener(None)
+        t = self._get_task_mock(task_id="qaz123WSX")
+        self.tm.add_new_task(t)
+        with self.assertRaises(RuntimeError):
+            self.tm.add_new_task(t)
+        self.tm.key_id = None
+        self.tm.listen_address = "not address"
+        self.tm.listen_port = "not a port"
+        t = self._get_task_mock(task_id="qaz123WSX2")
+        with self.assertRaises(ValueError):
+            self.tm.add_new_task(t)
+        self.tm.key_id = "1"
+        with self.assertRaises(IOError):
+            self.tm.add_new_task(t)
+
     @classmethod
     def __build_tasks(cls, n):
 
