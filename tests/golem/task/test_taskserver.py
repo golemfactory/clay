@@ -399,7 +399,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
         self.assertTrue(ts._add_pending_request.called)
-        self.assertIsNone(ts.failures_to_send)
+        self.assertEqual(ts.failures_to_send, {})
 
     def test_add_task_session(self):
         ccd = self.__get_config_desc()
