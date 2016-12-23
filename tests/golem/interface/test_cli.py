@@ -76,7 +76,7 @@ class TestCLI(unittest.TestCase):
             cli.execute()
 
         _process.assert_called_with(['help'])
-        self.assertIsNotNone(_out.getvalue())
+        self.assertFalse(_out.getvalue())
 
         _process.called = False
 
@@ -163,7 +163,7 @@ class TestCLI(unittest.TestCase):
 
             with patch('sys.stderr', new_callable=StringIO) as err:
                 cli.process(['commands', 'command'])
-                self.assertIsNotNone(err.getvalue())
+                self.assertTrue(err.getvalue())
 
     @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.core.common.config_logging', side_effect=_nop)
@@ -316,7 +316,7 @@ class TestCLICommands(unittest.TestCase):
     @patch('sys.stdout', new_callable=MockStdout)
     def test_debug(self, out):
         _debug()
-        self.assertIsNotNone(out.getvalue())
+        self.assertTrue(out.getvalue())
 
 
 class TestArgumentParser(unittest.TestCase):

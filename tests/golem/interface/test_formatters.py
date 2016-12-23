@@ -53,18 +53,18 @@ class TestFormatters(unittest.TestCase):
         fmt = CommandFormatter()
         fmt_json = CommandJSONFormatter()
 
-        self.assertIsNone(fmt.supports(ns_dict))
-        self.assertIsNone(fmt_json.supports(ns_dict))
+        self.assertFalse(fmt.supports(ns_dict))
+        self.assertFalse(fmt_json.supports(ns_dict))
 
         ns_dict = dict(json=False)
 
-        self.assertIsNone(fmt.supports(ns_dict))
+        self.assertFalse(fmt.supports(ns_dict))
         self.assertFalse(fmt_json.supports(ns_dict))
 
         ns_dict = dict(json=True)
 
-        self.assertIsNone(fmt.supports(ns_dict))
-        self.assertIsNotNone(fmt_json.supports(ns_dict))
+        self.assertFalse(fmt.supports(ns_dict))
+        self.assertTrue(fmt_json.supports(ns_dict))
 
         fmt_json.clear_argument(ns_dict)
 

@@ -93,7 +93,7 @@ class TaskManager(TaskEventListener):
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task has been already added")
-        if self.key_id is None:
+        if not self.key_id:
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address, self.listen_port):
             raise IOError("Incorrect socket address")

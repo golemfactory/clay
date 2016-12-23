@@ -354,7 +354,7 @@ class MessagePing(Message):
         Message.__init__(self, MessagePing.Type, sig, timestamp)
 
         if dict_repr:
-            if dict_repr.get(MessagePing.PING_STR) is None:
+            if not dict_repr.get(MessagePing.PING_STR):
                 raise IOError("Ping message failed")
 
     def dict_repr(self):
