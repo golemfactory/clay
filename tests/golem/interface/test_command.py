@@ -15,9 +15,9 @@ class TestArgument(unittest.TestCase):
         simplified = argument.simplify()
         kw = simplified.kwargs
 
-        assert 'default' not in kw
-        assert 'nargs' not in kw
-        assert kw['action'] == 'store_true'
+        self.assertNotIn('default', kw)
+        self.assertNotIn('nargs', kw)
+        self.assertEqual(kw['action'], 'store_true')
 
     def test_simply_arg(self):
 
@@ -25,21 +25,21 @@ class TestArgument(unittest.TestCase):
         simplified = argument.simplify()
         kw = simplified.kwargs
 
-        assert 'default' in kw
-        assert kw['nargs'] == '?'
-        assert kw['default'] is None
-        assert kw['action'] == 'store'
+        self.assertIn('default', kw)
+        self.assertEqual(kw['nargs'], '?')
+        self.assertIsNone(kw['default'])
+        self.assertEqual(kw['action'], 'store')
 
     def test_extend(self):
 
         argument = Argument('arg', optional=True)
         extended = Argument.extend(argument, 'narg', optional=False, default=7)
 
-        assert len(extended.args) == 2
-        assert len(extended.kwargs) == 2
+        self.assertEqual(len(extended.args), 2)
+        self.assertEqual(len(extended.kwargs), 2)
 
-        assert extended.kwargs['optional'] is False
-        assert extended.kwargs['default'] == 7
+        self.assertFalse(extended.kwargs['optional'])
+        self.assertEqual(extended.kwargs['default'], 7)
 
 
 class TestCommandResult(unittest.TestCase):
@@ -48,12 +48,12 @@ class TestCommandResult(unittest.TestCase):
 
         for data in ['result', '']:
             result = CommandResult(data)
-            assert result.type is CommandResult.PLAIN
+            self.assertIs(result.type, CommandResult.PLAIN)
             with self.assertRaises(TypeError):
                 result.from_tabular()
 
         result = CommandResult()
-        assert result.type is CommandResult.NONE
+        self.assertIs(result.type, CommandResult.NONE)
         with self.assertRaises(TypeError):
             result.from_tabular()
 
@@ -70,33 +70,33 @@ class TestCommandResult(unittest.TestCase):
 
         tabular = CommandResult.to_tabular(headers, values)
 
-        assert tabular.data == (headers, values)
-        assert tabular.type == CommandResult.TABULAR
-        assert tabular.from_tabular() == (headers, values)
+        self.assertEqual(tabular.data, (headers, values))
+        self.assertEqual(tabular.type, CommandResult.TABULAR)
+        self.assertEqual(tabular.from_tabular(), (headers, values))
 
         tabular = CommandResult.to_tabular(headers, values, sort='4')
 
-        assert tabular.from_tabular()[1] == values
+        self.assertEqual(tabular.from_tabular()[1], values)
 
         tabular = CommandResult.to_tabular(headers, values, sort='1')
 
-        assert tabular.from_tabular()[1] != values
-        assert tabular.from_tabular()[1] == [
+        self.assertNotEqual(tabular.from_tabular()[1], values)
+        self.assertEqual(tabular.from_tabular()[1], [
             ['a', 'e', 'c'],
             ['d', 'b', 'f'],
-        ]
+        ])
 
         tabular = CommandResult.to_tabular(headers, values, sort='2')
 
-        assert tabular.from_tabular()[1] == values
+        self.assertEqual(tabular.from_tabular()[1], values)
 
         tabular = CommandResult.to_tabular(headers, values, sort='3')
 
-        assert tabular.from_tabular()[1] != values
-        assert tabular.from_tabular()[1] == [
+        self.assertNotEqual(tabular.from_tabular()[1], values)
+        self.assertEqual(tabular.from_tabular()[1], [
             ['a', 'e', 'c'],
             ['d', 'b', 'f'],
-        ]
+        ])
 
         CommandResult.type = CommandResult.NONE
         with self.assertRaises(TypeError):
@@ -108,13 +108,13 @@ class TestCommandHelper(unittest.TestCase):
 
     def test_wait_for_deferred(self):
 
-        assert CommandHelper.wait_for('1234') == '1234'
+        self.assertEqual(CommandHelper.wait_for('1234'), '1234')
 
         deferred = Deferred()
         deferred.result = '5678'
         deferred.called = True
 
-        assert CommandHelper.wait_for(deferred) == '5678'
+        self.assertEqual(CommandHelper.wait_for(deferred), '5678')
 
         with self.assertRaises(TimeoutError):
             deferred_2 = Deferred()
@@ -160,10 +160,12 @@ class TestCommandHelper(unittest.TestCase):
             def command_root():
                 pass
 
-            assert CommandStorage.roots == [MockPreClass, MockClass, command_root]
-            assert CommandHelper.get_children(MockPreClass).keys() == ['mock_2_renamed']
-            assert CommandHelper.get_children(MockClass).keys() == ['sub_commands', 'mock_1', 'renamed_mc']
-            assert CommandHelper.get_children(MockSubClass).keys() == ['command_msc', 'command']
+            self.assertEqual(CommandStorage.roots, [MockPreClass, MockClass, command_root])
+            self.assertEqual(CommandHelper.get_children(MockPreClass).keys(), ['mock_2_renamed'])
+            self.assertEqual(CommandHelper.get_children(MockClass).keys(), ['sub_commands', 'mock_1', 'renamed_mc'])
+            self.assertEqual(CommandHelper.get_children(MockSubClass).keys(), ['command_msc', 'command'])
 
-
-
+        with self.assertRaises(TypeError):
+            @group("commands", help="command group")
+            def foo():
+                pass

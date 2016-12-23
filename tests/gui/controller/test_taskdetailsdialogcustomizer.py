@@ -61,8 +61,8 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         task_dialog = TaskDetailsDialog(self.gnrgui.main_window.window)
         task_state = TaskDesc()
         customizer = TaskDetailsDialogCustomizer(task_dialog, self.logic, task_state)
-        assert customizer.sorting == -1
-        assert customizer.sorting_order is None
+        self.assertEqual(customizer.sorting, -1)
+        self.assertIsNone(customizer.sorting_order)
         task_state.task_state.progress = 0.33
         task_state.task_state.remaining_time = 34
         task_state.task_state.elapsed_time = 12
@@ -77,30 +77,30 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         ss2.subtask_status = SubtaskStatus.finished
         task_state.task_state.subtask_states['abc'] = ss2
         customizer.update_view(task_state.task_state)
-        assert customizer.sorting == -1
-        assert customizer.sorting_order is None
-        assert len(customizer.subtask_table_elements) == 2
+        self.assertEqual(customizer.sorting, -1)
+        self.assertIsNone(customizer.sorting_order)
+        self.assertEqual(len(customizer.subtask_table_elements), 2)
         ids = [str(customizer.gui.ui.nodesTableWidget.item(i, 1).text()) for i in range(2)]
-        assert 'def' in ids
-        assert 'abc' in ids
+        self.assertIn('def', ids)
+        self.assertIn('abc', ids)
 
         customizer._TaskDetailsDialogCustomizer__header_clicked(1)
-        assert customizer.sorting == 1
-        assert customizer.sorting_order == SortingOrder.ascending
-        assert len(customizer.subtask_table_elements) == 2
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()) == "DEF"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()) == "ABC"
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()) == "abc"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()) == "def"
+        self.assertEqual(customizer.sorting, 1)
+        self.assertEqual(customizer.sorting_order, SortingOrder.ascending)
+        self.assertEqual(len(customizer.subtask_table_elements), 2)
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()), "DEF")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()), "ABC")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()), "abc")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()), "def")
 
         customizer._TaskDetailsDialogCustomizer__header_clicked(1)
-        assert customizer.sorting == 1
-        assert customizer.sorting_order == SortingOrder.descending
-        assert len(customizer.subtask_table_elements) == 2
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()) == "ABC"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()) == "DEF"
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()) == "def"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()) == "abc"
+        self.assertEqual(customizer.sorting, 1)
+        self.assertEqual(customizer.sorting_order, SortingOrder.descending)
+        self.assertEqual(len(customizer.subtask_table_elements), 2)
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()), "ABC")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()), "DEF")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()), "def")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()), "abc")
 
         ss3 = SubtaskState()
         ss3.computer.node_name = "FGH"
@@ -109,37 +109,37 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         task_state.task_state.subtask_states['fgh'] = ss3
         customizer.update_view(task_state.task_state)
 
-        assert customizer.sorting == 1
-        assert customizer.sorting_order == SortingOrder.descending
-        assert len(customizer.subtask_table_elements) == 3
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()) == "FGH"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()) == "ABC"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()) == "DEF"
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()) == "fgh"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()) == "def"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()) == "abc"
+        self.assertEqual(customizer.sorting, 1)
+        self.assertEqual(customizer.sorting_order, SortingOrder.descending)
+        self.assertEqual(len(customizer.subtask_table_elements), 3)
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()), "FGH")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()), "ABC")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()), "DEF")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()), "fgh")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()), "def")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()), "abc")
 
         customizer._TaskDetailsDialogCustomizer__header_clicked(0)
-        assert customizer.sorting == 0
-        assert customizer.sorting_order == SortingOrder.ascending
-        assert len(customizer.subtask_table_elements) == 3
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()) == "ABC"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()) == "DEF"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()) == "FGH"
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()) == "def"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()) == "abc"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()) == "fgh"
+        self.assertEqual(customizer.sorting, 0)
+        self.assertEqual(customizer.sorting_order, SortingOrder.ascending)
+        self.assertEqual(len(customizer.subtask_table_elements), 3)
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()), "ABC")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()), "DEF")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()), "FGH")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()), "def")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()), "abc")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()), "fgh")
 
         customizer._TaskDetailsDialogCustomizer__header_clicked(0)
-        assert customizer.sorting == 0
-        assert customizer.sorting_order == SortingOrder.descending
-        assert len(customizer.subtask_table_elements) == 3
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()) == "FGH"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()) == "DEF"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()) == "ABC"
-        assert str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()) == "fgh"
-        assert str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()) == "abc"
-        assert str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()) == "def"
+        self.assertEqual(customizer.sorting, 0)
+        self.assertEqual(customizer.sorting_order, SortingOrder.descending)
+        self.assertEqual(len(customizer.subtask_table_elements), 3)
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 0).text()), "FGH")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 0).text()), "DEF")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 0).text()), "ABC")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(0, 1).text()), "fgh")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(1, 1).text()), "abc")
+        self.assertEqual(str(customizer.gui.ui.nodesTableWidget.item(2, 1).text()), "def")
 
     def test_subtask_dialog(self):
         customizer = self.__init_basic_customizer()
@@ -152,35 +152,35 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         customizer = self.__init_basic_customizer()
         customizer._TaskDetailsDialogCustomizer__header_clicked(1)
         customizer._TaskDetailsDialogCustomizer__nodes_table_row_clicked(1, 2)
-        assert customizer.gui.ui.nodeNameLabel.text() == "DEF"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.20"
-        assert customizer.gui.ui.performanceLabel.text() == "2000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 2"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "DEF")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.20")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "2000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 2")
         customizer._TaskDetailsDialogCustomizer__nodes_table_row_clicked(2, 1)
-        assert customizer.gui.ui.nodeNameLabel.text() == "XYZ"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.30"
-        assert customizer.gui.ui.performanceLabel.text() == "3000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 3"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "XYZ")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.30")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "3000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 3")
         customizer._TaskDetailsDialogCustomizer__nodes_table_row_clicked(0, 3)
-        assert customizer.gui.ui.nodeNameLabel.text() == "ABC"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.10"
-        assert customizer.gui.ui.performanceLabel.text() == "1000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 1"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "ABC")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.10")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "1000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 1")
         customizer.gui.ui.nodesTableWidget.selectRow(1)
-        assert customizer.gui.ui.nodeNameLabel.text() == "DEF"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.20"
-        assert customizer.gui.ui.performanceLabel.text() == "2000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 2"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "DEF")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.20")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "2000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 2")
         customizer.gui.ui.nodesTableWidget.selectRow(0)
-        assert customizer.gui.ui.nodeNameLabel.text() == "ABC"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.10"
-        assert customizer.gui.ui.performanceLabel.text() == "1000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 1"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "ABC")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.10")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "1000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 1")
         customizer.gui.ui.nodesTableWidget.selectRow(2)
-        assert customizer.gui.ui.nodeNameLabel.text() == "XYZ"
-        assert customizer.gui.ui.nodeIpAddressLabel.text() == "10.10.10.30"
-        assert customizer.gui.ui.performanceLabel.text() == "3000"
-        assert customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText() == "DEF 3"
+        self.assertEqual(customizer.gui.ui.nodeNameLabel.text(), "XYZ")
+        self.assertEqual(customizer.gui.ui.nodeIpAddressLabel.text(), "10.10.10.30")
+        self.assertEqual(customizer.gui.ui.performanceLabel.text(), "3000")
+        self.assertEqual(customizer.gui.ui.subtaskDefinitionTextEdit.toPlainText(), "DEF 3")
         customizer._TaskDetailsDialogCustomizer__context_menu_requested(QPoint(0, 0))
 
         customizer._TaskDetailsDialogCustomizer__close_button_clicked()

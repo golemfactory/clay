@@ -201,22 +201,22 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
         logic.client = rpc_client
         logic.change_description(description)
-        assert self.client.get_description() == description
+        self.assertEqual(self.client.get_description(), description)
 
     def test_add_tasks(self):
         logic = GNRApplicationLogic()
         logic.customizer = Mock()
         td = TestGNRApplicationLogicWithClient._get_task_definition()
         logic.add_task_from_definition(td)
-        assert "xyz" in logic.tasks, "Task was not added"
+        self.assertIn("xyz", logic.tasks, "Task was not added")
         task_state1 = TestGNRApplicationLogicWithClient._get_task_state()
         task_state2 = TestGNRApplicationLogicWithClient._get_task_state(task_id="abc")
         task_state3 = TestGNRApplicationLogicWithClient._get_task_state(task_id="def")
         logic.add_tasks([task_state1, task_state2, task_state3])
         self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
-        assert "xyz" in logic.tasks, "Task was not added"
-        assert "abc" in logic.tasks, "Task was not added"
-        assert "def" in logic.tasks, "Task was not added"
+        self.assertIn("xyz", logic.tasks, "Task was not added")
+        self.assertIn("abc", logic.tasks, "Task was not added")
+        self.assertIn("def", logic.tasks, "Task was not added")
         self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
         self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
         result = logic.add_tasks([])
@@ -271,15 +271,15 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
         logic.lock_config(True)
 
-        assert not logic.customizer.gui.ui.settingsOkButton.isEnabled()
-        assert not logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+        self.assertFalse(logic.customizer.gui.ui.settingsOkButton.isEnabled())
+        self.assertFalse(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
         logic.lock_config(True)
         logic.lock_config(False)
         logic.lock_config(False)
 
-        assert logic.customizer.gui.ui.settingsOkButton.isEnabled()
-        assert logic.customizer.gui.ui.settingsCancelButton.isEnabled()
+        self.assertTrue(logic.customizer.gui.ui.settingsOkButton.isEnabled())
+        self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
     def test_run_test_task(self):
         logic = self.logic
@@ -316,15 +316,15 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         rpc_publisher.reset()
         logic.run_test_task(ts)
         logic.test_task_started(True)
-        assert logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
+        self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
         time.sleep(0.5)
-        assert rpc_publisher.success
+        self.assertTrue(rpc_publisher.success)
 
         ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
         logic.run_test_task(ts)
         time.sleep(0.5)
-        assert rpc_publisher.success
+        self.assertTrue(rpc_publisher.success)
 
         # since PythonTestVM does not support end_comp() method,
         # this is only a smoke test instead of actual test
@@ -338,20 +338,21 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         rpc_publisher.reset()
         logic.run_test_task(ts)
         time.sleep(1)
-        assert not rpc_publisher.success
+        self.assertFalse(rpc_publisher.success)
 
         rpc_publisher.reset()
         logic.run_test_task(ts)
-        assert not rpc_publisher.success
+        self.assertFalse(rpc_publisher.success)
 
         prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
         logic.task_settings_changed()
-        assert logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count > prev_call_count
+        self.assertGreater(logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count,
+                           prev_call_count)
 
         logic.tasks["xyz"] = ts
         logic.clone_task("xyz")
 
-        assert logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0] == ts.definition
+        self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
 
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
@@ -379,15 +380,15 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         peer2.node_name = "NODE 2"
         logic._update_peers_view([DictSerializer.dump(peer), DictSerializer.dump(peer2)])
         table = logic.customizer.gui.ui.connectedPeersTable
-        assert table.rowCount() == 2
-        assert table.item(0, 0).text() == "10.10.10.10"
-        assert table.item(1, 0).text() == "10.10.10.20"
-        assert table.item(0, 1).text() == "1031"
-        assert table.item(1, 1).text() == "1034"
-        assert table.item(0, 2).text() == "KEYID"
-        assert table.item(1, 2).text() == "KEYID2"
-        assert table.item(0, 3).text() == "NODE 1"
-        assert table.item(1, 3).text() == "NODE 2"
+        self.assertEqual(table.rowCount(), 2)
+        self.assertEqual(table.item(0, 0).text(), "10.10.10.10")
+        self.assertEqual(table.item(1, 0).text(), "10.10.10.20")
+        self.assertEqual(table.item(0, 1).text(), "1031")
+        self.assertEqual(table.item(1, 1).text(), "1034")
+        self.assertEqual(table.item(0, 2).text(), "KEYID")
+        self.assertEqual(table.item(1, 2).text(), "KEYID2")
+        self.assertEqual(table.item(0, 3).text(), "NODE 1")
+        self.assertEqual(table.item(1, 3).text(), "NODE 2")
 
     def test_change_verification_options(self):
         logic = self.logic
@@ -396,14 +397,14 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, self.logic)
         prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
         logic.change_verification_option(size_x_max=914)
-        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 914
-        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == prev_y
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), prev_y)
         logic.change_verification_option(size_y_max=123)
-        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 914
-        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == 123
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 123)
         logic.change_verification_option(size_y_max=3190, size_x_max=134)
-        assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 134
-        assert logic.customizer.gui.ui.verificationSizeYSpinBox.maximum() == 3190
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
+        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     def test_messages(self):
         logic = self.logic
@@ -415,13 +416,13 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         register_rendering_task_types(logic)
 
         rts = TaskDesc()
-        assert isinstance(rts, TaskDesc)
+        self.assertIsInstance(rts, TaskDesc)
         f = self.additional_dir_content([3])
         rts.definition.task_type = "Blender"
         rts.definition.output_file = f[0]
         rts.definition.main_program_file = f[1]
         rts.definition.main_scene_file = f[2]
-        assert logic._validate_task_state(rts)
+        self.assertTrue(logic._validate_task_state(rts))
         m = Mock()
 
         broken_benchmark = BlenderBenchmark()
@@ -448,28 +449,28 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.customizer.show_error_window.assert_called_with(u"Main scene file NOT EXISTING is not properly set")
 
         logic.test_task_computation_error(u"Bździągwa")
-        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. Bździągwa"
+        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. Bździągwa"
         logic.test_task_computation_error(u"500 server error")
-        logic.progress_dialog_customizer.gui.ui.message.text() == \
+        logic.progress_dialog_customizer.gui.ui.message.text(), \
             u"Task test computation failure. [500 server error] There is a chance that you RAM limit is too low. " \
             u"Consider increasing max memory usage"
         logic.test_task_computation_error(None)
-        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task test computation failure. "
+        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. "
         logic.test_task_computation_success([], 10000)
-        logic.progress_dialog_customizer.gui.ui.message.text() == u"Task task computation success!"
+        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
 
         rts.definition = BlenderBenchmark().task_definition
         rts.definition.output_file = 1342
-        assert not logic._validate_task_state(rts)
+        self.assertFalse(logic._validate_task_state(rts))
 
-        assert logic._format_stats_message(("STAT1", 2424)) == u"Session: STAT1; All time: 2424"
-        assert logic._format_stats_message(["STAT1"]) == u"Error"
-        assert logic._format_stats_message(13131) == u"Error"
+        self.assertEqual(logic._format_stats_message(("STAT1", 2424)), u"Session: STAT1; All time: 2424")
+        self.assertEqual(logic._format_stats_message(["STAT1"]), u"Error")
+        self.assertEqual(logic._format_stats_message(13131), u"Error")
 
         ts = TaskDesc()
         ts.definition.task_type = "Blender"
         ts.definition.main_program_file = "nonexisting"
-        assert not logic._validate_task_state(ts)
+        self.assertFalse(logic._validate_task_state(ts))
         print logic.customizer.show_error_window
         logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
 

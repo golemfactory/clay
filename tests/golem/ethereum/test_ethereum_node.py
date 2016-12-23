@@ -36,13 +36,13 @@ class EthereumClientTest(unittest.TestCase):
                 started = True
                 break
 
-        assert proc.returncode is None
+        self.assertIsNone(proc.returncode)
         proc.send_signal(signal.SIGTERM)
         proc.wait()
-        assert started, "No 'started' word in logs"
+        self.assertTrue(started, "No 'started' word in logs")
         log = proc.stdout.read()
-        assert "terminated" in log
-        assert proc.returncode is 0
+        self.assertTrue("terminated" in log)
+        self.assertEqual(proc.returncode, 0)
 
 
 class EthereumFaucetTest(TempDirFixture):

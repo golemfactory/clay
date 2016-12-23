@@ -14,13 +14,13 @@ class TestDatabase(TempDirFixture):
 
     def test_schema_version(self):
         db = Database(self.path)
-        assert db._get_user_version() == db.SCHEMA_VERSION
-        assert db.SCHEMA_VERSION != 0
+        self.assertEqual(db._get_user_version(), db.SCHEMA_VERSION)
+        self.assertNotEqual(db.SCHEMA_VERSION, 0)
 
         db._set_user_version(0)
-        assert db._get_user_version() == 0
+        self.assertEqual(db._get_user_version(), 0)
         db = Database(self.path)
-        assert db._get_user_version() == db.SCHEMA_VERSION
+        self.assertEqual(db._get_user_version(), db.SCHEMA_VERSION)
         db.db.close()
 
 
@@ -49,15 +49,15 @@ class TestPayment(DatabaseFixture):
     def test_payment_details(self):
         p1 = Payment(payee="me", subtask="T1000", value=123456)
         p2 = Payment(payee="you", subtask="T900", value=654321)
-        assert p1.payee != p2.payee
-        assert p1.subtask != p2.subtask
-        assert p1.value != p2.value
-        assert p1.details == {}
-        assert p1.details == p2.details
-        assert p1.details is not p2.details
+        self.assertNotEqual(p1.payee, p2.payee)
+        self.assertNotEqual(p1.subtask, p2.subtask)
+        self.assertNotEqual(p1.value, p2.value)
+        self.assertEqual(p1.details, {})
+        self.assertEqual(p1.details, p2.details)
+        self.assertIsNot(p1.details, p2.details)
         p1.details['check'] = True
-        assert p1.details['check']
-        assert 'check' not in p2.details
+        self.assertIsNone(p1.details['check'])
+        self.assertNotIn('check', p2.details)
 
 
 class TestReceivedPayment(DatabaseFixture):

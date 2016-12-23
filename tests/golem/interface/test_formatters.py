@@ -14,12 +14,12 @@ class TestFormatters(unittest.TestCase):
         for prettify in [True, False]:
             formatter.prettify = prettify
 
-            assert formatter.format(None) is None
-            assert formatter.format('') is None
-            assert formatter.format('Some text') == 'Some text'
+            self.assertIsNone(formatter.format(None))
+            self.assertIsNone(formatter.format(''))
+            self.assertEqual(formatter.format('Some text'), 'Some text')
 
             if not prettify:
-                assert formatter.format(formatter) == DictSerializer.dump(formatter, typed=False)
+                self.assertEqual(formatter.format(formatter), DictSerializer.dump(formatter, typed=False))
 
         table_headers = ['First', 'Second', 'Third']
         table_values = [
@@ -32,18 +32,19 @@ class TestFormatters(unittest.TestCase):
         tabular_repr = formatter.format(tabular_result)
         tabular_data_repr = formatter.format(tabular_result.from_tabular())
 
-        assert tabular_repr
-        assert tabular_data_repr
-        assert tabular_data_repr != tabular_repr
+        self.assertIsNotNone(tabular_repr)
+        self.assertIsNotNone(tabular_data_repr)
+        self.assertNotEqual(tabular_data_repr, tabular_repr)
 
     def test_json_command_formatter(self):
         fmt = CommandJSONFormatter()
 
         json_str = fmt.format(fmt)
 
-        assert json_str and json.loads(json_str)
-        assert fmt.format('') is None
-        assert fmt.format('test') == '"test"'
+        self.assertIsNotNone(json_str)
+        self.assertIsNotNone(json.loads(json_str))
+        self.assertIsNone(fmt.format(''))
+        self.assertEqual(fmt.format('test'), '"test"')
 
     def test_namespace(self):
 
@@ -52,21 +53,19 @@ class TestFormatters(unittest.TestCase):
         fmt = CommandFormatter()
         fmt_json = CommandJSONFormatter()
 
-        assert not fmt.supports(ns_dict)
-        assert not fmt_json.supports(ns_dict)
+        self.assertIsNone(fmt.supports(ns_dict))
+        self.assertIsNone(fmt_json.supports(ns_dict))
 
         ns_dict = dict(json=False)
 
-        assert not fmt.supports(ns_dict)
-        assert not fmt_json.supports(ns_dict)
+        self.assertIsNone(fmt.supports(ns_dict))
+        self.assertFalse(fmt_json.supports(ns_dict))
 
         ns_dict = dict(json=True)
 
-        assert not fmt.supports(ns_dict)
-        assert fmt_json.supports(ns_dict)
+        self.assertIsNone(fmt.supports(ns_dict))
+        self.assertIsNotNone(fmt_json.supports(ns_dict))
 
         fmt_json.clear_argument(ns_dict)
 
-        assert 'json' not in ns_dict
-
-
+        self.assertNotIn('json', ns_dict)

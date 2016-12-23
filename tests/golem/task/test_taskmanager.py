@@ -516,14 +516,18 @@ class TestTaskManager(LogTestCase, TestDirFixture):
     def test_errors(self):
         with self.assertRaises(TypeError):
             self.tm.register_listener(None)
-        t = self._get_task_mock(task_id="qaz123WSX")
+        task_id = 'qaz123WSX'
+        subtask_id = "qweasdzxc"
+        t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
         self.tm.add_new_task(t)
         with self.assertRaises(RuntimeError):
             self.tm.add_new_task(t)
+        with self.assertRaises(TypeError):
+            self.tm.set_value(task_id, subtask_id, "incorrect value")
         self.tm.key_id = None
         self.tm.listen_address = "not address"
         self.tm.listen_port = "not a port"
-        t = self._get_task_mock(task_id="qaz123WSX2")
+        t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
         with self.assertRaises(ValueError):
             self.tm.add_new_task(t)
         self.tm.key_id = "1"

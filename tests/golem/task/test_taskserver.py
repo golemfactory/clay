@@ -40,21 +40,21 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_suggested_conn_reverse.return_value = False
         self.assertIsInstance(ts, TaskServer)
-        assert ts.request_task() is None
+        self.assertIsNone(ts.request_task())
         n2 = Node()
         n2.prv_addr = "10.10.10.10"
         n2.port = 10101
         task_header = self.__get_example_task_header()
         task_header["task_owner"] = n2
         ts.add_task_header(task_header)
-        assert ts.request_task() == "uvw"
+        self.assertEqual(ts.request_task(), "uvw")
         ts.remove_task_header("uvw")
         task_header["task_owner_port"] = 0
         task_header["task_id"] = "uvw2"
-        assert ts.add_task_header(task_header)
-        assert ts.task_keeper.task_headers["uvw2"] is not None
-        assert ts.request_task() is None
-        assert ts.task_keeper.task_headers.get("uvw2") is None
+        self.assertTrue(ts.add_task_header(task_header))
+        self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
+        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
 
     def test_send_results(self):
         ccd = self.__get_config_desc()
@@ -73,7 +73,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
-        assert ts.get_subtask_ttl("xyz") == 120
+        self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, "xxyyzz")
@@ -174,34 +174,34 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         with self.assertRaises(Exception) as raised:
             ts.add_task_header(task_header)
-            assert raised.exception.message == "Invalid signature"
-        assert len(ts.get_tasks_headers()) == 0
+            self.assertEqual(raised.exception.message, "Invalid signature")
+            self.assertEqual(len(ts.get_tasks_headers()), 0)
 
         task_header["task_owner_key_id"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
-        assert ts.add_task_header(task_header)
-        assert len(ts.get_tasks_headers()) == 1
+        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertEqual(len(ts.get_tasks_headers()), 1)
 
         task_header = self.__get_example_task_header()
         task_header["task_id"] = "xyz_2"
         task_header["task_owner_key_id"] = keys_auth_2.key_id
         task_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(task_header))
 
-        assert ts.add_task_header(task_header)
-        assert len(ts.get_tasks_headers()) == 2
+        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertEqual(len(ts.get_tasks_headers()), 2)
 
-        assert ts.add_task_header(task_header)
-        assert len(ts.get_tasks_headers()) == 2
+        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertEqual(len(ts.get_tasks_headers()), 2)
 
         new_header = dict(task_header)
         new_header["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
 
-        assert ts.add_task_header(new_header)
-        assert len(ts.get_tasks_headers()) == 2
+        self.assertIsNotNone(ts.add_task_header(new_header))
+        self.assertEqual(len(ts.get_tasks_headers()), 2)
         saved_task = next(th for th in ts.get_tasks_headers() if th["task_id"] == "xyz_2")
-        assert saved_task["signature"] == new_header["signature"]
+        self.assertEqual(saved_task["signature"], new_header["signature"])
 
     def test_sync(self):
         ccd = self.__get_config_desc()
@@ -239,7 +239,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 10 / 3600)
-        assert ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value == expected_value
+        self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, expected_value)
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = ts.client.increase_trust.call_count
@@ -282,7 +282,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         account_info.eth_account.address = None
 
         ts.accept_result("xxyyzz", account_info)
-        assert ts.client.transaction_system.add_payment_info.call_count == 0
+        self.assertEqual(ts.client.transaction_system.add_payment_info.call_count, 0)
 
     def test_traverse_nat(self):
         ccd = self.__get_config_desc()
@@ -306,16 +306,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         subtask_id = str(uuid.uuid4())
 
         ts.add_forwarded_session_request(key_id, conn_id)
-        assert len(ts.forwarded_session_requests) == 1
+        self.assertEqual(len(ts.forwarded_session_requests), 1)
 
         ts.forwarded_session_requests[key_id]['time'] = 0
         ts._sync_forwarded_session_requests()
-        assert len(ts.forwarded_session_requests) == 0
+        self.assertEqual(len(ts.forwarded_session_requests), 0)
 
         ts.add_forwarded_session_request(key_id, conn_id)
         ts.forwarded_session_requests[key_id] = None
         ts._sync_forwarded_session_requests()
-        assert len(ts.forwarded_session_requests) == 0
+        self.assertEqual(len(ts.forwarded_session_requests), 0)
 
         session = MagicMock()
         session.address = '127.0.0.1'
@@ -324,7 +324,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.conn_established_for_type[TaskConnTypes.TaskFailure](
             session, conn_id, key_id, subtask_id, "None"
         )
-        assert ts.task_sessions[subtask_id] == session
+        self.assertEqual(ts.task_sessions[subtask_id], session)
 
     def test_retry_sending_task_result(self):
         ccd = self.__get_config_desc()
@@ -340,7 +340,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.results_to_send[subtask_id] = wtr
 
         ts.retry_sending_task_result(subtask_id)
-        assert not wtr.already_sending
+        self.assertFalse(wtr.already_sending)
 
     def test_send_waiting_results(self):
         ccd = self.__get_config_desc()
@@ -369,19 +369,19 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         wtr.port = 10000
 
         ts.sync_network()
-        assert not ts._add_pending_request.called
+        self.assertFalse(ts._add_pending_request.called)
 
         wtr.last_sending_trial = 0
         ts.retry_sending_task_result(subtask_id)
 
         ts.sync_network()
-        assert ts._add_pending_request.called
+        self.assertTrue(ts._add_pending_request.called)
 
         ts._add_pending_request.called = False
         ts.task_sessions[subtask_id] = Mock()
 
         ts.sync_network()
-        assert not ts._add_pending_request.called
+        self.assertFalse(ts._add_pending_request.called)
 
         ts._add_pending_request.called = False
         ts.results_to_send = dict()
@@ -390,16 +390,16 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        assert not ts._add_pending_request.called
-        assert not ts.failures_to_send
+        self.assertFalse(ts._add_pending_request.called)
+        self.assertIsNone(ts.failures_to_send)
 
         ts._add_pending_request.called = False
         ts.task_sessions.pop(subtask_id)
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        assert ts._add_pending_request.called
-        assert not ts.failures_to_send
+        self.assertTrue(ts._add_pending_request.called)
+        self.assertIsNone(ts.failures_to_send)
 
     def test_add_task_session(self):
         ccd = self.__get_config_desc()
@@ -411,7 +411,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session = Mock()
         subtask_id = 'xxyyzz'
         ts.add_task_session(subtask_id, session)
-        assert ts.task_sessions[subtask_id]
+        self.assertIsNotNone(ts.task_sessions[subtask_id])
 
     def test_initiate_nat_traversal(self):
         ccd = self.__get_config_desc()
@@ -432,7 +432,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ans_conn_id = 'conn_id'
 
         initiate(key_id, node_info, None, ans_conn_id)
-        assert not ts._add_pending_request.called
+        self.assertFalse(ts._add_pending_request.called)
 
         initiate(key_id, node_info, super_node_info, ans_conn_id)
         ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
@@ -467,12 +467,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session = Mock()
 
         ts.respond_to('key_id', session, 'conn_id')
-        assert session.dropped.called
+        self.assertTrue(session.dropped.called)
 
         session.dropped.called = False
         ts.response_list['conn_id'] = deque([lambda *_: lambda x: x])
         ts.respond_to('key_id', session, 'conn_id')
-        assert not session.dropped.called
+        self.assertFalse(session.dropped.called)
 
     def test_conn_for_task_failure_established(self):
         ccd = self.__get_config_desc()
@@ -487,9 +487,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         method = ts._TaskServer__connection_for_task_failure_established
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
 
-        assert session.key_id == 'key_id'
-        assert 'subtask_id' in ts.task_sessions
-        assert session.send_hello.called
+        self.assertEqual(session.key_id, 'key_id')
+        self.assertIn('subtask_id', ts.task_sessions)
+        self.assertTrue(session.send_hello.called)
         session.send_task_failure.assert_called_once_with('subtask_id', 'err_msg')
 
     def test_conn_for_start_session_failure(self):
@@ -527,8 +527,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         method = ts._TaskServer__connection_for_result_rejected_final_failure
         method('conn_id', 'key_id', 'subtask_id')
 
-        assert ts.remove_pending_conn.called
-        assert ts.remove_responses.called
+        self.assertTrue(ts.remove_pending_conn.called)
+        self.assertTrue(ts.remove_responses.called_)
         ts.remove_pending_conn.called = False
         ts.remove_responses.called = False
 
@@ -536,10 +536,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         wtr = Mock()
         method('conn_id', 'key_id', wtr)
 
-        assert ts.remove_pending_conn.called
-        assert ts.remove_responses.called
-        assert not wtr.alreadySending
-        assert wtr.lastSendingTrial
+        self.assertTrue(ts.remove_pending_conn.called)
+        self.assertTrue(ts.remove_responses.called)
+        self.assertFalse(wtr.alreadySending)
+        self.assertTrue(wtr.lastSendingTrial)
 
         ts.remove_pending_conn.called = False
         ts.remove_responses.called = False
@@ -547,9 +547,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         method = ts._TaskServer__connection_for_task_failure_final_failure
         method('conn_id', 'key_id', 'subtask_id', 'err_msg')
 
-        assert ts.remove_pending_conn.called
-        assert ts.remove_responses.called
-        assert ts.task_computer.session_timeout.called
+        self.assertTrue(ts.remove_pending_conn.called)
+        self.assertTrue(ts.remove_responses.called)
+        self.assertTrue(ts.task_computer.session_timeout.called)
         ts.remove_pending_conn.called = False
         ts.remove_responses.called = False
         ts.task_computer.session_timeout.called = False
@@ -557,9 +557,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         method = ts._TaskServer__connection_for_start_session_final_failure
         method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
 
-        assert ts.remove_pending_conn.called
-        assert ts.remove_responses.called
-        assert ts.task_computer.session_timeout.called
+        self.assertTrue(ts.remove_pending_conn.called)
+        self.assertTrue(ts.remove_responses.called)
+        self.assertTrue(ts.task_computer.session_timeout.called)
 
     def __get_config_desc(self):
         ccd = ClientConfigDescriptor()
