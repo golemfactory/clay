@@ -5,7 +5,8 @@ from mock import MagicMock, patch
 from PIL import Image
 
 from apps.core.task.gnrtaskstate import TaskDesc
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer, subtasks_priority
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
+from gui.controller.previewcontroller import subtasks_priority
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
@@ -29,15 +30,15 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         self.gnrgui.app.deleteLater()
 
     @patch('gui.controller.mainwindowcustomizer.QtCore')
-    @patch('apps.rendering.gui.controller.renderingmainwindowcustomizer.QtCore')
+    @patch('gui.controller.mainwindowcustomizer.QtCore')
     @patch('gui.controller.mainwindowcustomizer.QPalette')
     def test_preview(self, mock_palette, mock_core, mock_core2):
-        customizer = RenderingMainWindowCustomizer(MagicMock(), MagicMock())
+        customizer = MainWindowCustomizer(MagicMock(), MagicMock())
         self.assertTrue(os.path.isfile(customizer.preview_path))
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
-        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
 
         customizer.gui.ui.showResourceButton.click()
         customizer.current_task_highlighted = MagicMock()
@@ -46,7 +47,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.gui.ui.showResourceButton.click()
 
     def test_update_preview(self):
-        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         rts = TaskDesc(definition_class=RenderingTaskDefinition)
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
@@ -79,7 +80,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
 
     @patch("gui.controller.customizer.QMessageBox")
     def test_show_task_result(self, mock_messagebox):
-        customizer = RenderingMainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
         td = TaskDesc()
         td.definition.task_type = "Blender"
         td.definition.options.use_frames = True

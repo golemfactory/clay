@@ -23,7 +23,7 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.gnrtaskstate import TaskDesc, GNRTaskDefinition
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger

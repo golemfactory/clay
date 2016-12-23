@@ -10,7 +10,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer, logger
 from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
 from apps.lux.task.luxrendertask import build_lux_render_info
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.application import GNRGui
@@ -34,7 +34,7 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
     @patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
         self.logic.register_new_task_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
-        self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
         self.logic.client = Mock()
