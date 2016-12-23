@@ -7,7 +7,7 @@ from PyQt4 import QtCore
 from PyQt4.QtGui import QPixmap, QTreeWidgetItem, QPainter, QColor, QPen, QMessageBox, QPixmapCache
 
 from golem.core.common import get_golem_path
-from golem.task.taskstate import SubtaskStatus
+
 
 from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
@@ -26,18 +26,6 @@ logger = logging.getLogger("apps.rendering")
 frame_renderers = [u"Blender"]
 
 
-def subtasks_priority(sub):
-    priority = {
-        SubtaskStatus.restarted: 6,
-        SubtaskStatus.failure: 5,
-        SubtaskStatus.resent: 4,
-        SubtaskStatus.finished: 3,
-        SubtaskStatus.starting: 2,
-        SubtaskStatus.waiting: 1}
-
-    return priority[sub.subtask_status]
-
-
 def insert_item(root, path_table):
     assert isinstance(root, QTreeWidgetItem)
 
@@ -54,14 +42,6 @@ def insert_item(root, path_table):
 
 class AbsRenderingMainWindowCustomizer(object):
 
-    def _setup_rendering_connections(self):
-        QtCore.QObject.connect(self.gui.ui.outputFile, QtCore.SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
-                               self.__open_output_file)
-        QtCore.QObject.connect(self.gui.ui.previewLabel, QtCore.SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
-                               self.__pixmap_clicked)
-        self.gui.ui.previewLabel.setMouseTracking(True)
-        QtCore.QObject.connect(self.gui.ui.previewLabel, QtCore.SIGNAL("mouseMoveEvent(int, int, QMouseEvent)"),
-                               self.__mouse_on_pixmap_moved)
 
     def _setup_advance_task_connections(self):
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
@@ -130,11 +110,11 @@ class AbsRenderingMainWindowCustomizer(object):
         self.gui.ui.previewsSlider.setVisible(False)
         if "resultPreview" in t.task_state.extra_data and os.path.exists(os.path.abspath(t.task_state.extra_data["resultPreview"])):
             file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
-            self._update_img(QPixmap(file_path))
+            self.preview_controller.update_img(QPixmap(file_path))
             self.last_preview_path = file_path
         else:
             self.preview_path = get_preview_file()
-            self._update_img(QPixmap(self.preview_path))
+            self.preview_controller.update_img(QPixmap(self.preview_path))
             self.last_preview_path = self.preview_path
 
     @staticmethod
@@ -173,120 +153,10 @@ class AbsRenderingMainWindowCustomizer(object):
     def __show_task_res_close_button_clicked(self):
         self.show_task_resources_dialog.window.close()
 
-    def __open_output_file(self):
-        file_ = self.gui.ui.outputFile.text()
-        if os.path.isfile(file_):
-            self.show_file(file_)
-
-    def __get_task_num_from_pixels(self, x, y):
-        num = None
-
-        t = self.current_task_highlighted
-        if t is None or not isinstance(t.definition, RenderingTaskDefinition):
-            return
-
-        if t.definition.task_type:
-            definition = t.definition
-            
-            scaled_size = self.gui.ui.previewLabel.pixmap().size()
-            
-            scaled_x = scaled_size.width()
-            scaled_y = scaled_size.height()
-            
-            
-            margin_left = (300. - scaled_x) / 2.
-            margin_right = 300. - margin_left
-            
-            margin_top = (200. - scaled_y) / 2.
-            margin_bottom = 200. - margin_top
-            
-            if x <= margin_left or x >= margin_right or y <= margin_top or y >= margin_bottom:
-                return
-            
-            x = (x - margin_left)
-            y = (y - margin_top) + 1
-            task_id = definition.task_id
-            task = self.logic.get_task(task_id)
-            renderer = self.logic.get_task_type(definition.task_type)
-            if len(task.task_state.subtask_states) > 0:
-                total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
-                if definition.task_type in frame_renderers and definition.options.use_frames:
-                    frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.previewsSlider.value()
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True, 
-                                                            frames=frames, frame_num=frame_num, 
-                                                            res_x=self.current_task_highlighted.definition.resolution[0], 
-                                                            res_y=self.current_task_highlighted.definition.resolution[1])
-                else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, 
-                                                            res_x=self.current_task_highlighted.definition.resolution[0], 
-                                                            res_y=self.current_task_highlighted.definition.resolution[1])
-        return num
-
-    def __get_subtask(self, num):
-        subtask = None
-        task = self.logic.get_task(self.current_task_highlighted.definition.task_id)
-        subtasks = [sub for sub in task.task_state.subtask_states.values() if
-                    sub.extra_data['start_task'] <= num <= sub.extra_data['end_task']]
-        if len(subtasks) > 0:
-            subtask = min(subtasks, key=lambda x: subtasks_priority(x))
-        return subtask
-
-    def __pixmap_clicked(self, x, y, *args):
-        num = self.__get_task_num_from_pixels(x, y)
-        if num is not None:
-            subtask = self.__get_subtask(num)
-            if subtask is not None:
-                self.show_subtask_details_dialog(subtask)
-
-    def __mouse_on_pixmap_moved(self, x, y, *args):
-        num = self.__get_task_num_from_pixels(x, y)
-        if num is not None:
-            definition = self.current_task_highlighted.definition
-            if not isinstance(definition, RenderingTaskDefinition):
-                return
-            renderer = self.logic.get_task_type(definition.task_type)
-            subtask = self.__get_subtask(num)
-            if subtask is not None:
-                res_x, res_y = self.current_task_highlighted.definition.resolution
-                if definition.task_type in frame_renderers and definition.options.use_frames:
-                    frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.previewsSlider.value()
-                    border = renderer.get_task_border(subtask.extra_data['start_task'],
-                                                      subtask.extra_data['end_task'],
-                                                      subtask.extra_data['total_tasks'],
-                                                      res_x,
-                                                      res_y,
-                                                      use_frames=True,
-                                                      frames=frames,
-                                                      frame_num=frame_num)
-                else:
-                    border = renderer.get_task_border(subtask.extra_data['start_task'],
-                                                      subtask.extra_data['end_task'],
-                                                      subtask.extra_data['total_tasks'],
-                                                      res_x,
-                                                      res_y)
-
-                if os.path.isfile(self.last_preview_path) and \
-                   self.last_preview_path != os.path.join(get_golem_path(), "gui", get_preview_file()):
-                    self.__draw_border(border)
-
-    def __draw_border(self, border):
-        pixmap = QPixmap(self.last_preview_path)
-        p = QPainter(pixmap)
-        pen = QPen(QColor(0, 0, 0))
-        pen.setWidth(3)
-        p.setPen(pen)
-        for (x, y) in border:
-            p.drawPoint(x, y)
-        p.end()
-        self._update_img(pixmap)
-
 
 class RenderingMainWindowCustomizer(AbsRenderingMainWindowCustomizer, MainWindowCustomizer):
     def __init__(self, gui, logic):
         MainWindowCustomizer.__init__(self, gui, logic)
-        self._setup_rendering_connections()
         self._setup_advance_task_connections()
 
     def init_config(self):

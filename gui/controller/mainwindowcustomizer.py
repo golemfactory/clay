@@ -5,7 +5,7 @@ import os
 from threading import Lock
 
 from ethereum.utils import denoms
-from PyQt4 import QtCore
+from PyQt4.QtCore import QObject, SIGNAL, Qt, QTimer
 from PyQt4.QtGui import QFileDialog, QIcon, QPalette, QPixmap, QPixmapCache, QMenu, QMessageBox
 from twisted.internet.defer import inlineCallbacks
 
@@ -25,6 +25,7 @@ from gui.controller.configurationdialogcustomizer import ConfigurationDialogCust
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
+from gui.controller.previewcontroller import PreviewController
 from gui.guidirmanager import get_preview_file, get_icons_list
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
     EnvironmentsDialog, IdentityDialog, NodeNameDialog
@@ -38,6 +39,7 @@ class MainWindowCustomizer(Customizer):
         Customizer.__init__(self, gui, logic)
 
         self.current_task_highlighted = None
+        self.preview_controller = PreviewController(self.gui, self.logic, self)
         self.preview_path = get_preview_file()
         self.last_preview_path = self.preview_path
         self.slider_previews = {}
@@ -53,7 +55,7 @@ class MainWindowCustomizer(Customizer):
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
         self.lock = Lock()
-        self.timer = QtCore.QTimer()
+        self.timer = QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
 
@@ -195,6 +197,8 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
         self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
         self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
+        QObject.connect(self.gui.ui.outputFile, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
+                        self.__open_output_file)
 
     def _setup_basic_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
@@ -206,7 +210,7 @@ class MainWindowCustomizer(Customizer):
 
     def _set_error_label(self):
         palette = QPalette()
-        palette.setColor(QPalette.Foreground, QtCore.Qt.red)
+        palette.setColor(QPalette.Foreground, Qt.red)
         self.gui.ui.errorLabel.setPalette(palette)
 
     def _load_new_task_from_definition(self, definition):
@@ -330,11 +334,11 @@ class MainWindowCustomizer(Customizer):
         if len(self.slider_previews) > num:
             if self.slider_previews[num]:
                 if os.path.exists(self.slider_previews[num]):
-                    self._update_img(QPixmap(self.slider_previews[num]))
+                    self.preview_controller.update_img(QPixmap(self.slider_previews[num]))
                     self.last_preview_path = self.slider_previews[num]
                     return
 
-        self._update_img(QPixmap(self.preview_path))
+        self.preview_controller.update_img(QPixmap(self.preview_path))
         self.last_preview_path = self.preview_path
 
     def __update_output_file_color(self):
@@ -343,10 +347,7 @@ class MainWindowCustomizer(Customizer):
         else:
             self.gui.ui.outputFile.setStyleSheet('color: black')
 
-    def _update_img(self, img):
-        self.gui.ui.previewLabel.setScaledContents(False)
-        self.gui.ui.previewLabel.setPixmap(img)
-        QPixmapCache.clear()
+
 
     def __show_task_context_menu(self, p):
 
@@ -362,3 +363,8 @@ class MainWindowCustomizer(Customizer):
         self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, gnr_task_state)
         menu.popup(self.gui.ui.taskTableWidget.viewport().mapToGlobal(p))
         menu.exec_()
+
+    def __open_output_file(self):
+        file_ = self.gui.ui.outputFile.text()
+        if os.path.isfile(file_):
+            self.show_file(file_)
