@@ -56,7 +56,7 @@ class TestPayment(DatabaseFixture):
         self.assertEqual(p1.details, p2.details)
         self.assertIsNot(p1.details, p2.details)
         p1.details['check'] = True
-        self.assertIsNone(p1.details['check'])
+        self.assertTrue(p1.details['check'])
         self.assertNotIn('check', p2.details)
 
 

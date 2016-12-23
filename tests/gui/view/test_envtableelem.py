@@ -19,7 +19,7 @@ class TestEnvTableElem(TestCase):
         self.assertEqual(elem.id, "ID2")
         self.assertEqual(elem.status, "SUPPORTED TOO")
         self.assertEqual(elem.short_description, "SOME ENV2")
-        self.assertTrue(elem.accept_tasks)
+        self.assertFalse(elem.accept_tasks)
         self.assertEqual(elem.id_item.text(), "ID2")
         self.assertEqual(elem.status_item.text(), "SUPPORTED TOO")
         self.assertEqual(elem.short_description_item.text(), "SOME ENV2")

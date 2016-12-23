@@ -95,7 +95,7 @@ class TestNode(TestWithDatabase):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1], catch_exceptions=False)
-        self.assertFalse(mock_node.called)
+        self.assertTrue(mock_node.called)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
