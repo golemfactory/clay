@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from ethereum.utils import denoms
-from mock import MagicMock
+from mock import Mock, MagicMock
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
@@ -49,20 +49,23 @@ class TestMainWindowCustomizer(TestCase):
 
     def test_table(self):
         customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
-        task1 = MagicMock()
+        task1 = TaskDesc()
         task1.definition.task_id = "TASK ID 1"
         task1.status = "Finished"
         task1.definition.task_name = "TASK NAME 1"
+        customizer.logic.get_task.return_value = task1
+        print "FUNC {}".format(customizer.logic.get_task())
         customizer.add_task(task1)
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Id).text() == "TASK ID 1"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Name).text() == "TASK NAME 1"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Status).text() == "Finished"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Cost).text() == "0.000000"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Time).text() == "00:00:00"
-        task2 = MagicMock()
+        task2 = TaskDesc()
         task2.definition.task_id = "TASK ID 2"
         task2.status = "Waiting"
         task2.definition.task_name = "TASK NAME 2"
+        customizer.logic.get_task.return_value = task2
         customizer.add_task(task2)
         assert customizer.gui.ui.taskTableWidget.item(1, ItemMap.Id).text() == "TASK ID 2"
         assert customizer.gui.ui.taskTableWidget.item(1, ItemMap.Name).text() == "TASK NAME 2"
