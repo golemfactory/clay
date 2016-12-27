@@ -31,7 +31,6 @@ class EthereumClientTest(TempDirFixture):
         self.assertRaises(ValueError,
                           lambda: client.send_raw_transaction("fake data"))
 
-    # @unittest.skip("This is quite fragile and affects other tests")
     def test_start_terminate(self):
         client = Client(self.tempdir)
         assert client.node.is_running()
