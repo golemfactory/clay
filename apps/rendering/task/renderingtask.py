@@ -137,9 +137,9 @@ class RenderingTask(GNRTask):
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:
-            task_state.extra_data['resultPreview'] = self.preview_task_file_path
+            task_state.extra_data['result_preview'] = self.preview_task_file_path
         elif self.preview_file_path:
-            task_state.extra_data['resultPreview'] = self.preview_file_path
+            task_state.extra_data['result_preview'] = self.preview_file_path
 
     def get_output_names(self):
         return [self.output_file]

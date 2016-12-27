@@ -60,9 +60,9 @@ class PreviewController(Customizer):
         self.gui.ui.outputFile.setText(u"{}".format(task_desc.definition.output_file))
         self.__update_output_file_color()
         self.gui.ui.previewsSlider.setVisible(False)
-        if "resultPreview" in task_desc.task_state.extra_data and \
-                path.exists(path.abspath(task_desc.task_state.extra_data["resultPreview"])):
-            file_path = path.abspath(task_desc.task_state.extra_data["resultPreview"])
+        if "result_preview" in task_desc.task_state.extra_data and \
+                path.exists(path.abspath(task_desc.task_state.extra_data["result_preview"])):
+            file_path = path.abspath(task_desc.task_state.extra_data["result_preview"])
             self.update_img(QPixmap(file_path))
             self.last_preview_path = file_path
         else:
@@ -71,8 +71,8 @@ class PreviewController(Customizer):
             self.last_preview_path = self.preview_path
 
     def _set_slider_preview(self, task_desc):
-        if "resultPreview" in task_desc.task_state.extra_data:
-            self.slider_previews = task_desc.task_state.extra_data["resultPreview"]
+        if "result_preview" in task_desc.task_state.extra_data:
+            self.slider_previews = task_desc.task_state.extra_data["result_preview"]
         self.gui.ui.previewsSlider.setVisible(True)
         self.gui.ui.previewsSlider.setRange(1, len(task_desc.definition.options.frames))
         self.gui.ui.previewsSlider.setSingleStep(1)

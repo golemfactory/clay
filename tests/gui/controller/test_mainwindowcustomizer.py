@@ -127,7 +127,7 @@ class TestMainWindowCustomizer(TempDirFixture):
         img = Image.new("RGB", (250, 123), "white")
         img_path = os.path.join(self.path, "image1.png")
         img.save(img_path)
-        rts.task_state.extra_data = {"resultPreview": img_path}
+        rts.task_state.extra_data = {"result_preview": img_path}
         customizer.update_task_additional_info(rts)
         assert customizer.gui.ui.previewLabel.pixmap().width() == 250
         assert customizer.gui.ui.previewLabel.pixmap().height() == 123
@@ -143,7 +143,7 @@ class TestMainWindowCustomizer(TempDirFixture):
         rts.definition.options.use_frames = True
         rts.definition.options.frames = range(10)
         rts.task_state.outputs = ["result"] * 10
-        rts.task_state.extra_data = {"resultPreview": [img_path]}
+        rts.task_state.extra_data = {"result_preview": [img_path]}
         customizer.update_task_additional_info(rts)
 
     @patch("gui.controller.customizer.QMessageBox")
