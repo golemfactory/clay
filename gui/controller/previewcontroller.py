@@ -30,7 +30,12 @@ def subtasks_priority(sub):
 class PreviewController(Customizer):
     def __init__(self, gui, logic, maincontroller):
         super(PreviewController, self).__init__(gui, logic)
+        self.preview_path = get_preview_file()
+        self.last_preview_path = self.preview_path
+        self.slider_previews = {}
         self.maincontroller = maincontroller
+
+        self.gui.ui.previewsSlider.setVisible(False)
 
     def update_img(self, img):
         self.gui.ui.previewLabel.setScaledContents(False)
@@ -80,7 +85,7 @@ class PreviewController(Customizer):
         self.__update_output_file_color()
         if len(self.slider_previews) > num:
             if self.slider_previews[num]:
-                if os.path.exists(self.slider_previews[num]):
+                if path.exists(self.slider_previews[num]):
                     self.update_img(QPixmap(self.slider_previews[num]))
                     self.last_preview_path = self.slider_previews[num]
                     return
@@ -186,12 +191,11 @@ class PreviewController(Customizer):
                                                       res_x,
                                                       res_y)
 
-                if path.isfile(self.maincontroller.last_preview_path) and \
-                                self.maincontroller.last_preview_path != get_preview_file():
+                if path.isfile(self.last_preview_path) and self.last_preview_path != get_preview_file():
                         self.__draw_border(border)
 
     def __draw_border(self, border):
-        pixmap = QPixmap(self.maincontroller.last_preview_path)
+        pixmap = QPixmap(self.last_preview_path)
         p = QPainter(pixmap)
         pen = QPen(QColor(0, 0, 0))
         pen.setWidth(3)

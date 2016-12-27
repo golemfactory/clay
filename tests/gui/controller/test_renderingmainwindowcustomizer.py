@@ -29,12 +29,12 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
 
-    @patch('gui.controller.mainwindowcustomizer.QtCore')
-    @patch('gui.controller.mainwindowcustomizer.QtCore')
+    @patch('gui.controller.previewcontroller.QObject')
+    @patch('gui.controller.mainwindowcustomizer.QObject')
     @patch('gui.controller.mainwindowcustomizer.QPalette')
-    def test_preview(self, mock_palette, mock_core, mock_core2):
+    def test_preview(self, mock_palette, mock_object, mock_object2):
         customizer = MainWindowCustomizer(MagicMock(), MagicMock())
-        self.assertTrue(os.path.isfile(customizer.preview_path))
+        self.assertTrue(os.path.isfile(customizer.preview_controller.preview_path))
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
@@ -53,7 +53,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         customizer.update_task_additional_info(rts)
         assert customizer.gui.ui.outputFile.text() == "bla"
         assert not customizer.gui.ui.previewsSlider.isVisible()
-        assert customizer.last_preview_path == customizer.preview_path
+        assert customizer.preview_controller.last_preview_path == customizer.preview_controller.preview_path
         assert customizer.gui.ui.previewLabel.pixmap().width() == 298
         assert customizer.gui.ui.previewLabel.pixmap().height() == 200
 
@@ -75,6 +75,7 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         rts.definition.options = MagicMock()
         rts.definition.options.use_frames = True
         rts.definition.options.frames = range(10)
+        rts.task_state.outputs = ["result"] * 10
         rts.task_state.extra_data = {"resultPreview": [img_path]}
         customizer.update_task_additional_info(rts)
 
@@ -85,23 +86,26 @@ class TestRenderingMainWindowCustomizer(TestDirFixture):
         td.definition.task_type = "Blender"
         td.definition.options.use_frames = True
         td.definition.output_file = os.path.join(self.path, "output.png")
+        td.task_state.outputs = [os.path.join(self.path, u"output0011.png"),
+                                 os.path.join(self.path, u"output0014.png"),
+                                 os.path.join(self.path, u"output0017.png")]
         td.definition.options.frames = [11, 14, 17]
         customizer.logic.get_task.return_value = td
         customizer.current_task_highlighted = td
         customizer.gui.ui.previewsSlider.setRange(1, 3)
         mock_messagebox.Critical = "CRITICAL"
         customizer.show_task_result("abc")
-        expected_file = os.path.join(self.path, u"output0011.png")
+        expected_file = td.task_state.outputs[0]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + u" is not a file")
         customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
-        expected_file = os.path.join(self.path, u"output0014.png")
+        expected_file = td.task_state.outputs[1]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + u" is not a file")
         customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
-        expected_file = os.path.join(self.path, u"output0017.png")
+        expected_file = td.task_state.outputs[2]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
                                            expected_file + u" is not a file")
 

@@ -32,7 +32,7 @@ from gui.controller.memoryhelper import resource_size_to_display, translate_reso
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
 from gui.controller.previewcontroller import PreviewController
 from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
-from gui.guidirmanager import get_preview_file, get_icons_list
+from gui.guidirmanager import get_icons_list
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
     EnvironmentsDialog, IdentityDialog, NodeNameDialog, ShowTaskResourcesDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
@@ -60,9 +60,6 @@ class MainWindowCustomizer(Customizer):
 
         self.current_task_highlighted = None
         self.preview_controller = PreviewController(self.gui, self.logic, self)
-        self.preview_path = get_preview_file()
-        self.last_preview_path = self.preview_path
-        self.slider_previews = {}
 
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
@@ -71,8 +68,6 @@ class MainWindowCustomizer(Customizer):
         self.change_task_dialog = None
         self.show_task_resources_dialog = None
         self.show_task_resources_dialog_customizer = None
-
-        self.gui.ui.previewsSlider.setVisible(False)
         self._set_icons()
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))

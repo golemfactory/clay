@@ -266,7 +266,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         app = self.app
         logic.client = Mock()
         logic.register_gui(app.get_main_window(),
-                           RenderingMainWindowCustomizer)
+                           MainWindowCustomizer)
 
         logic.lock_config(True)
 
@@ -295,7 +295,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
 
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         logic.customizer.show_warning_window = Mock()
 
@@ -364,7 +364,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_update_peers_view(self):
         logic = self.logic
         gnrgui = self.app
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         peer = Mock()
         peer.address = "10.10.10.10"
@@ -392,7 +392,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic = self.logic
         logic.client = Mock()
         logic.client.datadir = self.path
-        self.logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.app.main_window, self.logic)
         prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
         logic.change_verification_option(size_x_max=914)
         assert logic.customizer.gui.ui.verificationSizeXSpinBox.maximum() == 914
@@ -407,7 +407,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path
-        logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, logic)
+        logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
         logic.customizer.show_error_window = Mock()
         logic.customizer.show_warning_window =  Mock()
         self.logic.dir_manager = DirManager(self.path)

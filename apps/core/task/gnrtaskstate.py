@@ -61,7 +61,7 @@ class TaskDesc(object):
         self.task_state = state_class()
 
     def has_multiple_outputs(self, num_outputs=1):
-        return len(self.task_state.outputs) > num_outputs
+        return len(self.task_state.outputs) >= num_outputs
 
 
 class GNROptions(object):
