@@ -9,7 +9,7 @@ netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1
 Pillow==3.0.0
-psutil
+psutil>=4.3.1
 pyelliptic==1.5.7
 pysha3==0.3
 pystun==0.1.0
@@ -31,6 +31,6 @@ ovh
 certifi
 weakreflist
 tabulate
-PyYAML>=3.11
+PyYAML>=3.12
 crossbar
 jsonpickle
