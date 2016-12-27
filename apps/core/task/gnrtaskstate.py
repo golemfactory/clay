@@ -60,6 +60,9 @@ class TaskDesc(object):
         self.definition = definition_class()
         self.task_state = state_class()
 
+    def has_multiple_outputs(self, num_outputs=1):
+        return len(self.task_state.outputs) > num_outputs
+
 
 class GNROptions(object):
     def __init__(self):

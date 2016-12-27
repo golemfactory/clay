@@ -17,7 +17,6 @@ from golem.task.taskstate import TaskStatus
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
-from apps.rendering.task.framerenderingtask import get_frame_name
 
 from gui.controller.customizer import Customizer
 from gui.controller.common import get_save_dir
@@ -158,17 +157,13 @@ class MainWindowCustomizer(Customizer):
         self.__set_time_params(t)
         self.__set_memory_params(t)
 
-        if len(t.task_state.outputs) > 1:
-            self.__set_frame_preview(t)
-        else:
-            self.__set_preview(t)
-
-        self.__update_output_file_color()
+        self.preview_controller.set_preview(t)
 
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
-        if len(t.task_state.outputs) > 1:
-            file_ = self.__get_frame_name(t.definition, self.gui.ui.previewsSlider.value() - 1)
+        num = self.gui.ui.previewsSlider.value() - 1
+        if t.has_multiple_outputs(num + 1):
+            file_ = t.task_state.outputs[num]
         else:
             file_ = t.definition.output_file
         if os.path.isfile(file_):
@@ -230,7 +225,6 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.doubleClicked.connect(self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
         self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
-        self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
         QObject.connect(self.gui.ui.outputFile, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
                         self.__open_output_file)
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
@@ -357,26 +351,6 @@ class MainWindowCustomizer(Customizer):
             icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
             item.setIcon(icon)
 
-    def _update_slider_preview(self):
-        num = self.gui.ui.previewsSlider.value() - 1
-        print self.current_task_highlighted.task_state.outputs
-        if len(self.current_task_highlighted.task_state.outputs) > num:
-
-            self.gui.ui.outputFile.setText(self.current_task_highlighted.task_state.outputs[num])
-        else:
-            logger.warning("Output file name for {} output result hasn't been set yet".format(num))
-            self.gui.ui.outputFile.setText(u"")
-        self.__update_output_file_color()
-        if len(self.slider_previews) > num:
-            if self.slider_previews[num]:
-                if os.path.exists(self.slider_previews[num]):
-                    self.preview_controller.update_img(QPixmap(self.slider_previews[num]))
-                    self.last_preview_path = self.slider_previews[num]
-                    return
-
-        self.preview_controller.update_img(QPixmap(self.preview_path))
-        self.last_preview_path = self.preview_path
-
     def _set_show_task_resource_dialog(self):
         self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
         self.show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog,
@@ -402,12 +376,6 @@ class MainWindowCustomizer(Customizer):
             self.show_task_resources_dialog.ui.folderTreeView.expandAll()
 
             self.show_task_resources_dialog.show()
-
-    def __update_output_file_color(self):
-        if os.path.isfile(self.gui.ui.outputFile.text()):
-            self.gui.ui.outputFile.setStyleSheet('color: blue')
-        else:
-            self.gui.ui.outputFile.setStyleSheet('color: black')
 
     def __show_task_context_menu(self, p):
 
@@ -444,31 +412,3 @@ class MainWindowCustomizer(Customizer):
         mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
 
-    def __set_frame_preview(self, t):
-        if "resultPreview" in t.task_state.extra_data:
-            self.slider_previews = t.task_state.extra_data["resultPreview"]
-        self.gui.ui.previewsSlider.setVisible(True)
-        self.gui.ui.previewsSlider.setRange(1, len(t.definition.options.frames))
-        self.gui.ui.previewsSlider.setSingleStep(1)
-        self.gui.ui.previewsSlider.setPageStep(1)
-        self._update_slider_preview()
-        frame_num = self.__get_frame_name(t.definition, self.gui.ui.previewsSlider.value() - 1)
-        self.gui.ui.outputFile.setText(u"{}".format(frame_num))
-
-    def __set_preview(self, t):
-        self.gui.ui.outputFile.setText(u"{}".format(t.definition.output_file))
-        self.gui.ui.previewsSlider.setVisible(False)
-        if "resultPreview" in t.task_state.extra_data and os.path.exists(os.path.abspath(t.task_state.extra_data["resultPreview"])):
-            file_path = os.path.abspath(t.task_state.extra_data["resultPreview"])
-            self.preview_controller.update_img(QPixmap(file_path))
-            self.last_preview_path = file_path
-        else:
-            self.preview_path = get_preview_file()
-            self.preview_controller.update_img(QPixmap(self.preview_path))
-            self.last_preview_path = self.preview_path
-
-    @staticmethod
-    def __get_frame_name(definition, num):
-        output_name, ext = os.path.splitext(definition.output_file)
-        frame_num = definition.options.frames[num]
-        return get_frame_name(output_name, ext[1:], frame_num)

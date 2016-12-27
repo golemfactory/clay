@@ -1,3 +1,4 @@
+from logging import getLogger
 from os import path
 
 from PyQt4.QtCore import QObject, SIGNAL
@@ -9,6 +10,9 @@ from apps.core.task.gnrtaskstate import GNRTaskDefinition
 
 from gui.controller.customizer import Customizer
 from gui.guidirmanager import get_preview_file
+
+
+logger = getLogger("gui")
 
 
 def subtasks_priority(sub):
@@ -33,12 +37,63 @@ class PreviewController(Customizer):
         self.gui.ui.previewLabel.setPixmap(img)
         QPixmapCache.clear()
 
+    def set_preview(self, task_desc):
+        if task_desc.has_multiple_outputs():
+            self._set_slider_preview(task_desc)
+        else:
+            self._set_preview(task_desc)
+
     def _setup_connections(self):
         QObject.connect(self.gui.ui.previewLabel, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
                         self.__pixmap_clicked)
         self.gui.ui.previewLabel.setMouseTracking(True)
         QObject.connect(self.gui.ui.previewLabel, SIGNAL("mouseMoveEvent(int, int, QMouseEvent)"),
                         self.__mouse_on_pixmap_moved)
+        self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
+
+    def _set_preview(self, task_desc):
+        self.gui.ui.outputFile.setText(u"{}".format(task_desc.definition.output_file))
+        self.__update_output_file_color()
+        self.gui.ui.previewsSlider.setVisible(False)
+        if "resultPreview" in task_desc.task_state.extra_data and \
+                path.exists(path.abspath(task_desc.task_state.extra_data["resultPreview"])):
+            file_path = path.abspath(task_desc.task_state.extra_data["resultPreview"])
+            self.update_img(QPixmap(file_path))
+            self.last_preview_path = file_path
+        else:
+            self.preview_path = get_preview_file()
+            self.update_img(QPixmap(self.preview_path))
+            self.last_preview_path = self.preview_path
+
+    def _set_slider_preview(self, task_desc):
+        if "resultPreview" in task_desc.task_state.extra_data:
+            self.slider_previews = task_desc.task_state.extra_data["resultPreview"]
+        self.gui.ui.previewsSlider.setVisible(True)
+        self.gui.ui.previewsSlider.setRange(1, len(task_desc.definition.options.frames))
+        self.gui.ui.previewsSlider.setSingleStep(1)
+        self.gui.ui.previewsSlider.setPageStep(1)
+        self._update_slider_preview()
+
+    def _update_slider_preview(self):
+        num = self.gui.ui.previewsSlider.value() - 1
+        self._set_output_file(num)
+        self.__update_output_file_color()
+        if len(self.slider_previews) > num:
+            if self.slider_previews[num]:
+                if os.path.exists(self.slider_previews[num]):
+                    self.update_img(QPixmap(self.slider_previews[num]))
+                    self.last_preview_path = self.slider_previews[num]
+                    return
+
+        self.update_img(QPixmap(self.preview_path))
+        self.last_preview_path = self.preview_path
+
+    def _set_output_file(self, num):
+        if self.maincontroller.current_task_highlighted.has_multiple_outputs(num + 1):
+            self.gui.ui.outputFile.setText(self.maincontroller.current_task_highlighted.task_state.outputs[num])
+        else:
+            logger.warning("Output file name for {} output result hasn't been set yet".format(num))
+            self.gui.ui.outputFile.setText(u"")
 
     def __pixmap_clicked(self, x, y, *args):
         num = self.__get_task_num_from_pixels(x, y)
@@ -145,3 +200,9 @@ class PreviewController(Customizer):
             p.drawPoint(x, y)
         p.end()
         self.update_img(pixmap)
+
+    def __update_output_file_color(self):
+        if path.isfile(self.gui.ui.outputFile.text()):
+            self.gui.ui.outputFile.setStyleSheet('color: blue')
+        else:
+            self.gui.ui.outputFile.setStyleSheet('color: black')
