@@ -1,4 +1,5 @@
 from __future__ import division
+
 import jsonpickle as json
 import logging
 import os
@@ -10,18 +11,18 @@ from PyQt4.QtGui import QTableWidgetItem
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from golem.client import GolemClientRemoteEventListener
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.benchmark.minilight.src.minilight import makePerfTest
+from apps.core.task.gnrtaskstate import TaskDesc
+
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
-from golem.resource.dirmanager import DirManager
+from golem.core.simpleserializer import DictSerializer
+from golem.interface.client.logic import AppLogic
+from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
-
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
-from apps.core.task.gnrtaskstate import GNRTaskState
-from apps.rendering.task.renderingtaskstate import RenderingTaskState
 
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
@@ -30,28 +31,15 @@ from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 logger = logging.getLogger("app")
 
 
-class ClientRemoteEventListener(GolemClientRemoteEventListener):
-    def __init__(self, service_info):
-        GolemClientRemoteEventListener.__init__(self, service_info)
-
-    def task_updated(self, task_id):
-        assert self.remote_client
-        self.remote_client.task_status_changed(task_id)
-
-    def check_network_state(self):
-        assert self.remote_client
-        self.remote_client.check_network_state()
-
-
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
-class GNRApplicationLogic(QtCore.QObject):
+class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def __init__(self):
         QtCore.QObject.__init__(self)
+        AppLogic.__init__(self)
         self.tasks = {}
         self.test_tasks = {}
-        self.task_types = {}
         self.customizer = None
         self.root_path = os.path.normpath(os.path.join(get_golem_path(), 'gui'))
         self.nodes_manager_client = None
@@ -61,13 +49,11 @@ class GNRApplicationLogic(QtCore.QObject):
         self.config_dialog = None
         self.config_dialog_customizer = None
         self.add_new_nodes_function = lambda x: None
-        self.datadir = None
         self.res_dirs = None
-        self.node_name = None
         self.br = None
         self.__looping_calls = None
-        self.dir_manager = None
         self.reactor = None
+        self.options = None  # Current task options #FIXME - is it really needed?
         self.current_task_type = None  # Which task type is currently active
         self.default_task_type = None  # Which task type should be displayed first
 
@@ -92,36 +78,26 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer = customizer_class(gui, self)
 
     @inlineCallbacks
-    def register_client(self, client, logic_service_info):
-        event_listener = ClientRemoteEventListener(logic_service_info)
+    def register_client(self, client):
+
+        datadir = yield client.get_datadir()
+        config_dict = yield client.get_settings()
+        client_id = yield client.get_key_id()
+        payment_address = yield client.get_payment_address()
+        description = yield client.get_description()
+
+        config = DictSerializer.load(config_dict)
 
         self.client = client
-        self.client.register_listener(event_listener)
-        self.customizer.init_config()
-
-        use_transaction_system = yield client.use_transaction_system()
-        if use_transaction_system:
-            payment_address = yield client.get_payment_address()
-        else:
-            payment_address = ""
-
-        config = yield self.get_config()
-        response = yield self.client.start_batch() \
-            .get_description() \
-            .get_client_id() \
-            .get_datadir() \
-            .get_node_name() \
-            .call()
-
-        self.node_name = response.pop()
-        self.datadir = response.pop()
-        client_id = response.pop()
-        description = response.pop()
-
-        self.customizer.set_options(config, client_id, payment_address, description)
-        if not self.node_name:
-            self.customizer.prompt_node_name(config)
+        self.datadir = datadir
+        self.node_name = config.node_name
         self.dir_manager = DirManager(self.datadir)
+
+        self.customizer.init_config()
+        self.customizer.set_options(config, client_id, payment_address, description)
+
+        if not self.node_name:
+            self.customizer.prompt_node_name(self.node_name)
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -132,34 +108,19 @@ class GNRApplicationLogic(QtCore.QObject):
         returnValue(dirs)
 
     def remove_computed_files(self):
-        self.client.remove_computed_files()
+        self.client.clear_dir(DirectoryType.COMPUTED)
 
     def remove_distributed_files(self):
-        self.client.remove_distributed_files()
+        self.client.clear_dir(DirectoryType.DISTRIBUTED)
 
     def remove_received_files(self):
-        self.client.remove_received_files()
+        self.client.clear_dir(DirectoryType.RECEIVED)
 
-    @inlineCallbacks
-    def check_network_state(self):
-        listen_port = yield self.client.get_p2p_port()
-        task_server_port = yield self.client.get_task_server_port()
-        if listen_port == 0 or task_server_port == 0:
-            self.customizer.gui.ui.errorLabel.setText("Application not listening, check config file.")
-            returnValue(None)
-
-        peer_info = yield self.client.get_peer_info()
-        peers_num = len(peer_info)
-
-        if peers_num == 0:
-            self.customizer.gui.ui.errorLabel.setText("Not connected to Golem Network. Check seed parameters.")
-            returnValue(None)
-
-        self.customizer.gui.ui.errorLabel.setText("")
+    def connection_status_changed(self, message):
+        self.customizer.gui.ui.errorLabel.setText(message)
 
     def get_task(self, task_id):
         assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
-
         return self.tasks[task_id]
 
     def get_task_types(self):
@@ -180,7 +141,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
     def update_peers_view(self):
-        self.client.get_peer_info().addCallback(self._update_peers_view)
+        self.client.get_connected_peers().addCallback(self._update_peers_view)
 
     def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable
@@ -195,10 +156,10 @@ class GNRApplicationLogic(QtCore.QObject):
                 table.insertRow(i)
 
         for i, peer in enumerate(peers):
-            table.setItem(i, 0, QTableWidgetItem(peer.address))
-            table.setItem(i, 1, QTableWidgetItem(str(peer.port)))
-            table.setItem(i, 2, QTableWidgetItem(peer.key_id))
-            table.setItem(i, 3, QTableWidgetItem(peer.node_name))
+            table.setItem(i, 0, QTableWidgetItem(peer['address']))
+            table.setItem(i, 1, QTableWidgetItem(str(peer['port'])))
+            table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
+            table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
         self.client.get_balance().addCallback(self._update_payments_view)
@@ -207,6 +168,7 @@ class GNRApplicationLogic(QtCore.QObject):
         if any(b is None for b in result_tuple):
             return
         b, ab, deposit = result_tuple
+        b, ab, deposit = int(b), int(ab), int(deposit)
 
         rb = b - ab
         total = deposit + b
@@ -250,8 +212,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def get_config(self):
-        config = yield self.client.get_config()
-        returnValue(config)
+        config_dict = yield self.client.get_settings()
+        returnValue(DictSerializer.load(config_dict))
 
     def change_description(self, description):
         self.client.change_description(description)
@@ -269,13 +231,17 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
 
     @inlineCallbacks
-    def change_config(self, cfg_desc, run_benchmarks=False):
-        yield self.client.change_config(cfg_desc, run_benchmarks=run_benchmarks)
-        self.node_name = yield self.client.get_node_name()
+    def change_node_name(self, node_name):
+        yield self.client.update_setting('node_name', node_name)
+        self.node_name = node_name
         self.customizer.set_name(u"{}".format(self.node_name))
 
-    def _get_new_task_state(self):
-        return GNRTaskState()
+    @inlineCallbacks
+    def change_config(self, cfg_desc, run_benchmarks=False):
+        cfg_dict = DictSerializer.dump(cfg_desc)
+        yield self.client.update_settings(cfg_dict, run_benchmarks=run_benchmarks)
+        self.node_name = yield self.client.get_setting('node_name')
+        self.customizer.set_name(u"{}".format(self.node_name))
 
     def start_task(self, task_id):
         ts = self.get_task(task_id)
@@ -290,14 +256,7 @@ class GNRApplicationLogic(QtCore.QObject):
         t = Task.build_task(tb)
         ts.task_state.status = TaskStatus.starting
         self.customizer.update_tasks(self.tasks)
-
-        self.client.enqueue_new_task(t)
-
-    def get_builder(self, task_state):
-        builder = self.task_types[task_state.definition.task_type].task_builder_type(self.node_name,
-                                                                                     task_state.definition,
-                                                                                     self.datadir, self.dir_manager)
-        return builder
+        self.client.create_task(DictSerializer.dump(t))
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -331,11 +290,6 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.show_task_result(task_id)
 
     @inlineCallbacks
-    def get_keys_auth(self):
-        keys_auth = yield self.client.get_keys_auth()
-        returnValue(keys_auth)
-
-    @inlineCallbacks
     def get_key_id(self):
         key_id = yield self.client.get_key_id()
         returnValue(key_id)
@@ -363,13 +317,13 @@ class GNRApplicationLogic(QtCore.QObject):
             self.client.change_timeouts(task_id, full_task_timeout, subtask_timeout)
             self.customizer.update_task_additional_info(task)
         else:
-            logger.error("It's not my task: {} ".format(task_id))
+            logger.error("It's not my task: {}".format(task_id))
 
     def get_test_tasks(self):
         return self.test_tasks
 
     def add_task_from_definition(self, definition):
-        task_state = self._get_new_task_state()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
 
         task_state.definition = definition
@@ -392,12 +346,9 @@ class GNRApplicationLogic(QtCore.QObject):
         self.customizer.gui.ui.listWidget.setCurrentItem(self.customizer.gui.ui.listWidget.item(1))
 
     def register_new_task_type(self, task_type):
-        if task_type.name not in self.task_types:
-            self.task_types[task_type.name] = task_type
-            if len(self.task_types) == 1:
-                self.default_task_type = task_type
-        else:
-            assert False, "Task type {} already registered".format(task_type.name)
+        AppLogic.register_new_task_type(self, task_type)
+        if len(self.task_types) == 1:
+            self.default_task_type = task_type
 
     def register_new_test_task_type(self, test_task_info):
         if test_task_info.name not in self.test_tasks:
@@ -423,7 +374,8 @@ class GNRApplicationLogic(QtCore.QObject):
         estimated_perf = makePerfTest(test_file, result_file, num_cores)
         return estimated_perf
 
-    def toggle_config_dialog(self, on=True):
+    def lock_config(self, on=True):
+
         self.customizer.gui.setEnabled('new_task', not on)
         self.customizer.gui.setEnabled('settings', not on)  # disable 'change' and 'cancel' buttons
 
@@ -438,29 +390,29 @@ class GNRApplicationLogic(QtCore.QObject):
                 self.config_dialog_customizer = None
                 self.config_dialog = None
 
-    def docker_config_changed(self):
+    def config_changed(self):
         self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):
         if self._validate_task_state(task_state):
-            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.enable_ok_button(False)  # disable 'ok' button
-            self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
-            self.progress_dialog_customizer.enable_close(False)  # prevent from closing
-            self.progress_dialog_customizer.show_message("Preparing test...")
 
             def on_abort():
                 self.progress_dialog_customizer.show_message("Aborting test...")
                 self.abort_test_task()
 
+            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
+            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
+            self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
+            self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
+            self.progress_dialog_customizer.enable_close(False)        # prevent from closing
+            self.progress_dialog_customizer.show_message("Preparing test...")
             self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
             tb = self.get_builder(task_state)
             t = Task.build_task(tb)
-            self.client.run_test_task(t)
+            self.client.run_test_task(DictSerializer.dump(t))
 
             return True
 
@@ -475,18 +427,18 @@ class GNRApplicationLogic(QtCore.QObject):
 
     # label param is the gui element to set text
     def run_benchmark(self, benchmark, label, cfg_param_name):
-        task_state = RenderingTaskState()
+        task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.query_benchmark_task_definition()
         self._validate_task_state(task_state)
 
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
-
+        
         reactor = self.__get_reactor()
 
         self.br = BenchmarkRunner(t, self.datadir,
-                                  lambda p: reactor.callFromThread(self._benchmark_computation_success,
+                                  lambda p: reactor.callFromThread(self._benchmark_computation_success, 
                                                                    performance=p, label=label,
                                                                    cfg_param=cfg_param_name),
                                   self._benchmark_computation_error,
@@ -494,8 +446,8 @@ class GNRApplicationLogic(QtCore.QObject):
 
         self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
         self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-        self.progress_dialog_customizer.enable_ok_button(False)  # disable 'ok' button
-        self.customizer.gui.setEnabled('recount', False)  # disable all 'recount' buttons
+        self.progress_dialog_customizer.enable_ok_button(False) # disable 'ok' button
+        self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
         self.br.start()
@@ -505,7 +457,7 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounted")
         self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)  # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
         # rounding
         perf = int((performance * 10) + 0.5) / 10.0
@@ -516,18 +468,28 @@ class GNRApplicationLogic(QtCore.QObject):
         self.progress_dialog.stop_progress_bar()
         self.progress_dialog_customizer.show_message(u"Recounting failed: {}".format(error))
         self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.customizer.gui.setEnabled('recount', True)  # enable all 'recount' buttons
+        self.customizer.gui.setEnabled('recount', True)         # enable all 'recount' buttons
 
     @inlineCallbacks
     def get_environments(self):
         environments = yield self.client.get_environments()
         returnValue(environments)
 
-    def change_accept_tasks_for_environment(self, env_id, state):
-        self.client.change_accept_tasks_for_environment(env_id, state)
+    # TODO Move this function to new task dialog
+    def change_verification_option(self, size_x_max=None, size_y_max=None):
+        if size_x_max:
+            self.customizer.gui.ui.verificationSizeXSpinBox.setMaximum(size_x_max)
+        if size_y_max:
+            self.customizer.gui.ui.verificationSizeYSpinBox.setMaximum(size_y_max)
+
+    def enable_environment(self, env_id):
+        self.client.enable_environment(env_id)
+
+    def disable_environment(self, env_id):
+        self.client.disable_environment(env_id)
 
     def test_task_computation_success(self, results, est_mem, msg=None):
-        self.progress_dialog.stop_progress_bar()  # stop progress bar and set it's value to 100
+        self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
             from PyQt4.QtGui import QMessageBox
             ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
@@ -535,10 +497,10 @@ class GNRApplicationLogic(QtCore.QObject):
             ms_box.show()
         msg = u"Task tested successfully"
         self.progress_dialog_customizer.show_message(msg)
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
-        self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
+        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
+        self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
 
@@ -548,9 +510,9 @@ class GNRApplicationLogic(QtCore.QObject):
         if error:
             err_msg += self.__parse_error_message(error)
         self.progress_dialog_customizer.show_message(err_msg)
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True) # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
         self.customizer.gui.setEnabled('new_task', True)  # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(False, 0)
@@ -564,9 +526,9 @@ class GNRApplicationLogic(QtCore.QObject):
 
     @inlineCallbacks
     def task_status_changed(self, task_id):
-
         if task_id in self.tasks:
-            ts = yield self.client.query_task_state(task_id)
+            ts_dict = yield self.client.query_task_state(task_id)
+            ts = DictSerializer.load(ts_dict)
             assert isinstance(ts, TaskState)
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
@@ -597,8 +559,8 @@ class GNRApplicationLogic(QtCore.QObject):
         """ Return suggested max price per hour of computation
         :return:
         """
-        config = yield self.get_config()
-        returnValue(config.max_price)
+        max_price = yield self.client.get_setting('max_price')
+        returnValue(max_price)
 
     @inlineCallbacks
     def get_cost_for_task_id(self, task_id):
@@ -607,7 +569,8 @@ class GNRApplicationLogic(QtCore.QObject):
         :param task_id: Task ID
         :return: Cost of the task
         """
-        cost = yield self.client.get_payment_for_task_id(task_id)
+
+        cost = yield self.client.get_task_cost(task_id)
         returnValue(cost)
 
     def set_current_task_type(self, name):
@@ -618,10 +581,15 @@ class GNRApplicationLogic(QtCore.QObject):
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
-        if not os.path.exists(td.main_program_file):
-            self.customizer.show_error_window(u"Main program file does not exist: {}".format(td.main_program_file))
+        if td.task_type not in self.task_types:
+            self.customizer.show_error_window(u"{}".format("Task {} is not registered".format(td.task_type)))
             return False
-        return True
+        is_valid, err = td.is_valid()
+        if is_valid and err:
+            self.customizer.show_warning_window(u"{}".format(err))
+        if not is_valid:
+            self.customizer.show_error_window(u"{}".format(err))
+        return is_valid
 
     @staticmethod
     def _format_stats_message(stat):

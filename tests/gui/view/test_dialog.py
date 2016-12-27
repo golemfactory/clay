@@ -7,8 +7,17 @@ from gui.view.dialog import PaymentsDialog, EnvironmentsDialog, NodeNameDialog, 
 
 
 class TestDialogs(TestCase):
+
+    def setUp(self):
+        super(TestDialogs, self).setUp()
+        self.app = QApplication(sys.argv)
+
+    def tearDown(self):
+        super(TestDialogs, self).tearDown()
+        self.app.exit(0)
+        self.app.deleteLater()
+
     def test_dialogs(self):
-        app = QApplication(sys.argv)
         window = QMainWindow()
         PaymentsDialog(window)
         EnvironmentsDialog(window)

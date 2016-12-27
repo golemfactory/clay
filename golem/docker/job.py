@@ -193,8 +193,8 @@ class DockerJob(object):
         try:
             import stat
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
-        except:
-            pass
+        except Exception as e:
+            logger.debug("Cannot get mode for {}, reason: {}".format(dst_dir, e))
 
         if mod is not None:
             try:

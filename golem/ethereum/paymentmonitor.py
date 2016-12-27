@@ -34,11 +34,11 @@ class PaymentMonitor(object):
         if not self.__filter:
             # solidity Transfer() log id
             # FIXME: Take it from contract ABI
-            log_id = 'ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+            log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
             # Search for logs Transfer(..., my address)
-            # TODO: We can safe some gas by not indexing "from" address
-            bank_addr = PaymentProcessor.BANK_ADDR.encode('hex')
-            topics = [log_id, None, zpad(self.__addr, 32).encode('hex')]
+            # TODO: We can save some gas by not indexing "from" address
+            bank_addr = '0x' + PaymentProcessor.BANK_ADDR.encode('hex')
+            topics = [log_id, None, '0x' + zpad(self.__addr, 32).encode('hex')]
             self.__filter = self.__client.new_filter(from_block='earliest',
                                                      to_block='latest',
                                                      address=bank_addr,
@@ -54,7 +54,7 @@ class PaymentMonitor(object):
             payee = l['topics'][2][26:].decode('hex')
             assert payee == self.__addr
             value = int(l['data'], 16)
-            block_number = int(l['blockNumber'], 16)
+            block_number = l['blockNumber']
             block_hash = l['blockHash'][2:].decode('hex')
             assert len(block_hash) == 32
             tx_hash = l['transactionHash'][2:].decode('hex')

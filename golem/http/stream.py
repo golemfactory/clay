@@ -305,8 +305,10 @@ class ChunkStream:
             # read remaining data
             try:
                 self.__read(drain=True)
-            except:
+            except StopIteration:
                 pass
+            except socket.error:
+                logger.debug("Socket error")
             logger.debug("Disconnecting socket: closing socket")
             # dispose of the socket
             self.sock.close()

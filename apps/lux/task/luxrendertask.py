@@ -78,6 +78,7 @@ def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
 
 class LuxRenderOptions(GNROptions):
     def __init__(self):
+        super(LuxRenderOptions, self).__init__()
         self.environment = LuxRenderEnvironment()
         self.halttime = 0
         self.haltspp = 1
@@ -106,8 +107,8 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
                            self.task_definition.estimated_memory,
                            self.root_path,
                            self.task_definition.max_price,
-                           self.task_definition.renderer_options.halttime,
-                           self.task_definition.renderer_options.haltspp,
+                           self.task_definition.options.halttime,
+                           self.task_definition.options.haltspp,
                            docker_images=self.task_definition.docker_images
                            )
 

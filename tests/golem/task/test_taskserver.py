@@ -195,7 +195,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert len(ts.get_tasks_headers()) == 2
 
         new_header = dict(task_header)
-        new_header["task_owner"].pub_port = 9999
+        new_header["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(TaskHeader.dict_to_binary(new_header))
 
         assert ts.add_task_header(new_header)
@@ -574,7 +574,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             "task_id": "uvw",
             "node_name": "ABC",
             "environment": "DEFAULT",
-            "task_owner": Node(),
+            "task_owner": dict(),
             "task_owner_port": 10101,
             "task_owner_key_id": "key",
             "task_owner_address": "10.10.10.10",

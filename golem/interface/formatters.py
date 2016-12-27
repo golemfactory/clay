@@ -2,7 +2,7 @@ import abc
 import json
 
 import yaml
-from golem.core.simpleserializer import to_dict
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import CommandResult
 from golem.interface.exceptions import CommandException
 from tabulate import tabulate
@@ -61,7 +61,7 @@ class CommandFormatter(_CommandResultFormatter):
             elif isinstance(result, CommandException):
                 return repr(result)
 
-            result = to_dict(result)
+            result = DictSerializer.dump(result, typed=False)
 
             if self.prettify:
                 return yaml.safe_dump(result, allow_unicode=True, default_flow_style=False)
@@ -84,7 +84,7 @@ class CommandJSONFormatter(_CommandResultFormatter):
             if result_type == CommandResult.TABULAR:
                 result = dict(headers=result[0], values=result[1])
             else:
-                result = to_dict(result)
+                result = DictSerializer.dump(result, typed=False)
 
             if self.prettify:
                 return json.dumps(result, indent=4, sort_keys=True)

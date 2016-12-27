@@ -2,7 +2,7 @@ import unittest
 from contextlib import contextmanager
 
 from golem.interface.websockets import WebSocketCLI
-from golem.rpc.websockets import WebSocketRPCClientFactory
+from golem.rpc.session import Session, Client
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
@@ -12,7 +12,7 @@ class TestWebSocketCLI(unittest.TestCase):
 
     @patch('twisted.internet.threads', create=True, new_callable=Mock)
     @patch('twisted.internet.reactor', create=True, new_callable=Mock)
-    def test_execute(self, reactor, threads):
+    def test_execute(self, reactor, _):
 
         deferred = Deferred()
         deferred.result = "Success"
@@ -22,32 +22,25 @@ class TestWebSocketCLI(unittest.TestCase):
 
         @contextmanager
         def rpc_context():
-            connect = WebSocketRPCClientFactory.connect
-            build_simple_client = WebSocketRPCClientFactory.build_simple_client
-
-            WebSocketRPCClientFactory.connect = Mock()
-            WebSocketRPCClientFactory.connect.return_value = deferred
-            WebSocketRPCClientFactory.build_simple_client = Mock()
-            WebSocketRPCClientFactory.build_simple_client.return_value = Mock()
-
+            connect = Session.connect
+            Session.connect = Mock()
+            Session.connect.return_value = deferred
             yield
-
-            WebSocketRPCClientFactory.connect = connect
-            WebSocketRPCClientFactory.build_simple_client = build_simple_client
+            Session.connect = connect
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm=u'golem')
             ws_cli.execute()
 
-            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Mock)
+            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Client)
 
         with rpc_context():
 
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm=u'golem')
             ws_cli.execute()
 
             assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)

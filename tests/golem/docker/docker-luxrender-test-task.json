@@ -1,6 +1,6 @@
 {
   "py/object":"apps.rendering.task.renderingtaskstate.RenderingTaskDefinition",
-  "renderer_options":{
+  "options":{
     "py/object":"apps.lux.task.luxrendertask.LuxRenderOptions",
     "environment":{
 	"py/object":"apps.lux.luxenvironment.LuxRenderEnvironment",
@@ -33,7 +33,6 @@
     "halttime":600,
     "haltspp":1
   },
-  "task_type":null,
   "task_id":"afb97625-8731-4492-9321-c19b6bb479b4",
   "resources":{
     "py/set":[
@@ -97,9 +96,6 @@
   "task_type":"LuxRender",
   "main_program_file":"$GOLEM_DIR/apps/lux/resources/scripts/docker_luxtask.py",
   "max_price": 10.2,
-  "options":{
-    "py/type":"apps.core.task.gnrtaskstate.GNROptions"
-  },
   "subtask_timeout":1200,
   "total_subtasks":3,
   "docker_images":[

@@ -1,10 +1,10 @@
-from golem.task.taskstate import TaskState
+from os import path
 
 from apps.core.task.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
 
 
 class RendererInfo:
-    def __init__(self, name, defaults, task_builder_type, dialog, dialog_customizer, renderer_options):
+    def __init__(self, name, defaults, task_builder_type, dialog, dialog_customizer, options):
         self.name = name
         self.output_formats = []
         self.scene_file_ext = []
@@ -12,7 +12,7 @@ class RendererInfo:
         self.task_builder_type = task_builder_type
         self.dialog = dialog
         self.dialog_customizer = dialog_customizer
-        self.renderer_options = renderer_options
+        self.options = options
 
 
 class RendererDefaults:
@@ -34,19 +34,18 @@ class RenderingTaskDefinition(GNRTaskDefinition):
 
         self.resolution = [0, 0]
         self.renderer = None
-        self.renderer_options = None
+        self.options = None
 
         self.main_scene_file = ""
-        self.output_file = ""
+
         self.output_format = ""
         self.task_name = ""
 
-
-class RenderingTaskState:
-    def __init__(self):
-        self.definition = RenderingTaskDefinition()
-        self.task_state = TaskState()
-
+    def is_valid(self):
+        is_valid, err = super(RenderingTaskDefinition, self).is_valid()
+        if is_valid and not path.exists(self.main_scene_file):
+            return False, u"Main scene file {} is not properly set".format(self.main_scene_file)
+        return is_valid, err
 
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
     def __init__(self):

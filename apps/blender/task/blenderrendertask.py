@@ -52,7 +52,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
 
     def get_offset(self, subtask_number):
-        if subtask_number in self.expected_offsets.keys():
+        if 0 < subtask_number < len(self.expected_offsets):
             return self.expected_offsets[subtask_number]
         return self.preview_res_y
 
@@ -71,9 +71,9 @@ class PreviewUpdater(object):
                 _, img_y = img.size
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
-                
+
             # this is the last task
-            if subtask_number + 1 not in self.expected_offsets.keys():
+            if subtask_number + 1 >= len(self.expected_offsets):
                 height = self.preview_res_y - self.expected_offsets[subtask_number]
             else:
                 height = self.expected_offsets[subtask_number + 1] - self.expected_offsets[subtask_number]
@@ -125,6 +125,7 @@ def build_blender_renderer_info(dialog, customizer):
 
 class BlenderRendererOptions(GNROptions):
     def __init__(self):
+        super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
         self.use_frames = False
         self.frames = range(1, 11)
@@ -156,9 +157,9 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
                                          self.task_definition.resources,
                                          self.task_definition.estimated_memory,
                                          self.root_path,
-                                         self.task_definition.renderer_options.use_frames,
-                                         self.task_definition.renderer_options.frames,
-                                         self.task_definition.renderer_options.compositing,
+                                         self.task_definition.options.use_frames,
+                                         self.task_definition.options.frames,
+                                         self.task_definition.options.compositing,
                                          self.task_definition.max_price,
                                          docker_images=self.task_definition.docker_images)
         self._set_verification_options(blender_task)
@@ -168,8 +169,8 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     def _set_verification_options(self, new_task):
         new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
         if new_task.advanceVerification:
-            box_x = max(new_task.verification_options.box_size[0], 8)
-            box_y = max(new_task.verification_options.box_size[1], 8)
+            box_x = min(new_task.verification_options.box_size[0], new_task.res_x)
+            box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
             new_task.box_size = (box_x, box_y)
         return new_task
 
@@ -226,7 +227,8 @@ class BlenderRenderTask(FrameRenderingTask):
         self.compositing = compositing
         self.frames_given = {}
         for frame in frames:
-            self.frames_given[frame] = {}
+            frame_key = unicode(frame)
+            self.frames_given[frame_key] = {}
 
         self.preview_updater = None
         self.preview_updaters = None
@@ -509,7 +511,8 @@ class BlenderRenderTask(FrameRenderingTask):
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
         output_file_name = os.path.join(directory, self._get_output_name(frame_num))
-        collected = self.frames_given[frame_num]
+        frame_key = unicode(frame_num)
+        collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
@@ -542,17 +545,17 @@ class CustomCollector(RenderingTaskCollector):
 def generate_expected_offsets(parts, res_x, res_y):
     # returns expected offsets for preview; the highest value is preview's height
     scale_factor = __scale_factor(res_x, res_y)
-    expected_offsets = {}
+    expected_offsets = [0]
     previous_end = 0
     for i in range(1, parts + 1):
         low, high = get_min_max_y(i, parts, res_y) 
         low *= scale_factor * res_y
         high *= scale_factor * res_y
         height = int(math.floor(high - low))
-        expected_offsets[i] = previous_end
+        expected_offsets.append(previous_end)
         previous_end += height
     
-    expected_offsets[parts + 1] = previous_end
+    expected_offsets.append(previous_end)
     return expected_offsets
 
 

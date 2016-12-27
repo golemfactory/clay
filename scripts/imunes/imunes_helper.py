@@ -163,8 +163,8 @@ class OrContextEntry(ContextEntryType):
         for arg in self._entries:
             try:
                 arg.validate(key, value)
-            except:
-                pass
+            except Exception as ex:
+                print "Error occurred during arguments validation: {}".format(ex)
             else:
                 result = True
                 break
@@ -733,8 +733,8 @@ class SimulatorStartCommand(SimulatorCommand):
             try:
                 sim_name = subprocess.check_output(["himage", "-v", node])
                 node_map[node] = sim_name.replace("\n", '').strip()
-            except:
-                pass
+            except Exception as ex:
+                print "Subprocess error: {}".format(ex)
 
         context_update = {
             'state': SimulatorState.started,

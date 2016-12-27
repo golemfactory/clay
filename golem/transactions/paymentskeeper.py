@@ -83,7 +83,7 @@ class PaymentsKeeper(object):
         return [{"subtask": payment.subtask,
                  "payee": payment.payee,
                  "value": payment.value,
-                 "status": payment.status,
+                 "status": payment.status.value,
                  "fee": payment.details.get('fee')} for
                 payment in self.db.get_newest_payment()]
 

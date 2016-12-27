@@ -26,23 +26,33 @@ class Network(object):
 
     @doc("Show client status")
     def status(self):
-        deferred = Network.client.get_status()
+        deferred = Network.client.connection_status()
         status = CommandHelper.wait_for(deferred) or "unknown"
         return status
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port):
         try:
-            Network.client.connect(SocketAddress(ip, int(port)))
+            sa = SocketAddress(ip, int(port))
+            Network.client.connect((sa.address, sa.port))
         except Exception as exc:
             return CommandResult(error="Cannot connect to {}:{}: {}".format(ip, port, exc))
 
     @command(arguments=(sort_nodes, full_table), help="Show connected nodes")
     def show(self, sort, full):
-        values = []
-
-        deferred = Network.client.get_peer_info()
+        deferred = Network.client.get_connected_peers()
         peers = CommandHelper.wait_for(deferred) or []
+        return self.__peers(peers, sort, full)
+
+    @command(arguments=(sort_nodes, full_table), help="Show known nodes")
+    def dht(self, sort, full):
+        deferred = Network.client.get_known_peers()
+        peers = CommandHelper.wait_for(deferred) or []
+        return self.__peers(peers, sort, full)
+
+    @staticmethod
+    def __peers(peers, sort, full):
+        values = []
 
         for peer in peers:
             values.append([

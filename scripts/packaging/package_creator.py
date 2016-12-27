@@ -229,7 +229,6 @@ class LicenseCollector(object):
                 return self.get_module_license(module, is_file=is_file)
 
             try:
-
                 if is_file:
                     module = module[:module.rfind('.')]
                 imported = __import__(module)
@@ -241,8 +240,8 @@ class LicenseCollector(object):
                         package = item
                     if not package:
                         package = self._find_package(imported, is_file=is_file)
-            except Exception:
-                pass
+            except Exception as ex:
+                print "Error occurred during getting module license {}".format(ex)
 
         if package:
             meta, lic = self._get_metadata_and_license(package)
@@ -390,8 +389,8 @@ class LicenseCollector(object):
                     k, v = line.split(': ', 1)
                     if k == "License":
                         return '\n'.join(metadata), v
-            except Exception:
-                pass
+            except Exception as ex:
+                print "Error occurred during getting metadata: {}".format(ex)
 
         return None, None
 
@@ -622,8 +621,8 @@ class PackageCreator(Command):
                     proc = subprocess.Popen(('ldconfig', '-v'), stdout=subprocess.PIPE, stderr=fnull)
                     output = subprocess.check_output(('grep', base_name), stdin=proc.stdout)
                     proc.wait()
-            except:
-                pass
+            except Exception as ex:
+                print "Subprocess error: {}".format(ex)
 
             if output:
                 split = output.strip().split('->')
@@ -758,8 +757,8 @@ class PackageCreator(Command):
             if not os.path.exists(dest_path):
                 try:
                     os.makedirs(dest_path, 0755)
-                except:
-                    pass
+                except OSError as ex:
+                    print "Cannot create directory: {}".format(ex)
                 zf.extractall(dest_path)
 
     @staticmethod

@@ -19,13 +19,13 @@ DEFAULT_PADDING = 4
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def _calculate_total(self, defaults, definition):
         if definition.optimize_total:
-            if self.task_definition.renderer_options.use_frames:
-                return len(self.task_definition.renderer_options.frames)
+            if self.task_definition.options.use_frames:
+                return len(self.task_definition.options.frames)
             else:
                 return defaults.default_subtasks
 
-        if self.task_definition.renderer_options.use_frames:
-            num_frames = len(self.task_definition.renderer_options.frames)
+        if self.task_definition.options.use_frames:
+            num_frames = len(self.task_definition.options.frames)
             if definition.total_subtasks > num_frames:
                 est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
                 if est != definition.total_subtasks:
@@ -65,7 +65,8 @@ class FrameRenderingTask(RenderingTask):
 
         self.frames_given = {}
         for frame in frames:
-            self.frames_given[frame] = {}
+            frame_key = unicode(frame)
+            self.frames_given[frame_key] = {}
 
         if use_frames:
             self.preview_file_path = [None] * len(frames)
@@ -250,7 +251,8 @@ class FrameRenderingTask(RenderingTask):
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
         output_file_name = os.path.join(directory, self._get_output_name(frame_num))
-        collected = self.frames_given[frame_num]
+        frame_key = unicode(frame_num)
+        collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
@@ -274,19 +276,21 @@ class FrameRenderingTask(RenderingTask):
         self._update_task_preview()
 
     def _collect_frames(self, num_start, tr_file, frames_list):
-        self.frames_given[frames_list[0]][0] = tr_file
+        frame_key = unicode(frames_list[0])
+        self.frames_given[frame_key][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
         return frames_list[1:]
 
     def _collect_frame_part(self, num_start, tr_file, parts):
 
         frame_num = self.frames[(num_start - 1) / parts]
+        frame_key = unicode(frame_num)
         part = self._count_part(num_start, parts)
-        self.frames_given[frame_num][part] = tr_file
+        self.frames_given[frame_key][part] = tr_file
 
         self._update_frame_preview(tr_file, frame_num, part)
 
-        if len(self.frames_given[frame_num]) == parts:
+        if len(self.frames_given[frame_key]) == parts:
             self._put_frame_together(frame_num, num_start)
 
     def _count_part(self, start_num, parts):

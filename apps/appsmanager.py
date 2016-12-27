@@ -1,3 +1,4 @@
+import os
 from collections import OrderedDict
 from ConfigParser import ConfigParser
 from os import path
@@ -6,7 +7,7 @@ from importlib import import_module
 
 from golem.core.common import get_golem_path
 
-REGISTERED_CONFIG_FILE = 'apps/registered.ini'
+REGISTERED_CONFIG_FILE = os.path.join('apps', 'registered.ini')
 
 
 class App(object):

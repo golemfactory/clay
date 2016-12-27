@@ -108,7 +108,7 @@ def parse_requirements(requirements_file):
 def find_required_packages():
     if sys.platform.startswith('darwin'):
         return find_packages(exclude=['examples'])
-    return find_packages(include=['golem*', 'gnr*'])
+    return find_packages(include=['golem*', 'gnr*', 'apps*', 'gui*'])
 
 
 def current_dir():

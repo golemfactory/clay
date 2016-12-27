@@ -9,7 +9,7 @@ netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1
 Pillow==3.0.0
-psutil
+psutil>=4.3.1
 pyelliptic==1.5.7
 pysha3==0.3
 pystun==0.1.0
@@ -17,14 +17,13 @@ pytz
 qt4reactor==1.6
 requests==2.8.1
 six==1.10.0
-Twisted>=15.4
+Twisted>=16.5
 web3
 devp2p>=0.5.1
 cffi>=1.1.2
 ethereum>=1.1.0
 populus
-autobahn>=0.14.1
-dill>=0.2.5
+autobahn>=0.16.1
 cbor2
 multihash
 base58
@@ -33,5 +32,5 @@ ovh
 certifi
 weakreflist
 tabulate
-PyYAML>=3.11
-jsonpickle
+PyYAML>=3.12
+crossbar

@@ -1,11 +1,11 @@
 from __future__ import division
+
 import logging
 import random
 import time
-from datetime import datetime
 from math import ceil
 
-from golem.core.common import HandleKeyError, get_current_time
+from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
@@ -94,7 +94,7 @@ class CompTaskKeeper(object):
         self.active_tasks[task_id].requests -= 1
 
     def remove_old_tasks(self):
-        time_ = get_current_time()
+        time_ = get_timestamp_utc()
         for task_id, task in self.active_tasks.items():
             if time_ > task.header.deadline and len(task.subtasks) == 0:
                 self.remove_task(task_id)
@@ -130,14 +130,14 @@ class TaskHeaderKeeper(object):
 
     @staticmethod
     def is_correct(th_dict_repr):
-        """ Checks if task described with given taks header dict represenation has correctly defined parameters
+        """ Checks if task header dict representation has correctly defined parameters
          :param dict th_dict_repr: task header dictionary representation
          :return (bool, error): First element is True if task is properly defined (the second element is then None).
          Otheriwse first element is False and the second is the string describing wrong element
         """
-        if not isinstance(th_dict_repr['deadline'], datetime):
-            return False, "Deadline is not a datetime"
-        if th_dict_repr['deadline'] < get_current_time():
+        if not isinstance(th_dict_repr['deadline'], (int, long, float)):
+            return False, "Deadline is not a timestamp"
+        if th_dict_repr['deadline'] < get_timestamp_utc():
             return False, "Deadline already passed"
         if not isinstance(th_dict_repr['subtask_timeout'], int):
             return False, "Subtask timeout is not a number"
@@ -252,7 +252,7 @@ class TaskHeaderKeeper(object):
 
     def remove_old_tasks(self):
         for t in self.task_headers.values():
-            cur_time = get_current_time()
+            cur_time = get_timestamp_utc()
             if cur_time > t.deadline:
                 logger.warning("Task {} dies".format(t.task_id))
                 self.remove_task_header(t.task_id)

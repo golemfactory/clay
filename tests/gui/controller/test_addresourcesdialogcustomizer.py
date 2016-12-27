@@ -7,7 +7,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 
 from gui.application import GNRGui
-from gui.renderingapplicationlogic import RenderingApplicationLogic
+from gui.applicationlogic import GNRApplicationLogic
 from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import AddTaskResourcesDialog
@@ -17,7 +17,7 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
 
     def setUp(self):
         super(TestAddResourcesDialogCustomizer, self).setUp()
-        self.logic = RenderingApplicationLogic()
+        self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):

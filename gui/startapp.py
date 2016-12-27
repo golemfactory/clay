@@ -1,27 +1,18 @@
-import logging
 from multiprocessing import Process, Queue
 from os import path
-
-from twisted.internet.defer import inlineCallbacks
-
-from golem.client import Client
-from golem.core.common import config_logging
-from golem.core.processmonitor import ProcessMonitor
-from golem.rpc.service import RPCServiceInfo
-from golem.rpc.websockets import WebSocketRPCServerFactory, WebSocketRPCClientFactory
+from twisted.internet.defer import inlineCallbacks, setDebugging
+from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from golem.core.common import config_logging
+from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.rpc.session import Session, object_method_map
 
-from gui.renderingapplicationlogic import RenderingApplicationLogic
-from gui.view.appmainwindow import AppMainWindow
-from gui.view.widget import TaskWidget
-
-from application import GNRGui
-
+DEBUG_DEFERRED = True
 GUI_LOG_NAME = "golem_gui.log"
 CLIENT_LOG_NAME = "golem_client.log"
 
+setDebugging(DEBUG_DEFERRED)
 apps_manager = AppsManager()
 apps_manager.load_apps()
 
@@ -48,33 +39,40 @@ def load_environments():
 
 
 def register_rendering_task_types(logic):
+    from gui.view.widget import TaskWidget
     for app in apps_manager.apps.values():
-        logic.register_new_task_type(app.build_info(TaskWidget(app.widget), app.controller))
+        task_type = app.build_info(TaskWidget(app.widget), app.controller)
+        logic.register_new_task_type(task_type)
 
 
 class GUIApp(object):
 
     def __init__(self, rendering):
-        self.logic = RenderingApplicationLogic()
+        from application import GNRGui
+        from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+        from gui.applicationlogic import GNRApplicationLogic
+        from gui.view.appmainwindow import AppMainWindow
+
+        self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 RenderingMainWindowCustomizer)
-
-        self.client = None
 
         if rendering:
             register_rendering_task_types(self.logic)
 
     @inlineCallbacks
-    def start(self, client, logic_service_info):
-        self.client = client
-        yield self.logic.register_client(self.client, logic_service_info)
+    def start(self, client):
+        yield self.logic.register_client(client)
         yield self.logic.start()
-        yield self.logic.check_network_state()
-        self.app.execute(True)
+        self.app.execute(using_qt4_reactor=True)
 
 
 def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None):
+
+    from golem.rpc.mapping.gui import GUI_EVENT_MAP
+    from golem.rpc.session import Client
+    import logging
 
     if datadir:
         log_name = path.join(datadir, GUI_LOG_NAME)
@@ -83,41 +81,43 @@ def start_gui_process(queue, datadir, rendering=True, gui_app=None, reactor=None
 
     config_logging(log_name)
     logger = logging.getLogger("app")
-
-    client_service_info = queue.get(True, 3600)
-
-    if not isinstance(client_service_info, RPCServiceInfo):
-        logger.error("GUI process error: {}".format(client_service_info))
-        return
+    rpc_address = queue.get(True, 240)
 
     if not gui_app:
         gui_app = GUIApp(rendering)
     if not reactor:
         reactor = install_qt4_reactor()
 
-    rpc_address = client_service_info.rpc_address
-    rpc_client = WebSocketRPCClientFactory(rpc_address.host, rpc_address.port)
-
-    def on_connected(_):
-        golem_client = rpc_client.build_client(client_service_info)
-        logic_service_info = rpc_client.add_service(gui_app.logic)
-        gui_app.start(client=golem_client, logic_service_info=logic_service_info)
-
-    def on_error(error):
-        if reactor.running:
-            reactor.stop()
-        logger.error("GUI process error: {}".format(error))
+    events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
+    session = Session(rpc_address, events=events)
 
     def connect():
-        rpc_client.connect().addCallbacks(on_connected, on_error)
+        session.connect().addCallbacks(session_ready, shutdown)
+
+    def session_ready(*_):
+        core_client = Client(session, CORE_METHOD_MAP)
+        gui_app.start(core_client)
+
+    def shutdown(err):
+        logger.error(u"GUI process error: {}".format(err))
 
     reactor.callWhenRunning(connect)
-    if not reactor.running:
+    reactor.addSystemEventTrigger('before', 'shutdown', session.disconnect)
+
+    try:
         reactor.run()
+    except ReactorAlreadyRunning:
+        logger.debug(u"GUI process: reactor is already running")
 
 
 def start_client_process(queue, start_ranking, datadir=None,
-                         transaction_system=False, client=None):
+                         transaction_system=False, client=None,
+                         **config_overrides):
+
+    from golem.client import Client
+    from golem.rpc.router import CrossbarRouter
+    from twisted.internet import reactor
+    import logging
 
     if datadir:
         log_name = path.join(datadir, CLIENT_LOG_NAME)
@@ -126,43 +126,51 @@ def start_client_process(queue, start_ranking, datadir=None,
 
     config_logging(log_name)
     logger = logging.getLogger("golem.client")
-
     environments = load_environments()
 
     if not client:
-        try:
-            client = Client(datadir=datadir, transaction_system=transaction_system)
-            client.start()
-        except Exception as exc:
-            logger.error("Client process error: {}".format(exc))
-            queue.put(exc)
-            return
+        client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
 
     for env in environments:
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)
 
-    def listen():
-        rpc_server = WebSocketRPCServerFactory(interface='localhost')
-        rpc_server.listen()
+    config = client.config_desc
+    methods = object_method_map(client, CORE_METHOD_MAP)
 
-        client_service_info = client.set_rpc_server(rpc_server)
+    host, port = config.rpc_address, config.rpc_port
+    router = CrossbarRouter(host=host, port=port, datadir=client.datadir)
+    session = Session(router.address, methods=methods)
 
-        queue.put(client_service_info)
-        queue.close()
+    def router_ready(*_):
+        session.connect().addCallbacks(session_ready, shutdown)
 
-    from twisted.internet import reactor
+    def session_ready(*_):
+        try:
+            client.configure_rpc(session)
+            client.start()
+        except Exception as exc:
+            logger.error(u"Client process error: {}".format(exc))
+            queue.put(exc)
+        else:
+            queue.put(router.address)
+
+    def shutdown(err):
+        queue.put(Exception(u"Error: {}".format(err)))
+
+    router.start(reactor, router_ready, shutdown)
 
     if start_ranking:
         client.ranking.run(reactor)
 
-    reactor.callWhenRunning(listen)
-    if not reactor.running:
+    try:
         reactor.run()
+    except ReactorAlreadyRunning:
+        logger.debug(u"Client process: reactor is already running")
 
 
-def start_app(datadir=None, rendering=False,
-              start_ranking=True, transaction_system=False):
+def start_app(start_ranking=True, datadir=None,
+              transaction_system=False, rendering=False, **config_overrides):
 
     queue = Queue()
 
@@ -171,13 +179,16 @@ def start_app(datadir=None, rendering=False,
     gui_process.daemon = True
     gui_process.start()
 
+    from golem.core.processmonitor import ProcessMonitor
+
     process_monitor = ProcessMonitor(gui_process)
     process_monitor.add_shutdown_callback(stop_reactor)
     process_monitor.start()
 
     try:
-        start_client_process(queue, start_ranking, datadir, transaction_system)
+        start_client_process(queue, start_ranking, datadir,
+                             transaction_system, **config_overrides)
     except Exception as exc:
-        print "Exception in Client process: {}".format(exc)
+        print(u"Exception in Client process: {}".format(exc))
 
     process_monitor.exit()

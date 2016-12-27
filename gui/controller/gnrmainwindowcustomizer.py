@@ -168,9 +168,9 @@ class GNRMainWindowCustomizer(Customizer):
             current = previous
         self.gui.ui.stackedWidget.setCurrentIndex(self.gui.ui.listWidget.row(current))
 
-    def prompt_node_name(self, config):
+    def prompt_node_name(self, node_name):
         node_name_dialog = NodeNameDialog(self.gui.window)
-        NodeNameDialogCustomizer(node_name_dialog, self.logic, config)
+        NodeNameDialogCustomizer(node_name_dialog, self.logic, node_name)
         node_name_dialog.show()
 
     def _setup_connections(self):

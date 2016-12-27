@@ -24,7 +24,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
     def test_luxtask(self):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
-        td.renderer_options = lro
+        td.options = lro
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         luxtask = lb.build()
@@ -36,7 +36,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
     def test_query_extra_data(self):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
-        td.renderer_options = lro
+        td.options = lro
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         luxtask = lb.build()

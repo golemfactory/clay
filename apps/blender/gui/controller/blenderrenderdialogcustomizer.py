@@ -20,11 +20,11 @@ class BlenderRenderDialogCustomizer(FrameRendererCustomizer):
         self._set_advance_blender_options()
 
     def _set_advance_blender_options(self):
-        self.gui.ui.compositingCheckBox.setChecked(self.renderer_options.compositing)
+        self.gui.ui.compositingCheckBox.setChecked(self.options.compositing)
 
-    def _change_renderer_options(self):
-        super(BlenderRenderDialogCustomizer, self)._change_renderer_options()
-        self.renderer_options.compositing = self.gui.ui.compositingCheckBox.isChecked()
+    def _change_options(self):
+        super(BlenderRenderDialogCustomizer, self)._change_options()
+        self.options.compositing = self.gui.ui.compositingCheckBox.isChecked()
 
     def _setup_connections(self):
         super(BlenderRenderDialogCustomizer, self)._setup_connections()
