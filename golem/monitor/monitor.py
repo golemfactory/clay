@@ -65,10 +65,10 @@ class SystemMonitor(object):
     # Initialization
 
     def start(self):
-        host = self.config.monitor_host()
-        request_timeout = self.config.monitor_request_timeout()
-        sender_thread_timeout = self.config.monitor_sender_thread_timeout()
-        proto_ver = self.config.monitor_proto_version()
+        host = self.config['HOST']
+        request_timeout = self.config['REQUEST_TIMEOUT']
+        sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
+        proto_ver = self.config['PROTO_VERSION']
 
         self.sender_thread = SenderThread(self.node_info, host, request_timeout, sender_thread_timeout, proto_ver)
         self.sender_thread.start()

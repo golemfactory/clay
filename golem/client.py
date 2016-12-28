@@ -25,7 +25,7 @@ from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
-from golem.monitorconfig import monitor_config
+from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -204,7 +204,7 @@ class Client(object):
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(metadata, monitor_config)
+        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
