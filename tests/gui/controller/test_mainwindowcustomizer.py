@@ -6,28 +6,16 @@ from PIL import Image
 from PyQt4.QtCore import Qt
 from PyQt4.QtTest import QTest
 
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, TestGui
 
 from apps.core.task.gnrtaskstate import TaskDesc
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
-from gui.application import GNRGui
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
-from gui.view.appmainwindow import AppMainWindow
 from gui.view.tasktableelem import ItemMap
 
 
-class TestMainWindowCustomizer(TempDirFixture):
-
-    def setUp(self):
-        super(TestMainWindowCustomizer, self).setUp()
-        self.logic = MagicMock()
-        self.gnrgui = GNRGui(self.logic, AppMainWindow)
-
-    def tearDown(self):
-        super(TestMainWindowCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+class TestMainWindowCustomizer(TestGui):
 
     def test_description(self):
         customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
@@ -57,7 +45,6 @@ class TestMainWindowCustomizer(TempDirFixture):
         task1.status = "Finished"
         task1.definition.task_name = "TASK NAME 1"
         customizer.logic.get_task.return_value = task1
-        print "FUNC {}".format(customizer.logic.get_task())
         customizer.add_task(task1)
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Id).text() == "TASK ID 1"
         assert customizer.gui.ui.taskTableWidget.item(0, ItemMap.Name).text() == "TASK NAME 1"

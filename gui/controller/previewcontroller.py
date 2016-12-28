@@ -74,7 +74,7 @@ class PreviewController(Customizer):
         if "result_preview" in task_desc.task_state.extra_data:
             self.slider_previews = task_desc.task_state.extra_data["result_preview"]
         self.gui.ui.previewsSlider.setVisible(True)
-        self.gui.ui.previewsSlider.setRange(1, len(task_desc.definition.options.frames))
+        self.gui.ui.previewsSlider.setRange(1, len(task_desc.task_state.outputs))
         self.gui.ui.previewsSlider.setSingleStep(1)
         self.gui.ui.previewsSlider.setPageStep(1)
         self._update_slider_preview()
@@ -146,20 +146,14 @@ class PreviewController(Customizer):
             y = (y - margin_top) + 1
             task_id = definition.task_id
             task = self.logic.get_task(task_id)
-            renderer = self.logic.get_task_type(definition.task_type)
+            task_type = self.logic.get_task_type(definition.task_type)
+            total_subtasks = task.task_state.total_subtasks
             if len(task.task_state.subtask_states) > 0:
-                total_tasks = task.task_state.subtask_states.values()[0].extra_data['total_tasks']
-                if len(task.task_state.outputs) > 1:
-                    frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.previewsSlider.value()
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks, use_frames=True,
-                                    frames=frames, frame_num=frame_num,
-                                    res_x=self.maincontroller.current_task_highlighted.definition.resolution[0],
-                                    res_y=self.maincontroller.current_task_highlighted.definition.resolution[1])
+                if task.has_multiple_outputs():
+                    num = task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks,
+                                                             self.gui.ui.previewsSlider.value())
                 else:
-                    num = renderer.get_task_num_from_pixels(x, y, total_tasks,
-                                    res_x=self.maincontroller.current_task_highlighted.definition.resolution[0],
-                                    res_y=self.maincontroller.current_task_highlighted.definition.resolution[1])
+                    num = task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks)
         return num
 
     def __mouse_on_pixmap_moved(self, x, y, *args):

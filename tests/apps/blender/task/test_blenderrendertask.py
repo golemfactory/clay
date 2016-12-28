@@ -435,13 +435,21 @@ class TestHelpers(unittest.TestCase):
     def test_get_task_num_from_pixels(self):
         offsets = generate_expected_offsets(30, 1920, 1080)
         frame_offsets = generate_expected_offsets(15, 1920, 1080)
+        task_definition = RenderingTaskDefinition()
+        task_definition.options = BlenderRendererOptions()
+        task_definition.resolution = [1920, 1080]
+
         for k in range(1, 31):
-            num = get_task_num_from_pixels(6, offsets[k] + 1, 30, res_x=1920, res_y=1080)
-            self.assertTrue(num == k)
-            
-            num = get_task_num_from_pixels(1, 0, 30, res_x=1920, res_y=1080, use_frames=True, frames=30, frame_num=k)
-            self.assertTrue(num == k)
+            task_definition.options.use_frames = False
+            num = get_task_num_from_pixels(6, offsets[k] + 1, task_definition, 30)
+            assert num == k
+
+            task_definition.options.use_frames = True
+            task_definition.options.frames = range(30)
+            num = get_task_num_from_pixels(1, 0, task_definition, 30, k)
+            assert num == k
             
             i = (k - 1) % 15 + 1
-            num = get_task_num_from_pixels(1, frame_offsets[i] + 3, 30, res_x=1920, res_y=1080, use_frames=True, frames=2, frame_num=(k - 1)/15 + 1)
-            self.assertTrue(num == k)
+            task_definition.options.frames = range(2)
+            num = get_task_num_from_pixels(1, frame_offsets[i] + 3, task_definition, 30, (k - 1)/15 + 1)
+            assert num == k

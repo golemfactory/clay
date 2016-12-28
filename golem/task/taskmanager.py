@@ -127,6 +127,7 @@ class TaskManager(TaskEventListener):
         task.task_status = TaskStatus.waiting
         ts.status = TaskStatus.waiting
         ts.outputs = task.get_output_names()
+        ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts

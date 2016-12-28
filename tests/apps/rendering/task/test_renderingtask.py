@@ -1,6 +1,7 @@
 import unittest
 from os import makedirs, path
 
+from apps.core.task.gnrtaskstate import TaskState
 from apps.rendering.task.framerenderingtask import get_task_border
 from apps.rendering.task.renderingtask import RenderingTask
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
@@ -57,6 +58,22 @@ class TestRenderingTask(TestDirFixture):
         assert img.getpixel((199, 4)) == (1, 255, 255)
         assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
+
+    def test_update_task_state(self):
+        task = self._init_task()
+        state = TaskState()
+        task.update_task_state(state)
+        assert state.extra_data.get("result_preview") is None
+        task.preview_task_file_path = "preview_task_file"
+        task.preview_file_path = "preview_file"
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_task_file"
+        task.num_tasks_received = task.total_tasks
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_file"
+        task.preview_file_path = None
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_file"
 
 
 class TestGetTaskBorder(unittest.TestCase):

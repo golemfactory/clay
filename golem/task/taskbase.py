@@ -222,7 +222,6 @@ class Task(object):
         """
         return  # Implement in derived class
 
-
     @abc.abstractmethod
     def get_total_tasks(self):
         """ Return total number of tasks that should be computed

@@ -72,7 +72,7 @@ def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, num
     return border
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200):
+def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1):
     return 1
 
 

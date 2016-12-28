@@ -580,16 +580,20 @@ def get_min_max_y(task_num, parts, res_y):
     return min_y, max_y
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
-    if not use_frames:
-        num = __num_from_pixel(p_y, res_x, res_y, total_tasks)
+def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1):
+    res_x = definition.resolution[0]
+    res_y = definition.resolution[1]
+
+    if not definition.options.use_frames:
+        num = __num_from_pixel(p_y, res_x, res_y, total_subtasks)
     else:
-        if total_tasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / float(total_tasks)))
-            num = int(math.ceil(float(frame_num) / subtask_frames))
+        frames = len(definition.options.frames)
+        if total_subtasks <= frames:
+            subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
+            num = int(math.ceil(float(output_num) / subtask_frames))
         else:
-            parts = total_tasks / frames
-            num = (frame_num - 1) * parts + __num_from_pixel(p_y, res_x, res_y, parts)
+            parts = total_subtasks / frames
+            num = (output_num - 1) * parts + __num_from_pixel(p_y, res_x, res_y, parts)
     return num
 
 

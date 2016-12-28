@@ -138,6 +138,7 @@ class Tasks(object):
         task_builder = Tasks.application_logic.get_builder(rendering_task_state)
         task = Task.build_task(task_builder)
         rendering_task_state.task_state.outputs = task.get_output_names()
+        rendering_task_state.task_state.total_subtasks = task.get_total_tasks()
         task.header.task_id = str(uuid.uuid4())
 
         if not skip_test:

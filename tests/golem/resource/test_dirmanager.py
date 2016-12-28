@@ -1,8 +1,10 @@
 import os
 import shutil
 
-from golem.resource.dirmanager import DirManager, find_task_script
+from golem.resource.dirmanager import DirManager, find_task_script, logger
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
+
 
 
 class TestDirManager(TestDirFixture):
@@ -176,7 +178,7 @@ class TestDirManager(TestDirFixture):
         self.assertFalse(os.path.isdir(dir1))
 
 
-class TestFindTaskScript(TestDirFixture):
+class TestFindTaskScript(TestDirFixture, LogTestCase):
     def test_find_task_script(self):
         script_path = os.path.join(self.path, "resources", "scripts")
         os.makedirs(script_path)
@@ -186,3 +188,5 @@ class TestFindTaskScript(TestDirFixture):
         path = find_task_script(self.path, "bla")
         self.assertTrue(os.path.isdir(os.path.dirname(path)))
         self.assertEqual(os.path.basename(path), "bla")
+        with self.assertLogs(logger, level="ERROR"):
+            find_task_script(self.path, "notexisting")

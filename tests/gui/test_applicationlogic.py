@@ -55,6 +55,9 @@ class TTask(Task):
         self.results = results
         self.tmp_dir = tmp_dir
 
+    def get_output_names(self):
+        return ["output1", "output2", "output3"]
+
 
 class TTaskBuilder(TaskBuilder):
 
@@ -175,6 +178,21 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
+
+    def test_start_task(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        logic.client = Mock()
+        task_desc = TaskDesc()
+        task_desc.task_state.status = TaskStatus.notStarted
+        task_desc.definition.task_type = "TASKTYPE1"
+        task_type = Mock()
+        task_type.task_builder_type.return_value = TTaskBuilder(self.path)
+        logic.task_types["TASKTYPE1"] = task_type
+        logic.tasks["xyz"] = task_desc
+        logic.start_task("xyz")
+        assert task_desc.task_state.status == TaskStatus.starting
+        assert task_desc.task_state.outputs == ["output1", "output2", "output3"]
 
 
 class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
