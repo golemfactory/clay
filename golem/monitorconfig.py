@@ -2,7 +2,7 @@
 
 MONITOR_CONFIG = {
     'HOST': "http://94.23.17.170:8881/",
-    'HOST': "http://localhost:8881/",
+    #'HOST': "http://localhost:8881/",
     'REQUEST_TIMEOUT':  10,
 
     # Increase this number every time any change is made to the protocol (e.g. message object representation changes)
