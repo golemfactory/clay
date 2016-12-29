@@ -561,20 +561,14 @@ class DiscreteTimeRoundOracle:
 
     def sec_to_end_round(self):
         tm = self.round_time - self.__time_mod()
-        if tm >= 0:
-            return tm
-        else:
-            return self.__sum_time() + tm
+        return tm if tm >= 0 else self.__sum_time() + tm
 
     def sec_to_round(self):
         return self.__sum_time() - self.__time_mod()
 
     def sec_to_break(self):
         tm = self.round_time + self.end_round_time - self.__time_mod()
-        if tm >= 0:
-            return tm
-        else:
-            return self.__sum_time() + tm
+        return tm if tm >=0 else self.__sum_time() + tm
 
     def sec_to_new_stage(self):
         return self.stage_time - time.time() % self.stage_time
