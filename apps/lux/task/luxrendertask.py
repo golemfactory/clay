@@ -49,9 +49,10 @@ def build_lux_render_info(dialog, customizer):
     return renderer
 
 
-def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, num_subtasks=20):
+def get_task_border(subtask, definition, total_subtasks, output_num=1):
     preview_x = 300
     preview_y = 200
+    res_x, res_y = definition.resolution
     if res_x != 0 and res_y != 0:
         if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
             scale_factor = float(preview_x) / float(res_x)

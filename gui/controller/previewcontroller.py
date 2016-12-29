@@ -163,27 +163,15 @@ class PreviewController(Customizer):
             definition = task.definition
             if not isinstance(definition, GNRTaskDefinition):
                 return
-            renderer = self.logic.get_task_type(definition.task_type)
+            task_type = self.logic.get_task_type(definition.task_type)
             subtask = self.__get_subtask(num)
             if subtask is not None:
-                res_x, res_y = self.maincontroller.current_task_highlighted.definition.resolution
-                if len(task.task_state.outputs) > 1:
-                    frames = len(definition.options.frames)
-                    frame_num = self.gui.ui.previewsSlider.value()
-                    border = renderer.get_task_border(subtask.extra_data['start_task'],
-                                                      subtask.extra_data['end_task'],
-                                                      subtask.extra_data['total_tasks'],
-                                                      res_x,
-                                                      res_y,
-                                                      use_frames=True,
-                                                      frames=frames,
-                                                      frame_num=frame_num)
+                if task.has_multiple_outputs():
+                    border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks,
+                                                       self.gui.ui.previewsSlider.value())
+
                 else:
-                    border = renderer.get_task_border(subtask.extra_data['start_task'],
-                                                      subtask.extra_data['end_task'],
-                                                      subtask.extra_data['total_tasks'],
-                                                      res_x,
-                                                      res_y)
+                    border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks)
 
                 if path.isfile(self.last_preview_path) and self.last_preview_path != get_preview_file():
                         self.__draw_border(border)

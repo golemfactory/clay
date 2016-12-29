@@ -9,11 +9,11 @@ from PIL import Image, ImageChops
 from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNROptions
+
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import regenerate_blender_crop_file
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
-from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder
+from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from golem.resource.dirmanager import get_test_task_path, find_task_script
 from apps.rendering.task.renderingtask import AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
@@ -123,12 +123,10 @@ def build_blender_renderer_info(dialog, customizer):
     return renderer
 
 
-class BlenderRendererOptions(GNROptions):
+class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
-        self.use_frames = False
-        self.frames = range(1, 11)
         self.compositing = False
 
 
@@ -621,12 +619,15 @@ def __num_from_pixel(p_y, res_x, res_y, tasks):
     return tasks
 
 
-def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                    frame_num=1):
-    if not use_frames:
-        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
-    elif total_tasks > frames:
-        parts = total_tasks / frames
+def get_task_border(subtask, definition, total_subtasks, output_num=1):
+    start_task = subtask.extra_data['start_task']
+    end_task = subtask.extra_data['end_task']
+    frames = len(definition.options.frames)
+    res_x, res_y = definition.resolution
+    if not definition.options.use_frames:
+        border = __get_border(start_task, end_task, total_subtasks, res_x, res_y)
+    elif total_subtasks > frames:
+        parts = total_subtasks / frames
         border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
     else:
         border = []

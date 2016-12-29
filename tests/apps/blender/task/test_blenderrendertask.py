@@ -14,7 +14,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults, BlenderRenderT
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 
 
@@ -418,19 +418,31 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
 class TestHelpers(unittest.TestCase):
     def test_get_task_border(self):
         offsets = generate_expected_offsets(30, 800, 600)
+        subtask = SubtaskState()
+        definition = RenderingTaskDefinition()
+        definition.options = BlenderRendererOptions()
+        definition.resolution = [800, 600]
         for k in range(1, 31):
-            border = get_task_border(k, k, 30, res_x=800, res_y=600)
-            self.assertTrue((min(border) == (0, offsets[k])))
-            self.assertTrue(max(border) == (240, offsets[k + 1] - 1))
-        
+            subtask.extra_data = {'start_task': k, 'end_task': k}
+            border = get_task_border(subtask, definition, 30)
+            definition.options.use_frames = False
+            assert min(border) == (0, offsets[k])
+            assert max(border) == (240, offsets[k + 1] - 1)
+
         offsets = generate_expected_offsets(15, 800, 600)
         for k in range(1, 31):
-            border = get_task_border(k, k, 30, res_x=800, res_y=600, use_frames=True, frames=2)
+            subtask.extra_data = {'start_task': k, 'end_task': k}
+            definition.options.use_frames = True
+            definition.options.frames = range(2)
+            border = get_task_border(subtask, definition, 30)
             i = (k - 1) % 15 + 1
-            self.assertTrue(min(border) == (0, offsets[i]))
-            self.assertTrue(max(border) == (260, offsets[i + 1] - 1))
-        border = get_task_border(2, 2, 30, use_frames=True, frames=30)
-        self.assertTrue(border == [])
+            assert min(border) == (0, offsets[i])
+            assert max(border) == (260, offsets[i + 1] - 1)
+        subtask.extra_data = {'start_task': 2, 'end_task': 2}
+        definition.options.use_frames = True
+        definition.options.frames = range(30)
+        border = get_task_border(subtask, definition, 30)
+        assert border == []
 
     def test_get_task_num_from_pixels(self):
         offsets = generate_expected_offsets(30, 1920, 1080)

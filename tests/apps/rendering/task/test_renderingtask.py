@@ -1,10 +1,12 @@
 import unittest
 from os import makedirs, path
 
+from mock import Mock
+
 from apps.core.task.gnrtaskstate import TaskState
-from apps.rendering.task.framerenderingtask import get_task_border
+from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
+from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions, RenderingTaskDefinition)
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.tools.testdirfixture import TestDirFixture
@@ -79,11 +81,19 @@ class TestRenderingTask(TestDirFixture):
 class TestGetTaskBorder(unittest.TestCase):
 
     def test(self):
-        border = get_task_border(0, 1, 1, use_frames=False)
+        subtask = Mock()
+        subtask.extra_data = {'start_task': 0, 'end_task': 1}
+        definition = RenderingTaskDefinition()
+        definition.resolution = [300, 200]
+        definition.options = FrameRendererOptions()
+        border = get_task_border(subtask, definition, 1)
         assert len(border) == 1400
 
-        border = get_task_border(0, 1, 1, use_frames=True)
+        definition.options.use_frames = True
+        definition.options.frames = range(100)
+        border = get_task_border(subtask, definition, 1)
         assert not border
 
-        border = get_task_border(0, 1000, 1000, use_frames=True)
+        subtask.extra_data = {'start_task': 0, 'end_task': 1000}
+        border = get_task_border(subtask, definition, 1000)
         assert len(border) == 640

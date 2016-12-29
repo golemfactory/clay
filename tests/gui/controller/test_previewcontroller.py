@@ -94,3 +94,13 @@ class TestPreviewController(TestGui):
         td.task_state.outputs = ["output1", "output2"]
         pc._PreviewController__pixmap_clicked(10, 10)
         assert pc.maincontroller.show_subtask_details_dialog.call_count == 2
+
+        pc._PreviewController__mouse_on_pixmap_moved(0, 0)
+        assert task_type_mock.get_task_border.call_count == 0
+
+        pc._PreviewController__mouse_on_pixmap_moved(10, 10)
+        assert task_type_mock.get_task_border.call_count == 1
+
+        td.task_state.outputs = ["output1"]
+        pc._PreviewController__mouse_on_pixmap_moved(10, 10)
+        assert task_type_mock.get_task_border.call_count == 2

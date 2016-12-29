@@ -7,7 +7,7 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask
+from apps.core.task.gnrtask import GNRTask, GNROptions
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
@@ -43,6 +43,13 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             return definition.total_subtasks
         else:
             return defaults.default_subtasks
+
+
+class FrameRendererOptions(GNROptions):
+    def __init__(self):
+        super(GNROptions, self).__init__()
+        self.use_frames = False
+        self.frames = range(1, 11)
 
 
 class FrameRenderingTask(RenderingTask):
@@ -334,12 +341,15 @@ def get_frame_name(output_name, ext, frame_num):
         return u"{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
 
 
-def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                    frame_num=1):
-    if not use_frames:
-        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
-    elif total_tasks > frames:
-        parts = total_tasks / frames
+def get_task_border(subtask, definition, total_subtasks, output_num=1):
+    res_x, res_y = definition.resolution
+    start_task = subtask.extra_data['start_task']
+    end_task = subtask.extra_data['end_task']
+    frames = len(definition.options.frames)
+    if not definition.options.use_frames:
+        border = __get_border(start_task, end_task, total_subtasks, res_x, res_y)
+    elif total_subtasks > frames:
+        parts = total_subtasks / frames
         border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
     else:
         border = []
