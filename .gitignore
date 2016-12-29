@@ -5,6 +5,9 @@ __pycache__/
 ui_*.py
 *.exe
 
+# Vim swap files
+*.swp
+
 
 #VB files
 *.obj
@@ -39,6 +42,7 @@ sdist/
 *.log
 *.log.20*
 gui/view/gen/icons_rc.py
+golem/monitorconfig_local.py
 
 # Project structure parse results
 lextab.py

@@ -9,3 +9,8 @@ MONITOR_CONFIG = {
     'PROTO_VERSION': 0,
 }
 MONITOR_CONFIG['SENDER_THREAD_TIMEOUT'] = max(12, MONITOR_CONFIG['REQUEST_TIMEOUT'])  # so that the queue does not get filled up
+
+try:
+    from golem.monitorconfig_local import *
+except ImportError:
+    pass

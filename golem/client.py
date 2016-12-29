@@ -729,6 +729,7 @@ class Client(object):
                                                            self.task_server.task_computer.task_requested,
                                                            self.task_server.task_computer.compute_tasks,
                                                            self.task_server.task_computer.assigned_subtasks.keys())
+                    self.monitor.on_payments_snapshot(self.get_incomes_list()) #XXX
                 # with self.snapshot_lock:
                 #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
