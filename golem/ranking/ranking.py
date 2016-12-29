@@ -560,11 +560,11 @@ class DiscreteTimeRoundOracle:
         return time.time() % self.__sum_time()
 
     def sec_to_end_round(self):
-        tm = self.__time_mod()
-        if self.round_time - tm >= 0:
-            return self.round_time - tm
+        tm = self.round_time - self.__time_mod()
+        if tm >= 0:
+            return tm
         else:
-            return self.__sum_time() + self.round_time - tm
+            return self.__sum_time() + tm
 
     def sec_to_round(self):
         return self.__sum_time() - self.__time_mod()
