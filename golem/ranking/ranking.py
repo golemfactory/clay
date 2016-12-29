@@ -12,7 +12,6 @@ from peewee import IntegrityError
 from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
 from golem.core.variables import BREAK_TIME, ROUND_TIME, END_ROUND_TIME, STAGE_TIME
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -25,7 +24,6 @@ class RankingStats(object):
 
 
 class RankingDatabase(object):
-
     @staticmethod
     def increase_positive_computing(node_id, trust_mod):
         try:
@@ -141,12 +139,12 @@ class RankingDatabase(object):
                                         requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0])
         except IntegrityError:
             NeighbourLocRank.update(requesting_trust_value=loc_rank[1], computing_trust_value=loc_rank[0]).where(
-                    (NeighbourLocRank.about_node_id == about_id) & (NeighbourLocRank.node_id == neighbour_id)).execute()
+                (NeighbourLocRank.about_node_id == about_id) & (NeighbourLocRank.node_id == neighbour_id)).execute()
 
     @staticmethod
     def get_neighbour_loc_rank(neighbour_id, about_id):
         return NeighbourLocRank.select().where(
-                (NeighbourLocRank.node_id == neighbour_id) & (NeighbourLocRank.about_node_id == about_id)).first()
+            (NeighbourLocRank.node_id == neighbour_id) & (NeighbourLocRank.about_node_id == about_id)).first()
 
 
 POS_PAR = 1.0
@@ -213,7 +211,8 @@ class Ranking(object):
             self.working_vec = {}
             self.prevRank = {}
             for loc_rank in self.db.get_all_local_rank():
-                comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
+                comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank),
+                                                self.__get_comp_trust_neg(loc_rank))
                 req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
                 self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
                 self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
@@ -571,11 +570,11 @@ class DiscreteTimeRoundOracle:
         return self.__sum_time() - self.__time_mod()
 
     def sec_to_break(self):
-        tm = self.__time_mod()
-        if self.round_time + self.end_round_time - tm >= 0:
-            return self.round_time + self.end_round_time - tm
+        tm = self.round_time + self.end_round_time - self.__time_mod()
+        if tm >= 0:
+            return tm
         else:
-            return self.__sum_time() + self.round_time + self.end_round_time - tm
+            return self.__sum_time() + tm
 
     def sec_to_new_stage(self):
         return self.stage_time - time.time() % self.stage_time
