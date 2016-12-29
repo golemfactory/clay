@@ -1,14 +1,15 @@
 import unittest
 from os import makedirs, path
 
-from apps.rendering.task.framerenderingtask import get_task_border
+from mock import Mock
+
+from apps.core.task.gnrtaskstate import TaskState
+from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
+from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions, RenderingTaskDefinition)
 
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.tools.testdirfixture import TestDirFixture
-
-from apps.rendering.task.renderingdirmanager import get_tmp_path
 
 
 class TestRenderingTask(TestDirFixture):
@@ -60,15 +61,39 @@ class TestRenderingTask(TestDirFixture):
         assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
 
+    def test_update_task_state(self):
+        task = self._init_task()
+        state = TaskState()
+        task.update_task_state(state)
+        assert state.extra_data.get("result_preview") is None
+        task.preview_task_file_path = "preview_task_file"
+        task.preview_file_path = "preview_file"
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_task_file"
+        task.num_tasks_received = task.total_tasks
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_file"
+        task.preview_file_path = None
+        task.update_task_state(state)
+        assert state.extra_data["result_preview"] == "preview_file"
+
 
 class TestGetTaskBorder(unittest.TestCase):
 
     def test(self):
-        border = get_task_border(0, 1, 1, use_frames=False)
+        subtask = Mock()
+        subtask.extra_data = {'start_task': 0, 'end_task': 1}
+        definition = RenderingTaskDefinition()
+        definition.resolution = [300, 200]
+        definition.options = FrameRendererOptions()
+        border = get_task_border(subtask, definition, 1)
         assert len(border) == 1400
 
-        border = get_task_border(0, 1, 1, use_frames=True)
+        definition.options.use_frames = True
+        definition.options.frames = range(100)
+        border = get_task_border(subtask, definition, 1)
         assert not border
 
-        border = get_task_border(0, 1000, 1000, use_frames=True)
+        subtask.extra_data = {'start_task': 0, 'end_task': 1000}
+        border = get_task_border(subtask, definition, 1000)
         assert len(border) == 640

@@ -1,12 +1,15 @@
 from multiprocessing import Process, Queue
 from os import path
+
 from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
+
 from golem.core.common import config_logging
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, object_method_map
+
 
 DEBUG_DEFERRED = True
 GUI_LOG_NAME = "golem_gui.log"
@@ -48,15 +51,17 @@ def register_rendering_task_types(logic):
 class GUIApp(object):
 
     def __init__(self, rendering):
-        from application import GNRGui
-        from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+
+        from gui.application import GNRGui
+
         from gui.applicationlogic import GNRApplicationLogic
+        from gui.controller.mainwindowcustomizer import MainWindowCustomizer
         from gui.view.appmainwindow import AppMainWindow
 
         self.logic = GNRApplicationLogic()
         self.app = GNRGui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
-                                RenderingMainWindowCustomizer)
+                                MainWindowCustomizer)
 
         if rendering:
             register_rendering_task_types(self.logic)

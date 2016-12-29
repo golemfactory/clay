@@ -18,11 +18,9 @@ qt4reactor==1.6
 requests==2.8.1
 six==1.10.0
 Twisted>=16.5
-web3
-eth-testrpc
-devp2p>=0.5.1
+web3>=3.4.4
 cffi>=1.1.2
-ethereum>=1.1.0
+ethereum>=1.6.0
 autobahn>=0.16.1
 cbor2
 multihash
@@ -35,3 +33,6 @@ tabulate
 PyYAML>=3.12
 crossbar
 jsonpickle
+devp2p>=0.5.1
+scrypt
+packaging

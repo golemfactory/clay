@@ -75,7 +75,8 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def register_listener(self, listener):
-        assert isinstance(listener, TaskManagerEventListener)
+        if not isinstance(listener, TaskManagerEventListener):
+            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskManagerEventListener".format(type(listener)))
 
         if listener in self.listeners:
             logger.error("listener {} already registered ".format(listener))
@@ -90,9 +91,12 @@ class TaskManager(TaskEventListener):
             logger.warning("Trying to unregister listener that wasn't registered {}".format(listener))
 
     def add_new_task(self, task):
-        assert task.header.task_id not in self.tasks
-        assert self.key_id
-        assert SocketAddress.is_proper_address(self.listen_address, self.listen_port)
+        if task.header.task_id in self.tasks:
+            raise RuntimeError("Task has been already added")
+        if not self.key_id:
+            raise ValueError("'key_id' is not set")
+        if not SocketAddress.is_proper_address(self.listen_address, self.listen_port):
+            raise IOError("Incorrect socket address")
 
         prev_pub_addr, prev_pub_port, prev_nat_type = self.node.pub_addr, self.node.pub_port, self.node.nat_type
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
@@ -126,7 +130,8 @@ class TaskManager(TaskEventListener):
 
         task.task_status = TaskStatus.waiting
         ts.status = TaskStatus.waiting
-
+        ts.outputs = task.get_output_names()
+        ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
@@ -233,7 +238,8 @@ class TaskManager(TaskEventListener):
             return None
 
     def set_value(self, task_id, subtask_id, value):
-        assert type(value) in (int, long)
+        if type(value) not in (int, long):
+            raise TypeError("Incorrect 'value' type: {}. Should be int or long".format(type(value)))
         task_state = self.tasks_states.get(task_id)
         if task_state is None:
             logger.warning("This is not my task {}".format(task_id))
@@ -550,7 +556,7 @@ class TaskManager(TaskEventListener):
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
         if ctd.task_id not in self.tasks_states:
-            assert False, "Should never be here!"
+            raise RuntimeError("Should never be here!")
         else:
             ts = self.tasks_states[ctd.task_id]
 

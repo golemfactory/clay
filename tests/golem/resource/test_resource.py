@@ -36,6 +36,17 @@ class TestTaskResourceHeader(TestDirFixture):
         self.assertEquals(header.dir_name, header2.dir_name)
         self.assertEquals(header.files_data, header2.files_data)
 
+        with self.assertRaises(TypeError):
+            TaskResourceHeader.build_header_delta_from_chosen(None, None)
+
+        self.assertEqual(TaskResourceHeader.build_header_delta_from_chosen(header, self.path),
+                         TaskResourceHeader(header.dir_name))
+
+        with self.assertRaises(TypeError):
+            TaskResourceHeader.build_parts_header_delta_from_chosen(None, None, None)
+        with self.assertRaises(TypeError):
+            TaskResourceHeader.build_header_delta_from_header(None, None, None)
+
 
 class TestTaskResource(TestDirFixture):
 

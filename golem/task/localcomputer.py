@@ -4,10 +4,9 @@ import shutil
 from threading import Lock
 
 from golem.docker.task_thread import DockerTaskThread
-from golem.task.taskbase import Task, resource_types
+from golem.resource.dirmanager import get_test_task_path, get_test_task_tmp_path
 from golem.resource.resource import TaskResourceHeader, decompress_dir
-
-from apps.rendering.task.renderingdirmanager import get_test_task_path, get_test_task_tmp_path
+from golem.task.taskbase import Task, resource_types
 
 logger = logging.getLogger("golem.task")
 
@@ -19,7 +18,8 @@ class LocalComputer(object):
     def __init__(self, task, root_path, success_callback, error_callback, get_compute_task_def, check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING, comp_success_message=DEFAULT_SUCCESS, use_task_resources=True,
                  additional_resources=None):
-        assert isinstance(task, Task)
+        if not isinstance(task, Task):
+            raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
         self.task = task
         self.res_path = None
         self.tmp_dir = None

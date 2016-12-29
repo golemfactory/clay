@@ -15,7 +15,7 @@ class IGolemVM:
         pass
 
     def get_progress(self):
-        assert False
+        raise NotImplementedError()
 
     def run_task(self, src_code, extra_data):
         pass

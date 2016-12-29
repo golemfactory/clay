@@ -27,6 +27,14 @@ def is_osx():
     return sys.platform == "darwin"
 
 
+def is_linux():
+    """
+    Check if this system is Linux
+    :return bool: True if current system is Linux, False otherwise
+    """
+    return sys.platform.startswith('linux')
+
+
 def get_golem_path():
     """
     Return path to main golem directory

@@ -17,7 +17,6 @@ class DictCoder(object):
 
     @classmethod
     def to_dict(cls, obj, typed=True):
-        assert cls.deep_serialization
         return cls._to_dict_traverse_obj(obj, typed)
 
     @classmethod

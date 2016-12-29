@@ -46,7 +46,8 @@ def group(name=None, parent=None, **kwargs):
 
     def decorate(cls):
 
-        assert inspect.isclass(cls)
+        if not inspect.isclass(cls):
+            raise TypeError("'cls' should be class, but is: {}".format(type(cls)))
 
         CommandHelper.init_instance(cls)
         CommandHelper.init_interface(cls,
@@ -208,7 +209,8 @@ class CommandResult(object):
             self.type = type or CommandResult.PLAIN
 
     def from_tabular(self):
-        assert self.type == CommandResult.TABULAR
+        if self.type != CommandResult.TABULAR:
+            raise TypeError("Type should be: {}".format(CommandResult.TABULAR))
         data = self.data
 
         if data and len(data) == 2:

@@ -31,7 +31,8 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking import Ranking, RankingStats
+from golem.ranking.ranking_min_max import Ranking
+from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
@@ -317,11 +318,13 @@ class Client(object):
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
-    def increase_trust(self, node_id, stat, mod=1.0):
-        self.ranking.increase_trust(node_id, stat, mod)
+    @staticmethod
+    def increase_trust(node_id, stat, mod=1.0):
+        Trust(stat).increase(node_id, mod)
 
-    def decrease_trust(self, node_id, stat, mod=1.0):
-        self.ranking.decrease_trust(node_id, stat, mod)
+    @staticmethod
+    def decrease_trust(node_id, stat, mod=1.0):
+        Trust(stat).decrease(node_id, mod)
 
     def get_node(self):
         return DictSerializer.dump(self.node)
@@ -652,7 +655,7 @@ class Client(object):
         return self.p2pservice.send_stop_gossip()
 
     def collect_gossip(self):
-        return self.p2pservice.pop_gossip()
+        return self.p2pservice.pop_gossips()
 
     def collect_stopped_peers(self):
         return self.p2pservice.pop_stop_gossip_form_peers()
@@ -668,7 +671,7 @@ class Client(object):
             return
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
-            self.decrease_trust(node_id, RankingStats.payment)
+            self.decrease_trust(node_id, Trust.PAYMENT)
 
     def lock_config(self, on=True):
         if self.rpc_publisher:

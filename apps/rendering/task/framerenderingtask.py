@@ -7,7 +7,7 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask
+from apps.core.task.gnrtask import GNRTask, GNROptions
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
@@ -43,6 +43,13 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             return definition.total_subtasks
         else:
             return defaults.default_subtasks
+
+
+class FrameRendererOptions(GNROptions):
+    def __init__(self):
+        super(GNROptions, self).__init__()
+        self.use_frames = False
+        self.frames = range(1, 11)
 
 
 class FrameRenderingTask(RenderingTask):
@@ -128,6 +135,13 @@ class FrameRenderingTask(RenderingTask):
             self._update_frame_task_preview()
         else:
             self._update_task_preview()
+
+    def get_output_names(self):
+        if self.use_frames:
+            dir_ = os.path.dirname(self.output_file)
+            return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
+        else:
+            return super(FrameRenderingTask, self).get_output_names()
 
     #########################
     # Specific task methods #
@@ -327,30 +341,35 @@ def get_frame_name(output_name, ext, frame_num):
         return u"{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
 
 
-def get_task_border(start_task, end_task, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100,
-                    frame_num=1):
-    if not use_frames:
-        border = __get_border(start_task, end_task, total_tasks, res_x, res_y)
-    elif total_tasks > frames:
-        parts = total_tasks / frames
-        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
-    else:
-        border = []
+def get_task_border(subtask, definition, total_subtasks, output_num=1):
+    res_x, res_y = definition.resolution
+    start_task = subtask.extra_data['start_task']
+    end_task = subtask.extra_data['end_task']
+    frames = len(definition.options.frames)
 
-    return border
+    if not definition.options.use_frames:
+        return __get_border(start_task, end_task, total_subtasks, res_x, res_y)
+
+    if total_subtasks > frames:
+        parts = total_subtasks / frames
+        return __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+
+    return []
 
 
-def get_task_num_from_pixels(p_x, p_y, total_tasks, res_x=300, res_y=200, use_frames=False, frames=100, frame_num=1):
-    if not use_frames:
-        num = __num_from_pixel(p_y, res_y, total_tasks)
-    else:
-        if total_tasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / float(total_tasks)))
-            num = int(math.ceil(float(frame_num) / subtask_frames))
-        else:
-            parts = total_tasks / frames
-            num = (frame_num - 1) * parts + __num_from_pixel(p_y, res_y, parts)
-    return num
+def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1):
+    res_y = definition.resolution[1]
+    if not definition.options.use_frames:
+        return __num_from_pixel(p_y, res_y, total_subtasks)
+
+    frames = len(definition.options.frames)
+
+    if total_subtasks <= frames:
+        subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
+        return int(math.ceil(float(output_num) / subtask_frames))
+
+    parts = total_subtasks / frames
+    return (output_num - 1) * parts + __num_from_pixel(p_y, res_y, parts)
 
 
 def __get_border(start_task, end_task, parts, res_x, res_y):
