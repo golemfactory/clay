@@ -421,11 +421,11 @@ class Ranking(object):
 
     def __set_k(self):
         degrees = self.__get_neighbours_degree()
-        if degrees is None:
+        degree = len(degrees)
+        if degree == 0:
             self.k = 0
         else:
             sum_degrees = sum(degrees.values())
-            degree = len(degrees)
             avg = float(sum_degrees) / float(degree)
             self.k = max(int(round(float(degree) / avg)), 1)
 
