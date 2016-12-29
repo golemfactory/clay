@@ -372,9 +372,6 @@ class Ranking(object):
 
     def __push_local_ranks(self):
         for loc_rank in self.db.get_all_local_rank():
-            if loc_rank.node_id in self.prev_loc_rank:
-                prev_trust = self.prev_loc_rank[loc_rank.node_id]
-
             comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
             req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
             trust = [comp_trust, req_trust]
