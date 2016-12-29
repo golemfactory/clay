@@ -397,7 +397,7 @@ class Ranking(object):
 
     def __compare_working_vec_and_prev_rank(self):
         sum = 0.0
-        for node_id, val in self.working_vec.iteritems():
+        for node_id, val in self.working_vec.items():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -424,7 +424,7 @@ class Ranking(object):
         if degrees == None:
             self.k = 0
         else:
-            sum_degrees = sum(degrees.itervalues())
+            sum_degrees = sum(degrees.values())
             degree = len(degrees)
             avg = float(sum_degrees) / float(degree)
             self.k = max(int(round(float(degree) / avg)), 1)
@@ -435,7 +435,7 @@ class Ranking(object):
         return degrees
 
     def __make_prev_rank(self):
-        for node_id, val in self.working_vec.iteritems():
+        for node_id, val in self.working_vec.items():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -446,7 +446,7 @@ class Ranking(object):
             self.prevRank[node_id] = [comp_trust, req_trust]
 
     def __save_working_vec(self):
-        for node_id, val in self.working_vec.iteritems():
+        for node_id, val in self.working_vec.items():
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -471,7 +471,7 @@ class Ranking(object):
 
     def __prepare_gossip(self):
         gossip_vec = []
-        for node_id, val in self.working_vec.iteritems():
+        for node_id, val in self.working_vec.items():
             comp_trust = map(self.__scale_gossip, val[0])
             req_trust = map(self.__scale_gossip, val[1])
             gossip_vec.append([node_id, [comp_trust, req_trust]])
