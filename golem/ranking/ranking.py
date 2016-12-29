@@ -421,7 +421,7 @@ class Ranking(object):
 
     def __set_k(self):
         degrees = self.__get_neighbours_degree()
-        if degrees == None:
+        if degrees is None:
             self.k = 0
         else:
             sum_degrees = sum(degrees.values())
