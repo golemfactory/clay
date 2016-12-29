@@ -148,6 +148,7 @@ class MainWindowCustomizer(Customizer):
         assert isinstance(t, TaskDesc)
 
         self.current_task_highlighted = t
+        self.gui.ui.startTaskButton.setEnabled(t.task_state.status == TaskStatus.notStarted)
 
         self.__set_time_params(t)
         self.__set_memory_params(t)
