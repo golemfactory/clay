@@ -331,29 +331,23 @@ class Ranking(object):
 
     def __get_loc_computing_trust(self, node_id):
         local_rank = self.db.get_local_rank(node_id)
-        # Known node
-        if local_rank is not None:
-            return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank))
-        return None
+        # for known node
+        return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank))\
+            if local_rank is not None else None
 
     def __get_loc_requesting_trust(self, node_id):
         local_rank = self.db.get_local_rank(node_id)
-        # Known node
-        if local_rank is not None:
-            return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank))
-        return None
+        # for known node
+        return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank))\
+            if local_rank is not None else None
 
     def __get_computing_neighbour_loc_trust(self, neighbour, about):
         rank = self.db.get_neighbour_loc_rank(neighbour, about)
-        if rank is not None:
-            return rank.computing_trust_value
-        return self.unknown_trust
+        return rank.computing_trust_value if rank is not None else self.unknown_trust
 
     def __get_requesting_neighbour_loc_trust(self, neighbour, about):
         rank = self.db.get_neighbour_loc_rank(neighbour, about)
-        if rank is not None:
-            return rank.requesting_trust_value
-        return self.unknown_trust
+        return rank.requesting_trust_value if rank is not None else self.unknown_trust
 
     def __neighbour_weight_base(self):
         return 2
