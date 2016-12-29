@@ -402,11 +402,7 @@ class Ranking(object):
     def __check_global_finished(self):
         self.__mark_finished(self.client.collect_stopped_peers())
         if self.finished:
-            self.global_finished = True
-            for n in self.neighbours:
-                if n not in self.finished_neighbours:
-                    self.global_finished = False
-                    break
+            self.global_finished = set(self.neighbours) <= self.finished_neighbours
 
     def __compare_working_vec_and_prev_rank(self):
         sum = 0.0
