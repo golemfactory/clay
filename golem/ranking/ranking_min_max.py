@@ -163,7 +163,8 @@ class Ranking(object):
         if global_rank is not None:
             if weight_sum + global_rank.gossip_weight_computing != 0:
                 logger.debug("Using gossipRank + neighboursRank")
-                return (rank + global_rank.computing_trust_value) / (weight_sum + global_rank.gossip_weight_computing)
+                return (rank + global_rank.computing_trust_value) / float(
+                    weight_sum + global_rank.gossip_weight_computing)
         elif weight_sum != 0:
             logger.debug("Using neighboursRank")
             return rank / float(weight_sum)
