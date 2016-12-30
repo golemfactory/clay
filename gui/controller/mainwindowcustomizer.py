@@ -41,7 +41,8 @@ logger = logging.getLogger("gui")
 
 
 def insert_item(root, path_table):
-    assert isinstance(root, QTreeWidgetItem)
+    if not isinstance(root, QTreeWidgetItem):
+        raise TypeError("Incorrect root type: {}. Should be QTreeWidgetItem".format(type(root)))
 
     if len(path_table) > 0:
         for i in range(root.childCount()):
@@ -145,7 +146,8 @@ class MainWindowCustomizer(Customizer):
         self._add_task(task.definition.task_id, task.status, task.definition.task_name)
 
     def update_task_additional_info(self, t):
-        assert isinstance(t, TaskDesc)
+        if not isinstance(t, TaskDesc):
+            raise TypeError("Incorrect argument type: {}. Should be TaskDesc".format(type(t)))
 
         self.current_task_highlighted = t
         self.gui.ui.startTaskButton.setEnabled(t.task_state.status == TaskStatus.notStarted)

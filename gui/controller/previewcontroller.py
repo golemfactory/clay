@@ -110,71 +110,70 @@ class PreviewController(Customizer):
             self.maincontroller.show_subtask_details_dialog(subtask)
 
     def __get_subtask(self, num):
-        subtask = None
         task = self.logic.get_task(self.maincontroller.current_task_highlighted.definition.task_id)
         subtasks = [sub for sub in task.task_state.subtask_states.values() if
                     sub.extra_data['start_task'] <= num <= sub.extra_data['end_task']]
         if len(subtasks) > 0:
-            subtask = min(subtasks, key=lambda x: subtasks_priority(x))
-        return subtask
+            return min(subtasks, key=lambda x: subtasks_priority(x))
 
     def __get_task_num_from_pixels(self, x, y):
-        num = None
 
         t = self.maincontroller.current_task_highlighted
-        if t is None or not isinstance(t.definition, GNRTaskDefinition):
+        if t is None or not isinstance(t.definition, GNRTaskDefinition) or t.definition.task_type is None:
             return
 
-        if t.definition.task_type:
-            definition = t.definition
+        definition = t.definition
 
-            scaled_size = self.gui.ui.previewLabel.pixmap().size()
+        scaled_size = self.gui.ui.previewLabel.pixmap().size()
 
-            scaled_x = scaled_size.width()
-            scaled_y = scaled_size.height()
+        scaled_x = scaled_size.width()
+        scaled_y = scaled_size.height()
 
-            margin_left = (300. - scaled_x) / 2.
-            margin_right = 300. - margin_left
+        margin_left = (300. - scaled_x) / 2.
+        margin_right = 300. - margin_left
 
-            margin_top = (200. - scaled_y) / 2.
-            margin_bottom = 200. - margin_top
+        margin_top = (200. - scaled_y) / 2.
+        margin_bottom = 200. - margin_top
 
-            if x <= margin_left or x >= margin_right or y <= margin_top or y >= margin_bottom:
-                return
+        if x <= margin_left or x >= margin_right or y <= margin_top or y >= margin_bottom:
+            return
 
-            x = (x - margin_left)
-            y = (y - margin_top) + 1
-            task_id = definition.task_id
-            task = self.logic.get_task(task_id)
-            task_type = self.logic.get_task_type(definition.task_type)
-            total_subtasks = task.task_state.total_subtasks
-            if len(task.task_state.subtask_states) > 0:
-                if task.has_multiple_outputs():
-                    num = task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks,
-                                                             self.gui.ui.previewsSlider.value())
-                else:
-                    num = task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks)
-        return num
+        x = (x - margin_left)
+        y = (y - margin_top) + 1
+        task_id = definition.task_id
+        task = self.logic.get_task(task_id)
+        task_type = self.logic.get_task_type(definition.task_type)
+        total_subtasks = task.task_state.total_subtasks
+        if len(task.task_state.subtask_states) == 0:
+            return
+        if task.has_multiple_outputs():
+            return task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks,
+                                                      self.gui.ui.previewsSlider.value())
+        return task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks)
 
     def __mouse_on_pixmap_moved(self, x, y, *args):
         num = self.__get_task_num_from_pixels(x, y)
-        if num is not None:
-            task = self.maincontroller.current_task_highlighted
-            definition = task.definition
-            if not isinstance(definition, GNRTaskDefinition):
-                return
-            task_type = self.logic.get_task_type(definition.task_type)
-            subtask = self.__get_subtask(num)
-            if subtask is not None:
-                if task.has_multiple_outputs():
-                    border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks,
-                                                       self.gui.ui.previewsSlider.value())
+        if num is None:
+            return
 
-                else:
-                    border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks)
+        task = self.maincontroller.current_task_highlighted
 
-                if path.isfile(self.last_preview_path) and self.last_preview_path != get_preview_file():
-                        self.__draw_border(border)
+        if not isinstance(task.definition, GNRTaskDefinition):
+            return
+        task_type = self.logic.get_task_type(task.definition.task_type)
+
+        subtask = self.__get_subtask(num)
+        if subtask is None:
+            return
+
+        if task.has_multiple_outputs():
+            border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks,
+                                               self.gui.ui.previewsSlider.value())
+        else:
+            border = task_type.get_task_border(subtask, task.definition, task.task_state.total_subtasks)
+
+        if path.isfile(self.last_preview_path) and self.last_preview_path != get_preview_file():
+                self.__draw_border(border)
 
     def __draw_border(self, border):
         pixmap = QPixmap(self.last_preview_path)

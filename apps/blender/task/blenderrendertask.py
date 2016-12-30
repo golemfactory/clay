@@ -583,16 +583,15 @@ def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1)
     res_y = definition.resolution[1]
 
     if not definition.options.use_frames:
-        num = __num_from_pixel(p_y, res_x, res_y, total_subtasks)
-    else:
-        frames = len(definition.options.frames)
-        if total_subtasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
-            num = int(math.ceil(float(output_num) / subtask_frames))
-        else:
-            parts = total_subtasks / frames
-            num = (output_num - 1) * parts + __num_from_pixel(p_y, res_x, res_y, parts)
-    return num
+        return __num_from_pixel(p_y, res_x, res_y, total_subtasks)
+
+    frames = len(definition.options.frames)
+    if total_subtasks <= frames:
+        subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
+        return int(math.ceil(float(output_num) / subtask_frames))
+
+    parts = total_subtasks / frames
+    return (output_num - 1) * parts + __num_from_pixel(p_y, res_x, res_y, parts)
 
 
 def __scale_factor(res_x, res_y):
@@ -624,15 +623,15 @@ def get_task_border(subtask, definition, total_subtasks, output_num=1):
     end_task = subtask.extra_data['end_task']
     frames = len(definition.options.frames)
     res_x, res_y = definition.resolution
-    if not definition.options.use_frames:
-        border = __get_border(start_task, end_task, total_subtasks, res_x, res_y)
-    elif total_subtasks > frames:
-        parts = total_subtasks / frames
-        border = __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
-    else:
-        border = []
 
-    return border
+    if not definition.options.use_frames:
+        return __get_border(start_task, end_task, total_subtasks, res_x, res_y)
+
+    if total_subtasks > frames:
+        parts = total_subtasks / frames
+        return __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+
+    return []
 
 
 def __get_border(start_task, end_task, parts, res_x, res_y):

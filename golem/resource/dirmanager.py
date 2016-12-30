@@ -20,11 +20,11 @@ def split_path(path):
 
 def find_task_script(task_dir, script_name):
     scripts_path = os.path.abspath(os.path.join(task_dir, "resources", "scripts"))
-    files = os.listdir(scripts_path)
-    for f in files:
-        if f.lower() == script_name.lower():
-            return os.path.join(scripts_path, f)
-    logger.error("Script file does not exist!")
+    script_file = os.path.join(scripts_path, script_name)
+    if os.path.isfile(script_file):
+        return script_file
+
+    logger.error("Script file {} does not exist!".format(script_file))
 
 
 def get_test_task_path(root_path):
