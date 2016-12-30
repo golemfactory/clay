@@ -347,7 +347,7 @@ class TestCreatePackage(unittest.TestCase):
         self.ts = ts
         self.msg = msg
 
-    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_success)
+    @patch('golem.resource.client.async_run', side_effect=executor_success)
     def test_send_task_result_hash_success(self, _):
 
         ts = self.ts
@@ -356,7 +356,7 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.send.called
         assert not ts.dropped.called
 
-    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_recoverable_error)
+    @patch('golem.resource.client.async_run', side_effect=executor_recoverable_error)
     def test_send_task_result_hash_recoverable_error(self, _):
 
         ts = self.ts
@@ -365,7 +365,7 @@ class TestCreatePackage(unittest.TestCase):
         assert not ts.send.called
         assert ts.task_server.retry_sending_task_result.called
 
-    @patch('golem.resource.client.AsyncRequestExecutor.run', side_effect=executor_error)
+    @patch('golem.resource.client.async_run', side_effect=executor_error)
     def test_send_task_result_hash_recoverable_error(self, _):
 
         ts = self.ts

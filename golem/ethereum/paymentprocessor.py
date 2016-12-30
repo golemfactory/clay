@@ -1,6 +1,7 @@
 from __future__ import division
 
 import logging
+from pydispatch import dispatcher
 import time
 
 from ethereum import abi, keys, utils
@@ -216,6 +217,7 @@ class PaymentProcessor(object):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
+                        dispatcher.send(signal='golem.monitor', event='payment', addr=p.payee.encode('hex'), value=p.value)
                         log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
                                   fee / denoms.ether))
                 confirmed.append(h)
@@ -240,8 +242,14 @@ class PaymentProcessor(object):
             return False
         return True
 
-    def run(self):
+    def run_inner(self):
         if self.synchronized() and self.get_ethers_from_faucet():
             self.deposit_balance(refresh=True)
             self.monitor_progress()
             self.sendout()
+
+    def run(self):
+        try:
+            self.run_inner()
+        except:
+            log.exception('Exception in PaymentProcessor.run()')

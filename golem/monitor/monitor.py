@@ -1,3 +1,6 @@
+from golem.decorators import log_error
+import logging
+from pydispatch import dispatcher
 import threading
 import Queue
 
@@ -5,8 +8,10 @@ from model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
 from model.loginlogoutmodel import LoginModel, LogoutModel
 from model.statssnapshotmodel import StatsSnapshotModel, VMSnapshotModel, P2PSnapshotModel
 from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
-from model.paymentmodel import PaymentModel, IncomeModel
+from model.paymentmodel import ExpenditureModel, IncomeModel
 from transport.sender import DefaultJSONSender as Sender
+
+log = logging.getLogger('golem.monitor')
 
 
 class SenderThread(threading.Thread):
@@ -48,19 +53,23 @@ class SystemMonitor(object):
         self.queue = None
         self.sender_thread = None
 
+        dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
+
     # Private interface
 
-    def _send(self, obj):
+    def _send_with_args(self, obj_type, *args):
+        log.debug('_send_with_args(%r, %r)', obj_type, args)
+        obj = obj_type(*args)
         return self.sender_thread.send(obj)
 
-    @classmethod
-    def _prepare_obj_with_metadata(cls, obj_type, *args):
-        return obj_type(*args)
-
-    def _send_with_args(self, obj_type, *args):
-        obj = self._prepare_obj_with_metadata(obj_type, *args)
-
-        return self._send(obj)
+    @log_error()
+    def dispatch_listener(self, sender, signal, event='default', **kwargs):
+        "Main PubSub listener for golem_monitor channel"
+        method_name = "on_%s" % (event,)
+        if not hasattr(self, method_name):
+            log.warning('Unrecognized event received: golem_monitor %s', event)
+            return
+        getattr(self, method_name)(**kwargs)
 
     # Initialization
 
@@ -79,7 +88,7 @@ class SystemMonitor(object):
     # Public interface
 
     def on_login(self):
-        return self._send_with_args(LoginModel, self.meta_data)
+        self._send_with_args(LoginModel, self.meta_data)
 
     def on_config_update(self, meta_data):
         self.meta_data = meta_data
@@ -103,8 +112,8 @@ class SystemMonitor(object):
         return self._send_with_args(TaskComputerSnapshotModel, self.meta_data.cliid, self.meta_data.sessid,
                                     waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks)
 
-    def on_payment(self, payment_infos):
-        return self._send_with_args(PaymentModel, self.meta_data.cliid, self.meta_data.sessid, payment_infos)
+    def on_payment(self, addr, value):
+        return self._send_with_args(ExpenditureModel, self.meta_data.cliid, self.meta_data.sessid, addr, value)
 
     def on_income(self, addr, value):
         return self._send_with_args(IncomeModel, self.meta_data.cliid, self.meta_data.sessid, addr, value)

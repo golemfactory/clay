@@ -34,3 +34,4 @@ PyYAML>=3.12
 crossbar
 jsonpickle
 devp2p
+pydispatcher

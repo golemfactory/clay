@@ -150,7 +150,7 @@ def start_client_process(queue, start_ranking, datadir=None,
             client.configure_rpc(session)
             client.start()
         except Exception as exc:
-            logger.error(u"Client process error: {}".format(exc))
+            logger.exception(u"Client process error")
             queue.put(exc)
         else:
             queue.put(router.address)
