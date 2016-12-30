@@ -1278,6 +1278,7 @@ build_options = {
         # Patch missing dependencies
         'pack_modules': [
             DirPackage('packaging'),
+            DirPackage('pkg_resources'),
             DirPackage('psutil'),
             DirPackage('cffi'),
             DirPackage('devp2p'),

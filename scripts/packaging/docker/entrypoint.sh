@@ -3,7 +3,7 @@
 set -e
 
 cd golem
-git pull --rebase
+git stash && git pull --rebase
 source scripts/packaging/docker/patch.sh
 
 pip install -r requirements.txt

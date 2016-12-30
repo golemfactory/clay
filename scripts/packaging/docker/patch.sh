@@ -1,5 +1,7 @@
 #!/bin/bash
 
-if [[ -f "apps/rendering/resources/taskcollector/Makefile" ]]; then
-    sed -i "2s/-static/-Bstatic/" "apps/rendering/resources/taskcollector/Makefile"
+TC_MAKEFILE="apps/rendering/resources/taskcollector/Makefile"
+
+if [[ -f "$TC_MAKEFILE" ]]; then
+    sed -i "2s/-static/-Bstatic/" "$TC_MAKEFILE"
 fi
