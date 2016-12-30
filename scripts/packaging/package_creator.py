@@ -511,10 +511,10 @@ class Pack(Command):
             if not x_dir:
                 raise EnvironmentError("Invalid module archive")
 
-            self._pack_modules(exe_dir, lib_dir, x_dir)
-            self._copy_files(x_dir, lib_dir)
-            self._create_files(exe_dir, x_dir)
+            self._pack_modules(exe_dir, x_dir)
+            self._copy_files(self.setup_dir, x_dir, lib_dir)
             self._copy_libs(exe_dir, lib_dir, x_dir)
+            self._create_files(exe_dir, x_dir)
             self._post_pack(exe_dir, lib_dir, x_dir)
 
     def initialize_options(self):
@@ -675,8 +675,7 @@ class Pack(Command):
                 with open(file_path, 'w') as f:
                     f.write(data)
 
-    def _pack_modules(self, exe_dir, lib_dir, x_dir):
-        mod_dir = os.path.dirname(os.__file__)
+    def _pack_modules(self, exe_dir, x_dir):
 
         for module in self.pack_modules:
             if isinstance(module, DirPackage):
@@ -689,28 +688,46 @@ class Pack(Command):
                     self._copy_egg(module.name, module.egg, dst_dir,
                                    module.location_resolver)
                 if module.name:
-                    self._copy_module(module.name, dst_dir, lib_dir,
+                    self._copy_module(module.name, dst_dir,
                                       module.location_resolver)
 
             else:
-                self._copy_module_str(module, mod_dir, exe_dir)
+                self._copy_module_alt(module, exe_dir)
 
-    def _copy_module_str(self, module, mod_dir, exe_dir):
-        src_file = self._get_module_file_path(module, mod_dir)
+    def _copy_module(self, module, exe_dir, location_resolver=None):
+        src_path = self._get_module_path(module, location_resolver)
+        dst_dir = os.path.join(exe_dir, module.replace('.', os.path.sep))
 
-        if os.path.exists(src_file):
-            dest_file = self._get_module_file_path(module, exe_dir)
-
-            if not os.path.exists(dest_file):
-                print "Copying module file {}".format(src_file)
-                shutil.copy(src_file, dest_file)
+        if os.path.isdir(src_path):
+            dir_util.copy_tree(src_path, dst_dir, update=1)
+        elif os.path.isfile(src_path):
+            dst_path = os.path.join(dst_dir, os.path.basename(src_path))
+            shutil.copy(src_path, dst_path)
         else:
-            src_file = os.path.join(mod_dir, module)
-            dest_file = os.path.join(exe_dir, module)
+            raise RuntimeError('_copy_module: Module {} not found'.format(module))
 
-            if not os.path.exists(dest_file):
-                print "Copying module dir {}".format(src_file)
-                dir_util.copy_tree(src_file, dest_file, update=1)
+        return src_path
+
+    def _copy_module_alt(self, module, exe_dir):
+        mod_dir = self._get_module_path(module)
+        src_dir = mod_dir
+        src_file = os.path.join(mod_dir, module + ".py")
+
+        if os.path.isfile(src_file):
+            dst_file = os.path.join(exe_dir, module + ".py")
+
+            if not os.path.exists(dst_file):
+                print "Copying module file {}".format(src_file)
+                shutil.copy(src_file, dst_file)
+
+        elif os.path.isdir(src_dir):
+            print "Copying module dir {}".format(src_dir)
+
+            dst_dir = os.path.join(exe_dir, module)
+            dir_util.copy_tree(src_dir, dst_dir, update=True)
+
+        else:
+            raise RuntimeError('_copy_module_alt: Module {} not found'.format(module))
 
     def _copy_egg(self, module, egg, dst_dir, location_resolver=None):
         src_path = self._get_module_path(module, location_resolver)
@@ -722,7 +739,6 @@ class Pack(Command):
         if egg_idx != -1:
             egg_path = src_path[:egg_idx+egg_len]
             egg_dir = os.path.basename(egg_path)
-            print "COPY EGG", egg_path, os.path.join(dst_dir, egg_dir)
             dir_util.copy_tree(egg_path, os.path.join(dst_dir, egg_dir), update=True)
             return
 
@@ -751,19 +767,7 @@ class Pack(Command):
             raise RuntimeError("Couldn't find egg '{}' for module '{}'".format(egg, module))
         dir_util.copy_tree(os.path.join(lookup_dir, newest), os.path.join(dst_dir, newest), update=True)
 
-    def _copy_module(self, module, exe_dir, lib_dir, location_resolver=None):
-        src_path = self._get_module_path(module, location_resolver)
-        dst_dir = os.path.join(exe_dir, module.replace('.', os.path.sep))
-
-        if os.path.isdir(src_path):
-            dir_util.copy_tree(src_path, dst_dir, update=1)
-        elif os.path.isfile(src_path):
-            dst_path = os.path.join(dst_dir, os.path.basename(src_path))
-            shutil.copy(src_path, dst_path)
-
-        return src_path
-
-    def _copy_files(self, x_dir, lib_dir):
+    def _copy_files(self, setup_dir, x_dir, lib_dir):
 
         def _copy(_src, _dest, _dest2):
             _dir = os.path.dirname(_dest)
@@ -785,11 +789,15 @@ class Pack(Command):
                     return os.path.abspath(_module)
                 raise e
 
-        lib_dir = os.path.join(lib_dir, 'python' + self.py_vd)
+        lib_dir = os.path.join(lib_dir, 'python' + self.py_v)
 
         for module, files in self.copy_files.iteritems():
 
-            src_dir = _src_dir(module)
+            if module:
+                src_dir = _src_dir(module)
+            else:
+                src_dir = setup_dir
+
             file_dir = os.path.join(x_dir, module)
             dir_dir = os.path.join(lib_dir, module)
 
@@ -813,7 +821,7 @@ class Pack(Command):
         if not isinstance(exclude, list):
             exclude = [exclude]
 
-        white_list = ['BUILD_CONSTANTS', 'cx_Freeze'] + [entry.split('.')[0] for entry in exclude]
+        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', 'logging.ini'] + [entry.split('.')[0] for entry in exclude]
         tmp_file = src_file + "-" + str(uuid.uuid4())
 
         zip_in = zipfile.ZipFile(src_file, 'r')
@@ -841,10 +849,6 @@ class Pack(Command):
                 except OSError as ex:
                     print "Cannot create directory: {}".format(ex)
                 zf.extractall(dest_path)
-
-    @staticmethod
-    def _get_module_file_path(module, module_dir):
-        return os.path.join(module_dir, module + ".py")
 
     @staticmethod
     def _get_module_path(module, location_resolver=None):
@@ -1283,6 +1287,11 @@ build_options = {
             DirPackage('ndg.httpsclient'),
             DirPackage('gevent'),
             DirPackage('geventhttpclient'),
+            DirPackage('cryptography'),
+            DirPackage('lmdb'),
+            DirPackage('nacl'),
+            DirPackage('xml'),
+            DirPackage('crossbar'),
             DirPackage('web3', egg='web3'),
             DirPackage('eth_abi', egg='ethereum_abi_utils'),
             DirPackage('eth_rpc_client', egg='ethereum_rpc_client'),
@@ -1306,7 +1315,7 @@ build_options = {
             "stat", "types", "codecs", "warnings", "importlib", "UserDict",
             "ssl", "keyword", "heapq", "argparse", "collections",
             "re", "sre_compile", "sre_parse", "sre_constants", "textwrap",
-            "gettext", "copy", "locale", "functools", 'pprint'
+            "gettext", "copy", "locale", "functools", 'pprint', 'scrypt'
         ],
         # Extract files zipped by cx_Freeze
         'extract_modules': [
@@ -1319,7 +1328,9 @@ build_options = {
         ],
         # Patch missing module files
         'copy_files': {
+            '': ['logging.ini'],
             'bitcoin': ['english.txt'],
+            'treq': ['_version'],
             'apps': [
                 'images.ini',
                 'registered.ini',
@@ -1338,6 +1349,10 @@ build_options = {
                 os.path.join('lux', 'resources'),
                 os.path.join('lux', 'benchmark'),
             ],
+            'gui': [
+                os.path.join('view', 'img'),
+                os.path.join('view', 'nopreview.png')
+            ],
             'golem': [
                 os.path.join('ethereum', 'genesis_golem.json'),
                 os.path.join('ethereum', 'mine_pending_transactions.js')
@@ -1351,6 +1366,7 @@ build_options = {
                 'msvcr120.dll'
             ],
             'linux': [
+                '_scrypt.so',
                 '_sha3.so',
                 '_cffi_backend.so',
                 'greenlet.so',
@@ -1374,12 +1390,17 @@ build_options = {
                 'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
                 'readline.x86_64-linux-gnu.so',
+                'setproctitle.so',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
                        'libIlmThread-*'),
                 Either('libIex.so.*',
                        'libIex-*'),
+                Either('pyexpat.x86_64-linux-gnu.so',
+                       'pyexpat-*'),
+                Either('mmap.x86_64-linux-gnu.so',
+                       'mmap-*'),
                 Either('sip.x86_64-linux-gnu.so',
                        'sip.so',
                        name='sip.so'),
@@ -1407,7 +1428,7 @@ build_options = {
                        name='_psutil_posix.so'),
                 Either('datetime.x86_64-linux-gnu.so',
                        'datetime.so',
-                       None)  # None = optional
+                       None),  # None = optional
             ],
             'osx': [
                 'libpython2.7.dylib'
