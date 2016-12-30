@@ -10,9 +10,7 @@ from golem.node import OptNode
 from gui.startapp import start_app
 
 
-@click.command(context_settings=dict(
-    ignore_unknown_options=True,
-))
+@click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
 @click.option('--datadir', '-d', type=click.Path())
@@ -26,14 +24,18 @@ from gui.startapp import start_app
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=OptNode.parse_task_file,
               help="Request task from file")
-@click.option('--multiprocessing-fork', nargs=1, expose_value=False, default=None)
+@click.option('--multiprocessing-fork', nargs=1, default=None)
 # Python flags, needed by crossbar (package only)
 @click.option('-u', is_flag=True, default=False)
 @click.option('-m', nargs=1, default=None)
-# Skip Crossbar arguments (package only)
-@click.argument('_', nargs=-1, type=click.UNPROCESSED)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, u, m, _):
-
+# Crossbar arguments (package only)
+@click.option('--cbdir', expose_value=False)
+@click.option('--worker', expose_value=False)
+@click.option('--type', expose_value=False)
+@click.option('--realm', expose_value=False)
+@click.option('--loglevel', expose_value=False)
+@click.option('--title', expose_value=False)
+def start(gui, payments, datadir, node_address, rpc_address, peer, task, multiprocessing_fork, u, m):
     freeze_support()
 
     config = dict(datadir=datadir, transaction_system=payments)
@@ -64,11 +66,7 @@ def start_crossbar_worker(unbuffered, module):
     sys.argv.pop(idx)
 
     if unbuffered:
-        import gc
-        gc.garbage.append(sys.stdout)
-        gc.garbage.append(sys.stderr)
-        sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
-        sys.stderr = os.fdopen(sys.stderr.fileno(), 'w', 0)
+        # ignore; unbuffered mode causes issues on Windows
         sys.argv.remove('-u')
 
     import importlib

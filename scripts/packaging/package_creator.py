@@ -1246,6 +1246,10 @@ exe_options = {
         "os", "sys", "pkg_resources", "encodings", "click",
         "bitcoin", "devp2p", "service_identity", "OpenEXR",
         "Crypto", "OpenSSL", "ssl"
+    ],
+    "excludes": [
+        "collections.sys",
+        "collections._weakref",
     ]
 }
 
