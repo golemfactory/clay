@@ -755,7 +755,9 @@ class Pack(Command):
         newest_ver = '0'
 
         def extract_version(string):
-            return string.lower().replace('.dist-info', '').split('-')[1]
+            lower = string.lower()
+            clean = lower.replace('.dist-info', '').replace('.egg-info', '')
+            return clean.split('-')[1]
 
         for candidate in candidates:
             v = extract_version(candidate)
@@ -1275,6 +1277,7 @@ build_options = {
     "pack": {
         # Patch missing dependencies
         'pack_modules': [
+            DirPackage('packaging'),
             DirPackage('psutil'),
             DirPackage('cffi'),
             DirPackage('devp2p'),
@@ -1298,8 +1301,6 @@ build_options = {
             DirPackage('crossbar'),
             DirPackage('web3', egg='web3'),
             DirPackage('eth_abi', egg='ethereum_abi_utils'),
-            DirPackage('eth_rpc_client', egg='ethereum_rpc_client'),
-            DirPackage('eth_client_utils', egg='ethereum_client_utils'),
 
             DirPackage('pywintypes', include_platforms=['win']),
             DirPackage('win32api', include_platforms=['win']),

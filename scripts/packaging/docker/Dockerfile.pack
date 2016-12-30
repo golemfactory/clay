@@ -1,4 +1,4 @@
-FROM ubuntu:trusty
+FROM ubuntu:xenial
 
 MAINTAINER Marek Franciszkiewicz <marek.franciszkiewicz@imapp.pl>
 
@@ -9,12 +9,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python-pip python-dev python \
     python-qt4 pyqt4-dev-tools \
     pkg-config g++ dh-autoreconf \
-    libjpeg-dev zlib1g-dev libopenexr-dev libgmp-dev libffi-dev libssl-dev iptables \
+    libfreeimageplus-dev libjpeg-dev zlib1g-dev libopenexr-dev libgmp-dev libffi-dev libssl-dev iptables \
+    libraw15 libdatrie1 libthai0 libpango1.0-0 libilmbase-dev libopenexr-dev \
     git mercurial sed
 
+# Link libfreeimage
+RUN ln -s /usr/lib/libfreeimage.so.3 /usr/lib/libfreeimage.so
+
+# Download, patch and install cx_freeze (dev version)
 RUN hg clone http://bitbucket.org/anthony_tuininga/cx_freeze -r 352d0dda3c77 cx_freeze
 RUN cd cx_freeze && sed -i '89s/.*/            if True:/' setup.py && python setup.py install
 RUN rm -rf cx_freeze
+
+# Setuptools
+RUN wget https://bootstrap.pypa.io/ez_setup.py -O - | python
 
 # Initial installation for faster future rebuilds
 RUN git clone https://github.com/golemfactory/golem -b pack_compat --depth 1
@@ -22,7 +30,9 @@ RUN cd golem && pip install -r requirements.txt
 RUN cd golem && python setup.py develop
 RUN chmod -R 777 golem
 
-VOLUME /tmp /tmp
+ADD patch.sh /tmp/patch.sh
+RUN /bin/bash /tmp/patch.sh
+RUN rm /tmp/patch.sh
 
 ADD entrypoint.sh /usr/bin/entrypoint.sh
 ENTRYPOINT ["/usr/bin/entrypoint.sh"]
