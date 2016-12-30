@@ -1,5 +1,6 @@
 from multiprocessing import Process, Queue
 from os import path
+
 from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -48,8 +49,8 @@ def register_rendering_task_types(logic):
 class GUIApp(object):
 
     def __init__(self, rendering):
-        from application import GNRGui
         from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+        from gui.application import GNRGui
         from gui.applicationlogic import GNRApplicationLogic
         from gui.view.appmainwindow import AppMainWindow
 
