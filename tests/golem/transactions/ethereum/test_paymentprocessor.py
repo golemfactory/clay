@@ -135,6 +135,15 @@ class PaymentProcessorTest(DatabaseFixture):
         assert tx.nonce == self.nonce
         assert tx.value == 100 * denoms.ether
 
+    def test_gnt_faucet(self):
+        self.client.call.return_value = '0x00'
+        pp = PaymentProcessor(self.client, self.privkey, faucet=True)
+        pp.get_gnt_from_faucet()
+        assert self.client.send.call_count == 1
+        tx = self.client.send.call_args[0][0]
+        assert tx.nonce == self.nonce
+        assert len(tx.data) == 4
+
     def test_faucet_gimme_money(self):
         assert self.pp.balance() == 0
         value = 12 * denoms.ether
