@@ -2,19 +2,18 @@ import logging
 import random
 import time
 from collections import deque
-
-from ipaddress import AddressValueError
 from threading import Lock
 
-from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
+from ipaddress import AddressValueError
 
+from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
-from golem.ranking.gossipkeeper import GossipKeeper
+from golem.ranking.helper.gossip_keeper import GossipKeeper
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
