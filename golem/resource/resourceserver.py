@@ -9,7 +9,7 @@ from golem.network.transport.tcpnetwork import SocketAddress, TCPNetwork, FilesP
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import DistributedResourceManager
 from golem.resource.resourcesession import ResourceSession
-from golem.ranking.ranking import RankingStats
+from golem.ranking.ranking_min_max import RankingStats
 
 logger = logging.getLogger(__name__)
 

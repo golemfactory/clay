@@ -3,10 +3,11 @@ from unittest import TestCase
 
 from mock import patch, MagicMock
 
-from golem.tools.testwithdatabase import TestWithDatabase
-from golem.tools.assertlogs import LogTestCase
-from golem.ranking.ranking import DiscreteTimeRoundOracle, logger, Ranking, RankingDatabase, RankingStats
 from golem.client import Client
+from golem.ranking.helper.time_management import DiscreteTimeRoundOracle
+from golem.ranking.ranking_min_max import logger, Ranking, RankingDatabase, RankingStats
+from golem.tools.assertlogs import LogTestCase
+from golem.tools.testwithdatabase import TestWithDatabase
 
 
 class TestRankingDatabase(TestWithDatabase):
@@ -96,7 +97,7 @@ class TestRankingDatabase(TestWithDatabase):
 
 
 class TestDiscreteTimeOracle(TestCase):
-    @patch("golem.ranking.ranking.time")
+    @patch("golem.ranking.helper.time_management.time")
     def test_oracle(self, mock_time):
 
         oracle = DiscreteTimeRoundOracle(200, 50, 110, 1000)
@@ -185,7 +186,7 @@ class TestRanking(TestWithDatabase, LogTestCase):
         assert not r.global_finished
         assert r.step == 0
         assert len(r.finished_neighbours) == 0
-        for v in r.working_vec.itervalues():
+        for v in r.working_vec.values():
             assert v[0][1] == 1.0
             assert v[1][1] == 1.0
         assert r.working_vec["ABC"][0][0] > 0.0

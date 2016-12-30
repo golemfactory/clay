@@ -6,7 +6,7 @@ from collections import deque
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
-from golem.ranking.ranking import RankingStats
+from golem.ranking.ranking_min_max import RankingStats
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from taskcomputer import TaskComputer
