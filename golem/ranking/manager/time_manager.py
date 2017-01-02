@@ -3,7 +3,7 @@ import time
 from golem.core.variables import BREAK_TIME, ROUND_TIME, END_ROUND_TIME, STAGE_TIME
 
 
-class DiscreteTimeRoundOracle:
+class TimeManager:
     def __init__(self, break_time=BREAK_TIME, round_time=ROUND_TIME, end_round_time=END_ROUND_TIME,
                  stage_time=STAGE_TIME):
         self.break_time = break_time

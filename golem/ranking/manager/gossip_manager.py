@@ -1,4 +1,4 @@
-class GossipKeeper(object):
+class GossipManager(object):
     """ Keeps gossip and rankings that should be sent to other nodes or collected by Ranking """
     def __init__(self):
         """ Create new gossip keeper instance """

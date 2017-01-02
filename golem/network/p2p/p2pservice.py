@@ -13,7 +13,7 @@ from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
-from golem.ranking.helper.gossip_keeper import GossipKeeper
+from golem.ranking.manager.gossip_manager import GossipManager
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.resource_port = 0
         self.suggested_address = {}
         self.suggested_conn_reverse = {}
-        self.gossip_keeper = GossipKeeper()
+        self.gossip_keeper = GossipManager()
         self.manager_session = None
 
         # Useful config options
