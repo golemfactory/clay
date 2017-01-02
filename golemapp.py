@@ -1,4 +1,3 @@
-import os
 from multiprocessing import freeze_support
 
 import click
