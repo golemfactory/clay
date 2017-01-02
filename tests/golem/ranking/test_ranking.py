@@ -6,7 +6,7 @@ from mock import patch, MagicMock
 from golem.client import Client
 from golem.ranking.manager.time_manager import TimeManager
 from golem.ranking.ranking_min_max import logger, Ranking
-from golem.ranking.helper.statistics import Statistics as RankingStats
+from golem.ranking.helper.trust import Trust
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.ranking.manager import database_manager as dm
@@ -138,9 +138,9 @@ class TestRanking(TestWithDatabase, LogTestCase):
 
         def run():
             for x in range(0, 10):
-                r.increase_trust("ABC", RankingStats.COMPUTED, 1)
-                r.decrease_trust("ABC", RankingStats.COMPUTED, 1)
-                r.increase_trust("ABC", RankingStats.COMPUTED, 1)
+                r.increase_trust("ABC", Trust.COMPUTED, 1)
+                r.decrease_trust("ABC", Trust.COMPUTED, 1)
+                r.increase_trust("ABC", Trust.COMPUTED, 1)
 
         thread1 = Thread(target=run)
         thread1.start()
@@ -168,21 +168,21 @@ class TestRanking(TestWithDatabase, LogTestCase):
         reactor = MagicMock()
         r.run(reactor)
         assert r.reactor == reactor
-        r.increase_trust("ABC", RankingStats.COMPUTED, 1)
-        r.increase_trust("DEF", RankingStats.REQUESTED, 1)
-        r.increase_trust("DEF", RankingStats.PAYMENT, 1)
-        r.increase_trust("GHI", RankingStats.RESOURCE, 1)
-        r.decrease_trust("DEF", RankingStats.COMPUTED, 1)
-        r.decrease_trust("XYZ", RankingStats.WRONG_COMPUTED, 1)
-        r.decrease_trust("XYZ", RankingStats.REQUESTED, 1)
-        r.increase_trust("XYZ", RankingStats.REQUESTED, 1)
-        r.decrease_trust("XYZ", RankingStats.PAYMENT, 1)
-        r.decrease_trust("DEF", RankingStats.RESOURCE, 1)
+        r.increase_trust("ABC", Trust.COMPUTED, 1)
+        r.increase_trust("DEF", Trust.REQUESTED, 1)
+        r.increase_trust("DEF", Trust.PAYMENT, 1)
+        r.increase_trust("GHI", Trust.RESOURCE, 1)
+        r.decrease_trust("DEF", Trust.COMPUTED, 1)
+        r.decrease_trust("XYZ", Trust.WRONG_COMPUTED, 1)
+        r.decrease_trust("XYZ", Trust.REQUESTED, 1)
+        r.increase_trust("XYZ", Trust.REQUESTED, 1)
+        r.decrease_trust("XYZ", Trust.PAYMENT, 1)
+        r.decrease_trust("DEF", Trust.RESOURCE, 1)
         with self.assertLogs(logger, level="WARNING"):
             r.increase_trust("XYZ", "UNKNOWN", 1)
         with self.assertLogs(logger, level="WARNING"):
             r.decrease_trust("XYZ", "UNKNOWN", 1)
-        r.increase_trust("XYZ", RankingStats.WRONG_COMPUTED, 1)
+        r.increase_trust("XYZ", Trust.WRONG_COMPUTED, 1)
 
         r._Ranking__init_stage()
         assert not r.finished

@@ -5,7 +5,7 @@ from itertools import izip
 from threading import Lock
 
 from twisted.internet.task import deferLater
-from golem.ranking.helper.statistics import Statistics as RankingStats
+from golem.ranking.helper.trust import Trust
 from golem.ranking.manager.time_manager import TimeManager
 from golem.ranking.manager import database_manager as dm
 
@@ -126,7 +126,7 @@ class Ranking(object):
     def increase_trust(self, node_id, stat, mod):
         with self.lock:
             try:
-                RankingStats(stat).value['increase'](node_id, mod)
+                Trust(stat).value['increase'](node_id, mod)
             except ValueError:
                 logger.error("Wrong stat type {}".format(stat))
             except KeyError:
@@ -135,7 +135,7 @@ class Ranking(object):
     def decrease_trust(self, node_id, stat, mod):
         with self.lock:
             try:
-                RankingStats(stat).value['decrease'](node_id, mod)
+                Trust(stat).value['decrease'](node_id, mod)
             except ValueError:
                 logger.error("Wrong stat type {}".format(stat))
 

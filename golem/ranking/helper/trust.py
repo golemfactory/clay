@@ -2,7 +2,7 @@ from enum import Enum
 from golem.ranking.manager import database_manager as dm
 
 
-class Statistics(Enum):
+class Trust(Enum):
     COMPUTED = {
         'increase': dm.increase_positive_computing,
         'decrease': dm.increase_negative_computing
