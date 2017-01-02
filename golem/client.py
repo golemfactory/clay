@@ -652,7 +652,7 @@ class Client(object):
         return self.p2pservice.send_stop_gossip()
 
     def collect_gossip(self):
-        return self.p2pservice.pop_gossip()
+        return self.p2pservice.pop_gossips()
 
     def collect_stopped_peers(self):
         return self.p2pservice.pop_stop_gossip_form_peers()
