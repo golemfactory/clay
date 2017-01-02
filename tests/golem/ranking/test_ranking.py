@@ -5,48 +5,49 @@ from mock import patch, MagicMock
 
 from golem.client import Client
 from golem.ranking.manager.time_manager import TimeManager
-from golem.ranking.ranking_min_max import logger, Ranking, DatabaseManager, RankingStats
+from golem.ranking.ranking_min_max import logger, Ranking, RankingStats
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.ranking.manager import database_manager as dm
 
 
 class TestRankingDatabase(TestWithDatabase):
     def test_local_rank(self):
-        self.assertIsNone(DatabaseManager.get_local_rank("ABC"))
-        DatabaseManager.increase_positive_computing("ABC", 2)
-        lr = DatabaseManager.get_local_rank("ABC")
+        self.assertIsNone(dm.get_local_rank("ABC"))
+        dm.increase_positive_computing("ABC", 2)
+        lr = dm.get_local_rank("ABC")
         self.assertIsNotNone(lr)
         self.assertEqual(lr.positive_computed, 2)
-        DatabaseManager.increase_positive_computing("ABC", 3.5)
-        DatabaseManager.increase_negative_computing("DEF", 1.1)
-        DatabaseManager.increase_negative_computing("DEF", 1.2)
-        lr = DatabaseManager.get_local_rank("ABC")
+        dm.increase_positive_computing("ABC", 3.5)
+        dm.increase_negative_computing("DEF", 1.1)
+        dm.increase_negative_computing("DEF", 1.2)
+        lr = dm.get_local_rank("ABC")
         self.assertEqual(lr.positive_computed, 5.5)
         self.assertEqual(lr.negative_computed, 0.0)
-        lr = DatabaseManager.get_local_rank("DEF")
+        lr = dm.get_local_rank("DEF")
         self.assertEqual(lr.positive_computed, 0)
         self.assertEqual(lr.negative_computed, 2.3)
-        DatabaseManager.increase_wrong_computed("DEF", 10.0)
-        DatabaseManager.increase_wrong_computed("ABC", 3.0)
-        DatabaseManager.increase_wrong_computed("ABC", 0.2)
-        DatabaseManager.increase_positive_requested("ABC", 3.0)
-        DatabaseManager.increase_positive_requested("ABC", 1.1)
-        DatabaseManager.increase_negative_requested("ABC", 1.9)
-        DatabaseManager.increase_negative_requested("ABC", 0.1)
-        DatabaseManager.increase_positive_payment("DEF", 1)
-        DatabaseManager.increase_negative_payment("DEF", 2)
-        DatabaseManager.increase_positive_payment("DEF", 3)
-        DatabaseManager.increase_negative_payment("DEF", 5)
-        DatabaseManager.increase_positive_resource("XYZ", 7)
-        DatabaseManager.increase_negative_resource("XYZ", 0.4)
+        dm.increase_wrong_computed("DEF", 10.0)
+        dm.increase_wrong_computed("ABC", 3.0)
+        dm.increase_wrong_computed("ABC", 0.2)
+        dm.increase_positive_requested("ABC", 3.0)
+        dm.increase_positive_requested("ABC", 1.1)
+        dm.increase_negative_requested("ABC", 1.9)
+        dm.increase_negative_requested("ABC", 0.1)
+        dm.increase_positive_payment("DEF", 1)
+        dm.increase_negative_payment("DEF", 2)
+        dm.increase_positive_payment("DEF", 3)
+        dm.increase_negative_payment("DEF", 5)
+        dm.increase_positive_resource("XYZ", 7)
+        dm.increase_negative_resource("XYZ", 0.4)
 
-        lr = DatabaseManager.get_local_rank("DEF")
+        lr = dm.get_local_rank("DEF")
         self.assertEqual(lr.wrong_computed, 10.0)
         self.assertEqual(lr.positive_requested, 0.0)
         self.assertEqual(lr.negative_requested, 0)
         self.assertEqual(lr.positive_payment, 4)
         self.assertEqual(lr.negative_payment, 7)
-        lr = DatabaseManager.get_local_rank("ABC")
+        lr = dm.get_local_rank("ABC")
         self.assertEqual(lr.wrong_computed, 3.2)
         self.assertEqual(lr.positive_requested, 4.1)
         self.assertEqual(lr.negative_requested, 2.0)
@@ -54,42 +55,42 @@ class TestRankingDatabase(TestWithDatabase):
         self.assertEqual(lr.negative_payment, 0)
         self.assertEqual(lr.positive_resource, 0)
         self.assertEqual(lr.negative_resource, 0)
-        lr = DatabaseManager.get_local_rank("XYZ")
+        lr = dm.get_local_rank("XYZ")
         self.assertEqual(lr.positive_resource, 7)
         self.assertEqual(lr.negative_resource, 0.4)
 
     def test_global_rank(self):
-        self.assertIsNone(DatabaseManager.get_global_rank("ABC"))
-        DatabaseManager.insert_or_update_global_rank("ABC", 0.3, 0.2, 1.0, 1.0)
-        DatabaseManager.insert_or_update_global_rank("DEF", -0.1, -0.2, 0.9, 0.8)
-        DatabaseManager.insert_or_update_global_rank("ABC", 0.4, 0.1, 0.8, 0.7)
-        gr = DatabaseManager.get_global_rank("ABC")
+        self.assertIsNone(dm.get_global_rank("ABC"))
+        dm.upsert_global_rank("ABC", 0.3, 0.2, 1.0, 1.0)
+        dm.upsert_global_rank("DEF", -0.1, -0.2, 0.9, 0.8)
+        dm.upsert_global_rank("ABC", 0.4, 0.1, 0.8, 0.7)
+        gr = dm.get_global_rank("ABC")
         self.assertEqual(gr.computing_trust_value, 0.4)
         self.assertEqual(gr.requesting_trust_value, 0.1)
         self.assertEqual(gr.gossip_weight_computing, 0.8)
         self.assertEqual(gr.gossip_weight_requesting, 0.7)
-        gr = DatabaseManager.get_global_rank("DEF")
+        gr = dm.get_global_rank("DEF")
         self.assertEqual(gr.computing_trust_value, -0.1)
         self.assertEqual(gr.requesting_trust_value, -0.2)
         self.assertEqual(gr.gossip_weight_computing, 0.9)
         self.assertEqual(gr.gossip_weight_requesting, 0.8)
 
     def test_neighbour_rank(self):
-        self.assertIsNone(DatabaseManager.get_neighbour_loc_rank("ABC", "DEF"))
-        DatabaseManager.insert_or_update_neighbour_loc_rank("ABC", "DEF", (0.2, 0.3))
-        nr = DatabaseManager.get_neighbour_loc_rank("ABC", "DEF")
+        self.assertIsNone(dm.get_neighbour_loc_rank("ABC", "DEF"))
+        dm.upsert_neighbour_loc_rank("ABC", "DEF", (0.2, 0.3))
+        nr = dm.get_neighbour_loc_rank("ABC", "DEF")
         self.assertEqual(nr.node_id, "ABC")
         self.assertEqual(nr.about_node_id, "DEF")
         self.assertEqual(nr.computing_trust_value, 0.2)
         self.assertEqual(nr.requesting_trust_value, 0.3)
-        DatabaseManager.insert_or_update_neighbour_loc_rank("DEF", "ABC", (0.5, -0.2))
-        DatabaseManager.insert_or_update_neighbour_loc_rank("ABC", "DEF", (-0.3, 0.9))
-        nr = DatabaseManager.get_neighbour_loc_rank("ABC", "DEF")
+        dm.upsert_neighbour_loc_rank("DEF", "ABC", (0.5, -0.2))
+        dm.upsert_neighbour_loc_rank("ABC", "DEF", (-0.3, 0.9))
+        nr = dm.get_neighbour_loc_rank("ABC", "DEF")
         self.assertEqual(nr.node_id, "ABC")
         self.assertEqual(nr.about_node_id, "DEF")
         self.assertEqual(nr.computing_trust_value, -0.3)
         self.assertEqual(nr.requesting_trust_value, 0.9)
-        nr = DatabaseManager.get_neighbour_loc_rank("DEF", "ABC")
+        nr = dm.get_neighbour_loc_rank("DEF", "ABC")
         self.assertEqual(nr.node_id, "DEF")
         self.assertEqual(nr.about_node_id, "ABC")
         self.assertEqual(nr.computing_trust_value, 0.5)
@@ -255,9 +256,3 @@ class TestRanking(TestWithDatabase, LogTestCase):
         r.client.collect_stopped_peers.return_value = {"MNO"}
         r._Ranking__make_break()
         assert r.global_finished
-
-
-
-
-
-

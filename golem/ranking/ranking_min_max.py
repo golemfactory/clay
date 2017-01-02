@@ -4,11 +4,10 @@ import random
 from itertools import izip
 from threading import Lock
 
-from golem.ranking.helper.ranking_stats import RankingStats
-from golem.ranking.helper.time_management import DiscreteTimeRoundOracle
 from twisted.internet.task import deferLater
-
-from golem.ranking.helper.ranking_database import RankingDatabase
+from golem.ranking.helper.ranking_stats import RankingStats
+from golem.ranking.manager.time_manager import TimeManager
+from golem.ranking.manager import database_manager as dm
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,6 @@ class Ranking(object):
     def __init__(self, client, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
                  min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
                  loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
-        self.db = RankingDatabase()
         self.client = client
         self.pos_par = pos_par
         self.neg_par = neg_par
@@ -35,7 +33,7 @@ class Ranking(object):
         self.min_trust = min_trust
         self.unknown_trust = unknown_trust
         self.min_op_num = min_op_num
-        self.round_oracle = DiscreteTimeRoundOracle()
+        self.round_oracle = TimeManager()
 
         self.k = 1
         self.epsilon = epsilon
@@ -75,7 +73,7 @@ class Ranking(object):
         with self.lock:
             self.working_vec = {}
             self.prevRank = {}
-            for loc_rank in self.db.get_all_local_rank():
+            for loc_rank in dm.get_local_rank_for_all():
                 comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank),
                                                 self.__get_comp_trust_neg(loc_rank))
                 req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
@@ -127,29 +125,34 @@ class Ranking(object):
     # thread-safe
     def increase_trust(self, node_id, stat, mod):
         with self.lock:
+            # try:
+            #     RANKING_CHANGES[stat]['increase'](dm, node_id, mod)
+            # except KeyError:
+            #     logger.error("Wrong stat type {}".format(stat))
+
             if stat == RankingStats.computed:
-                self.db.increase_positive_computing(node_id, mod)
+                dm.increase_positive_computing(node_id, mod)
             elif stat == RankingStats.requested:
-                self.db.increase_positive_requested(node_id, mod)
+                dm.increase_positive_requested(node_id, mod)
             elif stat == RankingStats.payment:
-                self.db.increase_positive_payment(node_id, mod)
+                dm.increase_positive_payment(node_id, mod)
             elif stat == RankingStats.resource:
-                self.db.increase_positive_resource(node_id, mod)
+                dm.increase_positive_resource(node_id, mod)
             else:
                 logger.error("Wrong stat type {}".format(stat))
 
     def decrease_trust(self, node_id, stat, mod):
         with self.lock:
             if stat == RankingStats.computed:
-                self.db.increase_negative_computing(node_id, mod)
+                dm.increase_negative_computing(node_id, mod)
             elif stat == RankingStats.wrong_computed:
-                self.db.increase_wrong_computed(node_id, mod)
+                dm.increase_wrong_computed(node_id, mod)
             elif stat == RankingStats.requested:
-                self.db.increase_negative_requested(node_id, mod)
+                dm.increase_negative_requested(node_id, mod)
             elif stat == RankingStats.payment:
-                self.db.increase_negative_payment(node_id, mod)
+                dm.increase_negative_payment(node_id, mod)
             elif stat == RankingStats.resource:
-                self.db.increase_negative_resource(node_id, mod)
+                dm.increase_negative_resource(node_id, mod)
             else:
                 logger.error("Wrong stat type {}".format(stat))
 
@@ -159,7 +162,7 @@ class Ranking(object):
             logger.debug("Using local rank {}".format(local_rank))
             return local_rank
         rank, weight_sum = self.__count_neighbours_rank(node_id, computing=True)
-        global_rank = self.db.get_global_rank(node_id)
+        global_rank = dm.get_global_rank(node_id)
         if global_rank is not None:
             if weight_sum + global_rank.gossip_weight_computing != 0:
                 logger.debug("Using gossipRank + neighboursRank")
@@ -176,7 +179,7 @@ class Ranking(object):
             logger.debug("Using local rank {}".format(local_rank))
             return local_rank
         rank, weight_sum = self.__count_neighbours_rank(node_id, computing=False)
-        global_rank = self.db.get_global_rank(node_id)
+        global_rank = dm.get_global_rank(node_id)
         if global_rank is not None:
             if global_rank.gossip_weight_requesting != 0:
                 logger.debug("Using gossipRank + neighboursRank")
@@ -192,27 +195,27 @@ class Ranking(object):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
         for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
             with self.lock:
-                self.db.insert_or_update_neighbour_loc_rank(neighbour_id,
-                                                            about_id, loc_rank)
+                dm.upsert_neighbour_loc_rank(neighbour_id,
+                                                  about_id, loc_rank)
 
     def __get_loc_computing_trust(self, node_id):
-        local_rank = self.db.get_local_rank(node_id)
+        local_rank = dm.get_local_rank(node_id)
         # for known node
         return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank)) \
             if local_rank is not None else None
 
     def __get_loc_requesting_trust(self, node_id):
-        local_rank = self.db.get_local_rank(node_id)
+        local_rank = dm.get_local_rank(node_id)
         # for known node
         return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank)) \
             if local_rank is not None else None
 
     def __get_computing_neighbour_loc_trust(self, neighbour, about):
-        rank = self.db.get_neighbour_loc_rank(neighbour, about)
+        rank = dm.get_neighbour_loc_rank(neighbour, about)
         return rank.computing_trust_value if rank is not None else self.unknown_trust
 
     def __get_requesting_neighbour_loc_trust(self, neighbour, about):
-        rank = self.db.get_neighbour_loc_rank(neighbour, about)
+        rank = dm.get_neighbour_loc_rank(neighbour, about)
         return rank.requesting_trust_value if rank is not None else self.unknown_trust
 
     @staticmethod
@@ -233,7 +236,7 @@ class Ranking(object):
         return self.__neighbour_weight_base() ** (self.__neighbour_weight_power() * loc_trust)
 
     def __push_local_ranks(self):
-        for loc_rank in self.db.get_all_local_rank():
+        for loc_rank in dm.get_local_rank_for_all():
             comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
             req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
             trust = [comp_trust, req_trust]
@@ -322,7 +325,7 @@ class Ranking(object):
                 break
             comp_trust = self.__working_vec_to_trust(computing)
             req_trust = self.__working_vec_to_trust(requesting)
-            self.db.insert_or_update_global_rank(node_id, comp_trust, req_trust, computing[1], requesting[1])
+            dm.upsert_global_rank(node_id, comp_trust, req_trust, computing[1], requesting[1])
 
     def __working_vec_to_trust(self, val):
         if val is None:
@@ -332,10 +335,7 @@ class Ranking(object):
         except (ValueError, TypeError) as err:
             logger.warning("Wrong trust vector element {}".format(err))
             return None
-        if a == 0.0 or b == 0.0:
-            return 0.0
-        else:
-            return min(max(float(a) / float(b), self.min_trust), self.max_trust)
+        return min(max(float(a) / float(b), self.min_trust), self.max_trust) if a != 0.0 and b != 0.0 else 0.0
 
     def __prepare_gossip(self):
         gossip_vec = []
