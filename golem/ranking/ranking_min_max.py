@@ -5,7 +5,7 @@ from itertools import izip
 from threading import Lock
 
 from twisted.internet.task import deferLater
-from golem.ranking.helper.ranking_stats import RankingStats
+from golem.ranking.helper.statistics import Statistics as RankingStats
 from golem.ranking.manager.time_manager import TimeManager
 from golem.ranking.manager import database_manager as dm
 
@@ -125,35 +125,18 @@ class Ranking(object):
     # thread-safe
     def increase_trust(self, node_id, stat, mod):
         with self.lock:
-            # try:
-            #     RANKING_CHANGES[stat]['increase'](dm, node_id, mod)
-            # except KeyError:
-            #     logger.error("Wrong stat type {}".format(stat))
-
-            if stat == RankingStats.computed:
-                dm.increase_positive_computing(node_id, mod)
-            elif stat == RankingStats.requested:
-                dm.increase_positive_requested(node_id, mod)
-            elif stat == RankingStats.payment:
-                dm.increase_positive_payment(node_id, mod)
-            elif stat == RankingStats.resource:
-                dm.increase_positive_resource(node_id, mod)
-            else:
+            try:
+                RankingStats(stat).value['increase'](node_id, mod)
+            except ValueError:
                 logger.error("Wrong stat type {}".format(stat))
+            except KeyError:
+                logger.error("Wrong key for stat type {}".format(stat))
 
     def decrease_trust(self, node_id, stat, mod):
         with self.lock:
-            if stat == RankingStats.computed:
-                dm.increase_negative_computing(node_id, mod)
-            elif stat == RankingStats.wrong_computed:
-                dm.increase_wrong_computed(node_id, mod)
-            elif stat == RankingStats.requested:
-                dm.increase_negative_requested(node_id, mod)
-            elif stat == RankingStats.payment:
-                dm.increase_negative_payment(node_id, mod)
-            elif stat == RankingStats.resource:
-                dm.increase_negative_resource(node_id, mod)
-            else:
+            try:
+                RankingStats(stat).value['decrease'](node_id, mod)
+            except ValueError:
                 logger.error("Wrong stat type {}".format(stat))
 
     def get_computing_trust(self, node_id):
