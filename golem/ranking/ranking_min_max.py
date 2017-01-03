@@ -7,23 +7,22 @@ from threading import Lock
 from twisted.internet.task import deferLater
 
 from golem.ranking.helper import min_max_utility as util
+from golem.ranking.helper.trust_const import UNKNOWN_TRUST
 from golem.ranking.manager import database_manager as dm
 from golem.ranking.manager.time_manager import TimeManager
 from golem.ranking.manager import trust_manager as tm
 
 logger = logging.getLogger(__name__)
 
-UNKNOWN_TRUST = 0.0
 MAX_STEPS = 10
 EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
 
 class Ranking(object):
-    def __init__(self, client, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
+    def __init__(self, client, max_steps=MAX_STEPS, epsilon=EPSILON,
                  loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
         self.client = client
-        self.unknown_trust = unknown_trust
         self.round_oracle = TimeManager()
 
         self.k = 1
@@ -65,9 +64,8 @@ class Ranking(object):
             self.working_vec = {}
             self.prevRank = {}
             for loc_rank in dm.get_local_rank_for_all():
-                comp_trust = util.count_trust(tm.computed_trust_positive(loc_rank),
-                                              tm.computed_trust_negative(loc_rank))
-                req_trust = util.count_trust(tm.requested_trust_positive(loc_rank), tm.requested_trust_negative(loc_rank))
+                comp_trust = tm.computed_trust_local(loc_rank)
+                req_trust = tm.requested_trust_local(loc_rank)
                 self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
                 self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
@@ -114,10 +112,10 @@ class Ranking(object):
             deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
     def get_computing_trust(self, node_id):
-        local_rank = self.__get_loc_computing_trust(node_id)
-        if local_rank is not None:
-            logger.debug("Using local rank {}".format(local_rank))
-            return local_rank
+        local_trust = tm.computed_node_trust_local(node_id)
+        if local_trust is not None:
+            logger.debug("Using local rank {}".format(local_trust))
+            return local_trust
         rank, weight_sum = self.__count_neighbours_rank(node_id, computing=True)
         global_rank = dm.get_global_rank(node_id)
         if global_rank is not None:
@@ -128,13 +126,13 @@ class Ranking(object):
         elif weight_sum != 0:
             logger.debug("Using neighboursRank")
             return rank / float(weight_sum)
-        return self.unknown_trust
+        return UNKNOWN_TRUST
 
     def get_requesting_trust(self, node_id):
-        local_rank = self.__get_loc_requesting_trust(node_id)
-        if local_rank is not None:
-            logger.debug("Using local rank {}".format(local_rank))
-            return local_rank
+        local_trust = tm.requested_node_trust_local(node_id)
+        if local_trust is not None:
+            logger.debug("Using local rank {}".format(local_trust))
+            return local_trust
         rank, weight_sum = self.__count_neighbours_rank(node_id, computing=False)
         global_rank = dm.get_global_rank(node_id)
         if global_rank is not None:
@@ -145,8 +143,7 @@ class Ranking(object):
         elif weight_sum != 0:
             logger.debug("Using neighboursRank")
             return rank / float(weight_sum)
-
-        return self.unknown_trust
+        return UNKNOWN_TRUST
 
     def sync_network(self):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
@@ -154,26 +151,6 @@ class Ranking(object):
             with self.lock:
                 dm.upsert_neighbour_loc_rank(neighbour_id,
                                              about_id, loc_rank)
-
-    def __get_loc_computing_trust(self, node_id):
-        local_rank = dm.get_local_rank(node_id)
-        # for known node
-        return util.count_trust(tm.computed_trust_positive(local_rank), tm.computed_trust_negative(local_rank)) \
-            if local_rank is not None else None
-
-    def __get_loc_requesting_trust(self, node_id):
-        local_rank = dm.get_local_rank(node_id)
-        # for known node
-        return util.count_trust(tm.requested_trust_positive(local_rank), tm.requested_trust_negative(local_rank)) \
-            if local_rank is not None else None
-
-    def __get_computing_neighbour_loc_trust(self, neighbour, about):
-        rank = dm.get_neighbour_loc_rank(neighbour, about)
-        return rank.computing_trust_value if rank is not None else self.unknown_trust
-
-    def __get_requesting_neighbour_loc_trust(self, neighbour, about):
-        rank = dm.get_neighbour_loc_rank(neighbour, about)
-        return rank.requesting_trust_value if rank is not None else self.unknown_trust
 
     @staticmethod
     def __neighbour_weight_base():
@@ -185,17 +162,17 @@ class Ranking(object):
 
     def __count_neighbour_weight(self, node_id, computing=True):
         if computing:
-            loc_trust = self.__get_loc_computing_trust(node_id)
+            local_trust = tm.computed_node_trust_local(node_id)
         else:
-            loc_trust = self.__get_loc_requesting_trust(node_id)
-        if loc_trust is None:
-            loc_trust = self.unknown_trust
-        return self.__neighbour_weight_base() ** (self.__neighbour_weight_power() * loc_trust)
+            local_trust = tm.requested_node_trust_local(node_id)
+        if local_trust is None:
+            local_trust = UNKNOWN_TRUST
+        return self.__neighbour_weight_base() ** (self.__neighbour_weight_power() * local_trust)
 
     def __push_local_ranks(self):
         for loc_rank in dm.get_local_rank_for_all():
-            comp_trust = util.count_trust(tm.computed_trust_positive(loc_rank), tm.computed_trust_negative(loc_rank))
-            req_trust = util.count_trust(tm.requested_trust_positive(loc_rank), tm.requested_trust_negative(loc_rank))
+            comp_trust = tm.computed_trust_local(loc_rank)
+            req_trust = tm.requested_trust_local(loc_rank)
             trust = [comp_trust, req_trust]
             if loc_rank.node_id in self.prev_loc_rank:
                 prev_trust = self.prev_loc_rank[loc_rank.node_id]
@@ -321,11 +298,10 @@ class Ranking(object):
         for n in self.neighbours:
             if n != node_id:
                 if computing:
-                    trust = self.__get_computing_neighbour_loc_trust(n, node_id)
+                    trust = tm.computed_neighbour_trust_local(n, node_id)
                 else:
-                    trust = self.__get_requesting_neighbour_loc_trust(n, node_id)
+                    trust = tm.requested_neighbour_trust_local(n, node_id)
                 weight = self.__count_neighbour_weight(n, not computing)
                 sum_trust += (weight - 1) * trust
                 sum_weight += weight
         return sum_trust, sum_weight
-

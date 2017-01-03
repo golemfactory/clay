@@ -15,13 +15,13 @@ from golem.ranking.manager import database_manager as dm
 class TestRankingDatabase(TestWithDatabase):
     def test_local_rank(self):
         self.assertIsNone(dm.get_local_rank("ABC"))
-        dm.increase_positive_computing("ABC", 2)
+        dm.increase_positive_computed("ABC", 2)
         lr = dm.get_local_rank("ABC")
         self.assertIsNotNone(lr)
         self.assertEqual(lr.positive_computed, 2)
-        dm.increase_positive_computing("ABC", 3.5)
-        dm.increase_negative_computing("DEF", 1.1)
-        dm.increase_negative_computing("DEF", 1.2)
+        dm.increase_positive_computed("ABC", 3.5)
+        dm.increase_negative_computed("DEF", 1.1)
+        dm.increase_negative_computed("DEF", 1.2)
         lr = dm.get_local_rank("ABC")
         self.assertEqual(lr.positive_computed, 5.5)
         self.assertEqual(lr.negative_computed, 0.0)
