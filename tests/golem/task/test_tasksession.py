@@ -9,8 +9,7 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
                                              MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
-                                             MessageWaitingForResults, MessageContestWinner, MessageContestWinnerAccept,
-                                             MessageContestWinnerReject)
+                                             MessageWaitingForResults)
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
@@ -376,67 +375,6 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         assert ts.send.call_args[0][0].task_id == "deadbeef"
         assert ts.send.call_args[0][0].reason == "some reason"
         ts.disconnect.assert_called_with(ts.DCRNoMoreMessages)
-
-    def test_send_contest_winner(self):
-        ts = self.__create_task_session()
-        ts.send_contest_winner("deadbeef")
-        ts.send.assert_called_with(Instance(MessageContestWinner))
-        assert ts.send.call_args[0][0].task_id == "deadbeef"
-
-    def test_react_to_contest_winner(self):
-        ts = self.__create_task_session()
-        ts.task_computer.is_busy.return_value = False
-        ts.task_id = "deadbeef"
-
-        msg = MessageContestWinner("deadbeef")
-        dict_repr = msg.dict_repr()
-        assert dict_repr == MessageContestWinner(dict_repr=dict_repr).dict_repr()
-
-        ts._react_to_contest_winner(msg)
-        ts.send.assert_called_with(Instance(MessageContestWinnerAccept))
-
-        ts.send.called = False
-        ts.task_id = "deadbeef_2"
-        ts._react_to_contest_winner(msg)
-        ts.send.assert_called_with(Instance(MessageContestWinnerReject))
-
-        ts.send.called = False
-        ts.task_id = "deadbeef"
-        ts.task_computer.is_busy.return_value = True
-        ts._react_to_contest_winner(msg)
-        ts.send.assert_called_with(Instance(MessageContestWinnerReject))
-
-    def test_react_to_contest_winner_accept(self):
-        ts = self.__create_task_session()
-        ts.task_id = "deadbeef"
-
-        msg = MessageContestWinnerAccept("deadbeef")
-        dict_repr = msg.dict_repr()
-        assert dict_repr == MessageContestWinnerAccept(dict_repr=dict_repr).dict_repr()
-
-        ts._react_to_contest_winner_accept(msg)
-        ts.task_manager.contest_manager.winner_accepts.assert_called_with("deadbeef", ts.key_id)
-
-        ts.task_id = "deadbeef_2"
-
-        ts._react_to_contest_winner_accept(msg)
-        ts.disconnect.assert_called_with(ts.DCRBadProtocol)
-
-    def test_react_to_contest_winner_reject(self):
-        ts = self.__create_task_session()
-        ts.task_id = "deadbeef"
-
-        msg = MessageContestWinnerReject("deadbeef")
-        dict_repr = msg.dict_repr()
-        assert dict_repr == MessageContestWinnerReject(dict_repr=dict_repr).dict_repr()
-
-        ts._react_to_contest_winner_reject(msg)
-        ts.task_manager.contest_manager.winner_rejects.assert_called_with("deadbeef", ts.key_id)
-
-        ts.task_id = "deadbeef_2"
-
-        ts._react_to_contest_winner_reject(msg)
-        ts.disconnect.assert_called_with(ts.DCRBadProtocol)
 
     @staticmethod
     def __create_task_session():

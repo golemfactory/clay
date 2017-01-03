@@ -5,14 +5,16 @@ import time
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageWantToComputeTask, \
-    MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource, MessageResource, MessageReportComputedTask, \
-    MessageGetTaskResult, MessageSubtaskResultAccepted, MessageSubtaskResultRejected, \
-    MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat, MessageTaskFailure, \
-    MessageStartSessionResponse, MessageMiddleman, MessageMiddlemanReady, MessageBeingMiddlemanAccepted, \
-    MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch, MessageWaitForNatTraverse, \
-    MessageResourceList, MessageTaskResultHash, MessageWaitingForResults, MessageCannotComputeTask, \
-    MessageContestWinnerAccept, MessageContestWinner, MessageContestWinnerReject
+from golem.network.transport.message import (MessageHello, MessageRandVal, MessageWantToComputeTask,
+                                             MessageTaskToCompute, MessageCannotAssignTask, MessageGetResource,
+                                             MessageResource, MessageReportComputedTask, MessageGetTaskResult,
+                                             MessageSubtaskResultAccepted, MessageSubtaskResultRejected,
+                                             MessageDeltaParts, MessageResourceFormat, MessageAcceptResourceFormat,
+                                             MessageTaskFailure, MessageStartSessionResponse, MessageMiddleman,
+                                             MessageMiddlemanReady, MessageBeingMiddlemanAccepted,
+                                             MessageMiddlemanAccepted, MessageJoinMiddlemanConn, MessageNatPunch,
+                                             MessageWaitForNatTraverse, MessageResourceList, MessageTaskResultHash,
+                                             MessageWaitingForResults, MessageCannotComputeTask)
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
@@ -313,9 +315,6 @@ class TaskSession(MiddlemanSafeSession):
             send_unverified=True
         )
 
-    def send_contest_winner(self, task_id):
-        self.send(MessageContestWinner(task_id))
-
     def send_task_to_compute(self, msg):
         ctd = self.task_manager.get_next_subtask(self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                                                  msg.price, msg.max_resource_size, msg.max_memory_size,
@@ -398,26 +397,6 @@ class TaskSession(MiddlemanSafeSession):
             self.task_manager.contest_manager.add_contender(msg.task_id, self.key_id, self,
                                                             request_message=msg,
                                                             computing_trust=computing_trust)
-
-    def _react_to_contest_winner(self, msg):
-        if self.task_id == msg.task_id and not self.task_computer.is_busy(msg.task_id):
-            self.send(MessageContestWinnerAccept(msg.task_id))
-        else:
-            self.send(MessageContestWinnerReject(msg.task_id))
-            self.dropped()
-
-    def _react_to_contest_winner_accept(self, msg):
-        if self.task_id == msg.task_id:
-            self.task_manager.contest_manager.winner_accepts(msg.task_id, self.key_id)
-        else:
-            self.disconnect(self.DCRBadProtocol)
-
-    def _react_to_contest_winner_reject(self, msg):
-        if self.task_id == msg.task_id:
-            self.task_manager.contest_manager.winner_rejects(msg.task_id, self.key_id)
-            self.dropped()
-        else:
-            self.disconnect(self.DCRBadProtocol)
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
@@ -745,9 +724,6 @@ class TaskSession(MiddlemanSafeSession):
             MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
             MessageCannotComputeTask.Type: self._react_to_cannot_compute_task,
             MessageReportComputedTask.Type: self._react_to_report_computed_task,
-            MessageContestWinner.Type: self._react_to_contest_winner,
-            MessageContestWinnerAccept.Type: self._react_to_contest_winner_accept,
-            MessageContestWinnerReject.Type: self._react_to_contest_winner_reject,
             MessageGetTaskResult.Type: self._react_to_get_task_result,
             MessageTaskResultHash.Type: self._react_to_task_result_hash,
             MessageGetResource.Type: self._react_to_get_resource,
