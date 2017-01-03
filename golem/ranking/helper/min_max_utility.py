@@ -1,16 +1,16 @@
 import logging
 
-POS_PAR = 1.0
-NEG_PAR = 2.0
-MAX_TRUST = 1.0
-MIN_TRUST = -1.0
-MIN_OP_NUM = 50
+from golem.ranking.helper.trust_const import MAX_TRUST, MIN_TRUST
+
+POS_WEIGHT = 1.0
+NEG_WEIGHT = 2.0
+MIN_OPERATION_NUMBER = 50
 
 logger = logging.getLogger(__name__)
 
 
 def count_trust(pos, neg):
-    return min(MAX_TRUST, max(MIN_TRUST, (pos * POS_PAR - neg * NEG_PAR) / max(pos + neg, MIN_OP_NUM)))
+    return min(MAX_TRUST, max(MIN_TRUST, (pos * POS_WEIGHT - neg * NEG_WEIGHT) / max(pos + neg, MIN_OPERATION_NUMBER)))
 
 
 def vec_to_trust(val):
