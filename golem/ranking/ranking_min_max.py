@@ -122,23 +122,6 @@ class Ranking(object):
         else:
             deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
 
-    # thread-safe
-    def increase_trust(self, node_id, stat, mod):
-        with self.lock:
-            try:
-                Trust(stat).value['increase'](node_id, mod)
-            except ValueError:
-                logger.error("Wrong stat type {}".format(stat))
-            except KeyError:
-                logger.error("Wrong key for stat type {}".format(stat))
-
-    def decrease_trust(self, node_id, stat, mod):
-        with self.lock:
-            try:
-                Trust(stat).value['decrease'](node_id, mod)
-            except ValueError:
-                logger.error("Wrong stat type {}".format(stat))
-
     def get_computing_trust(self, node_id):
         local_rank = self.__get_loc_computing_trust(node_id)
         if local_rank is not None:
@@ -179,7 +162,7 @@ class Ranking(object):
         for [neighbour_id, about_id, loc_rank] in neighbours_loc_ranks:
             with self.lock:
                 dm.upsert_neighbour_loc_rank(neighbour_id,
-                                                  about_id, loc_rank)
+                                             about_id, loc_rank)
 
     def __get_loc_computing_trust(self, node_id):
         local_rank = dm.get_local_rank(node_id)

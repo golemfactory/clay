@@ -138,9 +138,9 @@ class TestRanking(TestWithDatabase, LogTestCase):
 
         def run():
             for x in range(0, 10):
-                r.increase_trust("ABC", Trust.COMPUTED, 1)
-                r.decrease_trust("ABC", Trust.COMPUTED, 1)
-                r.increase_trust("ABC", Trust.COMPUTED, 1)
+                Trust.COMPUTED.increase("ABC", 1)
+                Trust.COMPUTED.decrease("ABC", 1)
+                Trust.COMPUTED.increase("ABC", 1)
 
         thread1 = Thread(target=run)
         thread1.start()
@@ -168,21 +168,18 @@ class TestRanking(TestWithDatabase, LogTestCase):
         reactor = MagicMock()
         r.run(reactor)
         assert r.reactor == reactor
-        r.increase_trust("ABC", Trust.COMPUTED, 1)
-        r.increase_trust("DEF", Trust.REQUESTED, 1)
-        r.increase_trust("DEF", Trust.PAYMENT, 1)
-        r.increase_trust("GHI", Trust.RESOURCE, 1)
-        r.decrease_trust("DEF", Trust.COMPUTED, 1)
-        r.decrease_trust("XYZ", Trust.WRONG_COMPUTED, 1)
-        r.decrease_trust("XYZ", Trust.REQUESTED, 1)
-        r.increase_trust("XYZ", Trust.REQUESTED, 1)
-        r.decrease_trust("XYZ", Trust.PAYMENT, 1)
-        r.decrease_trust("DEF", Trust.RESOURCE, 1)
-        with self.assertLogs(logger, level="WARNING"):
-            r.increase_trust("XYZ", "UNKNOWN", 1)
-        with self.assertLogs(logger, level="WARNING"):
-            r.decrease_trust("XYZ", "UNKNOWN", 1)
-        r.increase_trust("XYZ", Trust.WRONG_COMPUTED, 1)
+        Trust.COMPUTED.increase("ABC", 1)
+        Trust.REQUESTED.increase("DEF", 1)
+        Trust.PAYMENT.increase("DEF", 1)
+        Trust.RESOURCE.increase("GHI", 1)
+        Trust.COMPUTED.decrease("DEF", 1)
+        Trust.WRONG_COMPUTED.decrease("XYZ", 1)
+        Trust.REQUESTED.decrease("XYZ", 1)
+        Trust.REQUESTED.increase("XYZ", 1)
+        Trust.PAYMENT.decrease("XYZ", 1)
+        Trust.RESOURCE.decrease("DEF", 1)
+        # with self.assertLogs(logger, level="WARNING"):
+        #     Trust.WRONG_COMPUTED.increase("XYZ", 1)
 
         r._Ranking__init_stage()
         assert not r.finished

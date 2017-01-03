@@ -318,11 +318,13 @@ class Client(object):
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
-    def increase_trust(self, node_id, stat, mod=1.0):
-        self.ranking.increase_trust(node_id, stat, mod)
+    @staticmethod
+    def increase_trust(node_id, stat, mod=1.0):
+        Trust(stat).increase(node_id, mod)
 
-    def decrease_trust(self, node_id, stat, mod=1.0):
-        self.ranking.decrease_trust(node_id, stat, mod)
+    @staticmethod
+    def decrease_trust(node_id, stat, mod=1.0):
+        Trust(stat).decrease(node_id, mod)
 
     def get_node(self):
         return DictSerializer.dump(self.node)
