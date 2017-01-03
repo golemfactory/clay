@@ -31,7 +31,7 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking_min_max import Ranking
+from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType

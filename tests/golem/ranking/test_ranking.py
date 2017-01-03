@@ -5,7 +5,7 @@ from mock import patch, MagicMock
 
 from golem.client import Client
 from golem.ranking.manager.time_manager import TimeManager
-from golem.ranking.ranking_min_max import logger, Ranking
+from golem.ranking.ranking import logger, Ranking
 from golem.ranking.helper.trust import Trust
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
