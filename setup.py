@@ -108,7 +108,7 @@ def parse_requirements(requirements_file):
 def find_required_packages():
     if sys.platform.startswith('darwin'):
         return find_packages(exclude=['examples'])
-    return find_packages(include=['golem*', 'gnr*', 'apps*', 'gui*'])
+    return find_packages(include=['golem*', 'apps*', 'gui*'])
 
 
 def current_dir():
@@ -163,8 +163,7 @@ setup(
     install_requires=requirements,
     include_package_data=True,
     dependency_links=dependency_links,
-    # TODO: No license yet
-    # license="ISCL",
+    license="GPL-3.0",
     zip_safe=False,
     keywords='golem',
     # classifiers=[
