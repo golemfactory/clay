@@ -13,7 +13,7 @@ from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, SafeProtocol
 from golem.network.transport.tcpserver import TCPServer, PendingConnectionsServer
-from golem.ranking.helper.gossip_keeper import GossipKeeper
+from golem.ranking.manager.gossip_manager import GossipManager
 from peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         self.resource_port = 0
         self.suggested_address = {}
         self.suggested_conn_reverse = {}
-        self.gossip_keeper = GossipKeeper()
+        self.gossip_keeper = GossipManager()
         self.manager_session = None
 
         # Useful config options
@@ -726,7 +726,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Return all gathered gossips and clear gossip buffer
         :return list: list of all gossips
         """
-        return self.gossip_keeper.pop_gossip()
+        return self.gossip_keeper.pop_gossips()
 
     def send_stop_gossip(self):
         """ Send stop gossip message to all peers
@@ -738,13 +738,13 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Register that peer with given id has stopped gossiping
         :param str id_: id of a string that has stopped gossiping
         """
-        self.gossip_keeper.stop_gossip(id_)
+        self.gossip_keeper.register_that_peer_stopped_gossiping(id_)
 
     def pop_stop_gossip_form_peers(self):
         """ Return set of all peers that has stopped gossiping
         :return set: set of peers id's
         """
-        return self.gossip_keeper.pop_stop_gossip_from_peers()
+        return self.gossip_keeper.pop_peers_that_stopped_gossiping()
 
     def push_local_rank(self, node_id, loc_rank):
         """ Send local rank to peers

@@ -361,7 +361,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.hear_gossip(msg.gossip)
 
     def _react_to_stop_gossip(self, msg):
-        self.p2p_service.stop_gossip(self.key_id)
+        self.p2p_service.register_that_peer_stopped_gossiping(self.key_id)
 
     def _react_to_loc_rank(self, msg):
         self.p2p_service.safe_neighbour_loc_rank(self.key_id, msg.node_id, msg.loc_rank)
