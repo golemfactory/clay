@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 class Trust(Enum):
     COMPUTED = {
-        'increase': dm.increase_positive_computing,
-        'decrease': dm.increase_negative_computing
+        'increase': dm.increase_positive_computed,
+        'decrease': dm.increase_negative_computed
     }
     WRONG_COMPUTED = {
         'decrease': dm.increase_wrong_computed
