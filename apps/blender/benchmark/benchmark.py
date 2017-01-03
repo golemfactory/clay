@@ -3,9 +3,9 @@ import tempfile
 
 from apps.core.benchmark.benchmark import Benchmark
 from apps.blender.task.blenderrendertask import BlenderRendererOptions
-from apps.rendering.task.renderingdirmanager import find_task_script
 
 from golem.core.common import get_golem_path
+from golem.resource.dirmanager import find_task_script
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'blender')
 

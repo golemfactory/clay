@@ -3,9 +3,9 @@ import os
 import shutil
 from os import path
 
-from apps.rendering.task.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
+from golem.resource.dirmanager import find_task_script
 from test_docker_job import TestDockerJob
 
 

@@ -254,6 +254,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
 
         tb = self.get_builder(ts)
         t = Task.build_task(tb)
+        ts.task_state.outputs = t.get_output_names()
         ts.task_state.status = TaskStatus.starting
         self.customizer.update_tasks(self.tasks)
         self.client.create_task(DictSerializer.dump(t))

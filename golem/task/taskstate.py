@@ -1,5 +1,3 @@
-import time
-
 
 class TaskState(object):
 
@@ -12,7 +10,8 @@ class TaskState(object):
         self.time_started = 0
         self.payment_booked = False
         self.payment_settled = False
-
+        self.outputs = []
+        self.total_subtasks = 0
         self.subtask_states = {}
 
         self.extra_data = {}

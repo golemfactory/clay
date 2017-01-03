@@ -222,7 +222,6 @@ class Task(object):
         """
         return  # Implement in derived class
 
-
     @abc.abstractmethod
     def get_total_tasks(self):
         """ Return total number of tasks that should be computed
@@ -339,6 +338,12 @@ class Task(object):
         :return:
         """
         pass
+
+    def get_output_names(self):
+        """ Return list of files containing final import task results
+        :return list:
+        """
+        return []
 
 
 result_types = {'data': 0, 'files': 1}
