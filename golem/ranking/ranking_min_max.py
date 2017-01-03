@@ -5,34 +5,25 @@ from itertools import izip
 from threading import Lock
 
 from twisted.internet.task import deferLater
-from golem.ranking.helper.trust import Trust
-from golem.ranking.manager.time_manager import TimeManager
+
+from golem.ranking.helper import min_max_utility as util
 from golem.ranking.manager import database_manager as dm
+from golem.ranking.manager.time_manager import TimeManager
+from golem.ranking.manager import trust_manager as tm
 
 logger = logging.getLogger(__name__)
 
-POS_PAR = 1.0
-NEG_PAR = 2.0
-MAX_TRUST = 1.0
-MIN_TRUST = -1.0
 UNKNOWN_TRUST = 0.0
-MIN_OP_NUM = 50
 MAX_STEPS = 10
 EPSILON = 0.01
 LOC_RANK_PUSH_DELTA = 0.1
 
 
 class Ranking(object):
-    def __init__(self, client, pos_par=POS_PAR, neg_par=NEG_PAR, max_trust=MAX_TRUST, min_trust=MIN_TRUST,
-                 min_op_num=MIN_OP_NUM, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
+    def __init__(self, client, unknown_trust=UNKNOWN_TRUST, max_steps=MAX_STEPS, epsilon=EPSILON,
                  loc_rank_push_delta=LOC_RANK_PUSH_DELTA):
         self.client = client
-        self.pos_par = pos_par
-        self.neg_par = neg_par
-        self.max_trust = max_trust
-        self.min_trust = min_trust
         self.unknown_trust = unknown_trust
-        self.min_op_num = min_op_num
         self.round_oracle = TimeManager()
 
         self.k = 1
@@ -74,9 +65,9 @@ class Ranking(object):
             self.working_vec = {}
             self.prevRank = {}
             for loc_rank in dm.get_local_rank_for_all():
-                comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank),
-                                                self.__get_comp_trust_neg(loc_rank))
-                req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
+                comp_trust = util.count_trust(tm.computed_trust_positive(loc_rank),
+                                              tm.computed_trust_negative(loc_rank))
+                req_trust = util.count_trust(tm.requested_trust_positive(loc_rank), tm.requested_trust_negative(loc_rank))
                 self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
                 self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
@@ -167,13 +158,13 @@ class Ranking(object):
     def __get_loc_computing_trust(self, node_id):
         local_rank = dm.get_local_rank(node_id)
         # for known node
-        return self.__count_trust(self.__get_comp_trust_pos(local_rank), self.__get_comp_trust_neg(local_rank)) \
+        return util.count_trust(tm.computed_trust_positive(local_rank), tm.computed_trust_negative(local_rank)) \
             if local_rank is not None else None
 
     def __get_loc_requesting_trust(self, node_id):
         local_rank = dm.get_local_rank(node_id)
         # for known node
-        return self.__count_trust(self.__get_req_trust_pos(local_rank), self.__get_req_trust_neg(local_rank)) \
+        return util.count_trust(tm.requested_trust_positive(local_rank), tm.requested_trust_negative(local_rank)) \
             if local_rank is not None else None
 
     def __get_computing_neighbour_loc_trust(self, neighbour, about):
@@ -203,8 +194,8 @@ class Ranking(object):
 
     def __push_local_ranks(self):
         for loc_rank in dm.get_local_rank_for_all():
-            comp_trust = self.__count_trust(self.__get_comp_trust_pos(loc_rank), self.__get_comp_trust_neg(loc_rank))
-            req_trust = self.__count_trust(self.__get_req_trust_pos(loc_rank), self.__get_req_trust_neg(loc_rank))
+            comp_trust = util.count_trust(tm.computed_trust_positive(loc_rank), tm.computed_trust_negative(loc_rank))
+            req_trust = util.count_trust(tm.requested_trust_positive(loc_rank), tm.requested_trust_negative(loc_rank))
             trust = [comp_trust, req_trust]
             if loc_rank.node_id in self.prev_loc_rank:
                 prev_trust = self.prev_loc_rank[loc_rank.node_id]
@@ -240,8 +231,8 @@ class Ranking(object):
             except (TypeError, ValueError):
                 logger.warning("Wrong trust vector element {}".format(val))
                 break
-            comp_trust = self.__working_vec_to_trust(computing)
-            req_trust = self.__working_vec_to_trust(requesting)
+            comp_trust = util.vec_to_trust(computing)
+            req_trust = util.vec_to_trust(requesting)
             if node_id in self.prevRank:
                 comp_trust_old = self.prevRank[node_id][0]
                 req_trust_old = self.prevRank[node_id][1]
@@ -249,12 +240,6 @@ class Ranking(object):
                 comp_trust_old, req_trust_old = 0, 0
             aggregated_trust += abs(comp_trust - comp_trust_old) + abs(req_trust - req_trust_old)
         return aggregated_trust
-
-    def __count_trust(self, pos, neg):
-        val = pos * self.pos_par - neg * self.neg_par
-        val /= max(pos + neg, self.min_op_num)
-        val = min(self.max_trust, max(self.min_trust, val))
-        return val
 
     def __set_k(self):
         degrees = self.__get_neighbours_degree()
@@ -278,8 +263,8 @@ class Ranking(object):
             except (TypeError, ValueError):
                 logger.warning("Wrong trust vector element {}".format(val))
                 break
-            comp_trust = self.__working_vec_to_trust(computing)
-            req_trust = self.__working_vec_to_trust(requesting)
+            comp_trust = util.vec_to_trust(computing)
+            req_trust = util.vec_to_trust(requesting)
             self.prevRank[node_id] = [comp_trust, req_trust]
 
     def __save_working_vec(self):
@@ -289,19 +274,9 @@ class Ranking(object):
             except (TypeError, ValueError):
                 logger.warning("Wrong trust vector element {}".format(val))
                 break
-            comp_trust = self.__working_vec_to_trust(computing)
-            req_trust = self.__working_vec_to_trust(requesting)
+            comp_trust = util.vec_to_trust(computing)
+            req_trust = util.vec_to_trust(requesting)
             dm.upsert_global_rank(node_id, comp_trust, req_trust, computing[1], requesting[1])
-
-    def __working_vec_to_trust(self, val):
-        if val is None:
-            return 0.0
-        try:
-            a, b = val
-        except (ValueError, TypeError) as err:
-            logger.warning("Wrong trust vector element {}".format(err))
-            return None
-        return min(max(float(a) / float(b), self.min_trust), self.max_trust) if a != 0.0 and b != 0.0 else 0.0
 
     def __prepare_gossip(self):
         gossip_vec = []
@@ -354,18 +329,3 @@ class Ranking(object):
                 sum_weight += weight
         return sum_trust, sum_weight
 
-    @staticmethod
-    def __get_comp_trust_pos(rank):
-        return rank.positive_computed
-
-    @staticmethod
-    def __get_comp_trust_neg(rank):
-        return rank.negative_computed + rank.wrong_computed
-
-    @staticmethod
-    def __get_req_trust_pos(rank):
-        return rank.positive_payment
-
-    @staticmethod
-    def __get_req_trust_neg(rank):
-        return rank.negative_requested + rank.negative_payment
