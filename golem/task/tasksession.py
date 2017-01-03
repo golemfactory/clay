@@ -415,7 +415,6 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_cannot_compute_task(self, msg):
         if self.task_manager.get_node_id_for_subtask(msg.subtask_id) == self.key_id:
-            self.task_manager.contest_manager.winner_rejects(msg.task_id, self.key_id)
             self.task_manager.task_computation_failure(msg.subtask_id,
                                                        'Task computation rejected: {}'.format(msg.reason))
         self.dropped()

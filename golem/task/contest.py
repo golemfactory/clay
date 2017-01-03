@@ -239,34 +239,6 @@ class ContestManager(object):
         return contest.remove_contender(contender_id)
 
     @handle_key_error
-    def winner_accepts(self, task_id, contender_id):
-
-        contest = self._contests[task_id]
-        winner = contest.winner
-
-        if winner and winner.id == contender_id:
-
-            self._cancel_announcement(task_id)
-            self._get_reactor().callLater(0, winner.session.send_task_to_compute, winner.req_msg)
-
-            to_remove = contest.new_round()
-            self._remove_contenders(task_id, to_remove)
-            self._check_later(task_id, self._calc_window_size(contest))
-
-            # no deferred announcements and checks at this point
-            logger.debug("Contest round {} winner for task {}: {} (score: {})"
-                         .format(contest.rounds - 1, task_id, winner.id, winner.score))
-
-    @handle_key_error
-    def winner_rejects(self, task_id, contender_id):
-
-        contest = self._contests[task_id]
-        winner = contest.winner
-
-        if winner and winner.id == contender_id:
-            self._announce_winner(task_id)
-
-    @handle_key_error
     def finish(self, task_id):
         logger.debug("Contest finished for task {}".format(task_id))
         self._cancel_check(task_id)
@@ -317,8 +289,15 @@ class ContestManager(object):
 
         if winner.session:
             # we have an active task session
-            reactor.callLater(0, winner.session.send_contest_winner, task_id)
-            self._announcements[task_id] = reactor.callLater(WINNER_LIFETIME, self._announce_winner, task_id)
+            reactor.callLater(0, winner.session.send_task_to_compute, winner.req_msg)
+
+            to_remove = contest.new_round()
+            self._remove_contenders(task_id, to_remove)
+            self._check_later(task_id, self._calc_window_size(contest))
+
+            # no deferred announcements and checks at this point
+            logger.debug("Contest round {} winner for task {}: {} (score: {})"
+                         .format(contest.rounds - 1, task_id, winner.id, winner.score))
         else:
             # contestant disconnected; select another one
             reactor.callLater(0, self._announce_winner, task_id)

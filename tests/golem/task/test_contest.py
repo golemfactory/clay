@@ -170,6 +170,7 @@ class TestContest(unittest.TestCase):
         assert contest.started == started
 
         contest._cleanup_contenders.called = False
+        time.sleep(0.01)
         contest.new_round()
         assert not contest._rank_contenders.called
         assert contest._cleanup_contenders.called
@@ -310,69 +311,6 @@ class TestContestManager(unittest.TestCase):
         assert task_id not in cm._contests
         assert len(cm._contests) == 0
 
-    def test_winner_accepts_rejects(self):
-
-        reactor = Mock()
-
-        task = _create_task()
-
-        contender_id = "id_1"
-        task_id = task.header.task_id
-
-        self.tasks[task_id] = task
-
-        cm = self.contest_manager
-        cm._check_later = Mock()
-        cm._announce_winner = Mock()
-        cm._cancel_announcement = Mock()
-        cm._get_reactor = Mock()
-        cm._get_reactor.return_value = reactor
-
-        contender_msg = MessageWantToComputeTask(node_name="name_1",
-                                                 perf_index=2000,
-                                                 price=2)
-        contender_kwargs = dict(
-            contender_id=contender_id,
-            session=Mock(),
-            computing_trust=0,
-            request_message=contender_msg,
-        )
-
-        cm.add_contender(task_id, **contender_kwargs)
-        contest = cm._contests[task_id]
-        contest.winner = contest.contenders.values()[0]
-        contest.new_round = Mock()
-        contest.new_round.return_value = []
-
-        cm._cancel_announcement.called = False
-        cm._check_later.called = False
-
-        cm.winner_accepts(task_id, "id_2")
-        assert not cm._cancel_announcement.called
-        assert not cm._check_later.called
-
-        cm.winner_accepts("task_2", contender_id)
-        assert not cm._cancel_announcement.called
-        assert not cm._check_later.called
-
-        cm.winner_accepts(task_id, contender_id)
-        assert cm._cancel_announcement.called
-        assert cm._check_later.called
-
-        cm._check_later.called = False
-        cm._announce_winner.called = False
-        cm._cancel_announcement.called = False
-
-        cm.winner_rejects(task_id, "id_2")
-        assert not cm._cancel_announcement.called
-        assert not cm._check_later.called
-
-        cm.winner_rejects("task_2", contender_id)
-        assert not cm._announce_winner.called
-
-        cm.winner_rejects(task_id, contender_id)
-        assert cm._announce_winner.called
-
     def test_calc_window_size(self):
         cm = self.contest_manager
 
@@ -447,12 +385,10 @@ class TestContestManager(unittest.TestCase):
         cm._announce_winner(task_id)
 
         calls = [
-            call(0, contender.session.send_contest_winner, task_id),
-            call(WINNER_LIFETIME, cm._announce_winner, task_id),
+            call(0, contender.session.send_task_to_compute, contender.req_msg),
         ]
 
         reactor.callLater.assert_has_calls(calls)
-        assert cm._announcements[task_id]
 
         cm.add_contender(task_id, **contender_kwargs)
         contest = cm._contests[task_id]
