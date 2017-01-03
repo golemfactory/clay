@@ -7,10 +7,10 @@ from threading import Lock
 from twisted.internet.task import deferLater
 
 from golem.ranking.helper import min_max_utility as util
-from golem.ranking.helper.trust_const import UNKNOWN_TRUST, NEIGHBOUR_WEIGHT_BASE, NEIGHBOUR_WEIGHT_POWER
+from golem.ranking.helper.trust_const import UNKNOWN_TRUST
 from golem.ranking.manager import database_manager as dm
-from golem.ranking.manager.time_manager import TimeManager
 from golem.ranking.manager import trust_manager as tm
+from golem.ranking.manager.time_manager import TimeManager
 
 logger = logging.getLogger(__name__)
 
