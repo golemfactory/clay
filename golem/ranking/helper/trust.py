@@ -1,5 +1,6 @@
 import logging
 
+from threading import Lock
 from enum import Enum
 from golem.ranking.manager import database_manager as dm
 
@@ -27,11 +28,17 @@ class Trust(Enum):
         'decrease': dm.increase_negative_resource
     }
 
+    def __init__(self, val):
+        self.val = val
+        self.lock = Lock()
+
     def increase(self, node_id, mod):
-        try:
-            self.value['increase'](node_id, mod)
-        except KeyError:
-            logger.error("Wrong key for stat type {}".format(self.value))
+        with self.lock:
+            try:
+                self.val['increase'](node_id, mod)
+            except KeyError:
+                logger.error("Wrong key for stat type {}".format(self.val))
 
     def decrease(self, node_id, mod):
-        self.value['decrease'](node_id, mod)
+        with self.lock:
+            self.val['decrease'](node_id, mod)
