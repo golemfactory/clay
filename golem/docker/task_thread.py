@@ -26,11 +26,12 @@ class DockerTaskThread(TaskThread):
                  orig_script_dir, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout, check_mem=False):
 
+        if not docker_images:
+            raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
             task_computer, subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
-        assert docker_images
         # Find available image
         self.image = None
         logger.debug("Chechking docker images %s", docker_images)

@@ -25,8 +25,8 @@ class TestSubtaskDetailsDialogCustomizer(TestCase):
         subtask_state = SubtaskState()
         subtask_details_dialog = SubtaskDetailsDialog(self.gnrgui.main_window.window)
         customizer = SubtaskDetailsDialogCustomizer(subtask_details_dialog, self.logic, subtask_state)
-        assert isinstance(customizer, SubtaskDetailsDialogCustomizer)
-        assert "0.000000 ETH" == "{}".format(customizer.gui.ui.priceLabel.text())
+        self.assertIsInstance(customizer, SubtaskDetailsDialogCustomizer)
+        self.assertEqual("0.000000 ETH", "{}".format(customizer.gui.ui.priceLabel.text()))
         subtask_state.value = 157.03 * 10 ** 16
         customizer.update_view(subtask_state)
-        assert "1.570300 ETH" == "{}".format(customizer.gui.ui.priceLabel.text())
+        self.assertEqual("1.570300 ETH", "{}".format(customizer.gui.ui.priceLabel.text()))

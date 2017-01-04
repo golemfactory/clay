@@ -9,10 +9,11 @@ class DockerEnvironment(Environment):
           at least one should be available for this environment to be supported.
         :return:
         """
+        if docker_images is None:
+            raise AttributeError("docker_images is None")
+        self.docker_images = docker_images
         Environment.__init__(self)
         self.software.append('Docker')
-        assert docker_images
-        self.docker_images = docker_images
 
     def check_docker_images(self):
         return any(img.is_available() for img in self.docker_images)

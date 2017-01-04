@@ -83,6 +83,8 @@ class TestAppConfig(TestDirFixture):
         dir1 = path.join(self.path, "1")
         dir2 = path.join(self.path, "2")
         cfg1 = AppConfig.load_config(dir1, "test.ini")
+        with self.assertRaises(RuntimeError):
+            AppConfig.load_config(dir1, "test.ini")
         cfg2 = AppConfig.load_config(dir2, "test.ini")
 
         assert cfg1.config_file == path.join(dir1, "test.ini")
@@ -102,3 +104,6 @@ class TestAppConfig(TestDirFixture):
         config_descC.init_from_app_config(cfgC)
         assert not config_descC.use_distributed_resource_management
         assert config_descC.computing_trust == 0.23
+
+        with self.assertRaises(TypeError):
+            AppConfig.change_config(None)

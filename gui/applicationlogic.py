@@ -120,7 +120,8 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.ui.errorLabel.setText(message)
 
     def get_task(self, task_id):
-        assert task_id in self.tasks, "GNRApplicationLogic: task {} not added".format(task_id)
+        if task_id not in self.tasks:
+            raise AttributeError("GNRApplicationLogic: task {} not added".format(task_id))
         return self.tasks[task_id]
 
     def get_task_types(self):
@@ -225,7 +226,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         if name in self.task_types:
             return self.task_types[name]
         else:
-            assert False, "Task {} not registered".format(name)
+            raise RuntimeError("Task {} not registered".format(name))
 
     def task_settings_changed(self):
         self.customizer.new_task_dialog_customizer.task_settings_changed()
@@ -355,7 +356,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         if test_task_info.name not in self.test_tasks:
             self.test_tasks[test_task_info.name] = test_task_info
         else:
-            assert False, "Test task {} already registered".format(test_task_info.name)
+            raise RuntimeError("Test task {} already registered".format(test_task_info.name))
 
     @staticmethod
     def save_task(task_state, file_path):
@@ -530,7 +531,8 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
         if task_id in self.tasks:
             ts_dict = yield self.client.query_task_state(task_id)
             ts = DictSerializer.load(ts_dict)
-            assert isinstance(ts, TaskState)
+            if not isinstance(ts, TaskState):
+                raise TypeError("Incorrect task state type: {}. Should be TaskState".format(ts))
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
             if ts.status in task_to_remove_status:

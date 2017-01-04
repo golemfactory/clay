@@ -115,9 +115,10 @@ class AppConfig:
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        # FIXME: This check is only for transition to separeted datadirs.
+        # FIXME: This check is only for transition to separated datadirs.
         cfg_file = path.join(datadir, cfg_file_name)
-        assert cfg_file not in cls.__loaded_configs, "Config has been loaded: " + cfg_file
+        if cfg_file in cls.__loaded_configs:
+            raise RuntimeError("Config has been loaded: {}".format(cfg_file))
         cls.__loaded_configs.add(cfg_file)
 
         common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
@@ -192,7 +193,8 @@ class AppConfig:
         return getattr(self._cfg.get_node_config(), "set_{}".format(prop))
 
     def change_config(self, cfg_desc):
-        assert isinstance(cfg_desc, ClientConfigDescriptor)
+        if not isinstance(cfg_desc, ClientConfigDescriptor):
+            raise TypeError("Incorrect config descriptor type: {}. Should be ClientConfigDescriptor".format(type(cfg_desc)))
 
         for var, val in vars(cfg_desc).iteritems():
             set_func = getattr(self, "set_{}".format(var))

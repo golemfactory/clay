@@ -172,7 +172,8 @@ class KeysAuth(object):
 
     @classmethod
     def set_keys_dir(cls, path):
-        assert os.path.isdir(path) or not os.path.exists(path)
+        if (not os.path.isdir(path)) and os.path.exists(path):
+            raise IOError("Path {} does not exists\n1){}\n2){}".format(path, os.path.isdir(path), os.path.exists(path)))
         cls._keys_dir = path
 
     @classmethod

@@ -18,7 +18,8 @@ class LocalComputer(object):
     def __init__(self, task, root_path, success_callback, error_callback, get_compute_task_def, check_mem=False,
                  comp_failed_warning=DEFAULT_WARNING, comp_success_message=DEFAULT_SUCCESS, use_task_resources=True,
                  additional_resources=None):
-        assert isinstance(task, Task)
+        if not isinstance(task, Task):
+            raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
         self.task = task
         self.res_path = None
         self.tmp_dir = None

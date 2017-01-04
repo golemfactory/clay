@@ -22,6 +22,8 @@ class TestLocalComputer(TestDirFixture):
             self.error_msg = error_msg
 
     def test_computer(self):
+        with self.assertRaises(TypeError):
+            LocalComputer(None, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)
         files = self.additional_dir_content([1])
         task = Task(Mock(), Mock())
         lc = LocalComputer(task, self.path, self._success_callback, self._failure_callback, self._get_bad_task_def)

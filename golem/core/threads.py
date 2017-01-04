@@ -112,7 +112,8 @@ class ThreadQueueExecutor(QueueExecutor):
 
     @classmethod
     def _to_job(cls, source, *args, **kwargs):
-        assert isinstance(source, Thread)
+        if not isinstance(source, Thread):
+            raise TypeError("Incorrect source type: {}. Should be Thread".format(type(source)))
         return source
 
     @classmethod

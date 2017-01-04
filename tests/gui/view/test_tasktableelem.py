@@ -30,12 +30,12 @@ class TestTaskTableElem(TestCase):
         assert u"{}".format(time.text()) == "00:00:00"
         cost = tte.get_column_item(ItemMap.Cost)
         assert u"{}".format(cost.text()) == "0.000000"
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             tte.get_column_item(ItemMap.Progress)
 
         assert ItemMap.count() == 6
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             tte.setProgress(10)
         tte.setProgress(0.0)
         assert tte.progress == 0.0

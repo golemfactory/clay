@@ -21,19 +21,19 @@ from mock import Mock, MagicMock, patch
 class TestCreateClient(TestDirFixture):
 
     def test_config_override_valid(self):
-        assert hasattr(ClientConfigDescriptor(), "node_address")
+        self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
         c = Client(datadir=self.path, node_address='1.0.0.0',
                    transaction_system=False, connect_to_known_hosts=False,
                    use_docker_machine_manager=False,
                    use_monitor=False)
-        assert c.config_desc.node_address == '1.0.0.0'
+        self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
     def test_config_override_invalid(self):
         """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
-        assert not hasattr(ClientConfigDescriptor(), "node_colour")
+        self.assertFalse(hasattr(ClientConfigDescriptor(), "node_colour"))
         with self.assertRaises(AttributeError):
             Client(datadir=self.path, node_colour='magenta',
                    transaction_system=False, connect_to_known_hosts=False,
@@ -60,17 +60,17 @@ class TestClient(TestWithDatabase):
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
         c.check_payments()
 
-        assert c.get_incomes_list() == []
+        self.assertEqual(c.get_incomes_list(), [])
         payment = IncomingPayment("0x00003", 30 * denoms.ether)
         payment.extra = {'block_number': 311,
                          'block_hash': "hash1",
                          'tx_hash': "hash2"}
         c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
         incomes = c.get_incomes_list()
-        assert len(incomes) == 1
-        assert incomes[0]['block_number'] == 311
-        assert incomes[0]['value'] == 30 * denoms.ether
-        assert incomes[0]['payer'] == "0x00003"
+        self.assertEqual(len(incomes), 1)
+        self.assertEqual(incomes[0]['block_number'], 311)
+        self.assertEqual(incomes[0]['value'], 30 * denoms.ether)
+        self.assertEqual(incomes[0]['payer'], "0x00003")
 
         c.quit()
 
@@ -93,22 +93,22 @@ class TestClient(TestWithDatabase):
         c.resource_server.get_distributed_resource_root.return_value = unique_dir()
 
         d = c.get_computed_files_dir()
-        assert self.path in d
+        self.assertIn(self.path, d)
         self.additional_dir_content([3], d)
         c.remove_computed_files()
-        assert not os.listdir(d)
+        self.assertEqual(os.listdir(d), [])
 
         d = c.get_distributed_files_dir()
-        assert self.path in os.path.normpath(d)  # normpath for mingw
+        self.assertIn(self.path, os.path.normpath(d))  # normpath for mingw
         self.additional_dir_content([3], d)
         c.remove_distributed_files()
-        assert not os.listdir(d)
+        self.assertEqual(os.listdir(d), [])
 
         d = c.get_received_files_dir()
-        assert self.path in d
+        self.assertIn(self.path, d)
         self.additional_dir_content([3], d)
         c.remove_received_files()
-        assert not os.listdir(d)
+        self.assertEqual(os.listdir(d), [])
         c.quit()
 
     def test_datadir_lock(self):
@@ -117,7 +117,7 @@ class TestClient(TestWithDatabase):
         datadir = os.path.join(self.path, "non-existing-dir")
         c = Client(datadir=datadir, transaction_system=False,
                    connect_to_known_hosts=False, use_docker_machine_manager=False, use_monitor=False)
-        assert c.config_desc.node_address == ''
+        self.assertEqual(c.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir)
         c.quit()
@@ -126,18 +126,18 @@ class TestClient(TestWithDatabase):
         c = Client(datadir=self.path, transaction_system=False,
                    connect_to_known_hosts=False, use_docker_machine_manager=False, use_monitor=False)
         meta = c.get_metadata()
-        assert meta is not None
-        assert not meta
+        self.assertIsNotNone(meta)
+        self.assertEqual(meta, dict())
         c.quit()
 
     def test_description(self):
         c = Client(datadir=self.path, transaction_system=False,
                    connect_to_known_hosts=False, use_docker_machine_manager=False,
                    use_monitor=False)
-        assert c.get_description() == ""
+        self.assertEqual(c.get_description(), "")
         desc = u"ADVANCE DESCRIPTION\n\tSOME TEXT"
         c.change_description(desc)
-        assert c.get_description() == desc
+        self.assertEqual(c.get_description(), desc)
         c.quit()
 
     # FIXME: IPFS metadata disabled
@@ -170,8 +170,8 @@ class TestClient(TestWithDatabase):
         c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
         c.transaction_system = MagicMock()
         status = c.get_status()
-        assert "Waiting for tasks" in status
-        assert "Active peers in network: 2" in status
+        self.assertIn("Waiting for tasks", status)
+        self.assertIn("Active peers in network: 2", status)
         mock1 = MagicMock()
         mock1.get_progress.return_value = 0.25
         mock2 = MagicMock()
@@ -179,16 +179,16 @@ class TestClient(TestWithDatabase):
         c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
         c.p2pservice.get_peers.return_value = []
         status = c.get_status()
-        assert "Computing 2 subtask(s)" in status
-        assert "id1 (25.0%)" in status
-        assert "id2 (33.0%)" in status
-        assert "Active peers in network: 0" in status
+        self.assertIn("Computing 2 subtask(s)", status)
+        self.assertIn("id1 (25.0%)", status)
+        self.assertIn("id2 (33.0%)", status)
+        self.assertIn("Active peers in network: 0", status)
         c.config_desc.accept_tasks = 0
         status = c.get_status()
-        assert "Computing 2 subtask(s)" in status
+        self.assertIn("Computing 2 subtask(s)", status)
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
-        assert "Not accepting tasks" in status
+        self.assertIn("Not accepting tasks", status)
         c.quit()
 
     def test_quit(self):
@@ -202,14 +202,14 @@ class TestClientRPCMethods(TestWithDatabase):
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_node(self, _):
         c = self.__new_client()
-        assert isinstance(c.get_node(), dict)
-        assert isinstance(DictSerializer.load(c.get_node()), Node)
+        self.assertIsInstance(c.get_node(), dict)
+        self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
         c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_dir_manager(self, _):
         c = self.__new_client()
-        assert isinstance(c.get_dir_manager(), Mock)
+        self.assertIsInstance(c.get_dir_manager(), Mock)
 
         c.task_server = TaskServer.__new__(TaskServer)
         c.task_server.task_manager = TaskManager.__new__(TaskManager)
@@ -217,7 +217,7 @@ class TestClientRPCMethods(TestWithDatabase):
         c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
         c.task_server.task_computer.current_computations = []
 
-        assert isinstance(c.get_dir_manager(), DirManager)
+        self.assertIsInstance(c.get_dir_manager(), DirManager)
         c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -228,52 +228,52 @@ class TestClientRPCMethods(TestWithDatabase):
         try:
             # settings
             new_node_name = str(uuid.uuid4())
-            assert c.get_setting('node_name') != new_node_name
+            self.assertNotEqual(c.get_setting('node_name'), new_node_name)
             c.update_setting('node_name', new_node_name)
-            assert c.get_setting('node_name') == new_node_name
-            assert c.get_settings()['node_name'] == new_node_name
+            self.assertEqual(c.get_setting('node_name'), new_node_name)
+            self.assertEqual(c.get_settings()['node_name'], new_node_name)
 
             newer_node_name = str(uuid.uuid4())
-            assert c.get_setting('node_name') != newer_node_name
+            self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
             settings = c.get_settings()
             settings['node_name'] = newer_node_name
             c.update_settings(settings)
-            assert c.get_setting('node_name') == newer_node_name
+            self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
             # configure rpc
             rpc_session = Mock()
-            assert c.rpc_publisher is None
+            self.assertIsNone(c.rpc_publisher)
             c.configure_rpc(rpc_session)
-            assert c.rpc_publisher.session is rpc_session
+            self.assertIs(c.rpc_publisher.session, rpc_session)
 
             # create task rpc
             task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
             c.create_task(task_dict)
-            assert c.enqueue_new_task.called
+            self.assertTrue(c.enqueue_new_task.called)
 
             # status without peers
-            assert c.connection_status().startswith(u"Not connected")
+            self.assertTrue(c.connection_status().startswith(u"Not connected"))
 
             # peers
             c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
             c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
 
             known_peers = c.get_known_peers()
-            assert len(known_peers) == 3
-            assert all(peer for peer in known_peers)
+            self.assertEqual(len(known_peers), 3)
+            self.assertTrue(all(peer for peer in known_peers))
 
             connected_peers = c.get_connected_peers()
-            assert len(connected_peers) == 4
-            assert all(peer for peer in connected_peers)
+            self.assertEqual(len(connected_peers), 4)
+            self.assertTrue(all(peer for peer in connected_peers))
 
             # status with peers
-            assert c.connection_status().startswith(u"Connected")
+            self.assertTrue(c.connection_status().startswith(u"Connected"))
             # status without ports
             c.p2pservice.cur_port = 0
-            assert c.connection_status().startswith(u"Application not listening")
+            self.assertTrue(c.connection_status().startswith(u"Application not listening"))
 
             # public key
-            assert c.get_public_key() == c.keys_auth.public_key
+            self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
 
         except:
             raise

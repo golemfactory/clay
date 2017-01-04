@@ -16,7 +16,8 @@ class DataBuffer:
         Append given number to data buffer written as unsigned long in network order
         :param long num: number to append (must be higher than 0)
         """
-        assert num >= 0
+        if num < 0:
+            raise AttributeError("num must be grater than 0")
         str_num_rep = struct.pack("!L", num)
         self.buffered_data = "".join([self.buffered_data, str_num_rep])
         return str_num_rep
@@ -43,7 +44,8 @@ class DataBuffer:
         """ Check long number that is located at the beginning of this data buffer
         :return long: number at the beginning of the buffer
         """
-        assert len(self.buffered_data) >= LONG_STANDARD_SIZE
+        if len(self.buffered_data) < LONG_STANDARD_SIZE:
+            raise ValueError("buffer_data is shorter than {}".format(LONG_STANDARD_SIZE))
 
         (ret_val,) = struct.unpack("!L", self.buffered_data[0:LONG_STANDARD_SIZE])
         return ret_val
@@ -62,7 +64,8 @@ class DataBuffer:
         :param long num_chars: how many chars should be read from buffer
         :return str: first <num_chars> chars from buffer
         """
-        assert num_chars <= len(self.buffered_data)
+        if num_chars > len(self.buffered_data):
+            raise AttributeError("num_chars is grater than buffer length")
 
         ret_str = self.buffered_data[:num_chars]
         return ret_str

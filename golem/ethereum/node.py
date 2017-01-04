@@ -26,7 +26,6 @@ log = logging.getLogger('golem.ethereum')
 
 class Faucet(object):
     PRIVKEY = "{:32}".format("Golem Faucet")
-    assert len(PRIVKEY) == 32
     PUBKEY = privtopub(PRIVKEY)
     ADDR = privtoaddr(PRIVKEY)
 
@@ -40,7 +39,9 @@ class Faucet(object):
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
                                                        '0x' + addr.encode('hex'), h))
         h = h[2:].decode('hex')
-        assert h == tx.hash
+        if h != tx.hash:
+            raise ValueError(
+                "Transaction hash is incorrect: {}. Expected: {}".format(h.encode('hex'), tx.hash.encore('hex')))
         return h
 
     @staticmethod
@@ -69,7 +70,9 @@ class NodeProcess(object):
 
         if not path.exists(datadir):
             os.makedirs(datadir)
-        assert path.isdir(datadir)
+        if not path.isdir(datadir):
+            raise IOError("{} does not exist or is not a dir".format(datadir))
+
         if nodes:
             nodes_file = path.join(datadir, 'static-nodes.json')
             save(nodes, nodes_file, False)
@@ -93,10 +96,10 @@ class NodeProcess(object):
     def start(self, rpc, mining=False, nodekey=None, port=None):
         if self.__ps:
             return
-        assert not self.rpcport
 
         if not port:
             port = find_free_net_port()
+
         self.port = port
         args = [
             self.__prog,
