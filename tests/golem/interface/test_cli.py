@@ -163,7 +163,7 @@ class TestCLI(unittest.TestCase):
 
             with patch('sys.stderr', new_callable=StringIO) as err:
                 cli.process(['commands', 'command'])
-                self.assertTrue(err.getvalue())
+                self.assertTrue(not err.getvalue())
 
     @patch('golem.interface.cli._exit', side_effect=_nop)
     @patch('golem.core.common.config_logging', side_effect=_nop)
