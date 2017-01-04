@@ -34,7 +34,7 @@ dep_path = os.path.join(pkg_dir, 'python' + py_ver.replace('.', ''))
 lib_path = os.path.join(pkg_dir, 'python' + py_ver)
 
 sys.path = [dep_path, cur_dir, INITSCRIPT_ZIP_FILE_NAME]
-ld_paths = [cur_dir, pkg_dir, lib_path, image_formats_dir]
+ld_paths = [cur_dir, pkg_dir, lib_path, dep_path, image_formats_dir]
 
 platform = get_platform()
 

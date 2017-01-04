@@ -1,19 +1,23 @@
 import ctypes
+import imp
 import inspect
 import os
-from collections import namedtuple, OrderedDict
-
-import imp
-import pkg_resources
 import pkgutil
+import re
 import shutil
 import subprocess
 import sys
 import time
+import zipfile
+from collections import namedtuple, OrderedDict
+from ctypes.util import find_library
 from distutils import dir_util
+from distutils.dir_util import copy_tree
 from zipimport import zipimporter
 
-from cx_Freeze import Executable
+import cx_Freeze
+import pkg_resources
+from packaging import version
 from setuptools import Command
 
 
@@ -26,6 +30,11 @@ def get_platform():
         return 'osx'
     else:
         raise EnvironmentError("Unsupported platform: {}".format(sys.platform))
+
+
+def is_egg_dir(directory):
+    d = directory.lower()
+    return d.endswith('.egg-info') or d.endswith('.dist-info') or d.endswith('.egg')
 
 
 class LicenseCollector(object):
@@ -53,7 +62,7 @@ class LicenseCollector(object):
             return '\n'.join([k + ': ' + v for k, v in data.iteritems()])
 
     MODULE_LICENSE_FILE_NAME = 'LICENSE'
-    MODULE_EXCEPTIONS = ['golem', 'gnr', 'encodings', 'importlib', 'lib',
+    MODULE_EXCEPTIONS = ['golem', 'apps', 'gui', 'encodings', 'importlib', 'lib',
                          'json', 'ctypes', 'sqlite3', 'distutils',
                          'pkg_resources', 'curses', 'pydoc_data',
                          'unittest', 'compiler', 'xml', 'PyQt4',
@@ -241,7 +250,7 @@ class LicenseCollector(object):
                     if not package:
                         package = self._find_package(imported, is_file=is_file)
             except Exception as ex:
-                print "Error occurred during getting module license {}".format(ex)
+                print "Cannot read license for {}: {}".format(module, ex)
 
         if package:
             meta, lic = self._get_metadata_and_license(package)
@@ -333,14 +342,13 @@ class LicenseCollector(object):
                         if package_repr == line:
                             return True
 
-    @staticmethod
-    def _collect_info_dirs(root_dir):
+    @classmethod
+    def _collect_info_dirs(cls, root_dir):
         _, dirs, _ = next(os.walk(root_dir))
         result = set()
 
         for directory in dirs:
-            lower = directory.lower()
-            if lower.endswith('.egg-info') or lower.endswith('.dist-info') or lower.endswith('.egg'):
+            if is_egg_dir(directory):
                 result.add((os.path.join(root_dir, directory), directory))
 
         return result
@@ -390,23 +398,26 @@ class LicenseCollector(object):
                     k, v = line.split(': ', 1)
                     if k == "License":
                         return '\n'.join(metadata), v
-            except Exception as ex:
-                print "Error occurred during getting metadata: {}".format(ex)
+            except Exception:
+                continue
 
         return None, None
 
 
 class DirPackage(object):
-    def __init__(self, name, to_lib_dir=True,
+    def __init__(self, name,
+                 to_x_dir=True,
+                 egg=None,
                  exclude_platforms=None,
                  include_platforms=None,
                  location_resolver=None):
 
-        self.name = name
         self.include_platforms = include_platforms or []
         self.exclude_platforms = exclude_platforms or []
         self.location_resolver = location_resolver
-        self.use_lib_dir = to_lib_dir
+        self.name = name
+        self.to_x_dir = to_x_dir
+        self.egg = egg
 
     def skip_platform(self, platform):
         if self.include_platforms:
@@ -419,7 +430,7 @@ class DirPackage(object):
         return self.name
 
 
-class ZippedPackage:
+class ZipPackage:
     def __init__(self, name, exclude, in_lib_dir=False):
         self.name = name
         self.exclude = exclude
@@ -451,7 +462,7 @@ class Either(object):
         return None
 
 
-class PackageCreator(Command):
+class Pack(Command):
 
     user_options = [
         ("unpack-file=", None, "Zip package file to extract"),
@@ -471,6 +482,8 @@ class PackageCreator(Command):
 
     py_vd = '.'.join(sys.version.split('.')[:2])
     py_v = py_vd.replace('.', '')
+    pydir_vd = 'python' + py_vd
+    pydir_v = 'python' + py_v
     platform = get_platform()
 
     setup_dir = None
@@ -499,10 +512,10 @@ class PackageCreator(Command):
             if not x_dir:
                 raise EnvironmentError("Invalid module archive")
 
-            self._pack_modules(exe_dir, lib_dir, x_dir)
-            self._copy_files(x_dir)
-            self._create_files(exe_dir, x_dir)
+            self._pack_modules(exe_dir, x_dir)
+            self._copy_files(self.setup_dir, x_dir, lib_dir)
             self._copy_libs(exe_dir, lib_dir, x_dir)
+            self._create_files(exe_dir, x_dir)
             self._post_pack(exe_dir, lib_dir, x_dir)
 
     def initialize_options(self):
@@ -663,63 +676,141 @@ class PackageCreator(Command):
                 with open(file_path, 'w') as f:
                     f.write(data)
 
-    def _pack_modules(self, exe_dir, lib_dir, x_dir):
-        mod_dir = os.path.dirname(os.__file__)
+    def _pack_modules(self, exe_dir, x_dir):
 
         for module in self.pack_modules:
             if isinstance(module, DirPackage):
                 if module.skip_platform(self.platform):
                     continue
 
-                dst_dir = x_dir if module.use_lib_dir else exe_dir
-                self._copy_module(module.name, dst_dir, lib_dir,
-                                  module.location_resolver)
+                dst_dir = x_dir if module.to_x_dir else exe_dir
+
+                if module.egg:
+                    self._copy_egg(module.name, module.egg, dst_dir,
+                                   module.location_resolver)
+                if module.name:
+                    self._copy_module(module.name, dst_dir,
+                                      module.location_resolver)
+
             else:
-                self._copy_module_str(module, mod_dir, exe_dir)
+                self._copy_module_alt(module, exe_dir)
 
-    def _copy_module_str(self, module, mod_dir, exe_dir):
-        src_file = self._get_module_file_path(module, mod_dir)
-
-        if os.path.exists(src_file):
-            dest_file = self._get_module_file_path(module, exe_dir)
-
-            if not os.path.exists(dest_file):
-                print "Copying module file {}".format(src_file)
-                shutil.copy(src_file, dest_file)
-        else:
-            src_file = os.path.join(mod_dir, module)
-            dest_file = os.path.join(exe_dir, module)
-
-            if not os.path.exists(dest_file):
-                print "Copying module dir {}".format(src_file)
-                dir_util.copy_tree(src_file, dest_file, update=1)
-
-    def _copy_module(self, module, exe_dir, lib_dir, location_resolver=None):
+    def _copy_module(self, module, exe_dir, location_resolver=None):
         src_path = self._get_module_path(module, location_resolver)
-        dest_dir = os.path.join(exe_dir, module.replace('.', os.path.sep))
+        dst_dir = os.path.join(exe_dir, module.replace('.', os.path.sep))
 
         if os.path.isdir(src_path):
-            dir_util.copy_tree(src_path, dest_dir, update=1)
+            dir_util.copy_tree(src_path, dst_dir, update=1)
         elif os.path.isfile(src_path):
-            dest_path = os.path.join(dest_dir, os.path.basename(src_path))
-            shutil.copy(src_path, dest_path)
+            dst_path = os.path.join(dst_dir, os.path.basename(src_path))
+            shutil.copy(src_path, dst_path)
+        else:
+            raise RuntimeError('_copy_module: Module {} not found'.format(module))
 
-    def _copy_files(self, lib_dir):
+        return src_path
+
+    def _copy_module_alt(self, module, exe_dir):
+        mod_dir = self._get_module_path(module)
+        src_dir = mod_dir
+        src_file = os.path.join(mod_dir, module + ".py")
+
+        if os.path.isfile(src_file):
+            dst_file = os.path.join(exe_dir, module + ".py")
+
+            if not os.path.exists(dst_file):
+                print "Copying module file {}".format(src_file)
+                shutil.copy(src_file, dst_file)
+
+        elif os.path.isdir(src_dir):
+            print "Copying module dir {}".format(src_dir)
+
+            dst_dir = os.path.join(exe_dir, module)
+            dir_util.copy_tree(src_dir, dst_dir, update=True)
+
+        else:
+            raise RuntimeError('_copy_module_alt: Module {} not found'.format(module))
+
+    def _copy_egg(self, module, egg, dst_dir, location_resolver=None):
+        src_path = self._get_module_path(module, location_resolver)
+
+        # check if module is inside the egg
+        egg_idx = src_path.find('.egg' + os.path.sep)
+        egg_len = len('.egg')
+
+        if egg_idx != -1:
+            egg_path = src_path[:egg_idx+egg_len]
+            egg_dir = os.path.basename(egg_path)
+            dir_util.copy_tree(egg_path, os.path.join(dst_dir, egg_dir), update=True)
+            return
+
+        # find the info directory
+        counter = module.count('.') + 1
+        lookup_dir = src_path
+        while counter > 0:
+            lookup_dir = os.path.dirname(lookup_dir)
+            counter -= 1
+
+        dirs = next(os.walk(lookup_dir))[1]
+        candidates = [d for d in dirs if is_egg_dir(d) and d.find(egg) != -1]
+        newest = None
+        newest_ver = '0'
+
+        def extract_version(string):
+            lower = string.lower()
+            clean = lower.replace('.dist-info', '').replace('.egg-info', '')
+            return clean.split('-')[1]
+
+        for candidate in candidates:
+            v = extract_version(candidate)
+            if version.parse(v) > version.parse(newest_ver):
+                newest = candidate
+                newest_ver = v
+
+        if not newest:
+            raise RuntimeError("Couldn't find egg '{}' for module '{}'".format(egg, module))
+        dir_util.copy_tree(os.path.join(lookup_dir, newest), os.path.join(dst_dir, newest), update=True)
+
+    def _copy_files(self, setup_dir, x_dir, lib_dir):
+
+        def _copy(_src, _dest, _dest2):
+            _dir = os.path.dirname(_dest)
+            if not os.path.exists(_dir):
+                os.makedirs(_dir)
+
+            if os.path.isdir(_src):
+                copy_tree(_src, _dest2, update=True)
+            elif os.path.isfile(_src):
+                shutil.copy(_src, _dest)
+            else:
+                print "Error copying {} to {}".format(_src, _dest)
+
+        def _src_dir(_module):
+            try:
+                return self._get_module_path(_module)
+            except Exception as e:
+                if os.path.exists(_module):
+                    return os.path.abspath(_module)
+                raise e
+
+        lib_dir = os.path.join(lib_dir, 'python' + self.py_v)
+
         for module, files in self.copy_files.iteritems():
-            src_dir = self._get_module_path(module)
-            dest_dir = os.path.join(lib_dir, module)
+
+            if module:
+                src_dir = _src_dir(module)
+            else:
+                src_dir = setup_dir
+
+            file_dir = os.path.join(x_dir, module)
+            dir_dir = os.path.join(lib_dir, module)
 
             if src_dir and files:
                 for filename in files:
-                    src_file_path = os.path.join(src_dir, filename)
-                    dest_file_path = os.path.join(dest_dir, filename)
-                    file_dir = os.path.dirname(dest_file_path)
-
-                    if not os.path.exists(file_dir):
-                        os.makedirs(file_dir)
-
-                    print "Copying file {} to {}".format(src_file_path, dest_file_path)
-                    shutil.copy(src_file_path, dest_file_path)
+                    _copy(
+                        os.path.join(src_dir, filename),
+                        os.path.join(file_dir, filename),
+                        os.path.join(dir_dir, filename)
+                    )
 
     def _post_pack(self, exe_dir, lib_dir, x_dir):
         for method in self.post_pack:
@@ -733,7 +824,7 @@ class PackageCreator(Command):
         if not isinstance(exclude, list):
             exclude = [exclude]
 
-        white_list = ['BUILD_CONSTANTS', 'cx_Freeze'] + [entry.split('.')[0] for entry in exclude]
+        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', 'logging.ini'] + [entry.split('.')[0] for entry in exclude]
         tmp_file = src_file + "-" + str(uuid.uuid4())
 
         zip_in = zipfile.ZipFile(src_file, 'r')
@@ -763,10 +854,6 @@ class PackageCreator(Command):
                 zf.extractall(dest_path)
 
     @staticmethod
-    def _get_module_file_path(module, module_dir):
-        return os.path.join(module_dir, module + ".py")
-
-    @staticmethod
     def _get_module_path(module, location_resolver=None):
         pkg = pkgutil.find_loader(module)
         if pkg:
@@ -789,75 +876,6 @@ class PackageCreator(Command):
     def _find_exe_dirs(src_dir):
         dir_names = next(os.walk(src_dir))[1]
         return [d for d in dir_names if d.startswith('exe.')]
-
-# cx_Freeze configuration
-
-exe_options = {
-    "packages": [
-        "os", "sys", "pkg_resources", "encodings", "click",
-        "bitcoin", "devp2p", "service_identity", "OpenEXR",
-        "Crypto", "OpenSSL", "ssl"
-    ]
-}
-
-linux_exe_options = {
-    'bin_includes': [
-        'libssl.so',
-        'libcrypto.so',
-        'libstdc++',
-        'libc.so.6',
-        'rtld',
-        'libIex.so.6',
-        'libIlmImf.so.6',
-        'libjbig.so.0',
-        'libjpeg.so.8',
-        'libtiff.so.5',
-        'libHalf.so.6',
-        'libIlmThread.so.6',
-        'libQtCore.so.4',
-        'libQtGui.so.4',
-        'libQtNetwork.so.4',
-        'libQtOpenGL.so.4',
-        'libQtScript.so.4',
-        'libQtSql.so.4',
-        'libQtSvg.so.4',
-        'libQtTest.so.4',
-        'libQtXml.so.4',
-        'libfontconfig.so.1',
-        'libaudio.so.2',
-        'libSM.so.6',
-        'libICE.so.6',
-        'libXi.so.6',
-        'libXt.so.6',
-        'libXrender.so.1'
-    ],
-    'bin_excludes': [
-        'libpthread.so.0'
-    ]
-}
-
-win_exe_options = {
-    'include_files': ['requirements.txt'],
-    'include_msvcr': True,
-    'bin_includes': [
-        'pythoncom' + PackageCreator.py_v + '.dll'
-    ]
-}
-
-osx_exe_options = {
-    'bin_excludes': [
-        'libQt.dylib',
-        'libQtCore.dylib',
-        'libQtGui.dylib',
-        'libQtNetwork.dylib',
-        'libQtOpenGL.dylib',
-        'libQtScript.dylib',
-        'libQtSql.dylib',
-        'libQtSvg.dylib',
-        'libQtTest.dylib',
-        'libQtXml.dylib',
-    ]
-}
 
 
 def _resolve_vboxapi_location():
@@ -896,7 +914,7 @@ def osx_rewrite_lib_paths(creator, exe_dir, lib_dir, *args):
     """
 
     platform = creator.platform
-    py_v = creator.py_v
+    pydir_v = creator.pydir_v
     if platform != 'osx':
         return
 
@@ -904,7 +922,7 @@ def osx_rewrite_lib_paths(creator, exe_dir, lib_dir, *args):
         return os.path.join(exe_dir, _lib)
 
     def _make_lib_py_path(_lib):
-        return os.path.join(lib_dir, 'python' + py_v, 'PyQt4', _lib + '.so')
+        return os.path.join(lib_dir, pydir_v, 'PyQt4', _lib + '.so')
 
     rewrite_libs = [
         'QtCore',
@@ -976,7 +994,7 @@ def osx_rewrite_python(creator, exe_dir, *args):
     )
 
 
-def linux_remove_libc(creator, exe_dir, *args):
+def linux_remove_libc(creator, exe_dir, *_):
     if creator.platform == 'linux':
         libc_path = os.path.join(exe_dir, 'libc.so.6')
         if os.path.exists(libc_path):
@@ -994,8 +1012,8 @@ def win_clean_qt(creator, _, __, x_dir):
         dir_util.remove_tree(os.path.join(qt_dir, d))
 
 
-def all_task_collector(creator, *args):
-    tc_dir = os.path.join('gnr', 'taskcollector')
+def all_task_collector(creator, *_):
+    tc_dir = os.path.join('apps', 'rendering', 'resources', 'taskcollector')
     tc_release_dir = os.path.join(tc_dir, 'Release')
 
     if creator.platform == 'win':
@@ -1014,145 +1032,67 @@ def all_task_collector(creator, *args):
         os.chdir(cwd)
 
 
-def all_assemble(creator, _exe_dir, _lib_dir, x_dir, *args):
-    from distutils.dir_util import copy_tree
-    import zipfile
-    import re
+def all_scripts(creator, *_):
+    src_dir = os.path.join('scripts', 'packaging', 'runner')
+    dst_dir = os.path.join('build', 'golem')
 
-    def build_subdir(dir_name):
-        return os.path.join(build_dir, dir_name)
+    copy_tree(src_dir, dst_dir, update=True)
 
-    def new_package_subdir(dir_name):
-        return os.path.join(pack_dir, dir_name)
+    # remove scripts for other platforms
+    if creator.platform == 'win':
+        scripts = ['golem.sh', 'cli.sh']
+    else:
+        scripts = ['golem.cmd', 'cli.cmd']
 
-    def version_stamp(dir_name):
-        git_rev = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
-        created = time.time()
-
-        file_path = os.path.join(dir_name, '.version')
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-        with open(file_path, 'w') as f:
-            f.write(str(created))
-            f.write("\n")
-            f.write(git_rev)
-
-    def zip_dir(src_dir, zip_handle):
-        for root, dirs, files in os.walk(src_dir):
-            for _file in files:
-                zip_handle.write(os.path.join(root, _file))
-
-    def collect_docker_files():
-        images_ini = os.path.join(task_dir, 'images.ini')
-        result = set()
-
-        with open(images_ini) as ini_file:
-            for line in ini_file:
-                if line:
-                    name, docker_file, tag = line.split(' ')
-                    full_path = os.path.join(task_dir, docker_file)
-                    result.add((full_path, docker_file))
-
-        docker_file_dir = os.path.dirname(next(iter(result))[1])
-        entrypoint_path = os.path.join(docker_file_dir, 'entrypoint.sh')
-
-        result.add((os.path.join(task_dir, entrypoint_path), 'entrypoint.sh'))
-        result.add((images_ini, 'images.ini'))
-
-        return result
-
-    def assemble_dir(dir_name):
-
-        if os.path.exists(pack_dir):
-            shutil.rmtree(pack_dir)
-
-        pack_taskcollector_dir = new_package_subdir(os.path.join(x_dir, taskcollector_dir))
-        copy_tree(taskcollector_dir, pack_taskcollector_dir, update=True)
-
-        exe_dir = build_subdir(dir_name)
-        pack_exe_dir = new_package_subdir(dir_name)
-        pack_docker_dir = new_package_subdir(docker_dir)
-
-        os.makedirs(pack_dir)
-        os.makedirs(pack_docker_dir)
-
-        shutil.move(exe_dir, pack_exe_dir)
-        copy_tree(runner_scripts_dir, pack_dir, update=True)
-
-        if creator.platform == 'win':
-            scripts = ['golem.sh', 'cli.sh']
-        else:
-            scripts = ['golem.cmd', 'cli.cmd']
-
-        for script in scripts:
-            os.remove(os.path.join(pack_dir, script))
-
-        for full_path, docker_file in docker_files:
-            dst_path = os.path.join(pack_docker_dir, docker_file)
-            dst_dir = os.path.dirname(dst_path)
-            if not os.path.exists(dst_dir):
-                os.makedirs(dst_dir)
-            shutil.copy(full_path, dst_path)
-
-        version_stamp(pack_dir)
-
-        platform_name = re.split('[\.\-]+', dir_name)[1]
-        file_name = 'golem-' + platform_name + '.zip'
-
-        cwd = os.getcwd()
-        os.chdir(build_dir)
-
-        if os.path.exists(file_name):
-            os.remove(file_name)
-
-        zip_f = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
-        zip_dir(package_subdir, zip_f)
-        zip_f.close()
-
-        os.chdir(cwd)
-
-    build_dir = 'build'
-    scripts_dir = 'scripts'
-    docker_dir = 'docker'
-    package_subdir = 'golem'
-
-    runner_scripts_dir = os.path.join(scripts_dir, 'packaging', 'runner')
-    taskcollector_dir = os.path.join('apps', 'rendering', 'resources', 'taskcollector', 'Release')
-
-    task_dir = os.path.join('gnr', 'task')
-    pack_dir = build_subdir(package_subdir)
-
-    docker_files = collect_docker_files()
-
-    sub_dirs = next(os.walk(build_dir))[1]
-    for subdir in sub_dirs:
-        if subdir.startswith('exe'):
-            assemble_dir(subdir)
+    for script in scripts:
+        os.remove(os.path.join(dst_dir, script))
 
 
-def all_assets(creator, exe_dir, lib_dir, x_dir):
-    from distutils.dir_util import copy_tree
+def _collect_docker_files():
+    result = set()
 
-    scripts_dir = os.path.join('gnr', 'task', 'scripts')
-    scripts_dest_dir = os.path.join(x_dir, scripts_dir)
+    with open(os.path.join('apps', 'images.ini')) as ini_file:
 
-    images_dir = os.path.join('gnr', 'ui', 'img')
-    images_dest_dir = os.path.join(x_dir, images_dir)
+        for line in ini_file:
+            if line:
+                name, docker_file, tag = line.split(' ')
+                full_path = os.path.join('apps', docker_file)
+                dir_name = os.path.dirname(full_path)
+                base_name = os.path.basename(docker_file)
+                result.add((dir_name, base_name))
 
-    benchmarks_dir = os.path.join('gnr', 'benchmarks')
-    benchmarks_dest_dir = os.path.join(x_dir, benchmarks_dir)
+    result.add((os.path.join('apps', 'core', 'resources', 'images'), 'entrypoint.sh'))
+    result.add(('apps', 'images.ini'))
+    return result
 
-    copy_tree(scripts_dir, scripts_dest_dir, update=True)
-    copy_tree(images_dir, images_dest_dir, update=True)
-    copy_tree(benchmarks_dir, benchmarks_dest_dir, update=True)
 
-    no_preview_path = os.path.join('gui', 'view', 'nopreview.png')
-    no_preview_dest_path = os.path.join(x_dir, no_preview_path)
+def all_dockerfiles(*_):
 
-    if os.path.exists(no_preview_dest_path):
-        os.remove(no_preview_dest_path)
-    shutil.copy(no_preview_path, no_preview_dest_path)
+    dst_dir = os.path.join('build', 'golem', 'docker')
+
+    for full_path, docker_file in _collect_docker_files():
+
+        src_path = os.path.join(full_path, docker_file)
+        dst_path = os.path.join(dst_dir, docker_file)
+
+        if not os.path.exists(dst_dir):
+            os.makedirs(dst_dir)
+        shutil.copy(src_path, dst_path)
+
+
+def all_version(*_):
+
+    git_rev = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
+    created = time.time()
+
+    file_path = os.path.join('build', 'golem', '.version')
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    with open(file_path, 'w') as f:
+        f.write(str(created))
+        f.write("\n")
+        f.write(git_rev)
 
 
 def all_licenses(creator, exe_dir, lib_dir, x_dir):
@@ -1164,7 +1104,7 @@ def all_licenses(creator, exe_dir, lib_dir, x_dir):
     library_output_file = os.path.join(exe_dir, 'LICENSE-LIBRARIES.txt')
     misc_output_file = os.path.join(exe_dir, 'LICENSE-MISC.txt')
 
-    lm = LicenseCollector(root_dir=creator.setup_dir,
+    lc = LicenseCollector(root_dir=creator.setup_dir,
                           package_dirs=package_dirs,
                           library_dirs=library_dirs)
 
@@ -1175,26 +1115,69 @@ def all_licenses(creator, exe_dir, lib_dir, x_dir):
         )
     ]
 
-    lm.write_module_licenses(package_output_file)
-    lm.write_misc_licenses(misc_output_file, misc_licenses)
+    lc.write_module_licenses(package_output_file)
+    lc.write_misc_licenses(misc_output_file, misc_licenses)
     if creator.platform != 'win':
-        lm.write_library_licenses(library_output_file)
+        lc.write_library_licenses(library_output_file)
 
     license_file = 'LICENSE.txt'
     readme_file = 'README.md'
 
     shutil.copy(
-        os.path.join(lm.root_dir, license_file),
+        os.path.join(lc.root_dir, license_file),
         os.path.join(exe_dir, license_file)
     )
     shutil.copy(
-        os.path.join(lm.root_dir, readme_file),
+        os.path.join(lc.root_dir, readme_file),
         os.path.join(exe_dir, readme_file)
     )
 
 
+def all_clear_output_dir(*_):
+    pack_dir = os.path.join('build', 'golem')
+    if os.path.exists(pack_dir):
+        shutil.rmtree(pack_dir)
+
+
+def all_assemble(*_):
+
+    def zip_dir(src_dir, zip_handle):
+        for root, dirs, files in os.walk(src_dir):
+            for _file in files:
+                zip_handle.write(os.path.join(root, _file))
+
+    def assemble_dir(dir_name, build_dir_name):
+
+        cwd = os.getcwd()
+        exe_dir = os.path.join(build_dir_name, dir_name)
+        new_dir = os.path.join(build_dir_name, 'golem', dir_name)
+        shutil.move(exe_dir, new_dir)
+
+        platform_name = re.split('[\.\-]+', dir_name)[1]
+        file_name = 'golem-' + platform_name + '.zip'
+
+        os.chdir(build_dir_name)
+
+        if os.path.exists(file_name):
+            os.remove(file_name)
+
+        zip_f = zipfile.ZipFile(file_name, 'w', zipfile.ZIP_DEFLATED)
+        zip_dir('golem', zip_f)
+        zip_f.close()
+
+        os.chdir(cwd)
+
+    build_dir = 'build'
+
+    for d in next(os.walk(build_dir))[1]:
+        if d.startswith('exe'):
+            assemble_dir(d, build_dir)
+
+
+# cx_Freeze configuration
+
 def update_cx_freeze_config(options):
-    platform = PackageCreator.platform
+    platform = Pack.platform
     if platform == 'osx':
         options.update(osx_exe_options)
     elif platform == 'win':
@@ -1202,8 +1185,76 @@ def update_cx_freeze_config(options):
     elif platform == 'linux':
         options.update(linux_exe_options)
 
+linux_exe_options = {
+    'bin_includes': [
+        'libssl.so',
+        'libcrypto.so',
+        'libstdc++',
+        'libc.so.6',
+        'rtld',
+        'libIex.so.6',
+        'libIlmImf.so.6',
+        'libjbig.so.0',
+        'libjpeg.so.8',
+        'libtiff.so.5',
+        'libHalf.so.6',
+        'libIlmThread.so.6',
+        'libQtCore.so.4',
+        'libQtGui.so.4',
+        'libQtNetwork.so.4',
+        'libQtOpenGL.so.4',
+        'libQtScript.so.4',
+        'libQtSql.so.4',
+        'libQtSvg.so.4',
+        'libQtTest.so.4',
+        'libQtXml.so.4',
+        'libfontconfig.so.1',
+        'libaudio.so.2',
+        'libSM.so.6',
+        'libICE.so.6',
+        'libXi.so.6',
+        'libXt.so.6',
+        'libXrender.so.1'
+    ],
+    'bin_excludes': [
+        'libpthread.so.0'
+    ]
+}
 
-update_cx_freeze_config(exe_options)
+win_exe_options = {
+    'include_files': ['requirements.txt'],
+    'include_msvcr': True,
+    'bin_includes': [
+        'pythoncom' + Pack.py_v + '.dll'
+    ]
+}
+
+osx_exe_options = {
+    'bin_excludes': [
+        'libQt.dylib',
+        'libQtCore.dylib',
+        'libQtGui.dylib',
+        'libQtNetwork.dylib',
+        'libQtOpenGL.dylib',
+        'libQtScript.dylib',
+        'libQtSql.dylib',
+        'libQtSvg.dylib',
+        'libQtTest.dylib',
+        'libQtXml.dylib',
+    ]
+}
+
+exe_options = {
+    "packages": [
+        "os", "sys", "pkg_resources", "encodings", "click",
+        "bitcoin", "devp2p", "service_identity", "OpenEXR",
+        "Crypto", "OpenSSL", "ssl"
+    ],
+    "excludes": [
+        "collections.sys",
+        "collections._weakref",
+    ]
+}
 
 apps = [
     {
@@ -1218,6 +1269,8 @@ apps = [
     }
 ]
 
+
+update_cx_freeze_config(exe_options)
 app_scripts = [app['script'] for app in apps]
 
 build_options = {
@@ -1225,6 +1278,8 @@ build_options = {
     "pack": {
         # Patch missing dependencies
         'pack_modules': [
+            DirPackage('packaging'),
+            DirPackage('pkg_resources'),
             DirPackage('psutil'),
             DirPackage('cffi'),
             DirPackage('devp2p'),
@@ -1238,6 +1293,16 @@ build_options = {
             DirPackage('PyQt4'),
             DirPackage('certifi'),
             DirPackage('psutil'),
+            DirPackage('ndg.httpsclient'),
+            DirPackage('gevent'),
+            DirPackage('geventhttpclient'),
+            DirPackage('cryptography'),
+            DirPackage('lmdb'),
+            DirPackage('nacl'),
+            DirPackage('xml'),
+            DirPackage('crossbar'),
+            DirPackage('web3', egg='web3'),
+            DirPackage('eth_abi', egg='ethereum_abi_utils'),
 
             DirPackage('pywintypes', include_platforms=['win']),
             DirPackage('win32api', include_platforms=['win']),
@@ -1246,13 +1311,10 @@ build_options = {
 
             DirPackage('secp256k1', exclude_platforms=['win']),
             DirPackage('virtualbox', exclude_platforms=['linux']),
-            DirPackage('vboxapi',
-                       exclude_platforms=['linux'],
-                       location_resolver=_resolve_vboxapi_location),
+            DirPackage('vboxapi', exclude_platforms=['linux'], location_resolver=_resolve_vboxapi_location),
 
-            DirPackage('encodings', to_lib_dir=False),
-            DirPackage('ndg.httpsclient', to_lib_dir=True),
-            DirPackage('zope.interface', to_lib_dir=False),
+            DirPackage('encodings', to_x_dir=False),
+            DirPackage('zope.interface', to_x_dir=False),
 
             # Standard library files
             "_abcoll", "_weakrefset",
@@ -1260,21 +1322,44 @@ build_options = {
             "stat", "types", "codecs", "warnings", "importlib", "UserDict",
             "ssl", "keyword", "heapq", "argparse", "collections",
             "re", "sre_compile", "sre_parse", "sre_constants", "textwrap",
-            "gettext", "copy", "locale", "functools", 'pprint'
+            "gettext", "copy", "locale", "functools", 'pprint', 'scrypt'
         ],
         # Extract files zipped by cx_Freeze
         'extract_modules': [
-            ZippedPackage("python" + PackageCreator.py_v + ".zip",
-                          exclude=app_scripts,
-                          in_lib_dir=True),
-            ZippedPackage("library.zip",
-                          exclude=app_scripts,
-                          in_lib_dir=False)
+            ZipPackage(Pack.pydir_v + ".zip",
+                       exclude=app_scripts,
+                       in_lib_dir=True),
+            ZipPackage("library.zip",
+                       exclude=app_scripts,
+                       in_lib_dir=False)
         ],
         # Patch missing module files
         'copy_files': {
+            '': ['logging.ini'],
             'bitcoin': ['english.txt'],
-            'gnr': ['logging.ini'],
+            'treq': ['_version'],
+            'apps': [
+                'images.ini',
+                'registered.ini',
+
+                os.path.join('core', 'gui'),
+                os.path.join('core', 'benchmark'),
+
+                os.path.join('rendering', 'gui'),
+                os.path.join('rendering', 'resources', 'taskcollector', 'Release'),
+
+                os.path.join('blender', 'gui'),
+                os.path.join('blender', 'resources'),
+                os.path.join('blender', 'benchmark'),
+
+                os.path.join('lux', 'gui'),
+                os.path.join('lux', 'resources'),
+                os.path.join('lux', 'benchmark'),
+            ],
+            'gui': [
+                os.path.join('view', 'img'),
+                os.path.join('view', 'nopreview.png')
+            ],
             'golem': [
                 os.path.join('ethereum', 'genesis_golem.json'),
                 os.path.join('ethereum', 'mine_pending_transactions.js')
@@ -1288,8 +1373,10 @@ build_options = {
                 'msvcr120.dll'
             ],
             'linux': [
+                '_scrypt.so',
                 '_sha3.so',
                 '_cffi_backend.so',
+                'greenlet.so',
                 'OpenEXR.so',
                 'netifaces.so',
                 'ld-linux-x86-64.so.*',
@@ -1310,12 +1397,17 @@ build_options = {
                 'libpangocairo-1.0.so.0',
                 'libfreeimage.so.3',
                 'readline.x86_64-linux-gnu.so',
+                'setproctitle.so',
                 Either('libIlmImf.so.*',
                        'libIlmImf-*'),
                 Either('libIlmThread.so.*',
                        'libIlmThread-*'),
                 Either('libIex.so.*',
                        'libIex-*'),
+                Either('pyexpat.x86_64-linux-gnu.so',
+                       'pyexpat-*'),
+                Either('mmap.x86_64-linux-gnu.so',
+                       'mmap-*'),
                 Either('sip.x86_64-linux-gnu.so',
                        'sip.so',
                        name='sip.so'),
@@ -1343,7 +1435,7 @@ build_options = {
                        name='_psutil_posix.so'),
                 Either('datetime.x86_64-linux-gnu.so',
                        'datetime.so',
-                       None)  # None = optional
+                       None),  # None = optional
             ],
             'osx': [
                 'libpython2.7.dylib'
@@ -1361,8 +1453,11 @@ build_options = {
             win_clean_qt,
             osx_rewrite_lib_paths,
             osx_rewrite_python,
-            all_assets,
+            all_clear_output_dir,
             all_task_collector,
+            all_scripts,
+            all_dockerfiles,
+            all_version,
             all_licenses,
             all_assemble
         ]
@@ -1374,19 +1469,19 @@ def update_setup_config(setup_dir, options=None, cmdclass=None, executables=None
 
     init_script_dir = os.path.join(setup_dir, 'scripts', 'packaging', 'cx_Freeze', 'initscripts')
 
-    PackageCreator.init_script = os.path.join(init_script_dir, 'Console.py')
-    PackageCreator.setup_dir = setup_dir
+    Pack.init_script = os.path.join(init_script_dir, 'Console.py')
+    Pack.setup_dir = setup_dir
 
     if options is not None:
         options.update(build_options)
 
     if cmdclass is not None:
-        cmdclass.update({'pack': PackageCreator})
+        cmdclass.update({'pack': Pack})
 
     if executables is not None:
-        for app in apps:
-            executables.append(Executable(
-                base=app['base'],
-                script=app['script'],
-                initScript=os.path.join(init_script_dir, app['init_script']),
+        for a in apps:
+            executables.append(cx_Freeze.Executable(
+                base=a['base'],
+                script=a['script'],
+                initScript=os.path.join(init_script_dir, a['init_script']),
             ))

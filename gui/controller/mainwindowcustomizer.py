@@ -1,18 +1,22 @@
 from __future__ import division
+import datetime
 import jsonpickle as json
 import logging
 import os
+import time
 from threading import Lock
 
 from ethereum.utils import denoms
-from PyQt4 import QtCore
-from PyQt4.QtGui import QPalette, QFileDialog, QMessageBox, QMenu
+from PyQt4.QtCore import QObject, SIGNAL, Qt, QTimer
+from PyQt4.QtGui import QFileDialog, QIcon, QPalette, QPixmap, QTreeWidgetItem, QMenu, QMessageBox
 from twisted.internet.defer import inlineCallbacks
 
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
+from apps.core.task.gnrtaskstate import TaskDesc
+from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 
 from gui.controller.customizer import Customizer
 from gui.controller.common import get_save_dir
@@ -24,29 +28,54 @@ from gui.controller.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
 from gui.controller.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
 from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer
+from gui.controller.memoryhelper import resource_size_to_display, translate_resource_index
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
+from gui.controller.previewcontroller import PreviewController
+from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
+from gui.guidirmanager import get_icons_list
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-    EnvironmentsDialog, IdentityDialog, NodeNameDialog
+    EnvironmentsDialog, IdentityDialog, NodeNameDialog, ShowTaskResourcesDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
 
 logger = logging.getLogger("gui")
 
 
-class GNRMainWindowCustomizer(Customizer):
+def insert_item(root, path_table):
+    if not isinstance(root, QTreeWidgetItem):
+        raise TypeError("Incorrect root type: {}. Should be QTreeWidgetItem".format(type(root)))
+
+    if len(path_table) > 0:
+        for i in range(root.childCount()):
+            if path_table[0] == "{}".format(root.child(i).text(0)):
+                insert_item(root.child(i), path_table[1:])
+                return
+
+        new_child = QTreeWidgetItem([path_table[0]])
+        root.addChild(new_child)
+        insert_item(new_child, path_table[1:])
+
+
+class MainWindowCustomizer(Customizer):
     def __init__(self, gui, logic):
+        Customizer.__init__(self, gui, logic)
+
         self.current_task_highlighted = None
+        self.preview_controller = PreviewController(self.gui, self.logic, self)
+
         self.task_details_dialog = None
         self.task_details_dialog_customizer = None
         self.new_task_dialog_customizer = None
         self.configuration_dialog_customizer = None
-        Customizer.__init__(self, gui, logic)
+        self.change_task_dialog = None
+        self.show_task_resources_dialog = None
+        self.show_task_resources_dialog_customizer = None
+        self._set_icons()
         self._set_error_label()
         self.gui.ui.listWidget.setCurrentItem(self.gui.ui.listWidget.item(1))
         self.lock = Lock()
-        self.timer = QtCore.QTimer()
+        self.timer = QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
-        self.change_task_dialog = None
 
     def init_config(self):
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
@@ -117,19 +146,28 @@ class GNRMainWindowCustomizer(Customizer):
         self._add_task(task.definition.task_id, task.status, task.definition.task_name)
 
     def update_task_additional_info(self, t):
+        if not isinstance(t, TaskDesc):
+            raise TypeError("Incorrect argument type: {}. Should be TaskDesc".format(type(t)))
+
         self.current_task_highlighted = t
         self.gui.ui.startTaskButton.setEnabled(t.task_state.status == TaskStatus.notStarted)
 
+        self.__set_time_params(t)
+        self.__set_memory_params(t)
+
+        self.preview_controller.set_preview(t)
+
     def show_task_result(self, task_id):
         t = self.logic.get_task(task_id)
-        if hasattr(t.definition, 'output_file') and os.path.isfile(t.definition.output_file):
-            self.show_file(t.definition.output_file)
-        elif hasattr(t.definition.options, 'output_file') and os.path.isfile(t.definition.options.output_file):
-            self.show_file(t.definition.options.output_file)
+        num = self.gui.ui.previewsSlider.value() - 1
+        if t.has_multiple_outputs(num + 1):
+            file_ = t.task_state.outputs[num]
         else:
-            msg_box = QMessageBox()
-            msg_box.setText("No output file defined.")
-            msg_box.exec_()
+            file_ = t.definition.output_file
+        if os.path.isfile(file_):
+            self.show_file(file_)
+        else:
+            self.show_error_window(u"{} is not a file".format(file_))
 
     def remove_task(self, task_id):
         for row in range(0, self.gui.ui.taskTableWidget.rowCount()):
@@ -174,21 +212,22 @@ class GNRMainWindowCustomizer(Customizer):
         node_name_dialog.show()
 
     def _setup_connections(self):
-        self._setup_basic_task_connections()
-        self._setup_basic_app_connections()
+        self._setup_task_connections()
+        self._setup_app_connections()
 
-    def _setup_basic_task_connections(self):
+    def _setup_task_connections(self):
         self.gui.ui.loadButton.clicked.connect(self._load_task_button_clicked)
         selection_model = self.gui.ui.taskTableWidget.selectionModel()
         selection_model.selectionChanged.connect(self._task_table_item_changed)
-        QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
-                               self._task_table_row_clicked)
-        QtCore.QObject.connect(self.gui.ui.taskTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
-                               self._task_table_row_double_clicked)
+        self.gui.ui.taskTableWidget.cellClicked.connect(self._task_table_row_clicked)
+        self.gui.ui.taskTableWidget.doubleClicked.connect(self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
         self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
+        QObject.connect(self.gui.ui.outputFile, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
+                        self.__open_output_file)
+        self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
 
-    def _setup_basic_app_connections(self):
+    def _setup_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
         self.gui.ui.environmentsButton.clicked.connect(self._show_environments)
@@ -198,14 +237,15 @@ class GNRMainWindowCustomizer(Customizer):
 
     def _set_error_label(self):
         palette = QPalette()
-        palette.setColor(QPalette.Foreground, QtCore.Qt.red)
+        palette.setColor(QPalette.Foreground, Qt.red)
         self.gui.ui.errorLabel.setPalette(palette)
 
     def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
 
     def _set_new_task_dialog_customizer(self):
-        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui, self.logic)
+        # FIXME Remove RenderingNewTaskDialogCustomizer
+        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()
@@ -301,6 +341,40 @@ class GNRMainWindowCustomizer(Customizer):
         self.gui.ui.descriptionTextEdit.setEnabled(False)
         self.logic.change_description(u"{}".format(self.gui.ui.descriptionTextEdit.toPlainText()))
 
+    def _set_icons(self):
+        icons = get_icons_list()
+        for i, icon_path in enumerate(icons):
+            item = self.gui.ui.listWidget.item(i)
+            icon = QIcon()
+            icon.addPixmap(QPixmap(icon_path), QIcon.Normal, QIcon.Off)
+            item.setIcon(icon)
+
+    def _set_show_task_resource_dialog(self):
+        self.show_task_resources_dialog = ShowTaskResourcesDialog(self.gui.window)
+        self.show_task_resources_dialog_customizer = ShowTaskResourcesDialogCustomizer(self.show_task_resources_dialog,
+                                                                                       self)
+
+    def _show_task_resource_clicked(self):
+
+        if self.current_task_highlighted:
+            res = [os.path.abspath(r) for r in self.current_task_highlighted.definition.resources]
+            res.sort()
+            self._set_show_task_resource_dialog()
+
+            item = QTreeWidgetItem(["Resources"])
+            self.show_task_resources_dialog.ui.folderTreeView.insertTopLevelItem(0, item)
+            self.show_task_resources_dialog.ui.closeButton.clicked.connect(self.__show_task_res_close_button_clicked)
+
+            for r in res:
+                after_split = r.split("\\")
+                insert_item(item, after_split)
+
+            self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
+                self.current_task_highlighted.definition.main_scene_file)
+            self.show_task_resources_dialog.ui.folderTreeView.expandAll()
+
+            self.show_task_resources_dialog.show()
+
     def __show_task_context_menu(self, p):
 
         if self.gui.ui.taskTableWidget.itemAt(p) is None:
@@ -315,3 +389,24 @@ class GNRMainWindowCustomizer(Customizer):
         self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, gnr_task_state)
         menu.popup(self.gui.ui.taskTableWidget.viewport().mapToGlobal(p))
         menu.exec_()
+
+    def __show_task_res_close_button_clicked(self):
+        self.show_task_resources_dialog.window.close()
+
+    def __open_output_file(self):
+        file_ = self.gui.ui.outputFile.text()
+        if os.path.isfile(file_):
+            self.show_file(file_)
+
+    def __set_time_params(self, t):
+        self.gui.ui.subtaskTimeout.setText("{} minutes".format(int(t.definition.subtask_timeout / 60.0)))
+        self.gui.ui.fullTaskTimeout.setText(str(datetime.timedelta(seconds=t.definition.full_task_timeout)))
+        if t.task_state.time_started != 0.0:
+            lt = time.localtime(t.task_state.time_started)
+            time_string = time.strftime("%Y.%m.%d  %H:%M:%S", lt)
+            self.gui.ui.timeStarted.setText(time_string)
+
+    def __set_memory_params(self, t):
+        mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
+        self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
+

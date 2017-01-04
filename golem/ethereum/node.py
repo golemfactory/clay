@@ -151,8 +151,13 @@ class NodeProcess(object):
     def stop(self):
         if self.__ps:
             start_time = time.clock()
-            self.__ps.terminate()
-            self.__ps.wait()
+
+            try:
+                self.__ps.terminate()
+                self.__ps.wait()
+            except psutil.NoSuchProcess:
+                log.warn("Cannot terminate node: process {} no longer exists".format(self.__ps.pid))
+
             self.__ps = None
             self.rpcport = None
             duration = time.clock() - start_time

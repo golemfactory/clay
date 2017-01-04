@@ -23,7 +23,7 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.gnrtaskstate import TaskDesc, GNRTaskDefinition
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger
@@ -54,6 +54,9 @@ class TTask(Task):
         self.test_finished = True
         self.results = results
         self.tmp_dir = tmp_dir
+
+    def get_output_names(self):
+        return ["output1", "output2", "output3"]
 
 
 class TTaskBuilder(TaskBuilder):
@@ -97,7 +100,6 @@ class RPCClient(object):
         self.started = False
 
     def test_task_started(self, *args, **kwargs):
-        print "test_task_started {}".format(args)
         self.started = args[0]
 
 
@@ -176,6 +178,21 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
         ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
+
+    def test_start_task(self):
+        logic = GNRApplicationLogic()
+        logic.customizer = Mock()
+        logic.client = Mock()
+        task_desc = TaskDesc()
+        task_desc.task_state.status = TaskStatus.notStarted
+        task_desc.definition.task_type = "TASKTYPE1"
+        task_type = Mock()
+        task_type.task_builder_type.return_value = TTaskBuilder(self.path)
+        logic.task_types["TASKTYPE1"] = task_type
+        logic.tasks["xyz"] = task_desc
+        logic.start_task("xyz")
+        assert task_desc.task_state.status == TaskStatus.starting
+        assert task_desc.task_state.outputs == ["output1", "output2", "output3"]
 
 
 class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
@@ -267,7 +284,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         app = self.app
         logic.client = Mock()
         logic.register_gui(app.get_main_window(),
-                           RenderingMainWindowCustomizer)
+                           MainWindowCustomizer)
 
         logic.lock_config(True)
 
@@ -296,7 +313,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
 
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         logic.customizer.show_warning_window = Mock()
 
@@ -366,7 +383,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_update_peers_view(self):
         logic = self.logic
         gnrgui = self.app
-        logic.customizer = RenderingMainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         peer = Mock()
         peer.address = "10.10.10.10"
@@ -394,7 +411,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic = self.logic
         logic.client = Mock()
         logic.client.datadir = self.path
-        self.logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.app.main_window, self.logic)
         prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
         logic.change_verification_option(size_x_max=914)
         self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
@@ -409,7 +426,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path
-        logic.customizer = RenderingMainWindowCustomizer(self.app.main_window, logic)
+        logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
         logic.customizer.show_error_window = Mock()
         logic.customizer.show_warning_window =  Mock()
         self.logic.dir_manager = DirManager(self.path)

@@ -28,8 +28,8 @@ def start():
 
     flag_options = dict(
         interactive=dict(dest="interactive", action="store_true", default=False, help="Enter interactive mode"),
-        address=dict(dest="address", type=str, default='localhost', help="Golem node's address"),
-        port=dict(dest="port", type=int, default=61000, help="Golem node's port"),
+        address=dict(dest="address", type=str, default='localhost', help="Golem node's RPC address"),
+        port=dict(dest="port", type=int, default=61000, help="Golem node's RPC port"),
     )
 
     # process initial arguments

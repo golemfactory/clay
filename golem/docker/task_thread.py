@@ -34,6 +34,7 @@ class DockerTaskThread(TaskThread):
 
         # Find available image
         self.image = None
+        logger.debug("Chechking docker images %s", docker_images)
         for img in docker_images:
             if img.is_available():
                 self.image = img
@@ -92,6 +93,8 @@ class DockerTaskThread(TaskThread):
                         self.result = (self.result, estm_mem)
                     self.task_computer.task_computed(self)
                 else:
+                    with open(stderr_file, 'r') as f:
+                        logger.warning('Task stderr:\n%s', f.read())
                     self._fail("Subtask computation failed " +
                                "with exit code {}".format(exit_code))
         except (requests.exceptions.ReadTimeout, TimeoutException) as exc:

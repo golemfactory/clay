@@ -3,8 +3,9 @@ import os
 from collections import namedtuple
 
 from crossbar.common import checkconfig
-from crossbar.controller.cli import run_command_stop
 from crossbar.controller.node import Node
+from twisted.internet.defer import inlineCallbacks
+
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
@@ -25,8 +26,8 @@ class CrossbarRouter(object):
 
     serializers = [u'msgpack']
 
-    def __init__(self, host='localhost', port=61000, realm=u'golem', datadir=None,
-                 crossbar_dir='crossbar', crossbar_log_level='trace'):
+    def __init__(self, host='localhost', port=61000, realm=u'golem',
+                 datadir=None, crossbar_dir='crossbar', crossbar_log_level='trace'):
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -53,14 +54,14 @@ class CrossbarRouter(object):
                                 reactor,
                                 callback, errback)
 
-    def stop(self, exit=True, **kwargs):
-        run_command_stop(self.options, exit=exit, **kwargs)
+    @inlineCallbacks
+    def stop(self):
+        yield self.node._controller.shutdown()
 
     def _start(self, options, reactor, callback, errback):
         self._start_node(options, reactor).addCallbacks(callback, errback)
 
     def _start_node(self, options, reactor):
-
         self.node = Node(options.cbdir, reactor=reactor)
         self.node.log = LoggerBridge()
         self.pubkey = self.node.maybe_generate_key(options.cbdir)
@@ -81,7 +82,7 @@ class CrossbarRouter(object):
         )
 
     @staticmethod
-    def _build_config(address, serializers, allowed_origins=u'*', realm=u'golem', enable_webstatus=True):
+    def _build_config(address, serializers, allowed_origins=u'*', realm=u'golem', enable_webstatus=False):
         return {
             'version': 2,
             'workers': [{

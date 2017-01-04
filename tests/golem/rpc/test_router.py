@@ -47,7 +47,7 @@ class MockService(object):
         self.n_hello_received += 1
 
 
-TIMEOUT = 10
+TIMEOUT = 20
 
 
 class TestRouter(TestDirFixtureWithReactor):
@@ -148,6 +148,7 @@ class TestRouter(TestDirFixtureWithReactor):
         ping_result = yield client.ping()
         assert ping_result == u'pong'
 
+        yield self.state.router.stop()
         self.state.done = True
 
     def test_rpc(self):

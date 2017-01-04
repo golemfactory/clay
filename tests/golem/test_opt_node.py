@@ -25,7 +25,7 @@ class TestNode(TestWithDatabase):
     def tearDown(self):
         super(TestNode, self).tearDown()
 
-    @patch('twisted.internet.reactor')
+    @patch('twisted.internet.reactor', create=True)
     def test_help(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
@@ -33,7 +33,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
 
-    @patch('twisted.internet.reactor')
+    @patch('twisted.internet.reactor', create=True)
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'], catch_exceptions=False)
@@ -42,7 +42,7 @@ class TestNode(TestWithDatabase):
         mock_reactor.run.assert_not_called()
 
     @patch('golemapp.OptNode')
-    @patch('twisted.internet.reactor')
+    @patch('twisted.internet.reactor', create=True)
     def test_node_address_valid(self, mock_reactor, mock_node):
         node_address = '1.2.3.4'
 
@@ -60,7 +60,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
     @patch('golem.node.Client')
-    @patch('twisted.internet.reactor')
+    @patch('twisted.internet.reactor', create=True)
     def test_node_address_passed_to_client(self, mock_reactor, mock_client):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
@@ -150,6 +150,31 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[0], SocketAddress('10.30.10.216', 40111))
         self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
         self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
+
+    @patch('golemapp.OptNode')
+    def test_rpc_address(self, mock_node):
+        runner = CliRunner()
+
+        ok_addresses = [['--rpc-address', u'10.30.10.216:61000'],
+                        ['--rpc-address', '[::ffff:0:0:0]:96'],
+                        [u'--rpc-address', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']]
+        bad_addresses = [['--rpc-address', u'10.30.10.216:91000'],
+                         ['--rpc-address', '[::ffff:0:0:0]:96999']]
+        skip_addresses = [[u'--rpc-address', u'']]
+
+        for address in ok_addresses + skip_addresses:
+            return_value = runner.invoke(
+                start, self.args + address,
+                catch_exceptions=False
+            )
+            assert return_value.exit_code == 0
+
+        for address in bad_addresses:
+            return_value = runner.invoke(
+                start, self.args + address,
+                catch_exceptions=False
+            )
+            assert return_value.exit_code != 0
 
     @patch('golemapp.OptNode')
     def test_wrong_task(self, mock_node):
