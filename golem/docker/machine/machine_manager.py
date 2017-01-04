@@ -98,8 +98,10 @@ class DockerMachineManager(DockerConfigManager):
 
             self.docker_machine_available = True
         except Exception:
-            logger.warning("DockerMachine: not available:", exc_info=True)
             self.docker_machine_available = False
+            from golem.core.common import is_linux
+            if not is_linux():
+                raise OSError("Docker machine is not available")
 
         self._env_checked = True
 
