@@ -18,6 +18,7 @@ class GNRTaskDefinition(object):
         self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
+        self.task_name = ""
 
         self.max_price = 0
 
