@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -1042,7 +1042,7 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QSlider" name="frameSlider">
+                 <widget class="QSlider" name="previewsSlider">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -1632,7 +1632,7 @@
                <string/>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="generalTab">
                <attribute name="title">

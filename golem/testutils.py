@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from os import path
 
+from mock import MagicMock
+
 from golem.core.common import is_windows, is_osx
 
 from golem.core.simpleenv import get_local_datadir
@@ -98,3 +100,20 @@ class DatabaseFixture(TempDirFixture):
     def tearDown(self):
         self.database.db.close()
         super(DatabaseFixture, self).tearDown()
+
+
+class TestGui(TempDirFixture):
+
+    def setUp(self):
+        super(TestGui, self).setUp()
+        from gui.application import GNRGui
+        from gui.view.appmainwindow import AppMainWindow
+
+        self.logic = MagicMock()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestGui, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+
