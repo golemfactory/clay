@@ -67,6 +67,7 @@ class TaskThread(Thread):
         try:
             self.__do_work()
         except Exception as exc:
+            logger.exception("__do_work failed")
             self._fail(exc)
         else:
             self.task_computer.task_computed(self)

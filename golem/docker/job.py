@@ -267,6 +267,7 @@ class DockerJob(object):
         client = local_client()
 
         def dump_stream(stream, path):
+            logger.debug('dump_stream(%r, %r)', stream, path)
             with open(path, "w") as f:
                 for line in stream:
                     f.write(line)
