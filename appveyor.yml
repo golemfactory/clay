@@ -23,16 +23,16 @@ environment:
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
 
-      PATH: %PYTHON%;%PYTHON%\Scripts;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%PATH%
-
 cache:
-  - %OPENSSL_DIR% -> **\appveyor.yml
-  - %IPFS_DIR% -> **\appveyor.yml
-  - %GETH_DIR% -> **\appveyor.yml
-  - %WHEELS_DIR% -> **\requirements.txt
-  - %APPDATA%\pip\Cache -> **\requirements.txt
+  - %OPENSSL_DIR%             -> appveyor.yml
+  - %IPFS_DIR%                -> appveyor.yml
+  - %GETH_DIR%                -> appveyor.yml
+  - %WHEELS_DIR%              -> requirements.txt
+  - %APPDATA%\pip\Cache       -> requirements.txt
+  - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%PATH%
   # docker
   - choco install -y virtualbox
   - choco install -y docker-machine
