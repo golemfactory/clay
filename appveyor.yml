@@ -24,11 +24,11 @@ environment:
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
 
 cache:
-  - %OPENSSL_DIR%             -> appveyor.yml
-  - %IPFS_DIR%                -> appveyor.yml
-  - %GETH_DIR%                -> appveyor.yml
-  - %WHEELS_DIR%              -> requirements.txt
-  - %APPDATA%\pip\Cache       -> requirements.txt
+  - '%OPENSSL_DIR%            -> appveyor.yml'
+  - '%IPFS_DIR%               -> appveyor.yml'
+  - '%GETH_DIR%               -> appveyor.yml'
+  - '%WHEELS_DIR%             -> requirements.txt'
+  - '%APPDATA%\pip\Cache      -> requirements.txt'
   - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
@@ -40,25 +40,25 @@ install:
   - docker-machine.exe env default
 
   # ssl
-  - cmd: >
-    if not exist %OPENSSL_DIR% (
-      appveyor DownloadFile https://indy.fulgan.com/SSL/%OPENSSL_VER%.zip &&
-      7z x %OPENSSL_VER%.zip -y -ao C:\OpenSSL > NUL
-    )
+  - cmd:|
+      if not exist %OPENSSL_DIR% (
+        appveyor DownloadFile https://indy.fulgan.com/SSL/%OPENSSL_VER%.zip &&
+        7z x %OPENSSL_VER%.zip -y -ao C:\OpenSSL > NUL
+      )
 
   # geth
-  - cmd: >
-    if not exist %GETH_DIR% (
-      appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%GETH_VER%.zip &&
-      7z x %GETH_VER%.zip -y -ao C:\ > NUL
-    )
+  - cmd:|
+      if not exist %GETH_DIR% (
+        appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%GETH_VER%.zip &&
+        7z x %GETH_VER%.zip -y -ao C:\ > NUL
+      )
 
   # ipfs
-  - cmd: >
-    if not exist %IPFS_DIR% (
-      appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%IPFS_VER%.zip &&
-      7z x %IPFS_VER%.zip -y -ao C:\ > NUL
-    )
+  - cmd:|
+      if not exist %IPFS_DIR% (
+        appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%IPFS_VER%.zip &&
+        7z x %IPFS_VER%.zip -y -ao C:\ > NUL
+      )
   - ipfs init
   - ps: $IPFSProcess = Start-Process ipfs.exe -PassThru
 
@@ -66,30 +66,27 @@ install:
   - pip install --disable-pip-version-check --user --upgrade pip
 
   # prebuilt packages
-  - cmd: >
-    if not exist %WHEELS_DIR% (
-      mkdir %WHEELS_DIR%
-    )
-  - cmd: >
-    if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_PYQT4% %WHEELS_URL%/%WHEEL_PYQT4% &&
-      pip install %WHEELS_DIR%\%WHEEL_PYQT4%
-    )
-  - cmd: >
-    if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_OPENEXR% %WHEELS_URL%/%WHEEL_OPENEXR% &&
-      pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
-    )
-  - cmd: >
-    if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_PYETHASH% %WHEELS_URL%/%WHEEL_PYETHASH% &&
-      pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
-    )
-  - cmd: >
-    if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_SECP256K1% %WHEELS_URL%/%WHEEL_SECP256K1% &&
-      pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
-    )
+  - cmd: if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
+  - cmd:|
+      if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
+        curl -fsS -o %WHEELS_DIR%\%WHEEL_PYQT4% %WHEELS_URL%/%WHEEL_PYQT4% &&
+        pip install %WHEELS_DIR%\%WHEEL_PYQT4%
+      )
+  - cmd:|
+      if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
+        curl -fsS -o %WHEELS_DIR%\%WHEEL_OPENEXR% %WHEELS_URL%/%WHEEL_OPENEXR% &&
+        pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
+      )
+  - cmd:|
+      if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
+        curl -fsS -o %WHEELS_DIR%\%WHEEL_PYETHASH% %WHEELS_URL%/%WHEEL_PYETHASH% &&
+        pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
+      )
+  - cmd:|
+      if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
+        curl -fsS -o %WHEELS_DIR%\%WHEEL_SECP256K1% %WHEELS_URL%/%WHEEL_SECP256K1% &&
+        pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
+      )
 
   # requirements
   - pip install -r requirements.txt
