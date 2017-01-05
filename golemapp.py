@@ -1,7 +1,6 @@
 from multiprocessing import freeze_support
 
 import click
-import signal
 import sys
 
 from golem.core.common import config_logging
@@ -42,11 +41,6 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
-
-    def sigint_handler(signum, frame):
-        print(u"SIGINT received. Attempting graceful shutdown.")
-        sys.exit()
-    signal.signal(signal.SIGINT, sigint_handler)
 
     # Crossbar
     if m == 'crossbar.worker.process':
