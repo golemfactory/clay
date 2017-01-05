@@ -244,13 +244,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         assert ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value == expected_value
         account_info = Mock()
         account_info.key_id = "key"
-        prev_calls = trust.PAYMENT.increase.call_count
+        prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", account_info)
         ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
-        self.assertGreater(trust.PAYMENT.increase.call_count, prev_calls)
+        self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_results_no_payment_addr(self, mock_addr):
+    @patch("golem.task.taskserver.Trust")
+    def test_results_no_payment_addr(self, trust, mock_addr):
         mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = self.__get_config_desc()
