@@ -1,6 +1,5 @@
 from multiprocessing import Process, Queue
 from os import path
-import signal
 
 from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
@@ -198,9 +197,3 @@ def start_app(start_ranking=True, datadir=None,
         print(u"Exception in Client process: {}".format(exc))
 
     process_monitor.exit()
-
-    def sigint_handler(signum, frame):
-        print(u"SIGINT received. Attempting graceful shutdown.")
-        import sys
-        sys.exit()
-    signal.signal(signal.SIGINT, sigint_handler)
