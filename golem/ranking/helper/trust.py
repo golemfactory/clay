@@ -38,6 +38,7 @@ class Trust(Enum):
                 self.val['increase'](node_id, mod)
             except KeyError:
                 logger.error("Wrong key for stat type {}".format(self.val))
+                raise
 
     def decrease(self, node_id, mod=1.0):
         with self.lock:
