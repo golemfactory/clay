@@ -63,8 +63,7 @@ install:
   - pip install --disable-pip-version-check --user --upgrade pip
 
   # pywin32
-  - ps: $env:PYWIN32_URL = "$env:WHEELS_URL/pywin32-220.win32-py2.7.exe"
-  - ps: (new-object net.webclient).DownloadFile($env:PYWIN32_URL, '%WHEELS_DIR%\\pywin32.exe')
+  - ps: (new-object net.webclient).DownloadFile("$env:WHEELS_URL/pywin32-220.win32-py2.7.exe", "$env:WHEELS_DIR\\pywin32.exe")
   - easy_install.exe "%WHEELS_DIR%\\pywin32.exe"
   - easy_install.exe wheel
 
