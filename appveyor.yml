@@ -20,6 +20,7 @@ environment:
       WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
+      PYWIN32: pywin32-220.win32-py2.7.exe
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
 
@@ -63,26 +64,30 @@ install:
   - pip install --disable-pip-version-check --user --upgrade pip
 
   # pywin32
-  - ps: (new-object net.webclient).DownloadFile("https://github.com/golemfactory/golem/wiki/wheels/pywin32-220.win32-py2.7.exe", "C:\pywin32.exe")
-  - easy_install.exe C:\pywin32.exe
+  - appveyor DownloadFile %WHEELS_URL%/%PYWIN32%
+  - easy_install.exe %PYWIN32%
   - easy_install.exe wheel
 
   # prebuilt packages
   - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
   - if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_PYQT4% %WHEELS_URL%/%WHEEL_PYQT4% &&
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYQT4% &&
+      move %WHEEL_PYQT4% %WHEELS_DIR%\%WHEEL_PYQT4% &&
       pip install %WHEELS_DIR%\%WHEEL_PYQT4%
     )
   - if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_OPENEXR% %WHEELS_URL%/%WHEEL_OPENEXR% &&
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_OPENEXR% &&
+      move %WHEEL_OPENEXR% %WHEELS_DIR%\%WHEEL_OPENEXR% &&
       pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
     )
   - if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_PYETHASH% %WHEELS_URL%/%WHEEL_PYETHASH% &&
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYETHASH% &&
+      move %WHEEL_PYETHASH% %WHEELS_DIR%\%WHEEL_PYETHASH% &&
       pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
     )
   - if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
-      curl -fsS -o %WHEELS_DIR%\%WHEEL_SECP256K1% %WHEELS_URL%/%WHEEL_SECP256K1% &&
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_SECP256K1% &&
+      move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1% &&
       pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
     )
 
