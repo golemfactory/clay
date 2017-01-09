@@ -22,6 +22,7 @@ environment:
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
+      PYWIN32_URL: https://downloads.sourceforge.net/project/pywin32/pywin32/Build%20220/pywin32-220.win32-py2.7.exe
 
 cache:
   - '%OPENSSL_DIR%            -> appveyor.yml'
@@ -61,7 +62,11 @@ install:
 
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip
-  - pip install pywin32
+
+  # pywin32
+  - ps: (new-object net.webclient).DownloadFile($env:PYWIN32_URL, '%WHEELS_DIR%\\pywin32.exe')
+  - easy_install.exe "%WHEELS_DIR%\\pywin32.exe"
+  - easy_install.exe wheel
 
   # prebuilt packages
   - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
