@@ -23,39 +23,6 @@ logger = logging.getLogger("apps.rendering")
 class RenderingNewTaskDialogCustomizer(NewTaskDialogCustomizer)
 
 
-    def load_task_definition(self, task_definition):
-
-
-        self._load_payment_params(definition)
-
-    def _load_options(self, definition):
-        pass
-
-    def _load_task_type(self, definition):
-        renderer_item = self.gui.ui.taskTypeComboBox.findText(definition.task_type)
-        if renderer_item >= 0:
-            self.gui.ui.taskTypeComboBox.setCurrentIndex(renderer_item)
-        else:
-            logger.error("Cannot load task, wrong renderer")
-            return
-
-    def __test_task_button_clicked(self):
-        self.task_state = TaskDesc()
-        self.task_state.status = TaskStatus.notStarted
-        self.task_state.definition = self._query_task_definition()
-
-        if not self.logic.run_test_task(self.task_state):
-            logger.error("Task not tested properly")
-
-    def test_task_computation_finished(self, success, est_mem):
-        if success:
-            self.task_state.definition.estimated_memory = est_mem
-            self._change_finish_state(True)
-
-    def _finish_button_clicked(self):
-        self._add_current_task()
-        self.load_task_definition(self.task_state.definition)
-
     def _cancel_button_clicked(self):
         self.__reset_to_defaults()
         NewTaskDialogCustomizer._cancel_button_clicked(self)

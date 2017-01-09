@@ -170,7 +170,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_customizer.load_task_definition(definition)
         self._load_advance_task_params(definition)
         self._load_resources(definition)
-        load_verification_params(self.gui, definition) # FIXME
+        load_verification_params(self.gui, definition)  # FIXME
         self._load_payment_params(definition)
 
     def set_options(self, options):
@@ -178,6 +178,11 @@ class NewTaskDialogCustomizer(Customizer):
 
     def task_settings_changed(self, name=None):
         self._change_finish_state(False)
+
+    def test_task_computation_finished(self, success, est_mem):
+        if success:
+            self.task_state.definition.estimated_memory = est_mem
+            self._change_finish_state(True)
 
     def _load_resources(self, definition):
         definition.resources = definition.options.remove_from_resources(definition.resources)
@@ -249,6 +254,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
         self._add_current_task()
+        self.load_task_definition(self.task_state.definition)
 
     def _add_current_task(self):
         self.logic.add_tasks([deepcopy(self.task_state)])
