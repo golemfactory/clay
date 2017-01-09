@@ -44,7 +44,7 @@ def load_environments():
 def register_rendering_task_types(logic):
     from gui.view.widget import TaskWidget
     for app in apps_manager.apps.values():
-        task_type = app.build_info(TaskWidget(app.widget), app.controller)
+        task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
         logic.register_new_task_type(task_type)
 
 

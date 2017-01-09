@@ -101,13 +101,13 @@ class RendererCustomizer(Customizer):
         self.gui.ui.outputResYSpinBox.valueChanged.connect(self._res_y_changed)
 
     def _choose_main_scene_file_button_clicked(self):
-        tmp_scene_file_ext = self.logic.get_current_task_type().scene_file_ext
-        scene_file_ext = []
-        for ext in tmp_scene_file_ext:
-            scene_file_ext.append(ext.upper())
-            scene_file_ext.append(ext.lower())
+        tmp_output_file_ext = self.logic.get_current_task_type().output_file_ext
+        output_file_ext = []
+        for ext in tmp_output_file_ext:
+            output_file_ext.append(ext.upper())
+            output_file_ext.append(ext.lower())
 
-        output_file_types = " ".join([u"*.{}".format(ext) for ext in scene_file_ext])
+        output_file_types = " ".join([u"*.{}".format(ext) for ext in output_file_ext])
         filter_ = u"Scene files ({})".format(output_file_types)
         path = u"{}".format(self.load_setting('main_scene_path', os.path.expanduser('~')).toString())
 

@@ -14,9 +14,8 @@ from twisted.internet.defer import inlineCallbacks
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 
-from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
 from apps.core.task.gnrtaskstate import TaskDesc
-from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
+from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
 from gui.controller.customizer import Customizer
 from gui.controller.common import get_save_dir
@@ -78,8 +77,10 @@ class MainWindowCustomizer(Customizer):
         self.timer.timeout.connect(self.update_time)
 
     def init_config(self):
-        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
-        self._set_new_task_dialog_customizer()
+        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(
+            self.gui, self.logic)
+        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui,
+                                                                  self.logic)
 
     def set_options(self, cfg_desc, id_, eth_address, description):
         # Footer options
@@ -242,10 +243,6 @@ class MainWindowCustomizer(Customizer):
 
     def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
-
-    def _set_new_task_dialog_customizer(self):
-        # FIXME Remove RenderingNewTaskDialogCustomizer
-        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()

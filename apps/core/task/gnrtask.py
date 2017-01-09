@@ -22,6 +22,27 @@ def log_key_error(*args, **kwargs):
     return False
 
 
+class TaskTypeInfo(object):
+    def __init__(self, name, definition, defaults, options, task_builder_type, dialog=None, dialog_controller=None):
+        self.name = name
+        self.defaults = defaults
+        self.options = options
+        self.definition = definition
+        self.task_builder_type = task_builder_type
+        self.dialog = dialog
+        self.dialog_controller = dialog_controller
+        self.output_formats = []
+        self.output_file_ext = []
+
+    @classmethod
+    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks, output_num=1):
+        return 0
+
+    @classmethod
+    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+        return []
+
+
 class GNRTaskBuilder(TaskBuilder):
     def __init__(self, node_name, task_definition, root_path, dir_manager):
         super(GNRTaskBuilder, self).__init__()

@@ -4,8 +4,9 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.core.task.gnrtaskstate import GNROptions
-from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer, logger
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererInfo, RendererDefaults
+from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer, logger
+from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic
@@ -13,18 +14,18 @@ from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
-class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
+class TestNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
     def setUp(self):
-        super(TestRenderingNewTaskDialogCustomizer, self).setUp()
+        super(TestNewTaskDialogCustomizer, self).setUp()
         self.logic = GNRApplicationLogic()
         self.gnrgui = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
         self.gnrgui.app.exit(0)
         self.gnrgui.app.deleteLater()
-        super(TestRenderingNewTaskDialogCustomizer, self).tearDown()
+        super(TestNewTaskDialogCustomizer, self).tearDown()
 
-    @patch('apps.rendering.gui.controller.renderingnewtaskdialogcustomizer.QFileDialog')
+    @patch('apps.core.gui.controller.newtaskdialogcustomizer.QFileDialog')
     def test_customizer(self, file_dialog_mock):
         self.logic.client = Mock()
         self.logic.client.config_desc = Mock()
@@ -34,11 +35,11 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         self.logic.dir_manager.root_path = self.path
 
         register_rendering_task_types(self.logic)
-        customizer = RenderingNewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
-        self.assertIsInstance(customizer, RenderingNewTaskDialogCustomizer)
+        customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
+        self.assertIsInstance(customizer, NewTaskDialogCustomizer)
 
         definition = RenderingTaskDefinition()
-        renderer = RendererInfo("Blender", RendererDefaults(), Mock(), Mock(), Mock(), Mock())
+        renderer = BlenderTaskTypeInfo(Mock(), Mock())
         assert renderer.name == "Blender"
         assert renderer.options is not None
         definition.task_type = renderer.name
@@ -70,10 +71,9 @@ class TestRenderingNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         options = GNROptions()
         customizer.set_options(options)
         assert customizer.logic.options == options
-        assert customizer.get_options() == options
-        assert isinstance(customizer.get_options(), GNROptions)
 
-        customizer._RenderingNewTaskDialogCustomizer__test_task_button_clicked()
+
+        customizer._NewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)
         assert customizer.task_state.definition.estimated_memory == 103139
         assert customizer.gui.ui.finishButton.isEnabled()

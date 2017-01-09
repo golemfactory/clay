@@ -16,7 +16,7 @@ class App(object):
         self.builder = None
         self.widget = None
         self.controller = None
-        self.build_info = None
+        self.task_type_info = None
 
 
 class AppsManager(object):

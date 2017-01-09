@@ -3,18 +3,6 @@ from os import path
 from apps.core.task.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
 
 
-class RendererInfo:
-    def __init__(self, name, defaults, task_builder_type, dialog, dialog_customizer, options):
-        self.name = name
-        self.output_formats = []
-        self.scene_file_ext = []
-        self.defaults = defaults
-        self.task_builder_type = task_builder_type
-        self.dialog = dialog
-        self.dialog_customizer = dialog_customizer
-        self.options = options
-
-
 class RendererDefaults:
     def __init__(self):
         self.output_format = ""

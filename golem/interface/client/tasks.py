@@ -31,7 +31,7 @@ class CommandAppLogic(AppLogic):
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in apps_manager.apps.values():
-            logic.register_new_task_type(app.build_info(*args))
+            logic.register_new_task_type(app.task_type_info(*args))
         return logic
 
 

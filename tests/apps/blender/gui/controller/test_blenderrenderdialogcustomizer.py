@@ -7,7 +7,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from apps.blender.gui.controller.blenderrenderdialogcustomizer import BlenderRenderDialogCustomizer
 from apps.blender.gui.view.gen.ui_BlenderWidget import Ui_BlenderWidget
-from apps.blender.task.blenderrendertask import build_blender_renderer_info
+from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 from apps.rendering.gui.controller.renderercustomizer import FrameRendererCustomizer
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
@@ -63,7 +63,8 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
     @patch("gui.controller.customizer.QMessageBox")
     def test_blender_customizer(self, mock_messagebox):
         self.logic.register_new_task_type(
-            build_blender_renderer_info(TaskWidget(Ui_BlenderWidget), BlenderRenderDialogCustomizer))
+            BlenderTaskTypeInfo(TaskWidget(Ui_BlenderWidget),
+                                BlenderRenderDialogCustomizer))
         self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()

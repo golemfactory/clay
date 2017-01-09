@@ -13,7 +13,8 @@ from twisted.internet.defer import inlineCallbacks
 from golem.task.taskstate import TaskStatus
 
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from apps.core.gui.verificationparamshelper import load_verification_params, set_verification_widgets_state, verification_random_changed
+from apps.core.gui.verificationparamshelper import (load_verification_params, set_verification_widgets_state,
+                                                    verification_random_changed, read_advance_verification_params)
 from apps.core.task.gnrtaskstate import GNRTaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
@@ -175,6 +176,8 @@ class NewTaskDialogCustomizer(Customizer):
 
     def set_options(self, options):
         self.options = options
+        self.logic.options = options
+        self.task_settings_changed()
 
     def task_settings_changed(self, name=None):
         self._change_finish_state(False)
@@ -183,6 +186,9 @@ class NewTaskDialogCustomizer(Customizer):
         if success:
             self.task_state.definition.estimated_memory = est_mem
             self._change_finish_state(True)
+
+    def get_task_specific_options(self, definition):
+        self.task_customizer.get_task_specific_options(definition)
 
     def _load_resources(self, definition):
         definition.resources = definition.options.remove_from_resources(definition.resources)
@@ -282,7 +288,12 @@ class NewTaskDialogCustomizer(Customizer):
         self._read_task_type(definition)
         self._read_price_params(definition)
         self._read_task_name(definition)
-        definition.options = self.options
+        definition.options = self.logic.options
+        self.get_task_specific_options(definition)
+        self.logic.options = definition.options
+        self._read_resource_params(definition)
+        self._read_advance_verification_params(definition)  # FIMXE
+
         return definition
 
     def _read_basic_task_params(self, definition):
@@ -313,21 +324,29 @@ class NewTaskDialogCustomizer(Customizer):
         except ValueError:
             logger.warning("Wrong price value")
 
+    def _read_advance_verification_params(self, definition):
+        read_advance_verification_params(self.gui, definition)
+
+    def _read_resource_params(self, definition):
+        # FIXME
+        if self.add_task_resource_dialog_customizer:
+            definition.resources = self.logic.options.add_to_resources(definition.resources)
+            definition.resources.add(os.path.normpath(definition.main_scene_file))
+            self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(len(definition.resources)))
+
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
         self._set_new_pessimistic_cost()
+        self.task_settings_changed()
 
     def _open_options(self):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
         dialog = task.dialog
         dialog_customizer = task.dialog_customizer
-        if dialog is not None and dialog_customizer is not None:
-            task_dialog = dialog(self.gui.window)
-            dialog_customizer(task_dialog, self.logic, self)
-            task_dialog.show()
-        else:
-            self.gui.ui.optionsButton.setEnabled(False)
+        task_dialog = dialog(self.gui.window)
+        dialog_customizer(task_dialog, self.logic, self)
+        task_dialog.show()
 
     def _task_type_value_changed(self, name):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
