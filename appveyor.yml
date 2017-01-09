@@ -21,9 +21,12 @@ environment:
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
       WHEEL_DEVP2P: devp2p-0.8.0-py2.py3-none-any.whl
+
       PYWIN32: pywin32-220.win32-py2.7.exe
+      FREEIMAGE: FreeImage3170Win32Win64.zip
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
+      FREEIMAGE_URL: http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary%20Distribution/3.17.0
 
 cache:
   - '%OPENSSL_DIR%            -> appveyor.yml'
@@ -60,6 +63,13 @@ install:
     )
   - ipfs init
   - ps: $IPFSProcess = Start-Process ipfs.exe -PassThru
+
+  # freeimage
+  - appveyor DownloadFile %FREEIMAGE_URL%/%FREEIMAGE%
+  - 7z x %FREEIMAGE% -y -aoa -oC:\ > NUL
+  - mkdir apps\rendering\resources\taskcollector\FreeImage\Release
+  - copy /y C:\FreeImage\Dist\x32\FreeImage.dll apps\rendering\resources\taskcollector\Release
+  - copy /y C:\FreeImage\Dist\x32\FreeImage.lib apps\rendering\resources\taskcollector\FreeImage\Release
 
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip
