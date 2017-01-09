@@ -34,10 +34,10 @@ cache:
 install:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%PATH%
   # docker
-  - choco install -y virtualbox
-  - choco install -y docker-machine
-  - docker-machine.exe create -d virtualbox default
-  - docker-machine.exe env default
+  # - choco install -y virtualbox
+  # - choco install -y docker-machine
+  # - docker-machine.exe create -d virtualbox default
+  # - docker-machine.exe env default
 
   # ssl
   - cmd:|
@@ -64,6 +64,8 @@ install:
 
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip
+
+  - choco install -y pywin32
 
   # prebuilt packages
   - cmd: if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
