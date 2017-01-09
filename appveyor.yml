@@ -61,7 +61,7 @@ install:
       7z x %IPFS_VER%.zip -y -aoa -oC:\ > NUL
     )
   - ipfs init
-  - ps: $IPFSProcess = Start-Process ipfs.exe -PassThru
+  - ps: $IPFSProcess = Start-Process ipfs daemon -PassThru
 
   # freeimage
   - appveyor DownloadFile "http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary Distribution/3.17.0/%FREEIMAGE%"
