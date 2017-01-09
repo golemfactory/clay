@@ -26,7 +26,6 @@ environment:
       FREEIMAGE: FreeImage3170Win32Win64.zip
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
-      FREEIMAGE_URL: http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary%20Distribution/3.17.0
 
 cache:
   - '%OPENSSL_DIR%            -> appveyor.yml'
@@ -65,7 +64,7 @@ install:
   - ps: $IPFSProcess = Start-Process ipfs.exe -PassThru
 
   # freeimage
-  - appveyor DownloadFile %FREEIMAGE_URL%/%FREEIMAGE%
+  - appveyor DownloadFile "http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary%20Distribution/3.17.0/%FREEIMAGE%"
   - 7z x %FREEIMAGE% -y -aoa -oC:\ > NUL
   - mkdir apps\rendering\resources\taskcollector\FreeImage\Release
   - copy /y C:\FreeImage\Dist\x32\FreeImage.dll apps\rendering\resources\taskcollector\Release
