@@ -61,8 +61,7 @@ install:
 
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip
-
-  - choco install -y pywin32
+  - pip install pywin32
 
   # prebuilt packages
   - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
