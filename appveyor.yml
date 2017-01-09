@@ -42,19 +42,19 @@ install:
   # ssl
   - if not exist %OPENSSL_DIR% (
       appveyor DownloadFile https://indy.fulgan.com/SSL/%OPENSSL_VER%.zip &&
-      7z x %OPENSSL_VER%.zip -y -ao C:\OpenSSL > NUL
+      7z x %OPENSSL_VER%.zip -y -aoa -oC:\OpenSSL > NUL
     )
 
   # geth
   - if not exist %GETH_DIR% (
       appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%GETH_VER%.zip &&
-      7z x %GETH_VER%.zip -y -ao C:\ > NUL
+      7z x %GETH_VER%.zip -y -aoa -oC:\ > NUL
     )
 
   # ipfs
   - if not exist %IPFS_DIR% (
       appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%IPFS_VER%.zip &&
-      7z x %IPFS_VER%.zip -y -ao C:\ > NUL
+      7z x %IPFS_VER%.zip -y -aoa -oC:\ > NUL
     )
   - ipfs init
   - ps: $IPFSProcess = Start-Process ipfs.exe -PassThru
