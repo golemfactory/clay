@@ -1,9 +1,12 @@
+import os
+import unittest
 from copy import copy
 from unittest import TestCase
 
 from golem.vm.vm import PythonVM, PythonProcVM, PythonTestVM, exec_code
 
 
+@unittest.skipIf(os.environ.get('APPVEYOR', False), 'Appveyor')
 class TestPythonVM(TestCase):
     def test_good_task(self):
         vm = PythonVM()
