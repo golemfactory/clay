@@ -111,6 +111,9 @@ install:
   - pip install pytest mock coverage
   - python setup.py develop
 
+build:
+  - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
 test_script:
   - python setup.py test
 
