@@ -63,8 +63,8 @@ install:
   - pip install --disable-pip-version-check --user --upgrade pip
 
   # pywin32
-  - ps: (new-object net.webclient).DownloadFile("$env:WHEELS_URL/pywin32-220.win32-py2.7.exe", "$env:WHEELS_DIR\\pywin32.exe")
-  - easy_install.exe "%WHEELS_DIR%\\pywin32.exe"
+  - ps: (new-object net.webclient).DownloadFile("https://github.com/golemfactory/golem/wiki/wheels/pywin32-220.win32-py2.7.exe", "C:\pywin32.exe")
+  - easy_install.exe C:\pywin32.exe
   - easy_install.exe wheel
 
   # prebuilt packages
