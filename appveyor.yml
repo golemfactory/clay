@@ -20,6 +20,7 @@ environment:
       WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
+      WHEEL_DEVP2P: devp2p-0.8.0-py2.py3-none-any.whl
       PYWIN32: pywin32-220.win32-py2.7.exe
 
       WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
@@ -33,7 +34,7 @@ cache:
   - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt4;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
   # docker
   # - choco install -y virtualbox
   # - choco install -y docker-machine
@@ -89,6 +90,11 @@ install:
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_SECP256K1% &&
       move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1% &&
       pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
+    )
+  - if not exist %WHEELS_DIR%\%WHEEL_DEVP2P% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_DEVP2P% &&
+      move %WHEEL_DEVP2P% %WHEELS_DIR%\%WHEEL_DEVP2P% &&
+      pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
     )
 
   # requirements
