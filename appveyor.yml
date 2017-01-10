@@ -106,6 +106,8 @@ install:
       pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
     )
 
+  - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
+
   # requirements
   - pip install -r requirements.txt
   - pip install pytest mock coverage
