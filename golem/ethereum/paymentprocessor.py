@@ -120,7 +120,7 @@ class PaymentProcessor(object):
             addr = keys.privtoaddr(self.__privkey)
             r = self.__client.call(_from='0x' + addr.encode('hex'),
                                    to='0x' + self.BANK_ADDR.encode('hex'),
-                                   data=data.encode('hex'),
+                                   data='0x' + data.encode('hex'),
                                    block='pending')
             if r is None or r == '0x':
                 self.__deposit = 0
