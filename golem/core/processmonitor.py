@@ -15,7 +15,7 @@ class ProcessMonitor(Thread):
 
         while self.working:
             for process in self.child_processes:
-                if not process.is_alive():
+                if not self.is_process_alive(process):
                     print "Subprocess {} exited with code {}. Terminating".format(process.pid,
                                                                                   process.exitcode)
                     self.exit()
@@ -35,10 +35,14 @@ class ProcessMonitor(Thread):
         for process in self.child_processes:
             self.kill_process(process)
 
-    @staticmethod
-    def kill_process(process):
-        if process.is_alive():
+    @classmethod
+    def kill_process(cls, process):
+        if cls.is_process_alive(process):
             try:
                 process.terminate()
             except Exception as exc:
                 print "Error terminating process {}: {}".format(process, exc)
+
+    @staticmethod
+    def is_process_alive(process):
+        return process and process.is_alive() and process.exitcode is None

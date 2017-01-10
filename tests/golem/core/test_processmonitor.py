@@ -32,7 +32,7 @@ def wait_for_processes(timeout=10, *processes):
 
         all_stopped = True
         for process in processes:
-            if process.is_alive():
+            if ProcessMonitor.is_process_alive(process):
                 all_stopped = False
                 break
 
@@ -61,8 +61,8 @@ class TestProcessMonitor(unittest.TestCase):
 
         wait_for_processes(10, p1, p2)
 
-        assert not p1.is_alive()
-        assert not p2.is_alive()
+        assert not pm.is_process_alive(p1)
+        assert not pm.is_process_alive(p2)
 
     def test_monitor_2(self):
         mp1, mp2 = MockProcess(), MockProcess(timeout=0)
@@ -78,7 +78,7 @@ class TestProcessMonitor(unittest.TestCase):
 
         wait_for_processes(10, p1, p2)
 
-        if p1.is_alive() or p2.is_alive():
+        if pm.is_process_alive(p1) or pm.is_process_alive(p2):
             pm.exit()
             self.fail("Processes not killed after timeout")
 
@@ -97,5 +97,5 @@ class TestProcessMonitor(unittest.TestCase):
 
         wait_for_processes(10, p1, p2)
 
-        assert not p1.is_alive()
-        assert not p2.is_alive()
+        assert not pm.is_process_alive(p1)
+        assert not pm.is_process_alive(p2)
