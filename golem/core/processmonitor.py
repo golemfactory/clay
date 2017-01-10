@@ -1,5 +1,3 @@
-import os
-import signal
 import time
 from threading import Thread
 
@@ -33,15 +31,14 @@ class ProcessMonitor(Thread):
     def add_shutdown_callback(self, callback):
         self.shutdown_callbacks.append(callback)
 
-    def kill_processes(self, sig=signal.SIGTERM):
+    def kill_processes(self):
         for process in self.child_processes:
-            self.kill_process(process, sig)
+            self.kill_process(process)
 
     @staticmethod
-    def kill_process(process, sig=signal.SIGTERM):
+    def kill_process(process):
         if process.is_alive():
             try:
-                os.kill(process.pid, sig)
+                process.terminate()
             except Exception as exc:
-                print "Error terminating process {}: {}".format(
-                    process, exc)
+                print "Error terminating process {}: {}".format(process, exc)

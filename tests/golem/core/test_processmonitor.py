@@ -27,18 +27,18 @@ class MockProcess(object):
 def wait_for_processes(timeout=10, *processes):
     started = time.time()
     timeout = max(timeout, 5)
-    while time.time() - started < timeout:
-        all_stopped = True
 
+    while time.time() - started < timeout:
+
+        all_stopped = True
         for process in processes:
             if process.is_alive():
                 all_stopped = False
                 break
 
         if all_stopped:
-            break
-        else:
-            time.sleep(0.5)
+            return
+        time.sleep(0.5)
 
 
 def run_exit():
