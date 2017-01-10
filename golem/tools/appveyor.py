@@ -1,13 +1,24 @@
 import os
 import unittest
 
+import mock
+
+
+def in_appveyor():
+    return os.environ.get('APPVEYOR', False)
+
 
 def appveyor_skip(reason='Appveyor environment'):
-    print os.environ.get('APPVEYOR', False)
-    if os.environ.get('APPVEYOR', False):
+    if in_appveyor():
         return unittest.skip(reason)
-    return _id
+    return _identity
 
 
-def _id(obj):
+def appveyor_patch(*args, **kwargs):
+    if in_appveyor():
+        return mock.patch(*args, **kwargs)
+    return _identity
+
+
+def _identity(obj):
     return obj

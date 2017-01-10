@@ -2,8 +2,10 @@ import unittest
 
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.tools.appveyor import appveyor_skip
 
 
+@appveyor_skip
 class TestLuxRenderEnvironment(unittest.TestCase):
     def test_lux(self):
         env = LuxRenderEnvironment()
