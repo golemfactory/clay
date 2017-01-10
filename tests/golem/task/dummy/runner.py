@@ -17,11 +17,11 @@ from threading import Thread
 
 from twisted.internet import reactor
 
-from golem.core.common import is_windows
 from golem.environments.environment import Environment
-from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.resource.dirmanager import DirManager
 from task import DummyTask, DummyTaskParameters
+
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -54,6 +54,7 @@ def create_client(datadir):
                   transaction_system=False,
                   connect_to_known_hosts=False,
                   use_docker_machine_manager=False,
+                  estimated_performance=5000.0,
                   estimated_lux_performance=1000.0,
                   estimated_blender_performance=1000.0)
 
@@ -236,10 +237,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
         for proc in all_procs:
             if proc.poll() is None:
-                if is_windows():
-                    proc.terminate()
-                else:
-                    proc.kill()
+                proc.kill()
                 proc.wait()
                 del proc
 
