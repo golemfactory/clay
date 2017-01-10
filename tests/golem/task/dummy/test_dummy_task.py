@@ -1,8 +1,10 @@
 import unittest
 
 import runner
+from golem.tools.appveyor import appveyor_skip
 
 
+@appveyor_skip
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
