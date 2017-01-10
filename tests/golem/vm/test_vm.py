@@ -1,13 +1,9 @@
-import os
-import unittest
 from copy import copy
 from unittest import TestCase
 
-from golem.tools.appveyor import appveyor_skip
 from golem.vm.vm import PythonVM, PythonProcVM, PythonTestVM, exec_code
 
 
-@appveyor_skip
 class TestPythonVM(TestCase):
     def test_good_task(self):
         vm = PythonVM()

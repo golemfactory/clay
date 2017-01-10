@@ -120,7 +120,7 @@ build_script:
   - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  - python setup.py test
+  - pytest tests
 
 on_finish:
   - ps: Stop-Process -Id $IPFSProcess.Id
