@@ -7,7 +7,8 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask, GNROptions
+from apps.core.task.gnrtask import GNRTask
+from apps.core.task.gnrtaskstate import GNROptions
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 

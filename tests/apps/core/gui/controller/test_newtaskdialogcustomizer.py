@@ -7,12 +7,13 @@ from mock import Mock
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 
-from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from apps.core.task.gnrtaskstate import GNRTaskDefinition
+from apps.core.gui.controller.newtaskdialogcustomizer import \
+    NewTaskDialogCustomizer
+from apps.core.task.gnrtask import TaskTypeInfo
+from apps.core.task.gnrtaskstate import GNRTaskDefinition, CoreTaskDefaults
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic
-from gui.startapp import register_rendering_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -37,9 +38,12 @@ class TestNewTaskDialogCustomizer(TempDirFixture):
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
 
-        register_rendering_task_types(self.logic)
+        tti = TaskTypeInfo("Nice task", GNRTaskDefinition, CoreTaskDefaults(), Mock(),
+                           Mock(), Mock(), Mock())
+        self.logic.register_new_task_type(tti)
+        self.gnrgui.main_window.ui.taskSpecificLayout = Mock()
+        self.gnrgui.main_window.ui.taskSpecificLayout.count.return_value = 2
         customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
-        print customizer.gui.ui.taskTypeComboBox.currentText()
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
         assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]
         assert not customizer.gui.ui.advanceNewTaskWidget.isVisible()
@@ -52,6 +56,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture):
         td.main_program_file = "/a/b/c/"
         td.task_name = task_name
         td.main_scene_file = 'a/b/c/d e/file.blend'
+        td.task_type = "Nice task"
         td.output_file = 'a/b/c/d e/result.jpeg'
         win_norm_resources = {"\\abc\\def", "\\ghi\\jik"}
         oth_norm_resources = {"/abc/def", "/ghi/jik"}
@@ -70,7 +75,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture):
             assert td.resources == oth_norm_resources
         assert td.task_name == task_name
 
-        reg = re.compile('Blender_[0-2]\d:[0-5]\d:[0-5]\d_20\d\d-[0-1]\d\-[0-3]\d')
+        reg = re.compile('Nice task_[0-2]\d:[0-5]\d:[0-5]\d_20\d\d-[0-1]\d\-[0-3]\d')
         td.task_name = None
         customizer.load_task_definition(td)
         name = "{}".format(customizer.gui.ui.taskNameLineEdit.text())

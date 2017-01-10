@@ -41,7 +41,7 @@ def load_environments():
     return apps_manager.get_env_list()
 
 
-def register_rendering_task_types(logic):
+def register_task_types(logic):
     from gui.view.widget import TaskWidget
     for app in apps_manager.apps.values():
         task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
@@ -64,7 +64,7 @@ class GUIApp(object):
                                 MainWindowCustomizer)
 
         if rendering:
-            register_rendering_task_types(self.logic)
+            register_task_types(self.logic)
 
     @inlineCallbacks
     def start(self, client):

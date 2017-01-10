@@ -1,6 +1,31 @@
 from os import path, remove
 
+from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
+
+
+class GNROptions(object):
+    def __init__(self):
+        self.environment = Environment()
+        self.name = ''
+
+    def add_to_resources(self, resources):
+        return resources
+
+    def remove_from_resources(self, resources):
+        return resources
+
+
+class CoreTaskDefaults(object):
+    def __init__(self):
+        self.output_format = ""
+        self.main_program_file = ""
+        self.full_task_timeout = 4 * 3600
+        self.subtask_timeout = 20 * 60
+        self.min_subtasks = 1
+        self.max_subtasks = 50
+        self.default_subtasks = 20
+        self.task_name = ""
 
 
 class GNRTaskDefinition(object):
@@ -23,7 +48,7 @@ class GNRTaskDefinition(object):
         self.max_price = 0
 
         self.verification_options = None
-        self.options = GNROptions
+        self.options = GNROptions()
         self.docker_images = None
 
     def is_valid(self):
@@ -63,8 +88,3 @@ class TaskDesc(object):
 
     def has_multiple_outputs(self, num_outputs=1):
         return len(self.task_state.outputs) >= num_outputs
-
-
-class GNROptions(object):
-    def __init__(self):
-        self.name = ''

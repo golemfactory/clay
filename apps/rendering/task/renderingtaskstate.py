@@ -1,19 +1,14 @@
 from os import path
 
-from apps.core.task.gnrtaskstate import GNRTaskDefinition, AdvanceVerificationOptions
+from apps.core.task.gnrtaskstate import (GNRTaskDefinition,
+                                         AdvanceVerificationOptions,
+                                         CoreTaskDefaults)
 
 
-class RendererDefaults:
+class RendererDefaults(CoreTaskDefaults):
     def __init__(self):
-        self.output_format = ""
-        self.main_program_file = ""
-        self.full_task_timeout = 4 * 3600
-        self.subtask_timeout = 20 * 60
+        super(RendererDefaults, self).__init__()
         self.resolution = [800, 600]
-        self.min_subtasks = 1
-        self.max_subtasks = 50
-        self.default_subtasks = 20
-        self.task_name = ""
 
 
 class RenderingTaskDefinition(GNRTaskDefinition):

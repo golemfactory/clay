@@ -10,7 +10,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, Rend
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic
-from gui.startapp import register_rendering_task_types
+from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -34,7 +34,7 @@ class TestNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
 
-        register_rendering_task_types(self.logic)
+        register_task_types(self.logic)
         customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
 

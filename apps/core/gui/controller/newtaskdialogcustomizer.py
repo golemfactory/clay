@@ -30,17 +30,15 @@ class NewTaskDialogCustomizer(Customizer):
     SHOW_ADVANCE_BUTTON_MESSAGE = ["Show advanced settings", "Hide advanced settings"]
 
     def __init__(self, gui, logic):
-        self.options = None
         self.add_task_resource_dialog = None
         self.task_state = None
         self.add_task_resource_dialog_customizer = None
+        self.task_customizer = None
 
         Customizer.__init__(self, gui, logic)
         self.add_task_resource_dialog = self._get_add_resource_dialog()
         self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog,
                                                                                 logic)
-
-        self.task_customizer = None
 
     def load_data(self):
         self._set_uid()
@@ -52,7 +50,6 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_task_type_connections()
         self._setup_basic_new_task_connections()
         self._setup_advance_new_task_connections()
-        self._setup_options_connections()
         self._setup_payment_connections()
         self._setup_verification_connections()
 
@@ -84,9 +81,6 @@ class NewTaskDialogCustomizer(Customizer):
                                                    self.gui.ui.verificationForFirstRadioButton.toggled,
                                                    self.gui.ui.probabilityLineEdit.textChanged
                                                    ])
-
-    def _setup_options_connections(self):
-        pass
 
     def _setup_payment_connections(self):
         self.gui.ui.taskMaxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
@@ -123,8 +117,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.totalSpinBox.setRange(default_task.defaults.min_subtasks, default_task.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(default_task.defaults.default_subtasks)
 
-        self.gui.ui.verificationSizeXSpinBox.setMaximum(default_task.defaults.resolution[0])
-        self.gui.ui.verificationSizeYSpinBox.setMaximum(default_task.defaults.resolution[1])
+        # FIXME
+        # self.gui.ui.verificationSizeXSpinBox.setMaximum(default_task.defaults.resolution[0])
+        # self.gui.ui.verificationSizeYSpinBox.setMaximum(default_task.defaults.resolution[1])
 
     def _set_name(self):
         self.gui.ui.taskNameLineEdit.setText(self._generate_name(self.gui.ui.taskTypeComboBox.currentText()))
@@ -175,7 +170,6 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_payment_params(definition)
 
     def set_options(self, options):
-        self.options = options
         self.logic.options = options
         self.task_settings_changed()
 
@@ -232,7 +226,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_options(definition)
 
     def _load_options(self, definition):
-        self.options = deepcopy(definition.options)
+        self.logic.options = deepcopy(definition.options)
 
     def _load_task_type(self, definition):
         try:
@@ -288,7 +282,6 @@ class NewTaskDialogCustomizer(Customizer):
         self._read_task_type(definition)
         self._read_price_params(definition)
         self._read_task_name(definition)
-        definition.options = self.logic.options
         self.get_task_specific_options(definition)
         self.logic.options = definition.options
         self._read_resource_params(definition)
@@ -343,16 +336,15 @@ class NewTaskDialogCustomizer(Customizer):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
         dialog = task.dialog
-        dialog_customizer = task.dialog_customizer
+        dialog_controller = task.dialog_controller
         task_dialog = dialog(self.gui.window)
-        dialog_customizer(task_dialog, self.logic, self)
+        dialog_controller(task_dialog, self.logic, self)
         task_dialog.show()
 
     def _task_type_value_changed(self, name):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
-        self.gui.ui.optionsButton.setEnabled(task.dialog is not None and task.dialog_customizer is not None)
-        self.options = deepcopy(task.options)
+        self.logic.options = deepcopy(task.options)
         self._update_options("{}".format(name))
 
     def _get_add_resource_dialog(self):
@@ -391,7 +383,7 @@ class NewTaskDialogCustomizer(Customizer):
         for i in reversed(range(self.gui.ui.taskSpecificLayout.count())):
             self.gui.ui.taskSpecificLayout.itemAt(i).widget().setParent(None)
         task = self.logic.get_task_type(u"{}".format(name))
-        self.task_customizer = task.dialog_customizer(task.dialog, self.logic)
+        self.task_customizer = task.dialog_controller(task.dialog, self.logic)
         self.gui.ui.taskSpecificLayout.addWidget(task.dialog, 0, 0, 1, 1)
 
     def _clear_resources(self):

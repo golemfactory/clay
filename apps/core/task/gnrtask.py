@@ -6,7 +6,7 @@ from golem.core.common import HandleKeyError, timeout_to_deadline
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
-from golem.environments.environment import Environment
+
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
@@ -60,17 +60,6 @@ class GNRSubtask(object):
         self.subtask_id = subtask_id
         self.start_chunk = start_chunk
         self.end_chunk = end_chunk
-
-
-class GNROptions(object):
-    def __init__(self):
-        self.environment = Environment()
-
-    def add_to_resources(self, resources):
-        return resources
-
-    def remove_from_resources(self, resources):
-        return resources
 
 
 class GNRTask(Task):

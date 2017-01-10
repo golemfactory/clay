@@ -13,7 +13,8 @@ from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNROptions, TaskTypeInfo
+from apps.core.task.gnrtask import TaskTypeInfo
+from apps.core.task.gnrtaskstate import GNROptions
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend

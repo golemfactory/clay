@@ -27,7 +27,7 @@ from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic, logger
-from gui.startapp import register_rendering_task_types
+from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -429,7 +429,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.customizer.show_error_window = Mock()
         logic.customizer.show_warning_window =  Mock()
         self.logic.dir_manager = DirManager(self.path)
-        register_rendering_task_types(logic)
+        register_task_types(logic)
 
         rts = TaskDesc()
         assert isinstance(rts, TaskDesc)

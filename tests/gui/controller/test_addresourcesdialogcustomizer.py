@@ -8,7 +8,7 @@ from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDi
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic
-from gui.startapp import register_rendering_task_types
+from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import AddTaskResourcesDialog
 
@@ -30,7 +30,7 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
         self.gnrgui.main_window.show = Mock()
         self.logic.client = Mock()
         self.logic.customizer = Mock()
-        register_rendering_task_types(self.logic)
+        register_task_types(self.logic)
         ard = AddTaskResourcesDialog(self.gnrgui.main_window.window)
         ardc = AddResourcesDialogCustomizer(ard, self.logic)
         assert isinstance(ardc, AddResourcesDialogCustomizer)

@@ -62,10 +62,11 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
 
     @patch("gui.controller.customizer.QMessageBox")
     def test_blender_customizer(self, mock_messagebox):
+        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window,
+                                                     self.logic)
         self.logic.register_new_task_type(
             BlenderTaskTypeInfo(TaskWidget(Ui_BlenderWidget),
                                 BlenderRenderDialogCustomizer))
-        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
         self.logic.client.config_desc.use_ipv6 = False
