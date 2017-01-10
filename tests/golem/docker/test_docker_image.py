@@ -5,6 +5,7 @@ from docker import Client
 from docker.utils import kwargs_from_env
 
 from golem.docker.image import DockerImage
+from golem.tools.appveyor import appveyor_skip
 
 
 class DockerTestCase(unittest.TestCase):
@@ -35,6 +36,7 @@ class DockerTestCase(unittest.TestCase):
                 "Skipping tests: Cannot connect with Docker daemon")
 
 
+@appveyor_skip
 class TestDockerImage(DockerTestCase):
 
     def tearDown(self):

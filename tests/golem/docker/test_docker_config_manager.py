@@ -1,8 +1,10 @@
 import unittest
 
 from golem.docker.config_manager import DockerConfigManager
+from golem.tools.appveyor import appveyor_skip
 
 
+@appveyor_skip
 class TestDockerConfigManager(unittest.TestCase):
 
     class MockConfig(object):

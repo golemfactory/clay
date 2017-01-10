@@ -1,10 +1,8 @@
-import os
-
-import runner
 import unittest
 
+import runner
 
-@unittest.skipIf(os.environ.get('APPVEYOR', False), 'Appveyor')
+
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
