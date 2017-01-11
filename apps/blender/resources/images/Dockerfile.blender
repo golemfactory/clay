@@ -13,12 +13,15 @@ RUN apt-get update && \
 		libfreetype6 \
 		libgl1-mesa-dev \
 		libglu1-mesa \
-		libxi6 && \
+		libxi6 \
+		libxrender1 \
+		fontconfig \
+		libxext6 && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
-ENV BLENDER_MAJOR 2.76
-ENV BLENDER_VERSION 2.76b
+ENV BLENDER_MAJOR 2.78
+ENV BLENDER_VERSION 2.78a
 ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 
