@@ -8,7 +8,7 @@ class TestDummyTask(unittest.TestCase):
 
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
-            num_computing_nodes=2, num_subtasks=3, timeout=180)
+            num_computing_nodes=2, num_subtasks=3, timeout=300)
         self.assertIsNone(error_msg)
 
     def test_dummy_task_computation_timeout(self, *mocks):

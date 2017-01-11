@@ -18,10 +18,9 @@ from threading import Thread
 from twisted.internet import reactor
 
 from golem.environments.environment import Environment
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
+from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
-
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -54,7 +53,6 @@ def create_client(datadir):
                   transaction_system=False,
                   connect_to_known_hosts=False,
                   use_docker_machine_manager=False,
-                  estimated_performance=5000.0,
                   estimated_lux_performance=1000.0,
                   estimated_blender_performance=1000.0)
 
