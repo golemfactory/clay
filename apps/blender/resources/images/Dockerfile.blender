@@ -14,9 +14,7 @@ RUN apt-get update && \
 		libgl1-mesa-dev \
 		libglu1-mesa \
 		libxi6 \
-		libxrender1 \
-		fontconfig \
-		libxext6 && \
+		libxrender1 && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
