@@ -9,9 +9,9 @@ from PIL import Image, ImageChops
 from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import TaskTypeInfo
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import regenerate_blender_crop_file
+from apps.core.task.gnrtask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -112,6 +112,9 @@ class PreviewUpdater(object):
 
 
 class BlenderTaskTypeInfo(TaskTypeInfo):
+    """ Blender App descryption that can be used by interface to define
+    parameters and task build
+    """
     def __init__(self, dialog, customizer):
         super(BlenderTaskTypeInfo, self).__init__("Blender",
                                                   RenderingTaskDefinition,
@@ -127,6 +130,14 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
     @classmethod
     def get_task_border(cls, subtask, definition, total_subtasks,
                         output_num=1):
+        """ Return list of pixels that should be marked as a border of
+         a given subtask
+        :param SubtaskState subtask: subtask state description
+        :param RenderingTaskDefinition definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return list: list of pixels that belong to a subtask border
+        """
         start_task = subtask.extra_data['start_task']
         end_task = subtask.extra_data['end_task']
         frames = len(definition.options.frames)
@@ -138,18 +149,30 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
         if total_subtasks > frames:
             parts = total_subtasks / frames
-            return cls.get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
+            return cls.get_border((start_task - 1) % parts + 1,
+                                  (end_task - 1) % parts + 1,
+                                  parts, res_x, res_y)
 
         return []
 
     @classmethod
-    def get_border(cls, start_task, end_task, parts, res_x, res_y):
+    def get_border(cls, start, end, parts, res_x, res_y):
+        """
+        Return list of pixels that should be marked as a border of subtasks
+        with numbers between start and end.
+        :param int start: number of first subtask
+        :param int end: number of last subtask
+        :param int parts: number of parts for single frame
+        :param int res_x: image resolution width
+        :param int res_y: image resolution height
+        :return list: list of pixels that belong to a subtask border
+        """
         border = []
         offsets = generate_expected_offsets(parts, res_x, res_y)
         scale_factor = float(offsets[parts + 1]) / res_y
 
-        upper = offsets[start_task]
-        lower = offsets[end_task + 1]
+        upper = offsets[start]
+        lower = offsets[end + 1]
         for i in range(upper, lower):
             border.append((0, i))
             border.append((int(math.floor(res_x * scale_factor)), i))
@@ -159,7 +182,18 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         return border
 
     @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks, output_num=1):
+    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+                                 output_num=1):
+        """
+        Compute number of subtask that represents pixel (x, y) on preview
+        :param int x: x coordinate
+        :param int y: y coordiante
+        :param GNRTaskDefintion definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return int: subtask's number
+        """
+
         res_x = definition.resolution[0]
         res_y = definition.resolution[1]
 
@@ -168,21 +202,31 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
         frames = len(definition.options.frames)
         if total_subtasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
+            subtask_frames = int(math.ceil(float(frames) / total_subtasks))
             return int(math.ceil(float(output_num) / subtask_frames))
 
         parts = total_subtasks / frames
-        return (output_num - 1) * parts + cls.num_from_pixel(y, res_x, res_y, parts)
+        return (output_num - 1) * parts + cls.num_from_pixel(y, res_x,
+                                                             res_y, parts)
 
     @classmethod
-    def num_from_pixel(cls, p_y, res_x, res_y, tasks):
-        offsets = generate_expected_offsets(tasks, res_x, res_y)
-        for task_num in range(1, tasks + 1):
+    def num_from_pixel(cls, p_y, res_x, res_y, parts):
+        """
+        Compute number of subtask that represents pixel with y coordiante equal
+        to py on preview with given resolution
+        :param int p_y: y coordinate of a pixel
+        :param int res_x: image width
+        :param int res_y: image height
+        :param int parts: number of parts on one frame
+        :return:
+        """
+        offsets = generate_expected_offsets(parts, res_x, res_y)
+        for task_num in range(1, parts + 1):
             low = offsets[task_num]
             high = offsets[task_num + 1]
             if low <= p_y < high:
                 return task_num
-        return tasks
+        return parts
 
 
 class BlenderRendererOptions(FrameRendererOptions):

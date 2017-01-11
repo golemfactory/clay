@@ -11,12 +11,13 @@ REGISTERED_CONFIG_FILE = os.path.join('apps', 'registered.ini')
 
 
 class App(object):
+    """ Basic Golem App Representation """
     def __init__(self):
-        self.env = None
-        self.builder = None
-        self.widget = None
-        self.controller = None
-        self.task_type_info = None
+        self.env = None  # inherit from Environment
+        self.builder = None  # inherit from TaskBuilder
+        self.widget = None  # inherit from TaskWidget
+        self.controller = None  # inherit from Customizer
+        self.task_type_info = None  # inherit from TaskTypeInfo
 
 
 class AppsManager(object):
