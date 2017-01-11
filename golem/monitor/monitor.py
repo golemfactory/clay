@@ -40,7 +40,8 @@ class SenderThread(threading.Thread):
 class SystemMonitor(object):
 
     def __init__(self, meta_data, monitor_config):
-        assert isinstance(meta_data, NodeMetadataModel)
+        if not isinstance(meta_data, NodeMetadataModel):
+            raise TypeError("Incorrect meta_data type {}, should be NodeMetadataModel".format(type(meta_data)))
 
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)

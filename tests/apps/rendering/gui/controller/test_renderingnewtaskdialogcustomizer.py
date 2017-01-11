@@ -53,16 +53,18 @@ class TestNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         self.logic.customizer = Mock()
         self.logic.task_types[renderer.name] = renderer
         customizer.load_task_definition(definition)
-        assert len(definition.resources) == 3
+        with self.assertRaises(TypeError):
+            customizer.load_task_definition(None)
+        self.assertEqual(len(definition.resources), 3)
         customizer.gui.ui.taskNameLineEdit.setText("NEW NAME")
         definition2 = customizer._query_task_definition()
-        assert definition2.task_name == "NEW NAME"
+        self.assertEqual(definition2.task_name, "NEW NAME")
         file_dialog_mock.getOpenFileName.return_value = "/abc/def/ghi"
         customizer._choose_main_program_file_button_clicked()
-        assert customizer.gui.ui.mainProgramFileLineEdit.text() == u"/abc/def/ghi"
+        self.assertEqual(customizer.gui.ui.mainProgramFileLineEdit.text(), u"/abc/def/ghi")
         file_dialog_mock.getOpenFileName.return_value = ""
         customizer._choose_main_program_file_button_clicked()
-        assert customizer.gui.ui.mainProgramFileLineEdit.text() == u"/abc/def/ghi"
+        self.assertEqual(customizer.gui.ui.mainProgramFileLineEdit.text(), u"/abc/def/ghi")
 
         definition.task_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
@@ -72,12 +74,11 @@ class TestNewTaskDialogCustomizer(TestDirFixture, LogTestCase):
         customizer.set_options(options)
         assert customizer.logic.options == options
 
-
         customizer._NewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)
-        assert customizer.task_state.definition.estimated_memory == 103139
-        assert customizer.gui.ui.finishButton.isEnabled()
+        self.assertEqual(customizer.task_state.definition.estimated_memory, 103139)
+        self.assertTrue(customizer.gui.ui.finishButton.isEnabled())
         customizer._show_add_resource_dialog()
-        assert not customizer.gui.ui.finishButton.isEnabled()
+        self.assertFalse(customizer.gui.ui.finishButton.isEnabled())
 
         customizer._open_options()

@@ -48,7 +48,7 @@ class TaskTableElem:
         if 0.0 <= val <= 1.0:
             self.progress = val
         else:
-            assert False, "Wrong progress setting {}".format(val)
+            raise ValueError("Wrong progress setting {}".format(val))
 
     def get_column_item(self, col):
         if col == 0:
@@ -62,7 +62,7 @@ class TaskTableElem:
         if col == 4:
             return self.cost_item
 
-        assert False, "Wrong column index {}".format(col)
+        raise ValueError("Wrong column index {}".format(col))
 
 
 class ItemMap(object):

@@ -121,7 +121,8 @@ class Task(object):
 
     @classmethod
     def build_task(cls, task_builder):
-        assert isinstance(task_builder, TaskBuilder)
+        if not isinstance(task_builder, TaskBuilder):
+            raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
     def __init__(self, header, src_code):
@@ -141,7 +142,8 @@ class Task(object):
         self.listeners = []
 
     def register_listener(self, listener):
-        assert isinstance(listener, TaskEventListener)
+        if not isinstance(listener, TaskEventListener):
+            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):

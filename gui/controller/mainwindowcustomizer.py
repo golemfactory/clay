@@ -122,7 +122,7 @@ class MainWindowCustomizer(Customizer):
                 if task.task_state.status not in [TaskStatus.starting, TaskStatus.notStarted]:
                     self.__update_payment(task_id, i)
             else:
-                assert False, "Update task for unknown task."
+                raise RuntimeError("Update task for unknown task.")
 
     @inlineCallbacks
     def __update_payment(self, task_id, i):

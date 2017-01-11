@@ -17,7 +17,7 @@ class TestStatsKeeper(TestWithDatabase):
 
     def test_stats_keeper(self):
         st = IntStatsKeeper(CompStats)
-        assert isinstance(st, IntStatsKeeper)
+        self.assertTrue(isinstance(st, IntStatsKeeper))
         self._compare_stats(st, [0] * 6)
 
         st.increase_stat("computed_tasks")
@@ -56,5 +56,5 @@ class TestStatsKeeper(TestWithDatabase):
         for t in threads:
             t.join()
 
-        assert sk.session_stats.computed_tasks == n_expected
-        assert sk.global_stats.computed_tasks == n_expected
+        self.assertEqual(sk.session_stats.computed_tasks, n_expected)
+        self.assertEqual(sk.global_stats.computed_tasks, n_expected)

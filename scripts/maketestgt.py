@@ -12,12 +12,15 @@ def read_task(file_, file_dest):
     with open(file_) as f:
         task = json.load(f)
     task.main_scene_file = os.path.normpath(os.path.join(get_golem_path(), task.main_scene_file))
-    assert os.path.isfile(task.main_scene_file)
+    if not os.path.isfile(task.main_scene_file):
+        raise IOError("incorrect main scene path: {}".format(task.main_scene_file))
     task.main_program_file = os.path.normpath(os.path.join(get_golem_path(), task.main_program_file))
-    assert os.path.isfile(task.main_program_file)
+    if not os.path.isfile(task.main_program_file):
+        raise IOError("incorrect main program path: {}".format(task.main_program_file))
     task.resources = {os.path.normpath(os.path.join(get_golem_path(), res))for res in task.resources}
     for res in task.resources:
-        assert os.path.isfile(res)
+        if not os.path.isfile(res):
+            raise IOError("incorrect resource path: {}".format(res))
 
     if not os.path.isdir(os.path.dirname(file_dest)):
         os.makedirs(os.path.dirname(file_dest))

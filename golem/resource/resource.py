@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class TaskResourceHeader(object):
+    def __init__(self, dir_name):
+        self.sub_dir_headers = []
+        self.files_data = []
+        self.dir_name = dir_name
+
     def __eq__(self, other):
         if self.dir_name != other.dir_name:
             return False
@@ -87,8 +92,9 @@ class TaskResourceHeader(object):
         return cur_th
 
     @classmethod
-    def build_header_delta_from_chosen(cls, header, absolute_root, chosen_files=None):
-        assert isinstance(header, TaskResourceHeader)
+    def build_header_delta_from_chosen(cls, header, absolute_root, chosen_files=[]):
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
         cur_th = TaskResourceHeader(header.dir_name)
 
         abs_dirs = split_path(absolute_root)
@@ -114,7 +120,8 @@ class TaskResourceHeader(object):
 
     @classmethod
     def build_parts_header_delta_from_chosen(cls, header, absolute_root, res_parts):
-        assert isinstance(header, TaskResourceHeader)
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
         cur_th = TaskResourceHeader(header.dir_name)
         abs_dirs = split_path(absolute_root)
         delta_parts = []
@@ -141,7 +148,8 @@ class TaskResourceHeader(object):
     # Add only the fields that are not in header (or which hashes are different)
     @classmethod
     def build_header_delta_from_header(cls, header, absolute_root, chosen_files):
-        assert isinstance(header, TaskResourceHeader)
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
 
         cur_tr = TaskResourceHeader(header.dir_name)
 
@@ -193,11 +201,6 @@ class TaskResourceHeader(object):
                 else:
                     ref_header_found = False
         return last_header, last_ref_header, ref_header_found
-
-    def __init__(self, dir_name):
-        self.sub_dir_headers = []
-        self.files_data = []
-        self.dir_name = dir_name
 
     def to_string(self):
         out = u"\nROOT '{}' \n".format(self.dir_name)
@@ -290,7 +293,8 @@ class TaskResource(object):
 
     @classmethod
     def validate_header(cls, header, absolute_root):
-        assert isinstance(header, TaskResourceHeader)
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
 
         for f in header.files_data:
             fname = os.path.join(absolute_root, f[0])
@@ -311,7 +315,8 @@ class TaskResource(object):
 
     @classmethod
     def build_from_header(cls, header, absolute_root):
-        assert isinstance(header, TaskResourceHeader)
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
 
         cur_tr = TaskResource(header.dir_name)
 
@@ -343,7 +348,8 @@ class TaskResource(object):
     # Add only the fields that are not in header (or which hashes are different)
     @classmethod
     def build_delta_from_header(cls, header, absolute_root):
-        assert isinstance(header, TaskResourceHeader)
+        if not isinstance(header, TaskResourceHeader):
+            raise TypeError("Incorrect header type: {}. Should be TaskResourceHeader".format(type(header)))
 
         cur_tr = TaskResource(header.dir_name)
 

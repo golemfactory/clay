@@ -14,6 +14,7 @@ DISPLAY_LUMINANCE_MAX = 200.0
 RGB_LUMINANCE = Vector3f(0.2126, 0.7152, 0.0722)
 GAMMA_ENCODE = 0.45
 
+
 class Img(object):
 
     def __init__(self, w, h):
@@ -22,7 +23,9 @@ class Img(object):
         self.pixels = [0.0] * self.width * self.height * 3
 
     def copyPixels(self, data):
-        assert len(data) == len(self.pixels)
+        length = len(self.pixels)
+        if len(data) != length:
+            raise AttributeError("Data length should be: {}".format(length))
 
         i = 0
         for y in range(self.height):
@@ -32,7 +35,7 @@ class Img(object):
                 i += 1
 
     def add_to_pixel(self, x, y, radiance):
-        if x >= 0 and x < self.width and y >= 0 and y < self.height:
+        if 0 <= x < self.width and 0 <= y < self.height:
             index = (x + ((self.height - 1 - y) * self.width)) * 3
             for a in radiance:
                 self.pixels[index] += a

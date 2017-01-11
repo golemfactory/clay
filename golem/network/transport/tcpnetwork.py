@@ -525,8 +525,10 @@ class ServerProtocol(BasicProtocol):
         self.server.new_connection(self.session)
 
     def _can_receive(self):
-        assert self.opened
-        assert isinstance(self.db, DataBuffer)
+        if not self.opened:
+            raise IOError("Protocol is closed")
+        if not isinstance(self.db, DataBuffer):
+            raise TypeError("incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
 
         if not self.session and self.server:
             self.opened = False
@@ -556,7 +558,8 @@ class SafeProtocol(ServerProtocol):
         return db.read_all()
 
     def _data_to_messages(self):
-        assert isinstance(self.db, DataBuffer)
+        if not isinstance(self.db, DataBuffer):
+            raise TypeError("incorrect db type: {}. Should be: DataBuffer".format(type(self.db)))
         messages = []
 
         for msg in self.db.get_len_prefixed_string():
@@ -618,7 +621,8 @@ class FilesProtocol(SafeProtocol):
         SafeProtocol._interpret(self, data)
 
     def _stream_data_received(self, data):
-        assert self.consumer
+        if self.consumer is None:
+            raise ValueError("consumer is None")
         if self._check_stream(data):
             self.consumer.dataReceived(data)
         else:
@@ -808,7 +812,8 @@ class FileConsumer(object):
         if self.file_size == -1:
             loc_data = self._get_first_chunk(self.last_data + data)
 
-        assert self.fh
+        if not self.fh:
+            raise ValueError("File descriptor is not set")
 
         self.recv_size += len(loc_data)
         if self.recv_size <= self.file_size:
@@ -837,7 +842,8 @@ class FileConsumer(object):
         self.last_percent = 0
         (self.file_size,) = struct.unpack("!L", data[:LONG_STANDARD_SIZE])
         logger.info("Receiving file {}, size {}".format(self.file_list[-1], self.file_size))
-        assert self.fh is None
+        if self.fh:
+            raise ValueError("File descriptor is set")
 
         self.extra_data["file_sizes"].append(self.file_size)
         self.fh = open(os.path.join(self.output_dir, self.file_list[-1]), "wb")
@@ -890,7 +896,8 @@ class DecryptFileConsumer(FileConsumer):
         if self.file_size == -1:
             loc_data = self._get_first_chunk(loc_data)
 
-        assert self.fh
+        if not self.fh:
+            raise ValueError("File descriptor is not set")
 
         receive_next = False
         while not receive_next:

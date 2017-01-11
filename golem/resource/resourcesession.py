@@ -68,7 +68,7 @@ class ResourceSession(BasicSafeSession):
             logger.warning("Failed to decrypt message, maybe it's not encrypted?")
         except Exception as err:
             logger.error("Failed to decrypt message {}".format(str(err)))
-            assert False
+            raise
 
         return data
 
