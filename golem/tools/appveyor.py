@@ -8,10 +8,10 @@ def in_appveyor():
     return os.environ.get('APPVEYOR', False)
 
 
-def appveyor_skip(reason='Appveyor environment'):
+def appveyor_skip(obj):
     if in_appveyor():
-        return unittest.skip(reason)
-    return _identity
+        return unittest.skip('Appveyor environment')
+    return obj
 
 
 def appveyor_patch(*args, **kwargs):
