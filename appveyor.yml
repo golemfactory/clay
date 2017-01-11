@@ -32,7 +32,7 @@ cache:
   - '%IPFS_DIR%               -> appveyor.yml'
   - '%GETH_DIR%               -> appveyor.yml'
   - '%WHEELS_DIR%             -> requirements.txt'
-  - '%APPDATA%\pip\Cache      -> requirements.txt'
+  - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
   - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
@@ -85,29 +85,33 @@ install:
   - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
   - if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYQT4% &&
-      move %WHEEL_PYQT4% %WHEELS_DIR%\%WHEEL_PYQT4% &&
-      pip install %WHEELS_DIR%\%WHEEL_PYQT4%
+      move %WHEEL_PYQT4% %WHEELS_DIR%\%WHEEL_PYQT4%
     )
+  - pip install %WHEELS_DIR%\%WHEEL_PYQT4%
+
   - if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_OPENEXR% &&
-      move %WHEEL_OPENEXR% %WHEELS_DIR%\%WHEEL_OPENEXR% &&
-      pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
+      move %WHEEL_OPENEXR% %WHEELS_DIR%\%WHEEL_OPENEXR%
     )
+  - pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
+
   - if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYETHASH% &&
-      move %WHEEL_PYETHASH% %WHEELS_DIR%\%WHEEL_PYETHASH% &&
-      pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
+      move %WHEEL_PYETHASH% %WHEELS_DIR%\%WHEEL_PYETHASH%
     )
+  - pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
+
   - if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_SECP256K1% &&
-      move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1% &&
-      pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
+      move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1%
     )
+  - pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
+
   - if not exist %WHEELS_DIR%\%WHEEL_DEVP2P% (
       appveyor DownloadFile %WHEELS_URL%/%WHEEL_DEVP2P% &&
-      move %WHEEL_DEVP2P% %WHEELS_DIR%\%WHEEL_DEVP2P% &&
-      pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
+      move %WHEEL_DEVP2P% %WHEELS_DIR%\%WHEEL_DEVP2P%
     )
+  - pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
 
   - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 
