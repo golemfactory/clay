@@ -1,4 +1,3 @@
-from golem.model import LocalRank
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager import database_manager as dm
 from golem.testutils import DatabaseFixture
