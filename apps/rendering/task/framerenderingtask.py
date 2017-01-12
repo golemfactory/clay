@@ -8,7 +8,7 @@ from PIL import Image, ImageChops
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtask import GNRTask
-from apps.core.task.gnrtaskstate import GNROptions
+from apps.core.task.gnrtaskstate import Options
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
@@ -46,9 +46,9 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             return defaults.default_subtasks
 
 
-class FrameRendererOptions(GNROptions):
+class FrameRendererOptions(Options):
     def __init__(self):
-        super(GNROptions, self).__init__()
+        super(Options, self).__init__()
         self.use_frames = False
         self.frames = range(1, 11)
 

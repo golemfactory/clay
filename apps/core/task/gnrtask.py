@@ -23,7 +23,11 @@ def log_key_error(*args, **kwargs):
 
 
 class TaskTypeInfo(object):
-    def __init__(self, name, definition, defaults, options, task_builder_type, dialog=None, dialog_controller=None):
+    """ Information about task that allows to define and build a new task,
+    display outputs and previews. """
+
+    def __init__(self, name, definition, defaults, options, task_builder_type,
+                 dialog=None, dialog_controller=None):
         self.name = name
         self.defaults = defaults
         self.options = options
@@ -35,7 +39,8 @@ class TaskTypeInfo(object):
         self.output_file_ext = []
 
     @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks, output_num=1):
+    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+                                 output_num=1):
         return 0
 
     @classmethod

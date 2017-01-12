@@ -6,9 +6,10 @@ from apps.core.task.gnrtaskstate import (GNRTaskDefinition,
 
 
 class RendererDefaults(CoreTaskDefaults):
+    """ Suggested default values for Rendering tasks"""
     def __init__(self):
         super(RendererDefaults, self).__init__()
-        self.resolution = [800, 600]
+        self.resolution = [1920, 1080]
 
 
 class RenderingTaskDefinition(GNRTaskDefinition):
@@ -18,9 +19,7 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         self.resolution = [0, 0]
         self.renderer = None
         self.options = None
-
         self.main_scene_file = ""
-
         self.output_format = ""
 
     def is_valid(self):

@@ -4,7 +4,8 @@ from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
 
-class GNROptions(object):
+class Options(object):
+    """ Task specific options """
     def __init__(self):
         self.environment = Environment()
         self.name = ''
@@ -17,6 +18,7 @@ class GNROptions(object):
 
 
 class CoreTaskDefaults(object):
+    """ Suggested default values for task parameters """
     def __init__(self):
         self.output_format = ""
         self.main_program_file = ""
@@ -48,7 +50,7 @@ class GNRTaskDefinition(object):
         self.max_price = 0
 
         self.verification_options = None
-        self.options = GNROptions()
+        self.options = Options()
         self.docker_images = None
 
     def is_valid(self):
@@ -87,4 +89,9 @@ class TaskDesc(object):
         self.task_state = state_class()
 
     def has_multiple_outputs(self, num_outputs=1):
+        """
+        Return False if this task has less outputs than <num_outputs>, True
+        otherwise
+        :param int num_outputs:
+        """
         return len(self.task_state.outputs) >= num_outputs

@@ -14,7 +14,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.gnrtask import TaskTypeInfo
-from apps.core.task.gnrtaskstate import GNROptions
+from apps.core.task.gnrtaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
@@ -52,6 +52,14 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+        """ Return list of pixels that should be marked as a border of
+         a given subtask
+        :param SubtaskState subtask: subtask state description
+        :param RenderingTaskDefinition definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return list: list of pixels that belong to a subtask border
+        """
         preview_x = 300
         preview_y = 200
         res_x, res_y = definition.resolution
@@ -78,10 +86,20 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
     @classmethod
     def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
                                  output_num=1):
+        """
+        Compute number of subtask that represents pixel (x, y) on preview
+        :param int x: x coordinate
+        :param int y: y coordiante
+        :param GNRTaskDefintion definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return int: subtask's number
+        """
+
         return 1
 
 
-class LuxRenderOptions(GNROptions):
+class LuxRenderOptions(Options):
     def __init__(self):
         super(LuxRenderOptions, self).__init__()
         self.environment = LuxRenderEnvironment()

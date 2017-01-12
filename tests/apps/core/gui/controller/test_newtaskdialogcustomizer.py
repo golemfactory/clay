@@ -10,7 +10,7 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.gui.controller.newtaskdialogcustomizer import (logger, NewTaskDialogCustomizer)
 from apps.core.task.gnrtask import TaskTypeInfo
-from apps.core.task.gnrtaskstate import GNRTaskDefinition, CoreTaskDefaults, GNROptions
+from apps.core.task.gnrtaskstate import GNRTaskDefinition, CoreTaskDefaults, Options
 from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
@@ -135,7 +135,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         with self.assertLogs(logger, level="ERROR"):
             customizer._load_task_type(definition)
 
-        options = GNROptions()
+        options = Options()
         customizer.set_options(options)
         assert customizer.logic.options == options
 

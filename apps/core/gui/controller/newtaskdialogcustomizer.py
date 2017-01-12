@@ -13,8 +13,9 @@ from twisted.internet.defer import inlineCallbacks
 from golem.task.taskstate import TaskStatus
 
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
-from apps.core.gui.verificationparamshelper import (load_verification_params, set_verification_widgets_state,
-                                                    verification_random_changed, read_advance_verification_params)
+from apps.core.gui.verificationparamshelper import (
+    load_verification_params, set_verification_widgets_state,
+    verification_random_changed, read_advance_verification_params)
 from apps.core.task.gnrtaskstate import GNRTaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
@@ -33,7 +34,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog = None
         self.task_state = None
         self.add_task_resource_dialog_customizer = None
-        self.task_customizer = None
+        self.task_customizer = None  # Controller for task specific options
 
         Customizer.__init__(self, gui, logic)
         self.add_task_resource_dialog = self._get_add_resource_dialog()
@@ -62,36 +63,49 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
 
     def _setup_advance_new_task_connections(self):
-        self.gui.ui.showAdvanceNewTaskButton.clicked.connect(self._advance_settings_button_clicked)
-        self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(self._optimize_total_check_box_changed)
-        self.gui.ui.subtaskTimeoutHourSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
-        self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
-        self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
-        self.gui.ui.totalSpinBox.valueChanged.connect(self._set_new_pessimistic_cost)
-        self.gui.ui.chooseMainProgramFileButton.clicked.connect(self._choose_main_program_file_button_clicked)
-        self.gui.ui.testTaskButton.clicked.connect(self.__test_task_button_clicked)
-        self.gui.ui.resetToDefaultButton.clicked.connect(self.__reset_to_defaults)
-        self.__connect_with_task_settings_changed([self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
-                                                   self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
-                                                   self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
-                                                   self.gui.ui.mainProgramFileLineEdit.textChanged,
-                                                   self.gui.ui.verificationSizeXSpinBox.valueChanged,
-                                                   self.gui.ui.verificationSizeYSpinBox.valueChanged,
-                                                   self.gui.ui.verificationForAllRadioButton.toggled,
-                                                   self.gui.ui.verificationForFirstRadioButton.toggled,
-                                                   self.gui.ui.probabilityLineEdit.textChanged
-                                                   ])
+        self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
+            self._advance_settings_button_clicked)
+        self.gui.ui.optimizeTotalCheckBox.stateChanged.connect(
+            self._optimize_total_check_box_changed)
+        self.gui.ui.subtaskTimeoutHourSpinBox.valueChanged.connect(
+            self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutMinSpinBox.valueChanged.connect(
+            self._set_new_pessimistic_cost)
+        self.gui.ui.subtaskTimeoutSecSpinBox.valueChanged.connect(
+            self._set_new_pessimistic_cost)
+        self.gui.ui.totalSpinBox.valueChanged.connect(
+            self._set_new_pessimistic_cost)
+        self.gui.ui.chooseMainProgramFileButton.clicked.connect(
+            self._choose_main_program_file_button_clicked)
+        self.gui.ui.testTaskButton.clicked.connect(
+            self.__test_task_button_clicked)
+        self.gui.ui.resetToDefaultButton.clicked.connect(
+            self.__reset_to_defaults)
+        self.__connect_with_task_settings_changed([
+            self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
+            self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
+            self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
+            self.gui.ui.mainProgramFileLineEdit.textChanged,
+            self.gui.ui.verificationSizeXSpinBox.valueChanged,
+            self.gui.ui.verificationSizeYSpinBox.valueChanged,
+            self.gui.ui.verificationForAllRadioButton.toggled,
+            self.gui.ui.verificationForFirstRadioButton.toggled,
+            self.gui.ui.probabilityLineEdit.textChanged
+        ])
 
     def _setup_payment_connections(self):
-        self.gui.ui.taskMaxPriceLineEdit.textChanged.connect(self._set_new_pessimistic_cost)
+        self.gui.ui.taskMaxPriceLineEdit.textChanged.connect(
+            self._set_new_pessimistic_cost)
 
     def _set_uid(self):
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
 
     # FIXME Remove verification connections
     def _setup_verification_connections(self):
-        self.gui.ui.verificationRandomRadioButton.toggled.connect(self.__verification_random_changed)
-        self.gui.ui.advanceVerificationCheckBox.stateChanged.connect(self.__advance_verification_changed)
+        self.gui.ui.verificationRandomRadioButton.toggled.connect(
+            self.__verification_random_changed)
+        self.gui.ui.advanceVerificationCheckBox.stateChanged.connect(
+            self.__advance_verification_changed)
 
     def _init(self):
         self._set_uid()
@@ -114,8 +128,10 @@ class NewTaskDialogCustomizer(Customizer):
         # FIXME REMOVE VERIFICTATION OPTIONS
         self._task_type_value_changed(default_task.name)
 
-        self.gui.ui.totalSpinBox.setRange(default_task.defaults.min_subtasks, default_task.defaults.max_subtasks)
-        self.gui.ui.totalSpinBox.setValue(default_task.defaults.default_subtasks)
+        self.gui.ui.totalSpinBox.setRange(default_task.defaults.min_subtasks,
+                                          default_task.defaults.max_subtasks)
+        self.gui.ui.totalSpinBox.setValue(
+            default_task.defaults.default_subtasks)
 
         # FIXME
         # self.gui.ui.verificationSizeXSpinBox.setMaximum(default_task.defaults.resolution[0])
@@ -188,11 +204,14 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_customizer.get_task_specific_options(definition)
 
     def _load_resources(self, definition):
-        definition.resources = definition.options.remove_from_resources(definition.resources)
+        definition.resources = definition.options.remove_from_resources(
+            definition.resources)
         self.add_task_resource_dialog = self._get_add_resource_dialog()
-        self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog,
-                                                                                self.logic)
-        self.add_task_resource_dialog_customizer.resources = definition.resources
+        self.add_task_resource_dialog_customizer = \
+            AddResourcesDialogCustomizer(self.add_task_resource_dialog,
+                                         self.logic)
+        self.add_task_resource_dialog_customizer.resources = \
+            definition.resources
 
         model = self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model()
 
@@ -266,9 +285,9 @@ class NewTaskDialogCustomizer(Customizer):
 
         dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
 
-        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui.window,
-                                                             "Choose main program file", dir_,
-                                                             "Python (*.py *.Py *.PY *.pY)"))
+        file_name = u"{}".format(QFileDialog.getOpenFileName(
+            self.gui.window, "Choose main program file", dir_,
+            "Python (*.py *.Py *.PY *.pY)"))
 
         if file_name != "":
             self.gui.ui.mainProgramFileLineEdit.setText(file_name)
