@@ -76,8 +76,6 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
-        self.check_environment()
-
     def check_environment(self):
         logger.debug("DockerManager: checking VM availability")
 

@@ -68,6 +68,9 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = None
 
         self.docker_manager = DockerMachineManager.install()
+        if use_docker_machine_manager:
+            self.docker_manager.check_environment()
+
         try:
             lux_perf = float(task_server.config_desc.estimated_lux_performance)
             blender_perf = float(task_server.config_desc.estimated_blender_performance)
