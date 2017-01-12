@@ -3,8 +3,10 @@ import unittest
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 from apps.blender.blenderenvironment import BlenderEnvironment
+from golem.tools.appveyor import appveyor_skip
 
 
+@appveyor_skip
 class BlenderEnvTest(unittest.TestCase):
     def test_blender(self):
         env = BlenderEnvironment()

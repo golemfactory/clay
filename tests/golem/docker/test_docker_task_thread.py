@@ -7,9 +7,11 @@ from golem.task.taskcomputer import TaskComputer
 from mock import Mock
 
 from golem.docker.task_thread import DockerTaskThread
+from golem.tools.appveyor import appveyor_skip
 from test_docker_job import TestDockerJob
 
 
+@appveyor_skip
 class TestDockerTaskThread(TestDockerJob):
 
     def test_termination(self):

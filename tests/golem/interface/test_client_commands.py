@@ -662,7 +662,7 @@ class TestSettings(TempDirFixture):
                     with self.assertRaises(CommandException):
                         settings.set(k, iv)
 
-            settings.set('max_memory_size', int(_virtual_mem - MIN_MEMORY_SIZE) / 2)
+            settings.set('max_memory_size', MIN_MEMORY_SIZE + int(_virtual_mem - MIN_MEMORY_SIZE) / 2)
             settings.set('max_memory_size', _virtual_mem - 1)
             settings.set('max_memory_size', MIN_MEMORY_SIZE)
 

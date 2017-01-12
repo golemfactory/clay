@@ -6,9 +6,11 @@ from os import path
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
 from golem.resource.dirmanager import find_task_script
+from golem.tools.appveyor import appveyor_skip
 from test_docker_job import TestDockerJob
 
 
+@appveyor_skip
 class TestBlenderDockerJob(TestDockerJob):
     """Tests for Docker image golem/base"""
 

@@ -214,8 +214,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         BasicSession.send(self, message)
 
     def _can_send(self, msg, send_unverified):
-        return self.verified or send_unverified or \
-               msg.__class__ in self.can_be_unverified
+        return self.verified or send_unverified or msg.get_type() in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):

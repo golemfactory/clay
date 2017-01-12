@@ -4,11 +4,13 @@ from mock import Mock
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task, ComputeTaskDef
+from golem.tools.appveyor import appveyor_skip
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 
 
+@appveyor_skip
 class TestLocalComputer(TestDirFixture):
     last_error = None
     last_result = None
