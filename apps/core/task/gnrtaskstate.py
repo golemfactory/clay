@@ -11,7 +11,6 @@ class Options(object):
         self.name = ''
 
     def add_to_resources(self, resources):
-        print "CALLED FOR OPTIONS"
         pass
 
     def remove_from_resources(self, resources):

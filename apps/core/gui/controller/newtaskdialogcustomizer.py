@@ -38,8 +38,8 @@ class NewTaskDialogCustomizer(Customizer):
 
         Customizer.__init__(self, gui, logic)
         self.add_task_resource_dialog = self._get_add_resource_dialog()
-        self.add_task_resource_dialog_customizer = AddResourcesDialogCustomizer(self.add_task_resource_dialog,
-                                                                                logic)
+        self.add_task_resource_dialog_customizer = \
+            AddResourcesDialogCustomizer(self.add_task_resource_dialog, logic)
 
     def load_data(self):
         self._set_uid()
@@ -125,17 +125,12 @@ class NewTaskDialogCustomizer(Customizer):
             logger.error("Cannot load task, wrong task type {}".format(default_task.name))
         self._set_name()
 
-        # FIXME REMOVE VERIFICTATION OPTIONS
         self._task_type_value_changed(default_task.name)
 
         self.gui.ui.totalSpinBox.setRange(default_task.defaults.min_subtasks,
                                           default_task.defaults.max_subtasks)
         self.gui.ui.totalSpinBox.setValue(
             default_task.defaults.default_subtasks)
-
-        # FIXME
-        # self.gui.ui.verificationSizeXSpinBox.setMaximum(default_task.defaults.resolution[0])
-        # self.gui.ui.verificationSizeYSpinBox.setMaximum(default_task.defaults.resolution[1])
 
     def _set_name(self):
         self.gui.ui.taskNameLineEdit.setText(self._generate_name(self.gui.ui.taskTypeComboBox.currentText()))
@@ -227,19 +222,17 @@ class NewTaskDialogCustomizer(Customizer):
         # TODO Better model management would be nice
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
         self.gui.ui.resourceFilesLabel.setText(u"{}".format(len(self.add_task_resource_dialog_customizer.resources)))
-        # for res in definition.resources:
-        #     model.setData(model.index(res), QtCore.Qt.Checked, QtCore.Qt.CheckStateRole)
 
     def _load_basic_task_params(self, definition):
         self._load_task_type(definition)
-        # FIXME What is this doing here?
-        self.save_setting('main_scene_path', os.path.dirname(definition.main_scene_file))
-        self.save_setting('output_file_path', os.path.dirname(definition.output_file), sync=True)
-        set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
-        self.gui.ui.mainProgramFileLineEdit.setText(definition.main_program_file)
+        set_time_spin_boxes(self.gui, definition.full_task_timeout,
+                            definition.subtask_timeout)
+        self.gui.ui.mainProgramFileLineEdit.setText(
+            definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
         task_type = self.logic.get_task_type(definition.task_type)
-        self.gui.ui.totalSpinBox.setRange(task_type.defaults.min_subtasks, task_type.defaults.max_subtasks)
+        self.gui.ui.totalSpinBox.setRange(task_type.defaults.min_subtasks,
+                                          task_type.defaults.max_subtasks)
         if definition.task_name:
             self.gui.ui.taskNameLineEdit.setText(definition.task_name)
         else:

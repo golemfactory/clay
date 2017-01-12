@@ -98,6 +98,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         self.logic.client.get_config.return_value = self.logic.client.config_desc
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
+        self.logic.customizer = Mock()
 
         register_task_types(self.logic)
         customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
@@ -112,8 +113,6 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         definition.options.use_frames = False
         definition.options.compositing = False
         resources = self.additional_dir_content([3])
-        definition.options.remove_from_resources.return_value = set(resources[0:1])
-        definition.options.add_to_resources.return_value = set(resources[0:1])
         definition.resources = set(resources)
         self.logic.customizer = Mock()
         self.logic.task_types[renderer.name] = renderer

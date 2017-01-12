@@ -22,8 +22,16 @@ class RendererCustomizer(Customizer):
     def load_data(self):
         r = self.logic.get_task_type(self.get_task_name())
 
-        self.gui.ui.outputResXSpinBox.setValue(r.defaults.resolution[0])
-        self.gui.ui.outputResYSpinBox.setValue(r.defaults.resolution[1])
+        self.gui.ui.outputResXSpinBox.setValue(
+            r.defaults.resolution[0])
+        self.gui.ui.outputResYSpinBox.setValue(
+            r.defaults.resolution[1])
+
+        # FIXME Move verification function to task specific widgets
+        self.logic.customizer.gui.ui.verificationSizeXSpinBox.setMaximum(
+            r.defaults.resolution[0])
+        self.logic.customizer.gui.ui.verificationSizeYSpinBox.setMaximum(
+            r.defaults.resolution[1])
 
         self.gui.ui.outputFormatsComboBox.clear()
         self.gui.ui.outputFormatsComboBox.addItems(r.output_formats)
@@ -52,6 +60,11 @@ class RendererCustomizer(Customizer):
 
         if os.path.normpath(definition.main_scene_file) in definition.resources:
             definition.resources.remove(os.path.normpath(definition.main_scene_file))
+
+        self.save_setting('main_scene_path',
+                          os.path.dirname(definition.main_scene_file))
+        self.save_setting('output_file_path',
+                          os.path.dirname(definition.output_file), sync=True)
 
     def get_task_specific_options(self, definition):
         self._change_options()
