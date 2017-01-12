@@ -1,0 +1,130 @@
+os: Visual Studio 2015
+version: '{branch}-{build}'
+
+environment:
+  matrix:
+    - PYTHON: "C:\\Python27"
+      PYTHON_VERSION: "2.7.13"
+      PYTHON_ARCH: "32"
+
+      GETH_VER: geth-windows-386-1.5.5-ff07d548
+      IPFS_VER: go-ipfs_v0.4.4_windows-386
+      OPENSSL_VER: openssl-1.0.2j-i386-win32
+
+      OPENSSL_DIR: C:\OpenSSL
+      GETH_DIR: C:\%GETH_VER%
+      IPFS_DIR: C:\go-ipfs
+      WHEELS_DIR: C:\wheels
+
+      WHEEL_PYQT4: PyQt4-4.11.4-cp27-none-win32.whl
+      WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
+      WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
+      WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
+      WHEEL_DEVP2P: devp2p-0.8.0-py2.py3-none-any.whl
+
+      PYWIN32: pywin32-220.win32-py2.7.exe
+      FREEIMAGE: FreeImage3170Win32Win64.zip
+
+      WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
+
+cache:
+  - '%OPENSSL_DIR%            -> appveyor.yml'
+  - '%IPFS_DIR%               -> appveyor.yml'
+  - '%GETH_DIR%               -> appveyor.yml'
+  - '%WHEELS_DIR%             -> requirements.txt'
+  - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
+  - C:\ProgramData\chocolatey -> appveyor.yml
+
+install:
+  # enable rdp
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt4;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
+  # docker
+  # - choco install -y virtualbox
+  # - choco install -y docker-machine
+  # - docker-machine.exe create -d virtualbox default
+  # - docker-machine.exe env default
+
+  # ssl
+  - if not exist %OPENSSL_DIR% (
+      appveyor DownloadFile https://indy.fulgan.com/SSL/%OPENSSL_VER%.zip &&
+      7z x %OPENSSL_VER%.zip -y -aoa -oC:\OpenSSL > NUL
+    )
+
+  # geth
+  - if not exist %GETH_DIR% (
+      appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%GETH_VER%.zip &&
+      7z x %GETH_VER%.zip -y -aoa -oC:\ > NUL
+    )
+
+  # ipfs
+  - if not exist %IPFS_DIR% (
+      appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%IPFS_VER%.zip &&
+      7z x %IPFS_VER%.zip -y -aoa -oC:\ > NUL
+    )
+  - ipfs init
+  - ps: $IPFSProcess = Start-Process ipfs daemon -PassThru
+
+  # freeimage
+  - appveyor DownloadFile "http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary Distribution/3.17.0/%FREEIMAGE%"
+  - 7z x %FREEIMAGE% -y -aoa -oC:\ > NUL
+  - mkdir apps\rendering\resources\taskcollector\FreeImage\Release
+  - copy /y C:\FreeImage\Dist\x32\FreeImage.dll apps\rendering\resources\taskcollector\Release
+  - copy /y C:\FreeImage\Dist\x32\FreeImage.lib apps\rendering\resources\taskcollector\FreeImage\Release
+
+  # pip
+  - pip install --disable-pip-version-check --user --upgrade pip
+
+  # pywin32
+  - appveyor DownloadFile %WHEELS_URL%/%PYWIN32%
+  - easy_install.exe %PYWIN32%
+  - easy_install.exe wheel
+
+  # prebuilt packages
+  - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
+  - if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYQT4% &&
+      move %WHEEL_PYQT4% %WHEELS_DIR%\%WHEEL_PYQT4%
+    )
+  - pip install %WHEELS_DIR%\%WHEEL_PYQT4%
+
+  - if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_OPENEXR% &&
+      move %WHEEL_OPENEXR% %WHEELS_DIR%\%WHEEL_OPENEXR%
+    )
+  - pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
+
+  - if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYETHASH% &&
+      move %WHEEL_PYETHASH% %WHEELS_DIR%\%WHEEL_PYETHASH%
+    )
+  - pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
+
+  - if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_SECP256K1% &&
+      move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1%
+    )
+  - pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
+
+  - if not exist %WHEELS_DIR%\%WHEEL_DEVP2P% (
+      appveyor DownloadFile %WHEELS_URL%/%WHEEL_DEVP2P% &&
+      move %WHEEL_DEVP2P% %WHEELS_DIR%\%WHEEL_DEVP2P%
+    )
+  - pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
+
+  - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
+
+  # requirements
+  - pip install -r requirements.txt
+  - pip install pytest mock coverage
+  - python setup.py develop
+
+build_script:
+  - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
+test_script:
+  - pytest tests
+
+on_finish:
+  - ps: Stop-Process -Id $IPFSProcess.Id

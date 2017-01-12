@@ -7,6 +7,7 @@ from os import makedirs, path, remove
 
 from mock import Mock
 
+from golem.tools.appveyor import appveyor_skip
 from test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
@@ -27,6 +28,7 @@ logging.getLogger("peewee").setLevel("INFO")
 
 # TODO: extract code common to this class and TestDockerBlenderTask to a superclass
 # TODO: test luxrender tasks with .flm file
+@appveyor_skip
 class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     TASK_FILE = "docker-luxrender-test-task.json"
