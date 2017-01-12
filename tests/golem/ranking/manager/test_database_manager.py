@@ -6,7 +6,15 @@ from golem.testutils import DatabaseFixture
 
 class TestDatabaseManager(DatabaseFixture):
     def test_should_update_database_records(self):
-        cases = [
+        """Should update database records
+        for COMPUTED increase, decrease;
+        WRONG_COMPUTED decrease;
+        REQUESTED increase, decrease;
+        PAYMENT increase, decrease;
+        and RESOURCE increase, decrease
+        using database_manager methods as well as Trust enums.
+        """
+        cases = (
             # COMPUTED increase
             {'test_no': '01',
              'fun_ref': dm.increase_positive_computed,
@@ -23,7 +31,7 @@ class TestDatabaseManager(DatabaseFixture):
              'attribute': 'positive_computed'
              },
             {'test_no': '03',
-             'fun_ref': dm.increase_positive_computed,
+             'fun_ref': Trust.COMPUTED.increase,
              'node_name': 'alpha',
              'value': 0.3,
              'total': 1.5,
@@ -233,13 +241,14 @@ class TestDatabaseManager(DatabaseFixture):
              'total': 1.8,
              'attribute': 'negative_resource'
              }
-        ]
+        )
 
         for case in cases:
             case['fun_ref'](case['node_name'], case['value'])
             self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']), case['attribute']), case['total'],
                                    7, "Test no. " + case['test_no'] + " failed.")
 
-    # WRONG_COMPUTED increase
     def test_should_throw_exception(self):
-        self.assertRaises(KeyError, lambda: Trust.WRONG_COMPUTED.increase('alpha', 0.3))
+        """Should throw exception for WRONG_COMPUTED increase."""
+        with self.assertRaises(KeyError):
+            Trust.WRONG_COMPUTED.increase('alpha', 0.3)
