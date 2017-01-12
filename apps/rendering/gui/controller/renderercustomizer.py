@@ -60,7 +60,8 @@ class RendererCustomizer(Customizer):
         definition.output_file = self._add_ext_to_out_filename()
         definition.output_format = u"{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
-        definition.main_scene_file = u"{}".format(self.gui.ui.mainSceneFileLineEdit.text())
+        definition.main_scene_file = u"{}".format(
+            self.gui.ui.mainSceneFileLineEdit.text())
 
     def _change_options(self):
         pass

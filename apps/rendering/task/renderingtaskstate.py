@@ -15,7 +15,6 @@ class RendererDefaults(CoreTaskDefaults):
 class RenderingTaskDefinition(GNRTaskDefinition):
     def __init__(self):
         GNRTaskDefinition.__init__(self)
-
         self.resolution = [0, 0]
         self.renderer = None
         self.options = None
@@ -27,6 +26,10 @@ class RenderingTaskDefinition(GNRTaskDefinition):
         if is_valid and not path.exists(self.main_scene_file):
             return False, u"Main scene file {} is not properly set".format(self.main_scene_file)
         return is_valid, err
+
+    def add_to_resources(self):
+        super(RenderingTaskDefinition, self).add_to_resources()
+        self.resources.add(path.normpath(self.main_scene_file))
 
 
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):

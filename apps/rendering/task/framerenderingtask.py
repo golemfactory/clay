@@ -48,7 +48,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
 class FrameRendererOptions(Options):
     def __init__(self):
-        super(Options, self).__init__()
+        super(FrameRendererOptions, self).__init__()
         self.use_frames = False
         self.frames = range(1, 11)
 

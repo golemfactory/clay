@@ -11,10 +11,11 @@ class Options(object):
         self.name = ''
 
     def add_to_resources(self, resources):
-        return resources
+        print "CALLED FOR OPTIONS"
+        pass
 
     def remove_from_resources(self, resources):
-        return resources
+        pass
 
 
 class CoreTaskDefaults(object):
@@ -73,6 +74,13 @@ class GNRTaskDefinition(object):
             return False, u"Cannot open output file: {}".format(output_file)
         except (OSError, TypeError) as err:
             return False, u"Output file {} is not properly set: {}".format(output_file, err)
+
+    def add_to_resources(self):
+        print "CALLED FOR TASK DEF"
+        self.options.add_to_resources(self.resources)
+
+    def remove_from_resources(self):
+        self.options.remove_from_resources(self.resources)
 
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']

@@ -179,7 +179,8 @@ class NewTaskDialogCustomizer(Customizer):
 
         definition = deepcopy(task_definition)
         self.logic.options = deepcopy(definition.options)
-        definition.resources = {os.path.normpath(res) for res in definition.resources}
+        definition.resources = {os.path.normpath(res)
+                                for res in definition.resources}
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
         self._load_basic_task_params(definition)
         self.task_customizer.load_task_definition(definition)
@@ -204,8 +205,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_customizer.get_task_specific_options(definition)
 
     def _load_resources(self, definition):
-        definition.resources = definition.options.remove_from_resources(
-            definition.resources)
+        definition.remove_from_resources()
         self.add_task_resource_dialog = self._get_add_resource_dialog()
         self.add_task_resource_dialog_customizer = \
             AddResourcesDialogCustomizer(self.add_task_resource_dialog,
@@ -298,8 +298,13 @@ class NewTaskDialogCustomizer(Customizer):
         import uuid
         return "{}".format(uuid.uuid4())
 
+    def get_current_task_type(self):
+        task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        return self.logic.get_task_type(task_name)
+
     def _query_task_definition(self):
-        definition = GNRTaskDefinition()
+        task_type = self.get_current_task_type()
+        definition = task_type.definition()
         self._read_basic_task_params(definition)
         self._read_task_type(definition)
         self._read_price_params(definition)
@@ -343,11 +348,9 @@ class NewTaskDialogCustomizer(Customizer):
         read_advance_verification_params(self.gui, definition)
 
     def _read_resource_params(self, definition):
-        # FIXME
-        if self.add_task_resource_dialog_customizer:
-            definition.resources = self.logic.options.add_to_resources(definition.resources)
-            definition.resources.add(os.path.normpath(definition.main_scene_file))
-            self.logic.customizer.gui.ui.resourceFilesLabel.setText(u"{}".format(len(definition.resources)))
+        definition.add_to_resources()
+        self.logic.customizer.gui.ui.resourceFilesLabel.setText(
+                u"{}".format(len(definition.resources)))
 
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
