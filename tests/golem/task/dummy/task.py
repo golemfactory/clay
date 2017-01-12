@@ -1,5 +1,7 @@
 import random
+import uuid
 from os import path
+from threading import Lock
 
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
@@ -86,6 +88,9 @@ class DummyTask(Task):
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
+        self.assigned_nodes = {}
+        self.assigned_subtasks = {}
+        self._lock = Lock()
 
     def initialize(self, dir_manager):
         """Create resource files for this task
@@ -127,19 +132,32 @@ class DummyTask(Task):
         :param str | None node_id:
         :param str | None node_name:
         :rtype: ComputeTaskDef"""
+
         # create new subtask_id
-        import uuid
         subtask_id = uuid.uuid4().get_hex()
-        self.subtask_ids.append(subtask_id)
+
+        with self._lock:
+            # check if a task has been assigned to this node
+            if node_id in self.assigned_nodes:
+                return self.ExtraData(should_wait=True)
+            # assign a task
+            self.assigned_nodes[node_id] = subtask_id
+            self.assigned_subtasks[subtask_id] = node_id
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
         data = random.getrandbits(self.task_params.subtask_data_size * 4)
+        self.subtask_ids.append(subtask_id)
         self.subtask_data[subtask_id] = '%x' % data
 
         subtask_def = ComputeTaskDef()
         subtask_def.task_id = self.task_id
         subtask_def.subtask_id = subtask_id
         subtask_def.src_code = self.src_code
+        subtask_def.task_owner = self.header.task_owner
+        subtask_def.environment = self.header.environment
+        subtask_def.return_address = self.header.task_owner_address
+        subtask_def.return_port = self.header.task_owner_port
+        subtask_def.deadline = timeout_to_deadline(5 * 60)
         subtask_def.extra_data = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
@@ -147,11 +165,7 @@ class DummyTask(Task):
             'result_size': self.task_params.result_size,
             'result_file': 'result.' + subtask_id[0:6]
         }
-        subtask_def.task_owner = self.header.task_owner
-        subtask_def.environment = self.header.environment
-        subtask_def.return_address = self.header.task_owner_address
-        subtask_def.return_port = self.header.task_owner_port
-        subtask_def.deadline = timeout_to_deadline(5 * 60)
+
         return self.ExtraData(ctd=subtask_def)
 
     def verify_task(self):
@@ -179,21 +193,16 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result, result_type=0):
+        with self._lock:
+            if subtask_id in self.assigned_subtasks:
+                node_id = self.assigned_subtasks.pop(subtask_id, None)
+                self.assigned_nodes.pop(node_id, None)
 
         self.subtask_results[subtask_id] = task_result
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, task_id, resource_header, resource_type=0):
-        # if resource_type == resource_types['parts']:
-        #     dir_name = path.dirname(self.shared_data_file)
-        #     delta_header, parts = \
-        #         TaskResourceHeader.build_parts_header_delta_from_chosen(
-        #             resource_header, dir_name, self.resource_parts)
-        #     return delta_header, parts
-
-        # file list is expected
-
+    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
         return self.task_resources
 
     def add_resources(self, resource_parts):

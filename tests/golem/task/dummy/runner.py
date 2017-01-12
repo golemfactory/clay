@@ -1,45 +1,66 @@
-"""Test script for running a single instance of a dummy task.
+"""
 The task simply computes hashes of some random data and requires
 no external tools. The amount of data processed (ie hashed) and computational
 difficulty is configurable, see comments in DummyTaskParameters.
 """
-import atexit
 import logging
+import multiprocessing
 import os
-import re
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
+from Queue import Empty
+from multiprocessing import Queue
 from os import path
-from threading import Thread
 
-from twisted.internet import reactor
+from twisted.internet.defer import setDebugging
 
 from golem.environments.environment import Environment
-from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
 from task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
-
-def format_msg(kind, pid, msg):
-    return "[{} {:>5}] {}".format(kind, pid, msg)
-
-
-node_kind = ""
+MSG_STOP = "stop"
+MSG_DONE = "done"
 
 
-def report(msg):
-    print format_msg(node_kind, os.getpid(), msg)
+class DummyEnvironment(Environment):
+    @classmethod
+    def get_id(cls):
+        return DummyTask.ENVIRONMENT_NAME
+
+
+def report(kind, msg):
+    print "[{} {:>5}] {}".format(kind, os.getpid(), msg)
 
 
 def override_ip_info(*_, **__):
     from stun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
+
+
+def setup_logging():
+
+    setDebugging(True)
+    formatter = logging.Formatter('%(asctime)s %(levelname)7s %(module)s - %(message)s')
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setLevel(logging.WARNING)
+    stream_handler.setFormatter(formatter)
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(stream_handler)
+
+
+def queue_get(q):
+    try:
+        return q.get(block=False)
+    except Empty:
+        return None
 
 
 def create_client(datadir):
@@ -57,213 +78,211 @@ def create_client(datadir):
                   estimated_blender_performance=1000.0)
 
 
-def run_requesting_node(datadir, num_subtasks=3):
-    client = None
+def run_requesting_node(queue_in, queue_out, datadir, num_subtasks=3):
+    from golem.resource.dirmanager import DirManager
 
-    def shutdown():
-        client and client.quit()
-        logging.shutdown()
-    atexit.register(shutdown)
-
-    global node_kind
-    node_kind = "REQUESTOR"
-
+    kind = REQUESTING_NODE_KIND
     start_time = time.time()
-    report("Starting in {}".format(datadir))
-    client = create_client(datadir)
-    client.start()
-    report("Started in {:.1f} s".format(time.time() - start_time))
+
+    report(kind, "Starting in {}".format(datadir))
+
+    try:
+        client = create_client(datadir)
+        client.start()
+    except Exception as exc:
+        queue_out.put(exc)
+        return
+
+    report(kind, "Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
-    task.initialize(DirManager(datadir))
-    client.enqueue_new_task(task)
 
-    port = client.p2pservice.cur_port
-    requestor_addr = "{}:{}".format(client.node.prv_addr, port)
-    report("Listening on {}".format(requestor_addr))
+    try:
+        dir_manager = DirManager(datadir)
+        task.initialize(dir_manager)
+        client.enqueue_new_task(task)
+    except Exception as exc:
+        queue_out.put(exc)
+        return
 
-    def report_status():
-        while True:
-            time.sleep(1)
-            if task.finished_computation():
-                report("Task finished")
-                shutdown()
-                return
+    address = SocketAddress(client.node.prv_addr, client.p2pservice.cur_port)
+    queue_out.put(address)
 
-    reactor.callInThread(report_status)
-    reactor.run()
-    return client  # Used in tests, with mocked reactor
+    report(kind, "Listening on {}:{}".format(address.address, address.port))
 
+    from twisted.internet import reactor
+    from twisted.internet import task as twisted_task
 
-def run_computing_node(datadir, peer_address, fail_after=None):
-    client = None
+    def check_status():
+        if task.finished_computation():
+            queue_out.put(MSG_DONE)
+
+        msg = queue_get(queue_in)
+        if msg == MSG_STOP:
+            reactor.callFromThread(reactor.stop)
 
     def shutdown():
-        client and client.quit()
+        client.quit()
         logging.shutdown()
-    atexit.register(shutdown)
 
-    global node_kind
-    node_kind = "COMPUTER "
+    status_task = twisted_task.LoopingCall(check_status)
+    status_task.start(1.)
 
-    start_time = time.time()
-    report("Starting in {}".format(datadir))
-    client = create_client(datadir)
-    client.start()
-    client.task_server.task_computer.support_direct_computation = True
-    report("Started in {:.1f} s".format(time.time() - start_time))
+    reactor.addSystemEventTrigger("before", "shutdown", shutdown)
+    reactor.run()
 
-    class DummyEnvironment(Environment):
-        @classmethod
-        def get_id(cls):
-            return DummyTask.ENVIRONMENT_NAME
 
+def run_computing_node(queue_in, queue_out, datadir, peer_address, fail_after=None):
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
-    client.environments_manager.add_environment(dummy_env)
+    kind = COMPUTING_NODE_KIND
 
-    report("Connecting to requesting node at {}:{} ..."
+    start_time = time.time()
+    report(kind, "Starting in {}".format(datadir))
+
+    try:
+
+        client = create_client(datadir)
+        client.start()
+        client.task_server.task_computer.support_direct_computation = True
+        client.environments_manager.add_environment(dummy_env)
+
+    except Exception as exc:
+        queue_out.put(exc)
+        raise
+
+    report(kind, "Started in {:.1f} s".format(time.time() - start_time))
+    report(kind, "Connecting to requesting node at {}:{} ..."
            .format(peer_address.address, peer_address.port))
-    client.connect(peer_address)
 
-    def report_status(fail_after=None):
-        t0 = time.time()
-        while True:
-            if fail_after and time.time() - t0 > fail_after:
-                report("Failure!")
-                reactor.callFromThread(reactor.stop)
-                shutdown()
-                return
-            time.sleep(1)
+    try:
+        client.connect(peer_address)
+    except Exception as exc:
+        queue_out.put(exc)
+        raise
 
-    reactor.callInThread(report_status, fail_after)
+    from twisted.internet import reactor
+    from twisted.internet import task as twisted_task
+
+    def check_status():
+        msg = queue_get(queue_in)
+        if msg == MSG_STOP:
+            reactor.callFromThread(reactor.stop)
+
+    def fail():
+        queue_out.put(Exception("Timeout"))
+
+    def shutdown():
+        client.quit()
+        logging.shutdown()
+
+    status_task = twisted_task.LoopingCall(check_status)
+    status_task.start(0.5)
+
+    if fail_after:
+        reactor.callLater(fail_after, fail)
+
+    reactor.addSystemEventTrigger("before", "shutdown", shutdown)
     reactor.run()
-    return client  # Used in tests, with mocked reactor
-
-
-# Global var set by a thread monitoring the status of the requestor node
-task_finished = False
 
 
 def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                    node_failure_times=None):
 
-    # We need to pass the PYTHONPATH to the child processes
-    pythonpath = "".join(dir + os.pathsep for dir in sys.path)
-    env = os.environ.copy()
-    env["PYTHONPATH"] = pythonpath
+    setup_logging()
 
-    datadir = tempfile.mkdtemp(prefix='golem_dummy_simulation_')
+    data_dir = tempfile.mkdtemp(prefix='golem_dummy_simulation_')
+    processes = []
 
+    # --- REQUESTOR ---
+
+    req_dir = path.join(data_dir, REQUESTING_NODE_KIND)
+    req_queue_in, req_queue_out = Queue(), Queue()
+
+    req_proc = multiprocessing.Process(
+        target=run_requesting_node,
+        args=(req_queue_out, req_queue_in, req_dir, num_subtasks)
+    )
+    req_proc.start()
+
+    processes.append(req_proc)
+
+    try:
+        req_address = req_queue_in.get(block=True, timeout=60)
+    except Empty:
+        req_address = None
+
+    if not isinstance(req_address, SocketAddress):
+        req_queue_out.put(MSG_STOP)
+        return "Invalid address: {}".format(req_address)
+
+    # --- COMPUTING NODES ---
+
+    comp_queues = []
+
+    def failure_time(_n):
+        if node_failure_times and len(node_failure_times) > _n:
+            return node_failure_times[_n]
+        return None
+
+    for n in xrange(num_computing_nodes):
+
+        comp_dir = path.join(data_dir, COMPUTING_NODE_KIND + str(n))
+        comp_queue_in, comp_queue_out = Queue(), Queue()
+        comp_failure_time = failure_time(n)
+
+        comp_proc = multiprocessing.Process(
+            target=run_computing_node,
+            args=(comp_queue_out, comp_queue_in,
+                  comp_dir, req_address, comp_failure_time)
+        )
+        comp_proc.start()
+
+        processes.append(comp_proc)
+        comp_queues.append((comp_queue_out, comp_queue_in))
+
+    def shutdown():
+        req_queue_out.put(MSG_STOP)
+        for q, _ in comp_queues:
+            q.put(MSG_STOP)
+
+    # Wait until timeout elapses, the task is computed or an exception occurs
+    result = None
     start_time = time.time()
 
-    # Start the requesting node in a separate process
-    reqdir = path.join(datadir, REQUESTING_NODE_KIND)
-    requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks)],
-        bufsize=1,  # line buffered
-        env=env,
-        stdout=subprocess.PIPE)
+    try:
+        while True:
 
-    # Scan the requesting node's stdout for the address
-    address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
-    while True:
-        line = requesting_proc.stdout.readline().strip()
-        if line:
-            print line
-            m = address_re.match(line)
-            if m:
-                requestor_address = m.group(1)
+            req_msg = queue_get(req_queue_in)
+
+            if req_msg == MSG_DONE:
+                result = "Computation finished in {}s".format(time.time() - start_time)
+            elif time.time() - start_time > timeout:
+                result = "Computation timed out after {}s".format(timeout)
+            else:
+                for i, queues in enumerate(comp_queues):
+                    comp_queue = queues[1]
+                    comp_msg = queue_get(comp_queue)
+
+                    if isinstance(comp_msg, Exception):
+                        result = "Node failure [{}]: {}".format(i, comp_msg)
+                    elif comp_msg:
+                        report(COMPUTING_NODE_KIND, "{} reported: {}".format(i, comp_msg))
+            if result:
+                report("RESULT", result)
                 break
 
-    # Start computing nodes in a separate processes
-    computing_procs = []
-    for n in range(0, num_computing_nodes):
-        compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
-        cmdline = [
-            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requestor_address]
-        if node_failure_times and len(node_failure_times) > n:
-            # Simulate failure of a computing node
-            cmdline.append(str(node_failure_times[n]))
-        proc = subprocess.Popen(
-            cmdline,
-            bufsize=1,
-            env=env,
-            stdout=subprocess.PIPE)
-        computing_procs.append(proc)
+            time.sleep(1.)
 
-    all_procs = computing_procs + [requesting_proc]
-    task_finished_status = format_msg(
-        "REQUESTOR", requesting_proc.pid, "Task finished")
-
-    global task_finished
-    task_finished = False
-
-    def monitor_subprocess(proc):
-        global task_finished
-        while proc.returncode is None:
-            line = proc.stdout.readline().strip()
-            if line:
-                print line
-            if line == task_finished_status:
-                task_finished = True
-
-    monitor_threads = [Thread(target=monitor_subprocess,
-                              name="monitor {}".format(p.pid),
-                              args=(p,))
-                       for p in all_procs]
-
-    for th in monitor_threads:
-        th.setDaemon(True)
-        th.start()
-
-    # Wait until timeout elapses or the task is computed
-    try:
-        while not task_finished:
-            if time.time() - start_time > timeout:
-                return "Computation timed out"
-            # Check if all subprocesses are alive
-            for proc in all_procs:
-                if proc.poll() is not None:
-                    return "Node exited with return code {}".format(
-                        proc.returncode)
-            time.sleep(1)
-        return None
+    except KeyboardInterrupt:
+        result = "Test interrupted"
+    except Exception as exc:
+        result = "Exception occurred: {}".format(exc)
     finally:
-        print "Stopping nodes..."
-
-        for proc in all_procs:
-            if proc.poll() is None:
-                proc.kill()
-                proc.wait()
-                del proc
-
-        time.sleep(1)
-        shutil.rmtree(datadir)
-
-
-def dispatch(args):
-    if len(args) == 4 and args[1] == REQUESTING_NODE_KIND:
-        # I'm a requesting node,
-        # second arg is the data dir,
-        # third arg is the number of subtasks.
-        run_requesting_node(args[2], int(args[3]))
-    elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
-        # I'm a computing node,
-        # second arg is the data dir,
-        # third arg is the address to connect to,
-        # forth arg is the timeout (optional).
-        fail_after = float(args[4]) if len(args) == 5 else None
-        run_computing_node(args[2], SocketAddress.parse(args[3]), fail_after=fail_after)
-    elif len(args) == 1:
-        # I'm the main script, run simulation
-        error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
-                                   timeout=120)
-        if error_msg:
-            print "Dummy task computation failed:", error_msg
-            sys.exit(1)
-
-
-if __name__ == "__main__":
-    dispatch(sys.argv)
+        print "Shutting down nodes..."
+        shutdown()
+        for proc in processes:
+            proc.join()
+        shutil.rmtree(data_dir)
+        return result
