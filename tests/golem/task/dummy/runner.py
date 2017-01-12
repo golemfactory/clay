@@ -43,7 +43,6 @@ def override_ip_info(*_, **__):
 
 
 def setup_logging():
-
     setDebugging(True)
     formatter = logging.Formatter('%(asctime)s %(levelname)7s %(module)s - %(message)s')
 
@@ -80,39 +79,44 @@ def create_client(datadir):
 
 def run_requesting_node(queue_in, queue_out, datadir, num_subtasks=3):
     from golem.resource.dirmanager import DirManager
+    from twisted.internet import reactor
+    from twisted.internet import task as twisted_task
 
     kind = REQUESTING_NODE_KIND
-    start_time = time.time()
-
-    report(kind, "Starting in {}".format(datadir))
+    params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
 
     try:
         client = create_client(datadir)
-        client.start()
     except Exception as exc:
         queue_out.put(exc)
         return
 
-    report(kind, "Started in {:.1f} s".format(time.time() - start_time))
-
-    params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks)
+    start_time = time.time()
 
-    try:
-        dir_manager = DirManager(datadir)
-        task.initialize(dir_manager)
-        client.enqueue_new_task(task)
-    except Exception as exc:
-        queue_out.put(exc)
-        return
+    def start():
+        report(kind, "Starting in {}".format(datadir))
 
-    address = SocketAddress(client.node.prv_addr, client.p2pservice.cur_port)
-    queue_out.put(address)
+        try:
+            client.start()
+        except Exception as exc:
+            queue_out.put(exc)
+            return
 
-    report(kind, "Listening on {}:{}".format(address.address, address.port))
+        report(kind, "Started in {:.1f} s".format(time.time() - start_time))
 
-    from twisted.internet import reactor
-    from twisted.internet import task as twisted_task
+        try:
+            dir_manager = DirManager(datadir)
+            task.initialize(dir_manager)
+            client.enqueue_new_task(task)
+        except Exception as exc:
+            queue_out.put(exc)
+            return
+
+        address = SocketAddress(client.node.prv_addr, client.p2pservice.cur_port)
+        queue_out.put(address)
+
+        report(kind, "Listening on {}:{}".format(address.address, address.port))
 
     def check_status():
         if task.finished_computation():
@@ -129,41 +133,46 @@ def run_requesting_node(queue_in, queue_out, datadir, num_subtasks=3):
     status_task = twisted_task.LoopingCall(check_status)
     status_task.start(1.)
 
+    reactor.callWhenRunning(start)
     reactor.addSystemEventTrigger("before", "shutdown", shutdown)
     reactor.run()
 
 
 def run_computing_node(queue_in, queue_out, datadir, peer_address, fail_after=None):
+    from twisted.internet import reactor
+    from twisted.internet import task as twisted_task
+
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
     kind = COMPUTING_NODE_KIND
 
-    start_time = time.time()
-    report(kind, "Starting in {}".format(datadir))
-
     try:
-
         client = create_client(datadir)
-        client.start()
-        client.task_server.task_computer.support_direct_computation = True
-        client.environments_manager.add_environment(dummy_env)
-
     except Exception as exc:
         queue_out.put(exc)
         raise
 
-    report(kind, "Started in {:.1f} s".format(time.time() - start_time))
-    report(kind, "Connecting to requesting node at {}:{} ..."
-           .format(peer_address.address, peer_address.port))
+    def start():
+        start_time = time.time()
+        report(kind, "Starting in {}".format(datadir))
 
-    try:
-        client.connect(peer_address)
-    except Exception as exc:
-        queue_out.put(exc)
-        raise
+        try:
+            client.start()
+            client.task_server.task_computer.support_direct_computation = True
+            client.environments_manager.add_environment(dummy_env)
+        except Exception as exc:
+            queue_out.put(exc)
+            raise
 
-    from twisted.internet import reactor
-    from twisted.internet import task as twisted_task
+        report(kind, "Started in {:.1f} s".format(time.time() - start_time))
+        report(kind, "Connecting to requesting node at {}:{} ..."
+               .format(peer_address.address, peer_address.port))
+
+        try:
+            client.connect(peer_address)
+        except Exception as exc:
+            queue_out.put(exc)
+            raise
 
     def check_status():
         msg = queue_get(queue_in)
@@ -183,6 +192,7 @@ def run_computing_node(queue_in, queue_out, datadir, peer_address, fail_after=No
     if fail_after:
         reactor.callLater(fail_after, fail)
 
+    reactor.callWhenRunning(start)
     reactor.addSystemEventTrigger("before", "shutdown", shutdown)
     reactor.run()
 
