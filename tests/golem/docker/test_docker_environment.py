@@ -11,7 +11,7 @@ class TestDockerEnvironment(DockerTestCase):
     def test_docker_environment(self):
         with self.assertRaises(AttributeError):
             DockerEnvironment(None)
-        de = DockerEnvironment([DockerImage("golem/blender", tag="latest")])
+        de = DockerEnvironment([DockerImage("golemfactory/blender", tag="latest")])
         self.assertTrue(de.supported())
         self.assertTrue(
             de.description().startswith('Default environment for generic tasks without any additional requirements.'))

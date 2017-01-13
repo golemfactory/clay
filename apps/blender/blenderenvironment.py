@@ -3,7 +3,7 @@ from golem.docker.environment import DockerEnvironment
 
 
 class BlenderEnvironment(DockerEnvironment):
-    BLENDER_DOCKER_IMAGE = "golem/blender"
+    BLENDER_DOCKER_IMAGE = "golemfactory/blender"
 
     @classmethod
     def get_id(cls):

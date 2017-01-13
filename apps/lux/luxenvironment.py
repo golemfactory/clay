@@ -3,7 +3,7 @@ from golem.docker.environment import DockerEnvironment
 
 
 class LuxRenderEnvironment(DockerEnvironment):
-    LUXRENDER_DOCKER_IMAGE = "golem/luxrender"
+    LUXRENDER_DOCKER_IMAGE = "golemfactory/luxrender"
 
     @classmethod
     def get_id(cls):

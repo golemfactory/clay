@@ -12,8 +12,8 @@
           "py/object":"golem.docker.image.DockerImage",
           "tag":"latest",
           "id":null,
-          "repository":"golem/blender",
-          "name":"golem/blender:latest"
+          "repository":"golemfactory/blender",
+          "name":"golemfactory/blender:latest"
         }
       ],
       "caps":[],
@@ -48,8 +48,8 @@
       "py/object":"golem.docker.image.DockerImage",
       "tag":"latest",
       "id":null,
-      "repository":"golem/blender",
-      "name":"golem/blender:latest"
+      "repository":"golemfactory/blender",
+      "name":"golemfactory/blender:latest"
     }
   ],
   "resolution":[

@@ -24,8 +24,7 @@ from gui.view.generateui import generate_ui_files
 
 generate_ui_files()
 
-
-def try_building_docker_images():
+def try_docker():
     try:
         subprocess.check_call(["docker", "info"])
     except Exception as err:
@@ -35,7 +34,11 @@ def try_building_docker_images():
               Command 'docker info' returned {}"
               ***************************************************************"
               """.format(err))
-        return
+        return False
+    return True
+
+def try_building_docker_images():
+    try_docker()
     images_dir = 'apps'
     cwd = os.getcwdu()
 
@@ -65,7 +68,29 @@ def try_building_docker_images():
             finally:
                 os.chdir(cwd)
 
-try_building_docker_images()
+def try_pulling_docker_images():
+    try_docker()
+    images_dir = 'apps'
+
+    with open(path.join(images_dir, 'images.ini')) as f:
+        for line in f:
+            try:
+                image, docker_file, tag = line.split()
+                if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
+                    print("\n Image {} exists - skipping".format(image))
+                    continue
+                cmd = "docker pull {}:{}".format(image, tag)
+                print("\nRunning '{}' ...\n".format(cmd))
+                subprocess.check_call(cmd.split(" "))
+            except ValueError:
+                print("Skipping line {}".format(line))
+            except subprocess.CalledProcessError as err:
+                print("Docker pull failed: {}".format(err))
+                sys.exit(1)
+
+
+try_pulling_docker_images()
+#try_building_docker_images()
 
 
 class PyTest(TestCommand):
