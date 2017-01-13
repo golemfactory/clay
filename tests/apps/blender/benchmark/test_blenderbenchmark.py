@@ -6,7 +6,7 @@ from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.benchmark import Benchmark
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager

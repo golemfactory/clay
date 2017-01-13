@@ -16,7 +16,7 @@ from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDi
 from apps.core.gui.verificationparamshelper import (
     load_verification_params, set_verification_widgets_state,
     verification_random_changed, read_advance_verification_params)
-from apps.core.task.gnrtaskstate import GNRTaskDefinition, TaskDesc
+from apps.core.task.coretaskstate import TaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gui.controller.customizer import Customizer
@@ -167,10 +167,10 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.save_task(definition, file_path)
 
     def load_task_definition(self, task_definition):
-        if not isinstance(task_definition, GNRTaskDefinition):
+        if not isinstance(task_definition, TaskDefinition):
             raise TypeError(
                 "Incorrect task definition type: {}. "
-                "Should be GNRTaskDefinition".format(type(task_definition)))
+                "Should be TaskDefinition".format(type(task_definition)))
 
         definition = deepcopy(task_definition)
         self.logic.options = deepcopy(definition.options)

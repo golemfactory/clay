@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
 
 class TestTaskDesc(TestCase):

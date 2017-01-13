@@ -5,7 +5,7 @@ from Queue import Queue
 import jsonpickle
 
 from apps.appsmanager import AppsManager
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult

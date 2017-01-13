@@ -52,14 +52,14 @@ class GUIApp(object):
 
     def __init__(self, rendering):
 
-        from gui.application import GNRGui
+        from gui.application import Gui
 
-        from gui.applicationlogic import GNRApplicationLogic
+        from gui.applicationlogic import GuiApplicationLogic
         from gui.controller.mainwindowcustomizer import MainWindowCustomizer
         from gui.view.appmainwindow import AppMainWindow
 
-        self.logic = GNRApplicationLogic()
-        self.app = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.app = Gui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 MainWindowCustomizer)
 

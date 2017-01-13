@@ -6,8 +6,8 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 
-from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic
+from gui.application import Gui
+from gui.applicationlogic import GuiApplicationLogic
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import AddTaskResourcesDialog
@@ -17,21 +17,21 @@ class TestAddResourcesDialogCustomizer(TestDirFixture):
 
     def setUp(self):
         super(TestAddResourcesDialogCustomizer, self).setUp()
-        self.logic = GNRApplicationLogic()
-        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.gui = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
         super(TestAddResourcesDialogCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 
     def test_add_resource(self):
-        self.gnrgui.show = Mock()
-        self.gnrgui.main_window.show = Mock()
+        self.gui.show = Mock()
+        self.gui.main_window.show = Mock()
         self.logic.client = Mock()
         self.logic.customizer = Mock()
         register_task_types(self.logic)
-        ard = AddTaskResourcesDialog(self.gnrgui.main_window.window)
+        ard = AddTaskResourcesDialog(self.gui.main_window.window)
         ardc = AddResourcesDialogCustomizer(ard, self.logic)
         assert isinstance(ardc, AddResourcesDialogCustomizer)
         assert len(ardc.resources) == 0

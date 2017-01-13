@@ -11,7 +11,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import regenerate_blender_crop_file
-from apps.core.task.gnrtask import TaskTypeInfo
+from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -188,7 +188,7 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         Compute number of subtask that represents pixel (x, y) on preview
         :param int x: x coordinate
         :param int y: y coordiante
-        :param GNRTaskDefintion definition: task definition
+        :param TaskDefintion definition: task definition
         :param int total_subtasks: total number of subtasks used in this task
         :param int output_num: number of final output files
         :return int: subtask's number
@@ -438,7 +438,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_task_preview()
 
     ###################
-    # GNRTask methods #
+    # CoreTask methods #
     ###################
 
     def query_extra_data_for_test_task(self):

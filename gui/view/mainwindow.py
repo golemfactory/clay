@@ -19,7 +19,7 @@ class MainWindow(QMainWindow):
             event.ignore()
 
 
-class GNRMainWindow:
+class GMainWindow:
     def __init__(self):
         self.window = MainWindow()
         self.ui = Ui_MainWindow()

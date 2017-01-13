@@ -125,7 +125,7 @@ p54
 I60
 sS'options'
 p55
-capps.core.task.gnrtaskstate
+capps.core.task.coretaskstate
 Options
 p56
 sS'resources'

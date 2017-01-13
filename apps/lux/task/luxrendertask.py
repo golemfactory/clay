@@ -13,8 +13,8 @@ from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import TaskTypeInfo
-from apps.core.task.gnrtaskstate import Options
+from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
@@ -90,7 +90,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         Compute number of subtask that represents pixel (x, y) on preview
         :param int x: x coordinate
         :param int y: y coordiante
-        :param GNRTaskDefintion definition: task definition
+        :param TaskDefintion definition: task definition
         :param int total_subtasks: total number of subtasks used in this task
         :param int output_num: number of final output files
         :return int: subtask's number
@@ -288,7 +288,7 @@ class LuxTask(RenderingTask):
                 self.__generate_final_flm()
 
     ###################
-    # GNRTask methods #
+    # CoreTask methods #
     ###################
 
     def query_extra_data_for_test_task(self):

@@ -7,8 +7,8 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask
-from apps.core.task.gnrtaskstate import Options
+from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
@@ -129,9 +129,9 @@ class FrameRenderingTask(RenderingTask):
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
-        GNRTask.computation_failed(self, subtask_id)
+        CoreTask.computation_failed(self, subtask_id)
         if self.use_frames:
             self._update_frame_task_preview()
         else:

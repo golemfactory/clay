@@ -9,14 +9,14 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.gui.controller.newtaskdialogcustomizer import (logger, NewTaskDialogCustomizer)
-from apps.core.task.gnrtask import TaskTypeInfo
-from apps.core.task.gnrtaskstate import GNRTaskDefinition, CoreTaskDefaults, Options
+from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretaskstate import TaskDefinition, CoreTaskDefaults, Options
 from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 
-from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic
+from gui.application import Gui
+from gui.applicationlogic import GuiApplicationLogic
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -25,13 +25,13 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
 
     def setUp(self):
         super(TestNewTaskDialogCustomizer, self).setUp()
-        self.logic = GNRApplicationLogic()
-        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.gui = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
         super(TestNewTaskDialogCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 
     def test_customizer(self):
 
@@ -42,12 +42,12 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
 
-        tti = TaskTypeInfo("Nice task", GNRTaskDefinition, CoreTaskDefaults(), Mock(),
+        tti = TaskTypeInfo("Nice task", TaskDefinition, CoreTaskDefaults(), Mock(),
                            Mock(), Mock(), Mock())
         self.logic.register_new_task_type(tti)
-        self.gnrgui.main_window.ui.taskSpecificLayout = Mock()
-        self.gnrgui.main_window.ui.taskSpecificLayout.count.return_value = 2
-        customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
+        self.gui.main_window.ui.taskSpecificLayout = Mock()
+        self.gui.main_window.ui.taskSpecificLayout.count.return_value = 2
+        customizer = NewTaskDialogCustomizer(self.gui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
         assert customizer.gui.ui.showAdvanceNewTaskButton.text() == customizer.SHOW_ADVANCE_BUTTON_MESSAGE[0]
         assert not customizer.gui.ui.advanceNewTaskWidget.isVisible()
@@ -55,7 +55,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         QTest.mouseClick(customizer.gui.ui.showAdvanceNewTaskButton, Qt.LeftButton)
 
         task_name = "Some Nice Task"
-        td = GNRTaskDefinition()
+        td = TaskDefinition()
         td.resources = ["/abc/./def", "/ghi/jik"]
         td.main_program_file = "/a/b/c/"
         td.task_name = task_name
@@ -101,7 +101,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         self.logic.customizer = Mock()
 
         register_task_types(self.logic)
-        customizer = NewTaskDialogCustomizer(self.gnrgui.main_window, self.logic)
+        customizer = NewTaskDialogCustomizer(self.gui.main_window, self.logic)
         self.assertIsInstance(customizer, NewTaskDialogCustomizer)
 
         definition = RenderingTaskDefinition()

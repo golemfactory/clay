@@ -14,7 +14,7 @@ from twisted.internet.defer import inlineCallbacks
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
 
 from gui.controller.customizer import Customizer
@@ -117,7 +117,7 @@ class MainWindowCustomizer(Customizer):
                 pb = layout.itemAt(0).widget()
                 pb.setProperty("value", int(task.task_state.progress * 100.0))
                 if self.task_details_dialog_customizer:
-                    if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
+                    if self.task_details_dialog_customizer.task_desc.definition.task_id == task_id:
                         self.task_details_dialog_customizer.update_view(task.task_state)
                 if task.task_state.status not in [TaskStatus.starting, TaskStatus.notStarted]:
                     self.__update_payment(task_id, i)
@@ -380,10 +380,10 @@ class MainWindowCustomizer(Customizer):
 
         id_item = self.gui.ui.taskTableWidget.item(row, ItemMap.Id)
         task_id = "{}".format(id_item.text())
-        gnr_task_state = self.logic.get_task(task_id)
+        task_desc = self.logic.get_task(task_id)
 
         menu = QMenu()
-        self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, gnr_task_state)
+        self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, task_desc)
         menu.popup(self.gui.ui.taskTableWidget.viewport().mapToGlobal(p))
         menu.exec_()
 

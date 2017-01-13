@@ -11,8 +11,8 @@ from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 from apps.rendering.gui.controller.renderercustomizer import FrameRendererCustomizer
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
-from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic
+from gui.application import Gui
+from gui.applicationlogic import GuiApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
@@ -52,17 +52,17 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
 
     def setUp(self):
         super(TestBlenderRenderDialogCustomizer, self).setUp()
-        self.logic = GNRApplicationLogic()
-        self.gnrgui = GNRGui(Mock(), AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.gui = Gui(Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestBlenderRenderDialogCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 
     @patch("gui.controller.customizer.QMessageBox")
     def test_blender_customizer(self, mock_messagebox):
-        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window,
+        self.logic.customizer = MainWindowCustomizer(self.gui.main_window,
                                                      self.logic)
         self.logic.register_new_task_type(
             BlenderTaskTypeInfo(TaskWidget(Ui_BlenderWidget),

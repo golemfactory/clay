@@ -1,8 +1,8 @@
 from os import path
 
-from apps.core.task.gnrtaskstate import (GNRTaskDefinition,
-                                         AdvanceVerificationOptions,
-                                         CoreTaskDefaults)
+from apps.core.task.coretaskstate import (TaskDefinition,
+                                          AdvanceVerificationOptions,
+                                          CoreTaskDefaults)
 
 
 class RendererDefaults(CoreTaskDefaults):
@@ -12,9 +12,9 @@ class RendererDefaults(CoreTaskDefaults):
         self.resolution = [1920, 1080]
 
 
-class RenderingTaskDefinition(GNRTaskDefinition):
+class RenderingTaskDefinition(TaskDefinition):
     def __init__(self):
-        GNRTaskDefinition.__init__(self)
+        TaskDefinition.__init__(self)
         self.resolution = [0, 0]
         self.renderer = None
         self.options = None
