@@ -25,7 +25,7 @@ from golem.manager.nodestatesnapshot import NodeStateSnapshot
 from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
-from golem.monitorconfig import monitor_config
+from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -45,7 +45,7 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
-logger = logging.getLogger("golem.client")
+log = logging.getLogger("golem.client")
 
 
 class ClientTaskManagerEventListener(TaskManagerEventListener):
@@ -102,7 +102,7 @@ class Client(object):
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
 
-        logger.info('Client "{}", datadir: {}'.format(self.config_desc.node_name, datadir))
+        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
 
         self.p2pservice = None
         self.diag_service = None
@@ -162,10 +162,10 @@ class Client(object):
         self.do_work_task.start(0.1, False)
 
     def start_network(self):
-        logger.info("Starting network ...")
+        log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
-        logger.debug("Is super node? {}".format(self.node.is_super_node()))
+        log.debug("Is super node? %s", self.node.is_super_node())
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
 
@@ -180,18 +180,18 @@ class Client(object):
         self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
-        logger.info("Starting p2p server ...")
+        log.info("Starting p2p server ...")
         self.p2pservice.start_accepting()
         time.sleep(1.0)
 
-        logger.info("Starting resource server...")
+        log.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
 
         self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
 
-        logger.info("Starting task server ...")
+        log.info("Starting task server ...")
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
@@ -205,7 +205,7 @@ class Client(object):
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(metadata, monitor_config)
+        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
@@ -215,8 +215,7 @@ class Client(object):
         if isinstance(socket_address, Iterable):
             socket_address = SocketAddress(socket_address[0], int(socket_address[1]))
 
-        logger.debug("P2pservice connecting to {} on port {}".format(
-                     socket_address.address, socket_address.port))
+        log.debug("P2pservice connecting to %s on port %s", socket_address.address, socket_address.port)
         self.p2pservice.connect(socket_address)
 
     def quit(self):
@@ -684,7 +683,7 @@ class Client(object):
             elif to_float:
                 new_value = float(new_value)
         except ValueError:
-            logger.warning("{} value '{}' is not a number".format(name, new_value))
+            log.warning("%s value '%s' is not a number", name, new_value)
             new_value = old_value
         return new_value
 
@@ -695,24 +694,24 @@ class Client(object):
 
             try:
                 self.p2pservice.sync_network()
-            except Exception as exc:
-                logger.error("p2pservice.sync_network failed: {}".format(exc))
+            except:
+                log.exception("p2pservice.sync_network failed")
             try:
                 self.task_server.sync_network()
-            except Exception as exc:
-                logger.error("task_server.sync_network failed: {}".format(exc))
+            except:
+                log.exception("task_server.sync_network failed")
             try:
                 self.resource_server.sync_network()
-            except Exception as exc:
-                logger.error("resource_server.sync_network failed: {}".format(exc))
+            except:
+                log.exception("resource_server.sync_network failed")
             try:
                 self.ranking.sync_network()
-            except Exception as exc:
-                logger.error("ranking.sync_network failed: {}".format(exc))
+            except:
+                log.exception("ranking.sync_network failed")
             try:
                 self.check_payments()
-            except Exception as exc:
-                logger.error("check_payments failed: {}".format(exc))
+            except:
+                log.exception("check_payments failed")
 
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 if self.monitor:
