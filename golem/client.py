@@ -31,7 +31,7 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking_min_max import Ranking
+from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -317,14 +317,6 @@ class Client(object):
     def delete_task(self, task_id):
         self.task_server.remove_task_header(task_id)
         self.task_server.task_manager.delete_task(task_id)
-
-    @staticmethod
-    def increase_trust(node_id, stat, mod=1.0):
-        Trust(stat).increase(node_id, mod)
-
-    @staticmethod
-    def decrease_trust(node_id, stat, mod=1.0):
-        Trust(stat).decrease(node_id, mod)
 
     def get_node(self):
         return DictSerializer.dump(self.node)
@@ -671,7 +663,7 @@ class Client(object):
             return
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
-            self.decrease_trust(node_id, Trust.PAYMENT)
+            Trust.PAYMENT.decrease(node_id)
 
     def lock_config(self, on=True):
         if self.rpc_publisher:

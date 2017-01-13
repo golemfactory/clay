@@ -177,13 +177,13 @@ class ResourceServer(PendingConnectionsServer):
         if not self.resource_manager.check_resource(resource):
             logger.error("Wrong resource downloaded\n")
             if key_id is not None:
-                self.client.decrease_trust(key_id, Trust.RESOURCE)
+                Trust.RESOURCE.decrease(key_id)
             return
         if key_id is not None:
             # We update ranking after 100 chunks
             self.resource_peers[key_id]['pos_resource'] += 1
             if (self.resource_peers[key_id]['pos_resource'] % 50) == 0:
-                self.client.increase_trust(key_id, Trust.RESOURCE, 50)
+                Trust.RESOURCE.increase(key_id, 50)
         for task_id in self.waiting_resources[resource]:
             self.waiting_tasks_to_compute[task_id] -= 1
             if self.waiting_tasks_to_compute[task_id] == 0:

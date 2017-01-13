@@ -8,7 +8,7 @@ from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
 logger = logging.getLogger(__name__)
 
 
-def increase_positive_computing(node_id, trust_mod):
+def increase_positive_computed(node_id, trust_mod):
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, positive_computed=trust_mod)
@@ -18,7 +18,7 @@ def increase_positive_computing(node_id, trust_mod):
             .where(LocalRank.node_id == node_id).execute()
 
 
-def increase_negative_computing(node_id, trust_mod):
+def increase_negative_computed(node_id, trust_mod):
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, negative_computed=trust_mod)

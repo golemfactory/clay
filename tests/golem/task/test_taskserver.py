@@ -56,7 +56,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertIsNone(ts.request_task())
         self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))
 
-    def test_send_results(self):
+    @patch("golem.task.taskserver.Trust")
+    def test_send_results(self, trust):
         ccd = self.__get_config_desc()
         ccd.min_price = 11
         n = Node()
@@ -94,23 +95,23 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
             ts.subtask_rejected("aabbcc")
         self.assertIsNotNone(ts.task_keeper.task_headers.get("xyz"))
 
-        prev_call_count = ts.client.increase_trust.call_count
+        prev_call_count = trust.PAYMENT.increase.call_count
         with self.assertLogs(logger, level="WARNING"):
             ts.reward_for_subtask_paid("aa2bb2cc")
-        self.assertEqual(ts.client.increase_trust.call_count, prev_call_count)
+        self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
         ts.reward_for_subtask_paid("xxyyzz")
-        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
-        prev_call_count = ts.client.increase_trust.call_count
+        self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
+        prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
-        self.assertGreater(ts.client.increase_trust.call_count, prev_call_count)
-        prev_call_count = ts.client.decrease_trust.call_count
+        self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
+        prev_call_count = trust.PAYMENT.decrease.call_count
         ts.decrease_trust_payment("xyz")
-        self.assertGreater(ts.client.decrease_trust.call_count, prev_call_count)
+        self.assertGreater(trust.PAYMENT.decrease.call_count, prev_call_count)
 
     def test_connection_for_task_request_established(self):
         ccd = self.__get_config_desc()
@@ -211,7 +212,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.sync_network()
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_results(self, mock_addr):
+    @patch("golem.task.taskserver.Trust")
+    def test_results(self, trust, mock_addr):
         mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         ccd = self.__get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
@@ -242,13 +244,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].value, expected_value)
         account_info = Mock()
         account_info.key_id = "key"
-        prev_calls = ts.client.increase_trust.call_count
+        prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", account_info)
         ts.client.transaction_system.add_payment_info.assert_called_with("xyz", "xxyyzz", expected_value, account_info)
-        self.assertGreater(ts.client.increase_trust.call_count, prev_calls)
+        self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_results_no_payment_addr(self, mock_addr):
+    @patch("golem.task.taskserver.Trust")
+    def test_results_no_payment_addr(self, trust, mock_addr):
         mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = self.__get_config_desc()
