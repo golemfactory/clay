@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 ui_*.py
 *.exe
+*.swp
 
 
 #VB files
