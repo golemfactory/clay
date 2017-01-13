@@ -198,14 +198,16 @@ class TestGNRApplicationLogic(DatabaseFixture):
 class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def setUp(self):
-        super(TestGNRApplicationLogicWithClient, self).setUp()
+        DatabaseFixture.setUp(self)
+        LogTestCase.setUp(self)
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False, use_docker_machine_manager=False,
                              use_monitor=False)
 
     def tearDown(self):
         self.client.quit()
-        super(TestGNRApplicationLogicWithClient, self).tearDown()
+        LogTestCase.tearDown(self)
+        DatabaseFixture.tearDown(self)
 
     def test_change_description(self):
         logic = GNRApplicationLogic()
@@ -266,7 +268,8 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
 class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def setUp(self):
-        super(TestGNRApplicationLogicWithGUI, self).setUp()
+        DatabaseFixture.setUp(self)
+        LogTestCase.setUp(self)
         self.client = Client.__new__(Client)
         from threading import Lock
         self.client.lock = Lock()
@@ -275,9 +278,10 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.app = GNRGui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestGNRApplicationLogicWithGUI, self).tearDown()
         self.app.app.exit(0)
         self.app.app.deleteLater()
+        LogTestCase.tearDown(self)
+        DatabaseFixture.tearDown(self)
 
     def test_updating_config_dialog(self):
         logic = self.logic
