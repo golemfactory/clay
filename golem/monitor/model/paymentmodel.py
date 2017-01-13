@@ -1,18 +1,16 @@
 from modelbase import BasicModel
 
 
-class PaymentModel(BasicModel):
-
-    def __init__(self, cliid, sessid, payment_infos):
-        super(PaymentModel, self).__init__("Payment", cliid, sessid)
-
-        self.payment_infos = payment_infos
-
-
-class IncomeModel(BasicModel):
-
+class BasePaymentModel(BasicModel):
     def __init__(self, cliid, sessid, addr, value):
-        super(IncomeModel, self).__init__("Income", cliid, sessid)
-
+        super(BasePaymentModel, self).__init__(self.TYPE, cliid, sessid)
         self.addr = addr
         self.value = value
+
+
+class ExpenditureModel(BasePaymentModel):
+    TYPE = "Expense"
+
+
+class IncomeModel(BasePaymentModel):
+    TYPE = "Income"

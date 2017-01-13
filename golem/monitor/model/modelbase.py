@@ -14,6 +14,7 @@ class ModelBase(object):
 class BasicModel(ModelBase):
 
     def __init__(self, type_str_repr, cliid, sessid):
+        # TODO: use class.TYPE
         self.type = type_str_repr
         self.timestamp = time.time()
         self.cliid = cliid

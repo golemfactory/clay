@@ -19,6 +19,7 @@ from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
+from golem.tools.appveyor import appveyor_skip
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
@@ -198,14 +199,16 @@ class TestGuiApplicationLogic(DatabaseFixture):
 class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def setUp(self):
-        super(TestGuiApplicationLogicWithClient, self).setUp()
+        DatabaseFixture.setUp(self)
+        LogTestCase.setUp(self)
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False, use_docker_machine_manager=False,
                              use_monitor=False)
 
     def tearDown(self):
         self.client.quit()
-        super(TestGuiApplicationLogicWithClient, self).tearDown()
+        LogTestCase.tearDown(self)
+        DatabaseFixture.tearDown(self)
 
     def test_change_description(self):
         logic = GuiApplicationLogic()
@@ -266,7 +269,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
 class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def setUp(self):
-        super(TestGuiApplicationLogicWithGUI, self).setUp()
+        DatabaseFixture.setUp(self)
+        LogTestCase.setUp(self)
         self.client = Client.__new__(Client)
         from threading import Lock
         self.client.lock = Lock()
@@ -275,9 +279,10 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.app = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
-        super(TestGuiApplicationLogicWithGUI, self).tearDown()
         self.app.app.exit(0)
         self.app.app.deleteLater()
+        LogTestCase.tearDown(self)
+        DatabaseFixture.tearDown(self)
 
     def test_updating_config_dialog(self):
         logic = self.logic
@@ -423,6 +428,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
         self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
+    @appveyor_skip
     def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path

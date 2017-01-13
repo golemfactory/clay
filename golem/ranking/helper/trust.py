@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 
 class Trust(Enum):
     COMPUTED = {
-        'increase': dm.increase_positive_computing,
-        'decrease': dm.increase_negative_computing
+        'increase': dm.increase_positive_computed,
+        'decrease': dm.increase_negative_computed
     }
     WRONG_COMPUTED = {
         'decrease': dm.increase_wrong_computed
@@ -32,13 +32,14 @@ class Trust(Enum):
         self.val = val
         self.lock = Lock()
 
-    def increase(self, node_id, mod):
+    def increase(self, node_id, mod=1.0):
         with self.lock:
             try:
                 self.val['increase'](node_id, mod)
             except KeyError:
                 logger.error("Wrong key for stat type {}".format(self.val))
+                raise
 
-    def decrease(self, node_id, mod):
+    def decrease(self, node_id, mod=1.0):
         with self.lock:
             self.val['decrease'](node_id, mod)

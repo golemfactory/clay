@@ -15,7 +15,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
-from golem.resource.client import AsyncRequest, AsyncRequestExecutor
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -677,7 +677,7 @@ class TaskSession(MiddlemanSafeSession):
                                client_options=client_options,
                                key_or_secret=secret)
 
-        return AsyncRequestExecutor.run(request, success=success, error=error)
+        return async_run(request, success=success, error=error)
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}
