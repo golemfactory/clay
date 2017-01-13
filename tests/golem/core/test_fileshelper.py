@@ -7,7 +7,8 @@ import shutil
 import getpass
 
 from golem.core.common import get_golem_path, is_windows
-from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path, du
+from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path, du, \
+                                   find_file_with_ext, copy_file_tree
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -52,10 +53,10 @@ class TestDirSize(TestDirFixture):
 
     def testOuterInnerDir(self):
         path = os.path.join('dir', 'subdir', 'file')
-        assert outer_dir_path(path) == os.path.join('dir', 'file')
-        assert outer_dir_path('file') == 'file'
-        assert outer_dir_path('') == ''
-        assert inner_dir_path(path, 'inner') == os.path.join('dir', 'subdir', 'inner', 'file')
+        self.assertEqual(outer_dir_path(path), os.path.join('dir', 'file'))
+        self.assertEqual(outer_dir_path('file'), 'file')
+        self.assertEqual(outer_dir_path(''), '')
+        self.assertEqual(inner_dir_path(path, 'inner'), os.path.join('dir', 'subdir', 'inner', 'file'))
 
     def testCommonDir(self):
         paths = {
@@ -195,6 +196,9 @@ class TestDirSize(TestDirFixture):
         check('win', ign_case=True)
         check('other', ign_case=False)
 
+        self.assertEqual(common_dir(None), '')
+        self.assertEqual(common_dir(['/var/log']), '')
+
     def tearDown(self):
         if not is_windows():
             if os.path.isdir(self.testdir3):
@@ -240,3 +244,76 @@ class TestDu(TestDirFixture):
         except ValueError:
             size, sym = re.split("[ kKmMgGbB]", res)[:2]
         self.assertGreater(size, 0)
+
+
+class TestFindAndCopy(TestDirFixture):
+    """ Test finding files with extensions and coping file free"""
+
+    def setUp(self):
+        TestDirFixture.setUp(self)
+
+        self.test_dir1 = os.path.join(self.path, "test_dir")
+        self.test_dir2 = os.path.join(self.test_dir1, "test_dir")
+        self.test_file_1 = os.path.join(self.test_dir1, "txt_file_1.txt")
+        self.test_file_2 = os.path.join(self.test_dir1, "txt_file_2.txt")
+        self.test_file_3 = os.path.join(self.test_dir1, "jpg_file_3.jpg")
+        self.test_file_4 = os.path.join(self.test_dir2, "jpg_file_1.jpg")
+        self.test_file_5 = os.path.join(self.test_dir2, "test_file_2.txt2")
+        self.test_file_6 = os.path.join(self.test_dir2, "txt_file_3.txt")
+
+        # create dirs
+        os.makedirs(self.test_dir1, 0o777)
+        os.makedirs(self.test_dir2, 0o777)
+
+        # create files
+        open(self.test_file_1, 'a').close()
+        open(self.test_file_2, 'a').close()
+        open(self.test_file_3, 'a').close()
+        open(self.test_file_4, 'a').close()
+        open(self.test_file_5, 'a').close()
+        open(self.test_file_6, 'a').close()
+
+    def tearDown(self):
+        # clean up
+        os.remove(self.test_file_1)
+        os.remove(self.test_file_2)
+        os.remove(self.test_file_3)
+        os.remove(self.test_file_4)
+        os.remove(self.test_file_5)
+        os.remove(self.test_file_6)
+
+        os.rmdir(self.test_dir2)
+        os.rmdir(self.test_dir1)
+
+    def test_find_file_with_ext(self):
+        """ Test find_file_with_ext method """
+
+        # try to find not existing file
+        self.assertIsNone(find_file_with_ext(self.test_file_6, ['.avi']))
+        # search recursively
+        self.assertTrue(find_file_with_ext(self.test_dir1, ['.txt2']).endswith(".txt2"))
+        # simple search
+        self.assertTrue(find_file_with_ext(self.test_dir2, ['.txt']).endswith(".txt"))
+        # search with multiple patterns
+        file_ = find_file_with_ext(self.test_dir1, ['.txt', '.jpg'])
+        self.assertTrue(file_.endswith(".txt") or file_.endswith(".jpg"))
+        # search with multiple patterns (one is incorrect)
+        self.assertTrue(find_file_with_ext(self.test_dir1, ['.txt', '.incorrect']).endswith(".txt"))
+
+    def test_copy_file_tree(self):
+        """ Test coping file tree without any excludes """
+        copy_path = os.path.join(self.path, "copy_test_dir")
+        copy_file_tree(self.test_dir1, copy_path)
+
+        from filecmp import dircmp
+        dcmp = dircmp(self.test_dir1, copy_path)
+        self.assertEqual(dcmp.left_list, dcmp.right_list)
+
+    def test_copy_file_tree_excludes(self):
+        """ Test coping file tree with excludes """
+        copy_path = os.path.join(self.path, "copy_test_dir")
+        copy_file_tree(self.test_dir2, copy_path)
+
+        from filecmp import dircmp
+        dcmp = dircmp(self.test_dir2, copy_path, ignore=[os.path.basename(self.test_file_5)])
+        self.assertEqual(dcmp.left_list, dcmp.right_list)

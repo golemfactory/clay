@@ -2,7 +2,7 @@ import os
 import errno
 import sys
 from calendar import timegm
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import path
 
 import pytz

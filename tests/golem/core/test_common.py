@@ -36,24 +36,30 @@ class TestHandleAttibuteError(TestCase):
 
 
 class TestConfigLogging(TempDirFixture):
+    """ Test config logger """
+
+    def __init__(self):
+        self.logname = os.path.join(self.path, "dir", "log.txt")
+        self.dirname = os.path.dirname(self.logname)
 
     @patch('logging.config.fileConfig')
-    def test(self, file_config):
+    def test_config_logging_basestring(self, file_config):
+        """ Test config when log file path is encoded as basestring """
 
-        logname = os.path.join(self.path, "dir", "log.txt")
-        dirname = os.path.dirname(logname)
+        config_logging(self.logname)
 
-        config_logging(logname)
-
-        assert os.path.exists(dirname)
+        assert os.path.exists(self.dirname)
         file_config.assert_called_with(ANY,
-                                       defaults={'logname': logname.encode('string-escape')},
+                                       defaults={'logname': self.logname.encode('string-escape')},
                                        disable_existing_loggers=False)
-
         file_config.called = False
 
-        logname_u = unicode(logname)
-        dirname_u = unicode(dirname)
+    @patch('logging.config.fileConfig')
+    def test_config_logging_unicode(self, file_config):
+        """ Test config when log file path is encoded as unicode """
+
+        logname_u = unicode(self.logname)
+        dirname_u = unicode(self.dirname)
 
         config_logging(logname_u)
 
@@ -61,3 +67,5 @@ class TestConfigLogging(TempDirFixture):
         file_config.assert_called_with(ANY,
                                        defaults={'logname': logname_u.encode('unicode-escape')},
                                        disable_existing_loggers=False)
+        file_config.called = False
+
