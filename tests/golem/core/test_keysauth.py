@@ -4,7 +4,7 @@ from random import random, randint
 
 from devp2p.crypto import ECCx
 
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
@@ -12,18 +12,34 @@ from golem.tools.testwithappconfig import TestWithKeysAuth
 
 class KeysAuthTest(TestWithKeysAuth):
 
+    def test_sha(self):
+        """ Test sha2 and sha3 methods """
+        test_str = "qaz123WSX"
+        expected_sha2 = int("0x47b151cede6e6a05140af0da56cb889c40adaf4fddd9f17435cdeb5381be0a62", 16)
+        expected_sha3 = "dcb31d2846f6d2bd2a2b0a6690ac59714c6a47c625c362886123e7f99b6ee3ea"
+        self.assertEqual(sha2(test_str), expected_sha2)
+        self.assertEqual(sha3(test_str).encode('hex'), expected_sha3)
+
     def test_keys_dir_default(self):
         km = KeysAuth(self.path)
         d1 = km.get_keys_dir()
         d2 = km.get_keys_dir()
         self.assertEqual(d1, d2)
 
+    def test_get_difficulty(self):
+        """ Test get_difficulty method """
+        ka = KeysAuth(self.path)
+        difficulty = ka.get_difficulty()
+        self.assertGreaterEqual(difficulty, 0)
+        difficulty = ka.get_difficulty("j_AUzb*?V0?g^f9,uI:hewjOTLdu8jn5$%s'a#\iJ8q's~Pa")
+        self.assertGreaterEqual(difficulty, 0)
+
     def test_keys_dir_default2(self):
         self.assertEqual(KeysAuth(self.path).get_keys_dir(), KeysAuth(self.path).get_keys_dir())
 
     def test_keys_dir_default3(self):
         KeysAuth.get_keys_dir()
-        assert path.isdir(KeysAuth._keys_dir)
+        self.assertTrue(path.isdir(KeysAuth._keys_dir))
 
     def test_keys_dir_setter(self):
         km = KeysAuth(self.path)
@@ -58,16 +74,17 @@ class TestRSAKeysAuth(TestWithKeysAuth):
     # FIXME Fix this test and add encrypt decrypt
     def test_sign_verify(self):
         km = RSAKeysAuth(self.path)
-    #
-    #     data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
-    #     signature = km.sign(data)
-    #     assert km.verify(signature, data)
-    #     assert km.verify(signature, data, km.key_id)
-    #     km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
-    #     assert km2.verify(signature, data, km.key_id)
-    #     data2 = "ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
-    #     signature2 = km2.sign(data2)
-    #     assert km.verify(signature2, data2, km2.key_id)
+
+        # km = RSAKeysAuth(self.path)
+        # data = "abcdefgh\nafjalfa\rtajlajfrlajl\t" * 100
+        # signature = km.sign(data)
+        # assert km.verify(signature, data)
+        # assert km.verify(signature, data, km.key_id)
+        # km2 = RSAKeysAuth(self.path, "PRIVATE2", "PUBLIC2")
+        # assert km2.verify(signature, data, km.key_id)
+        # data2 = "ABBALJL\nafaoawuoauofa\ru0180141mfa\t" * 100
+        # signature2 = km2.sign(data2)
+        # assert km.verify(signature2, data2, km2.key_id)
 
 
 class TestEllipticalKeysAuth(TestWithKeysAuth):

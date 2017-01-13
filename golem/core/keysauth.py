@@ -4,6 +4,7 @@ import os
 from hashlib import sha256
 
 from Crypto.PublicKey import RSA
+from abc import abstractmethod
 from devp2p.crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
 
@@ -100,6 +101,7 @@ class KeysAuth(object):
         """
         return str(public_key)
 
+    @abstractmethod
     def encrypt(self, data, public_key=None):
         """ Encrypt given data
         :param str data: data that should be encrypted
@@ -107,21 +109,20 @@ class KeysAuth(object):
          default public key will be used
         :return str: encrypted data
         """
-        return data
 
+    @abstractmethod
     def decrypt(self, data):
         """ Decrypt given data with default private key
         :param str data: encrypted data
         :return str: decrypted data
         """
-        return data
 
+    @abstractmethod
     def sign(self, data):
         """ Sign given data with default private key
         :param str data: data to be signed
         :return: signed data
         """
-        return data
 
     def verify(self, sig, data, public_key=None):
         """
@@ -134,7 +135,7 @@ class KeysAuth(object):
         """
         return sig == data
 
-    @abc.abstractmethod
+    @abstractmethod
     def load_from_file(self, file_name):
         """ Load private key from given file. If it's proper key, then generate public key and
         save both in default files
@@ -142,7 +143,7 @@ class KeysAuth(object):
         :return bool: information if keys have been changed
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def save_to_files(self, private_key_loc, public_key_loc):
         """ Save current pair of keys in given locations
         :param str private_key_loc: where should private key be saved
@@ -151,7 +152,7 @@ class KeysAuth(object):
         """
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
