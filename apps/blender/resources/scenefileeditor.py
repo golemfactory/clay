@@ -1,16 +1,23 @@
-import re
+from golem.core import common
+from golem.resource import dirmanager
+import os
 
+BLENDER_CROP_TEMPLATE_PATH = dirmanager.find_task_script(os.path.join(common.get_golem_path(), 'apps', 'blender'), "blendercrop.py.template")
+if BLENDER_CROP_TEMPLATE_PATH is None:
+    raise IOError(None, 'Template file not found: %s' % (BLENDER_CROP_TEMPLATE_PATH,), BLENDER_CROP_TEMPLATE_PATH)
 
-def regenerate_blender_crop_file(crop_file_src, xres, yres, min_x, max_x, min_y, max_y, compositing):
-    out = ""
+def generate_blender_crop_file(resolution, borders_x, borders_y, use_compositing):
+    with open(BLENDER_CROP_TEMPLATE_PATH) as f:
+        contents = f.read()
 
-    for l in crop_file_src.splitlines():
-        line = re.sub(r'(resolution_x\s*=)(\s*\d*\s*)', r'\1 {}'.format(xres), l)
-        line = re.sub(r'(resolution_y\s*=)(\s*\d*\s*)', r'\1 {}'.format(yres), line)
-        line = re.sub(r'(border_max_x\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format(max_x), line)
-        line = re.sub(r'(border_min_x\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format(min_x), line)
-        line = re.sub(r'(border_min_y\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format(min_y), line)
-        line = re.sub(r'(border_max_y\s*=)(\s*\d*.\d*\s*)', r'\1 {}'.format(max_y), line)
-        line = re.sub(r'(use_compositing\s*=)(\s*[A-Z,a-z]*\s*)', r'\1 {}'.format(compositing), line)
-        out += line + "\n"
-    return out
+    contents %= {
+        'resolution_x': resolution[0],
+        'resolution_y': resolution[1],
+        'border_min_x': borders_x[0],
+        'border_max_x': borders_x[1],
+        'border_min_y': borders_y[0],
+        'border_max_y': borders_y[1],
+        'use_compositing': use_compositing,
+    }
+
+    return contents

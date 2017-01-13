@@ -9,14 +9,16 @@ from golem.tools.appveyor import appveyor_skip
 @appveyor_skip
 class BlenderEnvTest(unittest.TestCase):
     def test_blender(self):
+        """Basic environment test."""
         env = BlenderEnvironment()
-        assert bool(env.supported()) == bool(env.check_software())
+        self.assertTrue(env.supported())
+        self.assertTrue(env.check_software())
 
     def test_get_performance(self):
+        """Changing estimated performance in ClientConfigDescriptor."""
         env = BlenderEnvironment()
-        perf = 2345.2
+        fake_performance = 2345.2
         cfg_desc = ClientConfigDescriptor()
-        cfg_desc.estimated_blender_performance = perf
+        cfg_desc.estimated_blender_performance = fake_performance
         result = env.get_performance(cfg_desc)
-        self.assertTrue(result == perf)
-
+        self.assertEquals(result, fake_performance)
