@@ -10,7 +10,7 @@ from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.resources.scenefileeditor import regenerate_blender_crop_file
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
@@ -320,13 +320,6 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
-        crop_task = find_task_script(APP_DIR, "blendercrop.py")
-        try:
-            with open(crop_task) as f:
-                self.script_src = f.read()
-        except IOError as err:
-            logger.error("Wrong script file: {}".format(err))
-            self.script_src = ""
 
         self.compositing = compositing
         self.frames_given = {}
@@ -398,8 +391,12 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
-        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, 0.0, 1.0, min_y, max_y,
-                                                  self.compositing)
+        script_src = generate_blender_crop_file(
+            resolution=(self.res_x, self.res_y),
+            borders_x=(0.0, 1.0),
+            borders_y=(min_y, max_y),
+            use_compositing=self.compositing
+        )
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
@@ -453,7 +450,12 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             frames = [1]
 
-        script_src = regenerate_blender_crop_file(self.script_src, 8, 8, 0.0, 1.0, 0.0, 1.0, self.compositing)
+        script_src = generate_blender_crop_file(
+            resolution=(8, 8),
+            borders_x=(0.0, 1.0),
+            borders_y=(0.0, 1.0),
+            use_compositing=self.compositing
+        )
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
@@ -526,8 +528,12 @@ class BlenderRenderTask(FrameRenderingTask):
         start_y = start_box[1] + (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
         max_y = float(self.res_y - start_y) / self.res_y
         min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
-        script_src = regenerate_blender_crop_file(self.script_src, self.res_x, self.res_y, min_x, max_x, min_y, max_y,
-                                                  self.compositing)
+        script_src = generate_blender_crop_file(
+            resolution=(self.res_x, self.res_y),
+            borders_x=(min_x, max_x),
+            borders_y=(min_y, max_y),
+            use_compositing=self.compositing
+        )
         extra_data['script_src'] = script_src
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
