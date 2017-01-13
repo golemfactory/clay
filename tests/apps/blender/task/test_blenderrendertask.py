@@ -16,6 +16,7 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
+from golem.tools.appveyor import appveyor_skip
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -350,7 +351,8 @@ class TestBlenderTask(TempDirFixture):
 
         extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
         assert extra_data.should_wait
-    
+
+    @appveyor_skip
     def test_advanced_verification(self):
         bb = BlenderBenchmark()
         bb.task_definition.verification_options = AdvanceRenderingVerificationOptions()

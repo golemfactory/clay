@@ -23,13 +23,12 @@ class TestIPFSDaemonManager(unittest.TestCase):
         default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.remove_bootstrap_node(default_node, async=False)
-        nodes = dm.list_bootstrap_nodes()
 
         dm.add_bootstrap_node(default_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) > len(nodes)
+        assert default_node in dm.list_bootstrap_nodes()
 
         dm.remove_bootstrap_node(default_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes)
+        assert default_node not in dm.list_bootstrap_nodes()
 
     def testMetadata(self):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
@@ -51,7 +50,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
         node_id = dm.addresses[0].node_id
 
         ipv4 = '127.0.0.1'
-        ipv6 = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'
+        ipv6 = '2001:db8:85a3::8a2e:370:7334'
         port = 40102
 
         meta['ipfs']['addresses'] = [
@@ -60,25 +59,27 @@ class TestIPFSDaemonManager(unittest.TestCase):
         ]
         addrs = [(ipv4, port), (ipv6, port)]
 
-        ip4_node = '/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
-        ip6_node = '/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
+        ip4_node = u'/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
+        ip6_node = u'/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
 
         dm.remove_bootstrap_node(ip4_node, async=False)
         dm.remove_bootstrap_node(ip6_node, async=False)
 
-        nodes = dm.list_bootstrap_nodes()
+        assert ip4_node not in dm.list_bootstrap_nodes()
+        assert ip6_node not in dm.list_bootstrap_nodes()
 
         assert not dm.interpret_metadata(meta, [('1.2.3.4', port)], addrs, async=False)
 
         assert dm.interpret_metadata(meta, [(ipv4, port)], addrs, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 1
+        assert ip4_node in dm.list_bootstrap_nodes()
 
         assert dm.interpret_metadata(meta, [(ipv6, port)], addrs, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes) + 2
 
         dm.remove_bootstrap_node(ip4_node, async=False)
         dm.remove_bootstrap_node(ip6_node, async=False)
-        assert len(dm.list_bootstrap_nodes()) == len(nodes)
+
+        assert ip4_node not in dm.list_bootstrap_nodes()
+        assert ip6_node not in dm.list_bootstrap_nodes()
 
     def testSwarm(self):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)

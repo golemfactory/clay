@@ -2,6 +2,7 @@ import unittest
 
 import mock
 from golem.docker.machine.machine_manager import DockerMachineManager
+from golem.tools.appveyor import appveyor_skip
 
 MACHINE_NAME = 'default'
 
@@ -132,6 +133,7 @@ class MockDockerMachineManager(DockerMachineManager):
         return MACHINE_NAME
 
 
+@appveyor_skip
 class TestDockerMachineManager(unittest.TestCase):
 
     def test_build_config(self):
