@@ -23,11 +23,6 @@ class TestBlenderDockerJob(TestDockerJob):
         with open(task_script) as f:
             task_script_src = f.read()
 
-        # copy the blender script to the resources dir
-        crop_script = find_task_script(app_dir, "blendercrop.py")
-        with open(crop_script, 'r') as src:
-            crop_script_src = src.read()
-
         # copy the scene file to the resources dir
         benchmarks_dir = path.join(get_golem_path(),
                                    path.normpath("apps/blender/benchmark/"))
@@ -40,7 +35,6 @@ class TestBlenderDockerJob(TestDockerJob):
             "outfilebasename": "out",
             "scene_file": DockerJob.RESOURCES_DIR + "/" +
                           path.basename(scene_files[0]),
-            "script_src": crop_script_src,
             "start_task": 42,
             "end_task": 42,
             "output_format": "EXR",
