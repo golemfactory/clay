@@ -1,3 +1,4 @@
+import mock
 from PIL import Image
 
 from apps.core.benchmark.benchmark import Benchmark
@@ -5,46 +6,56 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.testutils import TempDirFixture
 
 
-class TestBlenderBenchmark(TempDirFixture):
-    benchmark = Benchmark()
-    
-    def verify_log_helper(self, file_content):
-        file_ = self.temp_file_name("log.log")
-        fd = open(file_, "w")
-        fd.write(file_content)
-        fd.close()
-        return self.benchmark.verify_log(file_)
-    
-    def test_is_instance(self):
-        self.assertIsInstance(self.benchmark, Benchmark)
-        self.assertIsInstance(self.benchmark.task_definition, RenderingTaskDefinition)
-    
-    def test_query_benchmark_task_definition(self):
-        td = self.benchmark.query_benchmark_task_definition()
-        self.assertIsInstance(td, RenderingTaskDefinition)
-        self.assertTrue(td.max_price == 100)
-        self.assertTrue(td.resolution == [200, 100])
-        self.assertTrue(td.full_task_timeout == 10000)
-        self.assertTrue(td.subtask_timeout == 10000)
-        self.assertFalse(td.optimize_total)
-        self.assertTrue(td.resources == set())
-        self.assertTrue(td.total_tasks == 1)
-        self.assertTrue(td.total_subtasks == 1)
-        self.assertTrue(td.start_task == 1)
-        self.assertTrue(td.end_task == 1)
-        
+class TestBenchmark(TempDirFixture):
+
+    def setUp(self):
+        super(self.__class__, self).setUp()
+        self.benchmark = Benchmark()
+
     def test_verify_img(self):
-        img = Image.new("RGB", (200, 100))
-        file_ = self.temp_file_name("img.png")
-        fd = open(file_, "w")
+        filepath = self.temp_file_name("img.png")
+        fd = open(filepath, "w")
+
+        resolution = self.benchmark.task_definition.resolution
+
+        img = Image.new("RGB", resolution)
         img.save(fd, "PNG")
-        self.assertTrue(self.benchmark.verify_img(file_))
-        img = Image.new("RGB", (201, 100))
+        self.assertTrue(self.benchmark.verify_img(filepath))
+
+        img = Image.new("RGB", (resolution[0]+1, resolution[1]))
         img.save(fd, "PNG")
-        self.assertFalse(self.benchmark.verify_img(file_))
+        self.assertFalse(self.benchmark.verify_img(filepath))
     
     def test_verify_log(self):
+        def verify_log(file_content):
+            filepath = self.temp_file_name("log.log")
+            fd = open(filepath, "w")
+            fd.write(file_content)
+            fd.close()
+            return self.benchmark.verify_log(filepath)
         for fc in ["Error", "ERROR", "error", "blaErRor", "bla ERRor bla"]:
-            self.assertFalse(self.verify_log_helper(fc))
+            self.assertFalse(verify_log(fc))
         for fc in ["123", "erro r", "asd sda", "sad 12 sad;"]:
-            self.assertTrue(self.verify_log_helper(fc))
+            self.assertTrue(verify_log(fc))
+
+    def test_verify_result(self):
+        """Wether verify_result calls correct methods."""
+
+        with mock.patch.multiple(self.benchmark, verify_img=mock.DEFAULT, verify_log=mock.DEFAULT) as mocks:
+            self.assertTrue(self.benchmark.verify_result(['a.txt', 'b.gif']))
+            self.assertEqual(mocks['verify_img'].call_count, 0)
+            self.assertEqual(mocks['verify_log'].call_count, 0)
+
+            for m in mocks.values():
+                m.return_value = True
+            paths = [
+                '/mnt/dummy/image.png',
+                '../important.log',
+            ]
+            self.assertTrue(self.benchmark.verify_result(paths))
+            mocks['verify_img'].assert_called_once_with(paths[0])
+            mocks['verify_log'].assert_called_once_with(paths[1])
+
+    def test_find_resources(self):
+        """Simplistic test of basic implementation."""
+        self.assertEquals(self.benchmark.find_resources(), set())

@@ -431,7 +431,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def run_benchmark(self, benchmark, label, cfg_param_name):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
-        task_state.definition = benchmark.query_benchmark_task_definition()
+        task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
 
         tb = self.get_builder(task_state)

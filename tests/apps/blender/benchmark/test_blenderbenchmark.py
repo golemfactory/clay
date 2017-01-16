@@ -43,7 +43,7 @@ class TestBenchmarkRunner(TempDirFixture):
 
     def test_run(self):
         benchmark = BlenderBenchmark()
-        task_definition = benchmark.query_benchmark_task_definition()
+        task_definition = benchmark.task_definition
 
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
