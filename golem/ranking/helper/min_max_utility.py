@@ -17,7 +17,7 @@ def vec_to_trust(val):
     if val is None:
         return 0.0
     try:
-        a, b = val
+        a, b = [float(x) for x in val]
     except (ValueError, TypeError) as err:
         logger.warning("Wrong trust vector element {}".format(err))
         return None
