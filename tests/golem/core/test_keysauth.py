@@ -107,6 +107,55 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         sig = ek2.sign(data2)
         self.assertTrue(ek.verify(sig, data2, ek2.key_id))
 
+    def test_sign_fail(self):
+        """ Test incorrect signature or data """
+        ek = EllipticalKeysAuth(self.path)
+        data1 = "qaz123WSX./;'[]"
+        data2 = "qaz123WSY./;'[]"
+        sig1 = ek.sign(data1)
+        sig2 = ek.sign(data2)
+        self.assertTrue(ek.verify(sig1, data1))
+        self.assertTrue(ek.verify(sig2, data2))
+        self.assertFalse(ek.verify(sig1, data2))
+        self.assertFalse(ek.verify(sig1, [data1]))
+        self.assertFalse(ek.verify(sig2, None))
+        self.assertFalse(ek.verify(sig2, data1))
+        self.assertFalse(ek.verify(None, data1))
+
+    def test_save_load_keys(self):
+        """ Tests for generating new key pair """
+        from os.path import join
+        from os import chmod, getuid
+        from golem.core.common import is_windows
+        ek = EllipticalKeysAuth(self.path)
+        pub_key_file = join(self.path, "pub.key")
+        priv_key_file = join(self.path, "priv.key")
+        pub_key = ek.get_public_key()
+        priv_key = ek._private_key
+        ek.save_to_files(priv_key_file, pub_key_file)
+        with self.assertRaises(TypeError):
+            ek.generate_new(None)
+        ek.generate_new(5)
+        self.assertNotEqual(ek.get_public_key(), pub_key)
+        self.assertNotEqual(ek._private_key, priv_key)
+        with open(pub_key_file, 'r') as f:
+            self.assertEqual(f.read(), pub_key)
+        with open(priv_key_file, 'r') as f:
+            self.assertEqual(f.read(), priv_key)
+        self.assertTrue(ek.load_from_file(priv_key_file))
+        self.assertEqual(ek.get_public_key(), pub_key)
+        self.assertEqual(ek._private_key, priv_key)
+
+        if not is_windows():
+            if getuid() != 0:
+                priv_key_file = join(self.path, "priv_incorrect.hey")
+                open(priv_key_file, 'w').close()
+                chmod(priv_key_file, 0x700)
+                pub_key_file = join(self.path, "pub_incorrect.hey")
+                open(pub_key_file, 'w').close()
+                chmod(pub_key_file, 0x700)
+                self.assertFalse(ek.save_to_files(priv_key_file, pub_key_file))
+
     def test_fixed_sign_verify(self):
         public_key = "cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb07ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934263cc00ed03f9a781444"
         private_key = "1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee3b4ac6ef078"
@@ -135,35 +184,35 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         dumped_s = CBORSerializer.dumps(signature)
         loaded_s = CBORSerializer.loads(dumped_s)
 
-        assert signature == loaded_s
+        self.assertEqual(signature, loaded_s)
 
         dumped_d = CBORSerializer.dumps(data)
         loaded_d = CBORSerializer.loads(dumped_d)
 
-        assert data == loaded_d
+        self.assertEqual(data, loaded_d)
 
         dumped_k = CBORSerializer.dumps(ek.key_id)
         loaded_k = CBORSerializer.loads(dumped_k)
 
-        assert ek.key_id == loaded_k
-        assert ek.verify(loaded_s, loaded_d, ek.key_id)
+        self.assertEqual(ek.key_id, loaded_k)
+        self.assertTrue(ek.verify(loaded_s, loaded_d, ek.key_id))
 
         src = [1000, signature, time.time(), msg.dict_repr()]
         dumped_l = CBORSerializer.dumps(src)
         loaded_l = CBORSerializer.loads(dumped_l)
 
-        assert src == loaded_l
-        assert signature == loaded_l[1]
+        self.assertEqual(src, loaded_l)
+        self.assertEqual(signature, loaded_l[1])
 
         msg_2 = MessageWantToComputeTask(dict_repr=loaded_l[3])
 
-        assert msg.get_short_hash() == msg_2.get_short_hash()
-        assert ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id)
+        self.assertEqual(msg.get_short_hash(), msg_2.get_short_hash())
+        self.assertTrue(ek.verify(loaded_l[1], msg_2.get_short_hash(), ek.key_id))
 
-        assert type(loaded_l[1]) == type(expected_result)
+        self.assertEqual(type(loaded_l[1]), type(expected_result))
         print loaded_l
         print expected_result
-        assert loaded_l[1] == expected_result.decode('hex')
+        self.assertEqual(loaded_l[1], expected_result.decode('hex'))
 
     def test_encrypt_decrypt(self):
         ek = EllipticalKeysAuth(path.join(self.path, str(random())))

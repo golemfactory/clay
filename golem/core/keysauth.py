@@ -431,7 +431,10 @@ class EllipticalKeysAuth(KeysAuth):
     def generate_new(self, difficulty):
         """ Generate new pair of keys with given difficulty
         :param int difficulty: desired key difficulty level
+        :raise TypeError: in case of incorrect @difficulty type
         """
+        if not isinstance(difficulty, int):
+            raise TypeError("Incorrect 'difficulty' type: {}".format(type(difficulty)))
         min_hash = self._count_min_hash(difficulty)
         priv_key = mk_privkey(str(get_random_float()))
         pub_key = privtopub(priv_key)
