@@ -63,6 +63,15 @@ class TestBenchmark(TempDirFixture):
             mocks['verify_img'].assert_called_once_with(paths[0])
             mocks['verify_log'].assert_called_once_with(paths[1])
 
+            for m in mocks.values():
+                m.reset_mock()
+                m.return_value = False
+
+            self.assertFalse(self.benchmark.verify_result([paths[0]]))
+            self.assertFalse(self.benchmark.verify_result([paths[1]]))
+            mocks['verify_img'].assert_called_once_with(paths[0])
+            mocks['verify_log'].assert_called_once_with(paths[1])
+
     def test_find_resources(self):
         """Simplistic test of basic implementation."""
         self.assertEquals(self.benchmark.find_resources(), set())
