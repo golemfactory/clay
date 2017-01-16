@@ -15,7 +15,7 @@ from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, Re
     ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 SHA1_BLOCK_SIZE = 65536
@@ -229,7 +229,7 @@ class ClientHandler(IClientHandler):
     @staticmethod
     def _async_call(method, success, error, *args, **kwargs):
         call = AsyncRequest(method, *args, **kwargs)
-        AsyncRequestExecutor.run(call, success, error)
+        async_run(call, success, error)
 
     @staticmethod
     def _exception_type(exc):
@@ -251,17 +251,17 @@ class AsyncRequest(object):
         self.kwargs = kwargs if kwargs else {}
 
 
-class AsyncRequestExecutor(object):
+def default_errback(failure):
+    log.error('Caught async exception:\n%s', failure.getTraceback())
 
-    """ Execute a deferred job in a separate thread (Twisted) """
-
-    @staticmethod
-    def run(deferred_call, success=None, error=None):
-        deferred = threads.deferToThread(deferred_call.method,
-                                         *deferred_call.args,
-                                         **deferred_call.kwargs)
-        if success:
-            deferred.addCallback(success)
-        if error:
-            deferred.addErrback(error)
-        return deferred
+def async_run(deferred_call, success=None, error=None):
+    """Execute a deferred job in a separate thread (Twisted)"""
+    deferred = threads.deferToThread(deferred_call.method,
+                                     *deferred_call.args,
+                                     **deferred_call.kwargs)
+    if error is None:
+        error = default_errback
+    if success:
+        deferred.addCallback(success)
+    deferred.addErrback(error)
+    return deferred

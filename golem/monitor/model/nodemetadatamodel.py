@@ -1,5 +1,5 @@
+from golem.monitor.serialization import defaultserializer
 from modelbase import BasicModel
-from golem.monitor.serialization.defaultserializer import DefaultSerializer
 
 
 class NodeMetadataModel(BasicModel):
@@ -10,7 +10,7 @@ class NodeMetadataModel(BasicModel):
         self.os = os
         self.version = ver
         self.description = description
-        self.settings = DefaultSerializer.serialize("ClientConfigDescriptor", settings)
+        self.settings = defaultserializer.serialize("ClientConfigDescriptor", settings)
 
 
 class NodeInfoModel(BasicModel):

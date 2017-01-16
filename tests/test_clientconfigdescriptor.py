@@ -1,5 +1,4 @@
 from unittest import TestCase
-
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 

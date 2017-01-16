@@ -9,7 +9,7 @@ from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
 from golem.resource.client import ClientHandler, ClientCommands, ClientError, ClientOptions, ClientConfig, AsyncRequest, \
-    AsyncRequestExecutor
+    async_run
 
 
 class MockClientHandler(ClientHandler):
@@ -108,14 +108,14 @@ class TestAsyncRequest(TestWithReactor):
 
         done[0] = False
         method.called = False
-        AsyncRequestExecutor.run(req, success, error)
+        async_run(req, success, error)
         time.sleep(1)
 
         assert method.called
 
         done[0] = False
         method.called = False
-        AsyncRequestExecutor.run(req)
+        async_run(req)
         time.sleep(1)
 
         assert method.called

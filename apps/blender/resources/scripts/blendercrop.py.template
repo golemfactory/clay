@@ -1,0 +1,24 @@
+# This template is rendered by apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
+# written to tempfile and passed as arg to blender.
+import bpy
+
+for scene in bpy.data.scenes:
+
+    scene.render.tile_x = 0
+    scene.render.tile_y = 0
+    scene.render.resolution_x = %(resolution_x)d
+    scene.render.resolution_y = %(resolution_y)d
+    scene.render.resolution_percentage = 100
+    scene.render.use_border = True
+    scene.render.use_crop_to_border = True
+    scene.render.border_max_x = %(border_max_x).3f
+    scene.render.border_min_x = %(border_min_x).3f
+    scene.render.border_min_y = %(border_min_y).3f
+    scene.render.border_max_y = %(border_max_y).3f
+    scene.render.use_compositing = bool(%(use_compositing)r)
+
+#then render:
+bpy.ops.render.render()
+
+#and check if additional files aren't missing
+bpy.ops.file.report_missing_files()

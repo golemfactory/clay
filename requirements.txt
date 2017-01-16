@@ -33,6 +33,7 @@ tabulate
 PyYAML>=3.12
 crossbar
 jsonpickle
+pydispatcher
 devp2p>=0.5.1
 scrypt
 packaging
