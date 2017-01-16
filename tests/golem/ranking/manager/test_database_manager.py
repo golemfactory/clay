@@ -1,6 +1,7 @@
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager import database_manager as dm
 from golem.testutils import DatabaseFixture
+from mock import patch
 
 
 class TestDatabaseManager(DatabaseFixture):
@@ -12,6 +13,7 @@ class TestDatabaseManager(DatabaseFixture):
         PAYMENT increase, decrease;
         and RESOURCE increase, decrease
         using database_manager methods as well as Trust enums.
+        Should create two nodes: alpha and beta.
         """
         cases = (
             # COMPUTED increase
@@ -247,7 +249,62 @@ class TestDatabaseManager(DatabaseFixture):
             self.assertAlmostEqual(getattr(dm.get_local_rank(case['node_name']), case['attribute']), case['total'],
                                    7, "Test no. " + case['test_no'] + " failed.")
 
-    def test_should_throw_exception(self):
-        """Should throw exception for WRONG_COMPUTED increase."""
+        for node in dm.get_local_rank_for_all():
+            self.assertTrue(node.node_id in ['alpha', 'beta'])
+
+    def test_should_throw_exception_for_wrong_computed_increase(self):
+        """Should throw exception when WRONG_COMPUTED is being increased."""
         with self.assertRaises(KeyError):
             Trust.WRONG_COMPUTED.increase('alpha', 0.3)
+
+    def test_should_insert_and_update_global_rank(self):
+        """Should insert and update global rank for alpha and beta nodes."""
+        self.assertIsNone(dm.get_global_rank("alpha"))
+
+        dm.upsert_global_rank("alpha", 0.3, 0.2, 1.0, 1.0)
+        dm.upsert_global_rank("beta", -0.1, -0.2, 0.9, 0.8)
+        dm.upsert_global_rank("alpha", 0.4, 0.1, 0.8, 0.7)
+
+        gr = dm.get_global_rank("alpha")
+        self.assertEqual(gr.computing_trust_value, 0.4)
+        self.assertEqual(gr.requesting_trust_value, 0.1)
+        self.assertEqual(gr.gossip_weight_computing, 0.8)
+        self.assertEqual(gr.gossip_weight_requesting, 0.7)
+
+        gr = dm.get_global_rank("beta")
+        self.assertEqual(gr.computing_trust_value, -0.1)
+        self.assertEqual(gr.requesting_trust_value, -0.2)
+        self.assertEqual(gr.gossip_weight_computing, 0.9)
+        self.assertEqual(gr.gossip_weight_requesting, 0.8)
+
+    @patch("logging.Logger.warning")
+    def test_should_insert_and_update_neighbour_rank(self, log):
+        """Should insert and update neighbour local rank for alpha and beta nodes.
+        Should be resistant for update by the a node itself."""
+        dm.upsert_neighbour_loc_rank("alpha", "alpha", (0.5, -0.2))
+        log.assert_called_with("Removing alpha self trust")
+
+        self.assertIsNone(dm.get_neighbour_loc_rank("alpha", "beta"))
+
+        dm.upsert_neighbour_loc_rank("alpha", "beta", (0.2, 0.3))
+        nr = dm.get_neighbour_loc_rank("alpha", "beta")
+        self.assertEqual(nr.node_id, "alpha")
+        self.assertEqual(nr.about_node_id, "beta")
+        self.assertEqual(nr.computing_trust_value, 0.2)
+        self.assertEqual(nr.requesting_trust_value, 0.3)
+
+        dm.upsert_neighbour_loc_rank("beta", "alpha", (0.5, -0.2))
+        dm.upsert_neighbour_loc_rank("alpha", "beta", (-0.3, 0.9))
+        nr = dm.get_neighbour_loc_rank("alpha", "beta")
+        self.assertEqual(nr.node_id, "alpha")
+        self.assertEqual(nr.about_node_id, "beta")
+        self.assertEqual(nr.computing_trust_value, -0.3)
+        self.assertEqual(nr.requesting_trust_value, 0.9)
+        nr = dm.get_neighbour_loc_rank("beta", "alpha")
+        self.assertEqual(nr.node_id, "beta")
+        self.assertEqual(nr.about_node_id, "alpha")
+        self.assertEqual(nr.computing_trust_value, 0.5)
+        self.assertEqual(nr.requesting_trust_value, -0.2)
+
+        dm.upsert_neighbour_loc_rank("alpha", "alpha", (0.5, -0.2))
+        log.assert_called_with("Removing alpha self trust")

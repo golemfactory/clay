@@ -58,43 +58,6 @@ class TestRankingDatabase(TestWithDatabase):
         self.assertEqual(lr.positive_resource, 7)
         self.assertEqual(lr.negative_resource, 0.4)
 
-    def test_global_rank(self):
-        self.assertIsNone(dm.get_global_rank("ABC"))
-        dm.upsert_global_rank("ABC", 0.3, 0.2, 1.0, 1.0)
-        dm.upsert_global_rank("DEF", -0.1, -0.2, 0.9, 0.8)
-        dm.upsert_global_rank("ABC", 0.4, 0.1, 0.8, 0.7)
-        gr = dm.get_global_rank("ABC")
-        self.assertEqual(gr.computing_trust_value, 0.4)
-        self.assertEqual(gr.requesting_trust_value, 0.1)
-        self.assertEqual(gr.gossip_weight_computing, 0.8)
-        self.assertEqual(gr.gossip_weight_requesting, 0.7)
-        gr = dm.get_global_rank("DEF")
-        self.assertEqual(gr.computing_trust_value, -0.1)
-        self.assertEqual(gr.requesting_trust_value, -0.2)
-        self.assertEqual(gr.gossip_weight_computing, 0.9)
-        self.assertEqual(gr.gossip_weight_requesting, 0.8)
-
-    def test_neighbour_rank(self):
-        self.assertIsNone(dm.get_neighbour_loc_rank("ABC", "DEF"))
-        dm.upsert_neighbour_loc_rank("ABC", "DEF", (0.2, 0.3))
-        nr = dm.get_neighbour_loc_rank("ABC", "DEF")
-        self.assertEqual(nr.node_id, "ABC")
-        self.assertEqual(nr.about_node_id, "DEF")
-        self.assertEqual(nr.computing_trust_value, 0.2)
-        self.assertEqual(nr.requesting_trust_value, 0.3)
-        dm.upsert_neighbour_loc_rank("DEF", "ABC", (0.5, -0.2))
-        dm.upsert_neighbour_loc_rank("ABC", "DEF", (-0.3, 0.9))
-        nr = dm.get_neighbour_loc_rank("ABC", "DEF")
-        self.assertEqual(nr.node_id, "ABC")
-        self.assertEqual(nr.about_node_id, "DEF")
-        self.assertEqual(nr.computing_trust_value, -0.3)
-        self.assertEqual(nr.requesting_trust_value, 0.9)
-        nr = dm.get_neighbour_loc_rank("DEF", "ABC")
-        self.assertEqual(nr.node_id, "DEF")
-        self.assertEqual(nr.about_node_id, "ABC")
-        self.assertEqual(nr.computing_trust_value, 0.5)
-        self.assertEqual(nr.requesting_trust_value, -0.2)
-
 
 class TestRanking(TestWithDatabase, LogTestCase):
 
