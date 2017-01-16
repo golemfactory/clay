@@ -6,7 +6,7 @@ import unittest
 from mock import Mock, patch, ANY, call
 
 from golem.network.transport.message import MessageWantToComputeTask
-from golem.task.contest import ContestManager, Contender, Contest, WINNER_LIFETIME, median
+from golem.task.contest import ContestManager, Contender, Contest, median
 from golem.task.taskclient import TaskClient
 
 
@@ -255,7 +255,8 @@ class TestContestManager(unittest.TestCase):
 
         self.tasks = {}
         self.contest_duration = 3
-        self.contest_manager = ContestManager(self.tasks, self.contest_duration)
+        self.contest_manager = ContestManager(self.tasks,
+                                              self.contest_duration)
 
     def test_add_remove_contender(self):
 

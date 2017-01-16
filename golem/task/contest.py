@@ -11,12 +11,11 @@ from golem.core.common import HandleKeyError
 logger = logging.getLogger(__name__)
 
 
-CONTENDER_LIFETIME = 30  # s
-WINNER_LIFETIME = 10  # s
+CONTENDER_LIFETIME = 30  # How many seconds should contender offer be valid
 
-WINDOW_SIZE_DEFAULT = 8  # s
-WINDOW_SIZE_MIN = 0.5  # s
-WINDOW_SIZE_MAX = 16  # s
+WINDOW_SIZE_DEFAULT = 8  # s Default contest duration length
+WINDOW_SIZE_MIN = 0.5  # s Minium contest duration length
+WINDOW_SIZE_MAX = 16  # s Maximum contest duration length
 WINDOW_SIZE_INCREASE_FACTOR = 0.75  # divisor
 
 
@@ -33,13 +32,22 @@ def sigmoid(x):
 
 
 class Contender(object):
+    """ Representation of provider's offer for specific task """
 
     _sigmoid_0 = sigmoid(0.)
     _sigmoid_1 = sigmoid(1.)
 
-    def __init__(self, id, session, request_message, computing_trust=-1.0, lifetime=CONTENDER_LIFETIME):
-
-        self.id = id
+    def __init__(self, contender_id, session, request_message,
+                 computing_trust=-1.0, lifetime=CONTENDER_LIFETIME):
+        """
+        Create new contender instace
+        :param str contender_id: if of a provider
+        :param TaskSession session: session kept with this contender
+        :param MessageWantToComputeTask request_message: message that this contender sent
+        :param float computing_trust: how much do we trust this contender
+        :param float|int lifetime: for how many seconds should this offer be valid
+        """
+        self.id = contender_id
         self.score = -1.0
         self._session = weakref.ref(session)
 
@@ -75,9 +83,15 @@ class Contender(object):
         return self._session()
 
     def is_old(self):
+        """
+        Return True if this offer is no longer valid, False otherwise
+        :return bool:
+        """
         return self.created + self.lifetime < time.time()
 
-    def update_score(self, task_client, total_subtasks, ref_performance, ref_price, perf_to_price=0.5):
+    def update_score(self, task_client, total_subtasks, ref_performance,
+                     ref_price, perf_to_price=0.5):
+
 
         total_subtasks = float(max(total_subtasks, 1))
         ref_performance = float(max(ref_performance, 1))
@@ -110,13 +124,21 @@ class Contender(object):
         self.score = self.reputation + perf_score + price_score + sub_score - point_zero
 
         logger.debug("Score: rep[{}] + perf[{}] + price[{}] + sub[{}] - {} = {} ({})"
-                     .format(self.reputation, perf_score, price_score, sub_score, point_zero, self.score, self.id))
+                     .format(self.reputation, perf_score, price_score, sub_score, point_zero,
+                             self.score, self.id))
 
 
 class Contest(object):
+    """ Contest for a given task, that should allow to choose the set of best providers
+    """
 
     def __init__(self, task, min_score, perf_to_price=0.5):
-
+        """
+        Create a new Contestst instance
+        :param Task task:
+        :param float min_score: minimum score needed for provider to be chosen
+        :param float perf_to_price: provider's performance to provider's price importance ratio
+        """
         self.task = task
         self.total_subtasks = task.get_total_tasks()
         self.min_score = min_score
@@ -134,9 +156,25 @@ class Contest(object):
         self.new_round()
 
     def get_contender(self, contender_id):
+        """
+        Return contender
+        :param str contender_id: id of a contender
+        :return Contender | None:
+        """
         return self.contenders.get(contender_id)
 
-    def add_contender(self, contender_id, session, request_message, computing_trust, lifetime=CONTENDER_LIFETIME):
+    def add_contender(self, contender_id, session, request_message, computing_trust,
+                      lifetime=CONTENDER_LIFETIME):
+        """
+        Add a new provider to the contest. Update scores for all contenders.
+        If provider already was in this contest - do nothing.
+        :param str contender_id: if of a provider
+        :param TaskSession session: session kept with this contender
+        :param MessageWantToComputeTask request_message: message that this contender sent
+        :param float computing_trust: How much do we trust this contender?
+        :param flaot|int lifetime: How long is this offer valid?
+        :return:
+        """
         if contender_id not in self.contenders:
             with self._lock:
                 self.contenders[contender_id] = Contender(contender_id, session, request_message,
@@ -144,6 +182,12 @@ class Contest(object):
                 self._rank_contenders()
 
     def remove_contender(self, contender_id):
+        """
+        Remove provider from the contest. Update scores for all contenders.
+         If he wasn't in the contest, do nothing.
+        :param str contender_id: id of a provider
+        :return:
+        """
         with self._lock:
             removed = self.contenders.pop(contender_id, None)
             if removed:
@@ -161,7 +205,6 @@ class Contest(object):
         return self._cleanup_contenders()
 
     def _rank_contenders(self):
-
         ranks = list()
         performances = [c.performance for c in self.contenders.itervalues()]
         median_perf = median(performances) or 1.  # a reference level value; could be min or max
@@ -206,7 +249,15 @@ class ContestManager(object):
 
     handle_key_error = HandleKeyError(_log_key_error)
 
-    def __init__(self, tasks, contest_duration, min_score=0.0):
+    def __init__(self, tasks, contest_duration=WINDOW_SIZE_DEFAULT,
+                 min_score=0.0):
+        """
+        Create new Contest Manager instance
+        :param dict tasks: dictionary with existing tasks: key - task_id (str),
+        value - Task.
+        :param float|int contest_duration: contest duration in seconds
+        :param float min_score: minimum score needed to accept provider
+        """
 
         self.contest_duration = contest_duration
         self.min_score = min_score
@@ -219,6 +270,18 @@ class ContestManager(object):
         self._reactor = None
 
     def add_contender(self, task_id, contender_id, session, request_message, computing_trust):
+        """
+        Add information about new provider that wants to compute task. If
+        the contest for given tasks wasn't created before, create it and add
+        callLater method to check results.
+        :param str task_id: id of task that given provider want to compute
+        :param str contender_id: id of a provider
+        :param TaskSession session: session with given provider
+        :param MessageWantToComputeTask request_message: message that provider
+         sent
+        :param float computing_trust: How much do we trust this provider?
+        :return:
+        """
 
         task = self._tasks.get(task_id)
         create = task_id not in self._contests
@@ -226,7 +289,8 @@ class ContestManager(object):
         if create:
             self._contests[task_id] = Contest(task, self.min_score)
 
-        self._contests[task_id].add_contender(contender_id, session, request_message, computing_trust)
+        self._contests[task_id].add_contender(contender_id, session, request_message,
+                                              computing_trust)
 
         if create:
             self._check_later(task_id, timeout=self.contest_duration)

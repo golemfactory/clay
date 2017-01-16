@@ -65,7 +65,7 @@ class TaskManager(TaskEventListener):
         resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
                                                          resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
-        self.contest_manager = ContestManager(self.tasks, contest_duration=3)
+        self.contest_manager = ContestManager(self.tasks)
 
         self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
