@@ -38,14 +38,12 @@ class TestHandleAttibuteError(TestCase):
 class TestConfigLogging(TempDirFixture):
     """ Test config logger """
 
-    def __init__(self):
-        self.logname = os.path.join(self.path, "dir", "log.txt")
-        self.dirname = os.path.dirname(self.logname)
-
     @patch('logging.config.fileConfig')
     def test_config_logging_basestring(self, file_config):
         """ Test config when log file path is encoded as basestring """
 
+        self.logname = os.path.join(self.path, "dir", "log.txt")
+        self.dirname = os.path.dirname(self.logname)
         config_logging(self.logname)
 
         assert os.path.exists(self.dirname)
@@ -58,6 +56,8 @@ class TestConfigLogging(TempDirFixture):
     def test_config_logging_unicode(self, file_config):
         """ Test config when log file path is encoded as unicode """
 
+        self.logname = os.path.join(self.path, "dir", "log.txt")
+        self.dirname = os.path.dirname(self.logname)
         logname_u = unicode(self.logname)
         dirname_u = unicode(self.dirname)
 

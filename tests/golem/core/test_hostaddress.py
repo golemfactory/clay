@@ -92,7 +92,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
-        address, port, nat = get_external_address(22)
+        address, port, nat = get_external_address(9876)
         self.assertTrue(is_ip_address(address, True, True), "Incorrect IP address: {}".format(address))
         self.assertIsInstance(port, int, "Incorrect port type")
         self.assertTrue(0 < port < 65535, "Incorrect port number")
