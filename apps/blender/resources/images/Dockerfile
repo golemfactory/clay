@@ -2,7 +2,7 @@
 # Blender setup is based on
 # https://github.com/ikester/blender-docker/blob/master/Dockerfile
 
-FROM golem/base
+FROM golemfactory/base
 
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 

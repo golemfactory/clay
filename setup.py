@@ -24,6 +24,7 @@ from gui.view.generateui import generate_ui_files
 
 generate_ui_files()
 
+
 def try_docker():
     try:
         subprocess.check_call(["docker", "info"])

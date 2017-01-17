@@ -1,6 +1,6 @@
 # Dockerfile for tasks requiring LuxRender.
 
-FROM golem/base
+FROM golemfactory/base
 
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
