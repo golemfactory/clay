@@ -1,9 +1,10 @@
 import os
 from unittest import TestCase
 
+from mock import patch, ANY
+
 from golem.core.common import HandleKeyError, HandleAttributeError, config_logging
 from golem.testutils import TempDirFixture
-from mock import patch, ANY
 
 
 def handle_error(*args, **kwargs):

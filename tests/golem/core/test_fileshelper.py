@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import getpass
 import os
 import re
 import shutil
-import getpass
 
 from golem.core.common import get_golem_path, is_windows
 from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path, du, \
