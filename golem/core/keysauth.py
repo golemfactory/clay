@@ -4,6 +4,9 @@ import os
 from hashlib import sha256
 
 from Crypto.PublicKey import RSA
+from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
+from Crypto.Hash import SHA256
+from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
 from devp2p.crypto import mk_privkey, privtopub, ECCx
 from sha3 import sha3_256
@@ -167,8 +170,8 @@ class KeysAuth(object):
             if datadir is None:
                 datadir = get_local_datadir('default')
             cls._keys_dir = os.path.join(datadir, 'keys')
-            if not os.path.isdir(cls._keys_dir):
-                os.makedirs(cls._keys_dir)
+        if not os.path.isdir(cls._keys_dir):
+            os.makedirs(cls._keys_dir)
         return cls._keys_dir
 
     @classmethod
@@ -220,21 +223,24 @@ class RSAKeysAuth(KeysAuth):
         """
         if public_key is None:
             public_key = self.public_key
-        return public_key.encrypt(data, 32)
+        return PKCS1_OAEP.new(public_key).encrypt(data)
 
     def decrypt(self, data):
         """ Decrypt given data with RSA
         :param str data: encrypted data
         :return str: decrypted data
         """
-        return self._private_key.decrypt(data)
+        return PKCS1_OAEP.new(self._private_key).decrypt(data)
 
     def sign(self, data):
         """ Sign given data with RSA
         :param str data: data to be signed
         :return: signed data
         """
-        return self._private_key.sign(data, '')
+        scheme = PKCS115_SigScheme(self._private_key)
+        if scheme.can_sign():
+            return scheme.sign(SHA256.new(data))
+        raise RuntimeError("Cannot sign data")
 
     def verify(self, sig, data, public_key=None):
         """
@@ -248,7 +254,8 @@ class RSAKeysAuth(KeysAuth):
         if public_key is None:
             public_key = self.public_key
         try:
-            return public_key.verify(data, sig)
+            PKCS115_SigScheme(public_key).verify(SHA256.new(data), sig)
+            return True
         except Exception as exc:
             logger.error("Cannot verify signature: {}".format(exc))
         return False
@@ -259,16 +266,19 @@ class RSAKeysAuth(KeysAuth):
         """
         min_hash = self._count_min_hash(difficulty)
         priv_key = RSA.generate(2048)
-        pub_key = priv_key.publickey()
+        pub_key = str(priv_key.publickey().n)
         while sha2(pub_key) > min_hash:
             priv_key = RSA.generate(2048)
-            pub_key = priv_key.publickey()
+            pub_key = str(priv_key.publickey().n)
+        pub_key = priv_key.publickey()
         priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
         pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
         with open(priv_key_loc, 'w') as f:
             f.write(priv_key.exportKey('PEM'))
         with open(pub_key_loc, 'w') as f:
             f.write(pub_key.exportKey())
+        self.public_key = pub_key.exportKey()
+        self._private_key = priv_key.exportKey('PEM')
 
     def load_from_file(self, file_name):
         """ Load private key from given file. If it's proper key, then generate public key and
@@ -292,6 +302,21 @@ class RSAKeysAuth(KeysAuth):
         :param str public_key_loc: where should public key be saved
         :return boolean: return True if keys have been saved, False otherwise
         """
+        from os.path import isdir, dirname
+        from os import mkdir
+
+        def make_dir(file_path):
+            dir_name = dirname(file_path)
+            if not isdir(dir_name):
+                try:
+                    mkdir(dir_name)
+                except OSError:
+                    return False
+            return True
+
+        if not (make_dir(private_key_loc) and make_dir(public_key_loc)):
+            return False
+
         try:
             with open(private_key_loc, 'w') as f:
                 f.write(self._private_key.exportKey('PEM'))
