@@ -173,7 +173,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         return new_task
 
 
-DEFAULT_BLENDER_DOCKER_IMAGE = "golemfactory/blender:latest"
+DEFAULT_BLENDER_DOCKER_IMAGE = "golemfactory/blender:1.3"
 
 
 class BlenderRenderTask(FrameRenderingTask):

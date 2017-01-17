@@ -68,6 +68,7 @@ def try_building_docker_images():
             finally:
                 os.chdir(cwd)
 
+
 def try_pulling_docker_images():
     try_docker()
     images_dir = 'apps'
