@@ -37,8 +37,10 @@ def try_docker():
         return False
     return True
 
+
 def try_building_docker_images():
-    try_docker()
+    if not try_docker():
+        return
     images_dir = 'apps'
     cwd = os.getcwdu()
 
@@ -70,7 +72,8 @@ def try_building_docker_images():
 
 
 def try_pulling_docker_images():
-    try_docker()
+    if not try_docker():
+        return
     images_dir = 'apps'
 
     with open(path.join(images_dir, 'images.ini')) as f:
@@ -91,7 +94,6 @@ def try_pulling_docker_images():
 
 
 try_pulling_docker_images()
-#try_building_docker_images()
 
 
 class PyTest(TestCommand):
