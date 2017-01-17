@@ -77,10 +77,12 @@ class TestIPAddresses(unittest.TestCase):
 class TestHostAddress(unittest.TestCase):
     def testGetHostAddressFromConnection(self):
         """ Test getting host address by connecting """
+        from socket import has_ipv6
         address = get_host_address_from_connection(use_ipv6=False)
         self.assertTrue(is_ip_address(address, True, False), "Incorrect IPv4 address: {}".format(address))
-        address = get_host_address_from_connection(use_ipv6=True)
-        self.assertTrue(is_ip_address(address, False, True), "Incorrect IPv6 address: {}".format(address))
+        if has_ipv6:
+            address = get_host_address_from_connection(use_ipv6=True)
+            self.assertTrue(is_ip_address(address, False, True), "Incorrect IPv6 address: {}".format(address))
 
     def testGetExternalAddress(self):
         """ Test getting host public address with STUN protocol """
