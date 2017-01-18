@@ -104,7 +104,7 @@ class TestRSAKeysAuth(TestWithKeysAuth):
     def test_save_load_keys_rsa(self):
         """ Tests for saving and loading keys """
         from os.path import join
-        from os import chmod, getuid, mkdir
+        from os import chmod, mkdir
         from golem.core.common import is_windows
         if not path.isdir(self.path):
             mkdir(self.path)
@@ -128,6 +128,7 @@ class TestRSAKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek._private_key.exportKey(), priv_key)
 
         if not is_windows():
+            from os import getuid
             if getuid() != 0:
                 priv_key_file = join(self.path, "priv_rsa_incorrect.key")
                 open(priv_key_file, 'w').close()
@@ -177,7 +178,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
     def test_save_load_keys(self):
         """ Tests for saving and loading keys """
         from os.path import join
-        from os import chmod, getuid
+        from os import chmod
         from golem.core.common import is_windows
         ek = EllipticalKeysAuth(self.path)
         pub_key_file = join(self.path, "pub.key")
@@ -199,6 +200,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         self.assertEqual(ek._private_key, priv_key)
 
         if not is_windows():
+            from os import getuid
             if getuid() != 0:
                 priv_key_file = join(self.path, "priv_incorrect.hey")
                 open(priv_key_file, 'w').close()

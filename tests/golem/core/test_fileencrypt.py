@@ -35,7 +35,10 @@ class TestAESFileEncryptor(TestDirFixture):
         self.assertTrue(os.path.exists(self.enc_file_path))
         with open(self.enc_file_path, 'r') as f:
             encrypted = f.read()
-            self.assertEqual(len(encrypted) % AESFileEncryptor.block_size, 0)
+            self.assertEqual(
+                len(encrypted) % AESFileEncryptor.block_size, 0,
+                "Incorrect ciphertext size: {}. Should be multiple of {}".format(len(encrypted),
+                                                                                 AESFileEncryptor.block_size))
 
     def test_decrypt(self):
         """ Test decryption procedure """
