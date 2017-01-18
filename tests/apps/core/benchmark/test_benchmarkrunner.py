@@ -46,6 +46,15 @@ class BenchmarkRunnerTest(TempDirFixture):
     def test_task_computed(self):
         """Processing of computed task."""
         task_thread = mock.MagicMock()
+
+        # False result and False error_msg
+        task_thread.result = None
+        task_thread.error_msg = error_msg = None
+        self.instance.error_callback = error_mock = mock.MagicMock()
+        self.instance.task_computed(task_thread)
+        error_mock.assert_called_once_with(error_msg)
+
+        # False result and Non-False error_msg
         task_thread.result = None
         task_thread.error_msg = error_msg = "dummy error msg:%s" % (time.time(),)
         self.instance.error_callback = error_mock = mock.MagicMock()
