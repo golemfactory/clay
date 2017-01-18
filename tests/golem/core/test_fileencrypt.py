@@ -33,7 +33,7 @@ class TestAESFileEncryptor(TestDirFixture):
                                  secret)
 
         self.assertTrue(os.path.exists(self.enc_file_path))
-        with open(self.enc_file_path, 'r') as f:
+        with open(self.enc_file_path, 'rb') as f:
             encrypted = f.read()
             self.assertEqual(
                 len(encrypted) % AESFileEncryptor.block_size, 0,
