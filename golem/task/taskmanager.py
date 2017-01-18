@@ -370,12 +370,6 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         return task.get_resources(task_id, resource_header, resource_type)
 
-    def accept_results_delay(self, task_id):
-        if task_id in self.tasks:
-            return self.tasks[task_id].accept_results_delay()
-        else:
-            return -1.0
-
     @handle_task_key_error
     def restart_task(self, task_id):
         logger.info("restarting task")

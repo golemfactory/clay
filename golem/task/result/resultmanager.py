@@ -4,7 +4,8 @@ import os
 import uuid
 
 from golem.core.fileencrypt import FileEncryptor
-from golem.resource.client import AsyncRequestExecutor, AsyncRequest
+from golem.resource.client import async_run
+from golem.resource.client import AsyncRequest
 from .resultpackage import EncryptingTaskResultPackager
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                    path,
                                    output_dir=output_dir,
                                    key_or_secret=key_or_secret)
-            AsyncRequestExecutor.run(request, package_extracted, error)
+            async_run(request, package_extracted, error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, multihash, task_id, subtask_id)

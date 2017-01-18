@@ -15,7 +15,7 @@ pysha3==0.3
 pystun==0.1.0
 pytz
 qt4reactor==1.6
-requests==2.8.1
+requests>=2.12.4
 six==1.10.0
 Twisted>=16.5
 web3>=3.4.4
@@ -33,6 +33,8 @@ tabulate
 PyYAML>=3.12
 crossbar
 jsonpickle
+pydispatcher
 devp2p>=0.5.1
 scrypt
 packaging
+pyreadline
