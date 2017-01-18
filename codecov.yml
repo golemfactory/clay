@@ -17,6 +17,7 @@ coverage:
     - "apps/core/benchmark/minilight/*"
     - "apps/core/gui/*"
     - "apps/rendering/resources/taskcollector/*"
+    - "golem/testutils.py"
     - "save/*"
     - "scripts/*"
     - "tests/*"

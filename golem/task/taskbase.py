@@ -268,15 +268,6 @@ class Task(object):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def accept_results_delay(self):
-        """ asks there should be a added subtask_id and delay_time as an argument. The name should be also changed
-        from "accept" to "set down" or something similar. The result of this method is a delay value, not a boolean
-        as a name is suggesting.
-        :return:
-        """
-        return 0.0
-
-    @abc.abstractmethod
     def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
         """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
         preparing resources depends from declared resource_type
