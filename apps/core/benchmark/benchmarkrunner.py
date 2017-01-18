@@ -23,10 +23,9 @@ class BenchmarkRunner(LocalComputer):
         self.end_time = None
         
     def _get_task_thread(self, ctd):
-        if ctd.docker_images:
-            return LocalComputer._get_task_thread(self, ctd)
-        else:
+        if not ctd.docker_images:
             raise Exception("No docker container found")
+        return super(BenchmarkRunner, self)._get_task_thread(self, ctd)
 
     def start(self):
         self.start_time = time.time()
