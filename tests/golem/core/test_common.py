@@ -51,7 +51,7 @@ class TestConfigLogging(TempDirFixture):
         file_config.assert_called_with(ANY,
                                        defaults={'logname': self.logname.encode('string-escape')},
                                        disable_existing_loggers=False)
-        file_config.called = False
+        file_config.reset_mock()
 
     @patch('logging.config.fileConfig')
     def test_config_logging_unicode(self, file_config):
@@ -68,5 +68,4 @@ class TestConfigLogging(TempDirFixture):
         file_config.assert_called_with(ANY,
                                        defaults={'logname': logname_u.encode('unicode-escape')},
                                        disable_existing_loggers=False)
-        file_config.called = False
-
+        file_config.reset_mock()

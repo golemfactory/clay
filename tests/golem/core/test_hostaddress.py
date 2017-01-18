@@ -29,31 +29,20 @@ def mock_ifaddresses(*args):
     return addrs
 
 
-def is_ip_address(address, ip_v4, ip_v6):
+def is_ip_address(address, ip_v4=True):
     """
     Check if @address is correct IP address
     :param address: Address to be checked
-    :param ip_v4: Check if is IPv4 address
-    :param ip_v6: Check if is IPv6 address
+    :param ip_v4: If set to True check IPv4, otherwise check IPv6
     :return: True if is correct, false otherwise
     """
     import socket
-
-    if ip_v4:
-        try:
-            socket.inet_pton(socket.AF_INET, address)   # will raise socket.error in case of incorrect address
-            return True
-        except socket.error:
-            pass
-
-    if ip_v6:
-        try:
-            socket.inet_pton(socket.AF_INET6, address)   # will raise socket.error in case of incorrect address
-            return True
-        except socket.error:
-            pass
-
-    return False
+    try:
+        # will raise socket.error in case of incorrect address
+        socket.inet_pton(socket.AF_INET if ip_v4 else socket.AF_INET6, address)
+        return True
+    except socket.error:
+        return False
 
 
 class TestIPAddresses(unittest.TestCase):
@@ -64,42 +53,42 @@ class TestIPAddresses(unittest.TestCase):
         addresses = ip_addresses(False)
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address, True, False), "Incorrect IP addres: {}".format(address))
+                self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
 
     def test_ip_addresses_v6(self):
         """ Test getting IP addresses for IPv6 """
         addresses = ip_addresses(True)
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address, False, True), "Incorrect IP addres: {}".format(address))
+                self.assertTrue(is_ip_address(address, False), "Incorrect IP address: {}".format(address))
 
 
 class TestHostAddress(unittest.TestCase):
     def testGetHostAddressFromConnection(self):
         """ Test getting host address by connecting """
         address = get_host_address_from_connection(use_ipv6=False)
-        self.assertTrue(is_ip_address(address, True, False), "Incorrect IPv4 address: {}".format(address))
+        self.assertTrue(is_ip_address(address), "Incorrect IPv4 address: {}".format(address))
 
     def testGetExternalAddress(self):
         """ Test getting host public address with STUN protocol """
         nats = ["Blocked", "Open Internet", "Full Cone", "Symmetric UDP Firewall",
                 "Restric NAT", "Restric Port NAT", "Symmetric NAT"]
         address, port, nat = get_external_address()
-        self.assertTrue(is_ip_address(address, True, True), "Incorrect IP address: {}".format(address))
+        self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
         self.assertIsInstance(port, int, "Incorrect port type")
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
         address, port, nat = get_external_address(9876)
-        self.assertTrue(is_ip_address(address, True, True), "Incorrect IP address: {}".format(address))
+        self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
         self.assertIsInstance(port, int, "Incorrect port type")
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
     def testGetHostAddress(self):
         self.assertGreater(len(get_host_address('127.0.0.1')), 0)
-        self.assertTrue(is_ip_address(get_host_address(None, False), True, False))
-        self.assertTrue(is_ip_address(get_host_address(None, True), False, True))
+        self.assertTrue(is_ip_address(get_host_address(None, False)))
+        self.assertTrue(is_ip_address(get_host_address(None, True), False))
         self.assertEqual(get_host_address("::1", True), "::1")
 
     @unittest.skip("Find network testing framework")
@@ -112,7 +101,7 @@ class TestHostAddress(unittest.TestCase):
 
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address[0], True, True), "Incorrect IP address: {}".format(address[0]))
+                self.assertTrue(is_ip_address(address[0]), "Incorrect IP address: {}".format(address[0]))
                 self.assertTrue(0 < int(address[1]) < 33, "Incorrect mask: {}".format(address[1]))
 
     @patch('netifaces.ifaddresses', side_effect=mock_ifaddresses)
