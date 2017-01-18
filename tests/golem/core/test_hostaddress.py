@@ -1,7 +1,8 @@
 import unittest
 
 import netifaces
-from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks
+from golem.core.hostaddress import get_host_address, ip_address_private, ip_network_contains, ipv4_networks, \
+                                   ip_addresses, get_host_address_from_connection, get_external_address
 from mock import patch
 
 
@@ -28,9 +29,67 @@ def mock_ifaddresses(*args):
     return addrs
 
 
+def is_ip_address(address, ip_v4=True):
+    """
+    Check if @address is correct IP address
+    :param address: Address to be checked
+    :param ip_v4: If set to True check IPv4, otherwise check IPv6
+    :return: True if is correct, false otherwise
+    """
+    import socket
+    try:
+        # will raise socket.error in case of incorrect address
+        socket.inet_pton(socket.AF_INET if ip_v4 else socket.AF_INET6, address)
+        return True
+    except socket.error:
+        return False
+
+
+class TestIPAddresses(unittest.TestCase):
+    """ Test getting IP addresses """
+
+    def test_ip_addresses_v4(self):
+        """ Test getting IP addresses for IPv4 """
+        addresses = ip_addresses(False)
+        if addresses:
+            for address in addresses:
+                self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+
+    def test_ip_addresses_v6(self):
+        """ Test getting IP addresses for IPv6 """
+        addresses = ip_addresses(True)
+        if addresses:
+            for address in addresses:
+                self.assertTrue(is_ip_address(address, False), "Incorrect IP address: {}".format(address))
+
+
 class TestHostAddress(unittest.TestCase):
+    def testGetHostAddressFromConnection(self):
+        """ Test getting host address by connecting """
+        address = get_host_address_from_connection(use_ipv6=False)
+        self.assertTrue(is_ip_address(address), "Incorrect IPv4 address: {}".format(address))
+
+    def testGetExternalAddress(self):
+        """ Test getting host public address with STUN protocol """
+        nats = ["Blocked", "Open Internet", "Full Cone", "Symmetric UDP Firewall",
+                "Restric NAT", "Restric Port NAT", "Symmetric NAT"]
+        address, port, nat = get_external_address()
+        self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+        self.assertIsInstance(port, int, "Incorrect port type")
+        self.assertTrue(0 < port < 65535, "Incorrect port number")
+        self.assertIn(nat, nats, "Incorrect nat type")
+
+        address, port, nat = get_external_address(9876)
+        self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
+        self.assertIsInstance(port, int, "Incorrect port type")
+        self.assertTrue(0 < port < 65535, "Incorrect port number")
+        self.assertIn(nat, nats, "Incorrect nat type")
+
     def testGetHostAddress(self):
         self.assertGreater(len(get_host_address('127.0.0.1')), 0)
+        self.assertTrue(is_ip_address(get_host_address(None, False)))
+        self.assertTrue(is_ip_address(get_host_address(None, True), False))
+        self.assertEqual(get_host_address("::1", True), "::1")
 
     @unittest.skip("Find network testing framework")
     def testGetHostAddress2(self):
@@ -38,24 +97,30 @@ class TestHostAddress(unittest.TestCase):
         self.assertEqual(get_host_address('10.30.10.217'), '10.30.10.216')
 
     def testGetIPNetworks(self):
-        ipv4_networks()
+        addresses = ipv4_networks()
+
+        if addresses:
+            for address in addresses:
+                self.assertTrue(is_ip_address(address[0]), "Incorrect IP address: {}".format(address[0]))
+                self.assertTrue(0 < int(address[1]) < 33, "Incorrect mask: {}".format(address[1]))
 
     @patch('netifaces.ifaddresses', side_effect=mock_ifaddresses)
     def testGetIPNetworks2(self, *_):
         ipv4_networks()
 
     def testIpAddressPrivate(self):
-        assert ip_address_private('::1')
+        self.assertTrue(ip_address_private('::1'))
         ipv6_private_pattern = 'fd{}::'
         for i in xrange(0, 256):
-            assert ip_address_private(ipv6_private_pattern.format("%0.2X" % i))
+            self.assertTrue(ip_address_private(ipv6_private_pattern.format("%0.2X" % i)))
 
-        assert ip_address_private('10.0.0.0')
-        assert ip_address_private('127.0.0.0')
-        assert ip_address_private('172.16.0.0')
-        assert ip_address_private('192.168.0.0')
-        assert not ip_address_private('8.8.8.8')
-        assert not ip_address_private('11.0.0.0')
+        self.assertTrue(ip_address_private('10.0.0.0'))
+        self.assertTrue(ip_address_private('127.0.0.0'))
+        self.assertTrue(ip_address_private('172.16.0.0'))
+        self.assertTrue(ip_address_private('192.168.0.0'))
+        self.assertFalse(ip_address_private('8.8.8.8'))
+        self.assertFalse(ip_address_private('11.0.0.0'))
+        self.assertFalse(ip_address_private('definitely.not.ip.address'))
 
     def testIpNetworkContains(self):
         addrs = [
@@ -72,17 +137,17 @@ class TestHostAddress(unittest.TestCase):
             (u'192.168.0.0', 16),
         ]
 
-        assert ip_network_contains(nets[0][0], nets[0][1], addrs[0])
-        assert ip_network_contains(nets[1][0], nets[1][1], addrs[1])
-        assert ip_network_contains(nets[2][0], nets[2][1], addrs[2])
-        assert ip_network_contains(nets[3][0], nets[3][1], addrs[3])
+        self.assertTrue(ip_network_contains(nets[0][0], nets[0][1], addrs[0]))
+        self.assertTrue(ip_network_contains(nets[1][0], nets[1][1], addrs[1]))
+        self.assertTrue(ip_network_contains(nets[2][0], nets[2][1], addrs[2]))
+        self.assertTrue(ip_network_contains(nets[3][0], nets[3][1], addrs[3]))
 
-        assert not ip_network_contains(nets[0][0], nets[0][1], addrs[3])
-        assert not ip_network_contains(nets[1][0], nets[1][1], addrs[2])
-        assert not ip_network_contains(nets[2][0], nets[2][1], addrs[1])
-        assert not ip_network_contains(nets[3][0], nets[3][1], addrs[0])
+        self.assertFalse(ip_network_contains(nets[0][0], nets[0][1], addrs[3]))
+        self.assertFalse(ip_network_contains(nets[1][0], nets[1][1], addrs[2]))
+        self.assertFalse(ip_network_contains(nets[2][0], nets[2][1], addrs[1]))
+        self.assertFalse(ip_network_contains(nets[3][0], nets[3][1], addrs[0]))
 
-        assert not ip_network_contains(nets[0][0], nets[0][1], addrs[4])
-        assert not ip_network_contains(nets[1][0], nets[1][1], addrs[4])
-        assert not ip_network_contains(nets[2][0], nets[2][1], addrs[4])
-        assert not ip_network_contains(nets[3][0], nets[3][1], addrs[4])
+        self.assertFalse(ip_network_contains(nets[0][0], nets[0][1], addrs[4]))
+        self.assertFalse(ip_network_contains(nets[1][0], nets[1][1], addrs[4]))
+        self.assertFalse(ip_network_contains(nets[2][0], nets[2][1], addrs[4]))
+        self.assertFalse(ip_network_contains(nets[3][0], nets[3][1], addrs[4]))

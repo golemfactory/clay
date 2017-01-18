@@ -7,6 +7,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 
 class TestAESFileEncryptor(TestDirFixture):
+    """ Test encryption using AESFileEncryptor """
 
     def setUp(self):
         TestDirFixture.setUp(self)
@@ -20,7 +21,8 @@ class TestAESFileEncryptor(TestDirFixture):
             for i in xrange(0, 100):
                 f.write(bytearray(random.getrandbits(8) for _ in xrange(32)))
 
-    def testEncrypt(self):
+    def test_encrypt(self):
+        """ Test encryption procedure """
         secret = FileEncryptor.gen_secret(10, 20)
 
         if os.path.exists(self.enc_file_path):
@@ -31,8 +33,15 @@ class TestAESFileEncryptor(TestDirFixture):
                                  secret)
 
         self.assertTrue(os.path.exists(self.enc_file_path))
+        with open(self.enc_file_path, 'r') as f:
+            encrypted = f.read()
+            self.assertEqual(
+                len(encrypted) % AESFileEncryptor.block_size, 0,
+                "Incorrect ciphertext size: {}. Should be multiple of {}".format(len(encrypted),
+                                                                                 AESFileEncryptor.block_size))
 
-    def testDecrypt(self):
+    def test_decrypt(self):
+        """ Test decryption procedure """
         secret = FileEncryptor.gen_secret(10, 20)
         decrypted_path = self.test_file_path + ".dec"
 
@@ -47,8 +56,8 @@ class TestAESFileEncryptor(TestDirFixture):
                                  decrypted_path,
                                  secret)
 
-        self.assertTrue(os.path.getsize(self.test_file_path) ==
-                        os.path.getsize(decrypted_path))
+        self.assertEqual(os.path.getsize(self.test_file_path),
+                         os.path.getsize(decrypted_path))
 
         with open(self.test_file_path) as f1, open(decrypted_path) as f2:
 
@@ -84,8 +93,25 @@ class TestAESFileEncryptor(TestDirFixture):
 
         self.assertFalse(decrypted)
 
+    def test_get_key_and_iv(self):
+        """ Test helper methods: gen_salt and get_key_and_iv """
+        salt = AESFileEncryptor.gen_salt(AESFileEncryptor.block_size)
+        self.assertEqual(len(salt), AESFileEncryptor.block_size - AESFileEncryptor.salt_prefix_len)
+
+        secret = FileEncryptor.gen_secret(10, 20)
+        self.assertGreaterEqual(len(secret), 10)
+        self.assertLessEqual(len(secret), 20)
+
+        key_len = 32
+        iv_len = AESFileEncryptor.block_size
+        key, iv = AESFileEncryptor.get_key_and_iv(secret, salt, key_len, iv_len)
+
+        self.assertEqual(len(key), key_len)
+        self.assertEqual(len(iv), iv_len)
+
 
 class TestFileHelper(TestDirFixture):
+    """ Tests for FileHelper class """
 
     def setUp(self):
         TestDirFixture.setUp(self)
@@ -94,8 +120,16 @@ class TestFileHelper(TestDirFixture):
         self.test_file_path = os.path.join(self.res_dir, 'test_file')
         open(self.test_file_path, 'w').close()
 
-    def test(self):
-
-        with FileHelper(self.test_file_path, 'r') as f:
+    def test_file_helper(self):
+        """ Test opening file with FileHelper """
+        mode = 'r'
+        # Test opening with file path
+        with FileHelper(self.test_file_path, mode) as f:
             self.assertIsInstance(f, file)
+            self.assertEqual(f.mode, mode)
 
+        # Test opening with file
+        with open(self.test_file_path, mode) as file_:
+            with FileHelper(file_, mode) as f:
+                self.assertIsInstance(f, file)
+                self.assertEqual(f.mode, mode)
