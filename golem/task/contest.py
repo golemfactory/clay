@@ -153,7 +153,7 @@ class Contest(object):
         self.perf_to_price = perf_to_price
 
         self.started = None
-        self.winner = None
+        self.winners = list()
         self.rounds = 0
 
         self.contenders = dict()
@@ -190,6 +190,19 @@ class Contest(object):
                                                           computing_trust, lifetime)
                 self._rank_contenders()
 
+    def choose_winners(self, num):
+        """ Choose set of a <num> winners, remove them from the contest and rank rest of the
+        contenders. If there are less than <num> contender available, choose all of them. """
+        with self._lock:
+            self.winners = list()
+            winners = self.ranks[-num:]
+            for winner in winners:
+                winner = self.contenders.pop(winner.id, None)
+                if winner:
+                    self.winners.append(winner)
+            if self.winners:
+                self._rank_contenders()
+
     def remove_contender(self, contender_id):
         """
         Remove provider from the contest. Update scores for all contenders.
@@ -205,7 +218,7 @@ class Contest(object):
 
     def new_round(self):
         self.started = time.time()
-        self.winner = None
+        self.winners = []
         self.rounds += 1
 
         return self.extend_round()
@@ -313,8 +326,10 @@ class ContestManager(object):
         :return:
         """
         contest = self._contests[task_id]
-        if contest.winner and contest.winner.id == contender_id:
-            contest.winner = None
+        for contender in contest.winners:
+            if contender.id == contender_id:
+                contest.winners.remove(contender)
+                break
         return contest.remove_contender(contender_id)
 
     @handle_key_error
@@ -338,7 +353,7 @@ class ContestManager(object):
             self._remove_contenders(task_id, to_remove)
 
             if contest.ranks:
-                self._announce_winner(task_id)
+                self._announce_winners(task_id)
             else:
                 # none of the contenders meets the criteria
                 self._check_later(task_id, self._calc_window_size(contest))
@@ -355,9 +370,10 @@ class ContestManager(object):
             self._checks[task_id] = reactor.callLater(timeout, self._check, task_id)
 
     @handle_key_error
-    def _announce_winner(self, task_id):
+    def _announce_winners(self, task_id):
         self._cancel_check(task_id)
         contest = self._contests[task_id]
+        num_winners = max(contest.total_subtasks / 10, 1)
 
         if not contest.ranks:
             logger.debug("No contenders for task {}".format(task_id))
@@ -365,26 +381,30 @@ class ContestManager(object):
             return
 
         reactor = self._get_reactor()
-        winner = contest.remove_contender(contest.ranks[-1].id)
-        contest.winner = winner
+        contest.choose_winners(num_winners)
 
-        logger.debug("Announcing round {} winner: {} (task {})"
-                     .format(contest.rounds, winner.id, task_id))
+        logger.debug("Announcing round {} winners: {} (task {})"
+                     .format(contest.rounds, contest.winners, task_id))
 
-        if winner.session:
-            # we have an active task session
-            reactor.callLater(0, winner.session.send_task_to_compute, winner.req_msg)
+        winner_found = False
+        for winner in contest.winners:
+            if winner.session:
+                # we have an active task session
+                reactor.callLater(0, winner.session.send_task_to_compute, winner.req_msg)
 
+                winner_found = True
+
+                # no deferred announcements and checks at this point
+                logger.debug("Contest round {} winner for task {}: {} (score: {})"
+                             .format(contest.rounds - 1, task_id, winner.id, winner.score))
+
+        if not winner_found:
+            # contestant disconnected; select another one
+            reactor.callLater(0, self._announce_winners, task_id)
+        else:
             to_remove = contest.new_round()
             self._remove_contenders(task_id, to_remove)
             self._check_later(task_id, self._calc_window_size(contest))
-
-            # no deferred announcements and checks at this point
-            logger.debug("Contest round {} winner for task {}: {} (score: {})"
-                         .format(contest.rounds - 1, task_id, winner.id, winner.score))
-        else:
-            # contestant disconnected; select another one
-            reactor.callLater(0, self._announce_winner, task_id)
 
     def _remove_contenders(self, task_id, rejected, reason=None):
         if not rejected:

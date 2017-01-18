@@ -154,18 +154,18 @@ class TestContest(unittest.TestCase):
         contest._rank_contenders = Mock()
         contest._cleanup_contenders = Mock()
 
-        assert contest.winner is None
+        assert len(contest.winners) == 0
         assert contest.started
         assert contest.rounds == 1
 
         started = contest.started
-        contest.winner = Mock()
+        contest.winners = [Mock()]
 
         contest._cleanup_contenders.called = False
         contest.extend_round()
         assert not contest._rank_contenders.called
         assert contest._cleanup_contenders.called
-        assert contest.winner
+        assert len(contest.winners) > 0
         assert contest.rounds == 1
         assert contest.started == started
 
@@ -174,7 +174,7 @@ class TestContest(unittest.TestCase):
         contest.new_round()
         assert not contest._rank_contenders.called
         assert contest._cleanup_contenders.called
-        assert not contest.winner
+        assert len(contest.winners) == 0
         assert contest.rounds == 2
         assert contest.started > started
 
@@ -303,10 +303,10 @@ class TestContestManager(unittest.TestCase):
         cm.add_contender(task_id, **contender_kwargs)
         contest = cm._contests[task_id]
         contender = contest.contenders.values()[0]
-        contest.winner = contender
+        contest.winners = [contender]
 
         cm.remove_contender(task_id, contender_id)
-        assert not contest.winner
+        assert len(contest.winners) == 0
 
         cm.finish(task_id)
         assert task_id not in cm._contests
@@ -360,7 +360,7 @@ class TestContestManager(unittest.TestCase):
         reactor.callLater.assert_called_with(0, ANY, task_id, ANY)
 
     @patch('twisted.internet.reactor', create=True, new_callable=Mock)
-    def test_announce_winner(self, reactor):
+    def test_announce_winners(self, reactor):
         cm = self.contest_manager
         task = _create_task()
 
@@ -372,7 +372,7 @@ class TestContestManager(unittest.TestCase):
                                                                price=2)
 
         # no task
-        cm._announce_winner(task_id)
+        cm._announce_winners(task_id)
         assert not reactor.callLater.called
 
         contender_kwargs['contender_id'] = contender_kwargs.pop('contender_id')
@@ -381,7 +381,7 @@ class TestContestManager(unittest.TestCase):
         contender = contest.contenders.values()[0]
         contest.ranks = [contender]
 
-        cm._announce_winner(task_id)
+        cm._announce_winners(task_id)
 
         calls = [
             call(0, contender.session.send_task_to_compute, contender.req_msg),
@@ -399,10 +399,10 @@ class TestContestManager(unittest.TestCase):
         session = Mock()
         session.return_value = None
         contender._session = session
-        cm._announce_winner(task_id)
+        cm._announce_winners(task_id)
 
         calls = [
-            call(0, cm._announce_winner, task_id),
+            call(0, cm._announce_winners, task_id),
         ]
 
         reactor.callLater.assert_has_calls(calls)
@@ -412,7 +412,7 @@ class TestContestManager(unittest.TestCase):
         cm = self.contest_manager
         cm.finish = Mock()
         cm._check_later = Mock()
-        cm._announce_winner = Mock()
+        cm._announce_winners = Mock()
         cm._remove_contenders = Mock()
         task = _create_task()
 
@@ -437,13 +437,13 @@ class TestContestManager(unittest.TestCase):
         contest.ranks = []
 
         cm._check(task_id)
-        assert not cm._announce_winner.called
+        assert not cm._announce_winners.called
 
         contender = contest.contenders.values()[0]
         contest.ranks = [contender]
 
         cm._check(task_id)
-        assert cm._announce_winner.called
+        assert cm._announce_winners.called
 
 
 class TestMedian(unittest.TestCase):
