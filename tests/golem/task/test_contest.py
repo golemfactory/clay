@@ -17,7 +17,7 @@ def _create_contender(node_name="node", perf_index=3000, price=2, computing_trus
                                                price=price)
 
     contender_kwargs = dict(
-        id=request_message.node_name,
+        contender_id=request_message.node_name,
         session=Mock() if session else None,
         computing_trust=computing_trust,
         request_message=request_message,
@@ -121,7 +121,7 @@ class TestContest(unittest.TestCase):
         contest = Contest(task=Mock(), min_score=0.0)
         contest._rank_contenders = Mock()
 
-        contender_kwargs['contender_id'] = contender_kwargs.pop('id')
+        contender_kwargs['contender_id'] = contender_kwargs.pop('contender_id')
         contest.add_contender(**contender_kwargs)
         assert "name_1" in contest.contenders
         assert len(contest.contenders) == 1
@@ -335,8 +335,6 @@ class TestContestManager(unittest.TestCase):
         deferred = cm._cancel_check(task_id)
         assert deferred.cancel.called
 
-        assert not cm._cancel_announcement(task_id)
-
     @patch('twisted.internet.reactor', create=True, new_callable=Mock)
     def test_remove_contenders(self, reactor):
         cm = self.contest_manager
@@ -377,7 +375,7 @@ class TestContestManager(unittest.TestCase):
         cm._announce_winner(task_id)
         assert not reactor.callLater.called
 
-        contender_kwargs['contender_id'] = contender_kwargs.pop('id')
+        contender_kwargs['contender_id'] = contender_kwargs.pop('contender_id')
         cm.add_contender(task_id, **contender_kwargs)
         contest = cm._contests[task_id]
         contender = contest.contenders.values()[0]
@@ -431,7 +429,7 @@ class TestContestManager(unittest.TestCase):
         cm.finish.called = False
 
         # create contest
-        contender_kwargs['contender_id'] = contender_kwargs.pop('id')
+        contender_kwargs['contender_id'] = contender_kwargs.pop('contender_id')
         cm.add_contender(task_id, **contender_kwargs)
 
         contest = cm._contests.values()[0]

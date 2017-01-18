@@ -91,8 +91,16 @@ class Contender(object):
 
     def update_score(self, task_client, total_subtasks, ref_performance,
                      ref_price, perf_to_price=0.5):
-
-
+        """
+        Compute new score for this contender. If the provider's subtask result for this task was
+        rejected before, he gets a negative score.
+        :param TaskClient task_client: information about node stats on this task
+        :param num total_subtasks: how many subtasks are in this task
+        :param float ref_performance: median of all performances declared by nodes
+        :param float ref_price: max price per hour that can be used on this task
+        :param float perf_to_price: performance to price importance ration
+        :return float: score for this provider
+        """
         total_subtasks = float(max(total_subtasks, 1))
         ref_performance = float(max(ref_performance, 1))
         ref_price = float(max(ref_price, 0))
@@ -166,13 +174,14 @@ class Contest(object):
     def add_contender(self, contender_id, session, request_message, computing_trust,
                       lifetime=CONTENDER_LIFETIME):
         """
-        Add a new provider to the contest. Update scores for all contenders.
+        Add a new provider to the contest. Update scores for all contenders and put sorted scores
+        in ranks.
         If provider already was in this contest - do nothing.
         :param str contender_id: if of a provider
         :param TaskSession session: session kept with this contender
         :param MessageWantToComputeTask request_message: message that this contender sent
         :param float computing_trust: How much do we trust this contender?
-        :param flaot|int lifetime: How long is this offer valid?
+        :param float|int lifetime: How long is this offer valid?
         :return:
         """
         if contender_id not in self.contenders:
@@ -265,7 +274,6 @@ class ContestManager(object):
         self._tasks = tasks
         self._contests = dict()
         self._checks = dict()
-        self._announcements = dict()
         self._lock = RLock()
         self._reactor = None
 
@@ -297,6 +305,13 @@ class ContestManager(object):
 
     @handle_key_error
     def remove_contender(self, task_id, contender_id):
+        """
+        Remove specific provider from the contest. If this provider was a winner, change winner
+         to None.
+        :param str task_id: id of a task / contest
+        :param str contender_id: id of a provider
+        :return:
+        """
         contest = self._contests[task_id]
         if contest.winner and contest.winner.id == contender_id:
             contest.winner = None
@@ -304,6 +319,12 @@ class ContestManager(object):
 
     @handle_key_error
     def finish(self, task_id):
+        """
+        End the contest with given id, cancel deferred checks remove information about contest
+        :param str task_id: id of a task
+        :return Contest|None : information about contest or None (if contest with given id doesn't
+         exist.
+        """
         logger.debug("Contest finished for task {}".format(task_id))
         self._cancel_check(task_id)
         return self._contests.pop(task_id, None)
@@ -336,7 +357,6 @@ class ContestManager(object):
     @handle_key_error
     def _announce_winner(self, task_id):
         self._cancel_check(task_id)
-        self._cancel_announcement(task_id)
         contest = self._contests[task_id]
 
         if not contest.ranks:
@@ -392,9 +412,6 @@ class ContestManager(object):
 
     def _cancel_check(self, task_id):
         return self._cancel_deferred(task_id, self._checks)
-
-    def _cancel_announcement(self, task_id):
-        return self._cancel_deferred(task_id, self._announcements)
 
     def _cancel_deferred(self, key, dictionary):
         with self._lock:
