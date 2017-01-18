@@ -40,16 +40,16 @@ class BenchmarkRunner(LocalComputer):
     def task_computed(self, task_thread):
         self.end_time = time.time()
         logger.debug("Ended at {}".format(self.end_time))
-        if task_thread.result:
-            res, _ = task_thread.result
-            if res and res.get("data"):
-                print res["data"]
-                if self.benchmark.verify_result(res["data"]):
-                    self.success_callback(self.benchmark.normalization_constant / (self.end_time - self.start_time))
-                    return
+        if not task_thread.result:
+            logger_msg = self.comp_failed_warning
+            if task_thread.error_msg:
+                logger_msg += " " + task_thread.error_msg
+            logger.warning(logger_msg)
+            self.error_callback(task_thread.error_msg)
+            return
 
-        logger_msg = self.comp_failed_warning
-        if task_thread.error_msg:
-            logger_msg += " " + task_thread.error_msg
-        logger.warning(logger_msg)
-        self.error_callback(task_thread.error_msg)
+        res, _ = task_thread.result
+        if res and ("data" in res):
+            if self.benchmark.verify_result(res["data"]):
+                self.success_callback(self.benchmark.normalization_constant / (self.end_time - self.start_time))
+                return
