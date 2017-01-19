@@ -8,7 +8,7 @@
 	    {
 		"py/object": "golem.docker.image.DockerImage",
 		"repository": "golemfactory/luxrender",
-		"tag": "latest",
+		"tag": "1.2",
 		"name": "golemfactory/luxrender:1.2",
 		"id": null
             }

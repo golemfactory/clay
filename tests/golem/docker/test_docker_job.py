@@ -69,7 +69,7 @@ class TestBaseDockerJob(TestDockerJob):
     """Tests Docker job using the base image golem/base"""
 
     def _get_test_repository(self):
-        return "golem/base"
+        return "golemfactory/base:1.2"
 
     def test_create(self):
         job = self._create_test_job()
