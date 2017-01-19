@@ -188,7 +188,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.options = options
         self.task_settings_changed()
 
-    def task_settings_changed(self, name=None):
+    def task_settings_changed(self):
         self._change_finish_state(False)
 
     def test_task_computation_finished(self, success, est_mem):
