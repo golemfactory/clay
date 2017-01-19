@@ -244,7 +244,7 @@ class TaskComputer(object):
     def run_benchmark(self, benchmark, task_builder, datadir, node_name, success_callback, error_callback):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
-        task_state.definition = benchmark.query_benchmark_task_definition()
+        task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
         builder = task_builder(node_name, task_state.definition, datadir, self.dir_manager)
         t = Task.build_task(builder)
