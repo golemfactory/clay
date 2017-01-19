@@ -4,7 +4,7 @@ PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
 
 def call_pyrcc(py_file, qrc_file):
-    cmd = "pyrcc4 -o " + py_file + " " + qrc_file
+    cmd = "pyrcc5 -o " + py_file + " " + qrc_file
     print cmd
     os.system(cmd)
 
