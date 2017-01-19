@@ -166,6 +166,8 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         :return list: list of pixels that belong to a subtask border
         """
         border = []
+        if res_x == 0 or res_y == 0:
+            return border
         offsets = generate_expected_offsets(parts, res_x, res_y)
         scale_factor = float(offsets[parts + 1]) / res_y
 
