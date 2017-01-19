@@ -18,5 +18,6 @@ coverage:
     - "scripts/*"
     - "save/*"
     - "apps/rendering/resources/taskcollector/*"
+    - "golem/testutils.py"
 comment:
   layout: header, diff, changes, sunburst, uncovered

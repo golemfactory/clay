@@ -1051,14 +1051,11 @@ class MessageGetTaskResult(Message):
     Type = TASK_MSG_BASE + 5
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    DELAY_STR = u"DELAY"
 
-    def __init__(self, subtask_id="", delay=0.0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id="", sig="", timestamp=None, dict_repr=None):
         """
         Create request for task result
         :param str subtask_id: finished subtask id
-        :param float delay: if delay is 0, than subtask should be send right know. Otherwise other node should wait
-            <delay> seconds before sending result.
         :param str sig: signature
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
@@ -1066,15 +1063,12 @@ class MessageGetTaskResult(Message):
         Message.__init__(self, MessageGetTaskResult.Type, sig, timestamp)
 
         self.subtask_id = subtask_id
-        self.delay = delay
 
         if dict_repr:
             self.subtask_id = dict_repr[MessageGetTaskResult.SUB_TASK_ID_STR]
-            self.delay = dict_repr[MessageGetTaskResult.DELAY_STR]
 
     def dict_repr(self):
-        return {MessageGetTaskResult.SUB_TASK_ID_STR: self.subtask_id,
-                MessageGetTaskResult.DELAY_STR: self.delay}
+        return {MessageGetTaskResult.SUB_TASK_ID_STR: self.subtask_id}
 
 
 # It's an old form of sending task result (don't use if it isn't necessary)
