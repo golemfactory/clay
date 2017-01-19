@@ -11,7 +11,7 @@ from twisted.internet.task import LoopingCall
 
 from golem.model import Payment, PaymentStatus
 
-from .contracts import BankOfDeposit
+from .contracts import BankOfDeposit, TestGNT
 from .node import Faucet
 
 log = logging.getLogger("golem.pay")
@@ -51,6 +51,7 @@ class PaymentProcessor(object):
     GAS_RESERVATION = 21000 + 1000 * 50000
 
     BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+    TESTGNT_ADDR = "dd1c54a094d97c366546b4f29db19ded74cbbbff".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
     SYNC_CHECK_INTERVAL = 10
@@ -60,6 +61,7 @@ class PaymentProcessor(object):
         self.__privkey = privkey
         self.__balance = None
         self.__deposit = None
+        self.__gnt = None
         self.__reserved = 0
         self.__awaiting = []  # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
@@ -68,6 +70,7 @@ class PaymentProcessor(object):
         self.__temp_sync = False
         self.__faucet = faucet
         self.__faucet_request_ttl = 0
+        self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
 
         # Very simple sendout scheduler.
         # TODO: Maybe it should not be the part of this class
@@ -129,6 +132,21 @@ class PaymentProcessor(object):
                 self.__deposit = int(r, 16)
             log.info("Deposit: {}".format(self.__deposit / denoms.ether))
         return self.__deposit
+
+    def gnt_balance(self, refresh=False):
+        if self.__deposit is None or refresh:
+            addr = keys.privtoaddr(self.__privkey)
+            data = self.__testGNT.encode('balanceOf', (addr, ))
+            r = self.__client.call(_from='0x' + addr.encode('hex'),
+                                   to='0x' + self.TESTGNT_ADDR.encode('hex'),
+                                   data=data.encode('hex'),
+                                   block='pending')
+            if r is None or r == '0x':
+                self.__gnt = 0
+            else:
+                self.__gnt = int(r, 16)
+            log.info("GNT: {}".format(self.__gnt / denoms.ether))
+        return self.__gnt
 
     def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
@@ -250,8 +268,27 @@ class PaymentProcessor(object):
             return False
         return True
 
+    def get_gnt_from_faucet(self):
+        if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
+            if self.__faucet_request_ttl > 0:
+                # TODO: wait for transaction confirmation
+                self.__faucet_request_ttl -= 1
+                return False
+            log.info("Requesting tGNT")
+            addr = keys.privtoaddr(self.__privkey)
+            nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
+            data = self.__testGNT.encode_function_call('create', ())
+            tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
+                             value=0, data=data)
+            tx.sign(self.__privkey)
+            self.__faucet_request_ttl = 10
+            self.__client.send(tx)
+            return False
+        return True
+
     def run_inner(self):
-        if self.synchronized() and self.get_ethers_from_faucet():
+        if (self.synchronized() and
+                self.get_ethers_from_faucet() and self.get_gnt_from_faucet()):
             self.deposit_balance(refresh=True)
             self.monitor_progress()
             self.sendout()

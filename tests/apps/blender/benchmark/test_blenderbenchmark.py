@@ -6,7 +6,7 @@ from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRendererOptions, BlenderRenderTaskBuilder
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.benchmark import Benchmark
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager
@@ -43,7 +43,7 @@ class TestBenchmarkRunner(TempDirFixture):
 
     def test_run(self):
         benchmark = BlenderBenchmark()
-        task_definition = benchmark.query_benchmark_task_definition()
+        task_definition = benchmark.task_definition
 
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted

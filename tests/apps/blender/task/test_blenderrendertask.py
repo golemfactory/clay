@@ -8,9 +8,13 @@ from random import randrange, shuffle
 from PIL import Image
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
-from apps.blender.task.blenderrendertask import (BlenderDefaults, BlenderRenderTaskBuilder, BlenderRenderTask,
-                                                 BlenderRendererOptions, PreviewUpdater, get_task_border,
-                                                 generate_expected_offsets, get_task_num_from_pixels)
+from apps.blender.task.blenderrendertask import (BlenderDefaults,
+                                                 BlenderRenderTask,
+                                                 BlenderRenderTaskBuilder,
+                                                 BlenderRendererOptions,
+                                                 generate_expected_offsets,
+                                                 BlenderTaskTypeInfo,
+                                                 PreviewUpdater)
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
@@ -426,7 +430,7 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
         for k in range(1, 31):
             subtask.extra_data = {'start_task': k, 'end_task': k}
-            border = get_task_border(subtask, definition, 30)
+            border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
             definition.options.use_frames = False
             assert min(border) == (0, offsets[k])
             assert max(border) == (240, offsets[k + 1] - 1)
@@ -436,14 +440,14 @@ class TestHelpers(unittest.TestCase):
             subtask.extra_data = {'start_task': k, 'end_task': k}
             definition.options.use_frames = True
             definition.options.frames = range(2)
-            border = get_task_border(subtask, definition, 30)
+            border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (260, offsets[i + 1] - 1)
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True
         definition.options.frames = range(30)
-        border = get_task_border(subtask, definition, 30)
+        border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
         assert border == []
 
     def test_get_task_num_from_pixels(self):
@@ -455,15 +459,15 @@ class TestHelpers(unittest.TestCase):
 
         for k in range(1, 31):
             task_definition.options.use_frames = False
-            num = get_task_num_from_pixels(6, offsets[k] + 1, task_definition, 30)
+            num = BlenderTaskTypeInfo.get_task_num_from_pixels(6, offsets[k] + 1, task_definition, 30)
             assert num == k
 
             task_definition.options.use_frames = True
             task_definition.options.frames = range(30)
-            num = get_task_num_from_pixels(1, 0, task_definition, 30, k)
+            num = BlenderTaskTypeInfo.get_task_num_from_pixels(1, 0, task_definition, 30, k)
             assert num == k
             
             i = (k - 1) % 15 + 1
             task_definition.options.frames = range(2)
-            num = get_task_num_from_pixels(1, frame_offsets[i] + 3, task_definition, 30, (k - 1)/15 + 1)
+            num = BlenderTaskTypeInfo.get_task_num_from_pixels(1, frame_offsets[i] + 3, task_definition, 30, (k - 1)/15 + 1)
             assert num == k

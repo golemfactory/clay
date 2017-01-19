@@ -13,20 +13,20 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.core.task.gnrtask import GNRTask, logger
+from apps.core.task.coretask import CoreTask, logger
 
 
-class TestGNRTask(LogTestCase, TestDirFixture):
-    def _get_gnr_task(self):
-        task = GNRTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
+class TestCoreTask(LogTestCase, TestDirFixture):
+    def _get_core_task(self):
+        task = CoreTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
                        "environment", 3000, 30, 1024, 1024, 100)
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
 
-    def test_gnr_task(self):
-        task = self._get_gnr_task()
-        self.assertIsInstance(task, GNRTask)
+    def test_core_task(self):
+        task = self._get_core_task()
+        self.assertIsInstance(task, CoreTask)
         self.assertEqual(task.header.max_price, 100)
 
         subtask_id = "xxyyzz"
@@ -85,7 +85,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         assert l2.task_id is None
 
     def test_interpret_task_results(self):
-        task = self._get_gnr_task()
+        task = self._get_core_task()
 
         subtask_id = "xxyyzz"
         files_dir = os.path.join(task.tmp_dir, subtask_id)
@@ -168,7 +168,7 @@ class TestGNRTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.stdout[subtask_id], "")
 
     def test_restart(self):
-        task = self._get_gnr_task()
+        task = self._get_core_task()
         task.num_tasks_received = 1
         task.last_task = 8
         task.num_failed_subtasks = 2

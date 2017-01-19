@@ -5,7 +5,6 @@
 build
 ComputerRes
 dist
-examples/gnr/node_data
 golem.egg-info
 golemres
 res

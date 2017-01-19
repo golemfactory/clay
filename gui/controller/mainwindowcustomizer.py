@@ -14,9 +14,8 @@ from twisted.internet.defer import inlineCallbacks
 from golem.core.variables import APP_NAME, APP_VERSION
 from golem.task.taskstate import TaskStatus
 
+from apps.core.task.coretaskstate import TaskDesc
 from apps.core.gui.controller.newtaskdialogcustomizer import NewTaskDialogCustomizer
-from apps.core.task.gnrtaskstate import TaskDesc
-from apps.rendering.gui.controller.renderingnewtaskdialogcustomizer import RenderingNewTaskDialogCustomizer
 
 from gui.controller.customizer import Customizer
 from gui.controller.common import get_save_dir
@@ -78,8 +77,10 @@ class MainWindowCustomizer(Customizer):
         self.timer.timeout.connect(self.update_time)
 
     def init_config(self):
-        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(self.gui, self.logic)
-        self._set_new_task_dialog_customizer()
+        self.configuration_dialog_customizer = ConfigurationDialogCustomizer(
+            self.gui, self.logic)
+        self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui,
+                                                                  self.logic)
 
     def set_options(self, cfg_desc, id_, eth_address, description):
         # Footer options
@@ -116,7 +117,7 @@ class MainWindowCustomizer(Customizer):
                 pb = layout.itemAt(0).widget()
                 pb.setProperty("value", int(task.task_state.progress * 100.0))
                 if self.task_details_dialog_customizer:
-                    if self.task_details_dialog_customizer.gnr_task_state.definition.task_id == task_id:
+                    if self.task_details_dialog_customizer.task_desc.definition.task_id == task_id:
                         self.task_details_dialog_customizer.update_view(task.task_state)
                 if task.task_state.status not in [TaskStatus.starting, TaskStatus.notStarted]:
                     self.__update_payment(task_id, i)
@@ -242,10 +243,6 @@ class MainWindowCustomizer(Customizer):
 
     def _load_new_task_from_definition(self, definition):
         self.new_task_dialog_customizer.load_task_definition(definition)
-
-    def _set_new_task_dialog_customizer(self):
-        # FIXME Remove RenderingNewTaskDialogCustomizer
-        self.new_task_dialog_customizer = RenderingNewTaskDialogCustomizer(self.gui, self.logic)
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()
@@ -383,10 +380,10 @@ class MainWindowCustomizer(Customizer):
 
         id_item = self.gui.ui.taskTableWidget.item(row, ItemMap.Id)
         task_id = "{}".format(id_item.text())
-        gnr_task_state = self.logic.get_task(task_id)
+        task_desc = self.logic.get_task(task_id)
 
         menu = QMenu()
-        self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, gnr_task_state)
+        self.taskContextMenuCustomizer = TaskContextMenuCustomizer(menu, self.logic, task_desc)
         menu.popup(self.gui.ui.taskTableWidget.viewport().mapToGlobal(p))
         menu.exec_()
 

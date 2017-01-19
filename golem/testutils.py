@@ -115,14 +115,14 @@ class TestGui(TempDirFixture):
 
     def setUp(self):
         super(TestGui, self).setUp()
-        from gui.application import GNRGui
+        from gui.application import Gui
         from gui.view.appmainwindow import AppMainWindow
 
         self.logic = MagicMock()
-        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+        self.gui = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
         super(TestGui, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 

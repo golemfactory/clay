@@ -191,9 +191,9 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
         ek.generate_new(5)
         self.assertNotEqual(ek.get_public_key(), pub_key)
         self.assertNotEqual(ek._private_key, priv_key)
-        with open(pub_key_file, 'r') as f:
+        with open(pub_key_file, 'rb') as f:
             self.assertEqual(f.read(), pub_key)
-        with open(priv_key_file, 'r') as f:
+        with open(priv_key_file, 'rb') as f:
             self.assertEqual(f.read(), priv_key)
         self.assertTrue(ek.load_from_file(priv_key_file))
         self.assertEqual(ek.get_public_key(), pub_key)

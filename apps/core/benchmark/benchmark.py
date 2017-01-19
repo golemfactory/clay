@@ -1,5 +1,6 @@
 import logging
 
+import os.path
 from PIL import Image
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -24,19 +25,18 @@ class Benchmark(object):
         # magic constant obtained experimentally
         self.normalization_constant = 9500
 
-    def query_benchmark_task_definition(self):
-        return self.task_definition
-    
     def find_resources(self):
         return set()
 
     # result is a list of files produced in computation (logs and imgs)
     # if img has a different format, you need to implement this method in a subclass
     def verify_result(self, result):
-        for f in result:
-            if f.lower().endswith(".png") and not self.verify_img(f):
+        for filepath in result:
+            root, ext = os.path.splitext(filepath)
+            ext = ext.lower()
+            if ext == '.png' and not self.verify_img(filepath):
                 return False
-            elif f.lower().endswith(".log") and not self.verify_log(f):
+            elif ext == '.log' and not self.verify_log(filepath):
                 return False
         return True
 
@@ -44,24 +44,19 @@ class Benchmark(object):
         try:
             image = Image.open(filename)
         except:
-            import traceback
-            # Print the stack traceback
-            traceback.print_exc()
+            logger.warning('Error during image processing:', exc_info=True)
             return False
         img_size = image.size
         image.close()
         expected = self.task_definition.resolution
-        if img_size[0] == expected[0] and img_size[1] == expected[1]:
+        if tuple(img_size) == tuple(expected):
             return True
-        logger.warning("Bad resolution")
-        logger.warning("Expected {}x{}, but got {}x{}".format(expected[0], expected[1],
-                                                            img_size[0], img_size[1]))
+        logger.warning("Bad resolution\nExpected {}x{}, but got {}x{}".format(expected[0], expected[1], img_size[0], img_size[1]))
         return False
     
     def verify_log(self, filename):
-        fd = open(filename, "r")
-        content = fd.read()
-        fd.close()
+        with open(filename, 'r') as f:
+            content = f.read()
         if "error" in content.lower():
             logger.warning("Found error in " + filename)
             return False

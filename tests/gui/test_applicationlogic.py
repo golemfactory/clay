@@ -22,13 +22,13 @@ from golem.testutils import DatabaseFixture
 from golem.tools.appveyor import appveyor_skip
 from golem.tools.assertlogs import LogTestCase
 
-from apps.core.task.gnrtaskstate import TaskDesc, GNRTaskDefinition
+from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
-from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic, logger
-from gui.startapp import register_rendering_task_types
+from gui.application import Gui
+from gui.applicationlogic import GuiApplicationLogic, logger
+from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
 
@@ -155,14 +155,14 @@ class MockRPCPublisher(object):
         self.success = None
 
 
-class TestGNRApplicationLogic(DatabaseFixture):
+class TestGuiApplicationLogic(DatabaseFixture):
 
     def test_root_path(self):
-        logic = GNRApplicationLogic()
+        logic = GuiApplicationLogic()
         self.assertTrue(os.path.isdir(logic.root_path))
 
     def test_update_payments_view(self):
-        logic = GNRApplicationLogic()
+        logic = GuiApplicationLogic()
         logic.client = Mock()
         logic.customizer = Mock()
         ether = denoms.ether
@@ -181,7 +181,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
         ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
 
     def test_start_task(self):
-        logic = GNRApplicationLogic()
+        logic = GuiApplicationLogic()
         logic.customizer = Mock()
         logic.client = Mock()
         task_desc = TaskDesc()
@@ -196,7 +196,7 @@ class TestGNRApplicationLogic(DatabaseFixture):
         assert task_desc.task_state.outputs == ["output1", "output2", "output3"]
 
 
-class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
+class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     def setUp(self):
         DatabaseFixture.setUp(self)
@@ -211,7 +211,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         DatabaseFixture.tearDown(self)
 
     def test_change_description(self):
-        logic = GNRApplicationLogic()
+        logic = GuiApplicationLogic()
         logic.customizer = Mock()
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
@@ -224,14 +224,14 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         self.assertEqual(self.client.get_description(), description)
 
     def test_add_tasks(self):
-        logic = GNRApplicationLogic()
+        logic = GuiApplicationLogic()
         logic.customizer = Mock()
-        td = TestGNRApplicationLogicWithClient._get_task_definition()
+        td = TestGuiApplicationLogicWithClient._get_task_definition()
         logic.add_task_from_definition(td)
         self.assertIn("xyz", logic.tasks, "Task was not added")
-        task_state1 = TestGNRApplicationLogicWithClient._get_task_state()
-        task_state2 = TestGNRApplicationLogicWithClient._get_task_state(task_id="abc")
-        task_state3 = TestGNRApplicationLogicWithClient._get_task_state(task_id="def")
+        task_state1 = TestGuiApplicationLogicWithClient._get_task_state()
+        task_state2 = TestGuiApplicationLogicWithClient._get_task_state(task_id="abc")
+        task_state3 = TestGuiApplicationLogicWithClient._get_task_state(task_id="def")
         logic.add_tasks([task_state1, task_state2, task_state3])
         self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
         self.assertIn("xyz", logic.tasks, "Task was not added")
@@ -251,7 +251,7 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
         task_state = TaskDesc()
-        td = TestGNRApplicationLogicWithClient._get_task_definition(task_id=task_id,
+        td = TestGuiApplicationLogicWithClient._get_task_definition(task_id=task_id,
                                                                     full_task_timeout=full_task_timeout,
                                                                     subtask_timeout=subtask_timeout)
         task_state.status = TaskStatus.notStarted
@@ -260,14 +260,14 @@ class TestGNRApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
     @staticmethod
     def _get_task_definition(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
-        td = GNRTaskDefinition()
+        td = TaskDefinition()
         td.task_id = task_id
         td.full_task_timeout = full_task_timeout
         td.subtask_timeout = subtask_timeout
         return td
 
 
-class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
+class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
     def setUp(self):
         DatabaseFixture.setUp(self)
         LogTestCase.setUp(self)
@@ -275,8 +275,8 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         from threading import Lock
         self.client.lock = Lock()
         self.client.task_tester = None
-        self.logic = GNRApplicationLogic()
-        self.app = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.app = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
         self.app.app.exit(0)
@@ -305,7 +305,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
     def test_run_test_task(self):
         logic = self.logic
-        gnrgui = self.app
+        gui = self.app
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
         rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
@@ -318,7 +318,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
 
-        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
+        logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         logic.customizer.show_warning_window = Mock()
 
@@ -387,8 +387,8 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
     def test_update_peers_view(self):
         logic = self.logic
-        gnrgui = self.app
-        logic.customizer = MainWindowCustomizer(gnrgui.main_window, logic)
+        gui = self.app
+        logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         peer = Mock()
         peer.address = "10.10.10.10"
@@ -436,7 +436,7 @@ class TestGNRApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.customizer.show_error_window = Mock()
         logic.customizer.show_warning_window =  Mock()
         self.logic.dir_manager = DirManager(self.path)
-        register_rendering_task_types(logic)
+        register_task_types(logic)
 
         rts = TaskDesc()
         self.assertIsInstance(rts, TaskDesc)

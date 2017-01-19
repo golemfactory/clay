@@ -89,7 +89,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertGreater(len(get_host_address('127.0.0.1')), 0)
         self.assertTrue(is_ip_address(get_host_address(None, False)))
         self.assertTrue(is_ip_address(get_host_address(None, True), False))
-        self.assertEqual(get_host_address("::1", True), "::1")
+        self.assertTrue(is_ip_address(get_host_address("::1", True), False))
 
     @unittest.skip("Find network testing framework")
     def testGetHostAddress2(self):

@@ -8,7 +8,7 @@ from PyQt4.QtTest import QTest
 
 from golem.testutils import TempDirFixture, TestGui
 
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
@@ -18,7 +18,7 @@ from gui.view.tasktableelem import ItemMap
 class TestMainWindowCustomizer(TestGui):
 
     def test_description(self):
-        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
         assert isinstance(customizer, MainWindowCustomizer)
         customizer.set_options(MagicMock(), "ID1", "ETH_ADDR1", "DESC1")
         assert customizer.gui.ui.descriptionTextEdit.toPlainText() == "DESC1"
@@ -39,7 +39,7 @@ class TestMainWindowCustomizer(TestGui):
         assert not customizer.gui.ui.descriptionTextEdit.isEnabled()
 
     def test_table(self):
-        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
         task1 = TaskDesc()
         task1.definition.task_id = "TASK ID 1"
         task1.status = "Finished"
@@ -92,7 +92,7 @@ class TestMainWindowCustomizer(TestGui):
 
     def test_folderTreeView(self):
         tmp_files = self.additional_dir_content([4, [3], [2]])
-        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
 
         customizer.gui.ui.showResourceButton.click()
         customizer.current_task_highlighted = MagicMock()
@@ -101,7 +101,7 @@ class TestMainWindowCustomizer(TestGui):
         customizer.gui.ui.showResourceButton.click()
 
     def test_update_preview(self):
-        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
         rts = TaskDesc(definition_class=RenderingTaskDefinition)
         rts.definition.output_file = "bla"
         customizer.update_task_additional_info(rts)
@@ -135,7 +135,7 @@ class TestMainWindowCustomizer(TestGui):
 
     @patch("gui.controller.customizer.QMessageBox")
     def test_show_task_result(self, mock_messagebox):
-        customizer = MainWindowCustomizer(self.gnrgui.get_main_window(), MagicMock())
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
         td = TaskDesc()
         td.definition.task_type = "Blender"
         td.definition.options.use_frames = True

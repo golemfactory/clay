@@ -6,6 +6,8 @@ from PyQt4.QtGui import QMessageBox
 
 from golem.core.simpleexccmd import is_windows
 
+SETTINGS_FILE = "gui_settings.ini"
+
 
 class Customizer(object):
 
@@ -47,11 +49,16 @@ class Customizer(object):
         ms_box.show()
 
     def save_setting(self, name, value, sync=False):
-        settings = QSettings(os.path.join(self.logic.dir_manager.root_path, "gui_settings.ini"), QSettings.IniFormat)
+        settings = self._get_settings()
         settings.setValue(name, value)
         if sync:
             settings.sync()
 
     def load_setting(self, name, default):
-        settings = QSettings(os.path.join(self.logic.dir_manager.root_path, "gui_settings.ini"), QSettings.IniFormat)
+        settings = self._get_settings()
         return settings.value(name, default)
+
+    def _get_settings(self):
+        settings_path = os.path.join(self.logic.dir_manager.root_path,
+                                     SETTINGS_FILE)
+        return QSettings(settings_path, QSettings.IniFormat)
