@@ -11,7 +11,7 @@ from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 
 from golem.core.simpleenv import get_local_datadir
 from golem.ethereum import Client
-from golem.ethereum.contracts import BankOfDeposit
+from golem.ethereum.contracts import BankOfDeposit, TestGNT
 from golem.ethereum.node import Faucet
 
 
@@ -53,6 +53,7 @@ def app(ctx, data_dir, name):
         dir = data_dir
         eth = geth
         me = None
+        faucet_nonce = 0
 
     ctx.obj = O()
 
@@ -147,18 +148,15 @@ def history(o):
 @app.group()
 @click.pass_obj
 def faucet(o):
-    nonce = o.eth.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
-    print "NONCE", nonce
-    if nonce == 0:  # Deploy Bank of Deposit contract
-        tx = Transaction(nonce, 1, 3141592, to='', value=0,
+    faucet_addr = '0x' + Faucet.ADDR.encode('hex')
+    o.faucet_nonce = o.eth.get_transaction_count(faucet_addr)
+    print "NONCE", o.faucet_nonce
+    if o.faucet_nonce == 0:  # Deploy Bank of Deposit contract
+        tx = Transaction(o.faucet_nonce, 1, 3141592, to='', value=0,
                          data=BankOfDeposit.INIT_HEX.decode('hex'))
         tx.sign(Faucet.PRIVKEY)
         o.eth.send(tx)
-        addr = tx.creates
-        expected = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
-        if addr != expected:
-            raise ValueError("Incorrect address: {}. Expected: {}".format(addr, expected.encode('hex')))
-        print "ADDR", addr.encode('hex')
+        gevent.sleep(10)
 
 
 @faucet.command('balance')
@@ -167,15 +165,26 @@ def faucet_balance(o):
     print o.eth.get_balance('0x' + Faucet.ADDR.encode('hex'))
 
 
+@faucet.command('testgnt')
+@click.pass_obj
+def faucet_testgnt(o):
+    """ Deploy TestGNT contract."""
+    tx = Transaction(o.faucet_nonce, 1, 3141592, to='', value=0,
+                     data=TestGNT.INIT_HEX.decode('hex'))
+    tx.sign(Faucet.PRIVKEY)
+    o.eth.send(tx)
+    print "TestGNT: {}".format(tx.creates.encode('hex'))
+    gevent.sleep(10)
+
+
 @faucet.command('send')
 @click.pass_obj
 @click.argument('to')
 @click.argument('value', default=1)
 def faucet_send(o, to, value):
     value = int(value * denoms.ether)
-    nonce = o.eth.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
     to = normalize_address(to)
-    tx = Transaction(nonce, 1, 21000, to, value, '')
+    tx = Transaction(o.faucet_nonce, 1, 21000, to, value, '')
     tx.sign(Faucet.PRIVKEY)
     r = o.eth.send(tx)
     print "Transaction sent:", r
