@@ -43,6 +43,39 @@ class BenchmarkRunnerTest(TempDirFixture):
             values['start'].assert_called_once_with()
             values['tt'].join.assert_called_once_with()
 
+    def test_task_computed_immidiately(self):
+        """Special case when start_time and stop_time are identical.
+        It's higly unprobable on *NIX but happens a lot on Windows
+        wich has lower precision of time.time()."""
+
+        task_thread = mock.MagicMock()
+
+        # result dict with data, and successful verification
+        result_dict = {
+            'data': object(),
+        }
+        task_thread.result = (result_dict, None)
+        try:
+            self.instance.__class__.start_time = property(lambda self: self.end_time)
+            self.instance.success_callback = mock.MagicMock()
+            self.benchmark.verify_result.return_value = True
+            self.benchmark.normalization_constant = 1
+            self.instance.task_computed(task_thread)
+            self.instance.success_callback.assert_called_once_with(mock.ANY)
+        finally:
+            del self.instance.__class__.start_time
+
+        # now try what happens when user moves the clock back!
+        try:
+            self.instance.__class__.start_time = property(lambda self: self.end_time+10)
+            self.instance.success_callback = mock.MagicMock()
+            self.benchmark.verify_result.return_value = True
+            self.benchmark.normalization_constant = 1
+            self.instance.task_computed(task_thread)
+            self.instance.success_callback.assert_called_once_with(mock.ANY)
+        finally:
+            del self.instance.__class__.start_time
+
     def test_task_computed(self):
         """Processing of computed task."""
         task_thread = mock.MagicMock()
