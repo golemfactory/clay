@@ -195,7 +195,7 @@ class TestBasicProtocol(LogTestCase):
         data = m.serialize()
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)
-        self.assertEqual(protocol.session.interpret.call_args[0][0].get_type(), m.get_type())
+        self.assertEqual(protocol.session.interpret.call_args[0][0].TYPE, m.TYPE)
 
 
 class TestSocketAddress(TestCase):

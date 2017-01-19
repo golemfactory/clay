@@ -10,29 +10,22 @@ from golem.core.simpleserializer import SimpleSerializer, CBORSerializer
 logger = logging.getLogger(__name__)
 
 
-class Message:
+class Message(object):
     """ Communication message that is sent in all networks """
 
     registered_message_types = {}  # Message types that are allowed to be sent in the network """
 
-    def __init__(self, type_, sig="", timestamp=None):
+    def __init__(self, sig="", timestamp=None):
         """ Create new message. If this message type hasn't been registered yet, add this class to registered message
         collection. """
-        if type_ not in Message.registered_message_types:
-            Message.registered_message_types[type_] = self.__class__
+        if self.TYPE not in Message.registered_message_types:
+            Message.registered_message_types[self.TYPE] = self.__class__
 
-        self.type = type_  # message type (class identifier)
         self.sig = sig  # signature (short data representation signed with private key)
         if timestamp is None:
             timestamp = time.time()
         self.timestamp = timestamp
         self.encrypted = False  # inform if message was encrypted
-
-    def get_type(self):
-        """ Return message type
-        :return int: Message type
-        """
-        return self.type
 
     def get_short_hash(self):
         """ Return short message representation for signature
@@ -66,9 +59,9 @@ class Message:
         """ Return serialized message
         :return str: serialized message """
         try:
-            return CBORSerializer.dumps([self.type, self.sig, self.timestamp, self.dict_repr()])
-        except Exception as exc:
-            logger.error("Error serializing message: {}".format(exc))
+            return CBORSerializer.dumps([self.TYPE, self.sig, self.timestamp, self.dict_repr()])
+        except Exception:
+            logger.exception("Error serializing message:")
             raise
 
     def serialize_to_buffer(self, db_):
@@ -184,7 +177,7 @@ class Message:
 
 
 class MessageHello(Message):
-    Type = 0
+    TYPE = 0
 
     PROTO_ID_STR = u"PROTO_ID"
     CLI_VER_STR = u"CLI_VER"
@@ -218,7 +211,7 @@ class MessageHello(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageHello.Type, sig, timestamp)
+        super(MessageHello, self).__init__(sig, timestamp)
 
         self.proto_id = proto_id
         self.client_ver = client_ver
@@ -261,7 +254,7 @@ class MessageHello(Message):
 
 
 class MessageRandVal(Message):
-    Type = 1
+    TYPE = 1
 
     RAND_VAL_STR = u"RAND_VAL"
 
@@ -273,7 +266,7 @@ class MessageRandVal(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageRandVal.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.rand_val = rand_val
 
@@ -285,7 +278,7 @@ class MessageRandVal(Message):
 
 
 class MessageDisconnect(Message):
-    Type = 2
+    TYPE = 2
 
     DISCONNECT_REASON_STR = u"DISCONNECT_REASON"
 
@@ -297,7 +290,7 @@ class MessageDisconnect(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageDisconnect.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.reason = reason
 
@@ -309,7 +302,7 @@ class MessageDisconnect(Message):
 
 
 class MessageChallengeSolution(Message):
-    Type = 3
+    TYPE = 3
 
     SOLUTION_STR = u"SOLUTION"
 
@@ -321,7 +314,7 @@ class MessageChallengeSolution(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageChallengeSolution.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.solution = solution
 
@@ -340,7 +333,7 @@ P2P_MESSAGE_BASE = 1000
 
 
 class MessagePing(Message):
-    Type = P2P_MESSAGE_BASE + 1
+    TYPE = P2P_MESSAGE_BASE + 1
 
     PING_STR = u"PING"
 
@@ -351,7 +344,7 @@ class MessagePing(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePing.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if not dict_repr.get(MessagePing.PING_STR):
@@ -362,7 +355,7 @@ class MessagePing(Message):
 
 
 class MessagePong(Message):
-    Type = P2P_MESSAGE_BASE + 2
+    TYPE = P2P_MESSAGE_BASE + 2
 
     PONG_STR = u"PONG"
 
@@ -373,7 +366,7 @@ class MessagePong(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePong.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessagePong.PONG_STR) is None:
@@ -384,7 +377,7 @@ class MessagePong(Message):
 
 
 class MessageGetPeers(Message):
-    Type = P2P_MESSAGE_BASE + 3
+    TYPE = P2P_MESSAGE_BASE + 3
 
     GET_PEERS_STR = u"GET_PEERS"
 
@@ -395,7 +388,7 @@ class MessageGetPeers(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGetPeers.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageGetPeers.GET_PEERS_STR) is None:
@@ -406,7 +399,7 @@ class MessageGetPeers(Message):
 
 
 class MessagePeers(Message):
-    Type = P2P_MESSAGE_BASE + 4
+    TYPE = P2P_MESSAGE_BASE + 4
 
     PEERS_STR = u"PEERS"
 
@@ -418,7 +411,7 @@ class MessagePeers(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePeers.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if peers_array is None:
             peers_array = []
@@ -436,7 +429,7 @@ class MessagePeers(Message):
 
 
 class MessageGetTasks(Message):
-    Type = P2P_MESSAGE_BASE + 5
+    TYPE = P2P_MESSAGE_BASE + 5
 
     GET_TASKS_STR = u"GET_TASKS"
 
@@ -446,7 +439,7 @@ class MessageGetTasks(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGetTasks.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageGetTasks.GET_TASKS_STR) is None:
@@ -457,7 +450,7 @@ class MessageGetTasks(Message):
 
 
 class MessageTasks(Message):
-    Type = P2P_MESSAGE_BASE + 6
+    TYPE = P2P_MESSAGE_BASE + 6
 
     TASKS_STR = u"TASKS"
 
@@ -469,7 +462,7 @@ class MessageTasks(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageTasks.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if tasks_array is None:
             tasks_array = []
@@ -487,7 +480,7 @@ class MessageTasks(Message):
 
 
 class MessageRemoveTask(Message):
-    Type = P2P_MESSAGE_BASE + 7
+    TYPE = P2P_MESSAGE_BASE + 7
 
     REMOVE_TASK_STR = u"REMOVE_TASK"
 
@@ -499,7 +492,7 @@ class MessageRemoveTask(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageRemoveTask.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.task_id = task_id
 
@@ -511,7 +504,7 @@ class MessageRemoveTask(Message):
 
 
 class MessageGetResourcePeers(Message):
-    Type = P2P_MESSAGE_BASE + 8
+    TYPE = P2P_MESSAGE_BASE + 8
 
     WANT_RESOURCE_PEERS_STR = u"WANT_RESOURCE_PEERS"
 
@@ -522,7 +515,7 @@ class MessageGetResourcePeers(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGetResourcePeers.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR) is None:
@@ -533,7 +526,7 @@ class MessageGetResourcePeers(Message):
 
 
 class MessageResourcePeers(Message):
-    Type = P2P_MESSAGE_BASE + 9
+    TYPE = P2P_MESSAGE_BASE + 9
 
     RESOURCE_PEERS_STR = u"RESOURCE_PEERS"
 
@@ -545,7 +538,7 @@ class MessageResourcePeers(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResourcePeers.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if resource_peers is None:
             resource_peers = []
@@ -563,7 +556,7 @@ class MessageResourcePeers(Message):
 
 
 class MessageDegree(Message):
-    Type = P2P_MESSAGE_BASE + 10
+    TYPE = P2P_MESSAGE_BASE + 10
 
     DEGREE_STR = u"DEGREE"
 
@@ -575,7 +568,7 @@ class MessageDegree(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageDegree.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.degree = degree
 
@@ -587,7 +580,7 @@ class MessageDegree(Message):
 
 
 class MessageGossip(Message):
-    Type = P2P_MESSAGE_BASE + 11
+    TYPE = P2P_MESSAGE_BASE + 11
 
     GOSSIP_STR = u"GOSSIP"
 
@@ -599,7 +592,7 @@ class MessageGossip(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGossip.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.gossip = gossip
 
@@ -611,7 +604,7 @@ class MessageGossip(Message):
 
 
 class MessageStopGossip(Message):
-    Type = P2P_MESSAGE_BASE + 12
+    TYPE = P2P_MESSAGE_BASE + 12
 
     STOP_GOSSIP_STR = u"STOP_GOSSIP"
 
@@ -621,7 +614,7 @@ class MessageStopGossip(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageStopGossip.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageStopGossip.STOP_GOSSIP_STR) is None:
@@ -632,7 +625,7 @@ class MessageStopGossip(Message):
 
 
 class MessageLocRank(Message):
-    Type = P2P_MESSAGE_BASE + 13
+    TYPE = P2P_MESSAGE_BASE + 13
 
     NODE_ID_STR = u"NODE_ID"
     LOC_RANK_STR = u"LOC_RANK"
@@ -646,7 +639,7 @@ class MessageLocRank(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageLocRank.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.node_id = node_id
         self.loc_rank = loc_rank
@@ -661,7 +654,7 @@ class MessageLocRank(Message):
 
 
 class MessageFindNode(Message):
-    Type = P2P_MESSAGE_BASE + 14
+    TYPE = P2P_MESSAGE_BASE + 14
 
     NODE_KEY_ID_STR = u"NODE_KEY_ID"
 
@@ -673,7 +666,7 @@ class MessageFindNode(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageFindNode.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.node_key_id = node_key_id
 
@@ -685,7 +678,7 @@ class MessageFindNode(Message):
 
 
 class MessageWantToStartTaskSession(Message):
-    Type = P2P_MESSAGE_BASE + 15
+    TYPE = P2P_MESSAGE_BASE + 15
 
     NODE_INFO_STR = u"NODE_INFO"
     CONN_ID_STR = u"CONN_ID"
@@ -702,7 +695,7 @@ class MessageWantToStartTaskSession(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageWantToStartTaskSession.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.node_info = node_info
         self.conn_id = conn_id
@@ -722,7 +715,7 @@ class MessageWantToStartTaskSession(Message):
 
 
 class MessageSetTaskSession(Message):
-    Type = P2P_MESSAGE_BASE + 16
+    TYPE = P2P_MESSAGE_BASE + 16
 
     KEY_ID_STR = u"KEY_ID"
     NODE_INFO_STR = u"NODE_INFO"
@@ -741,7 +734,7 @@ class MessageSetTaskSession(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageSetTaskSession.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.key_id = key_id
         self.node_info = node_info
@@ -764,7 +757,7 @@ class MessageSetTaskSession(Message):
 
 
 class MessageNatHole(Message):
-    Type = P2P_MESSAGE_BASE + 17
+    TYPE = P2P_MESSAGE_BASE + 17
 
     KEY_ID_STR = u"KEY_ID"
     ADDR_STR = u"ADDR"
@@ -783,7 +776,7 @@ class MessageNatHole(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageNatHole.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.key_id = key_id
         self.addr = addr
@@ -806,7 +799,7 @@ class MessageNatHole(Message):
 
 
 class MessageNatTraverseFailure(Message):
-    Type = P2P_MESSAGE_BASE + 18
+    TYPE = P2P_MESSAGE_BASE + 18
 
     CONN_ID_STR = u"CONN_ID"
 
@@ -818,7 +811,7 @@ class MessageNatTraverseFailure(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageNatTraverseFailure.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.conn_id = conn_id
 
@@ -832,7 +825,7 @@ class MessageNatTraverseFailure(Message):
 
 
 class MessageInformAboutNatTraverseFailure(Message):
-    Type = P2P_MESSAGE_BASE + 19
+    TYPE = P2P_MESSAGE_BASE + 19
 
     KEY_ID_STR = u"KEY_ID"
     CONN_ID_STR = u"CONN_ID"
@@ -846,7 +839,7 @@ class MessageInformAboutNatTraverseFailure(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageInformAboutNatTraverseFailure.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.key_id = key_id
         self.conn_id = conn_id
@@ -866,7 +859,7 @@ TASK_MSG_BASE = 2000
 
 
 class MessageWantToComputeTask(Message):
-    Type = TASK_MSG_BASE + 1
+    TYPE = TASK_MSG_BASE + 1
 
     NODE_NAME_STR = u"NODE_NAME"
     TASK_ID_STR = u"TASK_ID"
@@ -890,7 +883,7 @@ class MessageWantToComputeTask(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageWantToComputeTask.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.node_name = node_name
         self.task_id = task_id
@@ -920,7 +913,7 @@ class MessageWantToComputeTask(Message):
 
 
 class MessageTaskToCompute(Message):
-    Type = TASK_MSG_BASE + 2
+    TYPE = TASK_MSG_BASE + 2
 
     COMPUTE_TASK_DEF_STR = u"COMPUTE_TASK_DEF"
 
@@ -932,7 +925,7 @@ class MessageTaskToCompute(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageTaskToCompute.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.ctd = ctd
 
@@ -947,7 +940,7 @@ class MessageTaskToCompute(Message):
 
 
 class MessageCannotAssignTask(Message):
-    Type = TASK_MSG_BASE + 3
+    TYPE = TASK_MSG_BASE + 3
 
     REASON_STR = u"REASON"
     TASK_ID_STR = u"TASK_ID"
@@ -961,7 +954,7 @@ class MessageCannotAssignTask(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageCannotAssignTask.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.task_id = task_id
         self.reason = reason
@@ -977,7 +970,7 @@ class MessageCannotAssignTask(Message):
 
 class MessageReportComputedTask(Message):
     # FIXME this message should be simpler
-    Type = TASK_MSG_BASE + 4
+    TYPE = TASK_MSG_BASE + 4
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_TYPE_STR = u"RESULT_TYPE"
@@ -1009,7 +1002,7 @@ class MessageReportComputedTask(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageReportComputedTask.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.result_type = result_type
@@ -1048,7 +1041,7 @@ class MessageReportComputedTask(Message):
 
 
 class MessageGetTaskResult(Message):
-    Type = TASK_MSG_BASE + 5
+    TYPE = TASK_MSG_BASE + 5
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
 
@@ -1060,7 +1053,7 @@ class MessageGetTaskResult(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGetTaskResult.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
 
@@ -1073,7 +1066,7 @@ class MessageGetTaskResult(Message):
 
 # It's an old form of sending task result (don't use if it isn't necessary)
 class MessageTaskResult(Message):
-    Type = TASK_MSG_BASE + 6
+    TYPE = TASK_MSG_BASE + 6
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESULT_STR = u"RESULT"
@@ -1087,7 +1080,7 @@ class MessageTaskResult(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageTaskResult.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.result = result
@@ -1102,7 +1095,7 @@ class MessageTaskResult(Message):
 
 
 class MessageTaskResultHash(Message):
-    Type = TASK_MSG_BASE + 7
+    TYPE = TASK_MSG_BASE + 7
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     MULTIHASH_STR = u"MULTIHASH"
@@ -1111,7 +1104,7 @@ class MessageTaskResultHash(Message):
 
     def __init__(self, subtask_id=0, multihash="", secret="", options=None, sig="", timestamp=None, dict_repr=None):
 
-        Message.__init__(self, MessageTaskResultHash.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.multihash = multihash
@@ -1132,7 +1125,7 @@ class MessageTaskResultHash(Message):
 
 
 class MessageGetResource(Message):
-    Type = TASK_MSG_BASE + 8
+    TYPE = TASK_MSG_BASE + 8
 
     TASK_ID_STR = u"SUB_TASK_ID"
     RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
@@ -1146,7 +1139,7 @@ class MessageGetResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageGetResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.task_id = task_id
         self.resource_header = resource_header
@@ -1163,7 +1156,7 @@ class MessageGetResource(Message):
 
 # Old method of sending resource. Don't use if it isn't necessary.
 class MessageResource(Message):
-    Type = TASK_MSG_BASE + 9
+    TYPE = TASK_MSG_BASE + 9
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     RESOURCE_STR = u"RESOURCE"
@@ -1177,7 +1170,7 @@ class MessageResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.resource = resource
@@ -1193,7 +1186,7 @@ class MessageResource(Message):
 
 
 class MessageSubtaskResultAccepted(Message):
-    Type = TASK_MSG_BASE + 10
+    TYPE = TASK_MSG_BASE + 10
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
     NODE_ID_STR = u"NODE_ID"
@@ -1208,7 +1201,7 @@ class MessageSubtaskResultAccepted(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageSubtaskResultAccepted.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.reward = reward
@@ -1225,7 +1218,7 @@ class MessageSubtaskResultAccepted(Message):
 
 
 class MessageSubtaskResultRejected(Message):
-    Type = TASK_MSG_BASE + 11
+    TYPE = TASK_MSG_BASE + 11
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
 
@@ -1237,7 +1230,7 @@ class MessageSubtaskResultRejected(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageSubtaskResultRejected.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
 
@@ -1251,7 +1244,7 @@ class MessageSubtaskResultRejected(Message):
 
 
 class MessageDeltaParts(Message):
-    Type = TASK_MSG_BASE + 12
+    TYPE = TASK_MSG_BASE + 12
 
     TASK_ID_STR = u"TASK_ID"
     DELTA_HEADER_STR = u"DELTA_HEADER"
@@ -1277,7 +1270,7 @@ class MessageDeltaParts(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageDeltaParts.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.task_id = task_id
         self.delta_header = delta_header
@@ -1309,7 +1302,7 @@ class MessageDeltaParts(Message):
 
 
 class MessageResourceFormat(Message):
-    Type = TASK_MSG_BASE + 13
+    TYPE = TASK_MSG_BASE + 13
 
     USE_DISTRIBUTED_RESOURCE_STR = u"USE_DISTRIBUTED_RESOURCE"
 
@@ -1322,7 +1315,7 @@ class MessageResourceFormat(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResourceFormat.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.use_distributed_resource = use_distributed_resource
 
@@ -1336,7 +1329,7 @@ class MessageResourceFormat(Message):
 
 
 class MessageAcceptResourceFormat(Message):
-    Type = TASK_MSG_BASE + 14
+    TYPE = TASK_MSG_BASE + 14
 
     ACCEPT_RESOURCE_FORMAT_STR = u"ACCEPT_RESOURCE_FORMAT"
 
@@ -1347,7 +1340,7 @@ class MessageAcceptResourceFormat(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageAcceptResourceFormat.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR) is None:
@@ -1358,7 +1351,7 @@ class MessageAcceptResourceFormat(Message):
 
 
 class MessageTaskFailure(Message):
-    Type = TASK_MSG_BASE + 15
+    TYPE = TASK_MSG_BASE + 15
 
     SUBTASK_ID_STR = u"SUBTASK_ID"
     ERR_STR = u"ERR"
@@ -1372,7 +1365,7 @@ class MessageTaskFailure(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageTaskFailure.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.subtask_id = subtask_id
         self.err = err
@@ -1389,7 +1382,7 @@ class MessageTaskFailure(Message):
 
 
 class MessageStartSessionResponse(Message):
-    Type = TASK_MSG_BASE + 16
+    TYPE = TASK_MSG_BASE + 16
 
     CONN_ID_STR = u"CONN_ID"
 
@@ -1401,7 +1394,7 @@ class MessageStartSessionResponse(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageStartSessionResponse.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.conn_id = conn_id
 
@@ -1413,7 +1406,7 @@ class MessageStartSessionResponse(Message):
 
 
 class MessageMiddleman(Message):
-    Type = TASK_MSG_BASE + 17
+    TYPE = TASK_MSG_BASE + 17
 
     ASKING_NODE_STR = u"ASKING_NODE"
     DEST_NODE_STR = u"DEST_NODE"
@@ -1430,7 +1423,7 @@ class MessageMiddleman(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageMiddleman.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.asking_node = asking_node
         self.dest_node = dest_node
@@ -1450,7 +1443,7 @@ class MessageMiddleman(Message):
 
 
 class MessageJoinMiddlemanConn(Message):
-    Type = TASK_MSG_BASE + 18
+    TYPE = TASK_MSG_BASE + 18
 
     CONN_ID_STR = u"CONN_ID"
     KEY_ID_STR = u"KEY_ID"
@@ -1467,7 +1460,7 @@ class MessageJoinMiddlemanConn(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageJoinMiddlemanConn.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.conn_id = conn_id
         self.key_id = key_id
@@ -1485,7 +1478,7 @@ class MessageJoinMiddlemanConn(Message):
 
 
 class MessageBeingMiddlemanAccepted(Message):
-    Type = TASK_MSG_BASE + 19
+    TYPE = TASK_MSG_BASE + 19
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
@@ -1496,7 +1489,7 @@ class MessageBeingMiddlemanAccepted(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageBeingMiddlemanAccepted.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR) is None:
@@ -1507,7 +1500,7 @@ class MessageBeingMiddlemanAccepted(Message):
 
 
 class MessageMiddlemanAccepted(Message):
-    Type = TASK_MSG_BASE + 20
+    TYPE = TASK_MSG_BASE + 20
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
@@ -1518,7 +1511,7 @@ class MessageMiddlemanAccepted(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageMiddlemanAccepted.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR) is None:
@@ -1529,7 +1522,7 @@ class MessageMiddlemanAccepted(Message):
 
 
 class MessageMiddlemanReady(Message):
-    Type = TASK_MSG_BASE + 21
+    TYPE = TASK_MSG_BASE + 21
 
     MIDDLEMAN_STR = u"MIDDLEMAN"
 
@@ -1540,7 +1533,7 @@ class MessageMiddlemanReady(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageMiddlemanReady.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageMiddlemanReady.MIDDLEMAN_STR) is None:
@@ -1551,7 +1544,7 @@ class MessageMiddlemanReady(Message):
 
 
 class MessageNatPunch(Message):
-    Type = TASK_MSG_BASE + 22
+    TYPE = TASK_MSG_BASE + 22
 
     ASKING_NODE_STR = u"ASKING_NODE"
     DEST_NODE_STR = u"DEST_NODE"
@@ -1569,7 +1562,7 @@ class MessageNatPunch(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageNatPunch.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.asking_node = asking_node
         self.dest_node = dest_node
@@ -1589,7 +1582,7 @@ class MessageNatPunch(Message):
 
 
 class MessageWaitForNatTraverse(Message):
-    Type = TASK_MSG_BASE + 23
+    TYPE = TASK_MSG_BASE + 23
 
     PORT_STR = u"PORT"
 
@@ -1601,7 +1594,7 @@ class MessageWaitForNatTraverse(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageWaitForNatTraverse.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.port = port
 
@@ -1613,7 +1606,7 @@ class MessageWaitForNatTraverse(Message):
 
 
 class MessageNatPunchFailure(Message):
-    Type = TASK_MSG_BASE + 24
+    TYPE = TASK_MSG_BASE + 24
 
     NAT_PUNCH_FAILURE_STR = u"NAT_PUNCH_FAILURE"
 
@@ -1624,7 +1617,7 @@ class MessageNatPunchFailure(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageNatPunchFailure.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR) is None:
@@ -1635,7 +1628,7 @@ class MessageNatPunchFailure(Message):
 
 
 class MessageWaitingForResults(Message):
-    Type = TASK_MSG_BASE + 25
+    TYPE = TASK_MSG_BASE + 25
 
     WAITING_FOR_RESULTS_STR = u"WAITING_FOR_RESULTS"
 
@@ -1646,7 +1639,7 @@ class MessageWaitingForResults(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageWaitingForResults.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         if dict_repr:
             if dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR) is None:
@@ -1657,7 +1650,7 @@ class MessageWaitingForResults(Message):
 
 
 class MessageCannotComputeTask(Message):
-    Type = TASK_MSG_BASE + 26
+    TYPE = TASK_MSG_BASE + 26
 
     REASON_STR = u"REASON"
     SUBTASK_ID_STR = u"SUBTASK_ID"
@@ -1669,7 +1662,7 @@ class MessageCannotComputeTask(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageCannotComputeTask.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
 
         self.reason = reason
         self.subtask_id = subtask_id
@@ -1686,7 +1679,7 @@ RESOURCE_MSG_BASE = 3000
 
 
 class MessagePushResource(Message):
-    Type = RESOURCE_MSG_BASE + 1
+    TYPE = RESOURCE_MSG_BASE + 1
 
     RESOURCE_STR = u"resource"
     COPIES_STR = u"copies"
@@ -1700,7 +1693,7 @@ class MessagePushResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePushResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
         self.copies = copies
 
@@ -1715,7 +1708,7 @@ class MessagePushResource(Message):
 
 
 class MessageHasResource(Message):
-    Type = RESOURCE_MSG_BASE + 2
+    TYPE = RESOURCE_MSG_BASE + 2
 
     RESOURCE_STR = u"resource"
 
@@ -1727,7 +1720,7 @@ class MessageHasResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageHasResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
 
         if dict_repr:
@@ -1737,8 +1730,8 @@ class MessageHasResource(Message):
         return {MessageHasResource.RESOURCE_STR: self.resource}
 
 
-class MessageWantResource(Message):
-    Type = RESOURCE_MSG_BASE + 3
+class MessageWantsResource(Message):
+    TYPE = RESOURCE_MSG_BASE + 3
 
     RESOURCE_STR = u"resource"
 
@@ -1750,18 +1743,18 @@ class MessageWantResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageWantResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
 
         if dict_repr:
-            self.resource = dict_repr[MessageWantResource.RESOURCE_STR]
+            self.resource = dict_repr[self.RESOURCE_STR]
 
     def dict_repr(self):
-        return {MessageWantResource.RESOURCE_STR: self.resource}
+        return {self.RESOURCE_STR: self.resource}
 
 
 class MessagePullResource(Message):
-    Type = RESOURCE_MSG_BASE + 4
+    TYPE = RESOURCE_MSG_BASE + 4
 
     RESOURCE_STR = u"resource"
 
@@ -1773,7 +1766,7 @@ class MessagePullResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePullResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
 
         if dict_repr:
@@ -1784,7 +1777,7 @@ class MessagePullResource(Message):
 
 
 class MessagePullAnswer(Message):
-    Type = RESOURCE_MSG_BASE + 5
+    TYPE = RESOURCE_MSG_BASE + 5
 
     RESOURCE_STR = u"resource"
     HAS_RESOURCE_STR = u"has resource"
@@ -1798,7 +1791,7 @@ class MessagePullAnswer(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessagePullAnswer.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
         self.has_resource = has_resource
 
@@ -1813,7 +1806,7 @@ class MessagePullAnswer(Message):
 
 # Old message. Don't use if it isn't necessary.
 class MessageSendResource(Message):
-    Type = RESOURCE_MSG_BASE + 6
+    TYPE = RESOURCE_MSG_BASE + 6
 
     RESOURCE_STR = u"resource"
 
@@ -1825,7 +1818,7 @@ class MessageSendResource(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageSendResource.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resource = resource
 
         if dict_repr:
@@ -1836,7 +1829,7 @@ class MessageSendResource(Message):
 
 
 class MessageResourceList(Message):
-    Type = RESOURCE_MSG_BASE + 7
+    TYPE = RESOURCE_MSG_BASE + 7
 
     RESOURCES_STR = u"resources"
     OPTIONS_STR = u"options"
@@ -1849,7 +1842,7 @@ class MessageResourceList(Message):
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, MessageResourceList.Type, sig, timestamp)
+        Message.__init__(self, sig, timestamp)
         self.resources = resources
         self.options = options
 
@@ -1861,6 +1854,9 @@ class MessageResourceList(Message):
         return {MessageResourceList.RESOURCES_STR: self.resources,
                 MessageResourceList.OPTIONS_STR: self.options}
 
+
+REGISTERED_MESSAGE_TYPES = {
+}
 
 def init_messages():
     """Add supported messages to register messages list"""

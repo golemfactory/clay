@@ -65,9 +65,9 @@ class PeerSession(BasicSafeSession):
         self.challenge = None
         self.difficulty = 0
 
-        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type, MessageChallengeSolution.Type])
-        self.can_be_unsigned.extend([MessageHello.Type])
-        self.can_be_not_encrypted.extend([MessageHello.Type])
+        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
+        self.can_be_unsigned.extend([MessageHello.TYPE])
+        self.can_be_not_encrypted.extend([MessageHello.TYPE])
 
         self.__set_msg_interpretations()
 
@@ -452,34 +452,34 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            MessagePing.Type: self._react_to_ping,
-            MessagePong.Type: self._react_to_pong,
-            MessageHello.Type: self._react_to_hello,
-            MessageChallengeSolution.Type: self._react_to_challenge_solution,
-            MessageGetPeers.Type: self._react_to_get_peers,
-            MessagePeers.Type: self._react_to_peers,
-            MessageGetTasks.Type: self._react_to_get_tasks,
-            MessageTasks.Type: self._react_to_tasks,
-            MessageRemoveTask.Type: self._react_to_remove_task,
-            MessageFindNode.Type: self._react_to_find_node,
-            MessageRandVal.Type: self._react_to_rand_val,
-            MessageWantToStartTaskSession.Type: self._react_to_want_to_start_task_session,
-            MessageSetTaskSession.Type: self._react_to_set_task_session,
-            MessageNatHole.Type: self._react_to_nat_hole,
-            MessageNatTraverseFailure.Type: self._react_to_nat_traverse_failure,
-            MessageInformAboutNatTraverseFailure.Type: self._react_to_inform_about_nat_traverse_failure
+            MessagePing.TYPE: self._react_to_ping,
+            MessagePong.TYPE: self._react_to_pong,
+            MessageHello.TYPE: self._react_to_hello,
+            MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
+            MessageGetPeers.TYPE: self._react_to_get_peers,
+            MessagePeers.TYPE: self._react_to_peers,
+            MessageGetTasks.TYPE: self._react_to_get_tasks,
+            MessageTasks.TYPE: self._react_to_tasks,
+            MessageRemoveTask.TYPE: self._react_to_remove_task,
+            MessageFindNode.TYPE: self._react_to_find_node,
+            MessageRandVal.TYPE: self._react_to_rand_val,
+            MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
+            MessageSetTaskSession.TYPE: self._react_to_set_task_session,
+            MessageNatHole.TYPE: self._react_to_nat_hole,
+            MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
+            MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure
         })
 
     def __set_resource_msg_interpretations(self):
         self._interpretation.update({
-            MessageGetResourcePeers.Type: self._react_to_get_resource_peers,
-            MessageResourcePeers.Type: self._react_to_resource_peers,
+            MessageGetResourcePeers.TYPE: self._react_to_get_resource_peers,
+            MessageResourcePeers.TYPE: self._react_to_resource_peers,
         })
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            MessageDegree.Type: self._react_to_degree,
-            MessageGossip.Type: self._react_to_gossip,
-            MessageLocRank.Type: self._react_to_loc_rank,
-            MessageStopGossip.Type: self._react_to_stop_gossip,
+            MessageDegree.TYPE: self._react_to_degree,
+            MessageGossip.TYPE: self._react_to_gossip,
+            MessageLocRank.TYPE: self._react_to_loc_rank,
+            MessageStopGossip.TYPE: self._react_to_stop_gossip,
         })

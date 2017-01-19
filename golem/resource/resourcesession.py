@@ -1,7 +1,7 @@
 import logging
 
 
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantResource, \
+from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantsResource, \
     MessagePushResource, MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
@@ -129,7 +129,7 @@ class ResourceSession(BasicSafeSession):
         """ Send want resource message
         :param str resource: resource name
         """
-        self.send(MessageWantResource(resource))
+        self.send(MessageWantsResource(resource))
 
     def send_push_resource(self, resource, copies=1):
         """ Send information that expected number of copies of given resource should be pushed to the network
@@ -180,7 +180,7 @@ class ResourceSession(BasicSafeSession):
         self.resource_server.has_resource(msg.resource, self.address, self.port)
         self.dropped()
 
-    def _react_to_want_resource(self, msg):
+    def _react_to_wants_resource(self, msg):
         self.conn.producer = EncryptFileProducer([self.resource_server.prepare_resource(msg.resource)], self)
 
     def _react_to_pull_resource(self, msg):
@@ -207,26 +207,25 @@ class ResourceSession(BasicSafeSession):
         self.send(MessageRandVal(msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
-        if self.rand_val == msg.rand_val:
-            self.verified = True
-            self.resource_server.verified_conn(self.conn_id)
-            for msg in self.msgs_to_send:
-                self.send(msg)
-            self.msgs_to_send = []
-        else:
+        if self.rand_val != msg.rand_val:
             self.disconnect(ResourceSession.DCRUnverified)
+            return
+        self.verified = True
+        self.resource_server.verified_conn(self.conn_id)
+        while self.msgs_to_send:
+            self.send(self.msgs_to_send.pop(0))
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            MessagePushResource.Type: self._react_to_push_resource,
-            MessageHasResource.Type: self._react_to_has_resource,
-            MessageWantResource.Type: self._react_to_want_resource,
-            MessagePullResource.Type: self._react_to_pull_resource,
-            MessagePullAnswer.Type: self._react_to_pull_answer,
-            MessageHello.Type: self._react_to_hello,
-            MessageRandVal.Type: self._react_to_rand_val
+            MessagePushResource.TYPE: self._react_to_push_resource,
+            MessageHasResource.TYPE: self._react_to_has_resource,
+            MessageWantsResource.TYPE: self._react_to_wants_resource,
+            MessagePullResource.TYPE: self._react_to_pull_resource,
+            MessagePullAnswer.TYPE: self._react_to_pull_answer,
+            MessageHello.TYPE: self._react_to_hello,
+            MessageRandVal.TYPE: self._react_to_rand_val
         })
 
-        self.can_be_not_encrypted.append(MessageHello.Type)
-        self.can_be_unsigned.append(MessageHello.Type)
-        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+        self.can_be_not_encrypted.append(MessageHello.TYPE)
+        self.can_be_unsigned.append(MessageHello.TYPE)
+        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE])
