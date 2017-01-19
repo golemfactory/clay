@@ -1,8 +1,8 @@
 import datetime
 import logging
 
-from PyQt4 import QtCore
-from PyQt4.QtGui import QMenu
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QMenu
 
 from golem.task.taskstate import ComputerState
 from gui.view.dialog import SubtaskDetailsDialog

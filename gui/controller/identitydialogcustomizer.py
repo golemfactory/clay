@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QMessageBox, QFileDialog
+from PyQt5.QtWidgets import QMessageBox, QFileDialog
 from twisted.internet.defer import inlineCallbacks
 
 from gui.view.dialog import SaveKeysDialog, GeneratingKeyWindow

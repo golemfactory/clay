@@ -2,8 +2,7 @@ import logging
 import os
 from copy import deepcopy
 
-from PyQt4.QtCore import QObject, SIGNAL
-from PyQt4.QtGui import QFileDialog
+from PyQt5.QtWidgets import QFileDialog
 
 from gui.controller.customizer import Customizer
 
@@ -163,8 +162,7 @@ class RendererCustomizer(Customizer):
 class FrameRendererCustomizer(RendererCustomizer):
     def _setup_connections(self):
         super(FrameRendererCustomizer, self)._setup_connections()
-        QObject.connect(self.gui.ui.framesCheckBox, SIGNAL("stateChanged(int) "),
-                               self._frames_check_box_changed)
+        self.gui.ui.framesCheckBox.stateChanged.connect(self._frames_check_box_changed)
         self.gui.ui.framesLineEdit.textChanged.connect(self._frames_changed)
         self.gui.ui.framesCheckBox.stateChanged.connect(self._frames_changed)
 

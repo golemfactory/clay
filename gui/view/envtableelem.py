@@ -1,5 +1,5 @@
-from PyQt4.QtGui import QTableWidgetItem
-from PyQt4.QtCore import Qt
+from PyQt5.QtWidgets import QTableWidgetItem
+from PyQt5.QtCore import Qt
 
 
 class EnvTableElem:

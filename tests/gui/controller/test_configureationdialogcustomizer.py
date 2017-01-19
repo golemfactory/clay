@@ -1,7 +1,7 @@
 import os
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtTest import QTest
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
 from ethereum.utils import denoms
 from mock import MagicMock
 from twisted.internet.defer import Deferred

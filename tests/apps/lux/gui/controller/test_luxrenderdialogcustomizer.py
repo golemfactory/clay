@@ -1,5 +1,5 @@
-from PyQt4.QtCore import Qt, QSettings
-from PyQt4.QtTest import QTest
+from PyQt5.QtCore import Qt, QSettings
+from PyQt5.QtTest import QTest
 from mock import Mock, patch
 import os
 

@@ -3,8 +3,8 @@ import os
 from ethereum.utils import denoms
 from mock import patch, MagicMock
 from PIL import Image
-from PyQt4.QtCore import Qt
-from PyQt4.QtTest import QTest
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
 
 from golem.testutils import TempDirFixture, TestGui
 
