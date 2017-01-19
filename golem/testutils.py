@@ -4,6 +4,9 @@ import shutil
 import tempfile
 import unittest
 from os import path
+from time import sleep
+
+from mock import MagicMock
 
 from golem.core.common import is_windows, is_osx
 
@@ -49,8 +52,13 @@ class TempDirFixture(unittest.TestCase):
         # FIXME: This is temporary solution. Ethereum node should always be
         #        the explicit dependency and users should close it correctly.
         Client._kill_node()
-        if path.isdir(self.tempdir):
-            shutil.rmtree(self.tempdir)
+        try:
+            self.__remove_files()
+        except OSError:
+            # On windows there's sometimes a problem with syncing all threads.
+            # Try again after 3 secons
+            sleep(3)
+            self.__remove_files()
 
     def temp_file_name(self, name):
         return path.join(self.tempdir, name)
@@ -87,6 +95,9 @@ class TempDirFixture(unittest.TestCase):
     def _temp_dir_name(self):
         return self.id().rsplit('.', 1)[1]  # Use test method name
 
+    def __remove_files(self):
+        if path.isdir(self.tempdir):
+            shutil.rmtree(self.tempdir)
 
 class DatabaseFixture(TempDirFixture):
     """ Setups temporary database for tests."""
@@ -98,3 +109,20 @@ class DatabaseFixture(TempDirFixture):
     def tearDown(self):
         self.database.db.close()
         super(DatabaseFixture, self).tearDown()
+
+
+class TestGui(TempDirFixture):
+
+    def setUp(self):
+        super(TestGui, self).setUp()
+        from gui.application import GNRGui
+        from gui.view.appmainwindow import AppMainWindow
+
+        self.logic = MagicMock()
+        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        super(TestGui, self).tearDown()
+        self.gnrgui.app.exit(0)
+        self.gnrgui.app.deleteLater()
+

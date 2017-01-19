@@ -88,14 +88,14 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
         self.assertEquals(return_value.exit_code, 2)
-        assert 'Error: --node-address' in return_value.output
+        self.assertIn('Error: --node-address', return_value.output)
 
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1], catch_exceptions=False)
-        assert mock_node.called
+        self.assertTrue(mock_node.called)
         self.assertEqual(return_value.exit_code, 0)
         mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
@@ -251,5 +251,5 @@ class TestOptNode(TempDirFixture):
         print node.apps_manager.apps
         task_def = Mock()
         task_def.task_type = "Blender"
-        assert node._get_task_builder(task_def) is not None
+        self.assertIsNotNone(node._get_task_builder(task_def))
         node.client.quit()

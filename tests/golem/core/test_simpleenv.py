@@ -1,6 +1,7 @@
-import unittest
 import os
 import shutil
+import unittest
+
 from golem.core.simpleenv import SimpleEnv
 
 

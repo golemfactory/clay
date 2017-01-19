@@ -2,6 +2,7 @@ from rendertask import RenderTask, RenderTaskDesc, RenderTaskResult
 from threading import Lock
 from time import time
 
+
 class TaskableRenderer:
 
     def __init__(self, w, h, num_samples, scene_data, preferredTaskTimeSlice, timeoutTime):
@@ -67,7 +68,7 @@ class TaskableRenderer:
 
         return task
 
-    #estimated speed means rays per second
+    # estimated speed means rays per second
     def getNextTaskDesc(self, estimatedSpeed):
         with self.lock:
             timeLeft = self.timeoutTime - (time() - self.start_time)
@@ -99,12 +100,12 @@ class TaskableRenderer:
             self.active_tasks += 1
             self.total_tasks += 1
 
-            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(task_desc.getID(), task_desc.getNumPixels(), task_desc.getX(), task_desc.getY(), estimatedSpeed)
+            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(
+                task_desc.getID(), task_desc.getNumPixels(), task_desc.getX(), task_desc.getY(), estimatedSpeed)
 
             return task_desc
 
-
-    #estimated speed means rays per second
+    # estimated speed means rays per second
     def getNextTask(self, estimatedSpeed):
         with self.lock:
             timeLeft = self.timeoutTime - (time() - self.start_time)
@@ -136,13 +137,16 @@ class TaskableRenderer:
             self.active_tasks += 1
             self.total_tasks += 1
 
-            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY(), estimatedSpeed)
+            print "ASSIGNED Task {:5} with {:5} pixels at ({}, {}) at {} rays/s".format(
+                task.desc.getID(), task.desc.getNumPixels(), task.desc.getX(), task.desc.getY(), estimatedSpeed)
 
             return task
 
     def task_finished(self, result):
-        assert isinstance(result, RenderTaskResult)
-        assert result.desc.getW() == self.w and result.desc.getH() == self.h
+        if not isinstance(result, RenderTaskResult):
+            raise TypeError("Incorrect result type: {}. Should be RenderTaskResult".format(type(result)))
+        if result.desc.getW() != self.w or result.desc.getH() != self.h:
+            raise AttributeError("Task width or height is incorrect")
 
         desc    = result.getDesc()
         pixels  = result.get_pixel_data()
@@ -153,7 +157,8 @@ class TaskableRenderer:
             self.active_tasks -= 1
             self.pixelsCalculated += result.getDesc().getNumPixels()
 
-        print "FINISHED Task {:5} with {:5} pixels at ({}, {}) with progress: {} %".format(result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY(), 100.0 * self.get_progress())
+        print "FINISHED Task {:5} with {:5} pixels at ({}, {}) with progress: {} %".format(
+            result.desc.getID(), result.desc.getNumPixels(), result.desc.getX(), result.desc.getY(), 100.0 * self.get_progress())
 
         for k in range(3 * desc.getNumPixels()):
             self.data[ k + offset ] = pixels[ k ]

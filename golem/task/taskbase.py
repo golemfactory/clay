@@ -121,7 +121,8 @@ class Task(object):
 
     @classmethod
     def build_task(cls, task_builder):
-        assert isinstance(task_builder, TaskBuilder)
+        if not isinstance(task_builder, TaskBuilder):
+            raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
     def __init__(self, header, src_code):
@@ -141,7 +142,8 @@ class Task(object):
         self.listeners = []
 
     def register_listener(self, listener):
-        assert isinstance(listener, TaskEventListener)
+        if not isinstance(listener, TaskEventListener):
+            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
@@ -222,7 +224,6 @@ class Task(object):
         """
         return  # Implement in derived class
 
-
     @abc.abstractmethod
     def get_total_tasks(self):
         """ Return total number of tasks that should be computed
@@ -265,15 +266,6 @@ class Task(object):
         :return float: Return number between 0.0 and 1.0.
         """
         return  # Implement in derived class
-
-    @abc.abstractmethod
-    def accept_results_delay(self):
-        """ asks there should be a added subtask_id and delay_time as an argument. The name should be also changed
-        from "accept" to "set down" or something similar. The result of this method is a delay value, not a boolean
-        as a name is suggesting.
-        :return:
-        """
-        return 0.0
 
     @abc.abstractmethod
     def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
@@ -339,6 +331,12 @@ class Task(object):
         :return:
         """
         pass
+
+    def get_output_names(self):
+        """ Return list of files containing final import task results
+        :return list:
+        """
+        return []
 
 
 result_types = {'data': 0, 'files': 1}

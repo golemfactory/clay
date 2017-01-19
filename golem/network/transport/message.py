@@ -76,7 +76,8 @@ class Message:
         Append serialized message to given data buffer
         :param DataBuffer db_: data buffer that message should be attached to
         """
-        assert isinstance(db_, DataBuffer)
+        if not isinstance(db_, DataBuffer):
+            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
         db_.append_len_prefixed_string(self.serialize())
 
     @classmethod
@@ -87,7 +88,8 @@ class Message:
         :param SafeServer server: server that is able to decrypt data
         :return list: list of decrypted and deserialized messages
         """
-        assert isinstance(db_, DataBuffer)
+        if not isinstance(db_, DataBuffer):
+            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
         messages_ = []
 
         for msg in db_.get_len_prefixed_string():
@@ -120,7 +122,8 @@ class Message:
         :param DataBuffer db_: data buffer containing messages
         :return list: list of deserialized messages
         """
-        assert isinstance(db_, DataBuffer)
+        if not isinstance(db_, DataBuffer):
+            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
         messages_ = []
         msg_ = db_.read_len_prefixed_string()
 
@@ -351,7 +354,8 @@ class MessagePing(Message):
         Message.__init__(self, MessagePing.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessagePing.PING_STR)
+            if not dict_repr.get(MessagePing.PING_STR):
+                raise IOError("Ping message failed")
 
     def dict_repr(self):
         return {MessagePing.PING_STR: True}
@@ -372,7 +376,8 @@ class MessagePong(Message):
         Message.__init__(self, MessagePong.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessagePong.PONG_STR)
+            if dict_repr.get(MessagePong.PONG_STR) is None:
+                raise IOError("Pong message failed")
 
     def dict_repr(self):
         return {MessagePong.PONG_STR: True}
@@ -393,7 +398,8 @@ class MessageGetPeers(Message):
         Message.__init__(self, MessageGetPeers.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageGetPeers.GET_PEERS_STR)
+            if dict_repr.get(MessageGetPeers.GET_PEERS_STR) is None:
+                raise IOError("Get peers message failed")
 
     def dict_repr(self):
         return {MessageGetPeers.GET_PEERS_STR: True}
@@ -443,7 +449,8 @@ class MessageGetTasks(Message):
         Message.__init__(self, MessageGetTasks.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageGetTasks.GET_TASKS_STR)
+            if dict_repr.get(MessageGetTasks.GET_TASKS_STR) is None:
+                raise IOError("Get tasks message failed")
 
     def dict_repr(self):
         return {MessageGetTasks.GET_TASKS_STR: True}
@@ -518,7 +525,8 @@ class MessageGetResourcePeers(Message):
         Message.__init__(self, MessageGetResourcePeers.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR)
+            if dict_repr.get(MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR) is None:
+                raise IOError("Get resource peers message failed")
 
     def dict_repr(self):
         return {MessageGetResourcePeers.WANT_RESOURCE_PEERS_STR: True}
@@ -616,7 +624,8 @@ class MessageStopGossip(Message):
         Message.__init__(self, MessageStopGossip.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageStopGossip.STOP_GOSSIP_STR)
+            if dict_repr.get(MessageStopGossip.STOP_GOSSIP_STR) is None:
+                raise IOError("Stop gossip message failed")
 
     def dict_repr(self):
         return {MessageStopGossip.STOP_GOSSIP_STR: True}
@@ -1042,14 +1051,11 @@ class MessageGetTaskResult(Message):
     Type = TASK_MSG_BASE + 5
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    DELAY_STR = u"DELAY"
 
-    def __init__(self, subtask_id="", delay=0.0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id="", sig="", timestamp=None, dict_repr=None):
         """
         Create request for task result
         :param str subtask_id: finished subtask id
-        :param float delay: if delay is 0, than subtask should be send right know. Otherwise other node should wait
-            <delay> seconds before sending result.
         :param str sig: signature
         :param float timestamp: current timestamp
         :param dict dict_repr: dictionary representation of a message
@@ -1057,15 +1063,12 @@ class MessageGetTaskResult(Message):
         Message.__init__(self, MessageGetTaskResult.Type, sig, timestamp)
 
         self.subtask_id = subtask_id
-        self.delay = delay
 
         if dict_repr:
             self.subtask_id = dict_repr[MessageGetTaskResult.SUB_TASK_ID_STR]
-            self.delay = dict_repr[MessageGetTaskResult.DELAY_STR]
 
     def dict_repr(self):
-        return {MessageGetTaskResult.SUB_TASK_ID_STR: self.subtask_id,
-                MessageGetTaskResult.DELAY_STR: self.delay}
+        return {MessageGetTaskResult.SUB_TASK_ID_STR: self.subtask_id}
 
 
 # It's an old form of sending task result (don't use if it isn't necessary)
@@ -1347,7 +1350,8 @@ class MessageAcceptResourceFormat(Message):
         Message.__init__(self, MessageAcceptResourceFormat.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR)
+            if dict_repr.get(MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR) is None:
+                raise IOError("Accept resource format message failed")
 
     def dict_repr(self):
         return {MessageAcceptResourceFormat.ACCEPT_RESOURCE_FORMAT_STR: True}
@@ -1495,7 +1499,8 @@ class MessageBeingMiddlemanAccepted(Message):
         Message.__init__(self, MessageBeingMiddlemanAccepted.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR)
+            if dict_repr.get(MessageBeingMiddlemanAccepted.MIDDLEMAN_STR) is None:
+                raise IOError("Being middleman accept message failed")
 
     def dict_repr(self):
         return {MessageBeingMiddlemanAccepted.MIDDLEMAN_STR: True}
@@ -1516,7 +1521,8 @@ class MessageMiddlemanAccepted(Message):
         Message.__init__(self, MessageMiddlemanAccepted.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR)
+            if dict_repr.get(MessageMiddlemanAccepted.MIDDLEMAN_STR) is None:
+                raise IOError("Middleman accept message failed")
 
     def dict_repr(self):
         return {MessageMiddlemanAccepted.MIDDLEMAN_STR: True}
@@ -1537,7 +1543,8 @@ class MessageMiddlemanReady(Message):
         Message.__init__(self, MessageMiddlemanReady.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageMiddlemanReady.MIDDLEMAN_STR)
+            if dict_repr.get(MessageMiddlemanReady.MIDDLEMAN_STR) is None:
+                raise IOError("Middleman ready message failed")
 
     def dict_repr(self):
         return {MessageMiddlemanReady.MIDDLEMAN_STR: True}
@@ -1620,7 +1627,8 @@ class MessageNatPunchFailure(Message):
         Message.__init__(self, MessageNatPunchFailure.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR)
+            if dict_repr.get(MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR) is None:
+                raise IOError("Nat punch failure message failed")
 
     def dict_repr(self):
         return {MessageNatPunchFailure.NAT_PUNCH_FAILURE_STR: True}
@@ -1641,7 +1649,8 @@ class MessageWaitingForResults(Message):
         Message.__init__(self, MessageWaitingForResults.Type, sig, timestamp)
 
         if dict_repr:
-            assert dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR)
+            if dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR) is None:
+                raise IOError("Waiting for results message failed")
 
     def dict_repr(self):
         return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True}

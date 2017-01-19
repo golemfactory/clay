@@ -15,7 +15,7 @@ from golem.network.transport.message import MessageHello, MessageRandVal, Messag
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
-from golem.resource.client import AsyncRequest, AsyncRequestExecutor
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -23,7 +23,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 9
+TASK_PROTOCOL_ID = 10
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -399,10 +399,9 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
             self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
-            delay = self.task_manager.accept_results_delay(self.task_manager.subtask2task_mapping[msg.subtask_id])
             self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
                                                msg.eth_account)
-            self.send(MessageGetTaskResult(msg.subtask_id, delay))
+            self.send(MessageGetTaskResult(msg.subtask_id))
         else:
             self.dropped()
 
@@ -411,14 +410,8 @@ class TaskSession(MiddlemanSafeSession):
         if res is None:
             return
 
-        if msg.delay <= 0.0:
-            res.already_sending = True
-            return self.__send_result_hash(res)
-        else:
-            res.last_sending_trial = time.time()
-            res.delay_time = msg.delay
-            res.already_sending = False
-            self.dropped()
+        res.already_sending = True
+        return self.__send_result_hash(res)
 
     def _react_to_task_result_hash(self, msg):
         secret = msg.secret
@@ -677,7 +670,7 @@ class TaskSession(MiddlemanSafeSession):
                                client_options=client_options,
                                key_or_secret=secret)
 
-        return AsyncRequestExecutor.run(request, success=success, error=error)
+        return async_run(request, success=success, error=error)
 
     def __receive_data_result(self, msg):
         extra_data = {"subtask_id": msg.subtask_id, "result_type": msg.result_type, "data_type": "result"}

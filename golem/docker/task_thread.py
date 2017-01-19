@@ -26,13 +26,15 @@ class DockerTaskThread(TaskThread):
                  orig_script_dir, src_code, extra_data, short_desc,
                  res_path, tmp_path, timeout, check_mem=False):
 
+        if not docker_images:
+            raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
             task_computer, subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
-        assert docker_images
         # Find available image
         self.image = None
+        logger.debug("Chechking docker images %s", docker_images)
         for img in docker_images:
             if img.is_available():
                 self.image = img
@@ -91,6 +93,8 @@ class DockerTaskThread(TaskThread):
                         self.result = (self.result, estm_mem)
                     self.task_computer.task_computed(self)
                 else:
+                    with open(stderr_file, 'r') as f:
+                        logger.warning('Task stderr:\n%s', f.read())
                     self._fail("Subtask computation failed " +
                                "with exit code {}".format(exit_code))
         except (requests.exceptions.ReadTimeout, TimeoutException) as exc:

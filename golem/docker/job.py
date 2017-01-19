@@ -146,11 +146,12 @@ class DockerJob(object):
             environment=environment
         )
         self.container_id = self.container["Id"]
+        if self.container_id is None:
+            raise KeyError("container does not have key: Id")
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
                      )
-        assert self.container_id
 
     def _cleanup(self):
         if self.container:
@@ -267,6 +268,7 @@ class DockerJob(object):
         client = local_client()
 
         def dump_stream(stream, path):
+            logger.debug('dump_stream(%r, %r)', stream, path)
             with open(path, "w") as f:
                 for line in stream:
                     f.write(line)

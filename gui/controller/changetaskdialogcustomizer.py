@@ -21,7 +21,8 @@ class ChangeTaskDialogCustomizer(Customizer):
         self.gui.window.close()
 
     def load_task_definition(self, definition):
-        assert isinstance(definition, GNRTaskDefinition)
+        if not isinstance(definition, GNRTaskDefinition):
+            raise TypeError("Incorrect 'definition' type: {}. Should be: GNRTaskDefinition".format(type(definition)))
 
         self.gui.ui.taskIdLabel.setText(u"{}".format(definition.task_id))
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)

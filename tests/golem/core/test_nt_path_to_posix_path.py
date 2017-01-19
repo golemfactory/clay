@@ -14,5 +14,6 @@ class TestNtPathToPosixPath(unittest.TestCase):
                          "/c/Program Files (x86)")
         self.assertEqual(nt_path_to_posix_path("golem\\core\\common.py"),
                          "golem/core/common.py")
-
-
+        self.assertEqual(nt_path_to_posix_path("C:\\"), "/c/")
+        self.assertEqual(nt_path_to_posix_path("/var/lib"), "/var/lib")
+        self.assertEqual(nt_path_to_posix_path(""), "")

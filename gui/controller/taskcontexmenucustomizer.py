@@ -158,6 +158,7 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
-        assert len(enabled) == 10
+        if len(enabled) != 10:
+            raise ValueError("Incorrect 'enabled' length: {}. Should be 10".format(len(enabled)))
 
         return enabled

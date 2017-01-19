@@ -22,8 +22,8 @@ class Client(object):
         if not Client.node:
             Client.node = NodeProcess(nodes, datadir)
         else:
-            assert Client.node.datadir == datadir, \
-                "Ethereum node's datadir cannot be changed"
+            if Client.node.datadir != datadir:
+                raise Exception("Ethereum node's datadir cannot be changed")
         if not Client.node.is_running():
             Client.node.start(rpc=True, mining=True)
         self.web3 = Web3(KeepAliveRPCProvider(host='localhost', port=Client.node.rpcport))
@@ -70,6 +70,7 @@ class Client(object):
         """
         Signs and sends the given transaction
         :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
+        :return The 32 Bytes transaction hash as HEX string
         """
         if isinstance(transaction, Transaction):
             raw_data = rlp.encode(transaction)

@@ -4,6 +4,7 @@ import time
 from contextlib import contextmanager
 from threading import Thread
 
+from golem.core.common import is_linux
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
@@ -75,8 +76,6 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
-        self.check_environment()
-
     def check_environment(self):
         logger.debug("DockerManager: checking VM availability")
 
@@ -97,11 +96,13 @@ class DockerMachineManager(DockerConfigManager):
                                        .format(self.docker_machine))
 
             self.docker_machine_available = True
-        except Exception as e:
-            logger.warn("DockerMachine: not available: {}".format(e))
+        except Exception as exc:
             self.docker_machine_available = False
+            if not is_linux():
+                logger.error("Docker machine is not available: {}".format(exc))
 
         self._env_checked = True
+        return self.docker_machine_available
 
     def update_config(self, status_callback, done_callback, in_background=True):
         if not self._env_checked:
@@ -289,6 +290,7 @@ class DockerMachineManager(DockerConfigManager):
         command = command[:]
         if machine_name:
             command += [machine_name]
+        logger.debug('docker_machine_command: %s', command)
         if check_output:
             return subprocess.check_output(command, shell=shell)
         return subprocess.check_call(command)

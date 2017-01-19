@@ -1,6 +1,7 @@
 from __future__ import division
 
 import logging
+from pydispatch import dispatcher
 import time
 
 from ethereum import abi, keys, utils
@@ -12,7 +13,6 @@ from golem.model import Payment, PaymentStatus
 
 from .contracts import BankOfDeposit, TestGNT
 from .node import Faucet
-
 
 log = logging.getLogger("golem.pay")
 
@@ -30,19 +30,21 @@ def _encode_payments(payments):
     args = []
     value = 0L
     for to, v in paymap.iteritems():
+        max_value = 2 ** 96
+        if v >= max_value:
+            raise ValueError("v should be less than {}".format(max_value))
         value += v
-        assert v < 2**96
         v = utils.zpad(utils.int_to_big_endian(v), 12)
         pair = v + to
-        assert len(pair) == 32
+        if len(pair) != 32:
+            raise ValueError("Incorrect pair length: {}. Should be 32".format(len(pair)))
         args.append(pair)
     return args, value
 
 
 class PaymentProcessor(object):
-
     # Gas price: 20 shannons, Homestead suggested gas price.
-    GAS_PRICE = 20 * 10**9
+    GAS_PRICE = 20 * 10 ** 9
 
     # Gas reservation for performing single batch payment.
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
@@ -61,7 +63,7 @@ class PaymentProcessor(object):
         self.__deposit = None
         self.__gnt = None
         self.__reserved = 0
-        self.__awaiting = []    # Awaiting individual payments
+        self.__awaiting = []  # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
@@ -122,7 +124,7 @@ class PaymentProcessor(object):
             addr = keys.privtoaddr(self.__privkey)
             r = self.__client.call(_from='0x' + addr.encode('hex'),
                                    to='0x' + self.BANK_ADDR.encode('hex'),
-                                   data=data.encode('hex'),
+                                   data='0x' + data.encode('hex'),
                                    block='pending')
             if r is None or r == '0x':
                 self.__deposit = 0
@@ -152,21 +154,23 @@ class PaymentProcessor(object):
         return max(available, 0)
 
     def add(self, payment):
-        assert payment.status is PaymentStatus.awaiting
+        if payment.status is not PaymentStatus.awaiting:
+            raise RuntimeError("Payment status should be: {}, but is: {}".format())
         value = payment.value
-        assert type(value) in (int, long)
+        if type(value) not in (int, long):
+            raise TypeError("Incorrect value type: {}".format(type(value)))
         balance = self.available_balance()
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
-                 payment.subtask,
-                 payment.payee.encode('hex'),
-                 value / denoms.ether))
+            payment.subtask,
+            payment.payee.encode('hex'),
+            value / denoms.ether))
         if value > balance:
             log.warning("Low balance: {:.6f}".format(balance / denoms.ether))
             return False
         self.__awaiting.append(payment)
         self.__reserved += value
         log.info("Balance: {:.6f}, reserved {:.6f}".format(
-                 balance / denoms.ether, self.__reserved / denoms.ether))
+            balance / denoms.ether, self.__reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -198,17 +202,20 @@ class PaymentProcessor(object):
         # known if the transaction has been sent or not.
         with Payment._meta.database.transaction():
             for payment in payments:
-                assert payment.status == PaymentStatus.awaiting
+                if payment.status != PaymentStatus.awaiting:
+                    raise RuntimeError(
+                        "payment status should be equal: {}, but is: {}".format(PaymentStatus.awaiting, payment.status))
                 payment.status = PaymentStatus.sent
                 payment.details['tx'] = h.encode('hex')
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
-                          payment.subtask,
-                          payment.payee.encode('hex'),
-                          payment.value / denoms.ether))
+                    payment.subtask,
+                    payment.payee.encode('hex'),
+                    payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
-            assert tx_hash[2:].decode('hex') == h  # FIXME: Improve Client.
+            if tx_hash[2:].decode('hex') != h:  # FIXME: Improve Client.
+                raise ValueError("Incorrect tx hash: {}, should be: {}".format(tx_hash[2:].decode('hex'), h))
 
             self.__inprogress[h] = payments
 
@@ -220,7 +227,8 @@ class PaymentProcessor(object):
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
                 block_hash = receipt['blockHash'][2:]
-                assert len(block_hash) == 2 * 32
+                if len(block_hash) != 64:
+                    raise ValueError("block hash length should be 64, but is: {}".format(len(block_hash)))
                 block_number = receipt['blockNumber']
                 gas_used = receipt['gasUsed']
                 total_fee = gas_used * self.GAS_PRICE
@@ -234,13 +242,15 @@ class PaymentProcessor(object):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
+                        dispatcher.send(signal='golem.monitor', event='payment', addr=p.payee.encode('hex'), value=p.value)
                         log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
-                                  fee / denoms.ether))
+                                                                        fee / denoms.ether))
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.
             self.__reserved -= sum(p.value for p in self.__inprogress[h])
-            assert self.__reserved >= 0
+            if self.__reserved < 0:
+                raise ValueError("Reserved is less than zero")
             # Delete in progress entry.
             del self.__inprogress[h]
 
@@ -276,9 +286,15 @@ class PaymentProcessor(object):
             return False
         return True
 
-    def run(self):
+    def run_inner(self):
         if (self.synchronized() and
                 self.get_ethers_from_faucet() and self.get_gnt_from_faucet()):
             self.deposit_balance(refresh=True)
             self.monitor_progress()
             self.sendout()
+
+    def run(self):
+        try:
+            self.run_inner()
+        except:
+            log.exception('Exception in PaymentProcessor.run()')

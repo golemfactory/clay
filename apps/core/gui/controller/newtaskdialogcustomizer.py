@@ -120,7 +120,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.save_task(definition, file_path)
 
     def load_task_definition(self, task_definition):
-        assert isinstance(task_definition, GNRTaskDefinition)
+        if not isinstance(task_definition, GNRTaskDefinition):
+            raise TypeError(
+                "Incorrect task definition type: {}. Should be GNRTaskDefinition".format(type(task_definition)))
 
         definition = deepcopy(task_definition)
         definition.resources = {os.path.normpath(res) for res in definition.resources}

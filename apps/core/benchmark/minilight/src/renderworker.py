@@ -16,7 +16,8 @@ class RenderWorker:
         return RenderWorker(renderTask)
 
     def __init__(self, task):
-        assert isinstance(task, RenderTask)
+        if not isinstance(task, RenderTask):
+            raise TypeError("Incorrect task type: {}. Should be RenderTask".format(type(task)))
 
         self.task = task
 

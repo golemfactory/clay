@@ -157,18 +157,18 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_balance.return_value = 100 * denoms.ether
         self.client.call.return_value = '0x' + 64*'0'
 
-        assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
-        assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
-        assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1))
-        assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
-        assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1))
-        assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p1", payee=a1, value=1)))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p2", payee=a2, value=1)))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p3", payee=a2, value=1)))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p4", payee=a3, value=1)))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p5", payee=a3, value=1)))
+        self.assertTrue(self.pp.add(Payment.create(subtask="p6", payee=a3, value=1)))
 
         self.pp.sendout()
-        assert self.client.send.call_count == 1
+        self.assertEqual(self.client.send.call_count, 1)
         tx = self.client.send.call_args[0][0]
-        assert tx.value == 6
-        assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
+        self.assertEqual(tx.value, 6)
+        self.assertEqual(len(tx.data), 4 + 2*32 + 3*32)  # Id + array abi + bytes32[3]
 
     def test_synchronized(self):
         interval = 0.01

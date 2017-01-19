@@ -1,8 +1,8 @@
 import time
-import unittest
 from multiprocessing import Process
 
 from golem.core.processmonitor import ProcessMonitor
+from golem.tools.assertlogs import LogTestCase
 
 
 class MockProcess(object):
@@ -27,25 +27,25 @@ class MockProcess(object):
 def wait_for_processes(timeout=10, *processes):
     started = time.time()
     timeout = max(timeout, 5)
-    while time.time() - started < timeout:
-        all_stopped = True
 
+    while time.time() - started < timeout:
+
+        all_stopped = True
         for process in processes:
-            if process.is_alive():
+            if ProcessMonitor.is_process_alive(process):
                 all_stopped = False
                 break
 
         if all_stopped:
-            break
-        else:
-            time.sleep(0.5)
+            return
+        time.sleep(0.5)
 
 
 def run_exit():
     return
 
 
-class TestProcessMonitor(unittest.TestCase):
+class TestProcessMonitor(LogTestCase):
 
     def test_monitor(self):
 
@@ -61,8 +61,8 @@ class TestProcessMonitor(unittest.TestCase):
 
         wait_for_processes(10, p1, p2)
 
-        assert not p1.is_alive()
-        assert not p2.is_alive()
+        self.assertFalse(pm.is_process_alive(p1))
+        self.assertFalse(pm.is_process_alive(p2))
 
     def test_monitor_2(self):
         mp1, mp2 = MockProcess(), MockProcess(timeout=0)
@@ -78,12 +78,13 @@ class TestProcessMonitor(unittest.TestCase):
 
         wait_for_processes(10, p1, p2)
 
-        if p1.is_alive() or p2.is_alive():
+        if pm.is_process_alive(p1) or pm.is_process_alive(p2):
             pm.exit()
             self.fail("Processes not killed after timeout")
 
     def test_exit(self):
-
+        import logging
+        logger = logging.getLogger("golem.core")
         mp1, mp2 = MockProcess(), MockProcess()
         p1 = Process(target=mp1.run)
         p2 = Process(target=mp2.run)
@@ -92,10 +93,17 @@ class TestProcessMonitor(unittest.TestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
+
+        def callback():
+            logger.warning("Shutting down...")
+
+        pm.add_shutdown_callback(callback=callback)
+
         pm.start()
-        pm.exit()
+        with self.assertLogs(logger, level="WARNING"):
+            pm.exit()
 
         wait_for_processes(10, p1, p2)
 
-        assert not p1.is_alive()
-        assert not p2.is_alive()
+        self.assertFalse(pm.is_process_alive(p1))
+        self.assertFalse(pm.is_process_alive(p2))

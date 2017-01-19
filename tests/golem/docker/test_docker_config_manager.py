@@ -1,8 +1,10 @@
 import unittest
 
 from golem.docker.config_manager import DockerConfigManager
+from golem.tools.appveyor import appveyor_skip
 
 
+@appveyor_skip
 class TestDockerConfigManager(unittest.TestCase):
 
     class MockConfig(object):
@@ -24,11 +26,11 @@ class TestDockerConfigManager(unittest.TestCase):
 
         cm.build_config(config)
 
-        assert len(cm.container_host_config) > len(config.to_dict())
-        assert cm.container_host_config == cm.container_host_config
+        self.assertGreater(len(cm.container_host_config), len(config.to_dict()))
+        self.assertEqual(cm.container_host_config, cm.container_host_config)
 
-        assert cm.cpu_cores
-        assert cm.container_host_config['cpuset']
+        self.assertIsNotNone(cm.cpu_cores)
+        self.assertIsNotNone(cm.container_host_config['cpuset'])
 
     def test_failing_build_config(self):
 
@@ -36,9 +38,9 @@ class TestDockerConfigManager(unittest.TestCase):
         cm.cpu_cores = None
         cm.build_config(None)
 
-        assert not cm.cpu_cores
-        assert 'cpuset' not in cm.container_host_config
-        assert 'mem_limit' not in cm.container_host_config
+        self.assertIsNone(cm.cpu_cores)
+        self.assertFalse('cpuset' in cm.container_host_config)
+        self.assertFalse('mem_limit' in cm.container_host_config)
 
     def test_try(self):
         cm = DockerConfigManager()

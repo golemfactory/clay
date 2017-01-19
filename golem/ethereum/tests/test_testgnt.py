@@ -33,7 +33,7 @@ class TestGNTTest(unittest.TestCase):
 
     def test_balance0(self):
         gnt = self.deploy_contract()
-        b = gnt.balanceOf('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
+        b = gnt.balanceOf('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa')
         assert b == 0
 
     def test_create(self):
@@ -47,7 +47,7 @@ class TestGNTTest(unittest.TestCase):
     def test_transfer(self):
         gnt = self.deploy_contract()
         gnt.create(sender=tester.k1)
-        addr = '0x' + urandom(20).encode('hex')
+        addr = urandom(20).encode('hex')
         value = 999 * 10**18
         gnt.transfer(addr, value, sender=tester.k1)
         assert gnt.balanceOf(addr) == value

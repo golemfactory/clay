@@ -15,7 +15,7 @@ Follow the installation instruction from
 
 [Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
 
-[Golem Linux package](https://www.dropbox.com/s/rwakk9d2tay3cob/golem-linux.zip?dl=0)
+[Golem Linux package](https://www.dropbox.com/s/2nn5lg7x0c3q23z/golem-linux.zip?dl=0)
 
 ## Warning
 

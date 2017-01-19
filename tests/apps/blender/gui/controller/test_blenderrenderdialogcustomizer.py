@@ -9,7 +9,7 @@ from apps.blender.gui.controller.blenderrenderdialogcustomizer import BlenderRen
 from apps.blender.gui.view.gen.ui_BlenderWidget import Ui_BlenderWidget
 from apps.blender.task.blenderrendertask import build_blender_renderer_info
 from apps.rendering.gui.controller.renderercustomizer import FrameRendererCustomizer
-from apps.rendering.gui.controller.renderingmainwindowcustomizer import RenderingMainWindowCustomizer
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import GNRGui
 from gui.applicationlogic import GNRApplicationLogic
@@ -64,7 +64,7 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
     def test_blender_customizer(self, mock_messagebox):
         self.logic.register_new_task_type(
             build_blender_renderer_info(TaskWidget(Ui_BlenderWidget), BlenderRenderDialogCustomizer))
-        self.logic.customizer = RenderingMainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window, self.logic)
         self.logic.client = Mock()
         self.logic.client.config_desc = ClientConfigDescriptor()
         self.logic.client.config_desc.use_ipv6 = False

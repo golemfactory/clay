@@ -3,12 +3,14 @@ import os
 import shutil
 from os import path
 
-from apps.rendering.task.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
+from golem.resource.dirmanager import find_task_script
+from golem.tools.appveyor import appveyor_skip
 from test_docker_job import TestDockerJob
 
 
+@appveyor_skip
 class TestBlenderDockerJob(TestDockerJob):
     """Tests for Docker image golem/base"""
 
@@ -21,10 +23,14 @@ class TestBlenderDockerJob(TestDockerJob):
         with open(task_script) as f:
             task_script_src = f.read()
 
-        # copy the blender script to the resources dir
-        crop_script = find_task_script(app_dir, "blendercrop.py")
-        with open(crop_script, 'r') as src:
-            crop_script_src = src.read()
+        # prepare dummy crop script
+        from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+        crop_script_contents = generate_blender_crop_file(
+            resolution=(800, 600),
+            borders_x=(0, 1),
+            borders_y=(0, 1),
+            use_compositing=True,
+        )
 
         # copy the scene file to the resources dir
         benchmarks_dir = path.join(get_golem_path(),
@@ -38,7 +44,7 @@ class TestBlenderDockerJob(TestDockerJob):
             "outfilebasename": "out",
             "scene_file": DockerJob.RESOURCES_DIR + "/" +
                           path.basename(scene_files[0]),
-            "script_src": crop_script_src,
+            "script_src": crop_script_contents,
             "start_task": 42,
             "end_task": 42,
             "output_format": "EXR",

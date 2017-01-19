@@ -166,7 +166,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
 
         try:
-            with open(descriptor_path, 'r') as src:
+            with open(descriptor_path, 'rb') as src:
                 descriptor = CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
 
@@ -184,7 +184,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
 
             result_path = os.path.join(files_dir, self.result_file_name)
 
-            with open(result_path, 'r') as src:
+            with open(result_path, 'rb') as src:
                 extracted.result = src.read()
             os.remove(result_path)
 

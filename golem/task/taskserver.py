@@ -6,7 +6,7 @@ from collections import deque
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
-from golem.ranking.ranking import RankingStats
+from golem.ranking.helper.trust import Trust
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from taskcomputer import TaskComputer
@@ -122,10 +122,9 @@ class TaskServer(PendingConnectionsServer):
                      node_name):
 
         if 'data' not in result or 'result_type' not in result:
-            logger.error("Wrong result format")
-            assert False
+            raise AttributeError("Wrong result format")
 
-        self.client.increase_trust(owner_key_id, RankingStats.requested)
+        Trust.REQUESTED.increase(owner_key_id)
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id, computing_time)
@@ -140,12 +139,12 @@ class TaskServer(PendingConnectionsServer):
                                                                  last_sending_trial, delay_time,
                                                                  owner_address, owner_port, owner_key_id, owner)
         else:
-            assert False
+            raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         return True
 
     def send_task_failed(self, subtask_id, task_id, err_msg, owner_address, owner_port, owner_key_id, owner, node_name):
-        self.client.decrease_trust(owner_key_id, RankingStats.requested)
+        Trust.REQUESTED.decrease(owner_key_id)
         if subtask_id not in self.failures_to_send:
             self.failures_to_send[subtask_id] = WaitingTaskFailure(task_id, subtask_id, err_msg,
                                                                    owner_address, owner_port, owner_key_id, owner)
@@ -287,7 +286,7 @@ class TaskServer(PendingConnectionsServer):
         if node_id is None:
             logger.warning("Unknown node try to make a payment for task {}".format(task_id))
             return
-        self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
+        Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
         logger.debug("Subtask {} result accepted".format(subtask_id))
@@ -296,7 +295,7 @@ class TaskServer(PendingConnectionsServer):
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(subtask_id, err))
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
-        self.client.decrease_trust(node_id, RankingStats.computed)
+        Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
     def accept_result(self, subtask_id, account_info):
@@ -310,15 +309,15 @@ class TaskServer(PendingConnectionsServer):
                 logger.warning("Unknown payment address of {} ({})".format(
                     account_info.node_name, account_info.addr))
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.increase_trust(account_info.key_id, RankingStats.computed, mod)
+        Trust.COMPUTED.increase(account_info.key_id, mod)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
-        self.client.increase_trust(node_id, RankingStats.payment, self.max_trust)
+        Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def decrease_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
-        self.client.decrease_trust(node_id, RankingStats.payment, self.max_trust)
+        Trust.PAYMENT.decrease(node_id, self.max_trust)
 
     def pay_for_task(self, task_id, payments):
         if not self.client.transaction_system:
@@ -333,7 +332,7 @@ class TaskServer(PendingConnectionsServer):
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
-        self.client.decrease_trust(account_info.key_id, RankingStats.wrong_computed, mod)
+        Trust.WRONG_COMPUTED.decrease(account_info.key_id, mod)
 
     def unpack_delta(self, dest_dir, delta, task_id):
         self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
@@ -761,7 +760,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_keeper.remove_old_tasks()
         nodes_with_timeouts = self.task_manager.check_timeouts()
         for node_id in nodes_with_timeouts:
-            self.client.decrease_trust(node_id, RankingStats.computed)
+            Trust.COMPUTED.decrease(node_id)
 
     def __remove_old_sessions(self):
         cur_time = time.time()

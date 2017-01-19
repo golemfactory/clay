@@ -323,7 +323,7 @@ class TestProtocols(unittest.TestCase):
             self.assertFalse(p.session.dropped_called)
             p.connectionLost()
             self.assertFalse(p.opened)
-            assert 'session' not in p.__dict__
+            self.assertNotIn('session', p.__dict__)
 
     def test_connection_lost(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
@@ -340,7 +340,7 @@ class TestProtocols(unittest.TestCase):
             self.assertFalse(p.session.dropped_called)
             p.connectionLost()
             self.assertFalse(p.opened)
-            assert 'session' not in p.__dict__
+            self.assertNotIn('session', p.__dict__)
 
 
 class TestBasicProtocol(unittest.TestCase):
@@ -369,7 +369,7 @@ class TestBasicProtocol(unittest.TestCase):
         m = Message.deserialize(db)[0]
         self.assertEqual(m.timestamp, msg.timestamp)
         p.connectionLost()
-        assert 'session' not in p.__dict__
+        self.assertNotIn('session', p.__dict__)
 
 
 class TestServerProtocol(unittest.TestCase):
@@ -380,7 +380,7 @@ class TestServerProtocol(unittest.TestCase):
         p.connectionMade()
         self.assertEquals(len(p.server.sessions), 1)
         p.connectionLost()
-        assert 'session' not in p.__dict__
+        self.assertNotIn('session', p.__dict__)
 
 
 class TestSaferProtocol(unittest.TestCase):
@@ -401,4 +401,4 @@ class TestSaferProtocol(unittest.TestCase):
         self.assertEquals(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertEqual(msg.sig, "ASessionSign")
         p.connectionLost()
-        assert 'session' not in p.__dict__
+        self.assertNotIn('session', p.__dict__)

@@ -51,7 +51,7 @@ class SubtaskTableElem:
             self.progress = val
             self.progress_bar.setProperty("value", int(val * 100))
         else:
-            assert False, "Wrong progress setting {}".format(val)
+            raise ValueError("Wrong progress setting {}".format(val))
 
     def setStatus(self, status):
         self.status = status
@@ -71,4 +71,4 @@ class SubtaskTableElem:
         if col == 3:
             return self.subtask_status_item
 
-        assert False, "Wrong column index"
+        raise ValueError("Wrong column index")

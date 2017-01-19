@@ -224,6 +224,10 @@ class TestCompTaskKeeper(LogTestCase):
                             header["task_owner"], header["deadline"], header["subtask_timeout"],
                             1024, 1.0, 1000)
         header.task_id = "xyz"
+        with self.assertRaises(TypeError):
+            ctk.add_request(header, "not a number")
+        with self.assertRaises(ValueError):
+            ctk.add_request(header, -2)
         ctk.add_request(header, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
@@ -232,12 +236,25 @@ class TestCompTaskKeeper(LogTestCase):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        assert ctk.get_value("xyz", 1) == 2
+        self.assertEqual(ctk.get_value("xyz", 1), 2)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)
         self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)
-        assert ctk.get_value("xyz2", 4.5) == 32
+        self.assertEqual(ctk.get_value("xyz2", 4.5), 32)
         header.task_id = "xyz"
+        thread = Mock()
+        thread.task_id = "qaz123WSX"
+        thread.header = Mock()
+        with self.assertRaises(ValueError):
+            ctk.add_request(thread, -1)
+        with self.assertRaises(TypeError):
+            ctk.add_request(thread, '1')
+        ctk.add_request(thread, 12)
+        ctk.active_tasks["qwerty"] = Mock()
+        ctk.active_tasks["qwerty"].price = "abc"
+        with self.assertRaises(TypeError):
+            ctk.get_value('qwerty', 12)
+        self.assertEqual(ctk.get_value(thread.task_id, 600), 2)
 
         self.assertIsNone(ctk.get_subtask_ttl("abc"))
         ctd = ComputeTaskDef()

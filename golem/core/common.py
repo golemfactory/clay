@@ -2,7 +2,7 @@ import os
 import errno
 import sys
 from calendar import timegm
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import path
 
 import pytz
@@ -25,6 +25,14 @@ def is_osx():
     :return bool: True if current system is OS X, False otherwise
     """
     return sys.platform == "darwin"
+
+
+def is_linux():
+    """
+    Check if this system is Linux
+    :return bool: True if current system is Linux, False otherwise
+    """
+    return sys.platform.startswith('linux')
 
 
 def get_golem_path():

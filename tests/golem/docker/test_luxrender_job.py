@@ -2,12 +2,14 @@ import os
 from os import path
 import shutil
 
-from apps.rendering.task.renderingdirmanager import find_task_script
 from golem.core.common import get_golem_path
+from golem.resource.dirmanager import find_task_script
+from golem.tools.appveyor import appveyor_skip
 
 from test_docker_job import TestDockerJob
 
 
+@appveyor_skip
 class TestLuxRenderDockerJob(TestDockerJob):
     """Tests for Docker image golem/base"""
 

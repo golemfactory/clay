@@ -16,7 +16,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
         assert type(e.get_payment_address()) is str
 
     def test_invalid_private_key(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             EthereumTransactionSystem(self.tempdir, "not a private key")
 
     def test_wrong_address_in_pay_for_task(self):

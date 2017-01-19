@@ -22,7 +22,10 @@ class EthereumTransactionSystem(TransactionSystem):
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
-        assert type(node_priv_key) is str and len(node_priv_key) is 32
+        if not isinstance(node_priv_key, basestring):
+            raise TypeError("Incorrect 'node_priv_key' type: {}. Should be a string".format(type(node_priv_key)))
+        if len(node_priv_key) != 32:
+            raise ValueError("Wrong 'node_priv_key' length: {}. Should be 32".format(len(node_priv_key)))
         self.__node_address = keys.privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
