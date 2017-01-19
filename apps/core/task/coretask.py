@@ -166,6 +166,8 @@ class CoreTask(Task):
         pass
 
     def get_progress(self):
+        if self.total_tasks == 0:
+            return 0.0
         return float(self.num_tasks_received) / self.total_tasks
 
     def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
