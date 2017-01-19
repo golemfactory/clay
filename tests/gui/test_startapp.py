@@ -12,7 +12,7 @@ from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.appveyor import appveyor_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from gui.startapp import load_environments, start_client_process, \
+from gui.startapp import load_environments, start_client, \
     start_gui_process, GUIApp
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
@@ -83,9 +83,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
                     client.start = lambda *_: queue.put(u"Success")
 
-                    thread = Thread(target=lambda: start_client_process(queue=queue,
-                                                                        client=client,
-                                                                        start_ranking=False))
+                    thread = Thread(target=lambda: start_client(queue=queue,
+                                                                client=client,
+                                                                start_ranking=False))
                     thread.daemon = True
                     thread.start()
 
