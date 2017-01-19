@@ -1,8 +1,8 @@
 from logging import getLogger
 from os import path
 
-from PyQt4.QtCore import QObject, SIGNAL
-from PyQt4.QtGui import QPixmap, QPainter, QPen, QColor, QPixmapCache
+from PyQt5.QtGui import QPainter, QPen, QColor
+from PyQt5.QtGui import QPixmap, QPixmapCache
 
 from golem.task.taskstate import SubtaskStatus
 
@@ -10,7 +10,7 @@ from apps.core.task.coretaskstate import TaskDefinition
 
 from gui.controller.customizer import Customizer
 from gui.guidirmanager import get_preview_file
-
+from gui.view.event_filter import mouse_click, mouse_move
 
 logger = getLogger("gui")
 
@@ -49,11 +49,9 @@ class PreviewController(Customizer):
             self._set_preview(task_desc)
 
     def _setup_connections(self):
-        QObject.connect(self.gui.ui.previewLabel, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
-                        self.__pixmap_clicked)
+        mouse_click(self.gui.ui.previewLabel).connect(self.__pixmap_clicked)
+        mouse_move(self.gui.ui.previewLabel).connect(self.__mouse_on_pixmap_moved)
         self.gui.ui.previewLabel.setMouseTracking(True)
-        QObject.connect(self.gui.ui.previewLabel, SIGNAL("mouseMoveEvent(int, int, QMouseEvent)"),
-                        self.__mouse_on_pixmap_moved)
         self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
 
     def _set_preview(self, task_desc):
