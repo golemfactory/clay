@@ -75,7 +75,6 @@ class TaskDefinition(object):
             return False, u"Output file {} is not properly set: {}".format(output_file, err)
 
     def add_to_resources(self):
-        print "CALLED FOR TASK DEF"
         self.options.add_to_resources(self.resources)
 
     def remove_from_resources(self):
