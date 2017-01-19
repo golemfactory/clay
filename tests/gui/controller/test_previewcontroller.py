@@ -5,7 +5,7 @@ from mock import MagicMock
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.testutils import TestGui
 
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
 from gui.controller.previewcontroller import subtasks_priority, PreviewController
 
@@ -34,7 +34,7 @@ class TestPriorites(TestCase):
 class TestPreviewController(TestGui):
     def test_output_file(self):
         maincontroller = MagicMock()
-        pc = PreviewController(self.gnrgui.get_main_window(), self.logic, maincontroller)
+        pc = PreviewController(self.gui.get_main_window(), self.logic, maincontroller)
         td = TaskDesc()
 
         # Test output color
@@ -56,7 +56,7 @@ class TestPreviewController(TestGui):
 
     def test_pixmap(self):
         maincontroller = MagicMock()
-        pc = PreviewController(self.gnrgui.get_main_window(), self.logic, maincontroller)
+        pc = PreviewController(self.gui.get_main_window(), self.logic, maincontroller)
         td = TaskDesc()
         pc.set_preview(td)
         pc._PreviewController__pixmap_clicked(10, 10)

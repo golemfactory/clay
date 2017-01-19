@@ -8,7 +8,7 @@ from PyQt4.QtGui import QApplication, QIcon
 from golem.core.common import get_golem_path
 
 
-class GNRGui:
+class Gui:
     def __init__(self, app_logic, mainWindowClass):
         try:
             # Linux check might suffice if X11 was the only option available
@@ -16,6 +16,8 @@ class GNRGui:
         except Exception as ex:
             from sys import platform
             if platform != "win32":
+                from logging import getLogger
+                logger = getLogger("gui")
                 logger.warning("Error occurred when setting up Qt: {}".format(ex))
 
         self.app = QApplication(sys.argv)

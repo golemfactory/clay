@@ -4,7 +4,8 @@ from unittest import TestCase
 from mock import MagicMock, patch
 from PyQt4.QtGui import QApplication
 
-from gui.view.mainwindow import GNRMainWindow, MainWindow
+from gui.view.mainwindow import MainWindow
+from gui.view.appmainwindow import AppMainWindow
 
 
 class TestMainWindow(TestCase):
@@ -19,8 +20,8 @@ class TestMainWindow(TestCase):
         self.app.deleteLater()
 
     @patch("gui.view.mainwindow.QMessageBox")
-    def test_gnr_main_window(self, mock_message_box):
-        window = GNRMainWindow()
+    def test_g_main_window(self, mock_message_box):
+        window = AppMainWindow()
         assert isinstance(window.window, MainWindow)
         assert window.ui is not None
         window.show()

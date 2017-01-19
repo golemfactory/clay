@@ -5,7 +5,7 @@ from Queue import Queue
 import jsonpickle
 
 from apps.appsmanager import AppsManager
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
@@ -31,7 +31,7 @@ class CommandAppLogic(AppLogic):
         apps_manager = AppsManager()
         apps_manager.load_apps()
         for app in apps_manager.apps.values():
-            logic.register_new_task_type(app.build_info(*args))
+            logic.register_new_task_type(app.task_type_info(*args))
         return logic
 
 
