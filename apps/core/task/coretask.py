@@ -60,13 +60,6 @@ class CoreTaskBuilder(TaskBuilder):
         pass
 
 
-class RCoreSubtask(object):
-    def __init__(self, subtask_id, start_chunk, end_chunk):
-        self.subtask_id = subtask_id
-        self.start_chunk = start_chunk
-        self.end_chunk = end_chunk
-
-
 class CoreTask(Task):
     handle_key_error = HandleKeyError(log_key_error)
 
