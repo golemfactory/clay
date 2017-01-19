@@ -1,9 +1,8 @@
 from multiprocessing import freeze_support
 
-import click
 import sys
+import click
 
-from golem.core.common import config_logging
 from golem.node import OptNode
 
 from gui.startapp import start_app
@@ -46,17 +45,8 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
     if m == 'crossbar.worker.process':
         start_crossbar_worker(u, m)
     # GUI or headless mode
-    elif gui:
-        start_app(rendering=True, **config)
     else:
-        config_logging()
-
-        node = OptNode(node_address=node_address, **config)
-        node.initialize()
-
-        node.connect_with_peers(peer)
-        node.add_tasks(task)
-        node.run(use_rpc=True)
+        start_app(gui=gui, rendering=True, **config)
 
 
 def start_crossbar_worker(unbuffered, module):
