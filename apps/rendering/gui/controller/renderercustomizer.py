@@ -122,7 +122,7 @@ class RendererCustomizer(Customizer):
 
         output_file_types = " ".join([u"*.{}".format(ext) for ext in output_file_ext])
         filter_ = u"Scene files ({})".format(output_file_types)
-        path = u"{}".format(self.load_setting('main_scene_path', os.path.expanduser('~')).toString())
+        path = u"{}".format(str(self.load_setting('main_scene_path', os.path.expanduser('~'))))
 
         file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui,
                                                              "Choose main scene file",
@@ -137,7 +137,7 @@ class RendererCustomizer(Customizer):
         output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
         filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
 
-        path = u"{}".format(self.load_setting('output_file_path', os.path.expanduser('~')).toString())
+        path = u"{}".format(str(self.load_setting('output_file_path', os.path.expanduser('~'))))
 
         file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui,
                                                              "Choose output file",
