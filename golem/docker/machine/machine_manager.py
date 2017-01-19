@@ -189,13 +189,14 @@ class DockerMachineManager(DockerConfigManager):
                          .format(e))
 
     def constrain(self, name_or_id_or_machine, **kwargs):
-        constraints = kwargs or self.virtual_box_config
-
-        try:
-            self.__constrain(name_or_id_or_machine, **constraints)
-        except Exception as e:
-            logger.error("VirtualBox: error setting '{}' VM's constraints: {}"
-                         .format(name_or_id_or_machine, e))
+        # constraints = kwargs or self.virtual_box_config
+        #
+        # try:
+        #     self.__constrain(name_or_id_or_machine, **constraints)
+        # except Exception as e:
+        #     logger.error("VirtualBox: error setting '{}' VM's constraints: {}"
+        #                  .format(name_or_id_or_machine, e))
+        pass
 
     def constrain_all(self, images=None, **kwargs):
         try:
@@ -449,12 +450,14 @@ class DockerMachineManager(DockerConfigManager):
                          .format(vm.name))
 
     def _import_virtualbox(self):
-        from virtualbox import VirtualBox
-        from virtualbox.library import ISession, LockType
+        #from virtualbox import VirtualBox
+        #from virtualbox.library import ISession, LockType
 
-        self.virtual_box = VirtualBox()
-        self.ISession = ISession
-        self.LockType = LockType
+        from mock import Mock
+
+        self.virtual_box = Mock()
+        self.ISession = Mock
+        self.LockType = Mock
 
     def __session_from_arg(self, session_obj, lock_type=None):
         if not isinstance(session_obj, self.ISession):
