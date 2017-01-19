@@ -21,5 +21,6 @@ coverage:
     - "save/*"
     - "scripts/*"
     - "tests/*"
+    - "setup.py"
 comment:
   layout: header, diff, changes, sunburst, uncovered
