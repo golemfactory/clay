@@ -21,7 +21,7 @@ environment:
       IPFS_DIR: C:\go-ipfs
       WHEELS_DIR: C:\wheels
 
-      WHEEL_PYQT4: PyQt4-4.11.4-cp27-none-win32.whl
+      WHEEL_PYQT4: PyQt5-4.11.4-cp27-none-win32.whl
       WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
@@ -44,7 +44,7 @@ install:
   # enable rdp
   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt4;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
   # docker
   # - choco install -y virtualbox
   # - choco install -y docker-machine
