@@ -144,19 +144,17 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         res_x, res_y = definition.resolution
 
         if not definition.options.use_frames:
-            return cls.get_border(start_task, end_task, total_subtasks, res_x,
-                                  res_y)
+            return cls.__get_border(start_task, end_task, total_subtasks, res_x, res_y)
 
         if total_subtasks > frames:
             parts = total_subtasks / frames
-            return cls.get_border((start_task - 1) % parts + 1,
-                                  (end_task - 1) % parts + 1,
-                                  parts, res_x, res_y)
+            return cls.__get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1,
+                                    parts, res_x, res_y)
 
         return []
 
     @classmethod
-    def get_border(cls, start, end, parts, res_x, res_y):
+    def __get_border(cls, start, end, parts, res_x, res_y):
         """
         Return list of pixels that should be marked as a border of subtasks
         with numbers between start and end.
@@ -198,7 +196,7 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         res_y = definition.resolution[1]
 
         if not definition.options.use_frames:
-            return cls.num_from_pixel(y, res_x, res_y, total_subtasks)
+            return cls.__num_from_pixel(y, res_x, res_y, total_subtasks)
 
         frames = len(definition.options.frames)
         if total_subtasks <= frames:
@@ -206,11 +204,11 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
             return int(math.ceil(float(output_num) / subtask_frames))
 
         parts = total_subtasks / frames
-        return (output_num - 1) * parts + cls.num_from_pixel(y, res_x,
-                                                             res_y, parts)
+        return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
+                                                               res_y, parts)
 
     @classmethod
-    def num_from_pixel(cls, p_y, res_x, res_y, parts):
+    def __num_from_pixel(cls, p_y, res_x, res_y, parts):
         """
         Compute number of subtask that represents pixel with y coordiante equal
         to py on preview with given resolution
