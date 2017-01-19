@@ -13,12 +13,14 @@ from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNROptions
+from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
-from apps.rendering.task.renderingtaskstate import RendererDefaults, RendererInfo
+from apps.rendering.task.renderingtaskstate import RendererDefaults, RenderingTaskDefinition
+
 
 
 logger = logging.getLogger("apps.lux")
@@ -38,47 +40,68 @@ class LuxRenderDefaults(RendererDefaults):
         self.default_subtasks = 5
 
 
-def build_lux_render_info(dialog, customizer):
-    defaults = LuxRenderDefaults()
+class LuxRenderTaskTypeInfo(TaskTypeInfo):
+    def __init__(self, dialog, customizer):
+        super(LuxRenderTaskTypeInfo, self).__init__("LuxRender",
+                                              RenderingTaskDefinition,
+                                              LuxRenderDefaults(),
+                                              LuxRenderOptions,
+                                              LuxRenderTaskBuilder,
+                                              dialog,
+                                              customizer)
+        self.output_formats = ["exr", "png", "tga"]
+        self.output_file_ext = ["lxs"]
 
-    renderer = RendererInfo("LuxRender", defaults, LuxRenderTaskBuilder, dialog, customizer, LuxRenderOptions)
-    renderer.output_formats = ["exr", "png", "tga"]
-    renderer.scene_file_ext = ["lxs"]
-    renderer.get_task_num_from_pixels = get_task_num_from_pixels
-    renderer.get_task_border = get_task_border
-
-    return renderer
-
-
-def get_task_border(subtask, definition, total_subtasks, output_num=1):
-    preview_x = 300
-    preview_y = 200
-    res_x, res_y = definition.resolution
-    if res_x != 0 and res_y != 0:
-        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
-            scale_factor = float(preview_x) / float(res_x)
+    @classmethod
+    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+        """ Return list of pixels that should be marked as a border of
+         a given subtask
+        :param SubtaskState subtask: subtask state description
+        :param RenderingTaskDefinition definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return list: list of pixels that belong to a subtask border
+        """
+        preview_x = 300
+        preview_y = 200
+        res_x, res_y = definition.resolution
+        if res_x != 0 and res_y != 0:
+            if float(res_x) / float(res_y) > float(preview_x) / float(
+                    preview_y):
+                scale_factor = float(preview_x) / float(res_x)
+            else:
+                scale_factor = float(preview_y) / float(res_y)
+            scale_factor = min(1.0, scale_factor)
         else:
-            scale_factor = float(preview_y) / float(res_y)
-        scale_factor = min(1.0, scale_factor)
-    else:
-        scale_factor = 1.0
-    border = []
-    x = int(round(res_x * scale_factor))
-    y = int(round(res_y * scale_factor))
-    for i in range(0, y):
-        border.append((0, i))
-        border.append((x - 1, i))
-    for i in range(0, x):
-        border.append((i, 0))
-        border.append((i, y - 1))
-    return border
+            scale_factor = 1.0
+        border = []
+        x = int(round(res_x * scale_factor))
+        y = int(round(res_y * scale_factor))
+        for i in range(0, y):
+            border.append((0, i))
+            border.append((x - 1, i))
+        for i in range(0, x):
+            border.append((i, 0))
+            border.append((i, y - 1))
+        return border
+
+    @classmethod
+    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+                                 output_num=1):
+        """
+        Compute number of subtask that represents pixel (x, y) on preview
+        :param int x: x coordinate
+        :param int y: y coordiante
+        :param TaskDefintion definition: task definition
+        :param int total_subtasks: total number of subtasks used in this task
+        :param int output_num: number of final output files
+        :return int: subtask's number
+        """
+
+        return 1
 
 
-def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1):
-    return 1
-
-
-class LuxRenderOptions(GNROptions):
+class LuxRenderOptions(Options):
     def __init__(self):
         super(LuxRenderOptions, self).__init__()
         self.environment = LuxRenderEnvironment()
@@ -254,7 +277,7 @@ class LuxTask(RenderingTask):
                 self.__generate_final_flm()
 
     ###################
-    # GNRTask methods #
+    # CoreTask methods #
     ###################
 
     def query_extra_data_for_test_task(self):

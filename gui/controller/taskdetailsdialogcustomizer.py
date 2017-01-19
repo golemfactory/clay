@@ -22,18 +22,18 @@ class SortingOrder(object):
 
 
 class TaskDetailsDialogCustomizer(Customizer):
-    def __init__(self, gui, logic, gnr_task_state):
-        self.gnr_task_state = gnr_task_state
+    def __init__(self, gui, logic, task_desc):
+        self.task_desc = task_desc
         self.subtask_table_elements = {}
         
         # which column use for sorting subtasks
         self.sorting = -1
         self.sorting_order = None
         Customizer.__init__(self, gui, logic)
-        self.update_view(self.gnr_task_state.task_state)
+        self.update_view(self.task_desc.task_state)
 
     def update_view(self, task_state):
-        self.gnr_task_state.task_state = task_state
+        self.task_desc.task_state = task_state
         self.__update_data()
 
     def show_subtask_info_dialog(self, subtask_id):
@@ -46,26 +46,26 @@ class TaskDetailsDialogCustomizer(Customizer):
         dialog.show()
 
     def __get_subtask(self, subtask_id):
-        for subtask in self.gnr_task_state.task_state.subtask_states.itervalues():
+        for subtask in self.task_desc.task_state.subtask_states.itervalues():
             if subtask.subtask_id == subtask_id:
                 return subtask
         return None
 
     def __update_data(self):
-        self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.gnr_task_state.task_state.progress * 100))
+        self.gui.ui.totalTaskProgressBar.setProperty("value", int(self.task_desc.task_state.progress * 100))
         self.gui.ui.estimatedRemainingTimeLabel.setText(
-            str(datetime.timedelta(seconds=self.gnr_task_state.task_state.remaining_time)))
+            str(datetime.timedelta(seconds=self.task_desc.task_state.remaining_time)))
         self.gui.ui.elapsedTimeLabel.setText(
-            str(datetime.timedelta(seconds=self.gnr_task_state.task_state.elapsed_time)))
+            str(datetime.timedelta(seconds=self.task_desc.task_state.elapsed_time)))
 
-        for k in self.gnr_task_state.task_state.subtask_states:
+        for k in self.task_desc.task_state.subtask_states:
             if k not in self.subtask_table_elements:
-                ss = self.gnr_task_state.task_state.subtask_states[k]
+                ss = self.task_desc.task_state.subtask_states[k]
                 self.__add_node(ss.computer.node_name, ss.subtask_id, ss.subtask_status)
 
         for k, elem in self.subtask_table_elements.items():
-            if elem.subtask_id in self.gnr_task_state.task_state.subtask_states:
-                ss = self.gnr_task_state.task_state.subtask_states[elem.subtask_id]
+            if elem.subtask_id in self.task_desc.task_state.subtask_states:
+                ss = self.task_desc.task_state.subtask_states[elem.subtask_id]
                 elem.update(ss.subtask_progress, ss.subtask_status, ss.subtask_rem_time)
             else:
                 del self.subtask_table_elements[k]
@@ -94,8 +94,8 @@ class TaskDetailsDialogCustomizer(Customizer):
         self.gui.ui.nodesTableWidget.sortItems(self.sorting, self.sorting_order)
 
     def __update_node_additional_info(self, node_name, subtask_id):
-        if subtask_id in self.gnr_task_state.task_state.subtask_states:
-            ss = self.gnr_task_state.task_state.subtask_states[subtask_id]
+        if subtask_id in self.task_desc.task_state.subtask_states:
+            ss = self.task_desc.task_state.subtask_states[subtask_id]
             comp = ss.computer
 
             if not isinstance(comp, ComputerState):

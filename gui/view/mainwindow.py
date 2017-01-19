@@ -17,14 +17,3 @@ class MainWindow(QMainWindow):
                 reactor.stop()
         else:
             event.ignore()
-
-
-class GNRMainWindow:
-    def __init__(self):
-        self.window = MainWindow()
-        self.ui = Ui_MainWindow()
-
-        self.ui.setupUi(self.window)
-
-    def show(self):
-        self.window.show()

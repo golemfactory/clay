@@ -23,10 +23,9 @@ class BenchmarkRunner(LocalComputer):
         self.end_time = None
         
     def _get_task_thread(self, ctd):
-        if ctd.docker_images:
-            return LocalComputer._get_task_thread(self, ctd)
-        else:
+        if not ctd.docker_images:
             raise Exception("No docker container found")
+        return super(BenchmarkRunner, self)._get_task_thread(ctd)
 
     def start(self):
         self.start_time = time.time()
@@ -40,17 +39,23 @@ class BenchmarkRunner(LocalComputer):
     
     def task_computed(self, task_thread):
         self.end_time = time.time()
-        logger.debug("Ended at {}".format(self.end_time))
-        if task_thread.result:
-            res, _ = task_thread.result
-            if res and res.get("data"):
-                print res["data"]
-                if self.benchmark.verify_result(res["data"]):
-                    self.success_callback(self.benchmark.normalization_constant / (self.end_time - self.start_time))
-                    return
+        logger.debug("Ended at %s", self.end_time)
+        if not task_thread.result:
+            logger_msg = self.comp_failed_warning
+            if task_thread.error_msg:
+                logger_msg += " " + task_thread.error_msg
+            logger.warning(logger_msg)
+            self.error_callback(task_thread.error_msg)
+            return
 
-        logger_msg = self.comp_failed_warning
-        if task_thread.error_msg:
-            logger_msg += " " + task_thread.error_msg
-        logger.warning(logger_msg)
-        self.error_callback(task_thread.error_msg)
+        res, _ = task_thread.result
+        if res and ("data" in res):
+            if self.benchmark.verify_result(res["data"]):
+                try:
+                    benchmark_value = self.benchmark.normalization_constant / (self.end_time - self.start_time)
+                    if benchmark_value < 0:
+                        raise ZeroDivisionError
+                except ZeroDivisionError:
+                    benchmark_value = self.benchmark.normalization_constant / 1e-10
+                self.success_callback(benchmark_value)
+                return
