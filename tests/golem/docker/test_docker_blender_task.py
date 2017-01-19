@@ -5,7 +5,7 @@ from os import makedirs, path
 import jsonpickle as json
 from mock import Mock
 
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
+from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
@@ -182,10 +182,24 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         render_task = self._create_test_task()
         tt = self._run_docker_test_task(render_task)
         result, mem = tt.result
-        assert mem > 0
+        self.assertGreater(mem, 0)
 
         tt = self._run_docker_local_comp_task(render_task)
-        assert tt.result is not None
+        self.assertIsNotNone(tt.result)
+
+    def test_build(self):
+        node_name = "some_node"
+        task_def = self._load_test_task_definition(self.CYCLES_TASK_FILE)
+        dir_manager = DirManager(self.path)
+        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        task = builder.build()
+        self.assertIsInstance(task, BlenderRenderTask)
+        self.assertFalse(task.compositing)
+        self.assertFalse(task.use_frames)
+        self.assertEqual(len(task.frames_given), 10)
+        self.assertIsInstance(task.preview_file_path, basestring)
+        self.assertIsNone(task.preview_updaters)
+        self.assertEqual(task.scale_factor, 0.33)
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)

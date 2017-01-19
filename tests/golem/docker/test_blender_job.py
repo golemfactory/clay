@@ -42,8 +42,7 @@ class TestBlenderDockerJob(TestDockerJob):
 
         params = {
             "outfilebasename": "out",
-            "scene_file": DockerJob.RESOURCES_DIR + "/" +
-                          path.basename(scene_files[0]),
+            "scene_file": path.join(DockerJob.RESOURCES_DIR, path.basename(scene_files[0])),
             "script_src": crop_script_contents,
             "start_task": 42,
             "end_task": 42,

@@ -214,7 +214,6 @@ class BlenderRenderTask(FrameRenderingTask):
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
 
-
         self.compositing = compositing
         self.frames_given = {}
         for frame in frames:
