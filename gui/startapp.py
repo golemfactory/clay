@@ -41,10 +41,10 @@ def load_environments():
     return apps_manager.get_env_list()
 
 
-def register_rendering_task_types(logic):
+def register_task_types(logic):
     from gui.view.widget import TaskWidget
     for app in apps_manager.apps.values():
-        task_type = app.build_info(TaskWidget(app.widget), app.controller)
+        task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
         logic.register_new_task_type(task_type)
 
 
@@ -52,19 +52,19 @@ class GUIApp(object):
 
     def __init__(self, rendering):
 
-        from gui.application import GNRGui
+        from gui.application import Gui
 
-        from gui.applicationlogic import GNRApplicationLogic
+        from gui.applicationlogic import GuiApplicationLogic
         from gui.controller.mainwindowcustomizer import MainWindowCustomizer
         from gui.view.appmainwindow import AppMainWindow
 
-        self.logic = GNRApplicationLogic()
-        self.app = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.app = Gui(self.logic, AppMainWindow)
         self.logic.register_gui(self.app.get_main_window(),
                                 MainWindowCustomizer)
 
         if rendering:
-            register_rendering_task_types(self.logic)
+            register_task_types(self.logic)
 
     @inlineCallbacks
     def start(self, client):

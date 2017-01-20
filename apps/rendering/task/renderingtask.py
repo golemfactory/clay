@@ -17,7 +17,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask, GNRTaskBuilder
+from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
 
@@ -31,7 +31,7 @@ logger = logging.getLogger("apps.rendering")
 MAX_PENDING_CLIENT_RESULTS = 1
 
 
-class RenderingTaskBuilder(GNRTaskBuilder):
+class RenderingTaskBuilder(CoreTaskBuilder):
     def _calculate_total(self, defaults, definition):
         if definition.optimize_total:
             return defaults.default_subtasks
@@ -58,7 +58,7 @@ class AcceptClientVerdict(object):
     SHOULD_WAIT = 2
 
 
-class RenderingTask(GNRTask):
+class RenderingTask(CoreTask):
 
     ################
     # Task methods #
@@ -82,7 +82,7 @@ class RenderingTask(GNRTask):
         for resource in task_resources:
             resource_size += os.stat(resource).st_size
 
-        GNRTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
+        CoreTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
                          timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
 
         self.main_program_file = main_program_file
@@ -119,21 +119,21 @@ class RenderingTask(GNRTask):
         else:
             self.scale_factor = 1.0
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
-        GNRTask.computation_failed(self, subtask_id)
+        CoreTask.computation_failed(self, subtask_id)
         self._update_task_preview()
 
     def restart(self):
         super(RenderingTask, self).restart()
         self.collected_file_names = {}
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def restart_subtask(self, subtask_id):
         if subtask_id in self.subtasks_given:
             if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
                 self._remove_from_preview(subtask_id)
-        GNRTask.restart_subtask(self, subtask_id)
+        CoreTask.restart_subtask(self, subtask_id)
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:
@@ -151,7 +151,7 @@ class RenderingTask(GNRTask):
     def _get_part_size(self, subtask_id):
         return self.res_x, self.res_y
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def _get_part_img_size(self, subtask_id, adv_test_file):
         num_task = self.subtasks_given[subtask_id]['start_task']
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
@@ -169,7 +169,7 @@ class RenderingTask(GNRTask):
         img_current.save(self.preview_file_path, "BMP")
         img.close()
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
         if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
@@ -317,7 +317,7 @@ class RenderingTask(GNRTask):
                 adv_test_file = random.sample(tr_files, 1)
         return adv_test_file
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def _verify_imgs(self, subtask_id, tr_files):
         res_x, res_y = self._get_part_size(subtask_id)
 
@@ -352,7 +352,7 @@ class RenderingTask(GNRTask):
         start_y = get_random(y0, y1 - ver_y)
         return start_x, start_y
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def _change_scope(self, subtask_id, start_box, tr_file):
         extra_data = copy(self.subtasks_given[subtask_id])
         extra_data['outfilebasename'] = str(uuid.uuid4())
@@ -383,7 +383,7 @@ class RenderingTask(GNRTask):
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def __use_adv_verification(self, subtask_id):
         if self.verification_options.type == 'forAll':
             return True

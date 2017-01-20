@@ -1,6 +1,11 @@
 os: Visual Studio 2015
 version: '{branch}-{build}'
 
+branches:
+  only:
+  - master
+  - develop
+
 environment:
   matrix:
     - PYTHON: "C:\\Python27"

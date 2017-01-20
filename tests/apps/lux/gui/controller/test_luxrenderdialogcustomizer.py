@@ -9,12 +9,12 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from apps.lux.gui.controller.luxrenderdialogcustomizer import LuxRenderDialogCustomizer, logger
 from apps.lux.gui.view.gen.ui_LuxWidget import Ui_LuxWidget
-from apps.lux.task.luxrendertask import build_lux_render_info
+from apps.lux.task.luxrendertask import LuxRenderTaskTypeInfo
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
-from gui.application import GNRGui
-from gui.applicationlogic import GNRApplicationLogic
+from gui.application import Gui
+from gui.applicationlogic import GuiApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.widget import TaskWidget
 
@@ -23,18 +23,19 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
 
     def setUp(self):
         super(TestLuxRenderDialogCustomizer, self).setUp()
-        self.logic = GNRApplicationLogic()
-        self.gnrgui = GNRGui(Mock(), AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.gui = Gui(Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestLuxRenderDialogCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 
     @patch("apps.rendering.gui.controller.renderercustomizer.QFileDialog")
     def test_lux_customizer(self, mock_file_dialog):
-        self.logic.register_new_task_type(build_lux_render_info(TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
-        self.logic.customizer = MainWindowCustomizer(self.gnrgui.main_window, self.logic)
+        self.logic.register_new_task_type(LuxRenderTaskTypeInfo(
+            TaskWidget(Ui_LuxWidget), LuxRenderDialogCustomizer))
+        self.logic.customizer = MainWindowCustomizer(self.gui.main_window, self.logic)
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
         self.logic.client = Mock()

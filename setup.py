@@ -22,26 +22,39 @@ except ImportError:
 from gui.view.generateui import generate_ui_files
 
 
-generate_ui_files()
+ui_err = ""
+
+try:
+    generate_ui_files()
+except EnvironmentError as err:
+    ui_err = \
+            """
+            ***************************************************************
+            Generating UI elements was not possible.
+            Golem will work only in command line mode.
+            Generate_ui_files function returned {}
+            ***************************************************************
+            """.format(err)
 
 
 def try_docker():
     try:
         subprocess.check_call(["docker", "info"])
     except Exception as err:
-        print("""
-              ***************************************************************"
-              Docker not available, not building images."
-              Command 'docker info' returned {}"
-              ***************************************************************"
-              """.format(err))
-        return False
-    return True
+        return \
+            """
+            ***************************************************************
+            Docker not available, not building images.
+            Golem will not be able to compute anything.
+            Command 'docker info' returned {}
+            ***************************************************************
+            """.format(err)
 
 
 def try_building_docker_images():
-    if not try_docker():
-        return
+    err_msg = try_docker()
+    if err_msg:
+        return err_msg
     images_dir = 'apps'
     cwd = os.getcwdu()
 
@@ -71,10 +84,10 @@ def try_building_docker_images():
             finally:
                 os.chdir(cwd)
 
-
 def try_pulling_docker_images():
-    if not try_docker():
-        return
+    err_msg = try_docker()
+    if err_msg:
+        return err_msg
     images_dir = 'apps'
 
     with open(path.join(images_dir, 'images.ini')) as f:
@@ -94,7 +107,7 @@ def try_pulling_docker_images():
                 sys.exit(1)
 
 
-try_pulling_docker_images()
+docker_err = try_pulling_docker_images()
 
 
 class PyTest(TestCommand):
@@ -213,3 +226,12 @@ setup(
     test_suite='tests',
     tests_require=test_requirements
 )
+
+
+def print_errors(ui_err, docker_err):
+    if ui_err:
+        print(ui_err)
+    if docker_err:
+        print(docker_err)
+
+print_errors(ui_err, docker_err)

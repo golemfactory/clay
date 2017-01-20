@@ -3,7 +3,7 @@ from os import makedirs, path
 
 from mock import Mock
 
-from apps.core.task.gnrtaskstate import TaskState
+from apps.core.task.coretaskstate import TaskState
 from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask
 from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions, RenderingTaskDefinition)

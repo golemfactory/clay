@@ -13,7 +13,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
@@ -34,7 +34,7 @@ logger = logging.getLogger("app")
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
 
 
-class GNRApplicationLogic(QtCore.QObject, AppLogic):
+class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def __init__(self):
         QtCore.QObject.__init__(self)
         AppLogic.__init__(self)
@@ -121,7 +121,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
 
     def get_task(self, task_id):
         if task_id not in self.tasks:
-            raise AttributeError("GNRApplicationLogic: task {} not added".format(task_id))
+            raise AttributeError("GuiApplicationLogic: task {} not added".format(task_id))
         return self.tasks[task_id]
 
     def get_task_types(self):
@@ -431,7 +431,7 @@ class GNRApplicationLogic(QtCore.QObject, AppLogic):
     def run_benchmark(self, benchmark, label, cfg_param_name):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
-        task_state.definition = benchmark.query_benchmark_task_definition()
+        task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
 
         tb = self.get_builder(task_state)

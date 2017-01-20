@@ -14,10 +14,13 @@ coverage:
         target: auto
     changes: false
   ignore:
-    - "tests/*"
-    - "scripts/*"
-    - "save/*"
+    - "apps/core/benchmark/minilight/*"
+    - "apps/core/gui/*"
     - "apps/rendering/resources/taskcollector/*"
     - "golem/testutils.py"
+    - "save/*"
+    - "scripts/*"
+    - "tests/*"
+    - "setup.py"
 comment:
   layout: header, diff, changes, sunburst, uncovered
