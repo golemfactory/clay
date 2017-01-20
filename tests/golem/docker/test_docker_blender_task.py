@@ -6,13 +6,14 @@ import jsonpickle as json
 from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRenderTask
+from apps.core.task.coretaskstate import AdvanceVerificationOptions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import result_types
+from golem.task.taskbase import result_types, TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -188,6 +189,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.assertIsNotNone(tt.result)
 
     def test_build(self):
+        """ Test building docker blender task """
+        from golem.network.p2p.node import Node
         node_name = "some_node"
         task_def = self._load_test_task_definition(self.CYCLES_TASK_FILE)
         dir_manager = DirManager(self.path)
@@ -200,6 +203,42 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.assertIsInstance(task.preview_file_path, basestring)
         self.assertIsNone(task.preview_updaters)
         self.assertEqual(task.scale_factor, 0.33)
+        self.assertIsNotNone(task.src_code)
+        self.assertIsInstance(task.header, TaskHeader)
+        self.assertEqual(task.header.task_id, '7220aa01-ad45-4fb4-b199-ba72b37a1f0c')
+        self.assertEqual(task.header.task_owner_key_id, '')
+        self.assertEqual(task.header.task_owner_address, '')
+        self.assertEqual(task.header.task_owner_port, 0)
+        self.assertIsInstance(task.header.task_owner, Node)
+        self.assertEqual(task.header.subtask_timeout, 1200)
+        self.assertEqual(task.header.node_name, 'some_node')
+        self.assertEqual(task.header.resource_size, 8493997)
+        self.assertEqual(task.header.environment, 'BLENDER')
+        self.assertEqual(task.header.estimated_memory, 0)
+        self.assertEqual(task.header.min_version, '0.3')
+        self.assertEqual(task.header.docker_images[0].repository, 'golem/blender')
+        self.assertEqual(task.header.docker_images[0].tag, 'latest')
+        self.assertEqual(task.header.max_price, 10.2)
+        self.assertIsNone(task.header.signature)
+        self.assertEqual(task.undeletable, [])
+        self.assertEqual(task.listeners, [])
+        self.assertEqual(len(task.task_resources), 2)
+        self.assertTrue(task.task_resources[0].endswith('docker_blendertask.py'))
+        self.assertTrue(task.task_resources[1].endswith('scene-Helicopter-27-cycles.blend'))
+        self.assertEqual(task.total_tasks, 6)
+        self.assertEqual(task.last_task, 0)
+        self.assertEqual(task.num_tasks_received, 0)
+        self.assertEqual(task.subtasks_given, {})
+        self.assertEqual(task.num_failed_subtasks, 0)
+        self.assertEqual(task.full_task_timeout, 14400)
+        self.assertEqual(task.counting_nodes, {})
+        self.assertEqual(task.stdout, {})
+        self.assertEqual(task.stderr, {})
+        self.assertEqual(task.results, {})
+        self.assertEqual(task.res_files, {})
+        self.assertTrue(path.isdir(task.tmp_dir))
+        self.assertIsInstance(task.verification_options, AdvanceVerificationOptions)
+        self.assertEqual(task.verification_options.type, 'forFirst')
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)

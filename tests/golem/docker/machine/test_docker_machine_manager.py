@@ -157,7 +157,7 @@ class TestDockerMachineManager(unittest.TestCase):
 
     def test_stop_vm(self):
         dmm = MockDockerMachineManager()
-        self.assertIsNotNone(dmm.sltop_vm(MACHINE_NAME))
+        self.assertIsNotNone(dmm.stop_vm(MACHINE_NAME))
 
     def test_check_environment(self):
         MockDockerMachineManager._DockerMachineManager__import_virtualbox = mock.Mock()
@@ -197,7 +197,7 @@ class TestDockerMachineManager(unittest.TestCase):
             dmm.docker_machine = MACHINE_NAME
             dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
             dmm.check_environment()
-            self.assertFalse(dmm.docker_machine_available)
+            self.assertTrue(dmm.docker_machine_available)
 
     def test_update_config(self):
         status_switch = [True]
