@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QFileDialog
 
 from gui.controller.customizer import Customizer
 
-
 logger = logging.getLogger("apps.rendering")
 
 
@@ -124,12 +123,11 @@ class RendererCustomizer(Customizer):
         filter_ = u"Scene files ({})".format(output_file_types)
         path = u"{}".format(str(self.load_setting('main_scene_path', os.path.expanduser('~'))))
 
-        file_name = u"{}".format(QFileDialog.getOpenFileName(self.gui,
-                                                             "Choose main scene file",
-                                                             path,
-                                                             filter_))
-
-        if file_name != '':
+        file_name, _ = QFileDialog.getOpenFileName(self.gui,
+                                                   "Choose main scene file",
+                                                   path,
+                                                   filter_)
+        if file_name:
             self.save_setting('main_scene_path', os.path.dirname(file_name))
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
@@ -139,12 +137,11 @@ class RendererCustomizer(Customizer):
 
         path = u"{}".format(str(self.load_setting('output_file_path', os.path.expanduser('~'))))
 
-        file_name = u"{}".format(QFileDialog.getSaveFileName(self.gui,
-                                                             "Choose output file",
-                                                             path,
-                                                             filter_))
-
-        if file_name != '':
+        file_name, _ = QFileDialog.getSaveFileName(self.gui,
+                                                   "Choose output file",
+                                                   path,
+                                                   filter_)
+        if file_name:
             self.save_setting('output_file_path', os.path.dirname(file_name))
             self.gui.ui.outputFileLineEdit.setText(file_name)
             self.logic.task_settings_changed()
