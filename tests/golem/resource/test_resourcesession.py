@@ -1,3 +1,4 @@
+from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
@@ -65,6 +66,7 @@ class ResourceSessionTestCase(unittest.TestCase):
         msg.get_short_hash.assert_called_once_with()
 
     def test_sign_verification(self):
+        """.verify() method from SafeSession interface."""
         test_signature = 'test sig: %s' % (time.time(),)
         msg = mock.MagicMock()
         msg.sig = test_signature
@@ -75,10 +77,95 @@ class ResourceSessionTestCase(unittest.TestCase):
 
     @mock.patch('golem.network.transport.session.BasicSafeSession.send')
     def test_sending(self, super_send_mock):
+        """Message sending."""
         # connection unverified
-        msg = object()
+        msg = queued_msg = object()
         self.instance.send(msg)
         self.assertEquals([msg], self.instance.msgs_to_send)
         self.assertEquals(super_send_mock.call_count, 0)
 
+        msg = object()
+        self.instance.send(msg, send_unverified=True)
+        self.assertNotIn(msg, self.instance.msgs_to_send)
+        super_send_mock.assert_called_once_with(self.instance, msg, send_unverified=True)
+        super_send_mock.reset_mock()
+
         # connection verified
+        msg = message.MessageRandVal(self.instance.rand_val, "")
+        msg.encrypted = True
+        self.instance.interpret(msg)
+        self.assertTrue(self.instance.verified)
+        super_send_mock.assert_called_once_with(self.instance, queued_msg, send_unverified=False)
+        super_send_mock.reset_mock()
+
+        msg = object()
+        self.instance.send(msg)
+        super_send_mock.assert_called_once_with(self.instance, msg, send_unverified=False)
+
+    def test_full_data_received(self):
+        """Reaction to full data received."""
+        # without confirmation
+        self.instance.file_name = file_name = 'dummytest.name'
+        self.instance.confirmation = False
+        self.instance.dropped = mock.MagicMock()
+
+        self.instance.full_data_received()
+
+        self.instance.resource_server.resource_downloaded.assert_called_once_with(
+            file_name,
+            self.instance.address,
+            self.instance.port)
+        self.instance.dropped.assert_called_once_with()
+        self.assertIsNone(self.instance.file_name)
+
+        # with confirmation, without copies
+        def confirmation_without_copies():
+            self.instance.file_name = file_name = 'dummytest.name'
+            self.instance.confirmation = True
+            self.instance.send = mock.MagicMock()
+
+            self.instance.full_data_received()
+
+            self.instance.send.assert_called_once_with(mock.ANY)
+            mock_args, mock_kwargs = self.instance.send.call_args
+            msg = mock_args[0]
+            self.assertIsInstance(msg, message.MessageHasResource)
+            self.assertEquals(msg.resource, file_name)
+            self.assertFalse(self.instance.confirmation)
+            self.assertEquals(self.instance.copies, 0)
+            self.assertIsNone(self.instance.file_name)
+            return file_name
+        confirmation_without_copies()
+
+        # wtih confirmation, with copies
+        self.instance.copies = copies = 10
+        file_name = confirmation_without_copies()
+        self.instance.resource_server.add_resource_to_send.assert_called_once_with(file_name, copies)
+
+    def test_send_pass_throughs(self):
+        """Simple pass-through methods."""
+        self.instance.send = mock.MagicMock()
+
+        # .send_pull_resource()
+        resource = object()
+        self.instance.send_pull_resource(resource)
+        self.instance.send.assert_called_once_with(mock.ANY)
+        mock_args, mock_kwargs = self.instance.send.call_args
+        msg = mock_args[0]
+        self.assertIsInstance(msg, message.MessagePullResource)
+        self.assertEquals(msg.resource, resource)
+        self.instance.send.reset_mock()
+
+        # .send_hello()
+        resource = object()
+        client_key_id = object()
+        self.instance.resource_server.get_key_id = mock.MagicMock(return_value=client_key_id)
+
+        self.instance.send_hello()
+
+        self.instance.send.assert_called_once_with(mock.ANY, send_unverified=True)
+        mock_args, mock_kwargs = self.instance.send.call_args
+        msg = mock_args[0]
+        self.assertIsInstance(msg, message.MessageHello)
+        self.assertEquals(msg.client_key_id, client_key_id)
+        self.assertEquals(msg.rand_val, self.instance.rand_val)
