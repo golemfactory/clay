@@ -212,7 +212,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.assertIsInstance(task.header.task_owner, Node)
         self.assertEqual(task.header.subtask_timeout, 1200)
         self.assertEqual(task.header.node_name, 'some_node')
-        self.assertEqual(task.header.resource_size, 8493997)
+        self.assertGreater(task.header.resource_size, 0)
         self.assertEqual(task.header.environment, 'BLENDER')
         self.assertEqual(task.header.estimated_memory, 0)
         self.assertEqual(task.header.min_version, '0.3')

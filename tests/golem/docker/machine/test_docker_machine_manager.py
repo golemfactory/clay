@@ -140,34 +140,34 @@ class TestDockerMachineManager(unittest.TestCase):
         config = MockConfig(0, 768, 512)
 
         dmm = MockDockerMachineManager()
-        self.assertEqual(dmm.virtual_box_config, dmm.defaults)
+        assert dmm.virtual_box_config == dmm.defaults
 
         dmm.build_config(config)
-        self.assertNotEqual(dmm.virtual_box_config, dmm.defaults)
-        self.assertLess(len(dmm.virtual_box_config), len(config.to_dict()))
+        assert dmm.virtual_box_config != dmm.defaults
+        assert len(dmm.virtual_box_config) < len(config.to_dict())
 
-        self.assertEqual(dmm.virtual_box_config.get('cpu_count'), dmm.min_constraints.get('cpu_count'))
-        self.assertEqual(dmm.virtual_box_config.get('memory_size'), dmm.min_constraints.get('memory_size'))
+        assert dmm.virtual_box_config.get('cpu_count') == dmm.min_constraints.get('cpu_count')
+        assert dmm.virtual_box_config.get('memory_size') == dmm.min_constraints.get('memory_size')
 
         return dmm.container_host_config, dmm.virtual_box_config
 
     def test_start_vm(self):
         dmm = MockDockerMachineManager()
-        self.assertIsNotNone(dmm.start_vm(MACHINE_NAME))
+        assert dmm.start_vm(MACHINE_NAME)
 
     def test_stop_vm(self):
         dmm = MockDockerMachineManager()
-        self.assertIsNotNone(dmm.stop_vm(MACHINE_NAME))
+        assert dmm.stop_vm(MACHINE_NAME)
 
     def test_check_environment(self):
         MockDockerMachineManager._DockerMachineManager__import_virtualbox = mock.Mock()
 
         dmm = MockDockerMachineManager()
-        self.assertTrue(dmm.docker_machine_available)
+        assert dmm.docker_machine_available
 
         dmm = MockDockerMachineManager()
         dmm.docker_machine_images = lambda *_: []
-        self.assertFalse(dmm.check_environment())
+        assert not dmm.check_environment()
 
         mock_virtualbox_module = mock.MagicMock()
 
@@ -182,12 +182,12 @@ class TestDockerMachineManager(unittest.TestCase):
             dmm = MockDockerMachineManager()
             dmm.docker_machine = MACHINE_NAME
             dmm.check_environment()
-            self.assertFalse(dmm.docker_machine_available)
+            assert not dmm.docker_machine_available
 
             dmm = MockDockerMachineManager()
             dmm.docker_machine = None
             dmm.check_environment()
-            self.assertFalse(dmm.docker_machine_available)
+            assert not dmm.docker_machine_available
 
         with mock.patch.dict('sys.modules', **{
             'virtualbox': mock.MagicMock(),
@@ -197,7 +197,7 @@ class TestDockerMachineManager(unittest.TestCase):
             dmm.docker_machine = MACHINE_NAME
             dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
             dmm.check_environment()
-            self.assertTrue(dmm.docker_machine_available)
+            assert dmm.docker_machine_available
 
     def test_update_config(self):
         status_switch = [True]
@@ -227,8 +227,8 @@ class TestDockerMachineManager(unittest.TestCase):
         dmm = MockDockerMachineManager(use_parent_methods=True)
         dmm.docker_machine_commands['test'] = ['python', '--version']
 
-        self.assertEqual(dmm.docker_machine_command('test'), "")
-        self.assertEqual(dmm.docker_machine_command('test', check_output=False), 0)
+        assert dmm.docker_machine_command('test') == ""
+        assert dmm.docker_machine_command('test', check_output=False) == 0
         assert not dmm.docker_machine_command('deadbeef')
 
     def test_start_stop_methods(self):
