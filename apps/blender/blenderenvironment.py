@@ -3,13 +3,13 @@ from golem.docker.environment import DockerEnvironment
 
 
 class BlenderEnvironment(DockerEnvironment):
-    BLENDER_DOCKER_IMAGE = "golem/blender"
+    BLENDER_DOCKER_IMAGE = "golemfactory/blender"
 
     @classmethod
     def get_id(cls):
         return "BLENDER"
 
-    def __init__(self, tag="latest", image_id=None):
+    def __init__(self, tag="1.3", image_id=None):
         image = DockerImage(image_id=id) if image_id \
             else DockerImage(self.BLENDER_DOCKER_IMAGE, tag=tag)
         DockerEnvironment.__init__(self, [image])

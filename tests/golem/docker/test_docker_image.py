@@ -10,8 +10,8 @@ from golem.tools.appveyor import appveyor_skip
 
 class DockerTestCase(unittest.TestCase):
 
-    TEST_REPOSITORY = "golem/base"
-    TEST_TAG = "latest"
+    TEST_REPOSITORY = "golemfactory/base"
+    TEST_TAG = "1.3"
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
     TEST_IMAGE_ID = None
 
