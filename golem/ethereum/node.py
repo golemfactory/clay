@@ -164,14 +164,12 @@ class NodeProcess(object):
             log.info("Node terminated in {:.2f} s".format(duration))
 
 
-# TODO: Refactor, use inheritance FullNode(NodeProcess)
-class FullNode(object):
+class FullNode(NodeProcess):
     def __init__(self, datadir=None):
         if not datadir:
             datadir = path.join(get_local_datadir('ethereum'), 'full_node')
-        self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY,
-                        port=30900)
+        super(FullNode, self).__init__(nodes=[], datadir=datadir)
+        self.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY, port=30900)
 
 if __name__ == "__main__":
     import signal
