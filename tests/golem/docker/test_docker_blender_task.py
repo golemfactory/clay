@@ -213,15 +213,17 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
         assert task.header.min_version == '0.3'
-        assert task.header.docker_images[0].repository == 'golem/blender'
-        assert task.header.docker_images[0].tag == 'latest'
+        assert task.header.docker_images[0].repository == 'golemfactory/blender'
+        assert task.header.docker_images[0].tag == '1.3'
         assert task.header.max_price == 10.2
         assert not task.header.signature
         assert task.undeletable == []
         assert task.listeners == []
         assert len(task.task_resources) == 2
-        assert task.task_resources[0].endswith('docker_blendertask.py')
-        assert task.task_resources[1].endswith('scene-Helicopter-27-cycles.blend')
+        assert any(resource.endswith('docker_blendertask.py')
+                   for resource in task.task_resources)
+        assert any(resource.endswith('scene-Helicopter-27-cycles.blend')
+                   for resource in task.task_resources)
         assert task.total_tasks == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
