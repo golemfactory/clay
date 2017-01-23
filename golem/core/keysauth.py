@@ -512,7 +512,7 @@ class EllipticalKeysAuth(KeysAuth):
     def _load_private_key_from_file(file_name):
         if not os.path.isfile(file_name):
             return None
-        with open(file_name) as f:
+        with open(file_name, 'rb') as f:
             key = f.read()
         return key
 
