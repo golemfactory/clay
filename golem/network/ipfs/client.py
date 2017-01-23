@@ -1,5 +1,7 @@
 import abc
 import copy
+from enum import Enum
+
 import jsonpickle as json
 import logging
 import os
@@ -19,7 +21,7 @@ from ipfsApi.http import HTTPClient, pass_defaults
 from golem.core.hostaddress import ip_address_private
 from golem.http.stream import StreamMonitor, ChunkStream
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.resource.client import ClientCommands, ClientConfig, ClientHandler, IClient, ClientOptions
+from golem.resource.client import ClientConfig, ClientHandler, IClient, ClientOptions
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +35,11 @@ IPFS_BOOTSTRAP_NODES = [
 ]
 
 
-class IPFSCommands(ClientCommands):
+class IPFSCommands(Enum):
+
+    add = 0
+    get = 1
+    id = 2
     pin = 3
     unpin = 4
 
@@ -44,8 +50,6 @@ class IPFSCommands(ClientCommands):
     swarm_connect = 8
     swarm_disconnect = 9
     swarm_peers = 10
-
-IPFSCommands.build_names()
 
 
 class IPFSConfig(ClientConfig):
@@ -306,7 +310,7 @@ class IPFSClientHandler(ClientHandler):
 
     def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("IPFS: Error executing command '{}': {}"
-                     .format(self.commands.names[cmd], exc))
+                     .format(cmd.name, exc))
 
 
 class IPFSAddress(object):

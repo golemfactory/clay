@@ -1,14 +1,14 @@
 import os
-import unittest
 import shutil
 import uuid
+
 from mock import patch
 
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.resource.base.resourceserver import TransferStatus
+from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourceserver import IPFSResourceServer
 from golem.tools.testdirfixture import TestDirFixture
+from common.resource_manager import MockResourceManager
 
 node_name = 'test_suite'
 
@@ -75,7 +75,8 @@ class TestResourceServer(TestDirFixture):
     def testStartAccepting(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
         rs.start_accepting()
 
     @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
@@ -94,7 +95,8 @@ class TestResourceServer(TestDirFixture):
     def testGetDistributedResourceRoot(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
         resource_dir = self.dir_manager.get_node_dir()
 
         assert rs.get_distributed_resource_root() == resource_dir
@@ -102,7 +104,8 @@ class TestResourceServer(TestDirFixture):
     def testDecrypt(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
 
         to_encrypt = "test string to enc"
         encrypted = rs.encrypt(to_encrypt, keys_auth.get_public_key())
@@ -116,11 +119,12 @@ class TestResourceServer(TestDirFixture):
         new_config_desc = MockConfig(self.path, node_name)
         dir_manager = DirManager(new_config_desc.root_path)
 
-        rs = IPFSResourceServer(dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                dir_manager, keys_auth, client)
         rm = rs.resource_manager
-        rm.clear_resources()
+        rm.storage.clear_cache()
 
-        assert not rm.list_resources(self.task_id)
+        assert not rm.storage.get_resources(self.task_id)
 
         existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)
         existing_paths = []
@@ -130,7 +134,7 @@ class TestResourceServer(TestDirFixture):
             existing_paths.append(resource_path)
 
         rs.add_task(existing_paths, self.task_id)
-        resources = rm.list_resources(self.task_id)
+        resources = rm.storage.get_resources(self.task_id)
 
         assert resources
         assert len(resources) == len(self.target_resources)
@@ -140,7 +144,7 @@ class TestResourceServer(TestDirFixture):
     def testChangeResourceDir(self):
         rs = self.testAddTask()
         rm = rs.resource_manager
-        resources = rm.list_resources(self.task_id)
+        resources = rm.storage.get_resources(self.task_id)
 
         assert resources
 
@@ -148,7 +152,7 @@ class TestResourceServer(TestDirFixture):
 
         new_config_desc = MockConfig(new_path, node_name + "-new")
         rs.change_resource_dir(new_config_desc)
-        new_resources = rm.list_resources(self.task_id)
+        new_resources = rm.storage.get_resources(self.task_id)
 
         assert len(resources) == len(new_resources)
 
@@ -162,20 +166,21 @@ class TestResourceServer(TestDirFixture):
         rs = self.testAddTask()
         rm = rs.resource_manager
 
-        assert rm.list_resources(self.task_id)
+        assert rm.storage.get_resources(self.task_id)
 
         rs.remove_task(self.task_id)
-        resources = rm.list_resources(self.task_id)
+        resources = rm.storage.get_resources(self.task_id)
 
         assert not resources
 
     def testGetResources(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
-        rs.resource_manager.clear_resources()
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
+        rs.resource_manager.storage.clear_cache()
         rs.resource_manager.add_resources(self.target_resources, self.task_id)
-        resources = rs.resource_manager.list_resources(self.task_id)
+        resources = rs.resource_manager.storage.get_resources(self.task_id)
         resources_len = len(resources)
 
         filenames = []
@@ -191,7 +196,8 @@ class TestResourceServer(TestDirFixture):
         rs.add_files_to_get(resources, self.task_id)
         assert len(rs.waiting_resources) == 0
 
-        rs_aux = IPFSResourceServer(self.dir_manager_aux, keys_auth, client)
+        rs_aux = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                    self.dir_manager_aux, keys_auth, client)
 
         rs_aux.add_files_to_get(relative_resources, self.task_id)
         assert len(rs_aux.waiting_resources) == resources_len
@@ -208,7 +214,8 @@ class TestResourceServer(TestDirFixture):
     def testVerifySig(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
 
         test_str = "A test string to sign"
         sig = rs.sign(test_str)
@@ -217,7 +224,8 @@ class TestResourceServer(TestDirFixture):
     def testAddFilesToGet(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = IPFSResourceServer(self.dir_manager, keys_auth, client)
+        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
 
         test_files = [
             ['file1.txt', '1'],

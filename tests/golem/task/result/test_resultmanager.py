@@ -45,7 +45,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         @staticmethod
         def create(result_manager, node_name, task_id):
             rm = result_manager.resource_manager
-            res_dir = rm.get_resource_dir(task_id)
+            res_dir = rm.storage.get_dir(task_id)
 
             out_file = os.path.join(res_dir, 'out_file')
             out_dir = os.path.join(res_dir, 'out_dir')

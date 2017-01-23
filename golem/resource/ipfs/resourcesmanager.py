@@ -2,34 +2,27 @@ import logging
 import os
 
 from golem.network.ipfs.client import IPFSClientHandler, IPFSClient, IPFSConfig
-from golem.resource.base.resourcesmanager import BaseAbstractResourceManager
+from golem.resource.base.resourcesmanager import AbstractResourceManager, dir_files
 
 logger = logging.getLogger(__name__)
 
 
-def to_unicode(source):
-    if not isinstance(source, unicode):
-        return unicode(source)
-    return source
-
-
-class IPFSResourceManager(BaseAbstractResourceManager, IPFSClientHandler):
+class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
 
     def __init__(self, dir_manager,
                  config=None,
                  resource_dir_method=None):
 
         IPFSClientHandler.__init__(self, config or IPFSConfig())
-        BaseAbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
+        AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
 
-    def add_resource_dir(self, dir_name, client=None, client_options=None):
+    def index_resources(self, dir_name, client=None, client_options=None):
         dir_name = os.path.normpath(dir_name)
-        task_ids = self.dir_manager.list_task_ids_in_dir(dir_name)
+        task_ids = self.storage.list_dir(dir_name)
 
         for task_id in task_ids:
-            task_root_dir = self.dir_manager.get_task_resource_dir(task_id)
-            files = self.list_files(task_root_dir)
-            self.add_task(files, task_id)
+            task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
+            self.add_task(dir_files(task_root_dir), task_id)
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:
@@ -47,4 +40,3 @@ class IPFSResourceManager(BaseAbstractResourceManager, IPFSClientHandler):
 
     def build_client_options(self, node_id, **kwargs):
         return IPFSClient.build_options(node_id, **kwargs)
-

@@ -1,4 +1,4 @@
-from golem.resource.base.resourcesmanager import BaseAbstractResourceManager
+from golem.resource.base.resourcesmanager import AbstractResourceManager
 from golem.resource.client import ClientHandler, ClientCommands, ClientConfig, ClientOptions
 from golem.resource.http.resourcesmanager import HTTPResourceManagerClient
 from golem.resource.swift.api import OpenStackSwiftAPIClient, SERVICE_NAME
@@ -39,11 +39,11 @@ class OpenStackSwiftClient(HTTPResourceManagerClient):
         return region or self.API.get_region_url_for_node(None)
 
 
-class OpenStackSwiftResourceManager(ClientHandler, BaseAbstractResourceManager):
+class OpenStackSwiftResourceManager(ClientHandler, AbstractResourceManager):
 
     def __init__(self, dir_manager, config=None, resource_dir_method=None):
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
-        BaseAbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
+        AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
 
     def new_client(self):
         return OpenStackSwiftClient(**self.config.client)

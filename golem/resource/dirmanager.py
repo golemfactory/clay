@@ -145,7 +145,8 @@ class DirManager(object):
         full_path = self.__get_out_path(task_id)
         return self.get_dir(full_path, create, "output dir does not exist")
 
-    def list_task_ids_in_dir(self, task_dir):
+    @staticmethod
+    def list_dir_names(task_dir):
         """ Get the names of subdirectories as task ids
         :param task_dir: Task temporary / resource / output directory
         :return list: list of task ids
