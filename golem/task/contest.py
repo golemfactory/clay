@@ -11,11 +11,11 @@ from golem.core.common import HandleKeyError
 logger = logging.getLogger(__name__)
 
 
-CONTENDER_LIFETIME = 30  # How many seconds should contender offer be valid
+CONTENDER_LIFETIME = 600  # How many seconds should contender offer be valid
 
-WINDOW_SIZE_DEFAULT = 8  # s Default contest duration length
+WINDOW_SIZE_DEFAULT = 30  # s Default contest duration length
 WINDOW_SIZE_MIN = 0.5  # s Minium contest duration length
-WINDOW_SIZE_MAX = 16  # s Maximum contest duration length
+WINDOW_SIZE_MAX = 500  # s Maximum contest duration length
 WINDOW_SIZE_INCREASE_FACTOR = 0.75  # divisor
 
 
