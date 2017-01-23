@@ -1919,7 +1919,7 @@ def init_messages():
     MessageResource()
     MessagePushResource()
     MessageHasResource()
-    MessageWantResource()
+    MessageWantsResource()
     MessagePullResource()
     MessagePullAnswer()
     MessageSendResource()
