@@ -139,7 +139,7 @@ class PaymentProcessor(object):
             data = self.__testGNT.encode('balanceOf', (addr, ))
             r = self.__client.call(_from='0x' + addr.encode('hex'),
                                    to='0x' + self.TESTGNT_ADDR.encode('hex'),
-                                   data=data.encode('hex'),
+                                   data='0x' + data.encode('hex'),
                                    block='pending')
             if r is None or r == '0x':
                 self.__gnt = 0
