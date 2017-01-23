@@ -83,7 +83,7 @@ class RenderingTask(CoreTask):
             resource_size += os.stat(resource).st_size
 
         CoreTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                         timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
+                          timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
 
         self.main_program_file = main_program_file
         self.main_scene_file = main_scene_file
