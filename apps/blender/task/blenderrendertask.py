@@ -276,7 +276,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         return new_task
 
 
-DEFAULT_BLENDER_DOCKER_IMAGE = "golem/blender:latest"
+DEFAULT_BLENDER_DOCKER_IMAGE = "golemfactory/blender:1.3"
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -316,7 +316,6 @@ class BlenderRenderTask(FrameRenderingTask):
                                     main_program_file, task_resources, main_scene_dir, main_scene_file,
                                     total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
                                     root_path, estimated_memory, use_frames, frames, max_price, docker_images)
-
 
         self.compositing = compositing
         self.frames_given = {}

@@ -164,50 +164,50 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
 
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        assert task.verify_subtask(ctd.subtask_id)
+        self.assertTrue(task.verify_subtask(ctd.subtask_id))
 
         ctd = task.query_extra_data(10000, node_id="Bla")
         task.advanceVerification = True
         bad_file = path.join(path.dirname(test_file), "badfile.flm")
         open(bad_file, "w").close()
         task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
-        assert not task.verify_subtask(ctd.subtask_id)
+        self.assertFalse(task.verify_subtask(ctd.subtask_id))
 
         ctd = task.query_extra_data(10000)
         shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
         remove_copied_file()
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        assert task.verify_subtask(ctd.subtask_id)
+        self.assertTrue(task.verify_subtask(ctd.subtask_id))
         shutil.move(test_file + "copy", test_file)
 
         ctd = task.query_extra_data(10)
         shutil.copy(test_file, new_file)
         remove_copied_file()
-        assert task.num_tasks_received == 2
+        self.assertEqual(task.num_tasks_received, 2)
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        assert task.verify_subtask(ctd.subtask_id)
-        assert task.verify_task()
+        self.assertTrue(task.verify_subtask(ctd.subtask_id))
+        self.assertTrue(task.verify_task())
         outfile = task.output_file + "." + task.output_format
         outflm = task.output_file + "." + "flm"
         self.files_to_remove.append(outfile)
         self.files_to_remove.append(outflm)
-        assert path.isfile(outfile)
+        self.assertTrue(path.isfile(outfile))
 
         task.num_tasks_received -= 1
         task.start_task = 0
         task.end_task = 0
         task.last_task = 0
-        assert not task.verify_task()
+        self.assertFalse(task.verify_task())
         remove(outfile)
         task.advanceVerification = False
         ctd = task.query_extra_data(10)
         shutil.copy(test_file, new_file)
         remove_copied_file()
         task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
-        assert task.verify_subtask(ctd.subtask_id)
-        assert task.verify_task()
-        assert path.isfile(outfile)
+        self.assertTrue(task.verify_subtask(ctd.subtask_id))
+        self.assertTrue(task.verify_task())
+        self.assertTrue(path.isfile(outfile))
 
     def test_luxrender_subtask(self):
         task = self._test_task()

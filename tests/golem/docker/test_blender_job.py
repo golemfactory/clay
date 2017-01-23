@@ -15,7 +15,7 @@ class TestBlenderDockerJob(TestDockerJob):
     """Tests for Docker image golem/base"""
 
     def _get_test_repository(self):
-        return "golem/blender"
+        return "golemfactory/blender:12"
 
     def test_blender_job(self):
         app_dir = os.path.join(get_golem_path(), "apps", "blender")

@@ -28,7 +28,7 @@ class TestBenchmark(TempDirFixture):
     def test_broken_image(self):
         filepath = self.temp_file_name("broken.png")
         with open(filepath, "w") as f:
-            f.write('notanimage')
+            f.write('notanimage,notanimageatall')
         with mock.patch('apps.core.benchmark.benchmark.logger') as m:
             self.assertFalse(self.benchmark.verify_img(filepath))
             m.warning.assert_called_once_with(mock.ANY, exc_info=True)
