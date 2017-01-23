@@ -247,6 +247,39 @@ class TestContest(unittest.TestCase):
         assert contest.ranks[-1] is highest_score
         assert all(contest.ranks[i] <= contest.ranks[i+1] for i in range(len(contest.ranks) - 1))
 
+    def test_choose_winners(self):
+        task = _create_task()
+        contest = Contest(task, min_score=0.0)
+        contenders = [
+            _create_contender(node_name="contender_{}".format(i),
+                              perf_index=1000 * i,
+                              price=10 - i,
+                              computing_trust=float(i / 10.) - 0.5)[0]
+            for i in xrange(10)
+            ]
+        contest.contenders = {c.id: c for c in contenders}
+        contest.choose_winners(1)
+        assert len(contest.winners) == 0
+        contest._rank_contenders()
+        contest.choose_winners(3)
+        assert len(contest.winners) == 3
+        assert [contender.id for contender in contest.winners] == ["contender_7", "contender_8",
+                                                                   "contender_9"]
+        assert len(contest.contenders) == 7
+        contest.choose_winners(4)
+        assert [contender.id for contender in contest.winners] == ["contender_3", "contender_4",
+                                                                   "contender_5", "contender_6"]
+        req_message = Mock()
+        req_message.perf_index = 1000 * 7
+        req_message.price = 10 - 7
+        contest.add_contender("contender_7", Mock(), req_message, float(7/10.)-0.5)
+        assert len(contest.contenders) == 4
+        assert len(contest.ranks) == 4
+        contest.choose_winners(6)
+        assert len(contest.winners) == 4
+        assert [contender.id for contender in contest.winners] == ["contender_0", "contender_1",
+                                                                   "contender_2", "contender_7"]
+
 
 class TestContestManager(unittest.TestCase):
 
