@@ -32,7 +32,9 @@ class EthereumTransactionSystem(TransactionSystem):
         datadir = path.join(datadir, "ethereum")
         eth_node = Client(datadir=datadir)
         self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
+        self.__proc.start()
         self.__monitor = PaymentMonitor(eth_node, self.__node_address)
+        self.__monitor.start()
         # TODO: We can keep address in PaymentMonitor only
 
     def add_payment_info(self, *args, **kwargs):
@@ -62,4 +64,3 @@ class EthereumTransactionSystem(TransactionSystem):
                  'value': payment.value,
                  'block_number': payment.extra['block_number']
                  } for payment in self.__monitor.get_incoming_payments()]
-
