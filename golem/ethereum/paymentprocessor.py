@@ -7,8 +7,8 @@ import time
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
-from twisted.internet.task import LoopingCall
 
+from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
 
 from .contracts import BankOfDeposit, TestGNT
@@ -42,7 +42,7 @@ def _encode_payments(payments):
     return args, value
 
 
-class PaymentProcessor(object):
+class PaymentProcessor(Service):
     # Gas price: 20 shannons, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
 
@@ -71,13 +71,7 @@ class PaymentProcessor(object):
         self.__faucet = faucet
         self.__faucet_request_ttl = 0
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
-
-        # Very simple sendout scheduler.
-        # TODO: Maybe it should not be the part of this class
-        # TODO: Allow seting timeout
-        # TODO: Defer a call only if payments waiting
-        scheduler = LoopingCall(self.run)
-        scheduler.start(self.SENDOUT_TIMEOUT)
+        super(PaymentProcessor, self).__init__(self.SENDOUT_TIMEOUT)
 
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
@@ -204,7 +198,8 @@ class PaymentProcessor(object):
             for payment in payments:
                 if payment.status != PaymentStatus.awaiting:
                     raise RuntimeError(
-                        "payment status should be equal: {}, but is: {}".format(PaymentStatus.awaiting, payment.status))
+                        "payment status should be equal: {}, but is: {}"
+                        .format(PaymentStatus.awaiting, payment.status))
                 payment.status = PaymentStatus.sent
                 payment.details['tx'] = h.encode('hex')
                 payment.save()
@@ -215,7 +210,8 @@ class PaymentProcessor(object):
 
             tx_hash = self.__client.send(tx)
             if tx_hash[2:].decode('hex') != h:  # FIXME: Improve Client.
-                raise ValueError("Incorrect tx hash: {}, should be: {}".format(tx_hash[2:].decode('hex'), h))
+                raise ValueError("Incorrect tx hash: {}, should be: {}"
+                                 .format(tx_hash[2:].decode('hex'), h))
 
             self.__inprogress[h] = payments
 
@@ -242,7 +238,8 @@ class PaymentProcessor(object):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
-                        dispatcher.send(signal='golem.monitor', event='payment', addr=p.payee.encode('hex'), value=p.value)
+                        dispatcher.send(signal='golem.monitor', event='payment',
+                                        addr=p.payee.encode('hex'), value=p.value)
                         log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
                                                                         fee / denoms.ether))
                 confirmed.append(h)
@@ -286,15 +283,9 @@ class PaymentProcessor(object):
             return False
         return True
 
-    def run_inner(self):
+    def _run(self):
         if (self.synchronized() and
                 self.get_ethers_from_faucet() and self.get_gnt_from_faucet()):
             self.deposit_balance(refresh=True)
             self.monitor_progress()
             self.sendout()
-
-    def run(self):
-        try:
-            self.run_inner()
-        except:
-            log.exception('Exception in PaymentProcessor.run()')
