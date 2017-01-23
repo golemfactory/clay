@@ -122,7 +122,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         # Start task computation
         task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
-        self.assertTrue(result)
+        assert result
 
         # Thread for task computation should be created by now
         task_thread = None
@@ -165,28 +165,25 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
     def _test_blender_subtask(self, task_file):
         task = self._create_test_task(task_file)
         task_thread, error_msg, out_dir = self._run_docker_task(task)
-        self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsNone(error_msg)
+        assert isinstance(task_thread, DockerTaskThread)
+        assert not error_msg
 
         # Check the number and type of result files:
         result = task_thread.result
-        self.assertEqual(result["result_type"], result_types["files"])
-        self.assertGreaterEqual(len(result["data"]), 3)
-        self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
-        self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
-        self.assertTrue(
-            any(f.endswith(".png") for f in result["data"]))
+        assert result["result_type"] == result_types["files"]
+        assert len(result["data"]) >= 3
+        assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"])
+        assert any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"])
+        assert any(f.endswith(".png") for f in result["data"])
 
     def test_blender_test(self):
         render_task = self._create_test_task()
         tt = self._run_docker_test_task(render_task)
         result, mem = tt.result
-        self.assertGreater(mem, 0)
+        assert mem > 0
 
         tt = self._run_docker_local_comp_task(render_task)
-        self.assertIsNotNone(tt.result)
+        assert tt.result
 
     def test_build(self):
         """ Test building docker blender task """
@@ -196,49 +193,49 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         dir_manager = DirManager(self.path)
         builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
         task = builder.build()
-        self.assertIsInstance(task, BlenderRenderTask)
-        self.assertFalse(task.compositing)
-        self.assertFalse(task.use_frames)
-        self.assertEqual(len(task.frames_given), 10)
-        self.assertIsInstance(task.preview_file_path, basestring)
-        self.assertIsNone(task.preview_updaters)
-        self.assertEqual(task.scale_factor, 0.33)
-        self.assertIsNotNone(task.src_code)
-        self.assertIsInstance(task.header, TaskHeader)
-        self.assertEqual(task.header.task_id, '7220aa01-ad45-4fb4-b199-ba72b37a1f0c')
-        self.assertEqual(task.header.task_owner_key_id, '')
-        self.assertEqual(task.header.task_owner_address, '')
-        self.assertEqual(task.header.task_owner_port, 0)
-        self.assertIsInstance(task.header.task_owner, Node)
-        self.assertEqual(task.header.subtask_timeout, 1200)
-        self.assertEqual(task.header.node_name, 'some_node')
-        self.assertGreater(task.header.resource_size, 0)
-        self.assertEqual(task.header.environment, 'BLENDER')
-        self.assertEqual(task.header.estimated_memory, 0)
-        self.assertEqual(task.header.min_version, '0.3')
-        self.assertEqual(task.header.docker_images[0].repository, 'golem/blender')
-        self.assertEqual(task.header.docker_images[0].tag, 'latest')
-        self.assertEqual(task.header.max_price, 10.2)
-        self.assertIsNone(task.header.signature)
-        self.assertEqual(task.undeletable, [])
-        self.assertEqual(task.listeners, [])
-        self.assertEqual(len(task.task_resources), 2)
-        self.assertTrue(task.task_resources[0].endswith('docker_blendertask.py'))
-        self.assertTrue(task.task_resources[1].endswith('scene-Helicopter-27-cycles.blend'))
-        self.assertEqual(task.total_tasks, 6)
-        self.assertEqual(task.last_task, 0)
-        self.assertEqual(task.num_tasks_received, 0)
-        self.assertEqual(task.subtasks_given, {})
-        self.assertEqual(task.num_failed_subtasks, 0)
-        self.assertEqual(task.full_task_timeout, 14400)
-        self.assertEqual(task.counting_nodes, {})
-        self.assertEqual(task.stdout, {})
-        self.assertEqual(task.stderr, {})
-        self.assertEqual(task.results, {})
-        self.assertEqual(task.res_files, {})
-        self.assertTrue(path.isdir(task.tmp_dir))
-        self.assertIsInstance(task.verification_options, AdvanceVerificationOptions)
-        self.assertEqual(task.verification_options.type, 'forFirst')
+        assert isinstance(task, BlenderRenderTask)
+        assert not task.compositing
+        assert not task.use_frames
+        assert len(task.frames_given) == 10
+        assert isinstance(task.preview_file_path, basestring)
+        assert not task.preview_updaters
+        assert task.scale_factor == 0.33
+        assert task.src_code
+        assert isinstance(task.header, TaskHeader)
+        assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
+        assert task.header.task_owner_key_id == ''
+        assert task.header.task_owner_address == ''
+        assert task.header.task_owner_port == 0
+        assert isinstance(task.header.task_owner, Node)
+        assert task.header.subtask_timeout == 1200
+        assert task.header.node_name == 'some_node'
+        assert task.header.resource_size > 0
+        assert task.header.environment == 'BLENDER'
+        assert task.header.estimated_memory == 0
+        assert task.header.min_version == '0.3'
+        assert task.header.docker_images[0].repository == 'golem/blender'
+        assert task.header.docker_images[0].tag == 'latest'
+        assert task.header.max_price == 10.2
+        assert not task.header.signature
+        assert task.undeletable == []
+        assert task.listeners == []
+        assert len(task.task_resources) == 2
+        assert task.task_resources[0].endswith('docker_blendertask.py')
+        assert task.task_resources[1].endswith('scene-Helicopter-27-cycles.blend')
+        assert task.total_tasks == 6
+        assert task.last_task == 0
+        assert task.num_tasks_received == 0
+        assert task.subtasks_given == {}
+        assert task.num_failed_subtasks == 0
+        assert task.full_task_timeout == 14400
+        assert task.counting_nodes == {}
+        assert task.stdout == {}
+        assert task.stderr == {}
+        assert task.results == {}
+        assert task.res_files == {}
+        assert path.isdir(task.tmp_dir)
+        assert isinstance(task.verification_options, AdvanceVerificationOptions)
+        assert task.verification_options.type == 'forFirst'
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
@@ -250,17 +247,17 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         task = self._create_test_task()
         task_thread, error_msg, out_dir = \
             self._run_docker_task(task, timeout=1)
-        self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsInstance(task_thread.error_msg, str)
-        self.assertTrue(task_thread.error_msg.startswith("Task timed out"))
+        assert isinstance(task_thread, DockerTaskThread)
+        assert isinstance(task_thread.error_msg, str)
+        assert task_thread.error_msg.startswith("Task timed out")
 
     def test_wrong_image_repository_specified(self):
         task = self._create_test_task()
         task.header.docker_images = [DockerImage("%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
-            self.assertIsNone(task_thread.result)
-        self.assertIsInstance(error_msg, str)
+            assert not task_thread.result
+        assert isinstance(error_msg, str)
 
     def test_wrong_image_id_specified(self):
         task = self._create_test_task()
@@ -269,8 +266,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
             DockerImage(image.repository, image_id="%$#@!!!")]
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         if task_thread:
-            self.assertIsNone(task_thread.result)
-        self.assertIsInstance(error_msg, str)
+            assert not task_thread.result
+        assert isinstance(error_msg, str)
 
     def test_blender_subtask_script_error(self):
         task = self._create_test_task()
@@ -281,14 +278,14 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
             path.join(get_golem_path(), "golem"), "node.py")
         task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread, error_msg, out_dir = self._run_docker_task(task)
-        self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsInstance(error_msg, str)
-        self.assertTrue(error_msg.startswith("Subtask computation failed"))
+        assert isinstance(task_thread, DockerTaskThread)
+        assert isinstance(error_msg, str)
+        assert error_msg.startswith("Subtask computation failed")
 
     def test_blender_scene_file_error(self):
         task = self._create_test_task()
         # Replace scene file with some other, non-blender file:
         task.main_scene_file = task.main_program_file
         task_thread, error_msg, out_dir = self._run_docker_task(task)
-        self.assertIsInstance(task_thread, DockerTaskThread)
-        self.assertIsInstance(error_msg, str)
+        assert isinstance(task_thread, DockerTaskThread)
+        assert isinstance(error_msg, str)
