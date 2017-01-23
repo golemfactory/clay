@@ -24,8 +24,9 @@ def split_path(path):
 
 def make_path_dirs(path):
     out_dir = path.rsplit(os.sep, 1)
-    if out_dir and not os.path.exists(out_dir[0]):
-        os.makedirs(out_dir[0])
+    path = out_dir[0] if out_dir else None
+    if path and not os.path.exists(path):
+        os.makedirs(path)
 
 
 def norm_path(path):
@@ -179,7 +180,12 @@ class ResourceStorage(object):
     def relative_path(self, path, category):
         path = norm_path(path)
         common_prefix = self.cache.get_prefix(category)
-        return path.replace(common_prefix, '', 1)
+        return_path = path.replace(common_prefix, '', 1)
+
+        if common_prefix:
+            while return_path and return_path.startswith(os.path.sep):
+                return_path = return_path[1:]
+        return return_path
 
     def copy_dir(self, src_dir):
 

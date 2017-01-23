@@ -13,7 +13,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 def ipfs_available():
     try:
-        result = subprocess.check_call(['ipfs', 'id'])
+        result = subprocess.check_call(['ipfs', 'swarm', 'peers'])
     except Exception:
         return False
     return result == 0

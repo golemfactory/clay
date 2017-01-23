@@ -175,6 +175,21 @@ class TestResourceStorage(_Common.ResourceSetUp):
         assert invalid is not None
         assert not os.path.exists(invalid)
 
+    def test_relative_path(self):
+        task_dir = self.storage.get_dir(self.task_id)
+        self.storage.cache.set_prefix(self.task_id, task_dir)
+
+        src_path = os.path.join('C:\\', 'some', 'path')
+        assert self.storage.relative_path(src_path, self.task_id) == src_path
+        assert self.storage.relative_path(src_path, self.task_id + '_2') == src_path
+
+        src_path = os.path.join('some', 'path')
+        assert self.storage.relative_path(src_path, self.task_id) == src_path
+        assert self.storage.relative_path(src_path, self.task_id + '_2') == src_path
+
+        src_path = os.path.join(task_dir, 'dir', 'file')
+        assert self.storage.relative_path(src_path, self.task_id) == os.path.join('dir', 'file')
+
     def test_get_path_and_hash(self):
 
         resource = self.test_dir_file
@@ -208,16 +223,18 @@ class TestResourceStorage(_Common.ResourceSetUp):
         ]
 
     def test_copy_file(self):
+
+        task_dir = self.storage.get_dir(self.task_id)
+        self.storage.cache.set_prefix(self.task_id, task_dir)
         new_category = str(uuid.uuid4())
 
         for file_path in self.target_resources:
 
-            file_name = self.storage.relative_path(file_path, self.task_id)
-            file_name = file_name[1:] if file_name.startswith(os.path.sep) else file_name
-            dst_path = self.storage.get_path(file_name, new_category)
+            relative_path = self.storage.relative_path(file_path, self.task_id)
+            dst_path = self.storage.get_path(relative_path, new_category)
 
             assert file_path != dst_path
-            self.storage.copy_file(file_path, file_name, new_category)
+            self.storage.copy_file(file_path, relative_path, new_category)
             assert os.path.exists(dst_path)
 
     def test_copy_cached(self):
