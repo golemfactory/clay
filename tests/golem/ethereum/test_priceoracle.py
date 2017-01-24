@@ -2,6 +2,7 @@ import pytest
 from mock import patch
 from decimal import Decimal
 from datetime import timedelta
+from time import sleep
 from golem.ethereum.priceoracle import PriceOracle
 
 
@@ -67,6 +68,7 @@ def test_price_oracle_service(requests_get, po):
     FakeResponse.ETH_USD = "0.00000000001"
     orig_update_period = po.UPDATE_PERIOD
     po.UPDATE_PERIOD = timedelta.resolution  # Temporary set minimal period.
+    sleep(0.001)
     po.clock.advance(1)
     po.UPDATE_PERIOD = orig_update_period
     assert po.gnt_usd == Decimal(FakeResponse.GNT_USD)
