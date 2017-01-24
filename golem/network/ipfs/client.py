@@ -1,5 +1,7 @@
 import abc
 import copy
+
+import subprocess
 from enum import Enum
 
 import jsonpickle as json
@@ -387,3 +389,11 @@ class IPFSAddress(object):
             encap_proto=split[4] if encap else None,
             node_id=split[-1]
         )
+
+
+def ipfs_running():
+    try:
+        result = subprocess.check_call(['ipfs', 'swarm', 'peers'])
+    except Exception:
+        return False
+    return result == 0

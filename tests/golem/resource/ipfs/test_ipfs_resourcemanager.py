@@ -3,23 +3,15 @@ import uuid
 
 import time
 
-import subprocess
 from unittest.case import skipIf
 
+from golem.network.ipfs.client import ipfs_running
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.tools.testdirfixture import TestDirFixture
 
 
-def ipfs_available():
-    try:
-        result = subprocess.check_call(['ipfs', 'swarm', 'peers'])
-    except Exception:
-        return False
-    return result == 0
-
-
-@skipIf(not ipfs_available(), 'IPFS is not available / properly configured')
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIPFSResourceManager(TestDirFixture):
 
     def setUp(self):

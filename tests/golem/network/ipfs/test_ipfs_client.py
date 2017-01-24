@@ -3,8 +3,9 @@ import os
 import unittest
 import uuid
 from types import FunctionType
+from unittest import skipIf
 
-from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress
+from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress, ipfs_running
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -22,6 +23,7 @@ def first_response_hash(response):
     return None
 
 
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIpfsClient(TestDirFixture):
 
     def setUp(self):
@@ -154,6 +156,7 @@ class TestChunkedHttpClient(TestDirFixture):
         with open(self.test_dir_file_path, 'w') as f:
             f.write("test content 2")
 
+    @skipIf(not ipfs_running(), "IPFS daemon isn't running")
     def testGetFile(self):
         root_path = os.path.abspath(os.sep)
         client = IPFSClient()

@@ -8,7 +8,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
-from common.resource_manager import MockResourceManager
+from golem.resource.base.resourcesmanager import TestResourceManager
 
 node_name = 'test_suite'
 
@@ -75,7 +75,7 @@ class TestResourceServer(TestDirFixture):
     def testStartAccepting(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
         rs.start_accepting()
 
@@ -95,7 +95,7 @@ class TestResourceServer(TestDirFixture):
     def testGetDistributedResourceRoot(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
         resource_dir = self.dir_manager.get_node_dir()
 
@@ -104,7 +104,7 @@ class TestResourceServer(TestDirFixture):
     def testDecrypt(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
 
         to_encrypt = "test string to enc"
@@ -119,7 +119,7 @@ class TestResourceServer(TestDirFixture):
         new_config_desc = MockConfig(self.path, node_name)
         dir_manager = DirManager(new_config_desc.root_path)
 
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 dir_manager, keys_auth, client)
         rm = rs.resource_manager
         rm.storage.clear_cache()
@@ -176,7 +176,7 @@ class TestResourceServer(TestDirFixture):
     def testGetResources(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
         rs.resource_manager.storage.clear_cache()
         rs.resource_manager.add_resources(self.target_resources, self.task_id)
@@ -196,7 +196,7 @@ class TestResourceServer(TestDirFixture):
         rs.add_files_to_get(resources, self.task_id)
         assert len(rs.waiting_resources) == 0
 
-        rs_aux = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs_aux = BaseResourceServer(TestResourceManager(self.dir_manager),
                                     self.dir_manager_aux, keys_auth, client)
 
         rs_aux.add_files_to_get(relative_resources, self.task_id)
@@ -214,7 +214,7 @@ class TestResourceServer(TestDirFixture):
     def testVerifySig(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
 
         test_str = "A test string to sign"
@@ -224,7 +224,7 @@ class TestResourceServer(TestDirFixture):
     def testAddFilesToGet(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
-        rs = BaseResourceServer(MockResourceManager(self.dir_manager),
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
 
         test_files = [

@@ -3,9 +3,8 @@ import unittest
 import uuid
 
 from mock import patch
-from common.resource_manager import MockResourceManager
 
-from golem.resource.base.resourcesmanager import ResourceCache, ResourceStorage
+from golem.resource.base.resourcesmanager import ResourceCache, ResourceStorage, TestResourceManager
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -258,11 +257,11 @@ class TestResourceStorage(_Common.ResourceSetUp):
         )
 
 
-class TestResourceManager(_Common.ResourceSetUp):
+class TestAbstractResourceManager(_Common.ResourceSetUp):
 
     def setUp(self):
         _Common.ResourceSetUp.setUp(self)
-        self.resource_manager = MockResourceManager(self.dir_manager)
+        self.resource_manager = TestResourceManager(self.dir_manager)
 
     def test_copy_resources(self):
         old_resource_dir = self.resource_manager.storage.get_root()

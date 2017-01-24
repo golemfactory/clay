@@ -1,6 +1,8 @@
 import abc
 import hashlib
 import logging
+import os
+import shutil
 import socket
 import types
 import uuid
@@ -46,7 +48,7 @@ class IClient(object):
 
     @classmethod
     @abc.abstractmethod
-    def build_options(self, node_id, **kwargs):
+    def build_options(cls, node_id, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -248,3 +250,36 @@ def async_run(deferred_call, success=None, error=None):
         deferred.addCallback(success)
     deferred.addErrback(error)
     return deferred
+
+
+class TestClient(IClient):
+
+    _resources = dict()
+    _id = "test"
+
+    def add(self, resource_path, **_):
+        resource_hash = str(uuid.uuid4())
+        self._resources[resource_hash] = resource_path
+
+        return dict(
+            Name=resource_path,
+            Hash=resource_hash
+        )
+
+    def get_file(self, multihash, filename=None, filepath=None, **_):
+        path = self._resources.get(multihash)
+
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
+        shutil.copy(path, os.path.join(filepath, filename))
+
+        return [
+            [os.path.join(filepath, filename), multihash]
+        ]
+
+    def id(self, client_options=None, *args, **kwargs):
+        return self._id
+
+    @classmethod
+    def build_options(cls, node_id, **kwargs):
+        return ClientOptions(cls._id, 1)

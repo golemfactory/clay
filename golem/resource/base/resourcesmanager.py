@@ -7,7 +7,7 @@ from collections import deque
 from threading import Lock
 
 from golem.core.fileshelper import copy_file_tree, common_dir
-from golem.resource.client import IClientHandler, ClientCommands
+from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,10 @@ def make_path_dirs(path):
 
 def norm_path(path):
     normpath = os.path.normpath(path)
-    if normpath in ['.', '..']:
-        return ''
-    return normpath
+    split = os.path.split(normpath)
+    while split and split[0] in ['.', '..']:
+        split = split[1:]
+    return os.path.join(*split) if split else ''
 
 
 def dir_files(directory):
@@ -511,3 +512,16 @@ class AbstractResourceManager(IClientHandler):
 
         if params:
             self.pull_resource(*params)
+
+
+class TestResourceManager(AbstractResourceManager, ClientHandler):
+
+    def __init__(self, dir_manager, resource_dir_method=None):
+        AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
+        ClientHandler.__init__(self, ClientCommands, ClientConfig())
+
+    def build_client_options(self, node_id, **kwargs):
+        return TestClient.build_options(node_id, **kwargs)
+
+    def new_client(self):
+        return TestClient()
