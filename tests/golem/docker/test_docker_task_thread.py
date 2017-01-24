@@ -25,7 +25,7 @@ class TestDockerTaskThread(TestDockerJob):
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = task_server.client.datadir
         task_computer = TaskComputer("node", task_server, use_docker_machine_manager=False)
-        image = DockerImage("golem/base")
+        image = DockerImage("golemfactory/base", tag="1.2")
 
         with self.assertRaises(AttributeError):
             DockerTaskThread(task_computer, "subtask_id", None,
