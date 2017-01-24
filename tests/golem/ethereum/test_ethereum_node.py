@@ -50,7 +50,7 @@ class EthereumClientTest(unittest.TestCase):
 class EthereumFaucetTest(TempDirFixture):
     def setUp(self):
         super(EthereumFaucetTest, self).setUp()
-        self.n = FullNode()
+        self.n = FullNode(run=False)
         self.eth_node = Client(datadir=self.tempdir)
 
     def teardown(self):

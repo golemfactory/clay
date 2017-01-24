@@ -58,6 +58,7 @@ class NodeProcess(object):
     MAX_GETH_VERSION = '1.5.999'
 
     def __init__(self, nodes, datadir):
+        self.port = None
         self.__prog = find_program('geth')
         if not self.__prog:
             raise OSError("Ethereum client 'geth' not found")
@@ -165,11 +166,12 @@ class NodeProcess(object):
 
 
 class FullNode(NodeProcess):
-    def __init__(self, datadir=None):
+    def __init__(self, datadir=None, run=True):
         if not datadir:
             datadir = path.join(get_local_datadir('ethereum'), 'full_node')
         super(FullNode, self).__init__(nodes=[], datadir=datadir)
-        self.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY, port=30900)
+        if run and not self.is_running():
+            self.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY, port=30900)
 
 if __name__ == "__main__":
     import signal
