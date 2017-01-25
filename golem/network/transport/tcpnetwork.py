@@ -869,7 +869,7 @@ class FileConsumer(object):
         self.file_size = -1
         if len(self.file_list) == 0:
             self.session.conn.file_mode = False
-            self.session.full_data_received(self.extra_data)
+            self.session.full_data_received(extra_data=self.extra_data)
 
 
 class DecryptFileConsumer(FileConsumer):
@@ -1077,7 +1077,7 @@ class DataConsumer(object):
         self.recv_size = 0
         self.extra_data["result"] = "".join(self.loc_data)
         self.loc_data = []
-        self.session.full_data_received(self.extra_data)
+        self.session.full_data_received(extra_data=self.extra_data)
 
 
 class EncryptDataProducer(DataProducer):

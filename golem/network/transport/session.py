@@ -76,7 +76,7 @@ class BasicSession(FileSession):
 
         self.last_message_time = time.time()
         self._disconnect_sent = False
-        self._interpretation = {MessageDisconnect.Type: self._react_to_disconnect}
+        self._interpretation = {MessageDisconnect.TYPE: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
 
@@ -93,7 +93,7 @@ class BasicSession(FileSession):
         if not self._check_msg(msg):
             return
 
-        action = self._interpretation.get(msg.get_type())
+        action = self._interpretation.get(msg.TYPE)
         if action:
             action(msg)
         else:
@@ -181,9 +181,9 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [MessageDisconnect.Type]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [MessageDisconnect.Type]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [MessageDisconnect.Type]  # React to message even if it's not encrypted.
+        self.can_be_unverified = [MessageDisconnect.TYPE]  # React to message even if it's self.verified is set to False
+        self.can_be_unsigned = [MessageDisconnect.TYPE]  # React to message even if it's not signed.
+        self.can_be_not_encrypted = [MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
@@ -214,7 +214,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         BasicSession.send(self, message)
 
     def _can_send(self, msg, send_unverified):
-        return self.verified or send_unverified or msg.get_type() in self.can_be_unverified
+        return self.verified or send_unverified or msg.TYPE in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):
@@ -223,7 +223,7 @@ class BasicSafeSession(BasicSession, SafeSession):
         if not self._verify_time(msg):
             return False
 
-        type_ = msg.get_type()
+        type_ = msg.TYPE
 
         if not self.verified and type_ not in self.can_be_unverified:
             self.disconnect(BasicSafeSession.DCRUnverified)

@@ -75,8 +75,8 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts2 = TaskSession(Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
-        ts2.can_be_not_encrypted.append(mt.Type)
-        ts2.can_be_unsigned.append(mt.Type)
+        ts2.can_be_not_encrypted.append(mt.TYPE)
+        ts2.can_be_unsigned.append(mt.TYPE)
         ts2.task_server.get_computing_trust.return_value = 0.1
         ts2.task_server.config_desc.computing_trust = 0.2
         ts2.task_server.config_desc.max_price = 100
@@ -126,8 +126,8 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts2 = TaskSession(Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
-        ts2.can_be_not_encrypted.append(ms.Type)
-        ts2.can_be_unsigned.append(ms.Type)
+        ts2.can_be_not_encrypted.append(ms.TYPE)
+        ts2.can_be_unsigned.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
         ts2.interpret(ms)
         ts2.task_server.receive_subtask_computation_time.assert_called_with("xxyyzz", 13190)

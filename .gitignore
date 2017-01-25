@@ -25,6 +25,7 @@ ui_*.py
 .Python
 build/
 .cache/
+.coverage
 develop-eggs/
 dist/
 downloads/
