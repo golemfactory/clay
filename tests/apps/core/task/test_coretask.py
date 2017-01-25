@@ -84,7 +84,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert l3.task_id == "xyz"
         assert l2.task_id is None
 
-    def test_interpret_task_results(self):
+    def test_interpret_task_results_without_sorting(self):
         task = self._get_core_task()
 
         subtask_id = "xxyyzz"
@@ -98,7 +98,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         files_copy = copy(files)
 
-        task.interpret_task_results(subtask_id, files, result_types["files"])
+        task.interpret_task_results(subtask_id, files, result_types["files"], False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -112,7 +112,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             with open(f, 'w'):
                 pass
 
-        task.interpret_task_results(subtask_id, files_copy, result_types["files"])
+        task.interpret_task_results(subtask_id, files_copy, result_types["files"], False)
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
@@ -120,7 +120,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         os.remove(files[0])
         os.makedirs(files[0])
         with self.assertLogs(logger, level="WARNING"):
-            task.interpret_task_results(subtask_id, files_copy, result_types["files"])
+            task.interpret_task_results(subtask_id, files_copy, result_types["files"], False)
         assert task.results[subtask_id] == [files[1], files[4]]
 
         os.removedirs(files[0])
@@ -145,7 +145,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                self.__compress_and_dump_file(files[3], "errlog"),
                self.__compress_and_dump_file(files[4], "ghi")]
 
-        task.interpret_task_results(subtask_id, res, result_types["data"])
+        task.interpret_task_results(subtask_id, res, result_types["data"], False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -162,10 +162,35 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, subtask_id, os.path.basename(f))))
 
         subtask_id = "112233"
-        task.interpret_task_results(subtask_id, res, 58)
+        task.interpret_task_results(subtask_id, res, 58, False)
         self.assertEqual(task.results[subtask_id], [])
         self.assertEqual(task.stderr[subtask_id], "[GOLEM] Task result 58 not supported")
         self.assertEqual(task.stdout[subtask_id], "")
+
+    def test_interpret_task_results_with_sorting(self):
+        """ Test results sorting in interpret method"""
+        task = self._get_core_task()
+
+        subtask_id = "xxyyzz"
+        files_dir = os.path.join(task.tmp_dir, subtask_id)
+        files = self.additional_dir_content([5], sub_dir=files_dir)
+
+        shutil.move(files[2], files[2]+".log")
+        files[2] += ".log"
+        shutil.move(files[3], files[3]+"err.log")
+        files[3] += "err.log"
+
+        task.interpret_task_results(subtask_id, files, result_types["files"])
+
+        sorted_files = sorted([files[0], files[1], files[4]])
+
+        sorted_files[0] = outer_dir_path(sorted_files[0])
+        sorted_files[1] = outer_dir_path(sorted_files[1])
+        sorted_files[2] = outer_dir_path(sorted_files[2])
+
+        assert task.results[subtask_id] == [sorted_files[0], sorted_files[1], sorted_files[2]]
+        assert task.stderr[subtask_id] == files[3]
+        assert task.stdout[subtask_id] == files[2]
 
     def test_restart(self):
         task = self._get_core_task()
