@@ -1,4 +1,3 @@
-import json
 import os
 import unittest
 from collections import namedtuple
@@ -6,7 +5,7 @@ from contextlib import contextmanager
 
 import jsonpickle
 from ethereum.utils import denoms
-from mock import Mock, patch
+from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from apps.core.benchmark.benchmark import Benchmark
