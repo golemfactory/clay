@@ -491,7 +491,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
-        resources = resource_manager.join_split_resources(msg.resources)
+        resources = resource_manager.storage.join_resources(msg.resources)
         client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
@@ -621,7 +621,8 @@ class TaskSession(MiddlemanSafeSession):
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
         client_options = resource_manager.build_client_options(self.task_server.get_key_id())
-        res = resource_manager.list_split_resources(msg.task_id)
+        res = resource_manager.storage.get_resources(msg.task_id)
+        res = resource_manager.storage.split_resources(res)
         self.send(MessageResourceList(res, options=client_options))
 
     def __send_resource_format(self, use_distributed_resource):

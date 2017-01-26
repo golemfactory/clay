@@ -33,7 +33,7 @@ class TestClientHandler(unittest.TestCase):
     def test_can_retry(self):
         valid_exceptions = ClientHandler.timeout_exceptions
         config = MockClientConfig()
-        handler = MockClientHandler(ClientCommands(), config)
+        handler = MockClientHandler(ClientCommands, config)
         value_exc = valid_exceptions[0]()
 
         def init(instance, exc, *args, **kwargs):

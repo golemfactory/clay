@@ -1,13 +1,16 @@
 import unittest
 import uuid
+from unittest import skipIf
+
 from mock import patch, Mock
 
 import requests
 
-from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig
+from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig, ipfs_running
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIPFSDaemonManager(unittest.TestCase):
 
     def testStoreInfo(self):

@@ -1,9 +1,12 @@
 import abc
 import hashlib
 import logging
+import os
+import shutil
 import socket
 import types
 import uuid
+from enum import Enum
 from threading import Lock
 
 import base58
@@ -18,7 +21,7 @@ from twisted.internet import threads
 log = logging.getLogger(__name__)
 
 
-SHA1_BLOCK_SIZE = 65536
+SHA1_BLOCK_SIZE = 64
 
 
 def file_sha_256(file_path):
@@ -45,7 +48,7 @@ class IClient(object):
 
     @classmethod
     @abc.abstractmethod
-    def build_options(self, node_id, **kwargs):
+    def build_options(cls, node_id, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -95,28 +98,10 @@ class IClientHandler(object):
         pass
 
 
-class ClientCommands(object):
-    names = dict()
-    values = dict()
-
+class ClientCommands(Enum):
     add = 0
     get = 1
     id = 2
-
-    @classmethod
-    def build_names(cls, blacklist=None):
-        blacklist = blacklist or ['names', 'values', 'build_names']
-        all_items = list(cls.__dict__.items())
-
-        for base in cls.__bases__:
-            all_items.extend(list(base.__dict__.items()))
-
-        for name, val in all_items:
-            if name not in blacklist and not name.startswith('_'):
-                cls.names[val] = name
-                cls.values[name] = val
-
-ClientCommands.build_names()
 
 
 class ClientError(Exception):
@@ -170,7 +155,6 @@ class ClientHandler(IClientHandler):
                           requests.exceptions.RetryError,
                           requests.exceptions.Timeout,
                           requests.exceptions.HTTPError,
-                          requests.exceptions.StreamConsumedError,
                           requests.exceptions.RequestException,
                           twisted.internet.defer.TimeoutError,
                           twisted.python.failure.Failure,
@@ -180,7 +164,7 @@ class ClientHandler(IClientHandler):
 
     def __init__(self, commands_class, config):
         self.commands = commands_class
-        self.command_retries = dict.fromkeys(commands_class.names.keys(), {})
+        self.command_retries = {c: {} for c in commands_class}
         self.config = config
 
     def _can_retry(self, exc, cmd, obj_id):
@@ -247,12 +231,13 @@ class AsyncRequest(object):
 
     def __init__(self, method, *args, **kwargs):
         self.method = method
-        self.args = args
-        self.kwargs = kwargs if kwargs else {}
+        self.args = args or []
+        self.kwargs = kwargs or {}
 
 
 def default_errback(failure):
     log.error('Caught async exception:\n%s', failure.getTraceback())
+
 
 def async_run(deferred_call, success=None, error=None):
     """Execute a deferred job in a separate thread (Twisted)"""
@@ -265,3 +250,36 @@ def async_run(deferred_call, success=None, error=None):
         deferred.addCallback(success)
     deferred.addErrback(error)
     return deferred
+
+
+class TestClient(IClient):
+
+    _resources = dict()
+    _id = "test"
+
+    def add(self, resource_path, **_):
+        resource_hash = str(uuid.uuid4())
+        self._resources[resource_hash] = resource_path
+
+        return dict(
+            Name=resource_path,
+            Hash=resource_hash
+        )
+
+    def get_file(self, multihash, filename=None, filepath=None, **_):
+        path = self._resources.get(multihash)
+
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
+        shutil.copy(path, os.path.join(filepath, filename))
+
+        return [
+            [os.path.join(filepath, filename), multihash]
+        ]
+
+    def id(self, client_options=None, *args, **kwargs):
+        return self._id
+
+    @classmethod
+    def build_options(cls, node_id, **kwargs):
+        return ClientOptions(cls._id, 1)
