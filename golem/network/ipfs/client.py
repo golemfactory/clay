@@ -276,8 +276,9 @@ class IPFSClient(IClient, ipfsApi.Client):
         self._refs_local = ArgCommand('/refs/local')
         self._bootstrap_list = ArgCommand('/bootstrap/list')
 
-    def build_options(self, node_id, **kwargs):
-        return ClientOptions(self.CLIENT_ID, self.VERSION)
+    @staticmethod
+    def build_options(node_id, **kwargs):
+        return ClientOptions(IPFSClient.CLIENT_ID, IPFSClient.VERSION, **kwargs)
 
     def swarm_connect(self, *args, **kwargs):
         return self._swarm_connect.request(self._client, *args, **kwargs)
