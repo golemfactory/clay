@@ -22,12 +22,20 @@ class CoreTaskDefaults(object):
     def __init__(self):
         self.output_format = ""
         self.main_program_file = ""
-        self.full_task_timeout = 4 * 3600
-        self.subtask_timeout = 20 * 60
+        self._full_task_timeout = 4 * 3600
+        self._subtask_timeout = 20 * 60
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
         self.task_name = ""
+
+    @property
+    def full_task_timeout(self):
+        return self._full_task_timeout
+
+    @property
+    def subtask_timeout(self):
+        return self._subtask_timeout
 
 
 class TaskDefinition(object):
