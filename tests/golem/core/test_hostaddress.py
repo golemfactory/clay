@@ -29,19 +29,18 @@ def mock_ifaddresses(*args):
     return addrs
 
 
-def is_ip_address(address, ip_v4=True):
+def is_ip_address(address):
     """
     Check if @address is correct IP address
     :param address: Address to be checked
-    :param ip_v4: If set to True check IPv4, otherwise check IPv6
     :return: True if is correct, false otherwise
     """
-    import socket
+    from ipaddress import ip_address, AddressValueError
     try:
-        # will raise socket.error in case of incorrect address
-        socket.inet_pton(socket.AF_INET if ip_v4 else socket.AF_INET6, address)
+        # will raise error in case of incorrect address
+        ip_address(unicode(address))
         return True
-    except socket.error:
+    except (ValueError, AddressValueError):
         return False
 
 
@@ -60,7 +59,7 @@ class TestIPAddresses(unittest.TestCase):
         addresses = ip_addresses(True)
         if addresses:
             for address in addresses:
-                self.assertTrue(is_ip_address(address, False), "Incorrect IP address: {}".format(address))
+                self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
 
 
 class TestHostAddress(unittest.TestCase):
@@ -88,8 +87,8 @@ class TestHostAddress(unittest.TestCase):
     def testGetHostAddress(self):
         self.assertGreater(len(get_host_address('127.0.0.1')), 0)
         self.assertTrue(is_ip_address(get_host_address(None, False)))
-        self.assertTrue(is_ip_address(get_host_address(None, True), False))
-        self.assertTrue(is_ip_address(get_host_address("::1", True), False))
+        self.assertTrue(is_ip_address(get_host_address(None, True)))
+        self.assertTrue(is_ip_address(get_host_address("::1", True)))
 
     @unittest.skip("Find network testing framework")
     def testGetHostAddress2(self):

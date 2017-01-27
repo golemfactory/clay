@@ -8,12 +8,12 @@ def is_ip_address(address):
     :param address: Address to be checked
     :return: True if is correct, false otherwise
     """
-    import socket
+    from ipaddress import ip_address, AddressValueError
     try:
-        # will raise socket.error in case of incorrect address
-        socket.inet_aton(address)
+        # will raise error in case of incorrect address
+        ip_address(unicode(address))
         return True
-    except socket.error:
+    except (ValueError, AddressValueError):
         return False
 
 
