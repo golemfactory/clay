@@ -45,6 +45,85 @@ def dir_files(directory):
     return result
 
 
+class Resource(object):
+
+    def __init__(self, resource_hash, task_id=None, path=None):
+        self.hash = resource_hash
+        self.task_id = task_id
+        self.path_split = None
+        self.path = path
+
+    def __eq__(self, other):
+        return self.task_id == other.task_id and \
+            self.hash == other.hash and \
+            self.path == other.path
+
+    def __str__(self):
+        return '({}, task: {})'.format(
+            self.hash, self.task_id)
+
+    def __unicode__(self):
+        return unicode(self.__str__())
+
+    def __repr__(self):
+        return self.__dict__
+
+    @property
+    def path(self):
+        if self.path_split:
+            return os.path.join(self.path_split)
+
+    @path.setter
+    def path(self, value):
+        if value is None:
+            self.path_split = None
+        else:
+            self.path_split = split_path(value)
+
+    @property
+    def saved(self):
+        return self.path_split is not None
+
+    def list_files(self):
+        raise NotImplementedError()
+
+
+class FileResource(Resource):
+
+    def __init__(self, file_name, resource_hash, task_id=None, path=None):
+        super(FileResource, self).__init__(resource_hash, task_id=task_id, path=path)
+        self.file_name = file_name
+
+    def __eq__(self, other):
+        return super(FileResource, self).__eq__(other) and \
+            self.file_name == other.file_name
+
+    def __str__(self):
+        return '{} ({}, task: {})'.format(
+            self.file_name, self.hash, self.task_id)
+
+    def list_files(self):
+        return [self.file_name]
+
+
+class ResourceBundle(Resource):
+
+    def __init__(self, files, bundle_hash, task_id=None, path=None):
+        super(ResourceBundle, self).__init__(bundle_hash, task_id=task_id, path=path)
+        self.files = files
+
+    def __eq__(self, other):
+        return super(ResourceBundle, self).__eq__(other) and \
+            self.files == other.list_files
+
+    def __str__(self):
+        return '{} (bundle: {}, task: {})'.format(
+            self.files, self.hash, self.task_id)
+
+    def list_files(self):
+        return list(self.files)
+
+
 class ResourceCache(object):
 
     def __init__(self):
@@ -258,7 +337,7 @@ class AbstractResourceManager(IClientHandler):
     def unpin_resource(self, multihash, client=None, client_options=None):
         pass
 
-    def add_task(self, resources, task_id,
+    def add_task(self, files, task_id,
                  client=None, client_options=None):
 
         if self.storage.cache.get_prefix(task_id):
@@ -266,14 +345,14 @@ class AbstractResourceManager(IClientHandler):
                         .format(task_id))
             return
 
-        if resources and len(resources) == 1:
-            prefix = os.path.dirname(next(iter(resources)))
+        if files and len(files) == 1:
+            prefix = os.path.dirname(next(iter(files)))
         else:
-            prefix = common_dir(resources)
+            prefix = common_dir(files)
 
         prefix = norm_path(prefix)
         self.storage.cache.set_prefix(task_id, prefix)
-        self.add_resources(resources, task_id,
+        self.add_resources(files, task_id,
                            absolute_path=True,
                            client=client,
                            client_options=client_options)

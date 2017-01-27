@@ -29,7 +29,6 @@ class IPFSDaemonManager(IPFSClientHandler):
         self.addresses = []
         self.meta_addresses = []
         self.bootstrap_nodes = set()
-        self.last_backoff_clear_ts = time.time()
 
         if connect_to_bootstrap_nodes:
             for node in self.config.bootstrap_nodes:

@@ -98,7 +98,7 @@ class BaseResourceServer(object):
         self.resources_to_get.append(resource)
 
     def get_resources(self, async=True):
-        resources = copy.copy(self.resources_to_get)
+        resources = list(self.resources_to_get)
 
         for resource in resources:
             if resource[-1] in [TransferStatus.idle, TransferStatus.failed]:

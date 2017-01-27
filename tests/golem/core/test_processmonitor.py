@@ -97,7 +97,7 @@ class TestProcessMonitor(LogTestCase):
         def callback():
             logger.warning("Shutting down...")
 
-        pm.add_shutdown_callback(callback=callback)
+        pm.add_callback(callback=callback)
 
         pm.start()
         with self.assertLogs(logger, level="WARNING"):
