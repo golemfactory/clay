@@ -3,11 +3,8 @@ from PyQt4.QtGui import QDialog
 from apps.core.gui.view.gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
 from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
 from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
-from gen.ui_GeneratingKeyWindow import Ui_generating_key_window
-from gen.ui_IdentityDialog import Ui_identity_dialog
 from gen.ui_NodeNameDialog import Ui_NodeNameDialog
 from gen.ui_PaymentsDialog import Ui_PaymentsDialog
-from gen.ui_SaveKeysDialog import Ui_SaveKeysDialog
 from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
 from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
 from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
@@ -72,21 +69,6 @@ class PaymentsDialog(Dialog):
 class EnvironmentsDialog(Dialog):
     def __init__(self, parent):
         Dialog.__init__(self, parent, Ui_EnvironmentsDialog)
-
-
-class IdentityDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_identity_dialog)
-
-
-class GeneratingKeyWindow(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_generating_key_window)
-
-
-class SaveKeysDialog(Dialog):
-    def __init__(self, parent):
-        Dialog.__init__(self, parent, Ui_SaveKeysDialog)
 
 
 class UpdatingConfigDialog(Dialog):
