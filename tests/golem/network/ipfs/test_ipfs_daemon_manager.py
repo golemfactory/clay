@@ -14,6 +14,8 @@ class TestIPFSDaemonManager(unittest.TestCase):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         ipfs_id = dm.store_client_info()
         self.assertIsInstance(ipfs_id, basestring)
+        from base58 import b58decode
+        b58decode(ipfs_id)
 
     def testAddRemoveBootstrapNodes(self):
         default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'

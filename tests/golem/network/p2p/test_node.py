@@ -11,7 +11,7 @@ def is_ip_address(address):
     import socket
     try:
         # will raise socket.error in case of incorrect address
-        socket.inet_pton(socket.AF_INET, address)
+        socket.inet_aton(address)
         return True
     except socket.error:
         return False
