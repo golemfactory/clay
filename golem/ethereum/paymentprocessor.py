@@ -64,7 +64,6 @@ class PaymentProcessor(Service):
         self.__client = client
         self.__privkey = privkey
         self.__eth_balance = None
-        self.__deposit = None
         self.__gnt_balance = None
         self.__gnt_reserved = 0
         self.__awaiting = []  # Awaiting individual payments
@@ -84,6 +83,7 @@ class PaymentProcessor(Service):
             # When checking again within 10 s return previous status.
             # This also handles geth issue where synchronization starts after
             # 10 s since the node was started.
+            log.info("OLD value: {}".format(self.__sync))
             return self.__sync
 
         def check():
@@ -120,7 +120,7 @@ class PaymentProcessor(Service):
         return self.__eth_balance
 
     def gnt_balance(self, refresh=False):
-        if self.__deposit is None or refresh:
+        if self.__gnt_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
             r = self.__client.call(_from='0x' + addr.encode('hex'),
@@ -187,7 +187,7 @@ class PaymentProcessor(Service):
         nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
-        gas = 21000 + len(p) * 30000
+        gas = 21000 + 800 + len(p) * 30000
         tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
                          value=0, data=data)
         tx.sign(self.__privkey)
@@ -214,8 +214,11 @@ class PaymentProcessor(Service):
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
                                    .format(tx_hash[2:].decode('hex'), h))
 
-            print("LENP: ", len(payments))
             self.__inprogress[h] = payments
+
+        # Remove from reserved, because we monitor the pending block.
+        # TODO: Maybe we should only monitor the latest block?
+        self.__gnt_reserved -= value
 
     def monitor_progress(self):
         confirmed = []
@@ -246,11 +249,6 @@ class PaymentProcessor(Service):
                                                                         fee / denoms.ether))
                 confirmed.append(h)
         for h in confirmed:
-            # Reduced reserved balance here to minimize chance of double update.
-            self.__gnt_reserved -= sum(p.value for p in self.__inprogress[h])
-            if self.__gnt_reserved < 0:
-                raise RuntimeError("Invalid GNT reserved amount: {}"
-                                   .format(self.__gnt_reserved))
             # Delete in progress entry.
             del self.__inprogress[h]
 
@@ -289,6 +287,5 @@ class PaymentProcessor(Service):
     def _run(self):
         if (self.synchronized() and
                 self.get_ethers_from_faucet() and self.get_gnt_from_faucet()):
-            self.deposit_balance(refresh=True)
             self.monitor_progress()
             self.sendout()

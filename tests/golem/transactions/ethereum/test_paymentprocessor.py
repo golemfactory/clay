@@ -4,12 +4,19 @@ import time
 import unittest
 from os import urandom
 
+from twisted.internet.task import Clock
+
+from ethereum import tester
 from ethereum.keys import privtoaddr
+from ethereum.processblock import apply_transaction
+from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from rlp.utils import decode_hex
 
 from golem.ethereum import Client
 from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.contracts import TestGNT
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 
@@ -47,6 +54,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_transaction_count.return_value = self.nonce
         # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.client, self.privkey)
+        self.pp._loopingCall.clock = Clock()  # Disable looping call.
 
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
@@ -57,6 +65,19 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert b == expected_balance
         addr_hex = '0x' + self.addr.encode('hex')
         self.client.get_balance.assert_called_once_with(addr_hex)
+
+    def test_gnt_balance(self):
+        expected_balance = random.randint(0, 2**128 - 1)
+        v = hex(expected_balance)
+        if v[-1] == 'L':
+            v = v[:-1]
+        self.client.call.return_value = v
+        b = self.pp.gnt_balance()
+        assert b == expected_balance
+        self.client.call.return_value = '0xaa'
+        b = self.pp.gnt_balance()
+        assert b == expected_balance
+        self.client.call.assert_called_once()
 
     def test_eth_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)
@@ -274,18 +295,20 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         # Check payment status in the Blockchain
         self.client.get_transaction_receipt.return_value = None
+        self.client.call.return_value = hex(balance_gnt - gnt_value)[:-1]  # Skip L suffix.
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert tx.hash in inprogress
         assert inprogress[tx.hash] == [p]
-        assert self.pp._gnt_reserved() == gnt_value
+        assert self.pp.gnt_balance(True) == balance_gnt - gnt_value
+        assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt - gnt_value
         assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
         assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert self.pp._gnt_reserved() == gnt_value
+        assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt - gnt_value
         assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
         assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
@@ -299,3 +322,128 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert p.details['block_hash'] == 64*'f'
         assert p.details['fee'] == 55001 * self.pp.GAS_PRICE
         assert self.pp._gnt_reserved() == 0
+
+
+class PaymentProcessorFunctionalTest(DatabaseFixture):
+    """ In this suite we test Ethereum state changes done by PaymentProcessor.
+    """
+    def setUp(self):
+        DatabaseFixture.setUp(self)
+        self.state = tester.state()
+        gnt_addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
+        self.state.mine()
+        self.gnt = tester.ABIContract(self.state, TestGNT.ABI, gnt_addr)
+        PaymentProcessor.TESTGNT_ADDR = gnt_addr
+        self.privkey = tester.k1
+        self.client = mock.MagicMock(spec=Client)
+        self.client.get_peer_count.return_value = 13
+        self.client.is_syncing.return_value = False
+        self.client.get_transaction_count.side_effect = \
+            lambda addr: self.state.block.get_nonce(decode_hex(addr[2:]))
+        self.client.get_balance.side_effect = \
+            lambda addr: self.state.block.get_balance(decode_hex(addr[2:]))
+
+        def call(_from, to, data, **kw):
+            # pyethereum does not have direct support for non-mutating calls.
+            # The implemenation just copies the state and discards it after.
+            # Here we apply real transaction, but with gas price 0.
+            # We assume the transaction does not modify the state, but nonce
+            # will be bumped no matter what.
+            _from = _from[2:].decode('hex')
+            data = data[2:].decode('hex')
+            nonce = self.state.block.get_nonce(_from)
+            value = kw.get('value', 0)
+            tx = Transaction(nonce, 0, 100000, to, value, data)
+            assert _from == tester.a1
+            tx.sign(tester.k1)
+            block = kw['block']
+            assert block == 'pending'
+            success, output = apply_transaction(self.state.block, tx)
+            assert success
+            return '0x' + output.encode('hex')
+
+        def send(tx):
+            success, _ = apply_transaction(self.state.block, tx)
+            assert success  # What happens in real RPC eth_send?
+            return '0x' + tx.hash.encode('hex')
+
+        self.client.call.side_effect = call
+        self.client.send.side_effect = send
+        # FIXME: PaymentProcessor should be started and stopped!
+        self.pp = PaymentProcessor(self.client, self.privkey)
+        self.clock = Clock()
+        self.pp._loopingCall.clock = self.clock
+
+    def test_initial_eth_balance(self):
+        # ethereum.tester assigns this amount to predefined accounts.
+        assert self.pp.eth_balance() == 1000000000000000000000000
+
+    def check_synchronized(self):
+        assert not self.pp.synchronized()
+        assert not self.pp.synchronized()
+        assert not self.pp.synchronized()
+        assert not self.pp.synchronized()
+        I = self.pp.SYNC_CHECK_INTERVAL = 0.0001
+        time.sleep(0.0001)
+        assert not self.pp.synchronized()
+        time.sleep(0.0001)
+        assert self.pp.synchronized()
+        self.pp.SYNC_CHECK_INTERVAL = I
+
+    def test_gnt_faucet(self):
+        self.pp._PaymentProcessor__faucet = True
+        self.pp.start()
+        assert self.pp.eth_balance() > 0
+        assert self.pp.gnt_balance() == 0
+        self.check_synchronized()
+        self.state.mine()
+        self.clock.advance(60)
+        assert self.pp.gnt_balance(True) == 1000 * denoms.ether
+
+    def test_single_payment(self):
+        self.pp.start()
+        self.gnt.create(sender=self.privkey)
+        self.state.mine()
+        self.check_synchronized()
+        assert self.pp.gnt_balance() == 1000 * denoms.ether
+
+        payee = urandom(20)
+        b = self.pp.gnt_balance()
+        # FIXME: Big values does not fit into the database
+        value = random.randint(0, b / 1000)
+        p1 = Payment.create(subtask="p1", payee=payee, value=value)
+        assert self.pp._gnt_available() == b
+        assert self.pp._gnt_reserved() == 0
+        self.pp.add(p1)
+        assert self.pp._gnt_available() == b - value
+        assert self.pp._gnt_reserved() == value
+
+        # Sendout.
+        self.clock.advance(600)
+        assert self.pp.gnt_balance(True) == b - value
+        assert self.pp._gnt_available() == b - value
+        assert self.pp._gnt_reserved() == 0
+
+        assert self.gnt.balanceOf(payee) == value
+        assert self.gnt.balanceOf(tester.a1) == self.pp._gnt_available()
+
+        # Confirm.
+        self.clock.advance(100)
+
+    @unittest.expectedFailure  # FIXME: Fix DB first.
+    def test_no_gnt_available(self):
+        self.pp.start()
+        self.gnt.create(sender=self.privkey)
+        self.state.mine()
+        self.check_synchronized()
+        assert self.pp.gnt_balance() == 1000 * denoms.ether
+
+        payee = urandom(20)
+        b = self.pp.gnt_balance()
+        value = b / 5 - 100
+        for _ in range(5):
+            p = Payment.create(subtask="x", payee=payee, value=value)
+            assert self.pp.add(p)
+
+        q = Payment.create(subtask="x", payee=payee, value=value)
+        assert not self.pp.add(q)
