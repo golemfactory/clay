@@ -104,6 +104,8 @@ class PaymentProcessor(Service):
         self.__temp_sync = check()
         # Mark as synchronized only if previous and current status are true.
         self.__sync = prev and self.__temp_sync
+
+        self.__last_sync_check = time.time()
         log.info("Synchronized: {}".format(self.__sync))
         return self.__sync
 

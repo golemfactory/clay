@@ -168,7 +168,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
 
     def test_synchronized(self):
-        interval = 0.01
+        interval = 0.001
+        I = PaymentProcessor.SYNC_CHECK_INTERVAL
         PaymentProcessor.SYNC_CHECK_INTERVAL = interval
         pp = PaymentProcessor(self.client, self.privkey, faucet=False)
         syncing_status = {'startingBlock': '0x384',
@@ -183,6 +184,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         for c in combinations:
             print("Subtest {}".format(c))
+            time.sleep(interval)  # Allow reseting the status.
             self.client.get_peer_count.return_value = 0
             self.client.is_syncing.return_value = False
             assert not pp.synchronized()
@@ -192,9 +194,11 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             assert not pp.synchronized()  # First time is always no.
             time.sleep(interval)
             assert pp.synchronized() == (c[0] and not c[1])
+        PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
     def test_synchronized_unstable(self):
-        interval = 0.01
+        interval = 0.001
+        I = PaymentProcessor.SYNC_CHECK_INTERVAL
         PaymentProcessor.SYNC_CHECK_INTERVAL = interval
         pp = PaymentProcessor(self.client, self.privkey, faucet=False)
         syncing_status = {'startingBlock': '0x0',
@@ -215,7 +219,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.is_syncing.return_value = False
         assert not pp.synchronized()
         time.sleep(interval)
-        assert pp.synchronized()
+        assert not pp.synchronized()
         time.sleep(interval)
         assert pp.synchronized()
         time.sleep(interval)
@@ -232,6 +236,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_peer_count.return_value = 2
         self.client.is_syncing.return_value = syncing_status
         assert not pp.synchronized()
+        PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
     def test_monitor_progress(self):
         a1 = urandom(20)
