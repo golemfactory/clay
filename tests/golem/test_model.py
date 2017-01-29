@@ -1,3 +1,4 @@
+import unittest
 from datetime import datetime
 
 from peewee import IntegrityError
@@ -58,6 +59,12 @@ class TestPayment(DatabaseFixture):
         p1.details['check'] = True
         self.assertTrue(p1.details['check'])
         self.assertNotIn('check', p2.details)
+
+    @unittest.expectedFailure
+    def test_payment_big_value(self):
+        # FIXME: Allow big values in the database.
+        value = 10000 * 10**18
+        Payment(payee="me", subtask="T1000", value=value)
 
 
 class TestReceivedPayment(DatabaseFixture):
