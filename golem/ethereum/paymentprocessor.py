@@ -11,12 +11,12 @@ from ethereum.utils import denoms
 from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
 
-from .contracts import BankOfDeposit, TestGNT
+from .contracts import TestGNT
 from .node import Faucet
 
 log = logging.getLogger("golem.pay")
 
-bank_contract = abi.ContractTranslator(BankOfDeposit.ABI)
+gnt_contract = abi.ContractTranslator(TestGNT.ABI)
 
 
 def _encode_payments(payments):
@@ -49,11 +49,12 @@ class PaymentProcessor(Service):
     # Max gas cost for a single payment. Estimated in tests.
     SINGLE_PAYMENT_GAS_COST = 60000
 
+    SINGLE_PAYMENT_ETH_COST = GAS_PRICE * SINGLE_PAYMENT_GAS_COST
+
     # Gas reservation for performing single batch payment.
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
     TESTGNT_ADDR = "dd1c54a094d97c366546b4f29db19ded74cbbbff".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
@@ -65,7 +66,7 @@ class PaymentProcessor(Service):
         self.__eth_balance = None
         self.__deposit = None
         self.__gnt_balance = None
-        self.__eth_reserved = 0
+        self.__gnt_reserved = 0
         self.__awaiting = []  # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
         self.__last_sync_check = time.time()
@@ -106,32 +107,15 @@ class PaymentProcessor(Service):
         log.info("Synchronized: {}".format(self.__sync))
         return self.__sync
 
-    def balance(self, refresh=False):
+    def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
-            self.__eth_balance = self.__client.get_balance('0x' + addr.encode('hex'))
-            log.info("Balance: {}".format(self.__eth_balance / denoms.ether))
+            addr = '0x' + addr.encode('hex')
+            self.__eth_balance = self.__client.get_balance(addr)
+            log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
-
-    def reserved(self):
-        return self.__eth_reserved
-
-    def deposit_balance(self, refresh=False):
-        if self.__deposit is None or refresh:
-            data = bank_contract.encode('balance', ())
-            addr = keys.privtoaddr(self.__privkey)
-            r = self.__client.call(_from='0x' + addr.encode('hex'),
-                                   to='0x' + self.BANK_ADDR.encode('hex'),
-                                   data='0x' + data.encode('hex'),
-                                   block='pending')
-            if r is None or r == '0x':
-                self.__deposit = 0
-            else:
-                self.__deposit = int(r, 16)
-            log.info("Deposit: {}".format(self.__deposit / denoms.ether))
-        return self.__deposit
 
     def gnt_balance(self, refresh=False):
         if self.__deposit is None or refresh:
@@ -148,29 +132,46 @@ class PaymentProcessor(Service):
             log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
         return self.__gnt_balance
 
-    def available_balance(self, refresh=False):
-        fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
-        available = self.balance(refresh) - self.__eth_reserved - fee_reservation
-        return max(available, 0)
+    def _eth_reserved(self):
+        # Here we keep the same simple estimation by number of atomic payments.
+        # FIXME: This is different than estimation in sendout(). Create
+        #        helpers for estimation and stick to them.
+        num_payments = len(self.__awaiting) + sum(len(p) for p in self.__inprogress.values())
+        return num_payments * self.SINGLE_PAYMENT_ETH_COST
+
+    def _eth_available(self):
+        """ Returns available ETH balance for new payments fees."""
+        return self.eth_balance() - self._eth_reserved()
+
+    def _gnt_reserved(self):
+        return self.__gnt_reserved
+
+    def _gnt_available(self):
+        return self.gnt_balance() - self.__gnt_reserved
 
     def add(self, payment):
         if payment.status is not PaymentStatus.awaiting:
-            raise RuntimeError("Payment status should be: {}, but is: {}".format())
-        value = payment.value
-        if type(value) not in (int, long):
-            raise TypeError("Incorrect value type: {}".format(type(value)))
-        balance = self.available_balance()
+            raise RuntimeError("Invalid payment status: {}".format(payment.status))
+
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
             payment.subtask,
             payment.payee.encode('hex'),
-            value / denoms.ether))
-        if value > balance:
-            log.warning("Low balance: {:.6f}".format(balance / denoms.ether))
+            payment.value / denoms.ether))
+
+        # Check if enough ETH available to pay the gas cost.
+        if self._eth_available() < self.SINGLE_PAYMENT_ETH_COST:
+            log.warning("Low ETH: {} available".format(self._eth_available()))
             return False
+
+        av_gnt = self._gnt_available()
+        if av_gnt < payment.value:
+            log.warning("Low GNT: {:.6f}".format(av_gnt / denoms.ether))
+            return False
+
         self.__awaiting.append(payment)
-        self.__eth_reserved += value
-        log.info("Balance: {:.6f}, reserved {:.6f}".format(
-            balance / denoms.ether, self.__eth_reserved / denoms.ether))
+        self.__gnt_reserved += payment.value
+        log.info("GNT: available {:.6f}, reserved {:.6f}".format(
+            av_gnt / denoms.ether, self.__gnt_reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -183,18 +184,14 @@ class PaymentProcessor(Service):
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
         p, value = _encode_payments(payments)
-        deposit = self.deposit_balance(refresh=True)
-        # First use ether from deposit, so transfer only missing amount.
-        transfer_value = max(value - deposit, 0)
-        data = bank_contract.encode('transfer', [p])
+        data = gnt_contract.encode('batchTransfer', [p])
         gas = 21000 + len(p) * 30000
-        tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.BANK_ADDR,
-                         value=transfer_value, data=data)
+        tx = Transaction(nonce, self.GAS_PRICE, gas, to=self.TESTGNT_ADDR,
+                         value=0, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
-        log.info("Batch payments: {:.6}, value: {:.6f}, transfer: {:.6f}"
-                 .format(h.encode('hex'), value / denoms.ether,
-                         transfer_value / denoms.ether))
+        log.info("Batch payments: {:.6}, value: {:.6f}"
+                 .format(h.encode('hex'), value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -202,10 +199,6 @@ class PaymentProcessor(Service):
         # known if the transaction has been sent or not.
         with Payment._meta.database.transaction():
             for payment in payments:
-                if payment.status != PaymentStatus.awaiting:
-                    raise RuntimeError(
-                        "payment status should be equal: {}, but is: {}"
-                        .format(PaymentStatus.awaiting, payment.status))
                 payment.status = PaymentStatus.sent
                 payment.details['tx'] = h.encode('hex')
                 payment.save()
@@ -216,9 +209,10 @@ class PaymentProcessor(Service):
 
             tx_hash = self.__client.send(tx)
             if tx_hash[2:].decode('hex') != h:  # FIXME: Improve Client.
-                raise ValueError("Incorrect tx hash: {}, should be: {}"
-                                 .format(tx_hash[2:].decode('hex'), h))
+                raise RuntimeError("Incorrect tx hash: {}, should be: {}"
+                                   .format(tx_hash[2:].decode('hex'), h))
 
+            print("LENP: ", len(payments))
             self.__inprogress[h] = payments
 
     def monitor_progress(self):
@@ -251,14 +245,15 @@ class PaymentProcessor(Service):
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.
-            self.__eth_reserved -= sum(p.value for p in self.__inprogress[h])
-            if self.__eth_reserved < 0:
-                raise ValueError("Reserved is less than zero")
+            self.__gnt_reserved -= sum(p.value for p in self.__inprogress[h])
+            if self.__gnt_reserved < 0:
+                raise RuntimeError("Invalid GNT reserved amount: {}"
+                                   .format(self.__gnt_reserved))
             # Delete in progress entry.
             del self.__inprogress[h]
 
     def get_ethers_from_faucet(self):
-        if self.__faucet and self.balance(True) == 0:
+        if self.__faucet and self.eth_balance(True) == 0:
             if self.__faucet_request_ttl > 0:
                 # Waiting for transfer from the faucet
                 self.__faucet_request_ttl -= 1

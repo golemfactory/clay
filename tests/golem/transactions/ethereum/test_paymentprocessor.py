@@ -32,9 +32,10 @@ class PaymentStatusTest(unittest.TestCase):
         assert s == PaymentStatus.awaiting
 
 
-class PaymentProcessorTest(DatabaseFixture):
-    RESERVATION = PaymentProcessor.GAS_PRICE * PaymentProcessor.GAS_RESERVATION
-
+class PaymentProcessorInternalTest(DatabaseFixture):
+    """ In this suite we test internal logic of PaymentProcessor. The final
+        Ethereum transactions are not inspected.
+    """
     def setUp(self):
         DatabaseFixture.setUp(self)
         self.privkey = urandom(32)
@@ -47,68 +48,64 @@ class PaymentProcessorTest(DatabaseFixture):
         # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.client, self.privkey)
 
-    def test_balance(self):
+    def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.client.get_balance.return_value = expected_balance
-        b = self.pp.balance()
+        b = self.pp.eth_balance()
         assert b == expected_balance
-        b = self.pp.balance()
+        b = self.pp.eth_balance()
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
+        addr_hex = '0x' + self.addr.encode('hex')
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
-    def test_balance_refresh(self):
+    def test_eth_balance_refresh(self):
         expected_balance = random.randint(0, 2**128 - 1)
         self.client.get_balance.return_value = expected_balance
-        b = self.pp.balance()
+        b = self.pp.eth_balance()
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
-        b = self.pp.balance(refresh=True)
+        addr_hex = '0x' + self.addr.encode('hex')
+        self.client.get_balance.assert_called_once_with(addr_hex)
+        b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
 
-    def test_balance_refresh_increase(self):
+    def test_eth_balance_refresh_increase(self):
         expected_balance = random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
-        b = self.pp.balance(refresh=True)
+        b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
+        addr_hex = '0x' + self.addr.encode('hex')
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance += random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
-        assert self.pp.balance() == b
-        b = self.pp.balance(refresh=True)
+        assert self.pp.eth_balance() == b
+        b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
 
     def test_balance_refresh_decrease(self):
         expected_balance = random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
-        b = self.pp.balance(refresh=True)
+        b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
-        self.client.get_balance.assert_called_once_with('0x' + self.addr.encode('hex'))
+        addr_hex = '0x' + self.addr.encode('hex')
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance -= random.randint(0, expected_balance)
         assert expected_balance >= 0
         self.client.get_balance.return_value = expected_balance
-        b = self.pp.balance(refresh=True)
+        b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
 
-    def test_available_balance_zero(self):
-        assert self.pp.available_balance() == 0
+    def test_available_eth_zero(self):
+        assert self.pp._eth_available() == 0
 
-    def test_available_balance_egde(self):
-        self.client.get_balance.return_value = self.RESERVATION
-        assert self.pp.available_balance() == 0
-
-    def test_available_balance_small(self):
-        small_balance = random.randint(0, self.RESERVATION)
-        self.client.get_balance.return_value = small_balance
-        assert self.pp.available_balance() == 0
-
-    def test_available_balance_one(self):
-        self.client.get_balance.return_value = self.RESERVATION + 1
-        assert self.pp.available_balance() == 1
+    def test_available_eth_nonzero(self):
+        eth = random.randint(0, 10 * denoms.ether)
+        self.client.get_balance.return_value = eth
+        assert self.pp._eth_available() == eth
 
     def test_add_failure(self):
         a1 = urandom(20)
@@ -145,7 +142,7 @@ class PaymentProcessorTest(DatabaseFixture):
         assert len(tx.data) == 4
 
     def test_faucet_gimme_money(self):
-        assert self.pp.balance() == 0
+        assert self.pp.eth_balance() == 0
         value = 12 * denoms.ether
         Faucet.gimme_money(self.client, self.addr, value)
 
@@ -155,20 +152,20 @@ class PaymentProcessorTest(DatabaseFixture):
         a3 = urandom(20)
 
         self.client.get_balance.return_value = 100 * denoms.ether
-        self.client.call.return_value = '0x' + 64*'0'
+        self.client.call.return_value = hex(100 * denoms.ether)[:-1]
 
-        self.assertTrue(self.pp.add(Payment.create(subtask="p1", payee=a1, value=1)))
-        self.assertTrue(self.pp.add(Payment.create(subtask="p2", payee=a2, value=1)))
-        self.assertTrue(self.pp.add(Payment.create(subtask="p3", payee=a2, value=1)))
-        self.assertTrue(self.pp.add(Payment.create(subtask="p4", payee=a3, value=1)))
-        self.assertTrue(self.pp.add(Payment.create(subtask="p5", payee=a3, value=1)))
-        self.assertTrue(self.pp.add(Payment.create(subtask="p6", payee=a3, value=1)))
+        assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
+        assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1))
+        assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1))
+        assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
+        assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1))
+        assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1))
 
         self.pp.sendout()
-        self.assertEqual(self.client.send.call_count, 1)
+        assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
-        self.assertEqual(tx.value, 6)
-        self.assertEqual(len(tx.data), 4 + 2*32 + 3*32)  # Id + array abi + bytes32[3]
+        assert tx.value == 0
+        assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
 
     def test_synchronized(self):
         interval = 0.01
@@ -241,20 +238,29 @@ class PaymentProcessorTest(DatabaseFixture):
 
         inprogress = self.pp._PaymentProcessor__inprogress
 
-        self.client.get_balance.return_value = 99 * denoms.ether
-        self.client.call.return_value = '0x' + 64*'0'
+        # Give 1 ETH and 99 GNT
+        balance_eth = 1 * denoms.ether
+        balance_gnt = 99 * denoms.ether
+        self.client.get_balance.return_value = balance_eth
+        self.client.call.return_value = hex(balance_gnt)[:-1]  # Skip L suffix.
 
-        assert self.pp.reserved() == 0
+        assert self.pp._gnt_reserved() == 0
+        assert self.pp._gnt_available() == balance_gnt
+        assert self.pp._eth_reserved() == 0
+        assert self.pp._eth_available() == balance_eth
 
-        v = 10**17
-        p = Payment.create(subtask="p1", payee=a1, value=v)
+        gnt_value = 10**17
+        p = Payment.create(subtask="p1", payee=a1, value=gnt_value)
         assert self.pp.add(p)
-        assert self.pp.reserved() == v
+        assert self.pp._gnt_reserved() == gnt_value
+        assert self.pp._gnt_available() == balance_gnt - gnt_value
+        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
         self.pp.sendout()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
-        assert tx.value == v
+        assert tx.value == 0
         assert len(tx.data) == 4 + 2*32 + 32  # Id + array abi + bytes32[1]
 
         assert len(inprogress) == 1
@@ -265,11 +271,19 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_transaction_receipt.return_value = None
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert self.pp.reserved() == v
+        assert tx.hash in inprogress
+        assert inprogress[tx.hash] == [p]
+        assert self.pp._gnt_reserved() == gnt_value
+        assert self.pp._gnt_available() == balance_gnt - gnt_value
+        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert self.pp.reserved() == v
+        assert self.pp._gnt_reserved() == gnt_value
+        assert self.pp._gnt_available() == balance_gnt - gnt_value
+        assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
+        assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
         receipt = {'blockNumber': 8214, 'blockHash': '0x' + 64*'f', 'gasUsed': 55001}
         self.client.get_transaction_receipt.return_value = receipt
@@ -279,4 +293,4 @@ class PaymentProcessorTest(DatabaseFixture):
         assert p.details['block_number'] == 8214
         assert p.details['block_hash'] == 64*'f'
         assert p.details['fee'] == 55001 * self.pp.GAS_PRICE
-        assert self.pp.reserved() == 0
+        assert self.pp._gnt_reserved() == 0
