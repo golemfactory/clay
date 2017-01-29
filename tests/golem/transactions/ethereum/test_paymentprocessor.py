@@ -241,18 +241,15 @@ class PaymentProcessorTest(DatabaseFixture):
 
         inprogress = self.pp._PaymentProcessor__inprogress
 
-        def reserved():
-            return self.pp._PaymentProcessor__reserved
-
         self.client.get_balance.return_value = 99 * denoms.ether
         self.client.call.return_value = '0x' + 64*'0'
 
-        assert reserved() == 0
+        assert self.pp.reserved() == 0
 
         v = 10**17
         p = Payment.create(subtask="p1", payee=a1, value=v)
         assert self.pp.add(p)
-        assert reserved() == v
+        assert self.pp.reserved() == v
 
         self.pp.sendout()
         assert self.client.send.call_count == 1
@@ -268,11 +265,11 @@ class PaymentProcessorTest(DatabaseFixture):
         self.client.get_transaction_receipt.return_value = None
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert reserved() == v
+        assert self.pp.reserved() == v
 
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert reserved() == v
+        assert self.pp.reserved() == v
 
         receipt = {'blockNumber': 8214, 'blockHash': '0x' + 64*'f', 'gasUsed': 55001}
         self.client.get_transaction_receipt.return_value = receipt
@@ -282,4 +279,4 @@ class PaymentProcessorTest(DatabaseFixture):
         assert p.details['block_number'] == 8214
         assert p.details['block_hash'] == 64*'f'
         assert p.details['fee'] == 55001 * self.pp.GAS_PRICE
-        assert reserved() == 0
+        assert self.pp.reserved() == 0

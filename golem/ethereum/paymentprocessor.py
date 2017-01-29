@@ -46,6 +46,9 @@ class PaymentProcessor(Service):
     # Gas price: 20 shannons, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
 
+    # Max gas cost for a single payment. Estimated in tests.
+    SINGLE_PAYMENT_GAS_COST = 60000
+
     # Gas reservation for performing single batch payment.
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
@@ -59,10 +62,10 @@ class PaymentProcessor(Service):
     def __init__(self, client, privkey, faucet=False):
         self.__client = client
         self.__privkey = privkey
-        self.__balance = None
+        self.__eth_balance = None
         self.__deposit = None
-        self.__gnt = None
-        self.__reserved = 0
+        self.__gnt_balance = None
+        self.__eth_reserved = 0
         self.__awaiting = []  # Awaiting individual payments
         self.__inprogress = {}  # Sent transactions.
         self.__last_sync_check = time.time()
@@ -105,12 +108,15 @@ class PaymentProcessor(Service):
 
     def balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
-        if self.__balance is None or refresh:
+        if self.__eth_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             # TODO: Hack RPC client to allow using raw address.
-            self.__balance = self.__client.get_balance('0x' + addr.encode('hex'))
-            log.info("Balance: {}".format(self.__balance / denoms.ether))
-        return self.__balance
+            self.__eth_balance = self.__client.get_balance('0x' + addr.encode('hex'))
+            log.info("Balance: {}".format(self.__eth_balance / denoms.ether))
+        return self.__eth_balance
+
+    def reserved(self):
+        return self.__eth_reserved
 
     def deposit_balance(self, refresh=False):
         if self.__deposit is None or refresh:
@@ -136,15 +142,15 @@ class PaymentProcessor(Service):
                                    data='0x' + data.encode('hex'),
                                    block='pending')
             if r is None or r == '0x':
-                self.__gnt = 0
+                self.__gnt_balance = 0
             else:
-                self.__gnt = int(r, 16)
-            log.info("GNT: {}".format(self.__gnt / denoms.ether))
-        return self.__gnt
+                self.__gnt_balance = int(r, 16)
+            log.info("GNT: {}".format(self.__gnt_balance / denoms.ether))
+        return self.__gnt_balance
 
     def available_balance(self, refresh=False):
         fee_reservation = self.GAS_RESERVATION * self.GAS_PRICE
-        available = self.balance(refresh) - self.__reserved - fee_reservation
+        available = self.balance(refresh) - self.__eth_reserved - fee_reservation
         return max(available, 0)
 
     def add(self, payment):
@@ -162,9 +168,9 @@ class PaymentProcessor(Service):
             log.warning("Low balance: {:.6f}".format(balance / denoms.ether))
             return False
         self.__awaiting.append(payment)
-        self.__reserved += value
+        self.__eth_reserved += value
         log.info("Balance: {:.6f}, reserved {:.6f}".format(
-            balance / denoms.ether, self.__reserved / denoms.ether))
+            balance / denoms.ether, self.__eth_reserved / denoms.ether))
         return True
 
     def sendout(self):
@@ -245,8 +251,8 @@ class PaymentProcessor(Service):
                 confirmed.append(h)
         for h in confirmed:
             # Reduced reserved balance here to minimize chance of double update.
-            self.__reserved -= sum(p.value for p in self.__inprogress[h])
-            if self.__reserved < 0:
+            self.__eth_reserved -= sum(p.value for p in self.__inprogress[h])
+            if self.__eth_reserved < 0:
                 raise ValueError("Reserved is less than zero")
             # Delete in progress entry.
             del self.__inprogress[h]
