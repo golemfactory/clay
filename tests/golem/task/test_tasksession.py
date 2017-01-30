@@ -255,6 +255,12 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server = Mock()
         ts.task_server.get_subtask_ttl.return_value = 31313
 
+        env = Mock()
+        env.docker_images = "DOCKER IX"
+        env.allow_custom_main_program_file = False
+        env.get_source_code.return_value = None
+        ts.task_server.get_environment_by_id.return_value = env
+
         def __reset_mocks():
             ts.task_manager.reset_mock()
             ts.task_computer.reset_mock()
@@ -275,7 +281,23 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ctd.task_owner.key = "KEY_ID"
         ctd.return_address = "10.10.10.10"
         ctd.return_port = 1112
+        ctd.docker_images = "DOCKER X"
         msg = MessageTaskToCompute(ctd)
+        ts._react_to_task_to_compute(msg)
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd.docker_images = "DOCKER IX"
+
+        ts._react_to_task_to_compute(msg)
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        env.get_source_code.return_value = "print 'Hello world'"
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(ctd)
         ts.task_computer.session_closed.assert_not_called()
@@ -310,6 +332,22 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ctd.task_owner.key = "KEY_ID"
         ctd.return_port = 1319
         ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        conn.close.assert_not_called()
+
+        __reset_mocks()
+        env.allow_custom_main_program_file = True
+        ctd.src_code = ""
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+        ts.task_computer.session_closed.assert_called_with()
+        assert conn.close.called
+
+        __reset_mocks()
+        ctd.src_code = "print 'Hello world!'"
+        ts._react_to_task_to_compute(MessageTaskToCompute(ctd))
+        ts.task_computer.session_closed.assert_not_called()
+        ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
+        ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
 
 

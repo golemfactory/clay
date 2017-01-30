@@ -6,7 +6,6 @@ from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
-from golem.core.common import get_golem_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
@@ -15,14 +14,12 @@ from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.resource.dirmanager import get_test_task_path, find_task_script
+from golem.resource.dirmanager import get_test_task_path
 from apps.rendering.task.renderingtask import AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 
 
 logger = logging.getLogger("apps.blender")
-
-APP_DIR = os.path.join(get_golem_path(), 'apps', 'blender')
 
 
 class BlenderDefaults(RendererDefaults):
@@ -30,7 +27,7 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = find_task_script(APP_DIR, "docker_blendertask.py")
+        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -242,14 +239,15 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """
     def build(self):
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
+        environment = BlenderEnvironment()
         if self.task_definition.docker_images is None:
-            self.task_definition.docker_images = BlenderEnvironment().docker_images
+            self.task_definition.docker_images = environment.docker_images
 
         blender_task = BlenderRenderTask(self.node_name,
                                          self.task_definition.task_id,
                                          main_scene_dir,
                                          self.task_definition.main_scene_file,
-                                         self.task_definition.main_program_file,
+                                         environment.main_program_file,
                                          self._calculate_total(BlenderDefaults(), self.task_definition),
                                          self.task_definition.resolution[0],
                                          self.task_definition.resolution[1],
@@ -277,9 +275,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
             box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
             new_task.box_size = (box_x, box_y)
         return new_task
-
-
-DEFAULT_BLENDER_DOCKER_IMAGE = "golemfactory/blender:1.3"
 
 
 class BlenderRenderTask(FrameRenderingTask):
