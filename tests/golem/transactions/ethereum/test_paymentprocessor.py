@@ -20,6 +20,8 @@ from golem.ethereum.contracts import TestGNT
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 
+SYNC_TEST_INTERVAL = 0.01
+
 
 def wait_for(condition, timeout, step=0.1):
     for _ in xrange(int(timeout / step)):
@@ -195,9 +197,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
 
     def test_synchronized(self):
-        interval = 0.001
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
-        PaymentProcessor.SYNC_CHECK_INTERVAL = interval
+        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
         pp = PaymentProcessor(self.client, self.privkey, faucet=False)
         syncing_status = {'startingBlock': '0x384',
                           'currentBlock': '0x386',
@@ -211,22 +212,22 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         for c in combinations:
             print("Subtest {}".format(c))
-            time.sleep(10 * interval)  # Allow reseting the status.
+            # Allow reseting the status.
+            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
             self.client.get_peer_count.return_value = 0
             self.client.is_syncing.return_value = False
             assert not pp.synchronized()
-            time.sleep(10 * interval)
+            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
             self.client.get_peer_count.return_value = c[0]
             self.client.is_syncing.return_value = c[1]
             assert not pp.synchronized()  # First time is always no.
-            time.sleep(10 * interval)
+            time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
             assert pp.synchronized() == (c[0] and not c[1])
         PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
     def test_synchronized_unstable(self):
-        interval = 0.001
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
-        PaymentProcessor.SYNC_CHECK_INTERVAL = interval
+        PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
         pp = PaymentProcessor(self.client, self.privkey, faucet=False)
         syncing_status = {'startingBlock': '0x0',
                           'currentBlock': '0x1',
@@ -235,31 +236,31 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_peer_count.return_value = 1
         self.client.is_syncing.return_value = False
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         self.client.get_peer_count.return_value = 1
         self.client.is_syncing.return_value = syncing_status
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert not pp.synchronized()
 
         self.client.get_peer_count.return_value = 1
         self.client.is_syncing.return_value = False
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         self.client.get_peer_count.return_value = 0
         self.client.is_syncing.return_value = False
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         self.client.get_peer_count.return_value = 2
         self.client.is_syncing.return_value = False
         assert not pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert pp.synchronized()
-        time.sleep(interval)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         self.client.get_peer_count.return_value = 2
         self.client.is_syncing.return_value = syncing_status
         assert not pp.synchronized()
@@ -375,7 +376,6 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         self.client.call.side_effect = call
         self.client.send.side_effect = send
-        # FIXME: PaymentProcessor should be started and stopped!
         self.pp = PaymentProcessor(self.client, self.privkey)
         self.clock = Clock()
         self.pp._loopingCall.clock = self.clock
@@ -388,12 +388,13 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert not self.pp.synchronized()
         self.client.get_peer_count.return_value = 1
         assert not self.pp.synchronized()
-        I = self.pp.SYNC_CHECK_INTERVAL = 0.0001
-        time.sleep(0.0001)
+        I = PaymentProcessor.SYNC_CHECK_INTERVAL = SYNC_TEST_INTERVAL
+        assert self.pp.SYNC_CHECK_INTERVAL == SYNC_TEST_INTERVAL
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert not self.pp.synchronized()
-        time.sleep(0.001)
+        time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
         assert self.pp.synchronized()
-        self.pp.SYNC_CHECK_INTERVAL = I
+        PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
     def test_synchronized(self):
         self.pp.start()
