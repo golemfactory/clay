@@ -19,11 +19,10 @@ class Options(object):
 
 class CoreTaskDefaults(object):
     """ Suggested default values for task parameters """
+
     def __init__(self):
         self.output_format = ""
         self.main_program_file = ""
-        self._full_task_timeout = 4 * 3600
-        self._subtask_timeout = 20 * 60
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
@@ -31,11 +30,11 @@ class CoreTaskDefaults(object):
 
     @property
     def full_task_timeout(self):
-        return self._full_task_timeout
+        return 4 * 3600
 
     @property
     def subtask_timeout(self):
-        return self._subtask_timeout
+        return 20 * 60
 
 
 class TaskDefinition(object):
