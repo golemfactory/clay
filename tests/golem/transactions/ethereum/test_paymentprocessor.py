@@ -143,6 +143,14 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert p1.status is PaymentStatus.awaiting
         assert p2.status is PaymentStatus.awaiting
 
+    def test_add_invalid_payment_status(self):
+        a1 = urandom(20)
+        p1 = Payment.create(subtask="p1", payee=a1, value=1, status=PaymentStatus.confirmed)
+        assert p1.status is PaymentStatus.confirmed
+
+        with self.assertRaises(RuntimeError):
+            self.pp.add(p1)
+
     def test_faucet(self):
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
         pp.get_ethers_from_faucet()
@@ -334,7 +342,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         PaymentProcessor.TESTGNT_ADDR = gnt_addr
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
-        self.client.get_peer_count.return_value = 13
+        self.client.get_peer_count.return_value = 0
         self.client.is_syncing.return_value = False
         self.client.get_transaction_count.side_effect = \
             lambda addr: self.state.block.get_nonce(decode_hex(addr[2:]))
@@ -378,8 +386,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
     def check_synchronized(self):
         assert not self.pp.synchronized()
-        assert not self.pp.synchronized()
-        assert not self.pp.synchronized()
+        self.client.get_peer_count.return_value = 1
         assert not self.pp.synchronized()
         I = self.pp.SYNC_CHECK_INTERVAL = 0.0001
         time.sleep(0.0001)
@@ -387,6 +394,11 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         time.sleep(0.0001)
         assert self.pp.synchronized()
         self.pp.SYNC_CHECK_INTERVAL = I
+
+    def test_synchronized(self):
+        self.pp.start()
+        self.check_synchronized()
+        self.pp.stop()
 
     def test_gnt_faucet(self):
         self.pp._PaymentProcessor__faucet = True
@@ -427,6 +439,8 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         # Confirm.
         self.clock.advance(100)
+        assert self.pp.gnt_balance(True) == b - value
+        assert self.pp._gnt_reserved() == 0
 
     def test_no_gnt_available(self):
         self.pp.start()
