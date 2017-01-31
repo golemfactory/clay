@@ -46,6 +46,12 @@ class TestPayment(DatabaseFixture):
         with self.assertRaises(TypeError):
             Payment.create(payee="XX", subtask="zz", value=5, status=1)
 
+    def test_invalid_value_type(self):
+        with self.assertRaises(TypeError):
+            Payment.create(payee="XX", subtask="float", value=5.5, status=PaymentStatus.sent)
+        with self.assertRaises(TypeError):
+            Payment.create(payee="XX", subtask="str", value="500", status=PaymentStatus.sent)
+
     def test_payment_details(self):
         p1 = Payment(payee="me", subtask="T1000", value=123456)
         p2 = Payment(payee="you", subtask="T900", value=654321)

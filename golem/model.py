@@ -82,6 +82,8 @@ class BigIntegerField(CharField):
     """
 
     def db_value(self, value):
+        if type(value) not in (int, long):
+            raise TypeError("Value {} is not an integer".format(value))
         return format(value, 'x')
 
     def python_value(self, value):
@@ -143,7 +145,7 @@ class ReceivedPayment(BaseModel):
     from_node_id = CharField()
     task = CharField()
     val = BigIntegerField()
-    expected_val = IntegerField()
+    expected_val = BigIntegerField()
     state = CharField()
     details = CharField(default="")
 

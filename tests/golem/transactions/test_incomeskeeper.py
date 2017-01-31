@@ -128,12 +128,3 @@ class TestIncomesKeeper(TestWithDatabase):
         self.assertEqual(ik.get_income("ABC", 10), ["xyz", "abc"])
         self.assertEqual(ik.get_income("ABC", 2), [])
         self.assertEqual(ik.get_income("ABC", 3), ["def"])
-
-
-
-
-
-
-
-
-
