@@ -1058,11 +1058,12 @@ def _collect_docker_files():
                 name, docker_file, tag = line.split(' ')
                 full_path = os.path.join('apps', docker_file)
                 dir_name = os.path.dirname(full_path)
+                app_name = docker_file.split('/')[0]
                 base_name = os.path.basename(docker_file)
-                result.add((dir_name, base_name))
+                result.add((dir_name, base_name, base_name + '.' + app_name))
 
-    result.add((os.path.join('apps', 'core', 'resources', 'images'), 'entrypoint.sh'))
-    result.add(('apps', 'images.ini'))
+    result.add((os.path.join('apps', 'core', 'resources', 'images'), 'entrypoint.sh', None))
+    result.add(('apps', 'images.ini', None))
     return result
 
 
@@ -1070,10 +1071,11 @@ def all_dockerfiles(*_):
 
     dst_dir = os.path.join('build', 'golem', 'docker')
 
-    for full_path, docker_file in _collect_docker_files():
+    for full_path, docker_file, dst_name in _collect_docker_files():
 
+        dst_name = dst_name or docker_file
         src_path = os.path.join(full_path, docker_file)
-        dst_path = os.path.join(dst_dir, docker_file)
+        dst_path = os.path.join(dst_dir, dst_name)
 
         if not os.path.exists(dst_dir):
             os.makedirs(dst_dir)
