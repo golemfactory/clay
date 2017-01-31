@@ -2,8 +2,8 @@ import cPickle
 import unittest
 
 from mock import Mock, MagicMock, patch
-
 from golem.core.keysauth import KeysAuth
+from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
@@ -256,7 +256,7 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server.get_subtask_ttl.return_value = 31313
 
         env = Mock()
-        env.docker_images = "DOCKER IX"
+        env.docker_images = [DockerImage("dockerix/xii", tag="323")]
         env.allow_custom_main_program_file = False
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
@@ -281,7 +281,7 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ctd.task_owner.key = "KEY_ID"
         ctd.return_address = "10.10.10.10"
         ctd.return_port = 1112
-        ctd.docker_images = "DOCKER X"
+        ctd.docker_images = [DockerImage("dockerix/xiii", tag="323")]
         msg = MessageTaskToCompute(ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -289,8 +289,7 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         assert conn.close.called
 
         __reset_mocks()
-        ctd.docker_images = "DOCKER IX"
-
+        ctd.docker_images = [DockerImage("dockerix/xii", tag="323")]
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()

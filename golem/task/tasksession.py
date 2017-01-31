@@ -65,6 +65,8 @@ class TaskSession(MiddlemanSafeSession):
 
         self.result_owner = None  # information about user that should be rewarded (or punished) for the result
 
+        self.err_msg = None  # Keep track of errors
+
         self.__set_msg_interpretations()
 
     ########################
@@ -376,7 +378,7 @@ class TaskSession(MiddlemanSafeSession):
             self.task_server.add_task_session(msg.ctd.subtask_id, self)
             self.task_computer.task_given(msg.ctd)
         else:
-            self.send(MessageCannotComputeTask(msg.ctd.subtask_id))
+            self.send(MessageCannotComputeTask(msg.ctd.subtask_id, self.err_msg))
             self.task_computer.session_closed()
             self.dropped()
 
@@ -590,25 +592,42 @@ class TaskSession(MiddlemanSafeSession):
 
     def _check_ctd_params(self, ctd):
         if not isinstance(ctd, ComputeTaskDef):
+            self.err_msg = "Received task is not a ComputeTaskDef instance"
             return False
         if ctd.key_id != self.key_id or ctd.task_owner.key != self.key_id:
+            self.err_msg = "Wrong key_id"
             return False
         if not SocketAddress.is_proper_address(ctd.return_address, ctd.return_port):
+            self.err_msg = "Wrong return address {}:{}".format(ctd.return_address, ctd.return_port)
             return False
         return True
 
     def _set_env_params(self, ctd):
-        env = self.task_server.get_environment_by_id(ctd.environment)
+        environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)
+        env = self.task_server.get_environment_by_id(environment)
         if not env:
+            self.err_msg = "Wrong envrironment {}".format(environment)
             return False
 
-        if ctd.docker_images != env.docker_images:
+        image_found = False
+        for image in ctd.docker_images:
+            if any(env_image.cmp_name_and_tag(image) for env_image in env.docker_images):
+                ctd.docker_images = [image]
+                image_found = True
+                break
+
+        if not image_found:
+            self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
             return False
 
         if not env.allow_custom_main_program_file:
             ctd.src_code = env.get_source_code()
 
-        return ctd.src_code
+        if not ctd.src_code:
+            self.err_msg = "No source code for environment {}".format(environment)
+            return False
+
+        return True
 
     def __send_delta_resource(self, msg):
         res_file_path = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),
