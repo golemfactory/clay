@@ -3,6 +3,7 @@ import logging
 
 log = logging.getLogger('golem.decorators')
 
+
 def log_error(reraise=False):
     def _curry(f):
         @functools.wraps(f)

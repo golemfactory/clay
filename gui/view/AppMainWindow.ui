@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -880,7 +880,7 @@
                <bool>true</bool>
               </property>
               <attribute name="horizontalHeaderVisible">
-               <bool>true</bool>
+               <bool>false</bool>
               </attribute>
               <attribute name="horizontalHeaderCascadingSectionResizes">
                <bool>false</bool>
@@ -1841,16 +1841,6 @@
                      </property>
                      <property name="text">
                       <string>Show environments</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item row="16" column="1">
-                    <widget class="QPushButton" name="identityButton">
-                     <property name="toolTip">
-                      <string>Manage your public and private keys</string>
-                     </property>
-                     <property name="text">
-                      <string>Show identity</string>
                      </property>
                     </widget>
                    </item>
