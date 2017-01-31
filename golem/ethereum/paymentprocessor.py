@@ -83,8 +83,8 @@ class PaymentProcessor(Service):
             # When checking again within 10 s return previous status.
             # This also handles geth issue where synchronization starts after
             # 10 s since the node was started.
-            # FIXME: Add unit test check exactly this case.
             return self.__sync
+        self.__last_sync_check = time.time()
 
         def check():
             peers = self.__client.get_peer_count()
@@ -99,15 +99,19 @@ class PaymentProcessor(Service):
         # Normally we should check the time of latest block, but Golem testnet
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.
-        prev = self.__temp_sync
-        # Remember current check as a temporary status.
-        self.__temp_sync = check()
-        # Mark as synchronized only if previous and current status are true.
-        self.__sync = prev and self.__temp_sync
+        if not check():
+            self.__temp_sync = self.__sync = False
+            return False
 
-        self.__last_sync_check = time.time()
-        log.info("Synchronized: {}".format(self.__sync))
-        return self.__sync
+        if not self.__temp_sync:
+            self.__temp_sync = True
+            return False
+
+        if not self.__sync:
+            self.__sync = True
+            log.info("Synchronized!")
+
+        return True
 
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
