@@ -68,9 +68,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
     def test_gnt_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
-        v = hex(expected_balance)
-        if v[-1] == 'L':
-            v = v[:-1]
+        v = '0x{:x}'.format(expected_balance)
         self.client.call.return_value = v
         b = self.pp.gnt_balance()
         assert b == expected_balance
@@ -205,15 +203,15 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         for c in combinations:
             print("Subtest {}".format(c))
-            time.sleep(interval)  # Allow reseting the status.
+            time.sleep(10 * interval)  # Allow reseting the status.
             self.client.get_peer_count.return_value = 0
             self.client.is_syncing.return_value = False
             assert not pp.synchronized()
-            time.sleep(interval)
+            time.sleep(10 * interval)
             self.client.get_peer_count.return_value = c[0]
             self.client.is_syncing.return_value = c[1]
             assert not pp.synchronized()  # First time is always no.
-            time.sleep(interval)
+            time.sleep(10 * interval)
             assert pp.synchronized() == (c[0] and not c[1])
         PaymentProcessor.SYNC_CHECK_INTERVAL = I
 
