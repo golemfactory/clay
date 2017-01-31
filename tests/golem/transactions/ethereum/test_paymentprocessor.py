@@ -430,7 +430,6 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         # Confirm.
         self.clock.advance(100)
 
-    @unittest.expectedFailure  # FIXME: Fix DB first.
     def test_no_gnt_available(self):
         self.pp.start()
         self.gnt.create(sender=self.privkey)
@@ -441,9 +440,10 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         payee = urandom(20)
         b = self.pp.gnt_balance()
         value = b / 5 - 100
-        for _ in range(5):
-            p = Payment.create(subtask="x", payee=payee, value=value)
+        for i in range(5):
+            subtask_id = 's{}'.format(i)
+            p = Payment.create(subtask=subtask_id, payee=payee, value=value)
             assert self.pp.add(p)
 
-        q = Payment.create(subtask="x", payee=payee, value=value)
+        q = Payment.create(subtask='F', payee=payee, value=value)
         assert not self.pp.add(q)

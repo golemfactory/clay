@@ -83,7 +83,7 @@ class PaymentProcessor(Service):
             # When checking again within 10 s return previous status.
             # This also handles geth issue where synchronization starts after
             # 10 s since the node was started.
-            log.info("OLD value: {}".format(self.__sync))
+            # FIXME: Add unit test check exactly this case.
             return self.__sync
 
         def check():
