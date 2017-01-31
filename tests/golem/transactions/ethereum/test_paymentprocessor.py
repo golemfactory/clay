@@ -391,7 +391,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         I = self.pp.SYNC_CHECK_INTERVAL = 0.0001
         time.sleep(0.0001)
         assert not self.pp.synchronized()
-        time.sleep(0.0001)
+        time.sleep(0.001)
         assert self.pp.synchronized()
         self.pp.SYNC_CHECK_INTERVAL = I
 
