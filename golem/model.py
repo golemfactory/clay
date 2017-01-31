@@ -22,7 +22,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 3
+    SCHEMA_VERSION = 4
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -76,6 +76,18 @@ class RawCharField(CharField):
         return value.decode('hex')
 
 
+class BigIntegerField(CharField):
+    """ Standard Integer field is limited to 2^63-1. This field extends the
+        range by storing the numbers as hex-encoded char strings.
+    """
+
+    def db_value(self, value):
+        return format(value, 'x')
+
+    def python_value(self, value):
+        return int(value, 16)
+
+
 class EnumField(IntegerField):
     """ Database field that maps enum type to integer."""
 
@@ -115,7 +127,7 @@ class Payment(BaseModel):
     subtask = CharField(primary_key=True)
     status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
     payee = RawCharField()
-    value = IntegerField()
+    value = BigIntegerField()
     details = JsonField()
 
     def __init__(self, *args, **kwargs):
@@ -130,7 +142,7 @@ class ReceivedPayment(BaseModel):
     """
     from_node_id = CharField()
     task = CharField()
-    val = IntegerField()
+    val = BigIntegerField()
     expected_val = IntegerField()
     state = CharField()
     details = CharField(default="")
@@ -218,4 +230,3 @@ class Stats(BaseModel):
 
     class Meta:
         database = db
-
