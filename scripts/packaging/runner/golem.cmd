@@ -227,10 +227,12 @@ goto POST_BUILD_DOCKER_IMAGES
         )
     )
     if "!gi!"=="" (
-        echo Building image %IMG%
-        cd %DOCKER_DIR%
-        docker build -t %IMG_NAME% -f %IMG_FILE% . && docker tag %IMG_NAME% %IMG%
-        cd %~dp0
+::        echo Building image %IMG%
+::        cd %DOCKER_DIR%
+::        docker build -t %IMG_NAME% -f %IMG_FILE% . && docker tag %IMG_NAME% %IMG%
+::        cd %~dp0
+        echo Downloading image %IMG%
+        docker pull %IMG_NAME%:%IMG_TAG%
     )
     exit /b
 

@@ -215,12 +215,6 @@ class LuxTask(RenderingTask):
             logger.error("Task already computed")
             return self.ExtraData()
 
-        working_directory = self._get_working_directory()
-        min_x = 0
-        max_x = 1
-        min_y = (start_task - 1) * (1.0 / float(self.total_tasks))
-        max_y = end_task * (1.0 / float(self.total_tasks))
-
         if self.halttime > 0:
             write_interval = int(self.halttime / 2)
         else:
@@ -248,7 +242,7 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
 
-        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
     def computation_finished(self, subtask_id, task_result, result_type=0):
@@ -298,7 +292,6 @@ class LuxTask(RenderingTask):
             os.makedirs(self.test_task_res_path)
 
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], self.output_format)
-        working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
 
@@ -316,7 +309,7 @@ class LuxTask(RenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
         # Search for flm - the result of testing a lux task
