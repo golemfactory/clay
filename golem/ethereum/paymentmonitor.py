@@ -2,8 +2,8 @@ from __future__ import division
 
 from ethereum.utils import denoms, zpad
 from pydispatch import dispatcher
-from twisted.internet.task import LoopingCall
 
+from golem.transactions.service import Service
 from golem.model import PaymentStatus
 
 from .paymentprocessor import PaymentProcessor, log
@@ -17,25 +17,20 @@ class IncomingPayment(object):
         self.extra = {}  # For additional data.
 
 
-class PaymentMonitor(object):
+class PaymentMonitor(Service):
     def __init__(self, client, addr):
         self.__client = client
         self.__addr = addr
         self.__filter = None
         self.__payments = []
-
-        scheduler = LoopingCall(self.run)
-        scheduler.start(30)  # FIXME: Use single scheduler for all payments.
+        super(PaymentMonitor, self).__init__(30)
 
     def get_incoming_payments(self):
         """Return cached incoming payments fetch from blockchain."""
         return self.__payments
 
-    def run(self):
-        try:
-            self.process_incoming_payments()
-        except:
-            log.exception('Error in PaymentMonitor.run()')
+    def _run(self):
+        self.process_incoming_payments()
 
     def process_incoming_payments(self):
         if not self.__filter:

@@ -3,11 +3,11 @@ from PyQt4.QtCore import QPoint
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 
-from apps.core.task.gnrtaskstate import TaskDesc
+from apps.core.task.coretaskstate import TaskDesc
 
-from gui.application import GNRGui
+from gui.application import Gui
 from gui.controller.taskdetailsdialogcustomizer import SortingOrder, TaskDetailsDialogCustomizer, logger
-from gui.applicationlogic import GNRApplicationLogic
+from gui.applicationlogic import GuiApplicationLogic
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.dialog import TaskDetailsDialog
 
@@ -16,16 +16,16 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
 
     def setUp(self):
         super(TestTaskDetailsDialogCustomizer, self).setUp()
-        self.logic = GNRApplicationLogic()
-        self.gnrgui = GNRGui(self.logic, AppMainWindow)
+        self.logic = GuiApplicationLogic()
+        self.gui = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
         super(TestTaskDetailsDialogCustomizer, self).tearDown()
-        self.gnrgui.app.exit(0)
-        self.gnrgui.app.deleteLater()
+        self.gui.app.exit(0)
+        self.gui.app.deleteLater()
 
     def __init_basic_customizer(self):
-        task_dialog = TaskDetailsDialog(self.gnrgui.main_window.window)
+        task_dialog = TaskDetailsDialog(self.gui.main_window.window)
         task_state = TaskDesc()
         ss1 = SubtaskState()
         ss1.subtask_id = "abc"
@@ -58,7 +58,7 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         return customizer
 
     def test_sorting(self):
-        task_dialog = TaskDetailsDialog(self.gnrgui.main_window.window)
+        task_dialog = TaskDetailsDialog(self.gui.main_window.window)
         task_state = TaskDesc()
         customizer = TaskDetailsDialogCustomizer(task_dialog, self.logic, task_state)
         self.assertEqual(customizer.sorting, -1)

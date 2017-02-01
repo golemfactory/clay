@@ -3,8 +3,9 @@ import os
 import unittest
 import uuid
 from types import FunctionType
+from unittest import skipIf
 
-from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress
+from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress, ipfs_running
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -22,6 +23,7 @@ def first_response_hash(response):
     return None
 
 
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIpfsClient(TestDirFixture):
 
     def setUp(self):
@@ -154,6 +156,7 @@ class TestChunkedHttpClient(TestDirFixture):
         with open(self.test_dir_file_path, 'w') as f:
             f.write("test content 2")
 
+    @skipIf(not ipfs_running(), "IPFS daemon isn't running")
     def testGetFile(self):
         root_path = os.path.abspath(os.sep)
         client = IPFSClient()
@@ -161,18 +164,18 @@ class TestChunkedHttpClient(TestDirFixture):
         self.added_files = []
         self.added_files += client.add(self.test_dir_file_path)
         self.added_files += client.add(self.test_file_path)
+        target_filename = 'downloaded_file'
 
         for entries in self.added_files:
             for added in entries:
                 name = added['Name']
                 if name.startswith(root_path) and 'Hash' in added:
-                    target_filename = 'downloaded_file'
 
                     result = client.get_file(added['Hash'],
                                              filepath=self.target_dir,
                                              filename=target_filename)
 
-                    filename, multihash = result[0]
+                    filename, _ = result[0]
                     filepath = os.path.join(self.target_dir, filename)
 
                     assert filename == target_filename
@@ -188,6 +191,22 @@ class TestChunkedHttpClient(TestDirFixture):
         client = IPFSClient()
         with self.assertRaises(NotImplementedError):
             client.get("-")
+
+    def testBuildOptions(self):
+        from golem.resource.client import ClientError
+        client = IPFSClient()
+        client_options = {'options': {'option1': 1, 'option2': 'abcd', 'option3': None}}
+        option = client.build_options("id", **client_options)
+        print option
+        assert option.client_id == client.CLIENT_ID
+        assert option.version == client.VERSION
+        with self.assertRaises(ClientError):
+            option.get("Incorrect_id", client.VERSION, None)
+        with self.assertRaises(ClientError):
+            option.get(client.CLIENT_ID, client.VERSION + 1, None)
+        assert option.get(client.CLIENT_ID, client.VERSION, 'option1') == 1
+        assert option.get(client.CLIENT_ID, client.VERSION, 'option2') == "abcd"
+        assert not option.get(client.CLIENT_ID, client.VERSION, 'option3')
 
 
 class TestIPFSAddress(unittest.TestCase):

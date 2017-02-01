@@ -2,7 +2,7 @@ import os
 import errno
 import sys
 from calendar import timegm
-from datetime import datetime, timedelta
+from datetime import datetime
 from os import path
 
 import pytz
@@ -38,7 +38,7 @@ def is_linux():
 def get_golem_path():
     """
     Return path to main golem directory
-    :return str: path to diretory containing golem and gnr folder
+    :return str: path to main golem directory
     """
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
@@ -119,4 +119,3 @@ def config_logging(logname=LOG_NAME):
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "logging.ini"))
     logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
-

@@ -7,7 +7,8 @@ from PIL import Image, ImageChops
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.gnrtask import GNRTask, GNROptions
+from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 
@@ -45,9 +46,9 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             return defaults.default_subtasks
 
 
-class FrameRendererOptions(GNROptions):
+class FrameRendererOptions(Options):
     def __init__(self):
-        super(GNROptions, self).__init__()
+        super(FrameRendererOptions, self).__init__()
         self.use_frames = False
         self.frames = range(1, 11)
 
@@ -128,9 +129,9 @@ class FrameRenderingTask(RenderingTask):
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
 
-    @GNRTask.handle_key_error
+    @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
-        GNRTask.computation_failed(self, subtask_id)
+        CoreTask.computation_failed(self, subtask_id)
         if self.use_frames:
             self._update_frame_task_preview()
         else:
@@ -316,7 +317,6 @@ class FrameRenderingTask(RenderingTask):
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), idx)
-        preview_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), idx)
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")

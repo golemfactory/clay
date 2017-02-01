@@ -1,10 +1,7 @@
 import ConfigParser
-
+import logging
 import os
 import shutil
-import logging
-
-from simpleauth import SimpleAuth
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +86,7 @@ class SimpleConfig(object):
     """ Simple configuration manager"""
 
     def __init__(self, common_config, node_config, cfg_file, refresh=False, keep_old=True):
-        """ Read existing configuration or creat new one if it doesn't exist or refresh option is set to True.
+        """ Read existing configuration or create new one if it doesn't exist or refresh option is set to True.
         :param common_config: configuration that is common for all nodes
         :param node_config: node specific configuration
         :param str cfg_file: configuration file name

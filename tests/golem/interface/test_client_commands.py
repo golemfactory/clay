@@ -1,4 +1,3 @@
-import json
 import os
 import unittest
 from collections import namedtuple
@@ -6,7 +5,7 @@ from contextlib import contextmanager
 
 import jsonpickle
 from ethereum.utils import denoms
-from mock import Mock, patch
+from mock import Mock
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
 from apps.core.benchmark.benchmark import Benchmark
@@ -524,7 +523,7 @@ class TestTasks(TempDirFixture):
                                            root_path=self.tempdir, dir_manager=dir_manager)
 
         task = builder.build()
-        task.__dict__.update(Benchmark().query_benchmark_task_definition().__dict__)
+        task.__dict__.update(Benchmark().task_definition.__dict__)
         task.task_id = "deadbeef"
         task.task_type = "Blender"
         task.docker_images = None

@@ -2,7 +2,6 @@ import logging
 import time
 
 import ipaddress
-import requests
 
 from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFSAddress
 

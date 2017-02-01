@@ -7,18 +7,18 @@ class TaskContextMenuCustomizer:
     def __init__(self, ui, logic, ts):
         self.ui = ui
         self.logic = logic
-        self.gnr_task_state = ts
+        self.task_desc = ts
 
         self.__build_context_menu()
 
     def __build_context_menu(self):
 
-        enabled_actions = self.__get_enabled_actions(self.gnr_task_state.task_state.status)
+        enabled_actions = self.__get_enabled_actions(self.task_desc.task_state.status)
 
         self.__build_and_connect_action("Start Task", self.__start_task_triggered, enabled_actions)
         self.__build_and_connect_action("Pause", self.__pause_task_triggered, enabled_actions)
         self.__build_and_connect_action("Resume", self.__resume_task_triggered, enabled_actions)
-        self.__build_and_connect_action("Clone Task", self.__new_task_triggered, enabled_actions)
+        self.__build_and_connect_action("Clone Task", self.__clone_task_triggered, enabled_actions)
         self.__build_and_connect_action("Abort Task", self.__abort_task_triggered, enabled_actions)
         self.__build_and_connect_action("Restart", self.__restart_task_triggered, enabled_actions)
         self.__build_and_connect_action("Delete", self.__delete_task_triggered, enabled_actions)
@@ -39,34 +39,34 @@ class TaskContextMenuCustomizer:
 
     #
     def __abort_task_triggered(self):
-        self.logic.abort_task(self.gnr_task_state.definition.task_id)
+        self.logic.abort_task(self.task_desc.definition.task_id)
 
     def __restart_task_triggered(self):
-        self.logic.restart_task(self.gnr_task_state.definition.task_id)
+        self.logic.restart_task(self.task_desc.definition.task_id)
 
     def __delete_task_triggered(self):
-        self.logic.delete_task(self.gnr_task_state.definition.task_id)
+        self.logic.delete_task(self.task_desc.definition.task_id)
 
-    def __new_task_triggered(self):
-        self.logic.clone_task(self.gnr_task_state.definition.task_id)
+    def __clone_task_triggered(self):
+        self.logic.clone_task(self.task_desc.definition.task_id)
 
     def __start_task_triggered(self):
-        self.logic.start_task(self.gnr_task_state.definition.task_id)
+        self.logic.start_task(self.task_desc.definition.task_id)
 
     def __pause_task_triggered(self):
-        self.logic.pause_task(self.gnr_task_state.definition.task_id)
+        self.logic.pause_task(self.task_desc.definition.task_id)
 
     def __resume_task_triggered(self):
-        self.logic.resume_task(self.gnr_task_state.definition.task_id)
+        self.logic.resume_task(self.task_desc.definition.task_id)
 
     def __show_task_details_triggered(self):
-        self.logic.show_task_details(self.gnr_task_state.definition.task_id)
+        self.logic.show_task_details(self.task_desc.definition.task_id)
 
     def __change_task_triggered(self):
-        self.logic.change_task(self.gnr_task_state.definition.task_id)
+        self.logic.change_task(self.task_desc.definition.task_id)
 
     def __show_result_triggered(self):
-        self.logic.show_task_result(self.gnr_task_state.definition.task_id)
+        self.logic.show_task_result(self.task_desc.definition.task_id)
 
     @staticmethod
     def __get_enabled_actions(task_status):
@@ -157,8 +157,5 @@ class TaskContextMenuCustomizer:
             enabled["Resume"] = True
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
-
-        if len(enabled) != 10:
-            raise ValueError("Incorrect 'enabled' length: {}. Should be 10".format(len(enabled)))
 
         return enabled

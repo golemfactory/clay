@@ -1,23 +1,24 @@
 import unittest
 import uuid
+from unittest import skipIf
+
 from mock import patch, Mock
 
 import requests
 
-from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig
+from golem.network.ipfs.client import IPFSAddress, IPFSCommands, IPFS_BOOTSTRAP_NODES, IPFSConfig, ipfs_running
 from golem.network.ipfs.daemon_manager import IPFSDaemonManager
 
 
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
 class TestIPFSDaemonManager(unittest.TestCase):
 
     def testStoreInfo(self):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
-        dm.store_client_info()
-
-        ipfs_id = dm.node_id
-
+        ipfs_id = dm.store_client_info()
         self.assertIsInstance(ipfs_id, basestring)
-        assert ipfs_id
+        from base58 import b58decode
+        b58decode(ipfs_id)
 
     def testAddRemoveBootstrapNodes(self):
         default_node = '/ip4/127.0.0.1/tcp/4001/ipfs/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ'

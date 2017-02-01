@@ -83,11 +83,10 @@ class DockerTaskThread(TaskThread):
                     estm_mem = self.mc.stop()
                 if exit_code == 0:
                     # TODO: this always returns file, implement returning data
-                    # TODO: this only collects top-level files, what if there
-                    # are output files in subdirs?
-                    out_files = [os.path.join(output_dir, f)
-                                 for f in os.listdir(output_dir)]
-                    out_files = filter(lambda f: os.path.isfile(f), out_files)
+                    out_files = []
+                    for root, _, files in os.walk(output_dir):
+                        for name in files:
+                            out_files.append(os.path.join(root, name))
                     self.result = {"data": out_files, "result_type": 1}
                     if self.check_mem:
                         self.result = (self.result, estm_mem)

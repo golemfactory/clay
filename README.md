@@ -1,5 +1,9 @@
 # Golem
 
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/40ffpq86bl00um02?svg=true)](https://ci.appveyor.com/project/golemfactory/golem)
+[![CircleCI](https://circleci.com/gh/golemfactory/golem.svg?style=shield)](https://circleci.com/gh/golemfactory/golem)
+[![Codecov](https://codecov.io/gh/golemfactory/golem/badge.svg)](https://codecov.io/gh/golemfactory/golem)
+
 The aim of the Golem project is to create a global prosumer market for computing power, in which
 producers may sell spare CPU time of their personal computers and consumers may acquire resources
 for computation-intensive tasks. In technical terms, Golem is designed as a decentralised peer-to-peer
@@ -8,9 +12,9 @@ that there are two types of nodes in the Golem network: requestor nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
-## Installing and testing 
+## Installing and testing
 
-Follow the installation instruction from 
+Follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
 
 [Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
@@ -20,8 +24,8 @@ Follow the installation instruction from
 ## Warning
 
 Golem Project is a work in progress. Current version is an alpha stage of Brass Golem and it's not fully secured. Check [this list of issues](https://github.com/golemfactory/golem/labels/security) for more details.
-Please be sure that you understand the risk before installing the software. 
- 
+Please be sure that you understand the risk before installing the software.
+
 ## License
 
 Golem is open source and distributed under [GPLv3 license](https://www.gnu.org/licenses/gpl-3.0.html).
@@ -47,12 +51,11 @@ Benchmarks:
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.
- 
+
 ## Contact  
 
-Help us develop the application by submitting issues and bugs. See instruction 
-[here](https://github.com/golemfactory/golem/wiki/Testing). 
+Help us develop the application by submitting issues and bugs. See instruction
+[here](https://github.com/golemfactory/golem/wiki/Testing).
 
 You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
 Get an invitation [here](http://golemproject.org:3000).
-

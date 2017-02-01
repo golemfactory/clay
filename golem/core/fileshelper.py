@@ -150,9 +150,9 @@ def inner_dir_path(path, directory):
 
 
 def du(path):
-    """ Imitates bash "du -h <path>" command behaviour. Returns the estiamted size of this directory
+    """ Imitates bash "du -h <path>" command behaviour. Returns the estimated size of this directory
     :param str path: path to directory which size should be measured
-    :return str: directory size in human readeable format (eg. 1 Mb) or "-1" if an error occurs.
+    :return str: directory size in human readable format (eg. 1 Mb) or "-1" if an error occurs.
     """
     try:
         size = int(subprocess.check_output(['du', '-sb', path]).split()[0])

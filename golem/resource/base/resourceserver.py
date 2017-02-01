@@ -2,10 +2,12 @@ import copy
 import logging
 from threading import Lock
 
+from enum import Enum
+
 logger = logging.getLogger(__name__)
 
 
-class TransferStatus(object):
+class TransferStatus(Enum):
     idle = 0
     transferring = 1
     complete = 2
@@ -13,7 +15,7 @@ class TransferStatus(object):
     failed = 4
 
 
-class BaseResourceServer:
+class BaseResourceServer(object):
 
     lock = Lock()
 
@@ -35,15 +37,15 @@ class BaseResourceServer:
         if self.dir_manager.root_path == config_desc.root_path:
             return
 
-        old_resource_dir = self.resource_manager.get_root_dir()
+        old_resource_dir = self.get_distributed_resource_root()
 
         self.dir_manager.root_path = config_desc.root_path
         self.dir_manager.node_name = config_desc.node_name
 
-        self.resource_manager.copy_resources(old_resource_dir)
+        self.resource_manager.storage.copy_dir(old_resource_dir)
 
     def get_distributed_resource_root(self):
-        return self.resource_manager.get_root_dir()
+        return self.resource_manager.storage.get_root()
 
     def get_peers(self):
         self.client.get_resource_peers()
@@ -53,7 +55,8 @@ class BaseResourceServer:
 
     def add_task(self, files, task_id, client_options=None):
         self.resource_manager.add_task(files, task_id, client_options=client_options)
-        res = self.resource_manager.list_split_resources(task_id)
+        res = self.resource_manager.storage.get_resources(task_id)
+        res = self.resource_manager.storage.split_resources(res)
         if res:
             logger.debug("Resource server: resource list: {} (client options: {})"
                          .format(res, client_options))
@@ -69,8 +72,8 @@ class BaseResourceServer:
 
         with self.lock:
             for filename, multihash in files:
-                exists = self.resource_manager.get_resource_entry(filename, task_id,
-                                                                  multihash=multihash)
+                exists = self.resource_manager.storage.get_path_and_hash(filename, task_id,
+                                                                         multihash=multihash)
                 if not exists:
                     self._add_resource_to_get(filename, multihash, task_id, client_options)
                     num += 1

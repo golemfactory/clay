@@ -65,7 +65,7 @@ class SystemMonitor(object):
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):
-        "Main PubSub listener for golem_monitor channel"
+        """ Main PubSub listener for golem_monitor channel """
         method_name = "on_%s" % (event,)
         if not hasattr(self, method_name):
             log.warning('Unrecognized event received: golem_monitor %s', event)

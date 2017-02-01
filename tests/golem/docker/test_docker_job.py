@@ -7,8 +7,8 @@ import time
 import uuid
 from os import path
 
-import requests
 import docker.errors
+import requests
 
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
@@ -28,6 +28,9 @@ class TestDockerJob(DockerTestCase):
         """Abstract method, should be overriden by subclasses"""
         pass
 
+    def _get_test_tag(self):
+        return "latest"
+
     TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
@@ -43,8 +46,28 @@ class TestDockerJob(DockerTestCase):
         if not is_windows():
             os.chmod(self.test_dir, 0770)
 
-        self.image = DockerImage(self._get_test_repository())
+        self.image = DockerImage(self._get_test_repository(), tag=self._get_test_tag())
         self.test_job = None
+
+    def testDockerJobInit(self):
+        with self.assertRaises(TypeError):
+            DockerJob(None, "scr", [], '/var/lib/resources/', '/var/lib/work', '/var/lib/out')
+        job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir, self.work_dir, self.output_dir)
+        self.assertEqual(job.image, self.image)
+        self.assertEqual(job.script_src, self.TEST_SCRIPT)
+        self.assertEqual(job.parameters, {})
+        self.assertEqual(job.host_config, {})
+        self.assertEqual(job.resources_dir, self.resources_dir)
+        self.assertEqual(job.work_dir, self.work_dir)
+        self.assertEqual(job.output_dir, self.output_dir)
+        self.assertIsNone(job.resources_dir_mod)
+        self.assertIsNone(job.work_dir_mod)
+        self.assertIsNone(job.output_dir_mod)
+        self.assertIsNone(job.container)
+        self.assertIsNone(job.container_id)
+        self.assertIsNone(job.container_log)
+        self.assertEquals(job.state, 'new')
+        self.assertIsNone(job.logging_thread)
 
     def tearDown(self):
         if self.test_job and self.test_job.container:
@@ -69,7 +92,10 @@ class TestBaseDockerJob(TestDockerJob):
     """Tests Docker job using the base image golem/base"""
 
     def _get_test_repository(self):
-        return "golem/base"
+        return "golemfactory/base"
+
+    def _get_test_tag(self):
+        return "1.2"
 
     def test_create(self):
         job = self._create_test_job()

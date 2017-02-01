@@ -16,10 +16,14 @@ class TestSimpleHash(unittest.TestCase):
         ex1 = ""
         hex1 = "da39a3ee5e6b4b0d3255bfef95601890afd80709"
         b641 = "2jmj7l5rSw0yVb/vlWAYkK/YBwk=\n"
+        hash1 = "\xda9\xa3\xee^kK\r2U\xbf\xef\x95`\x18\x90\xaf\xd8\x07\t"
         ex2 = "The quick brown fox jumps over the lazy dog"
         hex2 = "2fd4e1c67a2d28fced849ee1bb76e7391b93eb12"
         b642 = "L9ThxnotKPzthJ7hu3bnORuT6xI=\n"
+        hash2 = "/\xd4\xe1\xc6z-(\xfc\xed\x84\x9e\xe1\xbbv\xe79\x1b\x93\xeb\x12"
 
+        self.assertEquals(hash1, SimpleHash.hash(ex1))
+        self.assertEquals(hash2, SimpleHash.hash(ex2))
         self.assertEquals(hex1, SimpleHash.hash_hex(ex1))
         self.assertEquals(hex2, SimpleHash.hash_hex(ex2))
         self.assertEquals(b641, SimpleHash.hash_base64(ex1))

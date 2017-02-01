@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from mock import Mock
 
-from gui.application import GNRGui
+from gui.application import Gui
 from gui.view.appmainwindow import AppMainWindow
 from gui.view.tasktableelem import TaskTableElem, ItemMap
 
@@ -10,7 +10,7 @@ from gui.view.tasktableelem import TaskTableElem, ItemMap
 class TestTaskTableElem(TestCase):
     def setUp(self):
         super(TestTaskTableElem, self).setUp()
-        self.gui = GNRGui(Mock(), AppMainWindow)
+        self.gui = Gui(Mock(), AppMainWindow)
 
     def tearDown(self):
         super(TestTaskTableElem, self).tearDown()

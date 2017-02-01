@@ -1,5 +1,9 @@
 import abc
 import copy
+
+import subprocess
+from enum import Enum
+
 import jsonpickle as json
 import logging
 import os
@@ -19,7 +23,7 @@ from ipfsApi.http import HTTPClient, pass_defaults
 from golem.core.hostaddress import ip_address_private
 from golem.http.stream import StreamMonitor, ChunkStream
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.resource.client import ClientCommands, ClientConfig, ClientHandler, IClient, ClientOptions
+from golem.resource.client import ClientConfig, ClientHandler, IClient, ClientOptions
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +37,11 @@ IPFS_BOOTSTRAP_NODES = [
 ]
 
 
-class IPFSCommands(ClientCommands):
+class IPFSCommands(Enum):
+
+    add = 0
+    get = 1
+    id = 2
     pin = 3
     unpin = 4
 
@@ -44,8 +52,6 @@ class IPFSCommands(ClientCommands):
     swarm_connect = 8
     swarm_disconnect = 9
     swarm_peers = 10
-
-IPFSCommands.build_names()
 
 
 class IPFSConfig(ClientConfig):
@@ -276,8 +282,9 @@ class IPFSClient(IClient, ipfsApi.Client):
         self._refs_local = ArgCommand('/refs/local')
         self._bootstrap_list = ArgCommand('/bootstrap/list')
 
-    def build_options(self, node_id, **kwargs):
-        return ClientOptions(self.CLIENT_ID, self.VERSION)
+    @staticmethod
+    def build_options(node_id, **kwargs):
+        return ClientOptions(IPFSClient.CLIENT_ID, IPFSClient.VERSION, **kwargs)
 
     def swarm_connect(self, *args, **kwargs):
         return self._swarm_connect.request(self._client, *args, **kwargs)
@@ -306,7 +313,7 @@ class IPFSClientHandler(ClientHandler):
 
     def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("IPFS: Error executing command '{}': {}"
-                     .format(self.commands.names[cmd], exc))
+                     .format(cmd.name, exc))
 
 
 class IPFSAddress(object):
@@ -383,3 +390,11 @@ class IPFSAddress(object):
             encap_proto=split[4] if encap else None,
             node_id=split[-1]
         )
+
+
+def ipfs_running():
+    try:
+        result = subprocess.check_call(['ipfs', 'swarm', 'peers'])
+    except Exception:
+        return False
+    return result == 0

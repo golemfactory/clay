@@ -44,7 +44,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                      success, error, async=True, client_options=None, output_dir=None):
 
         filename = str(uuid.uuid4())
-        path = self.resource_manager.get_resource_path(filename, task_id)
+        path = self.resource_manager.storage.get_path(filename, task_id)
         output_dir = os.path.join(output_dir or os.path.dirname(path), subtask_id)
 
         def package_downloaded(*args, **kwargs):
@@ -73,7 +73,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         task_id = task_result.task_id
         out_name = task_id + "." + task_result.subtask_id
-        out_path = self.resource_manager.get_resource_path(out_name, task_id)
+        out_path = self.resource_manager.storage.get_path(out_name, task_id)
 
         if os.path.exists(out_path):
             os.remove(out_path)
@@ -84,7 +84,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                   task_result=task_result)
 
         self.resource_manager.add_resource(package, task_id, client_options=client_options)
-        files = self.resource_manager.list_resources(task_id)
+        files = self.resource_manager.storage.get_resources(task_id)
 
         for file_obj in files:
             name = file_obj if isinstance(file_obj, basestring) else file_obj[0]

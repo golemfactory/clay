@@ -11,7 +11,7 @@ from variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
 
 logger = logging.getLogger(__name__)
 
-# Old method that works on Windows, but not on Linux (usually resturn only 127.0.0.1)
+# Old method that works on Windows, but not on Linux (usually returns only 127.0.0.1)
 # def ip4_addresses():
 #   return [i[4][0] for i in socket.getaddrinfo(socket.gethostname(), 0, socket.AF_INET)]
 
@@ -34,7 +34,7 @@ def ip_addresses(use_ipv6=False):
         for addrInfo in ip:
             addr = addrInfo.get('addr')
             if addr is not None:
-                addresses.append(addr)
+                addresses.append(addr.split("%")[0])
             if '127.0.0.1' in addresses:
                 addresses.remove('127.0.0.1')
     return addresses

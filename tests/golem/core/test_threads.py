@@ -56,7 +56,7 @@ class TestQueueExecutor(unittest.TestCase):
 
         executor.finish()
 
-        assert inner_mock.called
+        self.assertTrue(inner_mock.called)
 
 
 class TestThreadExecutor(unittest.TestCase):
@@ -70,13 +70,13 @@ class TestThreadExecutor(unittest.TestCase):
         j3 = Thread(30)
 
         executor.push(j1)
-        assert len(executor._queue) == 1
+        self.assertEqual(len(executor._queue), 1)
         executor.push(j2)
-        assert len(executor._queue) == 2
+        self.assertEqual(len(executor._queue), 2)
         executor.push(j3)
-        assert len(executor._queue) == 2
+        self.assertEqual(len(executor._queue), 2)
 
-        assert j2 not in executor._queue
+        self.assertNotIn(j2, executor._queue)
 
     def test_order(self):
         executor = ThreadQueueExecutor()
@@ -89,9 +89,9 @@ class TestThreadExecutor(unittest.TestCase):
 
         executor.finish()
 
-        assert j1.called
-        assert j2.called
-        assert len(executor._queue) == 0
+        self.assertTrue(j1.called)
+        self.assertTrue(j2.called)
+        self.assertEqual(len(executor._queue), 0)
 
         j1.working = False
         j2.working = False

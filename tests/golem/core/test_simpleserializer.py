@@ -4,7 +4,7 @@ import unittest
 from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, DictCoder, DictSerializer
 
 
-class Example:
+class Example(object):
     def __init__(self):
         self.int = 4
         self.string = u"abcdefghi\\kwa \\bla"
