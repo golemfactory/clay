@@ -1,8 +1,8 @@
 import os
 import uuid
 
+from golem.resource.base.resourcesmanager import TestResourceManager
 from golem.resource.dirmanager import DirManager
-from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
 from golem.task.taskbase import result_types
@@ -45,7 +45,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         @staticmethod
         def create(result_manager, node_name, task_id):
             rm = result_manager.resource_manager
-            res_dir = rm.get_resource_dir(task_id)
+            res_dir = rm.storage.get_dir(task_id)
 
             out_file = os.path.join(res_dir, 'out_file')
             out_dir = os.path.join(res_dir, 'out_dir')
@@ -76,7 +76,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path)
-        self.resource_manager = IPFSResourceManager(self.dir_manager,
+        self.resource_manager = TestResourceManager(self.dir_manager,
                                                     resource_dir_method=self.dir_manager.get_task_output_dir)
 
     def testGenSecret(self):
@@ -128,7 +128,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             self.fail("Error downloading package: {}".format(exc))
 
         dir_manager = DirManager(self.path)
-        resource_manager = IPFSResourceManager(dir_manager,
+        resource_manager = TestResourceManager(dir_manager,
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 
         new_manager = EncryptedResultPackageManager(resource_manager)

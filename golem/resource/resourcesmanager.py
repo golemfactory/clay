@@ -63,8 +63,6 @@ class ResourcesManager:
 
     def get_resource_header(self, task_id):
 
-        task_res_header = None
-
         dir_name = self.get_resource_dir(task_id)
 
         if os.path.exists(dir_name):
@@ -77,8 +75,6 @@ class ResourcesManager:
     def get_resource_delta(self, task_id, resource_header):
 
         dir_name = self.get_resource_dir(task_id)
-
-        task_res_header = None
 
         logger.info("Getting resource for delta dir: {} header:{}".format(dir_name, resource_header))
 

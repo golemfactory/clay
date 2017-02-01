@@ -28,6 +28,9 @@ class TestDockerJob(DockerTestCase):
         """Abstract method, should be overriden by subclasses"""
         pass
 
+    def _get_test_tag(self):
+        return "latest"
+
     TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
@@ -43,7 +46,7 @@ class TestDockerJob(DockerTestCase):
         if not is_windows():
             os.chmod(self.test_dir, 0770)
 
-        self.image = DockerImage(self._get_test_repository())
+        self.image = DockerImage(self._get_test_repository(), tag=self._get_test_tag())
         self.test_job = None
 
     def testDockerJobInit(self):
@@ -89,7 +92,10 @@ class TestBaseDockerJob(TestDockerJob):
     """Tests Docker job using the base image golem/base"""
 
     def _get_test_repository(self):
-        return "golemfactory/base:1.2"
+        return "golemfactory/base"
+
+    def _get_test_tag(self):
+        return "1.2"
 
     def test_create(self):
         job = self._create_test_job()

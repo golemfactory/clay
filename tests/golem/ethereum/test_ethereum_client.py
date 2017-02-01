@@ -49,3 +49,14 @@ class EthereumClientTest(TempDirFixture):
         client = Client(self.tempdir)
         assert client.get_logs(from_block='earliest', to_block='latest',
                                topics=[log_id, addr]) == []
+
+    def test_filters(self):
+        """ Test creating filter and getting logs """
+        client = Client(self.tempdir)
+        filter_id = client.new_filter()
+        assert type(filter_id) is unicode
+        assert filter_id.startswith('0x')
+        assert len(filter_id) == 34
+
+        entries = client.get_filter_changes(filter_id)
+        assert not entries

@@ -236,8 +236,8 @@ class LuxTask(RenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
 
-        working_directory = self._get_working_directory()
-        return self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        return self._new_compute_task_def(hash, extra_data, None, perf_index)
+
 
     def computation_finished(self, subtask_id, task_result, result_type=0):
         test_result_flm = self.__get_test_flm()
@@ -286,9 +286,7 @@ class LuxTask(RenderingTask):
             os.makedirs(self.test_task_res_path)
 
         scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], self.output_format)
-        working_directory = self._get_working_directory()
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -304,7 +302,7 @@ class LuxTask(RenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
         # Search for flm - the result of testing a lux task

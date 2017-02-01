@@ -40,8 +40,7 @@
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
-      "$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py"
+      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend"
     ]
   },
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",

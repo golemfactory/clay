@@ -211,19 +211,23 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type):
-        """ Change received results into a list of image files, filter out ".log" files that should
-        represents stdout and stderr from computing machine.
+    def interpret_task_results(self, subtask_id, task_results, result_type, sort=True):
+        """Filter out ".log" files from received results. Log files should represent
+        stdout and stderr from computing machine. Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files if result_type is equal to result_types["files"] or
-        it may be a cbor serialized zip file containing all files if result_type is equal to result_types["data"]
-        :param result_type: a number from result_types, it may represents data format or files format
-        :return: list of files that don't have .log extension
+        :param task_results: it may be a list of files, if result_type is equal to
+        result_types["files"] or it may be a cbor serialized zip file containing all files,
+        if result_type is equal to result_types["data"]
+        :param result_type: a number from result_types, it may represents data format or files
+        format
+        :param bool sort: *default: True* Sort results, if set to True
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
         tr_files = self.load_task_results(task_results, result_type, subtask_id)
         self.results[subtask_id] = self.filter_task_results(tr_files, subtask_id)
+        if sort:
+            self.results[subtask_id].sort()
 
     def result_incoming(self, subtask_id):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
