@@ -52,11 +52,11 @@ class IClient(object):
         pass
 
     @abc.abstractmethod
-    def add(self, files, recursive=False, client_options=None, **kwargs):
+    def add(self, files, client_options=None, **kwargs):
         pass
 
     @abc.abstractmethod
-    def get_file(self, multihash, client_options=None, **kwargs):
+    def get(self, multihash, client_options=None, **kwargs):
         pass
 
     @abc.abstractmethod
@@ -266,7 +266,7 @@ class TestClient(IClient):
             Hash=resource_hash
         )
 
-    def get_file(self, multihash, filename=None, filepath=None, **_):
+    def get(self, multihash, filename=None, filepath=None, **_):
         path = self._resources.get(multihash)
 
         if not os.path.exists(filepath):

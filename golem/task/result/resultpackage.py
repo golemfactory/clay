@@ -150,8 +150,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
                node=None, task_result=None, **kwargs):
 
         disk_files, cbor_files = self.__collect_files(task_result,
-                                                        disk_files=disk_files,
-                                                        cbor_files=cbor_files)
+                                                      disk_files=disk_files,
+                                                      cbor_files=cbor_files)
 
         descriptor = TaskResultDescriptor(node, task_result)
         cbor_files.append((self.descriptor_file_name, descriptor))

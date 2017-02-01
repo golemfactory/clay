@@ -48,7 +48,6 @@ def run_exit():
 class TestProcessMonitor(LogTestCase):
 
     def test_monitor(self):
-
         mp = MockProcess()
         p1 = Process(target=run_exit)
         p2 = Process(target=mp.run)
@@ -57,6 +56,7 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
+        pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
         wait_for_processes(10, p1, p2)
@@ -64,8 +64,8 @@ class TestProcessMonitor(LogTestCase):
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
 
-    def test_monitor_2(self):
-        mp1, mp2 = MockProcess(), MockProcess(timeout=0)
+    def test_death(self):
+        mp1, mp2 = MockProcess(), MockProcess(timeout=1)
 
         p1 = Process(target=mp1.run)
         p2 = Process(target=mp2.run)
@@ -74,6 +74,7 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
+        pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
         wait_for_processes(10, p1, p2)
@@ -83,8 +84,6 @@ class TestProcessMonitor(LogTestCase):
             self.fail("Processes not killed after timeout")
 
     def test_exit(self):
-        import logging
-        logger = logging.getLogger("golem.core")
         mp1, mp2 = MockProcess(), MockProcess()
         p1 = Process(target=mp1.run)
         p2 = Process(target=mp2.run)
@@ -93,17 +92,30 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
-
-        def callback():
-            logger.warning("Shutting down...")
-
-        pm.add_callback(callback=callback)
-
+        pm.add_callbacks(pm.kill_processes)
         pm.start()
-        with self.assertLogs(logger, level="WARNING"):
-            pm.exit()
+        pm.exit()
 
         wait_for_processes(10, p1, p2)
 
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
+
+    def test_add_remove_callbacks(self):
+        pm = ProcessMonitor()
+
+        pm.add_callbacks(pm.exit)
+        pm.remove_callbacks(pm.exit)
+
+        assert not pm._callbacks
+
+    def test_add_child_process(self):
+        mp1, mp2 = MockProcess(), MockProcess(timeout=1)
+
+        p1 = Process(target=mp1.run)
+        p2 = Process(target=mp2.run)
+
+        pm = ProcessMonitor(p1)
+        pm.add_child_processes(p2)
+
+        assert len(pm._child_processes) == 2

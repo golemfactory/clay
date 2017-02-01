@@ -48,9 +48,11 @@ def dir_files(directory):
 class Resource(object):
 
     def __init__(self, resource_hash, task_id=None, path=None):
+        self._path_split = None
+        self._path = None
+
         self.hash = resource_hash
         self.task_id = task_id
-        self.path_split = None
         self.path = path
 
     def __eq__(self, other):
@@ -66,25 +68,29 @@ class Resource(object):
         return unicode(self.__str__())
 
     def __repr__(self):
-        return self.__dict__
+        return str(self)
 
     @property
     def path(self):
-        if self.path_split:
-            return os.path.join(self.path_split)
+        return self._path
 
     @path.setter
     def path(self, value):
         if value is None:
-            self.path_split = None
+            self._path_split = None
         else:
-            self.path_split = split_path(value)
+            self._path_split = split_path(value)
+        self._path = value
 
     @property
-    def saved(self):
-        return self.path_split is not None
+    def path_split(self):
+        return self._path_split
 
-    def list_files(self):
+    @property
+    def exists(self):
+        return self.path and os.path.exists(self.path)
+
+    def contains_file(self, name):
         raise NotImplementedError()
 
 
@@ -92,7 +98,7 @@ class FileResource(Resource):
 
     def __init__(self, file_name, resource_hash, task_id=None, path=None):
         super(FileResource, self).__init__(resource_hash, task_id=task_id, path=path)
-        self.file_name = file_name
+        self.file_name = norm_path(file_name)
 
     def __eq__(self, other):
         return super(FileResource, self).__eq__(other) and \
@@ -102,14 +108,16 @@ class FileResource(Resource):
         return '{} ({}, task: {})'.format(
             self.file_name, self.hash, self.task_id)
 
-    def list_files(self):
-        return [self.file_name]
+    def contains_file(self, name):
+        return os.path.basename(self.file_name) == name
 
 
 class ResourceBundle(Resource):
 
     def __init__(self, files, bundle_hash, task_id=None, path=None):
         super(ResourceBundle, self).__init__(bundle_hash, task_id=task_id, path=path)
+        self._files = None
+        self._files_split = None
         self.files = files
 
     def __eq__(self, other):
@@ -120,54 +128,66 @@ class ResourceBundle(Resource):
         return '{} (bundle: {}, task: {})'.format(
             self.files, self.hash, self.task_id)
 
-    def list_files(self):
-        return list(self.files)
+    @property
+    def files(self):
+        return self._files
+
+    @files.setter
+    def files(self, value):
+        self._files = value
+        if value:
+            self._files_split = []
+            for v in value:
+                self._files_split.append(split_path(v))
+
+    @property
+    def files_split(self):
+        return self._files_split
+
+    def contains_file(self, name):
+        if self._files:
+            return any([os.path.basename(f) == name
+                        for f in self._files])
+        return False
 
 
 class ResourceCache(object):
 
     def __init__(self):
         self._lock = Lock()
-        # hash to file/dir path
-        self._hash_to_path = dict()
-        # file/dir path to hash
-        self._path_to_hash = dict()
+        # hash to resource
+        self._hash_to_res = dict()
+        # path to resource
+        self._path_to_res = dict()
         # category to relative file path
         self._cat_to_res = dict()
         # category to common path for resources
         self._cat_to_prefix = dict()
 
-    def set_path(self, resource_hash, path):
-        self._hash_to_path[resource_hash] = path
-        self._path_to_hash[path] = resource_hash
+    def add_resource(self, resource):
+        category = resource.task_id
 
-    def get_path(self, resource_hash, default=None):
-        return self._hash_to_path.get(resource_hash, default)
-
-    def get_hash(self, path, default=None):
-        return self._path_to_hash.get(path, default)
-
-    def remove_path(self, resource_hash):
-        path = self._hash_to_path.pop(resource_hash, None)
-        self._path_to_hash.pop(path, None)
-        return path
-
-    def add_resource(self, category, resource):
         with self._lock:
             resource_list = self._cat_to_res.get(category)
             if not resource_list:
                 self._cat_to_res[category] = resource_list = list()
             resource_list.append(resource)
 
-    def has_resource(self, category, resource):
-        return resource in self.get_resources(category)
+            self._hash_to_res[resource.hash] = resource
+            self._path_to_res[resource.path] = resource
 
-    def has_file(self, entry, category):
-        return entry in self._cat_to_res.get(category, [])
+    def get_by_hash(self, resource_hash, default=None):
+        return self._hash_to_res.get(resource_hash, default)
 
-    def set_resources(self, category, resources):
-        with self._lock:
-            self._cat_to_res[category] = resources
+    def get_by_path(self, resource_path, default=None):
+        return self._path_to_res.get(resource_path, default)
+
+    def has_resource(self, resource):
+        if resource.task_id and resource.task_id not in self._cat_to_res:
+            return False
+        if resource.hash and resource.hash not in self._hash_to_res:
+            return False
+        return resource.path in self._path_to_res
 
     def get_resources(self, category, default=None):
         return self._cat_to_res.get(category, default or [])
@@ -177,23 +197,21 @@ class ResourceCache(object):
             return self._cat_to_res.pop(category, [])
 
     def set_prefix(self, category, prefix):
-        self._cat_to_prefix[category] = prefix
+        self._cat_to_prefix[category] = norm_path(prefix)
 
     def get_prefix(self, category, default=''):
         return self._cat_to_prefix.get(category, default)
 
-    def remove_prefix(self, category):
-        return self._cat_to_prefix.pop(category, None)
-
     def remove(self, category):
         resources = self.remove_resources(category)
         for r in resources:
-            self.remove_path(r[1])
-        self.remove_prefix(category)
+            self._hash_to_res.pop(r.hash, None)
+            self._path_to_res.pop(r.path, None)
+        self._cat_to_prefix.pop(category, None)
 
     def clear(self):
-        self._hash_to_path = dict()
-        self._path_to_hash = dict()
+        self._hash_to_res = dict()
+        self._path_to_res = dict()
         self._cat_to_res = dict()
         self._cat_to_prefix = dict()
 
@@ -215,33 +233,18 @@ class ResourceStorage(object):
         resource_dir = self.get_dir(category)
         return os.path.join(resource_dir, norm_path(relative_file_path))
 
-    def get_path_and_hash(self, path, category,
-                          multihash=None, absolute_path=False):
-
-        if absolute_path:
-            res_path = norm_path(path)
-        else:
-            res_path = self.get_path(path, category)
-
-        res_path = to_unicode(res_path)
-
-        if multihash:
-            if self.cache.get_path(multihash) == res_path:
-                return res_path, multihash
-        else:
-            multihash = self.cache.get_hash(res_path)
-            if multihash:
-                return res_path, multihash
-
     def get_root(self):
         return self.dir_manager.get_node_dir()
 
     def get_resources(self, task_id):
         return self.cache.get_resources(task_id)
 
+    def has_resource(self, resource):
+        return self.cache.has_resource(resource) and resource.exists
+
     @staticmethod
     def split_resources(resources):
-        return [[split_path(r[0])] + r[1:] for r in resources]
+        return [[r.path_split, r.hash] for r in resources]
 
     @staticmethod
     def join_resources(resources):
@@ -258,6 +261,7 @@ class ResourceStorage(object):
         return results
 
     def relative_path(self, path, category):
+
         path = norm_path(path)
         common_prefix = self.cache.get_prefix(category)
         return_path = path.replace(common_prefix, '', 1)
@@ -276,33 +280,26 @@ class ResourceStorage(object):
             copy_file_tree(src_dir, root_dir)
             return True
 
-    def copy_file(self, src_path, dst_relative_path, category):
+    def copy(self, src_path, dst_relative_path, category):
 
+        dst_relative_path = norm_path(dst_relative_path)
         dst_path = self.get_path(dst_relative_path, category)
         src_path = norm_path(src_path)
-        dst_relative_path = norm_path(dst_relative_path)
 
         make_path_dirs(dst_path)
-        if os.path.exists(dst_path):
+
+        if os.path.isfile(dst_path):
             os.remove(dst_path)
+        elif os.path.isdir(dst_path):
+            shutil.rmtree(dst_path)
 
-        try:
+        if os.path.isfile(src_path):
             shutil.copyfile(src_path, dst_path)
-        except OSError as e:
-            logger.error("Resource storage: Error copying {} (as {}): {}"
-                         .format(src_path, dst_relative_path, e))
+        elif os.path.isdir(src_path):
+            copy_file_tree(src_path, dst_path)
         else:
-            return True
-
-    def copy_cached(self, dst_relative_path, res_hash, category):
-
-        cached_path = self.cache.get_path(res_hash)
-        if cached_path and os.path.exists(cached_path):
-
-            if self.copy_file(cached_path, dst_relative_path, category):
-                logger.debug("Resource storage: Resource copied {} ({})"
-                             .format(dst_relative_path, res_hash))
-                return True
+            raise ValueError("Error reading source path: '{}'"
+                             .format(src_path))
 
     def clear_cache(self):
         self.cache.clear()
@@ -337,119 +334,110 @@ class AbstractResourceManager(IClientHandler):
     def unpin_resource(self, multihash, client=None, client_options=None):
         pass
 
+    def get_resources(self, task_id):
+        return self.storage.get_resources(task_id)
+
+    def to_wire(self, resources):
+        return self.storage.split_resources(resources)
+
+    def from_wire(self, resources):
+        return self.storage.join_resources(resources)
+
+    def remove_task(self, task_id, client_options=None):
+        self.storage.cache.remove(task_id)
+
     def add_task(self, files, task_id,
                  client=None, client_options=None):
 
         if self.storage.cache.get_prefix(task_id):
-            logger.warn("Resource manager: Not re-adding task {}"
+            logger.warn("Resource manager: Task {} already exists"
                         .format(task_id))
             return
 
-        if files and len(files) == 1:
+        if len(files) == 1:
             prefix = os.path.dirname(next(iter(files)))
         else:
             prefix = common_dir(files)
 
-        prefix = norm_path(prefix)
         self.storage.cache.set_prefix(task_id, prefix)
-        self.add_resources(files, task_id,
-                           absolute_path=True,
-                           client=client,
-                           client_options=client_options)
+        self.add_files(files, task_id,
+                       absolute_path=True,
+                       client=client,
+                       client_options=client_options)
 
-    def remove_task(self, task_id, **kwargs):
-        self.storage.cache.remove(task_id)
+    def add_files(self, files, task_id,
+                  absolute_path=False, client=None, client_options=None):
 
-    def add_resources(self, resources, task_id,
-                      absolute_path=False, client=None, client_options=None):
-        client = client or self.new_client()
+        if files:
+            client = client or self.new_client()
 
-        if resources:
-            for resource in resources:
-                self.add_resource(resource, task_id,
-                                  absolute_path=absolute_path,
-                                  client=client,
-                                  client_options=client_options)
+            for path in files:
+                self.add_file(path, task_id,
+                              absolute_path=absolute_path,
+                              client=client,
+                              client_options=client_options)
 
-    def add_resource(self, resource, task_id,
-                     absolute_path=False, client=None, client_options=None):
+    def add_file(self, path, task_id,
+                 absolute_path=False, client=None, client_options=None):
 
         client = client or self.new_client()
-        resource = norm_path(resource)
+        path = norm_path(path)
 
         if absolute_path:
-            resource_path = resource
+            file_path = path
         else:
-            resource_path = self.storage.get_path(resource, task_id)
+            file_path = self.storage.get_path(path, task_id)
 
-        if not os.path.exists(resource_path):
-            logger.error("Resource manager: resource '{}' does not exist"
-                         .format(resource_path))
+        if not os.path.exists(file_path):
+            logger.error("Resource manager: file '{}' does not exist"
+                         .format(file_path))
             return
 
-        disk_resource = self.storage.get_path_and_hash(resource, task_id)
-
-        if disk_resource:
-            if self.storage.cache.has_file(disk_resource, task_id):
-                logger.debug("Resource manager: resource '{}' already exists in task {}"
-                             .format(resource, task_id))
-            else:
-                file_path, multihash = disk_resource
-                self._cache_resource(resource, file_path, multihash, task_id)
+        local = self.storage.cache.get_by_path(path)
+        if local and local.exists and local.task_id == task_id:
+            logger.debug("Resource manager: file '{}' already exists in task {}"
+                         .format(path, task_id))
         else:
-            is_dir = os.path.isdir(resource_path)
             response = self._handle_retries(client.add,
                                             self.commands.add,
-                                            resource_path,
-                                            recursive=is_dir,
+                                            file_path,
                                             client_options=client_options)
-            self._cache_response(resource, response, task_id)
+            self._cache_response(path, response, task_id)
 
-    def copy_resources(self, from_dir):
+    def copy_files(self, from_dir):
         self.storage.copy_dir(from_dir)
         AbstractResourceManager.__init__(self, self.storage.dir_manager,
                                          self.storage.resource_dir_method)
 
-    def pull_resource(self, filename, multihash, task_id,
+    def pull_resource(self, entry, task_id,
                       success, error,
                       client=None, client_options=None, async=True, pin=True):
 
-        filename = norm_path(filename)
+        resource = self._wrap_resource(entry, task_id)
 
-        if self.storage.get_path_and_hash(filename, task_id, multihash=multihash):
-            success(filename, multihash, task_id)
+        if self.storage.has_resource(resource):
+            success(entry, task_id)
             return
 
-        def success_wrapper(*args, **kwargs):
+        def success_wrapper(*_, **kwargs):
             self.__dec_downloads()
-
-            result = args[0][0]
-            result_filename = result[0]
-            result_multihash = result[1]
-            result_path = self.storage.get_path(result_filename, task_id)
-
-            self._clear_retry(self.commands.get, result_multihash)
+            self._clear_retry(self.commands.get, resource.hash)
 
             if pin:
-                self._cache_resource(result_filename,
-                                     result_path,
-                                     result_multihash,
-                                     task_id)
-                self.pin_resource(result_multihash)
+                self._cache_resource(resource)
+                self.pin_resource(resource.hash)
 
             logger.debug("Resource manager: {} ({}) downloaded"
-                         .format(result_filename, result_multihash))
+                         .format(resource.path, resource.hash))
 
-            success(filename, result_multihash, task_id)
+            success(entry, task_id)
             self.__process_queue()
 
-        def error_wrapper(exc, *args, **kwargs):
+        def error_wrapper(exception, *_, **kwargs):
             self.__dec_downloads()
 
-            if self._can_retry(exc, self.commands.get, multihash):
-                self.pull_resource(filename,
-                                   multihash,
-                                   task_id,
+            if self._can_retry(exception, self.commands.get, resource.hash):
+                self.pull_resource(resource, task_id,
                                    client_options=client_options,
                                    success=success,
                                    error=error,
@@ -457,36 +445,36 @@ class AbstractResourceManager(IClientHandler):
                                    pin=pin)
             else:
                 logger.error("Resource manager: error downloading {} ({}): {}"
-                             .format(filename, multihash, exc))
+                             .format(resource.path, resource.hash, exception))
 
-                error(exc, filename, multihash, task_id)
+                error(exception, entry, task_id)
                 self.__process_queue()
 
-        cached_path = self.storage.cache.get_path(multihash)
-        make_path_dirs(self.storage.get_path(filename, task_id))
+        make_path_dirs(self.storage.get_path(resource.path, task_id))
+        existing = self.storage.cache.get_by_hash(resource.hash)
 
-        if cached_path and os.path.exists(cached_path):
+        if existing:
 
             self.__inc_downloads()
             try:
-                self.storage.copy_cached(filename, multihash, task_id)
+                self.storage.copy(existing.path, resource.path, task_id)
             except Exception as exc:
                 error_wrapper(exc)
             else:
-                success_wrapper([[filename, multihash]])
+                success_wrapper(entry)
 
         else:
 
             if self.__can_download():
                 self.__inc_downloads()
-                self.__pull(filename, multihash, task_id,
+                self.__pull(resource, task_id,
                             success=success_wrapper,
                             error=error_wrapper,
                             client=client,
                             client_options=client_options,
                             async=async)
             else:
-                self.__push_to_queue(filename, multihash, task_id,
+                self.__push_to_queue(resource, task_id,
                                      success, error,
                                      client, client_options, async, pin)
 
@@ -494,73 +482,70 @@ class AbstractResourceManager(IClientHandler):
         logger.error("Resource manager: Error executing command '{}': {}"
                      .format(cmd.name, exc))
 
-    def _cache_response(self, resource, response, task_id):
+    def _cache_response(self, resource_name, response, task_id):
         if isinstance(response, list):
             for entry in response:
-                self._cache_response(resource, entry, task_id)
+                self._cache_response(resource_name, entry, task_id)
+
         elif response and 'Hash' in response and 'Name' in response:
-            if os.path.basename(response.get('Name')) != os.path.basename(resource):
+            if os.path.basename(response.get('Name')) != os.path.basename(resource_name):
                 raise Exception("Resource manager: Invalid response {}".format(response))
 
-            res_path = to_unicode(resource)
+            res_path = to_unicode(resource_name)
             res_hash = to_unicode(response.get('Hash'))
+            resource = self._wrap_resource((res_path, res_hash), task_id)
+            self._cache_resource(resource)
 
-            self._cache_resource(resource, res_path, res_hash, task_id)
-
-    def _cache_resource(self, resource, res_path, res_hash, task_id):
+    def _cache_resource(self, resource):
         """
         Caches information on a new resource.
-        :param resource: original resource name
-        :param res_path: resource path
-        :param res_hash: resource hash
-        :param task_id:   current task identifier
+        :param resource: resource object
         :return: file's path relative to task resource path
         """
-        if not os.path.exists(res_path):
-            if os.path.isabs(res_path):
+        if not os.path.exists(resource.path):
+            if os.path.isabs(resource.path):
                 raise Exception("Resource manager: File not found {} ({})"
-                                .format(res_path, res_hash))
+                                .format(resource.path, resource.hash))
+            logger.warn("Resource does not exist: {}"
+                        .format(resource.path))
             return
 
-        norm_file_path = norm_path(res_path)
-        norm_resource = norm_path(resource)
+        name = self.storage.relative_path(resource.path, resource.task_id)
+        self.storage.cache.add_resource(resource)
 
-        if not norm_file_path.endswith(norm_resource):
-            raise Exception("Resource manager: Invalid resource path {} ({})"
-                            .format(res_path, res_hash))
-
-        name = self.storage.relative_path(res_path, task_id)
-        self.storage.cache.add_resource(task_id, [name, res_hash])
-
-        if res_hash:
-            self.storage.cache.set_path(res_hash, res_path)
-        else:
-            logger.warn("Resource manager: No hash provided for {}".format(res_path))
-
-        logger.debug("Resource manager: Resource registered {} ({})".format(res_path, res_hash))
+        logger.debug("Resource manager: Resource cached: {}".format(resource))
         return name
 
-    def __pull(self, filename, multihash, task_id,
+    def _wrap_resource(self, resource, task_id=None):
+        resource_path, resource_hash = resource
+        path = self.storage.get_path(resource_path, task_id)
+        return FileResource(resource_path, resource_hash,
+                            task_id=task_id, path=path)
+
+    def __pull(self, resource, task_id,
                success, error,
                client=None, client_options=None, async=True):
 
         client = client or self.new_client()
         directory = self.storage.get_dir(task_id)
+        file_name = self.storage.relative_path(task_id, resource.path)
 
         kwargs = dict(
-            multihash=multihash,
-            filename=filename,
+            multihash=resource.hash,
+            filename=file_name,
             filepath=directory,
             client_options=client_options
         )
 
+        print "GET", kwargs
+
         if async:
-            self._async_call(client.get_file,
+            self._async_call(client.get,
                              success, error,
                              **kwargs)
         else:
             try:
-                data = client.get_file(**kwargs)
+                data = client.get(**kwargs)
                 success(data)
             except Exception as e:
                 error(e)

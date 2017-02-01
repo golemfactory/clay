@@ -42,7 +42,7 @@ class HTTPResourceManagerClient(IClient):
 
         return ClientOptions(cls.CLIENT_ID, cls.VERSION, options)
 
-    def add(self, files, recursive=False, **kwargs):
+    def add(self, files, **kwargs):
         results = []
 
         if files:
@@ -57,11 +57,11 @@ class HTTPResourceManagerClient(IClient):
                     })
             else:
                 for f in files:
-                    results.extend(self.add(f, recursive=False, **kwargs))
+                    results.extend(self.add(f, **kwargs))
 
         return results
 
-    def get_file(self, multihash, **kwargs):
+    def get(self, multihash, **kwargs):
 
         file_path = kwargs.pop('filepath')
         file_name = kwargs.pop('filename')

@@ -257,7 +257,7 @@ class IPFSClientFileCommand(ipfsApi.Command):
         return None
 
 
-class IPFSClient(IClient, ipfsApi.Client):
+class IPFSClient(ipfsApi.Client, IClient):
 
     """ Class of ipfsApi.Client methods decorated with response wrapper """
 
@@ -293,12 +293,6 @@ class IPFSClient(IClient, ipfsApi.Client):
 
     def bootstrap_list(self, **kwargs):
         return self._bootstrap_list.request(self._client, **kwargs)
-
-    def get_file(self, multihash, **kwargs):
-        return self._get.request(self._client, multihash, **kwargs)
-
-    def get(self, multihash, **kwargs):
-        raise NotImplementedError("Please use the get_file method")
 
 
 class IPFSClientHandler(ClientHandler):

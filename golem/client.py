@@ -35,6 +35,7 @@ from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
@@ -177,7 +178,7 @@ class Client(object):
 
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
         log.info("Starting p2p server ...")
@@ -533,8 +534,8 @@ class Client(object):
         if state:
             return DictSerializer.dump(state)
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.resource_server.download_resources(resources, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)

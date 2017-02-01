@@ -189,17 +189,6 @@ class TestResourceStorage(_Common.ResourceSetUp):
         src_path = os.path.join(task_dir, 'dir', 'file')
         assert self.storage.relative_path(src_path, self.task_id) == os.path.join('dir', 'file')
 
-    def test_get_path_and_hash(self):
-
-        resource = self.test_dir_file
-        resource_hash = str(uuid.uuid4())
-        self.storage.cache.set_path(resource_hash, resource)
-
-        assert self.storage.get_path_and_hash(resource, self.task_id)
-        assert not self.storage.get_path_and_hash(resource + '_2', self.task_id)
-        assert self.storage.get_path_and_hash(resource, self.task_id, multihash=resource_hash)
-        assert not self.storage.get_path_and_hash(resource, self.task_id, multihash=resource_hash + '_2')
-
     def test_split_join_resources(self):
 
         resources = [[r, str(uuid.uuid4())] for r in self.joined_resources]
@@ -221,7 +210,7 @@ class TestResourceStorage(_Common.ResourceSetUp):
             [os.path.join('split', 'path'), '4']
         ]
 
-    def test_copy_file(self):
+    def test_copy(self):
 
         task_dir = self.storage.get_dir(self.task_id)
         self.storage.cache.set_prefix(self.task_id, task_dir)
@@ -233,28 +222,8 @@ class TestResourceStorage(_Common.ResourceSetUp):
             dst_path = self.storage.get_path(relative_path, new_category)
 
             assert file_path != dst_path
-            self.storage.copy_file(file_path, relative_path, new_category)
+            self.storage.copy(file_path, relative_path, new_category)
             assert os.path.exists(dst_path)
-
-    def test_copy_cached(self):
-        resource_hash = str(uuid.uuid4())
-        self.storage.cache.set_path(resource_hash, self.test_dir_file)
-
-        assert self.storage.copy_cached(
-            os.path.join('other', 'path'),
-            resource_hash,
-            self.task_id
-        )
-        assert not self.storage.copy_cached(
-            os.path.join('other', 'path'),
-            resource_hash + '_2',
-            self.task_id
-        )
-        assert self.storage.copy_cached(
-            os.path.join('other', 'path'),
-            resource_hash,
-            self.task_id + '_2'
-        )
 
 
 class TestAbstractResourceManager(_Common.ResourceSetUp):
@@ -263,30 +232,30 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         _Common.ResourceSetUp.setUp(self)
         self.resource_manager = TestResourceManager(self.dir_manager)
 
-    def test_copy_resources(self):
+    def test_copy_files(self):
         old_resource_dir = self.resource_manager.storage.get_root()
         prev_content = os.listdir(old_resource_dir)
 
         self.dir_manager.node_name = "another" + self.node_name
-        self.resource_manager.copy_resources(old_resource_dir)
+        self.resource_manager.copy_files(old_resource_dir)
 
         assert os.listdir(self.resource_manager.storage.get_root()) == prev_content
 
-    def test_add_resource(self):
+    def test_add_file(self):
         self.resource_manager.storage.clear_cache()
 
-        self.resource_manager.add_resource(self.test_dir_file, self.task_id)
+        self.resource_manager.add_file(self.test_dir_file, self.task_id)
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == 1
 
-        self.resource_manager.add_resource('/.!&^%', self.task_id)
+        self.resource_manager.add_file('/.!&^%', self.task_id)
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == 1
 
-    def test_add_resources(self):
+    def test_add_files(self):
         self.resource_manager.storage.clear_cache()
-        self.resource_manager.add_resources(self.target_resources, self.task_id,
-                                            absolute_path=True)
+        self.resource_manager.add_files(self.target_resources, self.task_id,
+                                        absolute_path=True)
 
         storage = self.resource_manager.storage
         resources = storage.get_resources(self.task_id)
@@ -301,10 +270,10 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
 
         storage.clear_cache()
 
-        self.resource_manager.add_resources([self.test_dir_file], self.task_id)
+        self.resource_manager.add_files([self.test_dir_file], self.task_id)
         assert len(storage.get_resources(self.task_id)) == 1
 
-        self.resource_manager.add_resources(['/.!&^%'], self.task_id)
+        self.resource_manager.add_files(['/.!&^%'], self.task_id)
         assert len(storage.get_resources(self.task_id)) == 1
 
     def test_add_task(self):

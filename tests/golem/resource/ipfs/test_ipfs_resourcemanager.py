@@ -53,7 +53,7 @@ class TestIPFSResourceManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         resources = rm.storage.get_resources(self.task_id)
 
         result = rm.pin_resource(resources[0][1])
@@ -63,7 +63,7 @@ class TestIPFSResourceManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         resources = rm.storage.get_resources(self.task_id)
 
         rm.pin_resource(resources[0][1])
@@ -73,7 +73,7 @@ class TestIPFSResourceManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         rls = rm.storage.get_resources(self.task_id)
         rl = rls[0]
         multihash = rl[1]

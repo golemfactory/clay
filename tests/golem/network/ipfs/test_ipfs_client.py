@@ -68,9 +68,9 @@ class TestIpfsClient(TestDirFixture):
 
         tmp_filename = 'tmp_file'
 
-        assert client.get_file(first_response_hash(response),
-                               filepath=self.test_dir,
-                               filename=tmp_filename)
+        assert client.get(first_response_hash(response),
+                          filepath=self.test_dir,
+                          filename=tmp_filename)
 
         tmp_file_path = os.path.join(self.test_dir, tmp_filename)
 
@@ -171,9 +171,9 @@ class TestChunkedHttpClient(TestDirFixture):
                 if name.startswith(root_path) and 'Hash' in added:
                     target_filename = 'downloaded_file'
 
-                    result = client.get_file(added['Hash'],
-                                             filepath=self.target_dir,
-                                             filename=target_filename)
+                    result = client.get(added['Hash'],
+                                        filepath=self.target_dir,
+                                        filename=target_filename)
 
                     filename, multihash = result[0]
                     filepath = os.path.join(self.target_dir, filename)
@@ -182,10 +182,10 @@ class TestChunkedHttpClient(TestDirFixture):
                     assert os.path.exists(filepath)
 
                     with self.assertRaises(Exception):
-                        client.get_file(added['Hash'],
-                                        filepath=self.target_dir,
-                                        filename=target_filename,
-                                        compress=False)
+                        client.get(added['Hash'],
+                                   filepath=self.target_dir,
+                                   filename=target_filename,
+                                   compress=False)
 
     def testGet(self):
         client = IPFSClient()

@@ -187,8 +187,7 @@ def start_app(start_ranking=True, datadir=None,
     from golem.core.processmonitor import ProcessMonitor
 
     process_monitor = ProcessMonitor(gui_process)
-    process_monitor.set_callbacks(process_monitor.kill_processes,
-                                  process_monitor.stop,
+    process_monitor.add_callbacks(process_monitor.exit,
                                   stop_reactor)
     process_monitor.start()
 

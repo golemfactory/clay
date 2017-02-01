@@ -82,9 +82,8 @@ class TestResourceServer(TestDirFixture):
     @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
     def testGetResources(self):
         rs = self.testAddTask()
-        rm = rs.resource_manager
 
-        rm.add_files_to_get([
+        rs.download_resources([
             (u'filename', u'multihash'),
             (u'filename_2', u'multihash_2'),
             (u'filename_2', u'')
@@ -179,7 +178,7 @@ class TestResourceServer(TestDirFixture):
         rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
         rs.resource_manager.storage.clear_cache()
-        rs.resource_manager.add_resources(self.target_resources, self.task_id)
+        rs.resource_manager.add_files(self.target_resources, self.task_id)
         resources = rs.resource_manager.storage.get_resources(self.task_id)
         resources_len = len(resources)
 
@@ -193,16 +192,16 @@ class TestResourceServer(TestDirFixture):
             relative_resources.append((resource[0].replace(common_path, '', 1),
                                        resource[1]))
 
-        rs.add_files_to_get(resources, self.task_id)
+        rs.download_resources(resources, self.task_id)
         assert len(rs.waiting_resources) == 0
 
         rs_aux = BaseResourceServer(TestResourceManager(self.dir_manager),
                                     self.dir_manager_aux, keys_auth, client)
 
-        rs_aux.add_files_to_get(relative_resources, self.task_id)
+        rs_aux.download_resources(relative_resources, self.task_id)
         assert len(rs_aux.waiting_resources) == resources_len
 
-        rs_aux.get_resources(async=False)
+        rs_aux._download_resources(async=False)
         rm_aux = rs_aux.resource_manager
 
         for entry in relative_resources:
@@ -234,7 +233,7 @@ class TestResourceServer(TestDirFixture):
 
         assert not rs.resources_to_get
 
-        rs.add_files_to_get(test_files, self.task_id)
+        rs.download_resources(test_files, self.task_id)
 
         assert len(rs.resources_to_get) == len(test_files)
 
@@ -244,7 +243,7 @@ class TestResourceServer(TestDirFixture):
         rs, file_names = self.testAddFilesToGet()
 
         for i, entry in enumerate(file_names):
-            rs.resource_downloaded(entry[0], str(i), self.task_id)
+            rs._download_success(entry[0], str(i), self.task_id)
 
         assert not rs.resources_to_get
 
@@ -252,7 +251,7 @@ class TestResourceServer(TestDirFixture):
         rs, file_names = self.testAddFilesToGet()
 
         for entry in file_names:
-            rs.resource_download_error(Exception("Error " + entry[0]),
-                                       entry[0], entry[1], self.task_id)
+            rs._download_error(Exception("Error " + entry[0]),
+                               entry[0], entry[1], self.task_id)
 
         assert len(rs.resources_to_get) == 0

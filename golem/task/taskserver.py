@@ -115,8 +115,8 @@ class TaskServer(PendingConnectionsServer):
             logger.error("Cannot map subtask_id {} to session".format(subtask_id))
         return subtask_id
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.client.pull_resources(task_id, list_files, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.client.pull_resources(task_id, resources, client_options=client_options)
 
     def send_results(self, subtask_id, task_id, result, computing_time, owner_address, owner_port, owner_key_id, owner,
                      node_name):

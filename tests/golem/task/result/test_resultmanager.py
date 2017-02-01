@@ -61,7 +61,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             with open(out_dir_file, 'w') as f:
                 f.write("Dir file contents")
 
-            rm.add_resources(files, task_id)
+            rm.add_files(files, task_id)
 
             secret = result_manager.gen_secret()
             mock_node = MockNode(node_name)
