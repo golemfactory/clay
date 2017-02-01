@@ -78,6 +78,6 @@ class Environment(object):
         return sys.platform.startswith('linux')
 
     def get_source_code(self):
-        if path.isfile(self.main_program_file):
+        if self.main_program_file and path.isfile(self.main_program_file):
             with open(self.main_program_file) as f:
                 return f.read()
