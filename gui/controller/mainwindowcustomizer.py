@@ -359,6 +359,7 @@ class MainWindowCustomizer(Customizer):
                 after_split = r.split("\\")
                 insert_item(item, after_split)
 
+            # FIXME REMOVE main_scene_file
             self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
             self.show_task_resources_dialog.ui.folderTreeView.expandAll()
