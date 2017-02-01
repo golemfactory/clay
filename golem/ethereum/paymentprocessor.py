@@ -100,14 +100,18 @@ class PaymentProcessor(Service):
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.
         if not check():
-            self.__temp_sync = self.__sync = False
+            # Reset both sync flags. We have to start over.
+            self.__temp_sync = False
+            self.__sync = False
             return False
 
         if not self.__temp_sync:
+            # Set the first flag. We will check again in SYNC_CHECK_INTERVAL s.
             self.__temp_sync = True
             return False
 
         if not self.__sync:
+            # Second confirmation of being in sync. We are sure.
             self.__sync = True
             log.info("Synchronized!")
 
