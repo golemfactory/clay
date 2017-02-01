@@ -24,7 +24,8 @@ class Environment(object):
         :return bool:
         """
         if not self.allow_custom_main_program_file:
-            return path.isfile(self.main_program_file)
+            return self.main_program_file and path.isfile(self.main_program_file)
+        return True
 
     def check_caps(self):
         """ Check if required hardware is available on this machine

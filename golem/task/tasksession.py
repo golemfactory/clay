@@ -607,10 +607,10 @@ class TaskSession(MiddlemanSafeSession):
         environment = self.task_manager.comp_task_keeper.get_task_env(ctd.task_id)
         env = self.task_server.get_environment_by_id(environment)
         if not env:
-            self.err_msg = "Wrong envrironment {}".format(environment)
+            self.err_msg = "Wrong environment {}".format(environment)
             return False
 
-        if isinstance(environment, DockerEnvironment):
+        if isinstance(env, DockerEnvironment):
             if not self.__check_docker_images(ctd, env):
                 return False
 
@@ -623,7 +623,7 @@ class TaskSession(MiddlemanSafeSession):
 
         return True
 
-    def __check_docker_images(self, ctd, environment):
+    def __check_docker_images(self, ctd, env):
         image_found = False
         for image in ctd.docker_images:
             if any(env_image.cmp_name_and_tag(image) for env_image in env.docker_images):
@@ -634,6 +634,7 @@ class TaskSession(MiddlemanSafeSession):
         if not image_found:
             self.err_msg = "Wrong docker images {}".format(ctd.docker_images)
             return False
+        return True
 
     def __send_delta_resource(self, msg):
         res_file_path = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),

@@ -29,3 +29,19 @@ class EnvTest(TempDirFixture):
 
         env.main_program_file = file_name
         assert env.get_source_code() == "PROGRAM CODE"
+
+    def test_check_software(self):
+        env = Environment()
+        assert not env.check_software()
+        env.allow_custom_main_program_file = True
+        assert env.check_software()
+        env.allow_custom_main_program_file = False
+
+        file_name = path.join(self.path, "mainprogramfile")
+        env.main_program_file = file_name
+
+        with open(file_name, 'w') as f:
+            f.write("PROGRAM CODE")
+
+        assert env.check_software()
+
