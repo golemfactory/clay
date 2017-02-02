@@ -23,3 +23,10 @@ class P2PSnapshotModel(BasicModel):
     def __init__(self, cliid, sessid, p2p_snapshot):
         super(P2PSnapshotModel, self).__init__("P2PSnapshot", cliid, sessid)
         self.p2p_snapshot = p2p_snapshot
+
+
+class ComputationTime(BasicModel):
+    def __init__(self, meta_data, success, value):
+        super(ComputationTime, self).__init__("ComputationTime", meta_data.cliid, meta_data.sessid)
+        self.success = success
+        self.value = value
