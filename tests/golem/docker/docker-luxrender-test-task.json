@@ -40,7 +40,6 @@
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_020_0002_m000.ply",
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_019_0000_m000.ply",
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_012_0000_m000.ply",
-      "$GOLEM_DIR/apps/lux/resources/scripts/docker_luxtask.py",
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_006_0000_m001.ply",
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_020_0004_m000.ply",
       "$GOLEM_DIR/apps/lux/benchmark/test_task/LuxRender08_test_scene/Scene/00001/Plane_009_0000_m000.ply",

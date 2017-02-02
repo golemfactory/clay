@@ -372,7 +372,6 @@ class BlenderRenderTask(FrameRenderingTask):
             return self.ExtraData(should_wait=should_wait)
 
         start_task, end_task = self._get_next_task()
-        working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -420,7 +419,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
     def restart(self):
@@ -439,7 +438,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data_for_test_task(self):
 
-        working_directory = self._get_working_directory()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -474,7 +472,7 @@ class BlenderRenderTask(FrameRenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        return self._new_compute_task_def(hash, extra_data, working_directory, 0)
+        return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def query_extra_data_for_advance_verification(self, extra_data):
         ctd = self.query_extra_data_for_test_task()
