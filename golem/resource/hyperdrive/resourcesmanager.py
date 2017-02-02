@@ -25,10 +25,12 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
         return HyperdriveClient.build_options(node_id, **kwargs)
 
     def to_wire(self, resources):
-        return [[r.hash, r.files_split] for r in resources]
+        return [[r.hash, r.files_split]
+                for r in resources]
 
     def from_wire(self, resources):
-        return [[r[0], [os.path.join(*x) for x in r[1]]] for r in resources]
+        return [[r[0], [os.path.join(*x) for x in r[1]]]
+                for r in resources]
 
     def add_files(self, files, task_id,
                   absolute_path=False, client=None, client_options=None):
@@ -38,36 +40,50 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                         .format(task_id))
             return
 
-        for f in files:
-            if not os.path.exists(f):
-                logger.error("Resource manager: file '{}' does not exist"
-                             .format(f))
-
-        client = client or self.new_client()
         files = {path: self.storage.relative_path(path, task_id)
                  for path in files}
 
-        response = self._handle_retries(client.add,
-                                        self.commands.add,
-                                        files,
-                                        client_options=client_options)
-        self._cache_response(files.values(), response, task_id)
+        return self._add_files(files, task_id,
+                               client=client,
+                               client_options=client_options)
 
     def add_file(self, path, task_id,
                  absolute_path=False, client=None, client_options=None):
 
         files = {path: os.path.basename(path)}
-        self.add_files(files, task_id,
-                       absolute_path=absolute_path,
-                       client=client,
-                       client_options=client_options)
 
-    def _cache_response(self, resources, resource_hash, task_id):
-        res = self._wrap_resource((resource_hash, resources), task_id)
-        self._cache_resource(res)
+        return self._add_files(files, task_id,
+                               client=client,
+                               client_options=client_options)
+
+    def _add_files(self, files, task_id,
+                   client=None, client_options=None):
+
+        for f in files.iterkeys():
+            if not os.path.exists(f):
+                logger.error("Resource manager: file '{}' does not exist"
+                             .format(f))
+                return
+
+        client = client or self.new_client()
+        response = self._handle_retries(client.add,
+                                        self.commands.add,
+                                        files,
+                                        id=task_id,
+                                        client_options=client_options)
+
+        self._cache_response(files.values(), response, task_id)
+
+    def wrap_file(self, resource):
+        resource_path, resource_hash = resource
+        return resource_hash, [resource_path]
 
     def _wrap_resource(self, resource, task_id=None):
         resource_hash, files = resource
         path = self.storage.get_path('', task_id)
         return ResourceBundle(files, resource_hash,
                               task_id=task_id, path=path)
+
+    def _cache_response(self, resources, resource_hash, task_id):
+        res = self._wrap_resource((resource_hash, resources), task_id)
+        self._cache_resource(res)

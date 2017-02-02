@@ -257,7 +257,7 @@ class IPFSClientFileCommand(ipfsApi.Command):
         return None
 
 
-class IPFSClient(ipfsApi.Client, IClient):
+class IPFSClient(IClient, ipfsApi.Client):
 
     """ Class of ipfsApi.Client methods decorated with response wrapper """
 

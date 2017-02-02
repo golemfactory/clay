@@ -4,7 +4,7 @@ import uuid
 
 from mock import patch
 
-from golem.resource.base.resourcesmanager import ResourceCache, ResourceStorage, TestResourceManager
+from golem.resource.base.resourcesmanager import ResourceCache, ResourceStorage, TestResourceManager, FileResource
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -53,78 +53,67 @@ class TestResourceCache(unittest.TestCase):
         self.resource_name = u'\0!abstract_name\0!'
         self.resource_hash = str(uuid.uuid4())
         self.prefix = u'\0!/abstract/prefix\0!'
-        self.category = u'\0!abstract\0!'
-
-    def test_path(self):
-        self.cache.set_path(self.resource_hash, self.resource_path)
-
-        assert self.cache.get_path(self.resource_hash) == self.resource_path
-        assert self.cache.get_hash(self.resource_path) == self.resource_hash
-        assert self.cache.get_path(str(uuid.uuid4())) is None
-        assert self.cache.get_hash(str(uuid.uuid4())) is None
-        assert self.cache.get_path(str(uuid.uuid4()), 'default_value') == 'default_value'
-
-        assert self.cache.remove_path(self.resource_hash) == self.resource_path
-        assert self.cache.remove_path(self.resource_hash) is None
-        assert self.cache.get_path(self.resource_hash) is None
+        self.task_id = u'\0!abstract\0!'
 
     def test_prefix(self):
-        self.cache.set_prefix(self.category, self.prefix)
+        self.cache.set_prefix(self.task_id, self.prefix)
+        resource = FileResource(self.resource_name, self.resource_hash,
+                                task_id=self.task_id, path=self.resource_path)
 
-        assert self.cache.get_prefix(self.category) == self.prefix
+        assert self.cache.get_prefix(resource.task_id) == self.prefix
         assert self.cache.get_prefix(str(uuid.uuid4())) == ''
         assert self.cache.get_prefix(str(uuid.uuid4()), 'default_value') == 'default_value'
 
-        assert self.cache.remove_prefix(self.category) == self.prefix
-        assert self.cache.remove_prefix(self.category) is None
-        assert self.cache.get_prefix(self.category) == ''
+        self.cache.add_resource(resource)
+        self.cache.remove(resource.task_id)
+        assert self.cache.get_prefix(resource.task_id) == ''
 
     def test_resources(self):
-        new_category = 'new_category'
-        resource = ['name', str(uuid.uuid4())]
-        new_resource = ['new_name', str(uuid.uuid4())]
+        resource = FileResource(self.resource_name, self.resource_hash,
+                                task_id=self.task_id, path=self.resource_path)
+        new_task_id = str(uuid.uuid4())
+        new_resource = FileResource('new_name', str(uuid.uuid4()), new_task_id)
+        tmp_task_id = str(uuid.uuid4())
+        tmp_resource = FileResource('tmp_name', str(uuid.uuid4()), tmp_task_id)
 
-        self.cache.add_resource(self.category, resource)
-        self.cache.add_resource(new_category, resource)
+        self.cache.add_resource(resource)
+        self.cache.add_resource(new_resource)
 
-        assert self.cache.get_resources(self.category) == [resource]
-        assert self.cache.get_resources(new_category) == [resource]
+        assert self.cache.get_resources(self.task_id) == [resource]
+        assert self.cache.get_resources(new_task_id) == [new_resource]
         assert self.cache.get_resources('unknown') == []
-        assert self.cache.has_resource(self.category, resource)
-        assert self.cache.has_resource(new_category, resource)
-        assert not self.cache.has_resource('unknown', resource)
+        assert self.cache.has_resource(resource)
+        assert self.cache.has_resource(new_resource)
+        assert not self.cache.has_resource(tmp_resource)
 
-        self.cache.set_resources(self.category, [new_resource])
+        self.cache.add_resource(tmp_resource)
 
-        assert self.cache.get_resources(self.category) == [new_resource]
-        assert self.cache.get_resources(new_category) == [resource]
+        assert self.cache.get_resources(self.task_id) == [resource]
+        assert self.cache.get_resources(tmp_task_id) == [tmp_resource]
 
-        assert self.cache.remove_resources(self.category)
-        assert self.cache.remove_resources('unknown') == []
-        assert self.cache.get_resources(new_category) == [resource]
-
-    def test_file_exists(self):
-        resource = ['name', str(uuid.uuid4())]
-
-        self.cache.add_resource(self.category, resource)
-        assert self.cache.has_file(resource, self.category)
-        assert not self.cache.has_file(['invalid_name', str(uuid.uuid4())], self.category)
-        assert not self.cache.has_file(['invalid_name', resource[1]], self.category)
+        assert self.cache.remove(self.task_id)
+        assert self.cache.remove('unknown') == []
+        assert self.cache.get_resources(new_task_id) == [new_resource]
 
     def test_remove(self):
         self._add_all()
-        self.cache.remove(self.category)
+        self.cache.remove(self.task_id)
         assert self._all_default_empty()
 
         new_hash = str(uuid.uuid4())
         new_path = '/other/path'
+        new_task = str(uuid.uuid4())
+        new_resource = FileResource(new_path, new_hash,
+                                    task_id=new_task, path=new_path)
 
         self._add_all()
-        self.cache.set_path(new_hash, new_path)
-        self.cache.remove(self.category)
+        self.cache.add_resource(new_resource)
+        self.cache.remove(self.task_id)
 
         assert self._all_default_empty()
-        assert self.cache.get_path(new_hash) == new_path
+        assert self.cache.has_resource(new_resource)
+        assert self.cache.get_by_path(new_path) == new_resource
+        assert self.cache.get_by_hash(new_hash) == new_resource
 
     def test_clear(self):
         self._add_all()
@@ -132,15 +121,16 @@ class TestResourceCache(unittest.TestCase):
         assert self._all_default_empty()
 
     def _add_all(self):
-        self.cache.set_path(self.resource_hash, self.resource_path)
-        self.cache.set_prefix(self.category, self.prefix)
-        self.cache.add_resource(self.category, [self.resource_name, self.resource_hash])
+        resource = FileResource(self.resource_path, self.resource_hash,
+                                task_id=self.task_id, path=self.resource_path)
+        self.cache.add_resource(resource)
+        self.cache.set_prefix(self.task_id, self.prefix)
 
     def _all_default_empty(self):
-        return self.cache.get_path(self.resource_hash) is None and \
-            self.cache.get_hash(self.resource_path) is None and \
-            self.cache.get_prefix(self.category) == '' and \
-            self.cache.get_resources(self.category) == []
+        return self.cache.get_by_path(self.resource_hash) is None and \
+            self.cache.get_by_hash(self.resource_path) is None and \
+            self.cache.get_prefix(self.task_id) == '' and \
+            self.cache.get_resources(self.task_id) == []
 
 
 class TestResourceStorage(_Common.ResourceSetUp):
@@ -191,21 +181,23 @@ class TestResourceStorage(_Common.ResourceSetUp):
 
     def test_split_join_resources(self):
 
-        resources = [[r, str(uuid.uuid4())] for r in self.joined_resources]
-        resources_split = self.storage.split_resources(resources)
+        entries = [FileResource(r, str(uuid.uuid4()), task_id="task", path=r)
+                   for r in self.joined_resources]
+
+        resources_split = self.storage.split_resources(entries)
         resources_joined = self.storage.join_resources(resources_split)
 
-        assert len(resources) == len(self.target_resources)
+        assert len(entries) == len(self.target_resources)
         assert all([r[0] in self.split_resources for r in resources_split])
         assert all([r[0] in self.joined_resources for r in resources_joined])
 
-        resources = [
+        entries = [
             ['resource', '1'],
             [None, '2'],
             None,
             [['split', 'path'], '4']
         ]
-        assert self.storage.join_resources(resources) == [
+        assert self.storage.join_resources(entries) == [
             ['resource', '1'],
             [os.path.join('split', 'path'), '4']
         ]
@@ -261,12 +253,11 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         resources = storage.get_resources(self.task_id)
 
         assert resources
-        assert all([r[0] in self.target_resources for r in resources])
+        assert all([r.file_name in self.target_resources for r in resources])
 
         for resource in resources:
-            assert storage.get_path_and_hash(resource[0], self.task_id) is not None
-            assert storage.get_path_and_hash(resource[0], self.task_id, multihash=resource[1]) is not None
-        assert storage.get_path_and_hash(str(uuid.uuid4()), self.task_id) is None
+            assert storage.cache.get_by_path(resource.file_name) is not None
+        assert storage.cache.get_by_path(str(uuid.uuid4())) is None
 
         storage.clear_cache()
 
@@ -295,11 +286,6 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
 
         self.resource_manager.add_task(resource_paths, new_task)
         assert len(storage.get_resources(new_task)) == len(resources)
-
-        task_files = storage.cache.get_resources(self.task_id)
-        assert storage.cache.has_resource(self.task_id, task_files[0])
-        assert not storage.cache.has_resource(self.task_id, (u'File path', u'Multihash'))
-        assert not storage.cache.has_resource(str(uuid.uuid4()), task_files[0])
 
     def test_remove_task(self):
         self.resource_manager.storage.clear_cache()

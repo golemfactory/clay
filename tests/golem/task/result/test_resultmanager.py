@@ -120,6 +120,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         path, multihash = data
 
         assert os.path.exists(path)
+        assert multihash
 
         def success(*args, **kwargs):
             pass
@@ -132,8 +133,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 
         new_manager = EncryptedResultPackageManager(resource_manager)
-        new_manager.pull_package(multihash,
-                                 self.task_id, self.task_id,
+        new_manager.pull_package(multihash, self.task_id, self.task_id,
                                  secret,
                                  success=success,
                                  error=error,

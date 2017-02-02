@@ -196,7 +196,6 @@ class ClientHandler(IClientHandler):
         while not result:
             try:
                 result = method(*args, **kwargs)
-                break
             except Exception as exc:
                 self.command_failed(exc, cmd, obj_id)
 
@@ -204,11 +203,10 @@ class ClientHandler(IClientHandler):
                     self._clear_retry(cmd, obj_id)
                     if raise_exc:
                         raise exc
-                    result = None
                     break
-
-        self._clear_retry(cmd, obj_id)
-        return result
+            else:
+                self._clear_retry(cmd, obj_id)
+                return result
 
     @staticmethod
     def _async_call(method, success, error, *args, **kwargs):
@@ -258,7 +256,7 @@ class TestClient(IClient):
     _id = "test"
 
     def add(self, resource_path, **_):
-        resource_hash = str(uuid.uuid4())
+        resource_hash = 'hash_' + str(uuid.uuid4())
         self._resources[resource_hash] = resource_path
 
         return dict(
@@ -266,8 +264,8 @@ class TestClient(IClient):
             Hash=resource_hash
         )
 
-    def get(self, multihash, filename=None, filepath=None, **_):
-        path = self._resources.get(multihash)
+    def get(self, multihash, client_options=None, filename=None, filepath=None, **_):
+        path = self._resources[multihash]
 
         if not os.path.exists(filepath):
             os.makedirs(filepath)

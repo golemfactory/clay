@@ -187,11 +187,6 @@ class TestChunkedHttpClient(TestDirFixture):
                                    filename=target_filename,
                                    compress=False)
 
-    def testGet(self):
-        client = IPFSClient()
-        with self.assertRaises(NotImplementedError):
-            client.get("-")
-
 
 class TestIPFSAddress(unittest.TestCase):
 

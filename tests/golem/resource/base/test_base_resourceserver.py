@@ -2,13 +2,12 @@ import os
 import shutil
 import uuid
 
-from mock import patch
-
+from golem.core.fileshelper import common_dir
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.base.resourcesmanager import TestResourceManager
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
-from golem.resource.base.resourcesmanager import TestResourceManager
 
 node_name = 'test_suite'
 
@@ -78,18 +77,6 @@ class TestResourceServer(TestDirFixture):
         rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
         rs.start_accepting()
-
-    @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
-    def testGetResources(self):
-        rs = self.testAddTask()
-
-        rs.download_resources([
-            (u'filename', u'multihash'),
-            (u'filename_2', u'multihash_2'),
-            (u'filename_2', u'')
-        ], 'xyz')
-
-        rs.sync_network()
 
     def testGetDistributedResourceRoot(self):
         keys_auth = EllipticalKeysAuth(self.path)
@@ -175,46 +162,46 @@ class TestResourceServer(TestDirFixture):
     def testGetResources(self):
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
+
         rs = BaseResourceServer(TestResourceManager(self.dir_manager),
                                 self.dir_manager, keys_auth, client)
-        rs.resource_manager.storage.clear_cache()
-        rs.resource_manager.add_files(self.target_resources, self.task_id)
-        resources = rs.resource_manager.storage.get_resources(self.task_id)
-        resources_len = len(resources)
 
-        filenames = []
-        for entry in resources:
-            filenames.append(entry[0])
-        common_path = os.path.commonprefix(filenames)
+        rm = rs.resource_manager
+        rm.storage.clear_cache()
+        rm.add_files(self.target_resources, self.task_id)
 
-        relative_resources = []
-        for resource in resources:
-            relative_resources.append((resource[0].replace(common_path, '', 1),
-                                       resource[1]))
+        common_path = common_dir(self.target_resources)
+        resources = rm.storage.get_resources(self.task_id)
+        assert len(resources) == len(self.target_resources)
 
+        assert len(rs.pending_resources) == 0
         rs.download_resources(resources, self.task_id)
-        assert len(rs.waiting_resources) == 0
+        assert len(rs.pending_resources[self.task_id]) == len(resources)
 
         rs_aux = BaseResourceServer(TestResourceManager(self.dir_manager),
                                     self.dir_manager_aux, keys_auth, client)
 
-        rs_aux.download_resources(relative_resources, self.task_id)
-        assert len(rs_aux.waiting_resources) == resources_len
+        relative_resources = []
+        for resource in resources:
+            relative_resources.append((resource.path.replace(common_path, '', 1),
+                                       resource.hash))
 
+        assert len(rs_aux.pending_resources) == 0
+        rs_aux.download_resources(relative_resources, self.task_id)
+        assert len(rs_aux.pending_resources[self.task_id]) == len(resources)
+
+        print len(resources)
         rs_aux._download_resources(async=False)
-        rm_aux = rs_aux.resource_manager
 
         for entry in relative_resources:
-            new_path = rm_aux.get_resource_path(entry[0], self.task_id)
-            assert os.path.exists(new_path)
+            assert os.path.exists(entry[0])
 
         assert client.downloaded
 
     def testVerifySig(self):
         keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
         rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
+                                self.dir_manager, keys_auth, MockClient())
 
         test_str = "A test string to sign"
         sig = rs.sign(test_str)
@@ -222,36 +209,30 @@ class TestResourceServer(TestDirFixture):
 
     def testAddFilesToGet(self):
         keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
         rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
+                                self.dir_manager, keys_auth, MockClient())
 
         test_files = [
             ['file1.txt', '1'],
             [os.path.join('tmp', 'file2.bin'), '2']
         ]
 
-        assert not rs.resources_to_get
-
+        assert not rs.pending_resources
         rs.download_resources(test_files, self.task_id)
-
-        assert len(rs.resources_to_get) == len(test_files)
+        assert len(rs.pending_resources[self.task_id]) == len(test_files)
 
         return rs, test_files
 
-    def testResourceDownloaded(self):
+    def testDownloadSuccess(self):
         rs, file_names = self.testAddFilesToGet()
+        resources = list(rs.pending_resources[self.task_id])
+        for entry in resources:
+            rs._download_success(entry.resource, self.task_id)
+        assert not rs.pending_resources
 
-        for i, entry in enumerate(file_names):
-            rs._download_success(entry[0], str(i), self.task_id)
-
-        assert not rs.resources_to_get
-
-    def testResourceDownloadError(self):
+    def testDownloadError(self):
         rs, file_names = self.testAddFilesToGet()
-
-        for entry in file_names:
-            rs._download_error(Exception("Error " + entry[0]),
-                               entry[0], entry[1], self.task_id)
-
-        assert len(rs.resources_to_get) == 0
+        resources = list(rs.pending_resources[self.task_id])
+        for entry in resources:
+            rs._download_error(Exception(), entry.resource, self.task_id)
+        assert not rs.pending_resources

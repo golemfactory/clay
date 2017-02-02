@@ -56,7 +56,8 @@ class Resource(object):
         self.path = path
 
     def __eq__(self, other):
-        return self.task_id == other.task_id and \
+        return other and \
+            self.task_id == other.task_id and \
             self.hash == other.hash and \
             self.path == other.path
 
@@ -122,7 +123,7 @@ class ResourceBundle(Resource):
 
     def __eq__(self, other):
         return super(ResourceBundle, self).__eq__(other) and \
-            self.files == other.list_files
+            self.files == other.files
 
     def __str__(self):
         return '{} (bundle: {}, task: {})'.format(
@@ -160,17 +161,17 @@ class ResourceCache(object):
         # path to resource
         self._path_to_res = dict()
         # category to relative file path
-        self._cat_to_res = dict()
-        # category to common path for resources
-        self._cat_to_prefix = dict()
+        self._task_to_res = dict()
+        # category to common resource path prefix
+        self._task_to_prefix = dict()
 
     def add_resource(self, resource):
-        category = resource.task_id
+        task_id = resource.task_id
 
         with self._lock:
-            resource_list = self._cat_to_res.get(category)
+            resource_list = self._task_to_res.get(task_id)
             if not resource_list:
-                self._cat_to_res[category] = resource_list = list()
+                self._task_to_res[task_id] = resource_list = list()
             resource_list.append(resource)
 
             self._hash_to_res[resource.hash] = resource
@@ -183,37 +184,34 @@ class ResourceCache(object):
         return self._path_to_res.get(resource_path, default)
 
     def has_resource(self, resource):
-        if resource.task_id and resource.task_id not in self._cat_to_res:
+        if resource.task_id and resource.task_id not in self._task_to_res:
             return False
         if resource.hash and resource.hash not in self._hash_to_res:
             return False
         return resource.path in self._path_to_res
 
-    def get_resources(self, category, default=None):
-        return self._cat_to_res.get(category, default or [])
+    def get_resources(self, task_id, default=None):
+        return self._task_to_res.get(task_id, default or [])
 
-    def remove_resources(self, category):
-        with self._lock:
-            return self._cat_to_res.pop(category, [])
+    def set_prefix(self, task_id, prefix):
+        self._task_to_prefix[task_id] = norm_path(prefix)
 
-    def set_prefix(self, category, prefix):
-        self._cat_to_prefix[category] = norm_path(prefix)
+    def get_prefix(self, task_id, default=''):
+        return self._task_to_prefix.get(task_id, default)
 
-    def get_prefix(self, category, default=''):
-        return self._cat_to_prefix.get(category, default)
-
-    def remove(self, category):
-        resources = self.remove_resources(category)
+    def remove(self, task_id):
+        resources = self._task_to_res.pop(task_id, [])
         for r in resources:
             self._hash_to_res.pop(r.hash, None)
             self._path_to_res.pop(r.path, None)
-        self._cat_to_prefix.pop(category, None)
+        self._task_to_prefix.pop(task_id, None)
+        return resources
 
     def clear(self):
         self._hash_to_res = dict()
         self._path_to_res = dict()
-        self._cat_to_res = dict()
-        self._cat_to_prefix = dict()
+        self._task_to_res = dict()
+        self._task_to_prefix = dict()
 
 
 class ResourceStorage(object):
@@ -226,11 +224,11 @@ class ResourceStorage(object):
     def list_dir(self, dir_name):
         return self.dir_manager.list_dir_names(dir_name)
 
-    def get_dir(self, category):
-        return norm_path(self.resource_dir_method(category))
+    def get_dir(self, task_id):
+        return norm_path(self.resource_dir_method(task_id))
 
-    def get_path(self, relative_file_path, category):
-        resource_dir = self.get_dir(category)
+    def get_path(self, relative_file_path, task_id):
+        resource_dir = self.get_dir(task_id)
         return os.path.join(resource_dir, norm_path(relative_file_path))
 
     def get_root(self):
@@ -260,10 +258,10 @@ class ResourceStorage(object):
 
         return results
 
-    def relative_path(self, path, category):
+    def relative_path(self, path, task_id):
 
         path = norm_path(path)
-        common_prefix = self.cache.get_prefix(category)
+        common_prefix = self.cache.get_prefix(task_id)
         return_path = path.replace(common_prefix, '', 1)
 
         if common_prefix:
@@ -280,10 +278,10 @@ class ResourceStorage(object):
             copy_file_tree(src_dir, root_dir)
             return True
 
-    def copy(self, src_path, dst_relative_path, category):
+    def copy(self, src_path, dst_relative_path, task_id):
 
         dst_relative_path = norm_path(dst_relative_path)
-        dst_path = self.get_path(dst_relative_path, category)
+        dst_path = self.get_path(dst_relative_path, task_id)
         src_path = norm_path(src_path)
 
         make_path_dirs(dst_path)
@@ -437,7 +435,7 @@ class AbstractResourceManager(IClientHandler):
             self.__dec_downloads()
 
             if self._can_retry(exception, self.commands.get, resource.hash):
-                self.pull_resource(resource, task_id,
+                self.pull_resource(entry, task_id,
                                    client_options=client_options,
                                    success=success,
                                    error=error,
@@ -451,13 +449,13 @@ class AbstractResourceManager(IClientHandler):
                 self.__process_queue()
 
         make_path_dirs(self.storage.get_path(resource.path, task_id))
-        existing = self.storage.cache.get_by_hash(resource.hash)
+        local = self.storage.cache.get_by_hash(resource.hash)
 
-        if existing:
+        if local:
 
             self.__inc_downloads()
             try:
-                self.storage.copy(existing.path, resource.path, task_id)
+                self.storage.copy(local.path, resource.path, task_id)
             except Exception as exc:
                 error_wrapper(exc)
             else:
@@ -474,13 +472,22 @@ class AbstractResourceManager(IClientHandler):
                             client_options=client_options,
                             async=async)
             else:
-                self.__push_to_queue(resource, task_id,
+                self.__push_to_queue(entry, task_id,
                                      success, error,
                                      client, client_options, async, pin)
 
     def command_failed(self, exc, cmd, obj_id, **kwargs):
         logger.error("Resource manager: Error executing command '{}': {}"
                      .format(cmd.name, exc))
+
+    def wrap_file(self, resource):
+        return resource
+
+    def _wrap_resource(self, resource, task_id=None):
+        resource_path, resource_hash = resource
+        path = self.storage.get_path(resource_path, task_id)
+        return FileResource(resource_path, resource_hash,
+                            task_id=task_id, path=path)
 
     def _cache_response(self, resource_name, response, task_id):
         if isinstance(response, list):
@@ -516,12 +523,6 @@ class AbstractResourceManager(IClientHandler):
         logger.debug("Resource manager: Resource cached: {}".format(resource))
         return name
 
-    def _wrap_resource(self, resource, task_id=None):
-        resource_path, resource_hash = resource
-        path = self.storage.get_path(resource_path, task_id)
-        return FileResource(resource_path, resource_hash,
-                            task_id=task_id, path=path)
-
     def __pull(self, resource, task_id,
                success, error,
                client=None, client_options=None, async=True):
@@ -536,8 +537,6 @@ class AbstractResourceManager(IClientHandler):
             filepath=directory,
             client_options=client_options
         )
-
-        print "GET", kwargs
 
         if async:
             self._async_call(client.get,
