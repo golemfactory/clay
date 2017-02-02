@@ -1631,8 +1631,9 @@ class MessageWaitingForResults(Message):
     TYPE = TASK_MSG_BASE + 25
 
     WAITING_FOR_RESULTS_STR = u"WAITING_FOR_RESULTS"
+    TASK_ID_STR = u"TASK_ID"
 
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
         """
         Message informs that the node is waiting for results
         :param str sig: signature
@@ -1641,12 +1642,16 @@ class MessageWaitingForResults(Message):
         """
         Message.__init__(self, sig, timestamp)
 
+        self.task_id = task_id
+
         if dict_repr:
             if dict_repr.get(MessageWaitingForResults.WAITING_FOR_RESULTS_STR) is None:
                 raise IOError("Waiting for results message failed")
+            self.task_id = dict_repr[MessageWaitingForResults.TASK_ID_STR]
 
     def dict_repr(self):
-        return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True}
+        return {MessageWaitingForResults.WAITING_FOR_RESULTS_STR: True,
+                MessageWaitingForResults.TASK_ID_STR: self.task_id}
 
 
 class MessageCannotComputeTask(Message):

@@ -364,7 +364,7 @@ class TaskSession(MiddlemanSafeSession):
         elif ctd:
             self.send(MessageTaskToCompute(ctd))
         elif wait:
-            self.send(MessageWaitingForResults())
+            self.send(MessageWaitingForResults(msg.task_id))
         else:
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
             self.dropped()
@@ -379,8 +379,11 @@ class TaskSession(MiddlemanSafeSession):
             self.task_computer.session_closed()
             self.dropped()
 
-    def _react_to_waiting_for_results(self, _):
-        self.task_computer.session_closed()
+    def _react_to_waiting_for_results(self, msg):
+        if self.task_computer.counting_task != msg.task_id and \
+           self.task_computer.waiting_for_task != msg.task_id:
+            self.task_computer.session_closed()
+
         if not self.msgs_to_send:
             self.disconnect(self.DCRNoMoreMessages)
 
@@ -391,10 +394,13 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):
-        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
-        self.task_server.remove_task_header(msg.task_id)
-        self.task_computer.session_closed()
-        self.dropped()
+        if self.task_computer.counting_task != msg.task_id and \
+           self.task_computer.waiting_for_task != msg.task_id:
+
+            self.task_computer.task_request_rejected(msg.task_id, msg.reason)
+            self.task_server.remove_task_header(msg.task_id)
+            self.task_computer.session_closed()
+            self.dropped()
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
@@ -648,9 +654,12 @@ class TaskSession(MiddlemanSafeSession):
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
 
-        def success(resource_hash):
-            logger.debug("Task session: sending task result hash: {}".format(resource_hash))
-            self.send(MessageTaskResultHash(subtask_id, resource_hash,
+        def success(result):
+            result_path, result_hash = result
+            logger.debug("Task session: sending task result hash: {} ({})"
+                         .format(result_path, result_hash))
+
+            self.send(MessageTaskResultHash(subtask_id, result_hash,
                                             secret, options=client_options))
 
         def error(exc):
