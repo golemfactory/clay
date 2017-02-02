@@ -16,7 +16,6 @@ log = logging.getLogger('golem.monitor')
 
 
 class SenderThread(threading.Thread):
-
     def __init__(self, node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout, proto_ver):
         super(SenderThread, self).__init__()
         self.queue = Queue.Queue()
