@@ -1,5 +1,6 @@
 import logging
 import os
+import uuid
 
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
@@ -70,7 +71,8 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
                                         self.commands.add,
                                         files,
                                         id=task_id,
-                                        client_options=client_options)
+                                        client_options=client_options,
+                                        obj_id=str(uuid.uuid4()))
 
         self._cache_response(files.values(), response, task_id)
 
