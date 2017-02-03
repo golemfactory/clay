@@ -32,6 +32,7 @@ class CompStats(object):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
         self.tasks_with_errors = 0
+        self.tasks_requested = 0
 
 
 class TaskComputer(object):
