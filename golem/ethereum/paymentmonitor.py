@@ -18,6 +18,8 @@ class IncomingPayment(object):
 
 
 class PaymentMonitor(Service):
+    BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
+
     def __init__(self, client, addr):
         self.__client = client
         self.__addr = addr
@@ -39,11 +41,10 @@ class PaymentMonitor(Service):
             log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
             # Search for logs Transfer(..., my address)
             # TODO: We can save some gas by not indexing "from" address
-            bank_addr = '0x' + PaymentProcessor.BANK_ADDR.encode('hex')
             topics = [log_id, None, '0x' + zpad(self.__addr, 32).encode('hex')]
             self.__filter = self.__client.new_filter(from_block='earliest',
                                                      to_block='latest',
-                                                     address=bank_addr,
+                                                     address=self.BANK_ADDR,
                                                      topics=topics)
 
         new_logs = self.__client.get_filter_changes(self.__filter)

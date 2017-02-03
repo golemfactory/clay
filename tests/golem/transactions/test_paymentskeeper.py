@@ -33,7 +33,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         self.assertEquals(20, pd.get_payment_value(pi))
         pi = PaymentInfo("xyz", "aabbcc", 10, ai)
         self.assertEquals(0, pd.get_payment_value(pi))
-        pi2 = PaymentInfo("zzz", "xxyyxx", "14", ai)
+        pi2 = PaymentInfo("zzz", "xxyyxx", 14, ai)
         pd.add_payment(pi2)
         self.assertEquals(14, pd.get_payment_value(pi2))
         self.assertEquals(0, pd.get_payment_value(pi))
@@ -114,7 +114,7 @@ class TestPaymentsKeeper(TestWithDatabase):
         addr = urandom(20)
         addr2 = urandom(20)
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "1", "i", addr2)
-        pi = PaymentInfo("xyz", "xxyyzz", 20.23, ai)
+        pi = PaymentInfo("xyz", "xxyyzz", 2023, ai)
         pk.finished_subtasks(pi)
         pi.subtask_id = "aabbcc"
         pk.finished_subtasks(pi)
@@ -140,13 +140,13 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.assertEqual(all_payments[1]["status"], PaymentStatus.awaiting.value)
         self.assertEqual(all_payments[2]["subtask"], "xxxyyy")
         self.assertEqual(all_payments[2]["payee"], addr2)
-        self.assertEqual(all_payments[2]["value"], 20)
+        self.assertEqual(all_payments[2]["value"], 2023)
         self.assertEqual(all_payments[2]["status"], PaymentStatus.awaiting.value)
         pi3.subtask_id = "whaooa!"
         pk.finished_subtasks(pi3)
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 6)
-        assert pk.get_payment("xxyyzz") == 20
+        assert pk.get_payment("xxyyzz") == 2023
         assert pk.get_payment("not existing") == 0
 
 
