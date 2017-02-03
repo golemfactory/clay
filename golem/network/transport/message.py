@@ -752,7 +752,7 @@ class MessageSetTaskSession(Message):
         return {
             self.KEY_ID_STR: self.key_id,
             self.NODE_INFO_STR: self.node_info,
-            Mesself.CONN_ID_STR: self.conn_id,
+            self.CONN_ID_STR: self.conn_id,
             self.SUPER_NODE_INFO_STR: self.super_node_info
         }
 
