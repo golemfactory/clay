@@ -1,8 +1,6 @@
 import logging
 
 from eth_abi.utils import zpad
-from mock import patch
-import web3
 
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
@@ -41,7 +39,6 @@ class EthereumClientTest(TempDirFixture):
         client.node.stop()
         assert not client.node.is_running()
 
-    @patch('web3.KeepAliveRPCProvider', new=web3.TestRPCProvider)
     def test_get_logs(self):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
