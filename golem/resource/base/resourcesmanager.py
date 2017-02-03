@@ -341,8 +341,14 @@ class AbstractResourceManager(IClientHandler):
     def from_wire(self, resources):
         return self.storage.join_resources(resources)
 
-    def remove_task(self, task_id, client_options=None):
-        self.storage.cache.remove(task_id)
+    def remove_task(self, task_id,
+                    client=None, client_options=None):
+
+        resources = self.storage.cache.remove(task_id)
+        if resources:
+            for resource in resources:
+                self.unpin_resource(resource.hash,
+                                    client=client, client_options=client_options)
 
     def add_task(self, files, task_id,
                  client=None, client_options=None):
