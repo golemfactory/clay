@@ -2,7 +2,7 @@ import logging
 
 import rlp
 from ethereum.transactions import Transaction
-from web3 import Web3, KeepAliveRPCProvider
+from web3 import Web3, HTTPProvider
 
 from .node import NodeProcess
 
@@ -26,7 +26,7 @@ class Client(object):
                 raise Exception("Ethereum node's datadir cannot be changed")
         if not Client.node.is_running():
             Client.node.start(rpc=True, mining=True)
-        self.web3 = Web3(KeepAliveRPCProvider(host='localhost', port=Client.node.rpcport))
+        self.web3 = Web3(HTTPProvider('http://localhost:{:d}'.format(Client.node.rpcport)))
 
     @staticmethod
     def _kill_node():
