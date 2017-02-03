@@ -32,6 +32,7 @@ class CompStats(object):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
         self.tasks_with_errors = 0
+        self.tasks_requested = 0
 
 
 class TaskComputer(object):
@@ -369,12 +370,16 @@ class TaskComputer(object):
         with self.lock:
             perform_request = not self.waiting_for_task and not self.counting_task
 
-        if perform_request:
-            now = time.time()
-            self.wait()
-            self.last_checking = now
-            self.last_task_request = now
-            self.waiting_for_task = self.task_server.request_task()
+        if not perform_request:
+            return
+
+        now = time.time()
+        self.wait()
+        self.last_checking = now
+        self.last_task_request = now
+        self.waiting_for_task = self.task_server.request_task()
+        if self.waiting_for_task is not None:
+            self.stats.increase_stat('tasks_requested')
 
     def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
         self.last_checking = time.time()

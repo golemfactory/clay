@@ -1,5 +1,6 @@
 import atexit
 import logging
+from pydispatch import dispatcher
 import sys
 import time
 import uuid
@@ -225,9 +226,7 @@ class Client(object):
             self.task_server.quit()
         if self.diag_service:
             self.diag_service.unregister_all()
-        if self.monitor:
-            self.monitor.on_logout()
-            self.monitor.shut_down()
+        dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()
         self._unlock_datadir()
@@ -519,8 +518,7 @@ class Client(object):
         self.p2pservice.change_config(self.config_desc)
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
-        metadata = self.__get_nodemetadatamodel()
-        self.monitor.on_config_update(metadata)
+        dispatcher.send(signal='golem.monitor', event='config_update', meta_data=self.__get_nodemetadatamodel())
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
@@ -714,15 +712,18 @@ class Client(object):
                 log.exception("check_payments failed")
 
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
-                if self.monitor:
-                    self.monitor.on_stats_snapshot(self.get_task_count(), self.get_supported_task_count(),
-                                                   self.get_computed_task_count()[0], self.get_error_task_count()[0],
-                                                   self.get_timeout_task_count()[0])
-                    self.monitor.on_task_computer_snapshot(self.task_server.task_computer.waiting_for_task,
-                                                           self.task_server.task_computer.counting_task,
-                                                           self.task_server.task_computer.task_requested,
-                                                           self.task_server.task_computer.compute_tasks,
-                                                           self.task_server.task_computer.assigned_subtasks.keys())
+                dispatcher.send(
+                    signal='golem.monitor',
+                    event='stats_snapshot',
+                    known_tasks=self.get_task_count(),
+                    supported_tasks=self.get_supported_task_count(),
+                    stats=self.task_server.task_computer.stats,
+                )
+                dispatcher.send(
+                    signal='golem.monitor',
+                    event='task_computer_snapshot',
+                    task_computer=self.task_server.task_computer,
+                )
                 # with self.snapshot_lock:
                 #     self.__make_node_state_snapshot()
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
