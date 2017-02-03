@@ -10,7 +10,7 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
         computer_mock.waiting_for_task = waiting_for_task = random.random() > 0.5
         computer_mock.counting_task = counting_task = random.random() > 0.5
         computer_mock.task_requested = task_requested = random.random() > 0.5
-        computer_mock.compute_task = compute_tasks = random.random() > 0.5
+        computer_mock.compute_tasks = compute_tasks = random.random() > 0.5
         computer_mock.assigned_subtasks = assigned_subtasks = dict((x, None) for x in range(100))
 
         with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
