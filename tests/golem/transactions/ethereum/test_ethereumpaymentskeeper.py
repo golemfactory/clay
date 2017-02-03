@@ -23,9 +23,9 @@ class TestEthereumPaymentsKeeper(TestWithDatabase):
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
         ai2 = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", Node(), addr2)
 
-        pi = PaymentInfo("x-y-z", "xx-yy-zz", 19.26, ai)
+        pi = PaymentInfo("x-y-z", "xx-yy-zz", 1926, ai)
 
-        pi2 = PaymentInfo("a-b-c", "xx-yy-abc", 10.14, ai)
+        pi2 = PaymentInfo("a-b-c", "xx-yy-abc", 1014, ai)
         e.finished_subtasks(pi)
         e.finished_subtasks(pi2)
 

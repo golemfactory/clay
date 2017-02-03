@@ -178,8 +178,10 @@ function build_docker_image {
 
     cd "${SCRIPT_DIR}/${DOCKER_DIR}"
 
-    echo "Building image ${IMG} $(pwd)"
-    docker build -t "${IMG_NAME}" -f "${IMG_FILE}" . && docker tag "${IMG_NAME}" "${IMG}"
+    # echo "Building image ${IMG} $(pwd)"
+    # docker build -t "${IMG_NAME}" -f "${IMG_FILE}" . && docker tag "${IMG_NAME}" "${IMG}"
+    echo "Downloading image ${IMG}"
+    docker pull ${IMG_NAME}:${IMG_TAG}
 
     cd "${CWD}"
 }

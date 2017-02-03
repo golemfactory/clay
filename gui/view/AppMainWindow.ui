@@ -174,7 +174,7 @@
            </sizepolicy>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="newTaskPage">
            <layout class="QGridLayout" name="gridLayout_12">
@@ -880,7 +880,7 @@
                <bool>true</bool>
               </property>
               <attribute name="horizontalHeaderVisible">
-               <bool>true</bool>
+               <bool>false</bool>
               </attribute>
               <attribute name="horizontalHeaderCascadingSectionResizes">
                <bool>false</bool>
@@ -1844,16 +1844,6 @@
                      </property>
                     </widget>
                    </item>
-                   <item row="16" column="1">
-                    <widget class="QPushButton" name="identityButton">
-                     <property name="toolTip">
-                      <string>Manage your public and private keys</string>
-                     </property>
-                     <property name="text">
-                      <string>Show identity</string>
-                     </property>
-                    </widget>
-                   </item>
                    <item row="12" column="0">
                     <widget class="Line" name="line_3">
                      <property name="orientation">
@@ -2599,10 +2589,10 @@
               <item row="7" column="0">
                <widget class="QLabel" name="localBalanceConst">
                 <property name="toolTip">
-                 <string>The balance of the local Ethereum address. Can be spent directly on tasks.</string>
+                 <string>The GNT balance of the local Ethereum address. Can be spent directly on tasks.</string>
                 </property>
                 <property name="text">
-                 <string>Local balance</string>
+                 <string>Balance</string>
                 </property>
                </widget>
               </item>
@@ -2662,10 +2652,10 @@
               <item row="10" column="0">
                <widget class="QLabel" name="depositBalanceConst">
                 <property name="toolTip">
-                 <string>The amount of ethers kept in the Deposit contract. Can be withdrawn at any time.</string>
+                 <string>The ETH balance of the local Ethereum address. Used up for transactions fees.</string>
                 </property>
                 <property name="text">
-                 <string>Deposit</string>
+                 <string>ETH balance</string>
                 </property>
                </widget>
               </item>
@@ -2682,7 +2672,7 @@
               <item row="11" column="0">
                <widget class="QLabel" name="totalBalanceConst">
                 <property name="toolTip">
-                 <string>Total amount of ethers owned by this Golem App</string>
+                 <string>Total amount owned by this Golem App</string>
                 </property>
                 <property name="text">
                  <string>Total balance</string>

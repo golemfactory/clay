@@ -119,3 +119,4 @@ def config_logging(logname=LOG_NAME):
     import logging.config
     config_file = path.normpath(path.join(get_golem_path(), "logging.ini"))
     logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
+    logging.captureWarnings(True)

@@ -102,7 +102,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Copy the task resources
         all_resources = list(render_task.task_resources)
-        all_resources.append(render_task.main_program_file)
         common_prefix = path.commonprefix(all_resources)
         common_prefix = path.dirname(common_prefix)
 
@@ -219,11 +218,8 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert not task.header.signature
         assert task.undeletable == []
         assert task.listeners == []
-        assert len(task.task_resources) == 2
-        assert any(resource.endswith('docker_blendertask.py')
-                   for resource in task.task_resources)
-        assert any(resource.endswith('scene-Helicopter-27-cycles.blend')
-                   for resource in task.task_resources)
+        assert len(task.task_resources) == 1
+        assert task.task_resources[0].endswith('scene-Helicopter-27-cycles.blend')
         assert task.total_tasks == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
