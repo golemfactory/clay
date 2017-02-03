@@ -1,23 +1,35 @@
-import jsonpickle as json
-from unittest import TestCase
-from uuid import uuid4
+import mock
+from pydispatch import dispatcher
+import random
 
-from golem.monitor.model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
+from golem.monitor.test_helper import MonitorTestBaseClass
 
+class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
+    def test_channel(self):
+        computer_mock = mock.MagicMock()
+        computer_mock.waiting_for_task = waiting_for_task = random.random() > 0.5
+        computer_mock.counting_task = counting_task = random.random() > 0.5
+        computer_mock.task_requested = task_requested = random.random() > 0.5
+        computer_mock.compute_task = compute_task = random.random() > 0.5
+        computer_mock.assigned_subtasks = assigned_subtasks = dict((x, None) for x in range(100))
 
-class TestTaskComputerSnapshotModel(TestCase):
-    def test_init(self):
-        cliid = uuid4().get_hex()
-        sessid = uuid4().get_hex()
-        model = TaskComputerSnapshotModel(cliid, sessid, False, True, False, True, ["task_1"])
-        assert isinstance(model, TaskComputerSnapshotModel)
-        assert model.cliid == cliid
-        assert model.sessid == sessid
-        assert not model.waiting_for_task
-        assert model.counting_task
-        assert not model.task_requested
-        assert model.compute_task
-        assert model.assigned_subtasks == ["task_1"]
-        assert model.type == "TaskComputer"
-        assert type(model.dict_repr()) is dict
-        json.dumps(model.dict_repr())
+        with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
+            dispatcher.send(
+                signal='golem.monitor',
+                event='task_computer_snapshot',
+                task_computer=computer_mock,
+            )
+            self.assertEquals(mock_send.call_count, 1)
+            result = mock_send.call_args[0][0].dict_repr()
+            for key in ('cliid', 'sessid', 'timestamp'):
+                del result[key]
+            self.maxDiff = None
+            expected = {
+                'type': 'TaskComputer',
+                'waiting_for_task': waiting_for_task,
+                'task_requested': task_requested,
+                'counting_task': counting_task,
+                'compute_task': compute_task,
+                'assigned_subtasks': assigned_subtasks.keys(),
+            }
+            self.assertEquals(expected, result)

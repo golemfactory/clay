@@ -16,7 +16,6 @@ log = logging.getLogger('golem.monitor')
 
 
 class SenderThread(threading.Thread):
-
     def __init__(self, node_info, monitor_host, monitor_request_timeout, monitor_sender_thread_timeout, proto_ver):
         super(SenderThread, self).__init__()
         self.queue = Queue.Queue()
@@ -43,7 +42,6 @@ class SenderThread(threading.Thread):
 
 
 class SystemMonitor(object):
-
     def __init__(self, meta_data, monitor_config):
         if not isinstance(meta_data, NodeMetadataModel):
             raise TypeError("Incorrect meta_data type {}, should be NodeMetadataModel".format(type(meta_data)))
@@ -51,9 +49,7 @@ class SystemMonitor(object):
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
-
         self.sender_thread = self.create_sender_thread()
-
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
 
     def create_sender_thread(self):
@@ -82,6 +78,10 @@ class SystemMonitor(object):
 
     # Public interface
 
+    def on_shutdown(self):
+        self.on_logout()
+        self.shut_down()
+
     def on_login(self):
         self.sender_thread.send(LoginModel(self.meta_data))
 
@@ -96,8 +96,8 @@ class SystemMonitor(object):
     def on_logout(self):
         self.sender_thread.send(LogoutModel(self.meta_data))
 
-    def on_stats_snapshot(self, known_tasks, supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout):
-        self.sender_thread.send(StatsSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, known_tasks, supported_tasks, computed_tasks, tasks_with_errors, tasks_with_timeout))
+    def on_stats_snapshot(self, known_tasks, supported_tasks, stats):
+        self.sender_thread.send(StatsSnapshotModel(self.meta_data, known_tasks, supported_tasks, stats))
 
     def on_vm_snapshot(self, vm_data):
         self.sender_thread.send(VMSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, vm_data))
@@ -105,8 +105,8 @@ class SystemMonitor(object):
     def on_peer_snapshot(self, p2p_data):
         self.sender_thread.send(P2PSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, p2p_data))
 
-    def on_task_computer_snapshot(self, waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks):
-        self.sender_thread.send(TaskComputerSnapshotModel(self.meta_data.cliid, self.meta_data.sessid, waiting_for_task, counting_task, task_requested, comput_task, assigned_subtasks))
+    def on_task_computer_snapshot(self, task_computer):
+        self.sender_thread.send(TaskComputerSnapshotModel(self.meta_data, task_computer))
 
     def on_payment(self, addr, value):
         self.sender_thread.send(ExpenditureModel(self.meta_data.cliid, self.meta_data.sessid, addr, value))
