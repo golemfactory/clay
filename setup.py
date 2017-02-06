@@ -5,12 +5,12 @@ from setuptools import setup
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
 
-
 requirements, dependencies = parse_requirements(path.dirname(__file__))
 
 ui_err = generate_ui()
 docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
+
 
 setup(
     name='golem',
@@ -40,14 +40,13 @@ setup(
     # },
     include_package_data=True,
     cmdclass={'test': PyTest},
-    # @todo is it necessary?
-    # options=options,
-    # executables=executables,
     test_suite='tests',
     tests_require=['mock', 'pytest'],
     entry_points={
-        'console_scripts': [
+        'gui_scripts': [
             'golemapp = golemapp:start',
+        ],
+        'console_scripts': [
             'golemcli = golemcli:start',
         ]
     },
