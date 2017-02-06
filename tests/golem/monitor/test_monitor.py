@@ -1,3 +1,4 @@
+import mock
 import random
 from unittest import TestCase
 
@@ -5,7 +6,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
-
 
 class TestSystemMonitor(TestCase):
     def test_monitor_messages(self):
@@ -21,15 +21,6 @@ class TestSystemMonitor(TestCase):
         monitor.on_income("different address", 319031904194810)
         monitor.on_peer_snapshot([{"node_id": "firt node", "port": 19301},
                                   {"node_id": "second node", "port": 3193}])
-        kt = int(10 * random.random())
-        st = int(100 * random.random())
-        ct = int(20 * random.random())
-        twe = int(10 * random.random())
-        twt = int(20 * random.random())
-        monitor.on_stats_snapshot(kt, st, ct, twe, twt)
-        comp_tasks = int(4 * random.random()) + 1
-        tasks = ["task{}".format(i) for i in range(comp_tasks)]
-        monitor.on_task_computer_snapshot('some_task_str', False, True, False, tasks)
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
@@ -37,3 +28,28 @@ class TestSystemMonitor(TestCase):
         monitor.on_config_update(nmm)
         monitor.on_logout()
         monitor.shut_down()
+
+    def test_protocol_versions(self):
+        """Test wether correct protocol versions were sent."""
+        from golem.network.p2p.peersession import P2P_PROTOCOL_ID
+        from golem.task.tasksession import TASK_PROTOCOL_ID
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+
+        def check(f, msg_type):
+            with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
+                f()
+                self.assertEquals(mock_send.call_count, 1)
+                result = mock_send.call_args[0][0].dict_repr()
+                for key in ('cliid', 'sessid', 'timestamp', 'metadata'):
+                    del result[key]
+                expected_d = {
+                    'type': msg_type,
+                    'protocol_versions': {
+                        'monitor': MONITOR_CONFIG['PROTO_VERSION'],
+                        'p2p': P2P_PROTOCOL_ID,
+                        'task': TASK_PROTOCOL_ID,
+                    },
+                }
+
+        check(monitor.on_login, "Login")
+        check(monitor.on_logout, "Logout")

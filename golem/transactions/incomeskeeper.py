@@ -91,8 +91,9 @@ class IncomesDatabase(object):
                                    expected_val=expected_value, state=state)
 
     def __add_income(self, task_id, node_id, value, expected_value, state):
-        query = ReceivedPayment.update(val=ReceivedPayment.val + value,
-                                       expected_val=ReceivedPayment.expected_val + expected_value,
+        before = ReceivedPayment.get(self.__same_transaction(task_id, node_id))
+        query = ReceivedPayment.update(val=before.val + value,
+                                       expected_val=before.expected_val + expected_value,
                                        state=state,
                                        modified_date=str(datetime.now()))
         query = query.where(self.__same_transaction(task_id, node_id))
