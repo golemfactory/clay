@@ -8,6 +8,7 @@ from mock import Mock, patch
 
 
 class FailingMessage(Message):
+    TYPE = -1
     def __init__(self, *args, **kwargs):
         Message.__init__(self, *args, **kwargs)
 
@@ -27,7 +28,7 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(m.max_memory_size, 5)
         self.assertEqual(m.price, 20)
         self.assertEqual(m.num_cores, 3)
-        self.assertEqual(m.get_type(), MessageWantToComputeTask.Type)
+        self.assertEqual(m.TYPE, MessageWantToComputeTask.TYPE)
         dict_repr = m.dict_repr()
         m2 = MessageWantToComputeTask(dict_repr=dict_repr)
         self.assertEqual(m2.task_id, m.task_id)
@@ -37,7 +38,7 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(m2.max_memory_size, m.max_memory_size)
         self.assertEqual(m2.price, m.price)
         self.assertEqual(m2.num_cores, m.num_cores)
-        self.assertEqual(m.get_type(), m2.get_type())
+        self.assertEqual(m.TYPE, m2.TYPE)
 
     def test_message_report_computed_task(self):
         m = MessageReportComputedTask()
@@ -53,7 +54,7 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(m.key_id, "KEY_ID")
         self.assertEqual(m.eth_account, "ETH")
         self.assertEqual(m.node_info, "NODE")
-        self.assertEqual(m.get_type(), MessageReportComputedTask.Type)
+        self.assertEqual(m.TYPE, MessageReportComputedTask.TYPE)
         dict_repr = m.dict_repr()
         m2 = MessageReportComputedTask(dict_repr=dict_repr)
         self.assertEqual(m.subtask_id, m2.subtask_id)
@@ -66,7 +67,7 @@ class TestMessages(unittest.TestCase):
         self.assertEqual(m.key_id, m2.key_id)
         self.assertEqual(m.eth_account, m2.eth_account)
         self.assertEqual(m.node_info, m2.node_info)
-        self.assertEqual(m.get_type(), m2.get_type())
+        self.assertEqual(m.TYPE, m2.TYPE)
 
     def test_message_hash(self):
         m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
@@ -77,7 +78,7 @@ class TestMessages(unittest.TestCase):
         m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         assert m.serialize()
 
-        m = FailingMessage(-1)
+        m = FailingMessage()
         serialized = None
 
         try:

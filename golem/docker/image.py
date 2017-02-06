@@ -1,8 +1,11 @@
-from client import local_client
-from docker import errors
 import logging
 
+from docker import errors
+
+from client import local_client
+
 log = logging.getLogger(__name__)
+
 
 class DockerImage(object):
 

@@ -27,7 +27,6 @@ from gui.controller.subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCu
 from gui.controller.changetaskdialogcustomizer import ChangeTaskDialogCustomizer
 from gui.controller.configurationdialogcustomizer import ConfigurationDialogCustomizer
 from gui.controller.environmentsdialogcustomizer import EnvironmentsDialogCustomizer
-from gui.controller.identitydialogcustomizer import IdentityDialogCustomizer
 from gui.controller.memoryhelper import resource_size_to_display, translate_resource_index
 from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
 from gui.controller.previewcontroller import PreviewController
@@ -35,7 +34,7 @@ from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDi
 from gui.guidirmanager import get_icons_list
 from gui.view.event_filter import mouse_click
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
-    EnvironmentsDialog, IdentityDialog, NodeNameDialog, ShowTaskResourcesDialog
+    EnvironmentsDialog, NodeNameDialog, ShowTaskResourcesDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
 
 logger = logging.getLogger("gui")
@@ -233,7 +232,6 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
         self.gui.ui.environmentsButton.clicked.connect(self._show_environments)
-        self.gui.ui.identityButton.clicked.connect(self._show_identity_dialog)
         self.gui.ui.editDescriptionButton.clicked.connect(self._edit_description)
         self.gui.ui.saveDescriptionButton.clicked.connect(self._save_description)
 
@@ -293,11 +291,6 @@ class MainWindowCustomizer(Customizer):
         payments_window = PaymentsDialog(self.gui.window)
         PaymentsDialogCustomizer(payments_window, self.logic)
         payments_window.show()
-
-    def _show_identity_dialog(self):
-        identity_dialog = IdentityDialog(self.gui.window)
-        identity_dialog_customizer = IdentityDialogCustomizer(identity_dialog, self.logic)
-        identity_dialog.show()
 
     def _show_environments(self):
         self.environments_dialog = EnvironmentsDialog(self.gui.window)
@@ -367,6 +360,7 @@ class MainWindowCustomizer(Customizer):
                 after_split = r.split("\\")
                 insert_item(item, after_split)
 
+            # FIXME REMOVE main_scene_file
             self.show_task_resources_dialog.ui.mainSceneFileLabel.setText(
                 self.current_task_highlighted.definition.main_scene_file)
             self.show_task_resources_dialog.ui.folderTreeView.expandAll()

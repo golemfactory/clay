@@ -49,8 +49,13 @@ class TestGNTTest(unittest.TestCase):
         gnt.create(sender=tester.k1)
         addr = urandom(20).encode('hex')
         value = 999 * 10**18
+        sender_balance_before = self.state.block.get_balance(tester.a1)
         gnt.transfer(addr, value, sender=tester.k1)
+        sender_balance_after = self.state.block.get_balance(tester.a1)
         assert gnt.balanceOf(addr) == value
+        eth_cost = sender_balance_before - sender_balance_after
+        gas_cost = eth_cost / tester.GAS_PRICE
+        assert 50000 < gas_cost < 60000
 
     def test_batch_transfer(self):
         gnt = self.deploy_contract()

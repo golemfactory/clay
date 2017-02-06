@@ -1,12 +1,12 @@
 import time
 from threading import Thread
 
-from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.docker.image import DockerImage
-from golem.task.taskcomputer import TaskComputer
 from mock import Mock
 
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
+from golem.task.taskcomputer import TaskComputer
 from golem.tools.appveyor import appveyor_skip
 from test_docker_job import TestDockerJob
 
@@ -25,7 +25,12 @@ class TestDockerTaskThread(TestDockerJob):
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = task_server.client.datadir
         task_computer = TaskComputer("node", task_server, use_docker_machine_manager=False)
-        image = DockerImage("golem/base")
+        image = DockerImage("golemfactory/base", tag="1.2")
+
+        with self.assertRaises(AttributeError):
+            DockerTaskThread(task_computer, "subtask_id", None,
+                             self.work_dir, script, None, "test task thread",
+                             self.resources_dir, self.output_dir, timeout=30)
 
         def test():
             tt = DockerTaskThread(task_computer, "subtask_id", [image],

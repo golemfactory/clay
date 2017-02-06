@@ -39,9 +39,6 @@ class Faucet(object):
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
                                                        '0x' + addr.encode('hex'), h))
         h = h[2:].decode('hex')
-        if h != tx.hash:
-            raise ValueError(
-                "Transaction hash is incorrect: {}. Expected: {}".format(h.encode('hex'), tx.hash.encore('hex')))
         return h
 
     @staticmethod
@@ -58,6 +55,7 @@ class NodeProcess(object):
     MAX_GETH_VERSION = '1.5.999'
 
     def __init__(self, nodes, datadir):
+        self.port = None
         self.__prog = find_program('geth')
         if not self.__prog:
             raise OSError("Ethereum client 'geth' not found")
@@ -164,14 +162,13 @@ class NodeProcess(object):
             log.info("Node terminated in {:.2f} s".format(duration))
 
 
-# TODO: Refactor, use inheritance FullNode(NodeProcess)
-class FullNode(object):
-    def __init__(self, datadir=None):
+class FullNode(NodeProcess):
+    def __init__(self, datadir=None, run=True):
         if not datadir:
             datadir = path.join(get_local_datadir('ethereum'), 'full_node')
-        self.proc = NodeProcess(nodes=[], datadir=datadir)
-        self.proc.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY,
-                        port=30900)
+        super(FullNode, self).__init__(nodes=[], datadir=datadir)
+        if run and not self.is_running():
+            self.start(rpc=False, mining=True, nodekey=Faucet.PRIVKEY, port=30900)
 
 if __name__ == "__main__":
     import signal

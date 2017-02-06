@@ -2,8 +2,8 @@ from __future__ import division
 
 from ethereum.utils import denoms, zpad
 from pydispatch import dispatcher
-from twisted.internet.task import LoopingCall
 
+from golem.transactions.service import Service
 from golem.model import PaymentStatus
 
 from .paymentprocessor import PaymentProcessor, log
@@ -17,25 +17,22 @@ class IncomingPayment(object):
         self.extra = {}  # For additional data.
 
 
-class PaymentMonitor(object):
+class PaymentMonitor(Service):
+    BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
+
     def __init__(self, client, addr):
         self.__client = client
         self.__addr = addr
         self.__filter = None
         self.__payments = []
-
-        scheduler = LoopingCall(self.run)
-        scheduler.start(30)  # FIXME: Use single scheduler for all payments.
+        super(PaymentMonitor, self).__init__(30)
 
     def get_incoming_payments(self):
         """Return cached incoming payments fetch from blockchain."""
         return self.__payments
 
-    def run(self):
-        try:
-            self.process_incoming_payments()
-        except:
-            log.exception('Error in PaymentMonitor.run()')
+    def _run(self):
+        self.process_incoming_payments()
 
     def process_incoming_payments(self):
         if not self.__filter:
@@ -44,11 +41,10 @@ class PaymentMonitor(object):
             log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
             # Search for logs Transfer(..., my address)
             # TODO: We can save some gas by not indexing "from" address
-            bank_addr = '0x' + PaymentProcessor.BANK_ADDR.encode('hex')
             topics = [log_id, None, '0x' + zpad(self.__addr, 32).encode('hex')]
             self.__filter = self.__client.new_filter(from_block='earliest',
                                                      to_block='latest',
-                                                     address=bank_addr,
+                                                     address=self.BANK_ADDR,
                                                      topics=topics)
 
         new_logs = self.__client.get_filter_changes(self.__filter)

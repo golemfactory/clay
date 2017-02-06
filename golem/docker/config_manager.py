@@ -1,7 +1,7 @@
 import logging
+from contextlib import contextmanager
 
 import psutil
-from contextlib import contextmanager
 
 from golem.docker.task_thread import DockerTaskThread
 
@@ -45,7 +45,6 @@ class DockerConfigManager(object):
         if config_desc:
             num_cores = config_desc.num_cores
             max_memory_size = config_desc.max_memory_size
-            max_resource_size = config_desc.max_resource_size
 
             with self._try():
                 max_cpus = min(len(self.cpu_cores), int(num_cores) or 1)

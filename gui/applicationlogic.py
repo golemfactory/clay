@@ -168,18 +168,18 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):
             return
-        b, ab, deposit = result_tuple
-        b, ab, deposit = int(b), int(ab), int(deposit)
+        gnt_balance, gnt_available, eth_balance = result_tuple
+        gnt_balance = int(gnt_balance)
+        gnt_available = int(gnt_available)
+        eth_balance = int(eth_balance)
 
-        rb = b - ab
-        total = deposit + b
-        fmt = "{:.6f} ETH"
+        gnt_reserved = gnt_balance - gnt_available
         ui = self.customizer.gui.ui
-        ui.localBalanceLabel.setText(fmt.format(b / denoms.ether))
-        ui.availableBalanceLabel.setText(fmt.format(ab / denoms.ether))
-        ui.reservedBalanceLabel.setText(fmt.format(rb / denoms.ether))
-        ui.depositBalanceLabel.setText(fmt.format(deposit / denoms.ether))
-        ui.totalBalanceLabel.setText(fmt.format(total / denoms.ether))
+        ui.localBalanceLabel.setText("{:.8f} GNT".format(gnt_balance / denoms.ether))
+        ui.availableBalanceLabel.setText("{:.8f} GNT".format(gnt_available / denoms.ether))
+        ui.reservedBalanceLabel.setText("{:.8f} GNT".format(gnt_reserved / denoms.ether))
+        ui.depositBalanceLabel.setText("{:.8f} ETH".format(eth_balance / denoms.ether))
+        ui.totalBalanceLabel.setText("N/A")
 
     @inlineCallbacks
     def update_estimated_reputation(self):
@@ -436,11 +436,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
-        
+
         reactor = self.__get_reactor()
 
         self.br = BenchmarkRunner(t, self.datadir,
-                                  lambda p: reactor.callFromThread(self._benchmark_computation_success, 
+                                  lambda p: reactor.callFromThread(self._benchmark_computation_success,
                                                                    performance=p, label=label,
                                                                    cfg_param=cfg_param_name),
                                   self._benchmark_computation_error,

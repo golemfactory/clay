@@ -18,7 +18,9 @@ class EthereumClientTest(unittest.TestCase):
 
     def test_full_node(self):
         n = FullNode()
-        n.proc.stop()
+        assert n.is_running() == True
+        n.stop()
+        assert n.is_running() == False
 
     @unittest.skipIf(platform.system() == 'Windows', 'On Windows killing is hard')
     def test_full_node_remotely(self):
@@ -48,7 +50,7 @@ class EthereumClientTest(unittest.TestCase):
 class EthereumFaucetTest(TempDirFixture):
     def setUp(self):
         super(EthereumFaucetTest, self).setUp()
-        self.n = FullNode()
+        self.n = FullNode(run=False)
         self.eth_node = Client(datadir=self.tempdir)
 
     def teardown(self):
@@ -57,6 +59,11 @@ class EthereumFaucetTest(TempDirFixture):
     def test_faucet_gimme_money(self):
         BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
         Faucet.gimme_money(self.eth_node, BANK_ADDR, 3 * denoms.ether)
+
+    def test_deploy_contract(self):
+        address = Faucet.deploy_contract(self.eth_node, "init code")
+        assert type(address) is str
+        assert len(address) == 20
 
 
 class EthereumNodeTest(TempDirFixture):

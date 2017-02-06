@@ -175,10 +175,10 @@ class TestGuiApplicationLogic(DatabaseFixture):
         logic.update_payments_view()
 
         ui = logic.customizer.gui.ui
-        ui.localBalanceLabel.setText.assert_called_once_with("3.000000 ETH")
-        ui.reservedBalanceLabel.setText.assert_called_once_with("2.000000 ETH")
-        ui.availableBalanceLabel.setText.assert_called_once_with("1.000000 ETH")
-        ui.depositBalanceLabel.setText.assert_called_once_with("0.300000 ETH")
+        ui.localBalanceLabel.setText.assert_called_once_with("3.00000000 GNT")
+        ui.reservedBalanceLabel.setText.assert_called_once_with("2.00000000 GNT")
+        ui.availableBalanceLabel.setText.assert_called_once_with("1.00000000 GNT")
+        ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
 
     def test_start_task(self):
         logic = GuiApplicationLogic()

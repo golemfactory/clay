@@ -294,6 +294,16 @@ class TestCLI(unittest.TestCase):
                                  isinstance(a, argparse._StoreAction)
                                  for a in mock_choices['id_method']._positionals._actions]))
 
+    def test_cli_formatter(self):
+        """ Test for setting and getting formatter """
+        from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
+        client = self.MockClient()
+        cli = CLI(client=client)
+        cli.add_formatter(CommandFormatter())
+        cli.add_formatter(CommandJSONFormatter())
+        assert cli.get_formatter(CommandJSONFormatter())
+        assert cli.get_formatter(CommandFormatter())
+
 
 class TestCLICommands(unittest.TestCase):
 
@@ -342,5 +352,3 @@ class TestArgumentParser(unittest.TestCase):
         ap = ArgumentParser()
         with self.assertRaises(ParsingException):
             ap.exit()
-
-

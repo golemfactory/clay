@@ -22,17 +22,17 @@ class EthereumTransactionSystem(TransactionSystem):
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
-        if not isinstance(node_priv_key, basestring):
-            raise TypeError("Incorrect 'node_priv_key' type: {}. Should be a string".format(type(node_priv_key)))
-        if len(node_priv_key) != 32:
-            raise ValueError("Wrong 'node_priv_key' length: {}. Should be 32".format(len(node_priv_key)))
+        if not isinstance(node_priv_key, basestring) or len(node_priv_key) != 32:
+            raise ValueError("Invalid private key: {}".format(node_priv_key))
         self.__node_address = keys.privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         datadir = path.join(datadir, "ethereum")
         eth_node = Client(datadir=datadir)
         self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
+        self.__proc.start()
         self.__monitor = PaymentMonitor(eth_node, self.__node_address)
+        self.__monitor.start()
         # TODO: We can keep address in PaymentMonitor only
 
     def add_payment_info(self, *args, **kwargs):
@@ -44,10 +44,10 @@ class EthereumTransactionSystem(TransactionSystem):
         return '0x' + self.__node_address.encode('hex')
 
     def get_balance(self):
-        b = self.__proc.balance()
-        ab = self.__proc.available_balance()
-        d = self.__proc.deposit_balance()
-        return b, ab, d
+        gnt = self.__proc.gnt_balance()
+        av_gnt = self.__proc._gnt_available()
+        eth = self.__proc.eth_balance()
+        return gnt, av_gnt, eth
 
     def pay_for_task(self, task_id, payments):
         """ Pay for task using Ethereum connector
@@ -62,4 +62,3 @@ class EthereumTransactionSystem(TransactionSystem):
                  'value': payment.value,
                  'block_number': payment.extra['block_number']
                  } for payment in self.__monitor.get_incoming_payments()]
-

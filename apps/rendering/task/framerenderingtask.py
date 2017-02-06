@@ -317,7 +317,6 @@ class FrameRenderingTask(RenderingTask):
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
         preview_task_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_task_preview"), idx)
-        preview_file_path = "{}{}".format(os.path.join(self.tmp_dir, "current_preview"), idx)
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")

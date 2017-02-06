@@ -1,7 +1,7 @@
 import os
 import random
 
-from golem.resource.base.resourcesmanager import BaseAbstractResourceManager
+from golem.resource.base.resourcesmanager import AbstractResourceManager
 from golem.resource.client import ClientHandler, IClient, ClientCommands, ClientConfig, ClientOptions, file_multihash
 from golem.resource.http.filerequest import UploadFileRequest, DownloadFileRequest
 
@@ -89,10 +89,10 @@ class HTTPResourceManagerClient(IClient):
         return server or random.choice(SERVERS)
 
 
-class HTTPResourceManager(ClientHandler, BaseAbstractResourceManager):
+class HTTPResourceManager(ClientHandler, AbstractResourceManager):
     def __init__(self, dir_manager, config=None, resource_dir_method=None):
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
-        BaseAbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
+        AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
 
     def new_client(self):
         return HTTPResourceManagerClient(**self.config.client)

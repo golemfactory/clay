@@ -1,8 +1,9 @@
 import logging
 import time
 import os
-import uuid
+from pydispatch import dispatcher
 from threading import Lock
+import uuid
 
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
@@ -31,6 +32,7 @@ class CompStats(object):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
         self.tasks_with_errors = 0
+        self.tasks_requested = 0
 
 
 class TaskComputer(object):
@@ -168,15 +170,17 @@ class TaskComputer(object):
             task_thread.end_time = time.time()
 
         with self.lock:
-            if task_thread in self.current_computations:
+            try:
                 self.current_computations.remove(task_thread)
+            except ValueError: # not in list
+                pass
 
         time_ = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
-        subtask = self.assigned_subtasks.pop(subtask_id, None)
-
-        if not subtask:
-            logger.error("No subtask with id {}".format(subtask_id))
+        try:
+            subtask = self.assigned_subtasks.pop(subtask_id)
+        except KeyError:
+            logger.error("No subtask with id %r", subtask_id)
             return
 
         if task_thread.error or task_thread.error_msg:
@@ -187,17 +191,20 @@ class TaskComputer(object):
             self.task_server.send_task_failed(subtask_id, subtask.task_id, task_thread.error_msg,
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
+            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
-            logger.info("Task {} computed".format(subtask_id))
+            logger.info("Task %r computed", subtask_id)
             self.stats.increase_stat('computed_tasks')
             self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                           subtask.return_address, subtask.return_port, subtask.key_id,
                                           subtask.task_owner, self.node_name)
+            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=time_)
         else:
             self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(subtask_id, subtask.task_id, "Wrong result format",
                                               subtask.return_address, subtask.return_port, subtask.key_id,
                                               subtask.task_owner, self.node_name)
+            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
         self.counting_task = None
 
     def run(self):
@@ -363,12 +370,16 @@ class TaskComputer(object):
         with self.lock:
             perform_request = not self.waiting_for_task and not self.counting_task
 
-        if perform_request:
-            now = time.time()
-            self.wait()
-            self.last_checking = now
-            self.last_task_request = now
-            self.waiting_for_task = self.task_server.request_task()
+        if not perform_request:
+            return
+
+        now = time.time()
+        self.wait()
+        self.last_checking = now
+        self.last_task_request = now
+        self.waiting_for_task = self.task_server.request_task()
+        if self.waiting_for_task is not None:
+            self.stats.increase_stat('tasks_requested')
 
     def __request_resource(self, task_id, resource_header, return_address, return_port, key_id, task_owner):
         self.last_checking = time.time()

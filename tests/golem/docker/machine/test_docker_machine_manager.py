@@ -167,8 +167,7 @@ class TestDockerMachineManager(unittest.TestCase):
 
         dmm = MockDockerMachineManager()
         dmm.docker_machine_images = lambda *_: []
-        dmm.check_environment()
-        assert not dmm.docker_machine_available
+        assert not dmm.check_environment()
 
         mock_virtualbox_module = mock.MagicMock()
 

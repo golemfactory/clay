@@ -1,4 +1,5 @@
 import os
+import subprocess
 
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
@@ -6,7 +7,7 @@ PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 def call_pyrcc(py_file, qrc_file):
     cmd = "pyrcc5 -o " + py_file + " " + qrc_file
     print cmd
-    os.system(cmd)
+    subprocess.call(cmd.split())
 
 
 def regenerate_ui_files(root_path):
@@ -16,7 +17,7 @@ def regenerate_ui_files(root_path):
     """
     dirs = [name for name in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, name))]
     files = [name for name in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, name))]
-    pyuic_path = 'pyuic.py'
+    pyuic_path = PYUIC_PATH
 
     for dir_ in dirs:
         regenerate_ui_files(os.path.join(root_path, dir_))
@@ -41,9 +42,11 @@ def regenerate_ui_files(root_path):
             if not os.path.exists(pyuic_path):
                 raise IOError("Can't open file " + pyuic_path)
 
-            os.system("python " + pyuic_path + " " + os.path.join(root_path, file_) + " > " + os.path.join(root_path,
-                                                                                                           out_file))
-
+            cmd = "python " + pyuic_path + " " + os.path.join(root_path, file_)
+            print cmd
+            result = subprocess.check_output(cmd.split())
+            with open(os.path.join(root_path, out_file), 'w') as f:
+                f.write(result)
 
 
 def gen_ui_files(path):
@@ -54,7 +57,6 @@ def gen_ui_files(path):
     :param str path: path to directory where ui files are placed
     """
     if os.path.exists(path):
-
         regenerate_ui_files(path)
     else:
         cwd = os.getcwd()

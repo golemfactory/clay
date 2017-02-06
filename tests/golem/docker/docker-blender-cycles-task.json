@@ -9,9 +9,9 @@
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",
-          "repository": "golem/blender",
-          "tag": "latest",
-          "name": "golem/blender:latest",
+          "repository": "golemfactory/blender",
+          "tag": "1.3",
+          "name": "golemfactory/blender:1.3",
           "id": null
         }
       ],
@@ -40,8 +40,7 @@
   "task_id":"7220aa01-ad45-4fb4-b199-ba72b37a1f0c",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
-      "$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py"
+      "$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend"
     ]
   },
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-cycles.blend",
@@ -63,9 +62,9 @@
   "docker_images":[
     {
       "py/object": "golem.docker.image.DockerImage",
-      "repository": "golem/blender",
-      "tag": "latest",
-      "name": "golem/blender:latest",
+      "repository": "golemfactory/blender",
+      "tag": "1.3",
+      "name": "golemfactory/blender:1.3",
       "id": null
     }
   ]

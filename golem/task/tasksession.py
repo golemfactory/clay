@@ -23,7 +23,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 10
+TASK_PROTOCOL_ID = 11
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -491,7 +491,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
-        resources = resource_manager.join_split_resources(msg.resources)
+        resources = resource_manager.storage.join_resources(msg.resources)
         client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
@@ -621,7 +621,8 @@ class TaskSession(MiddlemanSafeSession):
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
         client_options = resource_manager.build_client_options(self.task_server.get_key_id())
-        res = resource_manager.list_split_resources(msg.task_id)
+        res = resource_manager.storage.get_resources(msg.task_id)
+        res = resource_manager.storage.split_resources(res)
         self.send(MessageResourceList(res, options=client_options))
 
     def __send_resource_format(self, use_distributed_resource):
@@ -689,35 +690,35 @@ class TaskSession(MiddlemanSafeSession):
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            MessageWantToComputeTask.Type: self._react_to_want_to_compute_task,
-            MessageTaskToCompute.Type: self._react_to_task_to_compute,
-            MessageCannotAssignTask.Type: self._react_to_cannot_assign_task,
-            MessageCannotComputeTask.Type: self._react_to_cannot_compute_task,
-            MessageReportComputedTask.Type: self._react_to_report_computed_task,
-            MessageGetTaskResult.Type: self._react_to_get_task_result,
-            MessageTaskResultHash.Type: self._react_to_task_result_hash,
-            MessageGetResource.Type: self._react_to_get_resource,
-            MessageAcceptResourceFormat.Type: self._react_to_accept_resource_format,
-            MessageResource.Type: self._react_to_resource,
-            MessageResourceList.Type: self._react_to_resource_list,
-            MessageSubtaskResultAccepted.Type: self._react_to_subtask_result_accepted,
-            MessageSubtaskResultRejected.Type: self._react_to_subtask_result_rejected,
-            MessageTaskFailure.Type: self._react_to_task_failure,
-            MessageDeltaParts.Type: self._react_to_delta_parts,
-            MessageResourceFormat.Type: self._react_to_resource_format,
-            MessageHello.Type: self._react_to_hello,
-            MessageRandVal.Type: self._react_to_rand_val,
-            MessageStartSessionResponse.Type: self._react_to_start_session_response,
-            MessageMiddleman.Type: self._react_to_middleman,
-            MessageMiddlemanReady.Type: self._react_to_middleman_ready,
-            MessageBeingMiddlemanAccepted.Type: self._react_to_being_middleman_accepted,
-            MessageMiddlemanAccepted.Type: self._react_to_middleman_accepted,
-            MessageJoinMiddlemanConn.Type: self._react_to_join_middleman_conn,
-            MessageNatPunch.Type: self._react_to_nat_punch,
-            MessageWaitForNatTraverse.Type: self._react_to_wait_for_nat_traverse,
-            MessageWaitingForResults.Type: self._react_to_waiting_for_results,
+            MessageWantToComputeTask.TYPE: self._react_to_want_to_compute_task,
+            MessageTaskToCompute.TYPE: self._react_to_task_to_compute,
+            MessageCannotAssignTask.TYPE: self._react_to_cannot_assign_task,
+            MessageCannotComputeTask.TYPE: self._react_to_cannot_compute_task,
+            MessageReportComputedTask.TYPE: self._react_to_report_computed_task,
+            MessageGetTaskResult.TYPE: self._react_to_get_task_result,
+            MessageTaskResultHash.TYPE: self._react_to_task_result_hash,
+            MessageGetResource.TYPE: self._react_to_get_resource,
+            MessageAcceptResourceFormat.TYPE: self._react_to_accept_resource_format,
+            MessageResource.TYPE: self._react_to_resource,
+            MessageResourceList.TYPE: self._react_to_resource_list,
+            MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,
+            MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,
+            MessageTaskFailure.TYPE: self._react_to_task_failure,
+            MessageDeltaParts.TYPE: self._react_to_delta_parts,
+            MessageResourceFormat.TYPE: self._react_to_resource_format,
+            MessageHello.TYPE: self._react_to_hello,
+            MessageRandVal.TYPE: self._react_to_rand_val,
+            MessageStartSessionResponse.TYPE: self._react_to_start_session_response,
+            MessageMiddleman.TYPE: self._react_to_middleman,
+            MessageMiddlemanReady.TYPE: self._react_to_middleman_ready,
+            MessageBeingMiddlemanAccepted.TYPE: self._react_to_being_middleman_accepted,
+            MessageMiddlemanAccepted.TYPE: self._react_to_middleman_accepted,
+            MessageJoinMiddlemanConn.TYPE: self._react_to_join_middleman_conn,
+            MessageNatPunch.TYPE: self._react_to_nat_punch,
+            MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,
+            MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,
         })
 
-        # self.can_be_not_encrypted.append(MessageHello.Type)
-        self.can_be_unsigned.append(MessageHello.Type)
-        self.can_be_unverified.extend([MessageHello.Type, MessageRandVal.Type])
+        # self.can_be_not_encrypted.append(MessageHello.TYPE)
+        self.can_be_unsigned.append(MessageHello.TYPE)
+        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE])

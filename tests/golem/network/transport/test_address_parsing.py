@@ -94,3 +94,55 @@ class TestSocketAddressParsing(unittest.TestCase):
         self.__expect_valid('x' + ('.x' * 127) + ':40102')
         # TODO: should we allow this one?
         self.__expect_valid('trailing.dot.is.allowed.:40102')
+
+    def test_is_proper_address(self):
+        import socket
+        from struct import pack
+        from random import randint
+        from ipaddress import IPv6Address
+        for i in range(5000):
+            assert SocketAddress.is_proper_address(
+                socket.inet_ntoa(pack('>I', randint(0, 16777215))),
+                randint(1, 10000)
+            )
+        for i in range(5000):
+            assert SocketAddress.is_proper_address(
+                str(IPv6Address(randint(0, 2 ** 128 - 1))),
+                randint(1, 10000)
+            )
+        assert not SocketAddress.is_proper_address('1.2.3.4', '')
+        assert not SocketAddress.is_proper_address('1.2.3.4', None)
+        assert not SocketAddress.is_proper_address('1.2.3.4', '0xdead')
+        assert not SocketAddress.is_proper_address('1.2.3.4', '-1')
+        assert not SocketAddress.is_proper_address('1.2.3.4', '0')
+        assert not SocketAddress.is_proper_address('1.2.3.4', '65536')
+        assert not SocketAddress.is_proper_address('1.2.3.4', '65536655366536655366553')
+        assert not SocketAddress.is_proper_address('1.2.3:40102', '')
+        assert not SocketAddress.is_proper_address('1.2.3.4.', '40102')
+        assert not SocketAddress.is_proper_address('.1.2.3.4', '40102')
+        assert not SocketAddress.is_proper_address('1..2.3.4', '40102')
+        assert not SocketAddress.is_proper_address('1..3.4:40102', '2')
+        assert not SocketAddress.is_proper_address('1.2.3.256', '40102')
+        assert not SocketAddress.is_proper_address('[0:1:2:3:4:5:6]', '1')
+        assert not SocketAddress.is_proper_address('[0:1:2:3:4:5:6:7:8]', '1')
+        assert not SocketAddress.is_proper_address('[0:1:2:33333:4:5:6:7]', '1')
+        assert not SocketAddress.is_proper_address('[0:1:2:-3:4:5:6:7]', '1')
+
+    def test_valid_hostname(self):
+        SocketAddress.validate_hostname('localhost')
+        SocketAddress.validate_hostname('0golem-node0')
+        SocketAddress.validate_hostname('0.a.b.c.d.e.f.g.h')
+        SocketAddress.validate_hostname('x' * 63)
+        SocketAddress.validate_hostname('x' + ('.x' * 127))
+        SocketAddress.validate_hostname('trailing.dot.is.allowed.')
+
+        with self.assertRaises(ValueError):
+            SocketAddress.validate_hostname('-golem.net:1111')
+        with self.assertRaises(ValueError):
+            SocketAddress.validate_hostname('golem-.net:1111')
+        with self.assertRaises(ValueError):
+            SocketAddress.validate_hostname('0001:1111')
+        with self.assertRaises(ValueError):
+            SocketAddress.validate_hostname('x' * 64)
+        with self.assertRaises(ValueError):
+            SocketAddress.validate_hostname('www.underscores_not_allowed.com')

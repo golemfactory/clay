@@ -1,8 +1,6 @@
 import logging
 
 from eth_abi.utils import zpad
-from mock import patch
-from web3 import TestRPCProvider
 
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
@@ -41,7 +39,6 @@ class EthereumClientTest(TempDirFixture):
         client.node.stop()
         assert not client.node.is_running()
 
-    @patch('web3.KeepAliveRPCProvider', new=TestRPCProvider)
     def test_get_logs(self):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
@@ -49,3 +46,16 @@ class EthereumClientTest(TempDirFixture):
         client = Client(self.tempdir)
         assert client.get_logs(from_block='earliest', to_block='latest',
                                topics=[log_id, addr]) == []
+
+    def test_filters(self):
+        """ Test creating filter and getting logs """
+        client = Client(self.tempdir)
+        filter_id = client.new_filter()
+        assert type(filter_id) is unicode
+        # Filter id is hex encoded 256-bit integer.
+        assert filter_id.startswith('0x')
+        number = int(filter_id, 16)
+        assert 0 < number < 2**256
+
+        entries = client.get_filter_changes(filter_id)
+        assert not entries
