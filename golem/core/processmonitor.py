@@ -14,9 +14,11 @@ class ProcessMonitor(Thread):
         self._callbacks = params.pop('callbacks', [])
         self._lock = Lock()
 
+        self.daemon = True
         self.working = False
-        self.add_child_processes(*child_processes)
+
         atexit.register(self.exit)
+        self.add_child_processes(*child_processes)
 
     def _start(self):
         self.working = True
@@ -28,11 +30,11 @@ class ProcessMonitor(Thread):
                 if not self.is_process_alive(process):
                     print "Subprocess {} exited with code {}".format(process.pid,
                                                                      self._exit_code(process))
-
-                    self.run_callbacks(process)
+                    if self.working:
+                        self.run_callbacks(process)
                     self._child_processes.pop(i)
 
-            time.sleep(1)
+            time.sleep(0.5)
 
     def stop(self, *_):
         self.working = False
@@ -68,10 +70,16 @@ class ProcessMonitor(Thread):
         if cls.is_process_alive(process):
             try:
                 process.terminate()
+
+                if isinstance(process, Popen):
+                    process.communicate()
+                elif isinstance(process, Process):
+                    process.join()
+
             except Exception as exc:
-                print "Error terminating subprocess {}: {}".format(process, exc)
+                print "Error terminating subprocess {}: {}".format(cls._pid(process), exc)
             else:
-                print "Subprocess {} terminated".format(process)
+                print "Subprocess {} terminated".format(cls._pid(process))
 
     @staticmethod
     def is_supported(process):
@@ -86,6 +94,11 @@ class ProcessMonitor(Thread):
             return process.is_alive()
         else:
             return False
+
+    @staticmethod
+    def _pid(process):
+        if process:
+            return process.pid
 
     @staticmethod
     def _exit_code(process):

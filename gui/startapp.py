@@ -31,7 +31,7 @@ def install_qt4_reactor():
     return reactor
 
 
-def stop_reactor():
+def stop_reactor(*_):
     from twisted.internet import reactor
     if reactor.running:
         reactor.stop()
@@ -187,8 +187,7 @@ def start_app(start_ranking=True, datadir=None,
     from golem.core.processmonitor import ProcessMonitor
 
     process_monitor = ProcessMonitor(gui_process)
-    process_monitor.add_callbacks(process_monitor.exit,
-                                  stop_reactor)
+    process_monitor.add_callbacks(stop_reactor)
     process_monitor.start()
 
     try:

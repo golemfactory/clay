@@ -3,7 +3,6 @@ import os
 import uuid
 
 from golem.network.hyperdrive.client import HyperdriveClient
-from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.resource.base.resourcesmanager import AbstractResourceManager, ResourceBundle
 from golem.resource.client import ClientHandler, ClientConfig, ClientCommands
 
@@ -15,9 +14,6 @@ class HyperdriveResourceManager(ClientHandler, AbstractResourceManager):
     def __init__(self, dir_manager, config=None, resource_dir_method=None):
         ClientHandler.__init__(self, ClientCommands, config or ClientConfig())
         AbstractResourceManager.__init__(self, dir_manager, resource_dir_method)
-
-        # self.daemon_manager = HyperdriveDaemonManager(dir_manager.root_path)
-        # self.daemon_manager.start()
 
     def new_client(self):
         return HyperdriveClient(**self.config.client)

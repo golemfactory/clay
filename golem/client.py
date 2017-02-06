@@ -27,6 +27,7 @@ from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -37,7 +38,6 @@ from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -140,6 +140,7 @@ class Client(object):
         self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
+        self.daemon_manager = None
 
         self.rpc_publisher = None
 
@@ -168,8 +169,12 @@ class Client(object):
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
+
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
+
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
@@ -225,8 +230,12 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
+        if self.daemon_manager:
+            self.daemon_manager.stop()
         dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()

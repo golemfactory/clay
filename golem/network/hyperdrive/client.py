@@ -16,7 +16,7 @@ class HyperdriveClient(IClient):
         # destination address
         self.host = host
         self.port = port
-
+        # connection / read timeout
         self.timeout = timeout
 
         # default POST request headers
@@ -44,7 +44,6 @@ class HyperdriveClient(IClient):
 
     def get(self, multihash, client_options=None, **kwargs):
         dst_path = kwargs.pop('filepath')
-
         response = self._request(
             command='download',
             hash=multihash,
