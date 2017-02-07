@@ -12,8 +12,7 @@ from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.appveyor import appveyor_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from gui.startapp import load_environments, start_client, \
-    start_gui_process, GUIApp
+from gui.startapp import load_environments, start_client
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 

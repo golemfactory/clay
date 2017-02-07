@@ -34,6 +34,13 @@ def load_environments():
 gui_process = None
 
 
+def register_task_types(logic):
+    from gui.view.widget import TaskWidget
+    for app in apps_manager.apps.values():
+        task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
+        logic.register_new_task_type(task_type)
+
+
 def start_gui(address):
     global gui_process
 

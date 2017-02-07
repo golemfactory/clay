@@ -1,7 +1,7 @@
 import re
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtTest import QTest
+from PyQt5.QtCore import Qt
+from PyQt5.QtTest import QTest
 from mock import Mock, patch
 
 from golem.core.common import is_windows
