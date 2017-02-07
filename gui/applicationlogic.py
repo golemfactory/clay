@@ -360,12 +360,12 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @staticmethod
     def save_task(task_state, file_path):
-        path = u"{}".format(file_path)
+        path, _ = file_path
         if not path.endswith(".gt"):
             if not path.endswith("."):
-                file_path += "."
-            file_path += "gt"
-        with open(file_path, "wb") as f:
+                path += "."
+            path += "gt"
+        with open(path, "wb") as f:
             data = json.dumps(task_state)
             f.write(data)
 
