@@ -245,7 +245,7 @@ class MainWindowCustomizer(Customizer):
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()
-        file_name = QFileDialog.getOpenFileName(self.gui.window,
+        file_name, _ = QFileDialog.getOpenFileName(self.gui.window,
                                                 "Choose task file", save_dir,
                                                 "Golem Task (*.gt)")
         if os.path.exists(file_name):
