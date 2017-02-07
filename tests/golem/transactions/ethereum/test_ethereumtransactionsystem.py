@@ -1,3 +1,4 @@
+from devp2p.crypto import privtopub
 from ethereum import keys
 from mock import patch, Mock
 
@@ -35,7 +36,9 @@ class TestEthereumTransactionSystem(TestWithDatabase):
             patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
             patch(pkg + 'paymentmonitor.PaymentMonitor.start'), \
             patch(pkg + 'paymentmonitor.PaymentMonitor.stop'), \
-            patch(pkg + 'node.NodeProcess.start'), patch(pkg + 'node.NodeProcess.stop'):
+            patch(pkg + 'node.NodeProcess.start'), \
+            patch(pkg + 'node.NodeProcess.stop'), \
+            patch('web3.Web3.__init__', lambda *_: None):
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 

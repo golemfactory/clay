@@ -43,6 +43,10 @@ def wait_for_processes(timeout=10, *processes):
         time.sleep(0.5)
 
 
+def sleep_1sec():
+    time.sleep(1)
+
+
 def run_exit():
     return
 
@@ -135,7 +139,7 @@ class TestProcessMonitor(LogTestCase):
 
     def test_lifecycle_multiprocessing(self):
 
-        process = Process(target=lambda: time.sleep(1))
+        process = Process(target=sleep_1sec)
         assert not ProcessMonitor.is_process_alive(process)
         assert ProcessMonitor.is_supported(process)
 
@@ -164,12 +168,12 @@ class TestProcessMonitor(LogTestCase):
 
     def test_kill_process_multiprocessing(self):
 
-        process = Process(target=lambda: time.sleep(1))
+        process = Process(target=sleep_1sec)
         process.start()
 
         assert ProcessMonitor.is_process_alive(process)
         ProcessMonitor.kill_process(process)
         assert not ProcessMonitor.is_process_alive(process)
 
-        process = Process(target=lambda: time.sleep(1))
+        process = Process(target=sleep_1sec)
         ProcessMonitor.kill_process(process)
