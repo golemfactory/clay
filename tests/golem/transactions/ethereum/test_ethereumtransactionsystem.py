@@ -1,6 +1,5 @@
-from devp2p.crypto import privtopub
 from ethereum import keys
-from mock import patch, Mock
+from mock import patch
 
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
@@ -32,8 +31,9 @@ class TestEthereumTransactionSystem(TestWithDatabase):
 
         pkg = 'golem.ethereum.'
 
-        def init(*args, **kwargs):
-            return
+        def init(self, *args, **kwargs):
+            self.rpcport = 65001
+            self._NodeProcess__ps = None
 
         with patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
             patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
@@ -41,8 +41,9 @@ class TestEthereumTransactionSystem(TestWithDatabase):
             patch(pkg + 'paymentmonitor.PaymentMonitor.stop'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
+            patch(pkg + 'node.NodeProcess.__init__', init), \
             patch('web3.Web3.__init__', init), \
-            patch('web3.providers.rpc.KeepAliveRPCProvider.__init__', init):
+            patch('web3.providers.rpc.HTTPProvider.__init__', init):
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
