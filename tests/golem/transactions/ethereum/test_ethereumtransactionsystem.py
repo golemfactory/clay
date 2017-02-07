@@ -32,13 +32,17 @@ class TestEthereumTransactionSystem(TestWithDatabase):
 
         pkg = 'golem.ethereum.'
 
+        def init(*args, **kwargs):
+            return
+
         with patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
             patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
             patch(pkg + 'paymentmonitor.PaymentMonitor.start'), \
             patch(pkg + 'paymentmonitor.PaymentMonitor.stop'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
-            patch('web3.Web3.__init__', lambda *_: None):
+            patch('web3.Web3.__init__', init), \
+            patch('web3.providers.rpc.KeepAliveRPCProvider.__init__', init):
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
