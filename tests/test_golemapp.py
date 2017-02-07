@@ -1,7 +1,7 @@
 import sys
 
 from click.testing import CliRunner
-from mock import patch
+from mock import patch, ANY
 
 from golem.testutils import TempDirFixture
 from golemapp import start
@@ -9,11 +9,15 @@ from golemapp import start
 
 class TestGolemApp(TempDirFixture):
 
-    @patch('golemapp.OptNode')
-    def test_start_node(self, node_class):
+    @patch('golemapp.start_app')
+    def test_start_node(self, startapp):
         runner = CliRunner()
         runner.invoke(start, ['--nogui', '--datadir', self.path], catch_exceptions=False)
-        assert node_class.called
+
+        args, kwargs = startapp.call_args
+        self.assertEqual(kwargs['gui'], False)
+        self.assertEqual(kwargs['rendering'], True)
+        self.assertEqual(kwargs['transaction_system'], True)
 
     def test_start_crossbar_worker(self):
         runner = CliRunner()
