@@ -4,7 +4,7 @@ from PyQt5.QtCore import pyqtSignal
 
 
 class EventFilter(QObject):
-    signal = pyqtSignal()
+    signal = pyqtSignal('QMouseEvent')
 
     def __init__(self, widget, event):
         super(QObject, self).__init__(widget)
@@ -15,7 +15,7 @@ class EventFilter(QObject):
         if obj == self.widget:
             if event.type() == self.event:
                 if obj.rect().contains(event.pos()):
-                    self.signal.emit()
+                    self.signal.emit(event)
                     return True
         return False
 

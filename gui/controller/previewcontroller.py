@@ -98,7 +98,9 @@ class PreviewController(Customizer):
             logger.warning("Output file name for {} output result hasn't been set yet".format(num))
             self.gui.ui.outputFile.setText(u"")
 
-    def __pixmap_clicked(self, x, y, *args):
+    def __pixmap_clicked(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
         num = self.__get_task_num_from_pixels(x, y)
         if num is None:
             return
@@ -149,7 +151,9 @@ class PreviewController(Customizer):
                                                       self.gui.ui.previewsSlider.value())
         return task_type.get_task_num_from_pixels(x, y, task.definition, total_subtasks)
 
-    def __mouse_on_pixmap_moved(self, x, y, *args):
+    def __mouse_on_pixmap_moved(self, event):
+        x = event.pos().x()
+        y = event.pos().y()
         num = self.__get_task_num_from_pixels(x, y)
         if num is None:
             return
