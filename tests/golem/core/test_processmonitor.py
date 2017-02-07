@@ -1,6 +1,8 @@
 import time
 from multiprocessing import Process
 
+import subprocess
+
 from golem.core.processmonitor import ProcessMonitor
 from golem.tools.assertlogs import LogTestCase
 
@@ -64,7 +66,7 @@ class TestProcessMonitor(LogTestCase):
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
 
-    def test_death(self):
+    def test_process_timeout(self):
         mp1, mp2 = MockProcess(), MockProcess(timeout=1)
 
         p1 = Process(target=mp1.run)
@@ -119,3 +121,55 @@ class TestProcessMonitor(LogTestCase):
         pm.add_child_processes(p2)
 
         assert len(pm._child_processes) == 2
+
+    def test_lifecycle_popen(self):
+
+        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        assert ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor._pid(process)
+        assert ProcessMonitor.is_supported(process)
+
+        process.communicate()
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor._exit_code(process) is not None
+
+    def test_lifecycle_multiprocessing(self):
+
+        process = Process(target=lambda: time.sleep(1))
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor.is_supported(process)
+
+        process.start()
+        assert ProcessMonitor.is_process_alive(process)
+        process.join()
+
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor._exit_code(process) is not None
+
+    def test_lifecycle_none(self):
+
+        process = None
+
+        assert not ProcessMonitor.is_process_alive(process)
+        assert not ProcessMonitor.is_supported(process)
+        assert not ProcessMonitor._pid(process)
+        assert ProcessMonitor._exit_code(process) is None
+
+    def test_kill_process_popen(self):
+
+        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        assert ProcessMonitor.is_process_alive(process)
+        ProcessMonitor.kill_process(process)
+        assert not ProcessMonitor.is_process_alive(process)
+
+    def test_kill_process_multiprocessing(self):
+
+        process = Process(target=lambda: time.sleep(1))
+        process.start()
+
+        assert ProcessMonitor.is_process_alive(process)
+        ProcessMonitor.kill_process(process)
+        assert not ProcessMonitor.is_process_alive(process)
+
+        process = Process(target=lambda: time.sleep(1))
+        ProcessMonitor.kill_process(process)

@@ -13,7 +13,7 @@ from golem.rpc.session import WebSocketAddress
 from golem.tools.appveyor import appveyor_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.startapp import load_environments, start_client_process, \
-    start_gui_process, GUIApp
+    start_gui_process, GUIApp, stop_reactor, start_app
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
@@ -217,3 +217,27 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_gui_failure(self, *_):
         self._start_gui(session_fails=True,
                         expected_result=u"Session error")
+
+    @patch('twisted.internet.reactor')
+    def test_stop_reactor(self, reactor):
+        reactor.running = False
+        stop_reactor()
+        assert not reactor.stop.called
+
+        reactor.running = True
+        stop_reactor()
+        assert reactor.stop.called
+
+    @patch('multiprocessing.Process.start')
+    @patch('gui.startapp.start_client_process')
+    @patch('golem.core.processmonitor.ProcessMonitor.start')
+    @patch('golem.core.processmonitor.ProcessMonitor.exit')
+    def test_start_app(self, exit_monitor, start_monitor, start_client, start_gui):
+
+        start_app()
+
+        assert start_gui.called
+        assert start_monitor.called
+        assert start_client.called
+        assert exit_monitor.called
+
