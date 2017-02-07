@@ -1,5 +1,5 @@
 import unittest
-from os import makedirs, path
+from os import makedirs, path, remove
 
 from mock import Mock
 
@@ -76,6 +76,24 @@ class TestRenderingTask(TestDirFixture):
         task.preview_file_path = None
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_file"
+
+    def test_mode_and_ext_in_open_preview(self):
+        task = self._init_task()
+        preview = task._open_preview()
+        assert path.isfile(task.preview_file_path)
+        assert preview.mode == "RGB"
+        assert preview.size == (267, 200)
+        preview.close()
+
+        preview = task._open_preview("RGBA")
+        assert preview.mode == "RGB"
+        assert preview.size == (267, 200)
+        preview.close()
+        remove(task.preview_file_path)
+        preview = task._open_preview("RGBA", "PNG")
+        assert preview.mode == "RGBA"
+        assert preview.size == (267, 200)
+        preview.close()
 
 
 class TestGetTaskBorder(unittest.TestCase):
