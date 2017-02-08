@@ -1,5 +1,6 @@
 import os
 
+from PyQt5.QtCore import QObject
 from ethereum.utils import denoms
 from mock import patch, MagicMock
 from PIL import Image
@@ -13,6 +14,17 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from gui.view.tasktableelem import ItemMap
+
+
+class MagicQObject(QObject):
+
+    def __init__(self, *args):
+        super(MagicQObject, self).__init__(*args)
+        self.ui = MagicMock()
+
+    @staticmethod
+    def setMouseTracking(*args):
+        pass
 
 
 class TestMainWindowCustomizer(TestGui):
@@ -83,11 +95,12 @@ class TestMainWindowCustomizer(TestGui):
         customizer.show_change_task_dialog("ABC")
         customizer.change_task_dialog.close()
 
-    @patch('gui.controller.previewcontroller.QObject')
-    @patch('gui.controller.mainwindowcustomizer.QObject')
-    @patch('gui.controller.mainwindowcustomizer.QPalette')
-    def test_preview(self, mock_palette, mock_object, mock_object2):
-        customizer = MainWindowCustomizer(MagicMock(), MagicMock())
+    def test_preview(self):
+        obj = MagicQObject()
+        obj.ui.outputFile = QObject()
+        obj.ui.previewLabel = MagicQObject()
+
+        customizer = MainWindowCustomizer(obj, obj)
         self.assertTrue(os.path.isfile(customizer.preview_controller.preview_path))
 
     def test_folderTreeView(self):
