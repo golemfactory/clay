@@ -71,14 +71,10 @@ class TaskDetailsDialogCustomizer(Customizer):
                 del self.subtask_table_elements[k]
 
     def _setup_connections(self):
-        QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
-                               self.__nodes_table_row_clicked)
-        QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("itemSelectionChanged()"),
-                               self.__nodes_table_row_selected)
-        QtCore.QObject.connect(self.gui.ui.nodesTableWidget, QtCore.SIGNAL("doubleClicked(const QModelIndex)"),
-                               self.__nodes_table_row_double_clicked)
-        QtCore.QObject.connect(self.gui.ui.nodesTableWidget.horizontalHeader(), QtCore.SIGNAL("sectionClicked(int)"),
-                               self.__header_clicked)
+        self.gui.ui.nodesTableWidget.cellClicked.connect(self.__nodes_table_row_clicked)
+        self.gui.ui.nodesTableWidget.itemSelectionChanged.connect(self.__nodes_table_row_selected)
+        self.gui.ui.nodesTableWidget.doubleClicked.connect(self.__nodes_table_row_double_clicked)
+        self.gui.ui.nodesTableWidget.horizontalHeader().sectionClicked.connect(self.__header_clicked)
         self.gui.ui.nodesTableWidget.customContextMenuRequested.connect(self.__context_menu_requested)
         self.gui.ui.closeButton.clicked.connect(self.__close_button_clicked)
 
