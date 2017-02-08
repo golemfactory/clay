@@ -18,6 +18,8 @@ DEBUG_DEFERRED = True
 CLIENT_LOG_NAME = "golem_client.log"
 
 setDebugging(DEBUG_DEFERRED)
+apps_manager = AppsManager()
+apps_manager.load_apps()
 
 
 def stop_reactor():
@@ -26,8 +28,6 @@ def stop_reactor():
 
 
 def load_environments():
-    apps_manager = AppsManager()
-    apps_manager.load_apps()
     return apps_manager.get_env_list()
 
 
