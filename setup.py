@@ -50,6 +50,12 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
+    data_files=[
+        ('../..', ['golemapp.py', 'golemcli.py']),
+        ('../..', ['logging.ini']),
+        ('../../apps/', ['apps/registered.ini']),
+        ('../../apps/blender', ['apps/blender/resources/scripts/blendercrop.py.template'])
+    ]
 )
 
 print_errors(ui_err, docker_err, task_collector_err)
