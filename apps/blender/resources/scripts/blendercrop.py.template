@@ -3,18 +3,19 @@
 import bpy
 
 class EngineWarning(bpy.types.Operator):
-    bl_idname = "engine_warning"
+    bl_idname = "wm.engine_warning"
     bl_label = "Inform about not supported rendering engine"
 
-    def execute(self, context)
-        self.report({"WARNING"}, "Not supported engine " + bpy.context.scene.render.engine)
+    def execute(self, context):
+        self.report({"ERROR"}, "Engine " + bpy.context.scene.render.engine + \
+                               " not supported by Golem")
         return {"FINISHED"}
 
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
 if engine != "BLENDER_RENDER" and engine != "CYCLES":
-    bpy.ops.engine_warning()
+    bpy.ops.wm.engine_warning()
 
 
 for scene in bpy.data.scenes:

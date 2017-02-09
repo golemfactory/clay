@@ -545,7 +545,7 @@ class BlenderRenderTask(FrameRenderingTask):
                         for w in warnings:
                             w = u"    {}\n".format(w)
                             if len(ret) == 0:
-                                ret = u"Additional data is missing:\n"
+                                ret.append(u"Additional data is missing:\n")
 
                             if w not in ret:
                                 ret.append(w)
@@ -555,7 +555,9 @@ class BlenderRenderTask(FrameRenderingTask):
                         warning = self.__find_wrong_renderer_warning(fd.read())
                         if warning:
                             ret.append(u"\n{}\n".format(warning))
-        return "".join(ret)
+
+        if len(ret) > 0:
+            return "".join(ret)
 
     def __find_missing_files_warnings(self, log_content):
         warnings = []
@@ -567,8 +569,8 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def __find_wrong_renderer_warning(self, log_content):
         for l in log_content.splitlines():
-            if l.lower().startswith("not supported engine "):
-                return l[21:]
+            if l.lower().startswith("error: engine"):
+                return l[13:]
         return ""
 
     def __get_frame_num_from_output_file(self, file_):
