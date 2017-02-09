@@ -380,8 +380,7 @@ class TaskSession(MiddlemanSafeSession):
             self.dropped()
 
     def _react_to_waiting_for_results(self, msg):
-        if self.task_computer.counting_task != msg.task_id and \
-           self.task_computer.waiting_for_task != msg.task_id:
+        if self.task_computer.counting_task != msg.task_id:
             self.task_computer.session_closed()
 
         if not self.msgs_to_send:
@@ -394,10 +393,8 @@ class TaskSession(MiddlemanSafeSession):
         self.dropped()
 
     def _react_to_cannot_assign_task(self, msg):
-        if self.task_computer.counting_task != msg.task_id and \
-           self.task_computer.waiting_for_task != msg.task_id:
-
-            self.task_computer.task_request_rejected(msg.task_id, msg.reason)
+        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
+        if self.task_computer.counting_task != msg.task_id:
             self.task_server.remove_task_header(msg.task_id)
             self.task_computer.session_closed()
             self.dropped()
