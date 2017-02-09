@@ -5,11 +5,9 @@ from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
-
 from golem.core.common import config_logging
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, object_method_map
-
 
 DEBUG_DEFERRED = True
 GUI_LOG_NAME = "golem_gui.log"
@@ -176,7 +174,6 @@ def start_client_process(queue, start_ranking, datadir=None,
 
 def start_app(start_ranking=True, datadir=None,
               transaction_system=False, rendering=False, **config_overrides):
-
     queue = Queue()
 
     gui_process = Process(target=start_gui_process,

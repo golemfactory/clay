@@ -42,6 +42,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
 
+    # Pull docker images
+    __pull_docker_images()
+
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(u, m)
@@ -71,6 +74,25 @@ def start_crossbar_worker(unbuffered, module):
     import importlib
     module = importlib.import_module(module)
     module.run()
+
+
+def __pull_docker_images():
+    from golem.core.common import get_golem_path
+    from subprocess import call
+    from os.path import join
+    with open(join(get_golem_path(), 'apps', 'images.ini'), 'rb') as file_:
+        data = file_.read().split('\n')
+    blender_image = "{}:{}".format(data[1].split()[0], data[1].split()[2])
+    luxrender_image = "{}:{}".format(data[2].split()[0], data[2].split()[2])
+    blender_error = None
+    lux_error = None
+    res = call(["docker", "pull", blender_image], stderr=blender_error) +\
+          call(["docker", "pull", luxrender_image], stderr=lux_error)
+    if res != 0:
+        print("***************************************************************\n"
+              "Error occurred during pulling docker images!\n{}\n{}\n"
+              "***************************************************************".format(blender_error, lux_error))
+        exit(1)
 
 
 if __name__ == '__main__':
