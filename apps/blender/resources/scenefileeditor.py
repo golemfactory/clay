@@ -20,4 +20,6 @@ def generate_blender_crop_file(resolution, borders_x, borders_y, use_compositing
         'use_compositing': use_compositing,
     }
 
+
+    print contents
     return contents

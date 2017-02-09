@@ -2,6 +2,21 @@
 # written to tempfile and passed as arg to blender.
 import bpy
 
+class EngineWarning(bpy.types.Operator):
+    bl_idname = "engine_warning"
+    bl_label = "Inform about not supported rendering engine"
+
+    def execute(self, context)
+        self.report({"WARNING"}, "Not supported engine " + bpy.context.scene.render.engine)
+        return {"FINISHED"}
+
+
+bpy.utils.register_class(EngineWarning)
+engine = bpy.context.scene.render.engine
+if engine != "BLENDER_RENDER" and engine != "CYCLES":
+    bpy.ops.engine_warning()
+
+
 for scene in bpy.data.scenes:
 
     scene.render.tile_x = 0
