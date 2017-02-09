@@ -241,7 +241,6 @@ class CoreTask(Task):
         result_types["data"] tham task_result is cbor and unzipped and files are saved in tmp_dir.
         :param task_result: list of files of cbor serialized ziped file with files
         :param result_type: result_types element
-        :param tmp_dir: directory where files should be written if result_type is equal to result_types["data"]
         :param str subtask_id:
         :return:
         """
@@ -311,7 +310,7 @@ class CoreTask(Task):
                 res = f.read()
             return res
         except IOError as err:
-            logger.error("Can't read file {}: {}".format(f, err))
+            logger.error("Can't read file {}: {}".format(log, err))
             return ""
 
     @handle_key_error

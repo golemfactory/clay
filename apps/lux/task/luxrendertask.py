@@ -51,7 +51,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         self.output_file_ext = ["lxs"]
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+    def get_task_border(cls, subtask, definition, total_subtasks, output_num=1):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description

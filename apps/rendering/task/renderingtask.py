@@ -119,6 +119,8 @@ class RenderingTask(CoreTask):
         else:
             self.scale_factor = 1.0
 
+        self.test_task_res_path = None
+
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         CoreTask.computation_failed(self, subtask_id)
@@ -157,7 +159,7 @@ class RenderingTask(CoreTask):
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
-    def _update_preview(self, new_chunk_file_path):
+    def _update_preview(self, new_chunk_file_path, num_start):
 
         if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)

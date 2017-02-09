@@ -92,10 +92,8 @@ class PreviewUpdater(object):
                 img_current.close()
             img.close()
 
-        except Exception as err:
-            import traceback
-            # Print the stack traceback
-            traceback.print_exc()
+        except Exception:
+            logger.exception("Error in Blender update preview:")
             return
         
         if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
@@ -563,8 +561,8 @@ class BlenderRenderTask(FrameRenderingTask):
         idx = file_name.find(self.outfilebasename)
         return int(file_name[idx + len(self.outfilebasename):])
 
-    def _update_preview(self, new_chunk_file_path, chunk_num):
-        self.preview_updater.update_preview(new_chunk_file_path, chunk_num)
+    def _update_preview(self, new_chunk_file_path, num_start):
+        self.preview_updater.update_preview(new_chunk_file_path, num_start)
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         if final:
