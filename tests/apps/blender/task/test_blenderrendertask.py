@@ -142,8 +142,8 @@ class TestBlenderTask(TempDirFixture):
         self.bt.initialize(dm)
 
     def test_after_test(self):
-        self.assertEqual(self.bt.after_test({}, None), [])
-        self.assertEqual(self.bt.after_test({"notData":[]}, None), [])
+        self.assertEqual(self.bt.after_test({}, None), None)
+        self.assertEqual(self.bt.after_test({"notData":[]}, None), None)
         
         outlog = self.temp_file_name("out.log")
         errlog = self.temp_file_name("err.log")
@@ -157,16 +157,16 @@ class TestBlenderTask(TempDirFixture):
         results = {"data": {outlog, errlog}}
         warnings = self.bt.after_test(results, None)
         
-        self.assertEqual(warnings, [])
+        self.assertEqual(warnings, None)
         
 
-        fd_out = open(outlog, 'w')
-        fd_out.write("Warning: path 'example/directory/to/file/f1.png' not found\nwarning: Path 'example/directory/to/file2.png' not fouND")
-        fd_out.close()
+        with open(outlog, 'w') as fd_out:
+            fd_out.write("Warning: path 'example/directory/to/file/f1.png' "
+                         "not found\nwarning: Path 'example/directory/to/file2.png' not fouND")
         
-        fd_err = open(errlog, 'w')
-        fd_err.write("Warning: path 'example/directory/to/another/file3.png' not found\nexample/to/file4.png")
-        fd_err.close()
+        with open(errlog, 'w') as fd_err:
+            fd_err.write("Warning: path 'example/directory/to/another/file3.png' "
+                         "not found\nexample/to/file4.png")
         
         results = {"data": {outlog, errlog}}
         warnings = self.bt.after_test(results, None)
@@ -175,6 +175,15 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue("file2.png" in warnings)
         self.assertTrue("file3.png" in warnings)
         self.assertFalse("file4.png" in warnings)
+
+        with open(outlog, 'w') as fd_out:
+            fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
+
+        with open(errlog, 'w') as fd_err:
+            fd_err.write("Error: But not important at all")
+
+        warnings = self.bt.after_test(results, None)
+        self.assertTrue("COMPLETELY UNKNOWN ENGINE" in warnings)
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
