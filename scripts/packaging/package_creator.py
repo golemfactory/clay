@@ -766,25 +766,39 @@ class Pack(Command):
             lookup_dir = os.path.dirname(lookup_dir)
             counter -= 1
 
-        dirs = next(os.walk(lookup_dir))[1]
-        candidates = [d for d in dirs if is_egg_dir(d) and d.find(egg) != -1]
+        candidates = []
+
+        def collect_candidates(directory):
+            dirs = next(os.walk(directory))[1]
+            candidates.extend([(d, directory) for d in dirs if is_egg_dir(d) and d.find(egg) != -1])
+
+        collect_candidates(lookup_dir)
+        collect_candidates(src_path)
+
         newest = None
         newest_ver = '0'
+        newest_dir = None
 
         def extract_version(string):
             lower = string.lower()
             clean = lower.replace('.dist-info', '').replace('.egg-info', '')
             return clean.split('-')[1]
 
-        for candidate in candidates:
+        for candidate, directory in candidates:
             v = extract_version(candidate)
             if version.parse(v) > version.parse(newest_ver):
                 newest = candidate
                 newest_ver = v
+                newest_dir = directory
 
         if not newest:
             raise RuntimeError("Couldn't find egg '{}' for module '{}'".format(egg, module))
-        dir_util.copy_tree(os.path.join(lookup_dir, newest), os.path.join(dst_dir, newest), update=True)
+
+        dir_util.copy_tree(
+            os.path.join(newest_dir, newest),
+            os.path.join(dst_dir, newest),
+            update=True
+        )
 
     def _copy_files(self, setup_dir, x_dir, lib_dir):
 
@@ -1321,6 +1335,10 @@ build_options = {
             DirPackage('crossbar'),
             DirPackage('web3', egg='web3'),
             DirPackage('eth_abi', egg='ethereum_abi_utils'),
+            DirPackage('rlp', egg='rlp'),
+            DirPackage('requests', egg='requests'),
+            DirPackage('sha3', egg='pysha3'),
+            DirPackage('pylru', egg='pylru'),
 
             DirPackage('pywintypes', include_platforms=['win']),
             DirPackage('win32api', include_platforms=['win']),
