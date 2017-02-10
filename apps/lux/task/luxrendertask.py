@@ -34,7 +34,7 @@ class LuxRenderDefaults(RendererDefaults):
     def __init__(self):
         RendererDefaults.__init__(self)
         self.output_format = "exr"
-        self.main_program_file = find_task_script(APP_DIR, "docker_luxtask.py")
+        self.main_program_file = LuxRenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -53,7 +53,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         self.output_file_ext = ["lxs"]
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+    def get_task_border(cls, subtask, definition, total_subtasks, output_num=1):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
@@ -111,15 +111,16 @@ class LuxRenderOptions(Options):
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
     def build(self):
+        environment = LuxRenderEnvironment()
         main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
         if self.task_definition.docker_images is None:
-            self.task_definition.docker_images = LuxRenderEnvironment().docker_images
+            self.task_definition.docker_images = environment.docker_images
 
         lux_task = LuxTask(self.node_name,
                            self.task_definition.task_id,
                            main_scene_dir,
                            self.task_definition.main_scene_file,
-                           self.task_definition.main_program_file,
+                           environment.main_program_file,
                            self._calculate_total(LuxRenderDefaults(), self.task_definition),
                            self.task_definition.resolution[0],
                            self.task_definition.resolution[1],

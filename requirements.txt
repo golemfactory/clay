@@ -18,7 +18,7 @@ qt4reactor==1.6
 requests>=2.12.4
 six==1.10.0
 Twisted>=16.5
-web3>=3.4.4
+web3>=3.5.3
 cffi>=1.1.2
 ethereum>=1.6.0
 autobahn>=0.16.1

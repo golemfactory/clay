@@ -373,30 +373,6 @@
                   </widget>
                  </item>
                  <item row="1" column="0">
-                  <widget class="QLabel" name="label_58">
-                   <property name="toolTip">
-                    <string>Select main program/script defining the task</string>
-                   </property>
-                   <property name="text">
-                    <string>Main program file</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="1">
-                  <layout class="QHBoxLayout" name="horizontalLayout_24">
-                   <item>
-                    <widget class="QLineEdit" name="mainProgramFileLineEdit"/>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="chooseMainProgramFileButton">
-                     <property name="text">
-                      <string>...</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="2" column="0">
                   <widget class="QLabel" name="label_51">
                    <property name="toolTip">
                     <string>After this time subtask computation will be aborted</string>
@@ -406,7 +382,7 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="2" column="1">
+                 <item row="1" column="1">
                   <layout class="QHBoxLayout" name="horizontalLayout_19">
                    <item>
                     <widget class="QSpinBox" name="subtaskTimeoutHourSpinBox"/>
@@ -458,7 +434,7 @@
                    </item>
                   </layout>
                  </item>
-                 <item row="3" column="0">
+                 <item row="2" column="0">
                   <widget class="QLabel" name="label_59">
                    <property name="toolTip">
                     <string>Check this if you want to enable advanced subtask verification</string>
@@ -468,14 +444,14 @@
                    </property>
                   </widget>
                  </item>
-                 <item row="3" column="1">
+                 <item row="2" column="1">
                   <widget class="QCheckBox" name="advanceVerificationCheckBox">
                    <property name="text">
                     <string/>
                    </property>
                   </widget>
                  </item>
-                 <item row="5" column="1">
+                 <item row="4" column="1">
                   <widget class="QWidget" name="advancVerificationWidget" native="true"/>
                  </item>
                 </layout>
@@ -2589,10 +2565,10 @@
               <item row="7" column="0">
                <widget class="QLabel" name="localBalanceConst">
                 <property name="toolTip">
-                 <string>The balance of the local Ethereum address. Can be spent directly on tasks.</string>
+                 <string>The GNT balance of the local Ethereum address. Can be spent directly on tasks.</string>
                 </property>
                 <property name="text">
-                 <string>Local balance</string>
+                 <string>Balance</string>
                 </property>
                </widget>
               </item>
@@ -2652,10 +2628,10 @@
               <item row="10" column="0">
                <widget class="QLabel" name="depositBalanceConst">
                 <property name="toolTip">
-                 <string>The amount of ethers kept in the Deposit contract. Can be withdrawn at any time.</string>
+                 <string>The ETH balance of the local Ethereum address. Used up for transactions fees.</string>
                 </property>
                 <property name="text">
-                 <string>Deposit</string>
+                 <string>ETH balance</string>
                 </property>
                </widget>
               </item>
@@ -2672,7 +2648,7 @@
               <item row="11" column="0">
                <widget class="QLabel" name="totalBalanceConst">
                 <property name="toolTip">
-                 <string>Total amount of ethers owned by this Golem App</string>
+                 <string>Total amount owned by this Golem App</string>
                 </property>
                 <property name="text">
                  <string>Total balance</string>

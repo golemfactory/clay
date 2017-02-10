@@ -7,5 +7,4 @@ class DefaultProto(object):
 
     def prepare_json_message(self, d):
         json_dict = {'proto_ver': self.proto_version, 'data': d}
-
         return dict2json(json_dict)

@@ -1,5 +1,6 @@
 import ctypes
 import imp
+import importlib
 import inspect
 import os
 import pkgutil
@@ -430,6 +431,11 @@ class DirPackage(object):
         return self.name
 
 
+class BuiltinPackage(object):
+    def __init__(self, name):
+        self.name = name
+
+
 class ZipPackage:
     def __init__(self, name, exclude, in_lib_dir=False):
         self.name = name
@@ -692,6 +698,8 @@ class Pack(Command):
                     self._copy_module(module.name, dst_dir,
                                       module.location_resolver)
 
+            elif isinstance(module, BuiltinPackage):
+                self._copy_builtin(module.name, [exe_dir, x_dir])
             else:
                 self._copy_module_alt(module, exe_dir)
 
@@ -708,6 +716,14 @@ class Pack(Command):
             raise RuntimeError('_copy_module: Module {} not found'.format(module))
 
         return src_path
+
+    @staticmethod
+    def _copy_builtin(module, dst_dirs):
+        imported = importlib.import_module(module)
+        for dst_dir in dst_dirs:
+            src_path = inspect.getfile(imported)
+            dst_path = os.path.join(dst_dir, os.path.basename(src_path))
+            shutil.copy(src_path, dst_path)
 
     def _copy_module_alt(self, module, exe_dir):
         mod_dir = self._get_module_path(module)
@@ -1317,6 +1333,8 @@ build_options = {
 
             DirPackage('encodings', to_x_dir=False),
             DirPackage('zope.interface', to_x_dir=False),
+
+            BuiltinPackage('ConfigParser'),
 
             # Standard library files
             "_abcoll", "_weakrefset",

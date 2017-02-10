@@ -119,6 +119,10 @@ def run_computing_node(datadir, peer_address, fail_after=None):
         def get_id(cls):
             return DummyTask.ENVIRONMENT_NAME
 
+        def __init__(self):
+            super(DummyEnvironment, self).__init__()
+            self.allow_custom_main_program_file = True
+
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
     client.environments_manager.add_environment(dummy_env)

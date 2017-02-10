@@ -14,13 +14,15 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderRendererOptions,
                                                  generate_expected_offsets,
                                                  BlenderTaskTypeInfo,
-                                                 PreviewUpdater)
+                                                 PreviewUpdater,
+                                                 logger)
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.appveyor import appveyor_skip
+from golem.tools.assertlogs import LogTestCase
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -368,8 +370,18 @@ class TestBlenderTask(TempDirFixture):
         task.computation_finished(ctd.subtask_id, [file_], 1)
         assert task.subtasks_given[ctd.subtask_id]['status'] == SubtaskStatus.failure
 
+    def test_update_preview(self):
+        bt = self.build_bt(300, 200, 10)
+        dm = DirManager(self.tempdir)
+        bt.initialize(dm)
+        files = self.additional_dir_content([1])
+        preview = files[0]
+        img = Image.new("RGBA", (20, 200))
+        img.save(preview, "PNG")
+        bt._update_preview(preview, 3)
 
-class TestPreviewUpdater(TempDirFixture):
+
+class TestPreviewUpdater(TempDirFixture, LogTestCase):
     def test_update_preview(self):
         preview_file = self.temp_file_name('sample_img.png')
         res_x = 200
@@ -404,6 +416,11 @@ class TestPreviewUpdater(TempDirFixture):
             if int(round(res_y * scale_factor)) != 200:
                 self.assertAlmostEqual(pu.perfect_match_area_y, res_y * scale_factor)
             self.assertTrue(pu.perfectly_placed_subtasks == chunks)
+
+    def test_error_in_preview_update(self):
+        pu = PreviewUpdater(None, 300, 200, {})
+        with self.assertLogs(logger, level="WARNING"):
+            pu.update_preview("Not existing", 4)
 
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):

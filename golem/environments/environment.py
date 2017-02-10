@@ -1,4 +1,5 @@
 import sys
+from os import path
 
 
 class Environment(object):
@@ -15,11 +16,15 @@ class Environment(object):
         self.short_description = "Default environment for generic tasks without any additional requirements."
         self.long_description = ""
         self.accept_tasks = False
+        self.allow_custom_main_program_file = False  # Check if tasks can define the source code
+        self.main_program_file = None
 
     def check_software(self):
         """ Check if required software is installed on this machine
         :return bool:
         """
+        if not self.allow_custom_main_program_file:
+            return self.main_program_file and path.isfile(self.main_program_file)
         return True
 
     def check_caps(self):
@@ -72,3 +77,8 @@ class Environment(object):
 
     def is_linux(self):
         return sys.platform.startswith('linux')
+
+    def get_source_code(self):
+        if self.main_program_file and path.isfile(self.main_program_file):
+            with open(self.main_program_file) as f:
+                return f.read()

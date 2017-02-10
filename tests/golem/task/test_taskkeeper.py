@@ -51,7 +51,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        task_header = get_task_header()
+        task_header = get_dict_task_header()
         task_header["max_price"] = 9.0
         tk.add_task_header(task_header)
         self.assertNotIn("xyz", tk.supported_tasks)
@@ -79,7 +79,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
 
         self.assertIsNone(tk.get_task())
-        task_header = get_task_header()
+        task_header = get_dict_task_header()
         task_header["task_id"] = "uvw"
         self.assertTrue(tk.add_task_header(task_header))
         self.assertIsNone(tk.get_task())
@@ -106,7 +106,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
-        task_header = get_task_header()
+        task_header = get_dict_task_header()
         task_header["deadline"] = timeout_to_deadline(10)
         assert tk.add_task_header(task_header)
         task_header["deadline"] = timeout_to_deadline(1)
@@ -135,7 +135,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         assert not tk.add_task_header(dict())
 
-        task_header = get_task_header()
+        task_header = get_dict_task_header()
         task_id = task_header["task_id"]
 
         task_header["deadline"] = timeout_to_deadline(10)
@@ -161,7 +161,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_is_correct(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10)
-        th = get_task_header()
+        th = get_dict_task_header()
 
         correct, err = tk.is_correct(th)
         assert correct
@@ -193,7 +193,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert err == "Subtask timeout is less than 0"
 
 
-def get_task_header():
+def get_dict_task_header():
     return {
         "task_id": "xyz",
         "node_name": "ABC",
@@ -209,6 +209,14 @@ def get_task_header():
     }
 
 
+def get_task_header():
+    header = get_dict_task_header()
+    return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
+                      header["task_owner_port"], header["task_owner_key_id"],
+                      header["environment"], header["task_owner"], header["deadline"],
+                      header["subtask_timeout"], 1024, 1.0, 1000)
+
+
 class TestCompSubtaskInfo(TestCase):
     def test_init(self):
         csi = CompSubtaskInfo("xxyyzz")
@@ -219,10 +227,6 @@ class TestCompTaskKeeper(LogTestCase):
     def test_comp_keeper(self):
         ctk = CompTaskKeeper()
         header = get_task_header()
-        header = TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
-                            header["task_owner_port"], header["task_owner_key_id"], header["environment"],
-                            header["task_owner"], header["deadline"], header["subtask_timeout"],
-                            1024, 1.0, 1000)
         header.task_id = "xyz"
         with self.assertRaises(TypeError):
             ctk.add_request(header, "not a number")
@@ -288,3 +292,21 @@ class TestCompTaskKeeper(LogTestCase):
         ctk.receive_subtask(ctd)
         ctk.remove_old_tasks()
         self.assertIsNotNone(ctk.active_tasks.get("xyz"))
+
+    def test_get_task_env(self):
+        ctk = CompTaskKeeper()
+        with self.assertLogs(logger, level="WARNING"):
+            assert ctk.get_task_env("task1") is None
+
+        header = get_task_header()
+        ctk.add_request(header, 4002)
+
+        header = get_task_header()
+        header.task_id = "abc"
+        header.environment = "NOTDEFAULT"
+        ctk.add_request(header, 4002)
+
+        assert ctk.get_task_env("abc") == "NOTDEFAULT"
+        assert ctk.get_task_env("xyz") == "DEFAULT"
+
+

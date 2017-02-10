@@ -66,6 +66,10 @@ class CompTaskKeeper(object):
         return self.active_tasks[task_id].header.subtask_timeout
 
     @handle_key_error
+    def get_task_env(self, task_id):
+        return self.active_tasks[task_id].header.environment
+
+    @handle_key_error
     def receive_subtask(self, comp_task_def):
         task = self.active_tasks[comp_task_def.task_id]
         if task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:

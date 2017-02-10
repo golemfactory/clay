@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 def log_attr_error(*args, **kwargs):
-    logger.warning("Unknown stats {}".format(args[1]))
+    logger.warning("Unknown stats %r", args[1])
 
 
 class StatsKeeper(object):
@@ -40,8 +40,8 @@ class StatsKeeper(object):
         try:
             stat, _ = Stats.get_or_create(name=name, defaults={'value': self.default})
             return stat.value
-        except Exception as e:
-            logger.warning(u"Cannot retrieve {} from  database: {}".format(name, e))
+        except Exception:
+            logger.warning(u"Cannot retrieve %r from  database:", name, exc_info=True)
 
     @handle_attribute_error
     def _get_stat(self, name):
@@ -54,21 +54,21 @@ class IntStatsKeeper(StatsKeeper):
         super(IntStatsKeeper, self).__init__(stat_class, '0')
 
     @StatsKeeper.handle_attribute_error
-    def increase_stat(self, stat_name):
+    def increase_stat(self, stat_name, increment=1):
         with self._lock:
             val = getattr(self.session_stats, stat_name)
             setattr(self.session_stats, stat_name, val + 1)
             global_val = self._retrieve_stat(stat_name)
             if global_val is not None:
-                setattr(self.global_stats, stat_name, global_val + 1)
+                setattr(self.global_stats, stat_name, global_val + increment)
                 try:
-                    Stats.update(value=u"{}".format(global_val+1)).where(Stats.name == stat_name).execute()
+                    Stats.update(value=u"{}".format(global_val+increment)).where(Stats.name == stat_name).execute()
                 except Exception as err:
-                    logger.error(u"Exception occur while updating stat {}: {}".format(stat_name, err))
+                    logger.error(u"Exception occured while updating stat %r: %r", stat_name, err)
 
     def _retrieve_stat(self, name):
         try:
             stat_val = StatsKeeper._retrieve_stat(self, name)
             return int(stat_val)
         except (ValueError, TypeError) as err:
-            logger.warning(u"Wrong stat {} format: {}".format(name, err))
+            logger.warning(u"Wrong stat %r format: %r", name, err)
