@@ -250,7 +250,7 @@ class RenderingTask(CoreTask):
     def _get_working_directory(self):
         common_path_prefix = os.path.commonprefix(self.task_resources)
         common_path_prefix = os.path.dirname(common_path_prefix)
-        working_directory = os.path.relpath(self.main_program_file, common_path_prefix)
+        working_directory = os.path.relpath(self.main_scene_file, common_path_prefix)
         working_directory = os.path.dirname(working_directory)
         logger.debug("Working directory {}".format(working_directory))
         return self.__get_path(working_directory)
@@ -269,9 +269,7 @@ class RenderingTask(CoreTask):
                 rel_scene_path)
             return abs_scene_path
         else:
-            scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
-            scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
-            return self.__get_path(scene_file)
+            return ''
 
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
