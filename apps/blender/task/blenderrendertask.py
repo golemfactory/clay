@@ -540,8 +540,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if results and results.get("data"):
             for filename in results["data"]:
                 if filename.lower().endswith(".log"):
-                    with open(filename, "r") as fd:
-                        warnings = self.__find_missing_files_warnings(fd.read())
+                    with open(filename, "r") as f:
+                        warnings = self.__find_missing_files_warnings(f.read())
                         for w in warnings:
                             w = u"    {}\n".format(w)
                             if len(ret) == 0:
@@ -551,8 +551,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                 ret.append(w)
                         if warnings:
                             ret.append(u"\nMake sure you added all required files to resources.")
-                    with open(filename, "r") as fd:
-                        warning = self.__find_wrong_renderer_warning(fd.read())
+                        f.seek(0)
+                        warning = self.__find_wrong_renderer_warning(f.read())
                         if warning:
                             ret.append(u"\n{}\n".format(warning))
 
@@ -568,9 +568,10 @@ class BlenderRenderTask(FrameRenderingTask):
         return warnings
 
     def __find_wrong_renderer_warning(self, log_content):
+        text = "error: engine"
         for l in log_content.splitlines():
-            if l.lower().startswith("error: engine"):
-                return l[13:]
+            if l.lower().startswith(text):
+                return l[len(text):]
         return ""
 
     def __get_frame_num_from_output_file(self, file_):

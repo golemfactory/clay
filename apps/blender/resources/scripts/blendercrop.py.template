@@ -14,7 +14,7 @@ class EngineWarning(bpy.types.Operator):
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
-if engine != "BLENDER_RENDER" and engine != "CYCLES":
+if engine not in ("BLENDER_RENDER", "CYCLES"):
     bpy.ops.wm.engine_warning()
 
 
