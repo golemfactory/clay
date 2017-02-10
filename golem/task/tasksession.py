@@ -364,7 +364,7 @@ class TaskSession(MiddlemanSafeSession):
         elif ctd:
             self.send(MessageTaskToCompute(ctd))
         elif wait:
-            self.send(MessageWaitingForResults(msg.task_id))
+            self.send(MessageWaitingForResults())
         else:
             self.send(MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
             self.dropped()
@@ -379,10 +379,8 @@ class TaskSession(MiddlemanSafeSession):
             self.task_computer.session_closed()
             self.dropped()
 
-    def _react_to_waiting_for_results(self, msg):
-        if self.task_computer.counting_task != msg.task_id:
-            self.task_computer.session_closed()
-
+    def _react_to_waiting_for_results(self, _):
+        self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(self.DCRNoMoreMessages)
 
