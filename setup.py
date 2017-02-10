@@ -62,6 +62,4 @@ setup(
     ]
 )
 
-
-
 print_errors(ui_err, docker_err, task_collector_err)
