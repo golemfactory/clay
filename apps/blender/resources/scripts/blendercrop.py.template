@@ -2,6 +2,22 @@
 # written to tempfile and passed as arg to blender.
 import bpy
 
+class EngineWarning(bpy.types.Operator):
+    bl_idname = "wm.engine_warning"
+    bl_label = "Inform about not supported rendering engine"
+
+    def execute(self, context):
+        self.report({"ERROR"}, "Engine " + bpy.context.scene.render.engine + \
+                               " not supported by Golem")
+        return {"FINISHED"}
+
+
+bpy.utils.register_class(EngineWarning)
+engine = bpy.context.scene.render.engine
+if engine not in ("BLENDER_RENDER", "CYCLES"):
+    bpy.ops.wm.engine_warning()
+
+
 for scene in bpy.data.scenes:
 
     scene.render.tile_x = 0
