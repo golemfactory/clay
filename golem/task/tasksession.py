@@ -392,10 +392,9 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_cannot_assign_task(self, msg):
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
-        if self.task_computer.counting_task != msg.task_id:
-            self.task_server.remove_task_header(msg.task_id)
-            self.task_computer.session_closed()
-            self.dropped()
+        self.task_server.remove_task_header(msg.task_id)
+        self.task_computer.session_closed()
+        self.dropped()
 
     def _react_to_report_computed_task(self, msg):
         if msg.subtask_id in self.task_manager.subtask2task_mapping:
