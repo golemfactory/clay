@@ -227,7 +227,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         client.lock_config.assert_called_with(False)
 
     def test_is_busy(self):
-        task_server = MagicMock()
+        task_server = mock.MagicMock()
         task_server.config_desc = config_desc()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
@@ -265,6 +265,7 @@ class TestTaskThread(TestDirFixture):
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
         self.assertTrue(tc.counting_task)
+
 
 
 class TestTaskMonitor(TestDirFixture):

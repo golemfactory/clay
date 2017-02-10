@@ -279,12 +279,14 @@ class RenderingTask(CoreTask):
     def _verify_img(self, file_, res_x, res_y):
         return verify_img(file_, res_x, res_y)
 
-    def _open_preview(self):
-
+    def _open_preview(self, mode="RGB", ext="BMP"):
+        """ If preview file doesn't exist create a new empty one with given mode and extension.
+        Extension should be compatibile with selected mode. """
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
-            img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
-            img.save(self.preview_file_path, "BMP")
+            img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
+                                   int(round(self.res_y * self.scale_factor))))
+            img.save(self.preview_file_path, ext)
             img.close()
 
         return Image.open(self.preview_file_path)
