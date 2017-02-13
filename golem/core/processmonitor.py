@@ -17,7 +17,7 @@ class ProcessMonitor(Thread):
             for process in self.child_processes:
                 if not self.is_process_alive(process):
                     print "Subprocess {} exited with code {}. Terminating".format(process.pid,
-                                                                                  process.exitcode)
+                                                                                  process.returncode)
                     self.exit()
             time.sleep(1)
 
@@ -45,4 +45,7 @@ class ProcessMonitor(Thread):
 
     @staticmethod
     def is_process_alive(process):
-        return process and process.is_alive() and process.exitcode is None
+        if not process:
+            return False
+        process.poll()
+        return process.returncode is None

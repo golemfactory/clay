@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import click
 from twisted.internet.defer import inlineCallbacks, setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
@@ -5,7 +7,6 @@ from twisted.internet.error import ReactorAlreadyRunning
 from apps.appsmanager import AppsManager
 from golem.core.common import config_logging
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.node import OptNode
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session, WebSocketAddress
 
@@ -18,11 +19,7 @@ apps_manager.load_apps()
 
 
 def install_qt5_reactor():
-    try:
-        import qt5reactor
-    except ImportError:
-        # Maybe qt5reactor is placed inside twisted.internet in site-packages?
-        from twisted.internet import qt5reactor
+    import qt5reactor
     qt5reactor.install()
     from twisted.internet import reactor
     return reactor
@@ -45,7 +42,6 @@ def check_rpc_address(ctx, param, address):
         return click.BadParameter(
             "Invalid network address specified: {}".format(e.message))
     return WebSocketAddress(host, port, u'golem')
-
 
 
 class GUIApp(object):
@@ -75,7 +71,7 @@ class GUIApp(object):
 @click.command()
 @click.option('--rpc-address', '-r', multiple=False, callback=check_rpc_address,
               help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-def start_gui(rpc_address, rendering=True):
+def start_gui(rpc_address):
 
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
     from golem.rpc.session import Client
@@ -84,7 +80,7 @@ def start_gui(rpc_address, rendering=True):
     config_logging(GUI_LOG_NAME)
     logger = logging.getLogger("app")
 
-    gui_app = GUIApp(rendering)
+    gui_app = GUIApp(rendering=True)
     reactor = install_qt5_reactor()
 
     events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
