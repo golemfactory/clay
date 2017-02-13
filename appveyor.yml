@@ -82,7 +82,7 @@ install:
       mkdir %DIR_WHEELS%
     )
   - if not exist %DIR_WHEELS%\%PYWIN32% (
-      appveyor DownloadFile %WHEELS_URL%/%PYWIN32%
+      appveyor DownloadFile %WHEELS_URL%/%PYWIN32% &&
       move %PYWIN32% %DIR_WHEELS%\%PYWIN32%
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
@@ -91,9 +91,9 @@ install:
   # prebuilt packages
   - for %%w in %WHEELS% do (
       if not exist %WHEELS_URL%\%%w (
-        appveyor DownloadFile %WHEELS_URL%/%%w
+        appveyor DownloadFile %WHEELS_URL%/%%w &&
         move %%w %DIR_WHEELS%\%%w
-      )
+      ) &&
       pip install %DIR_WHEELS%\%%w
     )
 
