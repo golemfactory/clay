@@ -1,15 +1,13 @@
 import logging
 import math
 import os
-import random
-import uuid
+
 from copy import deepcopy, copy
 
 from PIL import Image, ImageChops
 
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
-from golem.core.keysauth import get_random, get_random_float
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.localcomputer import LocalComputer
@@ -18,7 +16,6 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
 
 
@@ -43,12 +40,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     def _set_verification_options(self, new_task):
         if self.task_definition.verification_options is None:
-            new_task.advanceVerification = False
+            new_task.verificator.advance_verification = False
         else:
-            new_task.advanceVerification = True
-            new_task.verification_options.type = self.task_definition.verification_options.type
-            new_task.verification_options.box_size = self.task_definition.verification_options.box_size
-            new_task.verification_options.probability = self.task_definition.verification_options.probability
+            new_task.verificator.advance_verification = True
+            new_task.verificator.verification_options = self.task_definition.verification_options
         return new_task
 
 
@@ -104,9 +99,6 @@ class RenderingTask(CoreTask):
 
         self.collected_file_names = {}
 
-        self.advanceVerification = False
-
-        self.verified_clients = list()
         self.max_pending_client_results = max_pending_client_results
         preview_x = 300
         preview_y = 200
@@ -150,14 +142,7 @@ class RenderingTask(CoreTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
-    def _get_part_size(self, subtask_id):
-        return self.res_x, self.res_y
 
-    @CoreTask.handle_key_error
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        num_task = self.subtasks_given[subtask_id]['start_task']
-        img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
-        return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
     def _update_preview(self, new_chunk_file_path, num_start):
 
@@ -276,8 +261,7 @@ class RenderingTask(CoreTask):
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
-    def _verify_img(self, file_, res_x, res_y):
-        return verify_img(file_, res_x, res_y)
+
 
     def _open_preview(self, mode="RGB", ext="BMP"):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
@@ -312,57 +296,6 @@ class RenderingTask(CoreTask):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
-    def _choose_adv_ver_file(self, tr_files, subtask_id):
-        adv_test_file = None
-        if self.advanceVerification:
-            if self.__use_adv_verification(subtask_id):
-                adv_test_file = random.sample(tr_files, 1)
-        return adv_test_file
-
-    @CoreTask.handle_key_error
-    def _verify_imgs(self, subtask_id, tr_files):
-        res_x, res_y = self._get_part_size(subtask_id)
-
-        adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
-        x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file)
-
-        for tr_file in tr_files:
-            if adv_test_file is not None and tr_file in adv_test_file:
-                start_box = self._get_box_start(x0, y0, x1, y1)
-                logger.debug('testBox: {}'.format(start_box))
-                cmp_file, cmp_start_box = self._get_cmp_file(tr_file, start_box, subtask_id)
-                logger.debug('cmp_start_box {}'.format(cmp_start_box))
-                if not advance_verify_img(tr_file, res_x, res_y, start_box, self.verification_options.box_size,
-                                          cmp_file, cmp_start_box):
-                    return False
-                else:
-                    self.verified_clients.append(self.subtasks_given[subtask_id]['node_id'])
-            if not self._verify_img(tr_file, res_x, res_y):
-                return False
-
-        return True
-
-    def _get_cmp_file(self, tr_file, start_box, subtask_id):
-        extra_data, new_start_box = self._change_scope(subtask_id, start_box, tr_file)
-        cmp_file = self._run_task(extra_data)
-        return cmp_file, new_start_box
-
-    def _get_box_start(self, x0, y0, x1, y1):
-        ver_x = min(self.verification_options.box_size[0], x1 - x0)
-        ver_y = min(self.verification_options.box_size[1], y1 - y0)
-        start_x = get_random(x0, x1 - ver_x)
-        start_y = get_random(y0, y1 - ver_y)
-        return start_x, start_y
-
-    @CoreTask.handle_key_error
-    def _change_scope(self, subtask_id, start_box, tr_file):
-        extra_data = copy(self.subtasks_given[subtask_id])
-        extra_data['outfilebasename'] = str(uuid.uuid4())
-        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(self.subtasks_given[subtask_id]['start_task']))
-        if not os.path.isdir(extra_data['tmp_path']):
-            os.mkdir(extra_data['tmp_path'])
-        return extra_data, start_box
-
     def _run_task(self, extra_data):
         computer = LocalComputer(self, self.root_path,
                                  self.__box_rendered,
@@ -385,16 +318,7 @@ class RenderingTask(CoreTask):
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))
 
-    @CoreTask.handle_key_error
-    def __use_adv_verification(self, subtask_id):
-        if self.verification_options.type == 'forAll':
-            return True
-        if self.verification_options.type == 'forFirst':
-            if self.subtasks_given[subtask_id]['node_id'] not in self.verified_clients:
-                return True
-        if self.verification_options.type == 'random' and get_random_float() < self.verification_options.probability:
-            return True
-        return False
+
 
     def __get_path(self, path):
         if is_windows():

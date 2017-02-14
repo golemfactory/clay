@@ -13,6 +13,7 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, res
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretaskstate import AdvanceVerificationOptions
+from apps.core.task.verificator import CoreVerificator
 
 logger = logging.getLogger("apps.core")
 
@@ -67,8 +68,9 @@ class CoreTask(Task):
     # Task methods #
     ################
 
-    def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
+    def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id,
+                 environment, task_timeout, subtask_timeout, resource_size, estimated_memory,
+                 max_price, docker_images=None, verificator_class=CoreVerificator):
 
         """ Create more specific task implementation
         :param src_code:
@@ -112,13 +114,14 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verification_options = AdvanceVerificationOptions()
+        self.verificator = verificator_class(AdvanceVerificationOptions())
 
     def is_docker_task(self):
         return self.header.docker_images is not None
 
     def initialize(self, dir_manager):
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
+        self.verificator.tmp_dir = self.tmp_dir
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
