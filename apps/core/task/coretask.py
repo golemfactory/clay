@@ -13,7 +13,7 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, res
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretaskstate import AdvanceVerificationOptions
-from apps.core.task.verificator import CoreVerificator
+from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -130,6 +130,26 @@ class CoreTask(Task):
         return self.num_tasks_received == self.total_tasks
 
     def computation_failed(self, subtask_id):
+        self._mark_subtask_failed(subtask_id)
+
+    def computation_finished(self, subtask_id, task_result, result_type=0):
+        if not self.should_accept(subtask_id):
+            logger.info("Not accepting results for {}".format(subtask_id))
+            return
+        self.interpret_task_results(subtask_id, task_result, result_type)
+        result_files = self.results.get(subtask_id)
+        ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
+                                            result_files)
+        if ver_state == SubtaskVerificationState.VERIFIED:
+            self.accept_results(subtask_id, result_files)
+        # TODO Add support for different verification states
+        else:
+            self.reject_results(subtask_id)
+
+    def accept_results(self, subtask_id, result_files):
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
+
+    def reject_results(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
     @handle_key_error

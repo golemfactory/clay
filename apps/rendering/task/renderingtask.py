@@ -2,21 +2,21 @@ import logging
 import math
 import os
 
-from copy import deepcopy, copy
+from copy import deepcopy
 
 from PIL import Image, ImageChops
 
 from golem.core.common import get_golem_path, timeout_to_deadline
-from golem.core.fileshelper import find_file_with_ext
+
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
-from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
+from apps.rendering.task.verificator import RenderingVerificator
 
 
 MIN_TIMEOUT = 2200.0
@@ -59,10 +59,11 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                 total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, max_price, docker_images=None,
+    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
+                 timeout, subtask_timeout, main_program_file, task_resources, main_scene_dir,
+                 main_scene_file, total_tasks, res_x, res_y, outfilebasename, output_file,
+                 output_format, root_path, estimated_memory, max_price, docker_images=None,
+                 verificator_class=RenderingVerificator,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
 
         try:
@@ -77,8 +78,9 @@ class RenderingTask(CoreTask):
         for resource in task_resources:
             resource_size += os.stat(resource).st_size
 
-        CoreTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                          timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images)
+        CoreTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port,
+                          owner_key_id, environment, timeout, subtask_timeout, resource_size,
+                          estimated_memory, max_price, docker_images, verificator_class)
 
         self.main_program_file = main_program_file
         self.main_scene_file = main_scene_file
@@ -113,6 +115,11 @@ class RenderingTask(CoreTask):
 
         self.test_task_res_path = None
 
+        self.verificator.root_path = root_path
+        self.verificator.res_x = self.res_x
+        self.verificator.res_y = self.res_y
+        self.verificator.total_tasks = self.total_tasks
+
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         CoreTask.computation_failed(self, subtask_id)
@@ -141,8 +148,6 @@ class RenderingTask(CoreTask):
 
     def get_preview_file_path(self):
         return self.preview_file_path
-
-
 
     def _update_preview(self, new_chunk_file_path, num_start):
 
@@ -261,8 +266,6 @@ class RenderingTask(CoreTask):
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
-
-
     def _open_preview(self, mode="RGB", ext="BMP"):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """
@@ -295,28 +298,6 @@ class RenderingTask(CoreTask):
 
         client.start()
         return AcceptClientVerdict.ACCEPTED
-
-    def _run_task(self, extra_data):
-        computer = LocalComputer(self, self.root_path,
-                                 self.__box_rendered,
-                                 self.__box_render_error,
-                                 lambda: self.query_extra_data_for_advance_verification(extra_data),
-                                 additional_resources=[])
-        computer.run()
-        computer.tt.join()
-        results = computer.tt.result.get("data")
-        if results:
-            commonprefix = os.path.commonprefix(results)
-            img = find_file_with_ext(commonprefix, ["." + self.output_format])
-            if img is None:
-                logger.error("No image file created")
-            return img
-
-    def __box_rendered(self, results):
-        logger.info("Box for advance verification created")
-
-    def __box_render_error(self, error):
-        logger.error("Cannot verify img: {}".format(error))
 
 
 

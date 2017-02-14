@@ -15,10 +15,13 @@ from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import TaskTypeInfo
 from apps.core.task.coretaskstate import Options
+from apps.core.task.verificator import SubtaskVerificationState
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
+from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
-from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, AcceptClientVerdict
+from apps.rendering.task.renderingtask import (RenderingTask, RenderingTaskBuilder,
+                                               AcceptClientVerdict)
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RenderingTaskDefinition
 
 logger = logging.getLogger("apps.lux")
@@ -41,12 +44,12 @@ class LuxRenderDefaults(RendererDefaults):
 class LuxRenderTaskTypeInfo(TaskTypeInfo):
     def __init__(self, dialog, customizer):
         super(LuxRenderTaskTypeInfo, self).__init__("LuxRender",
-                                              RenderingTaskDefinition,
-                                              LuxRenderDefaults(),
-                                              LuxRenderOptions,
-                                              LuxRenderTaskBuilder,
-                                              dialog,
-                                              customizer)
+                                                    RenderingTaskDefinition,
+                                                    LuxRenderDefaults(),
+                                                    LuxRenderOptions,
+                                                    LuxRenderTaskBuilder,
+                                                    dialog,
+                                                    customizer)
         self.output_formats = ["exr", "png", "tga"]
         self.output_file_ext = ["lxs"]
 
@@ -170,13 +173,15 @@ class LuxTask(RenderingTask):
                  return_address="",
                  return_port=0,
                  key_id="",
-                 docker_images=None):
+                 docker_images=None,
+                 verificator_class=LuxRenderVerificator):
         
         RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
                                LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
                                main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price, docker_images)
+                               total_tasks, res_x, res_y, outfilebasename, output_file,
+                               output_format, root_path, estimated_memory, max_price,
+                               docker_images, verificator_class)
 
         self.tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         self.undeletable.append(self.__get_test_flm())
@@ -197,6 +202,10 @@ class LuxTask(RenderingTask):
         self.numAdd = 0
 
         self.preview_exr = None
+
+    def initialize(self, dir_manager):
+        super(LuxTask, self).initialize(dir_manager)
+        self.verificator = self.__get_test_flm()
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
         verdict = self._accept_client(node_id)
@@ -250,8 +259,13 @@ class LuxTask(RenderingTask):
 
         self.interpret_task_results(subtask_id, task_result, result_type)
         tr_files = self.results[subtask_id]
+        ver_state = self.verificator.verify(subtask_id, self.subtasks_given[subtask_id], tr_files)
 
-        if len(tr_files) > 0:
+        if ver_state != SubtaskVerificationState.VERIFIED:
+            self._mark_subtask_failed(subtask_id)
+            return
+
+
             num_start = self.subtasks_given[subtask_id]['start_task']
             self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
             for tr_file in tr_files:
@@ -274,10 +288,9 @@ class LuxTask(RenderingTask):
                 elif not tr_file.upper().endswith('.LOG'):
                     self.subtasks_given[subtask_id]['previewFile'] = tr_file
                     self._update_preview(tr_file, num_start)
-        else:
-            self._mark_subtask_failed(subtask_id)
+
         if self.num_tasks_received == self.total_tasks:
-            if self.advanceVerification and os.path.isfile(test_result_flm):
+            if self.verificator.advance_verification and os.path.isfile(test_result_flm):
                 self.__generate_final_flm_advanced_verification()
             else:
                 self.__generate_final_flm()

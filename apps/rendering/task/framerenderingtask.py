@@ -11,6 +11,7 @@ from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from apps.rendering.task.verificator import FrameRenderingVerificator
 
 logger = logging.getLogger("apps.rendering")
 
@@ -59,14 +60,17 @@ class FrameRenderingTask(RenderingTask):
     # Task methods #
     ################
 
-    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                 total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, use_frames, frames, max_price, docker_images=None):
-        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                               subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                               estimated_memory, max_price, docker_images)
+    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
+                 timeout, subtask_timeout, main_program_file, task_resources, main_scene_dir,
+                 main_scene_file, total_tasks, res_x, res_y, outfilebasename, output_file,
+                 output_format, root_path, estimated_memory, use_frames, frames, max_price,
+                 docker_images=None, verification_class=FrameRenderingVerificator):
+        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id,
+                               environment, timeout, subtask_timeout, main_program_file,
+                               task_resources, main_scene_dir, main_scene_file, total_tasks,
+                               res_x, res_y, outfilebasename, output_file, output_format,
+                               root_path, estimated_memory, max_price, docker_images,
+                               verification_class)
 
         self.use_frames = use_frames
         self.frames = frames
@@ -82,8 +86,7 @@ class FrameRenderingTask(RenderingTask):
 
     @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, result_type=0):
-        if not self.should_accept(subtask_id):
-            return
+
 
         self.interpret_task_results(subtask_id, task_results, result_type)
         tr_files = self.results[subtask_id]

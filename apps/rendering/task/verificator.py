@@ -6,6 +6,9 @@ import random
 import uuid
 
 from golem.core.keysauth import get_random, get_random_float
+from golem.core.fileshelper import find_file_with_ext
+from golem.task.localcomputer import LocalComputer
+from golem.task.taskbase import ComputeTaskDef
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
@@ -14,13 +17,13 @@ logger = logging.getLogger("apps.rendering")
 
 
 class RenderingVerificator(CoreVerificator):
-    def __init__(self, res_x, res_y, total_tasks, advance_verification=False,
-                 verification_options=None):
-        super(RenderingVerificator, self).__init__(advance_verification, verification_options)
-        self.res_x = res_x
-        self.res_y = res_y
-        self.total_tasks = total_tasks
+    def __init__(self, verification_options=None, advance_verification=False):
+        super(RenderingVerificator, self).__init__(verification_options, advance_verification)
+        self.res_x = 0
+        self.res_y = 0
+        self.total_tasks = 0
         self.tmp_dir = None
+        self.root_path = None
         self.verified_clients = list()
 
     @CoreVerificator.handle_key_error_for_state
@@ -80,12 +83,12 @@ class RenderingVerificator(CoreVerificator):
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info):
-        extra_data, new_start_box = self._change_scope(subtask_id, start_box, tr_file,
+        extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file,
                                                        subtask_info)
         cmp_file = self._run_task(extra_data)
         return cmp_file, new_start_box
 
-    def _change_scope(self, subtask_id, start_box, tr_file, subtask_info):
+    def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data = copy(subtask_info[subtask_id])
         extra_data['outfilebasename'] = str(uuid.uuid4())
         extra_data['tmp_path'] = os.path.join(self.tmp_dir,
@@ -93,6 +96,33 @@ class RenderingVerificator(CoreVerificator):
         if not os.path.isdir(extra_data['tmp_path']):
             os.mkdir(extra_data['tmp_path'])
         return extra_data, start_box
+
+    def _run_task(self, extra_data):
+        computer = LocalComputer(self, self.root_path,
+                                 self.__box_rendered,
+                                 self.__box_render_error,
+                                 lambda: self.query_extra_data_for_advance_verification(extra_data),
+                                 additional_resources=[])
+        computer.run()
+        computer.tt.join()
+        results = computer.tt.result.get("data")
+        if results:
+            commonprefix = os.path.commonprefix(results)
+            img = find_file_with_ext(commonprefix, ["." + extra_data['output_format']])
+            if img is None:
+                logger.error("No image file created")
+            return img
+
+    def query_extra_data_for_advance_verification(self, extra_data):
+        ctd = ComputeTaskDef()
+        ctd.extra_data = extra_data
+        return ctd
+
+    def __box_rendered(self, results):
+        logger.info("Box for advance verification created")
+
+    def __box_render_error(self, error):
+        logger.error("Cannot verify img: {}".format(error))
 
     def __use_adv_verification(self, subtask_id):
         if self.verification_options.type == 'forAll':
@@ -103,3 +133,15 @@ class RenderingVerificator(CoreVerificator):
         if self.verification_options.type == 'random' and get_random_float() < self.verification_options.probability:
             return True
         return False
+
+
+class FrameRenderingVerificator(RenderingVerificator):
+
+    @CoreVerificator.handle_key_error_for_state
+    def verify(self, subtask_id, subtask_info, tr_files):
+        for
+
+        if self._verify_imgs(subtask_id, subtask_info, tr_files):
+            return SubtaskVerificationState.VERIFIED
+        else:
+            return SubtaskVerificationState.WRONG_ANSWER
