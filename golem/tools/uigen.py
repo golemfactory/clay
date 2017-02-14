@@ -15,10 +15,8 @@ def append_pyqt5_path():
 
 
 def call_pyrcc(py_file, qrc_file):
-    cmd = "pyrcc5 -o " + py_file + " " + qrc_file
-    print cmd
     with append_pyqt5_path():
-        subprocess.call(cmd.split())
+        subprocess.call(['pyrcc5', '-o', py_file, qrc_file])
 
 
 def regenerate_ui_files(root_path):
