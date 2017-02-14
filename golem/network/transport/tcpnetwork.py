@@ -411,12 +411,12 @@ class TCPNetwork(Network):
 
 
 class BasicProtocol(SessionProtocol):
-    lock = Lock()
 
     """ Connection-oriented basic protocol for twisted, support message serialization"""
     def __init__(self):
         self.opened = False
         self.db = DataBuffer()
+        self.lock = Lock()
         SessionProtocol.__init__(self)
 
     def send_message(self, msg):
@@ -496,12 +496,14 @@ class BasicProtocol(SessionProtocol):
             self.db.append_string(data)
             mess = self._data_to_messages()
 
-        if mess is None:
-            logger.error("Deserialization message failed")
-            return None
-
-        for m in mess:
-            self.session.interpret(m)
+        # Interpret messages
+        if mess:
+            for m in mess:
+                self.session.interpret(m)
+        # Drop the connection if no messages were deserialized
+        elif data:
+            logger.error("Deserialization of messages failed")
+            self.session.dropped()
 
     def _data_to_messages(self):
         return Message.deserialize(self.db)
