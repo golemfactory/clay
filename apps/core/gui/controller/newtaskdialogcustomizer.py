@@ -152,10 +152,10 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _save_task_button_clicked(self):
         save_dir = get_save_dir()
-        file_name = QFileDialog.getSaveFileName(self.gui.window,
-                                                "Choose save file", save_dir, "Golem Task (*.gt)")
+        file_name, _ = QFileDialog.getSaveFileName(self.gui.window,
+                                                   "Choose save file", save_dir, "Golem Task (*.gt)")
 
-        if file_name != "":
+        if file_name:
             self._save_task(file_name)
 
     def _save_task(self, file_path):
