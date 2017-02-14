@@ -6,17 +6,19 @@ PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
 
 @contextmanager
-def append_pyqt5_path():
+def prepend_pyqt5_path():
     import PyQt5
+    qt_path = os.path.dirname(PyQt5.__file__)
     path = os.environ['PATH']
-    os.environ['PATH'] += os.pathsep + os.path.dirname(PyQt5.__file__)
+
+    os.environ['PATH'] = qt_path + os.pathsep + path
     yield
     os.environ['PATH'] = path
 
 
 def call_pyrcc(py_file, qrc_file):
-    with append_pyqt5_path():
-        subprocess.call(['pyrcc5', '-o', py_file, qrc_file])
+    with prepend_pyqt5_path():
+        subprocess.check_call('pyrcc5 -o ' + py_file + ' ' + qrc_file, shell=True)
 
 
 def regenerate_ui_files(root_path):
