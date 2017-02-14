@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+import logging
+
 import click
 from twisted.internet.defer import inlineCallbacks, setDebugging
-from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
 from golem.core.common import config_logging
@@ -10,7 +11,8 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session, WebSocketAddress
 
-GUI_LOG_NAME = "golem_gui.log"
+config_logging("golem_gui.log")
+logger = logging.getLogger("app")
 
 setDebugging(True)
 
@@ -54,8 +56,8 @@ class GUIApp(object):
         from gui.view.appmainwindow import AppMainWindow
 
         self.logic = GuiApplicationLogic()
-        self.app = Gui(self.logic, AppMainWindow)
-        self.logic.register_gui(self.app.get_main_window(),
+        self.gui = Gui(self.logic, AppMainWindow)
+        self.logic.register_gui(self.gui.get_main_window(),
                                 MainWindowCustomizer)
 
         if rendering:
@@ -65,46 +67,48 @@ class GUIApp(object):
     def start(self, client):
         yield self.logic.register_client(client)
         yield self.logic.start()
-        self.app.execute(using_qt5_reactor=True)
+        self.gui.execute(using_qt5_reactor=True)
 
 
-@click.command()
-@click.option('--rpc-address', '-r', multiple=False, callback=check_rpc_address,
-              help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+def start_error(err):
+    logger.error(u"GUI process error: {}".format(err))
+
+
 def start_gui(rpc_address):
 
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
     from golem.rpc.session import Client
-    import logging
 
-    config_logging(GUI_LOG_NAME)
-    logger = logging.getLogger("app")
-
-    gui_app = GUIApp(rendering=True)
     reactor = install_qt5_reactor()
 
+    gui_app = GUIApp(rendering=True)
     events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
     session = Session(rpc_address, events=events)
 
     def connect():
-        session.connect().addCallbacks(session_ready, shutdown)
+        session.connect().addCallbacks(session_ready, start_error)
 
     def session_ready(*_):
         core_client = Client(session, CORE_METHOD_MAP)
         reactor.callFromThread(gui_app.start, core_client)
         gui_app.start(core_client)
 
-    def shutdown(err):
-        logger.error(u"GUI process error: {}".format(err))
-
     reactor.callWhenRunning(connect)
     reactor.addSystemEventTrigger('before', 'shutdown', session.disconnect)
 
     try:
         reactor.run()
-    except ReactorAlreadyRunning:
-        logger.debug(u"GUI process: reactor is already running")
+    finally:
+        if gui_app and gui_app.gui and gui_app.gui.app:
+            gui_app.gui.app.deleteLater()
+
+
+@click.command()
+@click.option('--rpc-address', '-r', multiple=False, callback=check_rpc_address,
+              help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+def main(rpc_address):
+    start_gui(rpc_address)
 
 
 if __name__ == '__main__':
-    start_gui()
+    main()
