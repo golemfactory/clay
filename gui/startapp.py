@@ -3,7 +3,6 @@ import subprocess
 from os import path
 
 import sys
-from twisted.internet import reactor
 from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -23,6 +22,7 @@ apps_manager.load_apps()
 
 
 def stop_reactor():
+    from twisted.internet import reactor
     if reactor.running:
         reactor.stop()
 
@@ -53,7 +53,7 @@ def start_gui(address):
 
 def start_client(start_ranking, datadir=None,
                  transaction_system=False, client=None,
-                 **config_overrides):
+                 reactor=None, **config_overrides):
 
     if datadir:
         log_name = path.join(datadir, CLIENT_LOG_NAME)
@@ -63,6 +63,9 @@ def start_client(start_ranking, datadir=None,
     config_logging(log_name)
     logger = logging.getLogger("golem.client")
     environments = load_environments()
+
+    if not reactor:
+        from twisted.internet import reactor
     process_monitor = None
 
     if not client:

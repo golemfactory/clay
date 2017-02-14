@@ -3,6 +3,9 @@ import time
 from Queue import Queue
 from threading import Thread
 
+from mock import Mock, patch
+from twisted.internet.defer import Deferred
+
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import config_logging
@@ -12,9 +15,8 @@ from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.appveyor import appveyor_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golemgui import start_gui
 from gui.startapp import load_environments, start_client
-from mock import Mock, patch
-from twisted.internet.defer import Deferred
 
 
 def router_start(fail_on_start):
@@ -23,6 +25,7 @@ def router_start(fail_on_start):
             errback(u"Router error")
         else:
             callback(Mock())
+
     return start
 
 
@@ -35,6 +38,7 @@ def session_connect(fail_on_start):
             instance.connected = True
             deferred.callback(Mock())
         return deferred
+
     return connect
 
 
@@ -48,6 +52,7 @@ def session_call(resolve_fn):
         else:
             deferred.callback(result)
         return deferred
+
     return call
 
 
@@ -70,43 +75,39 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         client = None
         queue = Queue()
 
-        with patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails)):
-            with patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
+        with patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err)), \
+             patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails)), \
+             patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
 
-                try:
-                    client = Client(datadir=self.path,
-                                    transaction_system=False,
-                                    connect_to_known_hosts=False,
-                                    use_docker_machine_manager=False,
-                                    use_monitor=False)
+            try:
+                client = Client(datadir=self.path,
+                                transaction_system=False,
+                                connect_to_known_hosts=False,
+                                use_docker_machine_manager=False,
+                                use_monitor=False)
 
-                    client.start = lambda *_: queue.put(u"Success")
+                client.start = lambda *_: queue.put(u"Success")
 
-                    thread = Thread(target=lambda: start_client(queue=queue,
-                                                                client=client,
-                                                                start_ranking=False))
-                    thread.daemon = True
-                    thread.start()
+                thread = Thread(target=lambda: start_client(start_ranking=False,
+                                                            client=client,
+                                                            reactor=self._get_reactor()))
+                thread.daemon = True
+                thread.start()
 
-                    message = queue.get(True, 10)
-                    assert unicode(message).find(expected_result) != -1
+                message = queue.get(True, 10)
+                assert unicode(message).find(expected_result) != -1
 
-                except Exception as exc:
-                    import traceback
-                    traceback.print_exc()
-                    self.fail(u"Cannot start client process: {}".format(exc))
-                finally:
-                    if client:
-                        client.quit()
+            except Exception as exc:
+                import traceback
+                traceback.print_exc()
+                self.fail(u"Cannot start client process: {}".format(exc))
+            finally:
+                if client:
+                    client.quit()
 
     def _start_gui(self, session_fails=False, expected_result=None):
 
-        gui_app = None
-        address = WebSocketAddress('127.0.0.1', 50000, realm=u'golem')
-
-        queue = Queue()
-        queue.put(address)
-
+        address = WebSocketAddress(u'127.0.0.1', 50000, realm=u'golem')
         logger = Mock()
 
         def resolve_call(alias, *args, **kwargs):
@@ -136,43 +137,37 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 return u''
             return 1
 
-        with patch('logging.getLogger', return_value=logger):
-            with patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
-                with patch('golem.rpc.session.Session.call', session_call(resolve_call)):
-                    try:
-                        gui_app = GUIApp(rendering=True)
-                        gui_app.app.execute = lambda *a, **kw: logger.error(u"Success")
-                        gui_app.logic.customizer = Mock()
+        with patch('logging.getLogger', return_value=logger), \
+             patch('golemgui.start_error', side_effect=lambda err: logger.error(err)), \
+             patch('golemgui.GUIApp.start', side_effect=lambda *a, **kw: logger.error(u"Success")), \
+             patch('golemgui.install_qt5_reactor', side_effect=self._get_reactor), \
+             patch('golem.rpc.session.Session.connect', session_connect(session_fails)), \
+             patch('golem.rpc.session.Session.call', session_call(resolve_call)):
 
-                        thread = Thread(target=lambda: start_gui_process(queue,
-                                                                         datadir=self.path,
-                                                                         gui_app=gui_app,
-                                                                         reactor=self._get_reactor()))
-                        thread.daemon = True
-                        thread.start()
+            try:
 
-                        started = time.time()
-                        while True:
+                thread = Thread(target=lambda: start_gui(address))
+                thread.daemon = True
+                thread.start()
 
-                            if logger.error.called:
-                                if not logger.error.call_args:
-                                    raise Exception(u"Invalid result: {}".format(logger.error.call_args))
+                started = time.time()
+                while True:
 
-                                message = logger.error.call_args[0][0]
-                                assert unicode(message).find(expected_result) != -1
-                                break
+                    if logger.error.called:
+                        if not logger.error.call_args:
+                            raise Exception(u"Invalid result: {}".format(logger.error.call_args))
 
-                            elif time.time() > started + 10:
-                                raise Exception(u"Test timed out")
-                            else:
-                                time.sleep(0.1)
+                        message = logger.error.call_args[0][0]
+                        assert unicode(message).find(expected_result) != -1
+                        break
 
-                    except Exception as exc:
-                        self.fail(u"Cannot start gui process: {}".format(exc))
-                    finally:
-                        if gui_app and gui_app.app and gui_app.app.app:
-                            gui_app.app.app.exit(0)
-                            gui_app.app.app.deleteLater()
+                    elif time.time() > started + 10:
+                        raise Exception(u"Test timed out")
+                    else:
+                        time.sleep(0.1)
+
+            except Exception as exc:
+                self.fail(u"Cannot start gui process: {}".format(exc))
 
     @patch('logging.config.fileConfig')
     @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',

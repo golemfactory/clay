@@ -2,7 +2,6 @@ import unittest
 
 import mock
 
-from golem.core.common import is_osx
 from golem.docker.machine.machine_manager import DockerMachineManager
 from golem.tools.appveyor import appveyor_skip
 
@@ -181,11 +180,10 @@ class TestDockerMachineManager(unittest.TestCase):
             mock_virtualbox.version = None
             mock_virtualbox_module.VirtualBox.return_value = mock_virtualbox
 
-            if not is_osx():
-                dmm = MockDockerMachineManager()
-                dmm.docker_machine = MACHINE_NAME
-                dmm.check_environment()
-                assert not dmm.docker_machine_available
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.check_environment()
+            assert dmm.docker_machine_available
 
             dmm = MockDockerMachineManager()
             dmm.docker_machine = '!'
