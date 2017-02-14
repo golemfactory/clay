@@ -3,11 +3,10 @@ import tempfile
 
 from apps.core.benchmark.benchmark import Benchmark
 from apps.blender.task.blenderrendertask import BlenderRendererOptions
+from apps.blender.blenderenvironment import BlenderEnvironment
 
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import find_task_script
-
-APP_DIR = os.path.join(get_golem_path(), 'apps', 'blender')
 
 
 class BlenderBenchmark(Benchmark):
@@ -26,6 +25,6 @@ class BlenderBenchmark(Benchmark):
         self.task_definition.options.frames = [1]
         self.task_definition.task_id = u"{}".format("blender_benchmark")
         self.task_definition.main_scene_file = os.path.join(self.blender_task_path, "scene-Helicopter-27-cycles.blend")
-        self.task_definition.main_program_file = u"{}".format(find_task_script(APP_DIR, "docker_blendertask.py"))
+        self.task_definition.main_program_file = BlenderEnvironment().main_program_file
 
         self.task_definition.resources.add(os.path.normpath(self.task_definition.main_scene_file))

@@ -1,4 +1,5 @@
 import unittest
+from os import path
 
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -18,3 +19,6 @@ class TestLuxRenderEnvironment(unittest.TestCase):
         cfg_desc.estimated_lux_performance = perf
         result = env.get_performance(cfg_desc)
         self.assertTrue(result == perf)
+
+    def test_main_program_file(self):
+        assert path.isfile(LuxRenderEnvironment().main_program_file)

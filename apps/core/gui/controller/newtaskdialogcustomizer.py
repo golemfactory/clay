@@ -74,8 +74,6 @@ class NewTaskDialogCustomizer(Customizer):
             self._set_new_pessimistic_cost)
         self.gui.ui.totalSpinBox.valueChanged.connect(
             self._set_new_pessimistic_cost)
-        self.gui.ui.chooseMainProgramFileButton.clicked.connect(
-            self._choose_main_program_file_button_clicked)
         self.gui.ui.testTaskButton.clicked.connect(
             self.__test_task_button_clicked)
         self.gui.ui.resetToDefaultButton.clicked.connect(
@@ -84,7 +82,6 @@ class NewTaskDialogCustomizer(Customizer):
             self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
             self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
             self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
-            self.gui.ui.mainProgramFileLineEdit.textChanged,
             self.gui.ui.verificationSizeXSpinBox.valueChanged,
             self.gui.ui.verificationSizeYSpinBox.valueChanged,
             self.gui.ui.verificationForAllRadioButton.toggled,
@@ -226,8 +223,6 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_task_type(definition)
         set_time_spin_boxes(self.gui, definition.full_task_timeout,
                             definition.subtask_timeout)
-        self.gui.ui.mainProgramFileLineEdit.setText(
-            definition.main_program_file)
         self.gui.ui.totalSpinBox.setValue(definition.total_subtasks)
         task_type = self.logic.get_task_type(definition.task_type)
         self.gui.ui.totalSpinBox.setRange(task_type.defaults.min_subtasks,
@@ -273,18 +268,6 @@ class NewTaskDialogCustomizer(Customizer):
     def _add_current_task(self):
         self.logic.add_tasks([deepcopy(self.task_state)])
 
-    def _choose_main_program_file_button_clicked(self):
-
-        dir_ = os.path.dirname(u"{}".format(self.gui.ui.mainProgramFileLineEdit.text()))
-
-        file_name = u"{}".format(QFileDialog.getOpenFileName(
-            self.gui.window, "Choose main program file", dir_,
-            "Python (*.py *.Py *.PY *.pY)"))
-
-        if file_name != "":
-            self.gui.ui.mainProgramFileLineEdit.setText(file_name)
-            self._change_finish_state(False)
-
     @staticmethod
     def _generate_new_task_uid():
         import uuid
@@ -297,8 +280,8 @@ class NewTaskDialogCustomizer(Customizer):
     def _query_task_definition(self):
         task_type = self.get_current_task_type()
         definition = task_type.definition()
-        self._read_basic_task_params(definition)
         self._read_task_type(definition)
+        self._read_basic_task_params(definition)
         self._read_price_params(definition)
         self._read_task_name(definition)
         self.get_task_specific_options(definition)
@@ -311,7 +294,8 @@ class NewTaskDialogCustomizer(Customizer):
     def _read_basic_task_params(self, definition):
         definition.task_id = u"{}".format(self.gui.ui.taskIdLabel.text())
         definition.full_task_timeout, definition.subtask_timeout = get_time_values(self.gui)
-        definition.main_program_file = u"{}".format(self.gui.ui.mainProgramFileLineEdit.text())
+        task_type = self.logic.get_task_type(definition.task_type)
+        definition.main_program_file = task_type.defaults.main_program_file
         definition.optimize_total = self.gui.ui.optimizeTotalCheckBox.isChecked()
         if definition.optimize_total:
             definition.total_subtasks = 0
@@ -390,7 +374,6 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.set_current_task_type(name)
         self.logic.options = task_type.options()
         self._change_task_widget(name)
-        self.gui.ui.mainProgramFileLineEdit.setText(task_type.defaults.main_program_file)
         set_time_spin_boxes(self.gui, task_type.defaults.full_task_timeout, task_type.defaults.subtask_timeout)
         self.gui.ui.totalSpinBox.setRange(task_type.defaults.min_subtasks, task_type.defaults.max_subtasks)
         self._set_name()
@@ -429,8 +412,6 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.set_current_task_type(task_type.name)
 
         self.task_customizer.load_data()
-
-        self.gui.ui.mainProgramFileLineEdit.setText(task_type.defaults.main_program_file)
 
         set_time_spin_boxes(self.gui, task_type.defaults.full_task_timeout, task_type.defaults.subtask_timeout)
 
