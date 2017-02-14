@@ -21,6 +21,7 @@ Twisted>=16.5
 web3>=3.5.3
 cffi>=1.1.2
 ethereum>=1.6.0
+ethereum-abi-utils==0.2.2
 autobahn>=0.16.1
 cbor2
 multihash
