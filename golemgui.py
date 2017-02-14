@@ -74,14 +74,14 @@ def start_error(err):
     logger.error(u"GUI process error: {}".format(err))
 
 
-def start_gui(rpc_address):
+def start_gui(rpc_address, gui_app=None):
 
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
     from golem.rpc.session import Client
 
     reactor = install_qt5_reactor()
 
-    gui_app = GUIApp(rendering=True)
+    gui_app = gui_app or GUIApp(rendering=True)
     events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
     session = Session(rpc_address, events=events)
 

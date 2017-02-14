@@ -15,7 +15,7 @@ from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.appveyor import appveyor_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from golemgui import start_gui
+from golemgui import start_gui, GUIApp
 from gui.startapp import load_environments, start_client
 
 
@@ -75,7 +75,9 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         client = None
         queue = Queue()
 
-        with patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err)), \
+        with patch('gui.startapp.start_gui'), \
+             patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success")), \
+             patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err)), \
              patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails)), \
              patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
 
@@ -85,8 +87,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                                 connect_to_known_hosts=False,
                                 use_docker_machine_manager=False,
                                 use_monitor=False)
-
-                client.start = lambda *_: queue.put(u"Success")
 
                 thread = Thread(target=lambda: start_client(start_ranking=False,
                                                             client=client,
@@ -98,8 +98,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 assert unicode(message).find(expected_result) != -1
 
             except Exception as exc:
-                import traceback
-                traceback.print_exc()
                 self.fail(u"Cannot start client process: {}".format(exc))
             finally:
                 if client:
@@ -146,7 +144,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
             try:
 
-                thread = Thread(target=lambda: start_gui(address))
+                gui_app = GUIApp(rendering=True)
+                gui_app.gui.execute = lambda *a, **kw: logger.error(u"Success")
+                gui_app.logic.customizer = Mock()
+
+                thread = Thread(target=lambda: start_gui(address, gui_app))
                 thread.daemon = True
                 thread.start()
 
