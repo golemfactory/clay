@@ -209,17 +209,6 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @RenderingTask.handle_key_error
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        if not self.use_frames or self.__full_frames():
-            return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
-        else:
-            start_task = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(float(self.res_y) / float(parts)))
-            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
-
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
             subtasks_frames = int(math.ceil(float(len(frames)) / float(total_tasks)))

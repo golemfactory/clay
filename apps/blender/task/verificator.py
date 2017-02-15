@@ -1,3 +1,4 @@
+import math
 import random
 
 from golem.core.common import timeout_to_deadline
@@ -43,3 +44,33 @@ class BlenderVerificator(FrameRenderingVerificator):
         ctd.src_code = self.src_code
         ctd.docker_images = self.docker_images
         ctd.deadline = timeout_to_deadline(self.verification_timeout)
+
+    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
+        x, y = self._get_part_size(subtask_id, subtask_info)
+        return 0, 0, x, y
+
+    def _get_part_size(self, subtask_id, subtask_info):
+        start_task = subtask_info['start_task']
+        if not self.use_frames:
+            res_y = self._get_part_size_from_subtask_number(start_task)
+        elif len(self.frames) >= self.total_tasks:
+            res_y = self.res_y
+        else:
+            parts = self.total_tasks / len(self.frames)
+            res_y = int(math.floor(float(self.res_y) / float(parts)))
+        return self.res_x, res_y
+
+    def _get_part_size_from_subtask_number(self, subtask_number):
+
+        if self.res_y % self.total_tasks == 0:
+            res_y = self.res_y / self.total_tasks
+        else:
+            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
+            # ceiling will be height of subtasks with smaller num
+            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
+            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
+            if subtask_number > ceiling_subtasks:
+                res_y = ceiling_height - 1
+            else:
+                res_y = ceiling_height
+        return res_y

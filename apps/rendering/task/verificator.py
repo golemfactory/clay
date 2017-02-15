@@ -33,7 +33,7 @@ class RenderingVerificator(CoreVerificator):
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
     def _verify_imgs(self, subtask_id, subtask_info, tr_files):
-        res_x, res_y = self._get_part_size(subtask_id)
+        res_x, res_y = self._get_part_size(subtask_id, subtask_info)
 
         adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
         x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file, subtask_info)
@@ -152,4 +152,20 @@ class FrameRenderingVerificator(RenderingVerificator):
         else:
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
+    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
+        if not self.use_frames or self.__full_frames():
+            return super(FrameRenderingVerificator, self)._get_part_img_size(subtask_id,
+                                                                             adv_test_file,
+                                                                             subtask_info)
+        else:
+            start_task = subtask_info['start_task']
+            parts = subtask_info['parts']
+            num_task = self._count_part(start_task, parts)
+            img_height = int(math.floor(float(self.res_y) / float(parts)))
+            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
 
+    def __full_frames(self):
+        return self.total_tasks <= len(self.frames)
+
+    def _count_part(self, start_num, parts):
+        return ((start_num - 1) % parts) + 1

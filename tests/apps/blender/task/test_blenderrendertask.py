@@ -66,17 +66,21 @@ class TestBlenderFrameTask(TempDirFixture):
 
     def test_computation_failed_or_finished(self):
         assert self.bt.total_tasks == 6
+
+        # Failed compuation stays failed
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
         assert extra_data.ctd is not None
         extra_data2 = self.bt.query_extra_data(1000, 2, "DEF", "def")
         assert extra_data2.ctd is not None
+
         self.bt.computation_failed(extra_data.ctd.subtask_id)
         self.bt.computation_finished(extra_data.ctd.subtask_id, [], 0)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.failure
 
+        # Successful computation
+
         extra_data = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
         assert extra_data.ctd is not None
-
         file_dir = path.join(self.bt.tmp_dir, extra_data.ctd.subtask_id)
         if not path.exists(file_dir):
             os.makedirs(file_dir)
@@ -87,6 +91,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
+
         extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
         assert extra_data.ctd is not None
 
