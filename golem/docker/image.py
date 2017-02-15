@@ -15,6 +15,9 @@ class DockerImage(object):
         self.tag = tag if tag else "latest"
         self.name = "{}:{}".format(self.repository, self.tag)
 
+    def cmp_name_and_tag(self, docker_image):
+        return docker_image.name == self.name and docker_image.tag == self.tag
+
     def __repr__(self):
         return "DockerImage(repository=%r, image_id=%r, tag=%r)" % (self.repository, self.id, self.tag)
 

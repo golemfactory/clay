@@ -1,4 +1,5 @@
 import unittest
+from os import path
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
@@ -22,3 +23,6 @@ class BlenderEnvTest(unittest.TestCase):
         cfg_desc.estimated_blender_performance = fake_performance
         result = env.get_performance(cfg_desc)
         self.assertEquals(result, fake_performance)
+
+    def test_main_program_file(self):
+        assert path.isfile(BlenderEnvironment().main_program_file)

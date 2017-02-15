@@ -39,9 +39,6 @@ class Faucet(object):
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
                                                        '0x' + addr.encode('hex'), h))
         h = h[2:].decode('hex')
-        if h != tx.hash:
-            raise ValueError(
-                "Transaction hash is incorrect: {}. Expected: {}".format(h.encode('hex'), tx.hash.encore('hex')))
         return h
 
     @staticmethod

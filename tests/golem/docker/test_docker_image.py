@@ -89,3 +89,16 @@ class TestDockerImage(DockerTestCase):
                             image_id="deadface")
         self.assertFalse(nimg2.is_available())
 
+    def test_cmp_name_and_tag(self):
+        img = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG, image_id=self.TEST_IMAGE_ID)
+        img2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
+        assert img.cmp_name_and_tag(img2)
+        assert img2.cmp_name_and_tag(img)
+
+        img3 = DockerImage(self.TEST_REPOSITORY, tag="bogus", image_id=self.TEST_IMAGE_ID)
+        assert not img.cmp_name_and_tag(img3)
+        assert not img3.cmp_name_and_tag(img)
+
+        img4 = DockerImage("golemfactory/xyz", tag=self.TEST_TAG, image_id=self.TEST_IMAGE_ID)
+        assert not img.cmp_name_and_tag(img4)
+        assert not img4.cmp_name_and_tag(img)
