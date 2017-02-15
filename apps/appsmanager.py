@@ -29,7 +29,6 @@ class AppsManager(object):
         parser = ConfigParser()
         config_path = path.join(get_golem_path(), REGISTERED_CONFIG_FILE)
         parser.readfp(open(config_path))
-        envs = []
         for section in parser.sections():
             app = App()
             for opt in vars(app):

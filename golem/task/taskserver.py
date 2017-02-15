@@ -72,14 +72,16 @@ class TaskServer(PendingConnectionsServer):
         # self.__remove_old_sessions()
         self._remove_old_listenings()
 
+    def get_environment_by_id(self, env_id):
+        return self.task_keeper.environments_manager.get_environment_by_id(env_id)
+
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
         theader = self.task_keeper.get_task()
         if theader is not None:
             try:
                 trust = self.client.get_requesting_trust(theader.task_owner_key_id)
-                env_id = theader.environment
-                env = self.task_keeper.environments_manager.get_environment_by_id(env_id)
+                env = self.get_environment_by_id(theader.environment)
                 if env is not None:
                     performance = env.get_performance(self.config_desc)
                 else:

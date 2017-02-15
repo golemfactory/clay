@@ -96,9 +96,12 @@ class RendererCustomizer(Customizer):
     def _add_ext_to_out_filename(self):
         chosen_ext = str(self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
         out_file_name = str(self.gui.ui.outputFileLineEdit.text())
+        if not out_file_name:
+            return ""
         file_name, ext = os.path.splitext(out_file_name)
         ext = ext[1:]
-        if self.gui.ui.outputFormatsComboBox.findText(ext.upper()) != -1:
+        if self.gui.ui.outputFormatsComboBox.findText(ext) != -1 or \
+                        self.gui.ui.outputFormatsComboBox.findText(ext.upper()) != -1:
             self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(file_name, chosen_ext))
         else:
             self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(out_file_name, chosen_ext))

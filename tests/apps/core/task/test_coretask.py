@@ -5,6 +5,7 @@ from copy import copy
 
 from mock import MagicMock
 
+from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
@@ -216,3 +217,25 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         file_data = zlib.compress(data, 9)
         return CBORSerializer.dumps((os.path.basename(file_name), file_data))
 
+    def test_interpret_log(self):
+        task = self._get_core_task()
+        # None as a log name
+        assert task._interpret_log(None) == ""
+        # log that is not a file
+        assert task._interpret_log("NOT A FILE") == "NOT A FILE"
+        # access to log without problems
+        files = self.additional_dir_content([2])
+        with open(files[0], 'w') as f:
+            f.write("Some information from log")
+        assert task._interpret_log(files[0]) == "Some information from log"
+        # no access to the file
+        if is_linux():
+
+            with open(files[1], 'w') as f:
+                f.write("No access to this information")
+            os.chmod(files[1], 0o200)
+
+            with self.assertLogs(logger, level="WARNING"):
+                task._interpret_log(files[1])
+
+            os.chmod(files[1], 0o700)

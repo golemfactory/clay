@@ -119,6 +119,8 @@ class RenderingTask(CoreTask):
         else:
             self.scale_factor = 1.0
 
+        self.test_task_res_path = None
+
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         CoreTask.computation_failed(self, subtask_id)
@@ -157,7 +159,7 @@ class RenderingTask(CoreTask):
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
-    def _update_preview(self, new_chunk_file_path):
+    def _update_preview(self, new_chunk_file_path, num_start):
 
         if new_chunk_file_path.upper().endswith(".EXR"):
             img = exr_to_pil(new_chunk_file_path)
@@ -248,7 +250,7 @@ class RenderingTask(CoreTask):
     def _get_working_directory(self):
         common_path_prefix = os.path.commonprefix(self.task_resources)
         common_path_prefix = os.path.dirname(common_path_prefix)
-        working_directory = os.path.relpath(self.main_program_file, common_path_prefix)
+        working_directory = os.path.relpath(self.main_scene_file, common_path_prefix)
         working_directory = os.path.dirname(working_directory)
         logger.debug("Working directory {}".format(working_directory))
         return self.__get_path(working_directory)
@@ -267,9 +269,7 @@ class RenderingTask(CoreTask):
                 rel_scene_path)
             return abs_scene_path
         else:
-            scene_file = os.path.relpath(os.path.dirname(self.main_scene_file), os.path.dirname(self.main_program_file))
-            scene_file = os.path.normpath(os.path.join(scene_file, os.path.basename(self.main_scene_file)))
-            return self.__get_path(scene_file)
+            return ''
 
     def _short_extra_data_repr(self, perf_index, extra_data):
         l = extra_data
@@ -279,12 +279,14 @@ class RenderingTask(CoreTask):
     def _verify_img(self, file_, res_x, res_y):
         return verify_img(file_, res_x, res_y)
 
-    def _open_preview(self):
-
+    def _open_preview(self, mode="RGB", ext="BMP"):
+        """ If preview file doesn't exist create a new empty one with given mode and extension.
+        Extension should be compatibile with selected mode. """
         if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
-            img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
-            img.save(self.preview_file_path, "BMP")
+            img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
+                                   int(round(self.res_y * self.scale_factor))))
+            img.save(self.preview_file_path, ext)
             img.close()
 
         return Image.open(self.preview_file_path)
