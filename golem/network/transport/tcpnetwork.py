@@ -89,6 +89,9 @@ class SocketAddress(object):
     def __eq__(self, other):
         return self.address == other.address and self.port == other.port
 
+    def __repr__(self):
+        return "SocketAddress(%r, %r)" % (self.address, self.port)
+
     def __str__(self):
         return self.address + ":" + str(self.port)
 
