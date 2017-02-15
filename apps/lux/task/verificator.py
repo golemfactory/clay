@@ -1,5 +1,10 @@
+from copy import deepcopy
 import logging
 import os
+import shutil
+
+from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator
@@ -13,10 +18,12 @@ class LuxRenderVerificator(RenderingVerificator):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
         self.collected_file_names = dict()
         self.test_flm = None
+        self.merge_ctd = None
 
-    def verify(self, subtask_id, subtask_info, tr_files):
+    def _check_files(self, subtask_id, subtask_info, tr_files):
         if len(tr_files) == 0:
-            return SubtaskVerificationState.WRONG_ANSWER
+            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+            return
 
         for tr_file in tr_files:
             tr_file = os.path.normpath(tr_file)
@@ -28,5 +35,49 @@ class LuxRenderVerificator(RenderingVerificator):
                     else:
                         if not self.merge_flm_files(tr_file, self.test_flm):
                             logger.info("Subtask " + str(subtask_id) + " rejected.")
-                            return SubtaskVerificationState.WRONG_ANSWER
+                            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+                            return
 
+    def query_extra_data_for_advance_verification(self, new_flm):
+        files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
+        merge_ctd = deepcopy(self.merge_ctd)
+        merge_ctd.extra_data['flm_files'] = files
+        return merge_ctd
+
+    def merge_flm_files(self, new_flm, output):
+        computer = LocalComputer(self, self.root_path, self.__verify_flm_ready,
+                                 self.__verify_flm_failure,
+                                 lambda: self.query_extra_data_for_advance_verification(new_flm),
+                                 use_task_resources=False,
+                                 additional_resources=[self.test_flm, new_flm])
+        computer.run()
+        if computer.tt is not None:
+            computer.tt.join()
+        else:
+            return False
+        if self.verification_error:
+            return False
+        commonprefix = common_dir(computer.tt.result['data'])
+        flm = find_file_with_ext(commonprefix, [".flm"])
+        stderr = filter(lambda x: os.path.basename(x) == "stderr.log", computer.tt.result['data'])
+        if flm is None or len(stderr) == 0:
+            return False
+        else:
+            try:
+                with open(stderr[0]) as f:
+                    stderr_in = f.read()
+                if "ERROR" in stderr_in:
+                    return False
+            except (IOError, OSError):
+                return False
+
+            shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
+            return True
+
+    def __verify_flm_ready(self, results):
+        logger.info("Advance verification finished")
+        self.verification_error = False
+
+    def __verify_flm_failure(self, error):
+        logger.info("Advance verification failure {}".format(error))
+        self.verification_error = True

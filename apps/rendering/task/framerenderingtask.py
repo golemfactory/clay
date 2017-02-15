@@ -84,53 +84,8 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(frames)
             self.preview_task_file_path = [None] * len(frames)
 
-    @RenderingTask.handle_key_error
-    def computation_finished(self, subtask_id, task_results, result_type=0):
-
-
-        self.interpret_task_results(subtask_id, task_results, result_type)
-        tr_files = self.results[subtask_id]
-
-        if len(tr_files) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_end = self.subtasks_given[subtask_id]['end_task']
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            frames_list = []
-
-            if self.use_frames and self.total_tasks <= len(self.frames):
-                frames_list = self.subtasks_given[subtask_id]['frames']
-                if len(tr_files) < len(frames_list):
-                    self._mark_subtask_failed(subtask_id)
-                    if not self.use_frames:
-                        self._update_task_preview()
-                    else:
-                        self._update_frame_task_preview()
-                    return
-
-            if not self._verify_imgs(subtask_id, tr_files):
-                self._mark_subtask_failed(subtask_id)
-                if not self.use_frames:
-                    self._update_task_preview()
-                else:
-                    self._update_frame_task_preview()
-                return
-
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
-
-            for tr_file in tr_files:
-
-                if not self.use_frames:
-                    self._collect_image_part(num_start, tr_file)
-                elif self.total_tasks <= len(self.frames):
-                    frames_list = self._collect_frames(num_start, tr_file, frames_list)
-                else:
-                    self._collect_frame_part(num_start, tr_file, parts)
-
-            self.num_tasks_received += num_end - num_start + 1
-
-        if self.num_tasks_received == self.total_tasks and not self.use_frames:
-            self._put_image_together()
+        self.verificator.use_frames = use_frames
+        self.verificator.frames = frames
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
@@ -146,6 +101,27 @@ class FrameRenderingTask(RenderingTask):
             return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
         else:
             return super(FrameRenderingTask, self).get_output_names()
+
+    def accept_results(self, subtask_id, result_files):
+        super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
+        num_start = self.subtasks_given[subtask_id]['start_task']
+        parts = self.subtasks_given[subtask_id]['parts']
+        num_end = self.subtasks_given[subtask_id]['end_task']
+
+        for result_file in result_files:
+            if not self.use_frames:
+                self._collect_image_part(num_start, result_file)
+            elif self.total_tasks <= len(self.frames):
+                self._collect_frames(num_start, result_file,
+                                     self.subtasks_given[subtask_id]['frames'])
+            else:
+                self._collect_frame_part(num_start, result_file, parts)
+
+            self.num_tasks_received += num_end - num_start + 1
+
+            if self.num_tasks_received == self.total_tasks and not self.use_frames:
+                self._put_image_together()
 
     #########################
     # Specific task methods #

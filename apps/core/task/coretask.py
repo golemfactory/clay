@@ -144,13 +144,10 @@ class CoreTask(Task):
             self.accept_results(subtask_id, result_files)
         # TODO Add support for different verification states
         else:
-            self.reject_results(subtask_id)
+            self.computation_failed(subtask_id)
 
     def accept_results(self, subtask_id, result_files):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-
-    def reject_results(self, subtask_id):
-        self._mark_subtask_failed(subtask_id)
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
