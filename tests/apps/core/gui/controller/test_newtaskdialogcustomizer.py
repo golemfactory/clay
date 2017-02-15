@@ -124,11 +124,6 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         definition2 = customizer._query_task_definition()
         self.assertEqual(definition2.task_name, "NEW NAME")
         file_dialog_mock.getOpenFileName.return_value = "/abc/def/ghi"
-        customizer._choose_main_program_file_button_clicked()
-        self.assertEqual(customizer.gui.ui.mainProgramFileLineEdit.text(), u"/abc/def/ghi")
-        file_dialog_mock.getOpenFileName.return_value = ""
-        customizer._choose_main_program_file_button_clicked()
-        self.assertEqual(customizer.gui.ui.mainProgramFileLineEdit.text(), u"/abc/def/ghi")
 
         definition.task_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):

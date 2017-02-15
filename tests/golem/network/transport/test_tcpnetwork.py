@@ -187,7 +187,7 @@ class TestBasicProtocol(LogTestCase):
         protocol.opened = True
         self.assertIsNone(protocol.dataReceived(data))
         protocol.session = MagicMock()
-        with self.assertNoLogs(logger, level=40):
+        with self.assertLogs(logger):
             self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
 
