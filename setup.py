@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from setuptools import setup
+from os.path import normpath, abspath
 
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
@@ -49,16 +50,20 @@ setup(
         ]
     },
     data_files=[
-        ('../../', ['golemapp.py', 'golemcli.py']),
-        ('../../golem/', ['logging.ini']),
-        ('../../golem/apps/', ['apps/registered.ini', 'apps/images.ini']),
-        ('../../golem/apps/blender/resources/scripts', ['apps/blender/resources/scripts/blendercrop.py.template']),
-        ('../../golem/apps/blender/resources/scripts', ['apps/blender/resources/scripts/docker_blendertask.py']),
-        ('../../golem/apps/lux/resources/scripts', ['apps/lux/resources/scripts/docker_luxtask.py']),
-        ('../../golem/gui/view/', ['gui/view/nopreview.png']),
-        ('../../golem/gui/view/img', ['gui/view/img/favicon-48x48.png', 'gui/view/img/favicon-256x256.png',
-                                      'gui/view/img/favicon-32x32.png', 'gui/view/img/new.png', 'gui/view/img/task.png',
-                                      'gui/view/img/settings.png', 'gui/view/img/user.png', 'gui/view/img/eye.png']),
+        (normpath('../../'), ['golemapp.py', 'golemcli.py']),
+        (normpath('../../golem'), ['logging.ini']),
+        (normpath('../../golem/apps'), [abspath('apps/registered.ini'), abspath('apps/images.ini')]),
+        (normpath('../../golem/apps/blender/resources/scripts'),
+         [abspath('apps/blender/resources/scripts/blendercrop.py.template'),
+          abspath('apps/blender/resources/scripts/docker_blendertask.py')]),
+        (normpath('../../golem/apps/lux/resources/scripts'),
+         [abspath('apps/lux/resources/scripts/docker_luxtask.py')]),
+        (normpath('../../golem/gui/view/'), [abspath('gui/view/nopreview.png')]),
+        (normpath('../../golem/gui/view/img'),
+         [abspath('gui/view/img/favicon-48x48.png'), abspath('gui/view/img/favicon-256x256.png'),
+          abspath('gui/view/img/favicon-32x32.png'), abspath('gui/view/img/new.png'),
+          abspath('gui/view/img/task.png'), abspath('gui/view/img/settings.png'),
+          abspath('gui/view/img/user.png'), abspath('gui/view/img/eye.png')]),
     ]
 )
 
