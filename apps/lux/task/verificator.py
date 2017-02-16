@@ -16,7 +16,6 @@ logger = logging.getLogger("apps.lux")
 class LuxRenderVerificator(RenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
-        self.collected_file_names = dict()
         self.test_flm = None
         self.merge_ctd = None
 
@@ -37,6 +36,7 @@ class LuxRenderVerificator(RenderingVerificator):
                             logger.info("Subtask " + str(subtask_id) + " rejected.")
                             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
                             return
+                self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
     def query_extra_data_for_advance_verification(self, new_flm):
         files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
@@ -45,7 +45,7 @@ class LuxRenderVerificator(RenderingVerificator):
         return merge_ctd
 
     def merge_flm_files(self, new_flm, output):
-        computer = LocalComputer(self, self.root_path, self.__verify_flm_ready,
+        computer = LocalComputer(self.task, self.task.root_path, self.__verify_flm_ready,
                                  self.__verify_flm_failure,
                                  lambda: self.query_extra_data_for_advance_verification(new_flm),
                                  use_task_resources=False,

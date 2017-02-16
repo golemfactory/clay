@@ -30,10 +30,11 @@ class CoreVerificator(object):
     handle_key_error = HandleKeyError(log_key_error)
     handle_key_error_for_state = HandleKeyError(state_check_log_key_error)
 
-    def __init__(self, verification_options=None, advance_verification=False):
+    def __init__(self, task, verification_options=None, advance_verification=False):
         self.ver_states = {}
         self.advance_verification = advance_verification
         self.verification_options = verification_options
+        self.task = task
 
     def is_verified(self, subtask_id):
         return self.ver_states.get(subtask_id) == SubtaskVerificationState.VERIFIED

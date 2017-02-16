@@ -115,10 +115,8 @@ class RenderingTask(CoreTask):
 
         self.test_task_res_path = None
 
-        self.verificator.root_path = root_path
         self.verificator.res_x = self.res_x
         self.verificator.res_y = self.res_y
-        self.verificator.total_tasks = self.total_tasks
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):

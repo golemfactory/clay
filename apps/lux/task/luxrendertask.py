@@ -318,10 +318,11 @@ class LuxTask(RenderingTask):
         files = [os.path.basename(x) for x in self.collected_file_names.values()]
         return self.__get_merge_ctd(files)
 
-    def saccept_results(self, subtask_id, result_files):
+    def accept_results(self, subtask_id, result_files):
+        super(LuxTask, self).accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         for tr_file in result_files:
-            if tr_file.upper.endswith(".FLM"):
+            if tr_file.upper().endswith(".FLM"):
                 self.collected_file_names[num_start] = tr_file
                 self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
                 self.num_tasks_received += 1

@@ -326,12 +326,6 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater = None
         self.preview_updaters = None
 
-        self.verificator.compositing = compositing
-        self.verificator.output_format = output_format
-        self.verificator.src_code = self.src_code
-        self.verificator.docker_images = docker_images
-        self.verificator.verification_timeout = subtask_timeout
-
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
 

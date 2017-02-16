@@ -8,7 +8,6 @@ import uuid
 from golem.core.keysauth import get_random, get_random_float
 from golem.core.fileshelper import find_file_with_ext
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ComputeTaskDef
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
@@ -19,11 +18,7 @@ logger = logging.getLogger("apps.rendering")
 class RenderingVerificator(CoreVerificator):
     def __init__(self, verification_options=None, advance_verification=False):
         super(RenderingVerificator, self).__init__(verification_options, advance_verification)
-        self.res_x = 0
-        self.res_y = 0
-        self.total_tasks = 0
         self.tmp_dir = None
-        self.root_path = None
         self.verified_clients = list()
 
     def _check_files(self, subtask_id, subtask_info, tr_files):
@@ -59,8 +54,8 @@ class RenderingVerificator(CoreVerificator):
     def _verify_img(self, file_, res_x, res_y):
         return verify_img(file_, res_x, res_y)
 
-    def _get_part_size(self, subtask_id):
-        return self.res_x, self.res_y
+    def _get_part_size(self, subtask_id, subtask_info):
+        return self.task.res_x, self.task.res_y
 
     def _get_box_start(self, x0, y0, x1, y1):
         ver_x = min(self.verification_options.box_size[0], x1 - x0)
@@ -78,12 +73,11 @@ class RenderingVerificator(CoreVerificator):
 
     def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
         num_task = subtask_info[subtask_id]['start_task']
-        img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
-        return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
+        img_height = int(math.floor(float(self.task.res_y) / float(self.task.total_tasks)))
+        return 0, (num_task - 1) * img_height, self.task.res_x, num_task * img_height
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info):
-        extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file,
-                                                       subtask_info)
+        extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file, subtask_info)
         cmp_file = self._run_task(extra_data)
         return cmp_file, new_start_box
 
@@ -97,7 +91,7 @@ class RenderingVerificator(CoreVerificator):
         return extra_data, start_box
 
     def _run_task(self, extra_data):
-        computer = LocalComputer(self, self.root_path,
+        computer = LocalComputer(self.task, self.task.root_path,
                                  self.__box_rendered,
                                  self.__box_render_error,
                                  lambda: self.query_extra_data_for_advance_verification(
@@ -114,7 +108,7 @@ class RenderingVerificator(CoreVerificator):
             return img
 
     def query_extra_data_for_advance_verification(self, extra_data):
-        ctd = ComputeTaskDef()
+        ctd = self.task.query_extra_data_for_tests_task
         ctd.extra_data = extra_data
         return ctd
 
@@ -130,19 +124,16 @@ class RenderingVerificator(CoreVerificator):
         if self.verification_options.type == 'forFirst':
             if self.ver_states[subtask_id]['node_id'] not in self.verified_clients:
                 return True
-        if self.verification_options.type == 'random' and get_random_float() < self.verification_options.probability:
-            return True
+        if self.verification_options.type == 'random':
+            if get_random_float() < self.verification_options.probability:
+                return True
         return False
 
 
 class FrameRenderingVerificator(RenderingVerificator):
-    def __init__(self, *args, **kwargs):
-        super(FrameRenderingVerificator, self).__init__(*args, **kwargs)
-        self.use_frames = False
-        self.frames = []
 
     def _check_files(self, subtask_id, subtask_info, tr_files):
-        if self.use_frames and self.total_tasks <= len(self.frames):
+        if self.task.use_frames and self.task.total_tasks <= len(self.task.frames):
             frames_list = subtask_info[subtask_id]['frames']
             if len(tr_files) < len(frames_list):
                 self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
@@ -153,7 +144,7 @@ class FrameRenderingVerificator(RenderingVerificator):
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
     def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
-        if not self.use_frames or self.__full_frames():
+        if not self.task.use_frames or self.__full_frames():
             return super(FrameRenderingVerificator, self)._get_part_img_size(subtask_id,
                                                                              adv_test_file,
                                                                              subtask_info)
@@ -161,11 +152,15 @@ class FrameRenderingVerificator(RenderingVerificator):
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']
             num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(float(self.res_y) / float(parts)))
-            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
+            img_height = int(math.floor(float(self.task.res_y) / float(parts)))
+            part_min_x = 1
+            part_max_x = self.task.res_x - 1
+            part_min_y = (num_task - 1) * img_height + 1
+            part_max_y = num_task * img_height - 1
+            return part_min_x, part_min_y, part_max_x, part_max_y
 
     def __full_frames(self):
-        return self.total_tasks <= len(self.frames)
+        return self.task.total_tasks <= len(self.task.frames)
 
     def _count_part(self, start_num, parts):
         return ((start_num - 1) % parts) + 1
