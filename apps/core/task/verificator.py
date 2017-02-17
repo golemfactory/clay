@@ -13,11 +13,6 @@ def state_check_log_key_error(*args, **kwargs):
     return SubtaskVerificationState.UNKNOWN
 
 
-def log_key_error(*args, **kwargs):
-    logger.warning("This is not my subtask {}".format(args[1]))
-    return None
-
-
 class SubtaskVerificationState(Enum):
     UNKNOWN = 0
     WAITING = 1
@@ -27,7 +22,6 @@ class SubtaskVerificationState(Enum):
 
 
 class CoreVerificator(object):
-    handle_key_error = HandleKeyError(log_key_error)
     handle_key_error_for_state = HandleKeyError(state_check_log_key_error)
 
     def __init__(self, verification_options=None, advance_verification=False):
