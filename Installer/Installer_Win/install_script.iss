@@ -7,6 +7,7 @@
 #define MyAppURL "https://golem.network"
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
+; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
 #define Repository "C:\golem"
 
 [Setup]
@@ -40,17 +41,12 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; @todo do we need all languages?
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
-Name: "catalan"; MessagesFile: "compiler:Languages\Catalan.isl"
-Name: "corsican"; MessagesFile: "compiler:Languages\Corsican.isl"
 Name: "czech"; MessagesFile: "compiler:Languages\Czech.isl"
 Name: "danish"; MessagesFile: "compiler:Languages\Danish.isl"
 Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
-Name: "finnish"; MessagesFile: "compiler:Languages\Finnish.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "greek"; MessagesFile: "compiler:Languages\Greek.isl"
-Name: "hebrew"; MessagesFile: "compiler:Languages\Hebrew.isl"
 Name: "hungarian"; MessagesFile: "compiler:Languages\Hungarian.isl"
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
@@ -58,12 +54,8 @@ Name: "norwegian"; MessagesFile: "compiler:Languages\Norwegian.isl"
 Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "scottishgaelic"; MessagesFile: "compiler:Languages\ScottishGaelic.isl"
-Name: "serbiancyrillic"; MessagesFile: "compiler:Languages\SerbianCyrillic.isl"
-Name: "serbianlatin"; MessagesFile: "compiler:Languages\SerbianLatin.isl"
 Name: "slovenian"; MessagesFile: "compiler:Languages\Slovenian.isl"
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
-Name: "turkish"; MessagesFile: "compiler:Languages\Turkish.isl"
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
@@ -72,41 +64,54 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 Source: "{#Repository}\dist\golem-0.1.0-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{app}\deps"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\ez_setup.py"; DestDir: "{app}\deps"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\get-pip.py"; DestDir: "{app}\deps"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\InstallDocker.msi"; DestDir: "{app}\deps"; Flags: ignoreversion;  
-Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{app}\deps"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\get-pip.py"; DestDir: "{tmp}"; Flags: ignoreversion; 
+Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"; Tasks: quicklaunchicon
 
 [Run]
  ; Install Python 2.7.6
-Filename: "msiexec"; Parameters: "/i ""{app}\deps\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7.6 AMD64"; Check: PythonSetup
+Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
  
 ; Install pip and setuptools
-Filename: "{sd}\Python27\python.exe"; Parameters: """{app}\deps\get-pip.py"""; Description: "Install pip"; Check: DependenciesSetup('pip')
-Filename: "{sd}\Python27\python.exe"; Parameters: """{app}\deps\ez_setup.py"""; Description: "Install setuptools"; Check: DependenciesSetup('setuptools')
+Filename: "{sd}\Python27\python.exe"; Parameters: """{tmp}\ez_setup.py"""; Description: "Install setuptools"; Check: DependenciesSetup('setuptools')
 
                                      
-; Install Docker @todo add some normal checks it it is installed
-Filename: "msiexec"; Parameters: "/i ""{app}\deps\DockerToolbox.exe"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Docker Toolbox"; Check: PythonSetup
-Filename: "msiexec"; Parameters: "/i ""{app}\deps\InstallDocker.exe"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Docker"; Check: PythonSetup
+; Install Docker @todo is this check enough
+Filename: "{tmp}\DockerToolbox.exe"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
 ; @todo how to install ipfs
 
+; Install VC For Python 2.7
+Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
+
+; Install external wheels
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/PyQt4-4.11.4-cp27-none-win32.whl"""; Description: "Install PyQt4"; Check: DependenciesSetup('PyQt4')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl"""; Description: "Install OpenEXR"; Check: DependenciesSetup('OpenEXR')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl"""; Description: "Install geth"; Check: DependenciesSetup('geth')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl"""; Description: "Install secp256k1"; Check: DependenciesSetup('secp256k1')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
+
 ; Finally! Install golem!
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install {app}\golem-0.1.0-py2-none-any.whl"""; Description: "Install boto 2.28.0"; Components: connect; Check: DependenciesSetup('boto')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-0.1.0-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
 [Code]
+                                                                              
+// This function checks the registry for an existing Docker installation
+function IsDockerInstalled: boolean;
+begin
+   Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );
+end;
 
 // This function checks the registry for an existing Python 2.7.x installation
 function IsPythonInstalled: boolean;
 begin
-   Result := RegKeyExists(HKLM64, 'SOFTWARE\Python\PythonCore\2.7' );
+   Result := RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Python.exe' );
 end;
  
  
@@ -128,7 +133,7 @@ begin
   check := IsPythonInstalled;
   if not check then
   begin
-    installPythonResult := MsgBox('The toolkit requires Python 2.7.6 to be installed! Do you want to have it automatically installed for you?', mbConfirmation, MB_YESNO) = IDYES;
+    installPythonResult := MsgBox('The toolkit requires Python 2.7 to be installed! Do you want to have it automatically installed for you?', mbConfirmation, MB_YESNO) = IDYES;
     if not installPythonResult then
     begin
       MsgBox('Python 2.7.6 will not be installed! Remember to install it later manually on your own!', mbInformation, MB_OK);
@@ -155,7 +160,7 @@ begin
   check := IsPythonInstalled;
   if not check then
   begin
-    MsgBox('Could not install' + Param + 'because Python 2.7.x was not detected on the system!', mbInformation, MB_OK);
+    MsgBox('Could not install ' + Param + ' because Python 2.7 was not detected on the system!', mbInformation, MB_OK);
     Result := False;
   end;
   Result := True;

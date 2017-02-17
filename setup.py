@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from setuptools import setup
-from os.path import normpath, abspath
 
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
@@ -50,20 +49,20 @@ setup(
         ]
     },
     data_files=[
-        (normpath('../../'), ['golemapp.py', 'golemcli.py']),
-        (normpath('../../golem'), ['logging.ini']),
-        (normpath('../../golem/apps'), [abspath('apps/registered.ini'), abspath('apps/images.ini')]),
-        (normpath('../../golem/apps/blender/resources/scripts'),
-         [abspath('apps/blender/resources/scripts/blendercrop.py.template'),
-          abspath('apps/blender/resources/scripts/docker_blendertask.py')]),
-        (normpath('../../golem/apps/lux/resources/scripts'),
-         [abspath('apps/lux/resources/scripts/docker_luxtask.py')]),
-        (normpath('../../golem/gui/view/'), [abspath('gui/view/nopreview.png')]),
-        (normpath('../../golem/gui/view/img'),
-         [abspath('gui/view/img/favicon-48x48.png'), abspath('gui/view/img/favicon-256x256.png'),
-          abspath('gui/view/img/favicon-32x32.png'), abspath('gui/view/img/new.png'),
-          abspath('gui/view/img/task.png'), abspath('gui/view/img/settings.png'),
-          abspath('gui/view/img/user.png'), abspath('gui/view/img/eye.png')]),
+        (path.normpath('../../'), ['golemapp.py', 'golemcli.py']),
+        (path.normpath('../../golem'), ['logging.ini']),
+        (path.normpath('../../golem/apps'), [path.normpath('apps/registered.ini'), path.normpath('apps/images.ini')]),
+        (path.normpath('../../golem/apps/blender/resources/scripts'),
+         [path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
+          path.normpath('apps/blender/resources/scripts/docker_blendertask.py')]),
+        (path.normpath('../../golem/apps/lux/resources/scripts'),
+         [path.normpath('apps/lux/resources/scripts/docker_luxtask.py')]),
+        (path.normpath('../../golem/gui/view/'), [path.normpath('gui/view/nopreview.png')]),
+        (path.normpath('../../golem/gui/view/img'),
+         [path.normpath('gui/view/img/favicon-48x48.png'), path.normpath('gui/view/img/favicon-256x256.png'),
+          path.normpath('gui/view/img/favicon-32x32.png'), path.normpath('gui/view/img/new.png'),
+          path.normpath('gui/view/img/task.png'), path.normpath('gui/view/img/settings.png'),
+          path.normpath('gui/view/img/user.png'), path.normpath('gui/view/img/eye.png')]),
     ]
 )
 
