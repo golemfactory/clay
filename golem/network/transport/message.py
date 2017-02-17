@@ -477,7 +477,7 @@ class MessageTasks(Message):
         return {self.TASKS_STR: self.tasks_array}
 
     def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.tasks_array)))
+        return SimpleHash.hash(CBORSerializer.dumps(self._sort_obj(self.tasks_array)))
 
 
 class MessageRemoveTask(Message):
