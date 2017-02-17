@@ -1155,6 +1155,9 @@ class MessageGetResource(Message):
                 self.RESOURCE_HEADER_STR: self.resource_header
                 }
 
+    def get_short_hash(self):
+        return SimpleHash.hash(CBORSerializer.dumps(self._sort_obj(self.dict_repr())))
+
 
 # Old method of sending resource. Don't use if it isn't necessary.
 class MessageResource(Message):
