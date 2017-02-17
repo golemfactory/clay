@@ -39,7 +39,7 @@ class RenderingVerificator(CoreVerificator):
 
         res_x, res_y = self._get_part_size(subtask_id, subtask_info)
 
-        adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
+        adv_test_file = self._choose_adv_ver_file(tr_files, subtask_info)
         x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file, subtask_info)
 
         for tr_file in tr_files:
@@ -73,11 +73,11 @@ class RenderingVerificator(CoreVerificator):
         start_y = get_random(y0, y1 - ver_y)
         return start_x, start_y
 
-    def _choose_adv_ver_file(self, tr_files, subtask_id):
+    def _choose_adv_ver_file(self, tr_files, subtask_info):
         adv_test_file = None
         if self.advance_verification:
-            if self.__use_adv_verification(subtask_id):
-                adv_test_file = random.sample(tr_files, 1)
+            if self.__use_adv_verification(subtask_info):
+                adv_test_file = random.choice(tr_files)
         return adv_test_file
 
     def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
@@ -136,11 +136,11 @@ class RenderingVerificator(CoreVerificator):
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))
 
-    def __use_adv_verification(self, subtask_id):
+    def __use_adv_verification(self, subtask_info):
         if self.verification_options.type == 'forAll':
             return True
         if self.verification_options.type == 'forFirst':
-            if self.ver_states[subtask_id]['node_id'] not in self.verified_clients:
+            if subtask_info['node_id'] not in self.verified_clients:
                 return True
         if self.verification_options.type == 'random':
             if get_random_float() < self.verification_options.probability:
@@ -157,7 +157,7 @@ class FrameRenderingVerificator(RenderingVerificator):
 
     def _check_files(self, subtask_id, subtask_info, tr_files):
         if self.use_frames and self.total_tasks <= len(self.frames):
-            frames_list = subtask_info[subtask_id]['frames']
+            frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list):
                 self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
                 return

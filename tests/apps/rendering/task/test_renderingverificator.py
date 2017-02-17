@@ -3,11 +3,12 @@ from PIL import Image
 
 from mock import patch, Mock
 
+from golem.core.common import is_linux
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
-from apps.rendering.task.verificator import RenderingVerificator, logger
+from apps.rendering.task.verificator import RenderingVerificator, logger, FrameRenderingVerificator
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
@@ -33,14 +34,17 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()
+        # No subtask info
         assert rv.verify("Subtask1", dict(), ["file1"]) == SubtaskVerificationState.UNKNOWN
 
         rv.res_x = 800
         rv.res_y = 600
         rv.total_tasks = 30
+        # No data
         assert rv.verify("Subtask1", {"start_task": 3}, []) == \
                          SubtaskVerificationState.WRONG_ANSWER
 
+        # Result is not an image
         assert rv.verify("Subtask1", {"start_task": 3}, ["file1"]) == \
                SubtaskVerificationState.WRONG_ANSWER
 
@@ -56,8 +60,11 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         img_path3 = os.path.join(ver_dir, "img3.png")
         img.save(img_path3)
 
+        # Proper simple verification - just check if there's a image with right size in results
         assert rv.verify("Subtask1", {"start_task": 3}, [img_path, img_path2]) == \
                SubtaskVerificationState.VERIFIED
+
+        # ADVANCE VERIFICATION
 
         rv.task_ref = Mock()
         rv.advance_verification = True
@@ -67,16 +74,23 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv.tmp_dir = self.path
         rv.root_path = self.path
 
+        # No image files in results
         computer_mock.return_value.tt.result.get.return_value = self.additional_dir_content([3])
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
                          [img_path]) == SubtaskVerificationState.WRONG_ANSWER
 
+        # Properly verified
         adv_ver_res = [img_path3,  os.path.join(ver_dir, "cos.log")]
         computer_mock.return_value.tt.result.get.return_value = adv_ver_res
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
                                       "node_id": "ONENODE"},
                          [img_path]) == SubtaskVerificationState.VERIFIED
 
+        if is_linux() and os.geteuid() == 0:
+            rv.tmp_dir = "/nonexisting"
+            assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
+                                          "node_id": "ONENODE"},
+                             [img_path]) == SubtaskVerificationState.UNKNOWN
 
     def test_get_part_img_size(self):
         rv = RenderingVerificator()
@@ -96,4 +110,58 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv.total_tasks = 11
         rv.res_y = 211
         assert rv._get_part_img_size("Subtask1", None, {"start_task": 5}) == (0, 76, 800, 95)
+
+    def test_choose_adv_ver_file(self):
+        rv = RenderingVerificator()
+        rv.verification_options = AdvanceRenderingVerificationOptions()
+        rv.advance_verification = False
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "nodeX"}) is None
+        rv.advance_verification = True
+        rv.verification_options.type = "forFirst"
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        rv.verified_clients.append("NodeX")
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+        rv.verification_options.type = "forAll"
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        rv.verification_options.type = "random"
+        rv.verification_options.probability = 1.0
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        rv.verification_options.probability = 0.0
+        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+
+
+class TestFrameRenderingVerificator(TempDirFixture):
+    def test_check_files(self):
+        frv = FrameRenderingVerificator()
+        frv.total_tasks = 20
+        frv.use_frames = False
+        frv._check_files("id1", {"frames": [3]}, [])
+        assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
+
+        frv.use_frames = True
+        frv.frames = [3, 4, 5, 6]
+        frv._check_files("id1", {"frames": [3]}, [])
+        assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
+
+        frv.total_tasks = 2
+        frv._check_files("id1", {"frames": [3]}, [])
+        assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
+
+        frv._check_files("id1", {"frames": [3, 4]}, ["file1"])
+        assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
+
+        frv._check_files("id1", {"frames": [3, 4], "start_task": 1}, ["file1", "file2"])
+        assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
+
+    def test_get_part_img_size(self):
+        frv = FrameRenderingVerificator()
+        frv.res_x = 600
+        frv.res_y = 800
+        frv.use_frames = True
+        frv.total_tasks = 20
+        frv.frames = [5, 6, 7, 8, 9]
+        subtask_info = {'start_task': 1, 'parts': 4}
+        assert frv._get_part_img_size("sub1", None, subtask_info) == (1, 1, 599, 199)
+        frv.use_frames = False
+        assert frv._get_part_img_size("sub1", None, subtask_info) == (0, 0, 600, 40)
 
