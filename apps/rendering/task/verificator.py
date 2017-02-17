@@ -34,6 +34,9 @@ class RenderingVerificator(CoreVerificator):
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
     def _verify_imgs(self, subtask_id, subtask_info, tr_files):
+        if len(tr_files) == 0:
+            return False
+
         res_x, res_y = self._get_part_size(subtask_id, subtask_info)
 
         adv_test_file = self._choose_adv_ver_file(tr_files, subtask_id)
@@ -78,22 +81,29 @@ class RenderingVerificator(CoreVerificator):
         return adv_test_file
 
     def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
-        num_task = subtask_info[subtask_id]['start_task']
+        num_task = subtask_info['start_task']  # verification method reacts to key error
+        if self.total_tasks == 0 or num_task > self.total_tasks:
+            logger.error("Wrong total tasks number ({}) for subtask number {}".format(
+                self.total_tasks, num_task))
+            return 0, 0, 0, 0
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info):
         extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file, subtask_info)
         cmp_file = self._run_task(extra_data)
+
         return cmp_file, new_start_box
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
-        extra_data = copy(subtask_info[subtask_id])
+        extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        extra_data['tmp_path'] = os.path.join(self.tmp_dir,
-                                              str(subtask_info[subtask_id]['start_task']))
-        if not os.path.isdir(extra_data['tmp_path']):
-            os.mkdir(extra_data['tmp_path'])
+        try:
+            extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
+            if not os.path.isdir(extra_data['tmp_path']):
+                os.mkdir(extra_data['tmp_path'])
+        except Exception:
+            logger.exception("Error during scope changing in advance verification")
         return extra_data, start_box
 
     def _run_task(self, extra_data):
@@ -104,8 +114,10 @@ class RenderingVerificator(CoreVerificator):
                                      extra_data),
                                  additional_resources=[])
         computer.run()
-        computer.tt.join()
-        results = computer.tt.result.get("data")
+        results = None
+        if computer.tt:
+            computer.tt.join()
+            results = computer.tt.result.get("data")
         if results:
             commonprefix = os.path.commonprefix(results)
             img = find_file_with_ext(commonprefix, ["." + extra_data['output_format']])
