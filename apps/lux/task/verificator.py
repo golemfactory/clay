@@ -45,7 +45,7 @@ class LuxRenderVerificator(RenderingVerificator):
         return merge_ctd
 
     def merge_flm_files(self, new_flm, output):
-        computer = LocalComputer(self.task, self.task.root_path, self.__verify_flm_ready,
+        computer = LocalComputer(self.task_ref(), self.root_path, self.__verify_flm_ready,
                                  self.__verify_flm_failure,
                                  lambda: self.query_extra_data_for_advance_verification(new_flm),
                                  use_task_resources=False,

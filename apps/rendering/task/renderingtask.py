@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import weakref
 
 from copy import deepcopy
 
@@ -117,6 +118,9 @@ class RenderingTask(CoreTask):
 
         self.verificator.res_x = self.res_x
         self.verificator.res_y = self.res_y
+        self.verificator.total_tasks = self.total_tasks
+        self.verificator.root_path = self.root_path
+        self.verificator.task_ref = weakref.ref(self)
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):

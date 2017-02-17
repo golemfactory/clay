@@ -114,7 +114,7 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verificator = verificator_class(self, AdvanceVerificationOptions())
+        self.verificator = verificator_class(AdvanceVerificationOptions())
 
     def is_docker_task(self):
         return self.header.docker_images is not None

@@ -84,6 +84,9 @@ class FrameRenderingTask(RenderingTask):
             self.preview_file_path = [None] * len(frames)
             self.preview_task_file_path = [None] * len(frames)
 
+        self.verificator.use_frames = self.use_frames
+        self.verificator.frames = self.frames
+
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
         CoreTask.computation_failed(self, subtask_id)
