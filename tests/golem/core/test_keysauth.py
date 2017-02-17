@@ -213,7 +213,7 @@ class TestEllipticalKeysAuth(TestWithKeysAuth):
     def test_fixed_sign_verify_elliptical(self):
         public_key = "cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb07ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934263cc00ed03f9a781444"
         private_key = "1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee3b4ac6ef078"
-        expected_result = "6c725fa70404abb34b033b76de21684e72c587af400071084a83077344f9163c2a46675f9c510fc4341f25417b26b702f582324f0453bfa7f5418e5e7be2c3fe01"
+        expected_result = "c93a434b74fe2056359fb2e300b2b186f44e5d9bf7b9c47b8f451e449d95cb75525a7a0d10ea01be04040bd57a78607a28a350e08560d584dab5e766515f893700"
 
         EllipticalKeysAuth.set_keys_dir(self.path)
         ek = EllipticalKeysAuth(self.path)
