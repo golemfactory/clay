@@ -2,7 +2,9 @@ import mock
 import random
 import time
 import unittest
+import requests
 from os import urandom
+from mock import patch, Mock
 
 from twisted.internet.task import Clock
 
@@ -153,13 +155,14 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         with self.assertRaises(RuntimeError):
             self.pp.add(p1)
 
-    def test_faucet(self):
+    @patch('requests.get')
+    def test_faucet(self, get):
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
         pp.get_ethers_from_faucet()
-        assert self.client.send.call_count == 1
-        tx = self.client.send.call_args[0][0]
-        assert tx.nonce == self.nonce
-        assert tx.value == 100 * denoms.ether
+        assert get.call_count == 1
+        self.addr.encode('hex') in get.call_args[0][0]
 
     def test_gnt_faucet(self):
         self.client.call.return_value = '0x00'

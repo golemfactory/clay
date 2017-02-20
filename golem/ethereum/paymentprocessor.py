@@ -12,7 +12,7 @@ from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
 
 from .contracts import TestGNT
-from .node import Faucet
+from .node import ropsten_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
@@ -266,10 +266,8 @@ class PaymentProcessor(Service):
                 # Waiting for transfer from the faucet
                 self.__faucet_request_ttl -= 1
                 return False
-            value = 100
-            log.info("Requesting {} ETH from Golem Faucet".format(value))
             addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(self.__client, addr, value * denoms.ether)
+            ropsten_faucet_donate(addr)
             self.__faucet_request_ttl = 10
             return False
         return True
