@@ -4,8 +4,10 @@ import atexit
 import logging
 import os
 import re
+import requests
 import subprocess
 import time
+from datetime import datetime
 from os import path
 from distutils.version import StrictVersion
 
@@ -22,6 +24,25 @@ from golem.core.compress import save
 from golem.core.simpleenv import get_local_datadir
 
 log = logging.getLogger('golem.ethereum')
+
+
+def ropsten_faucet_donate(addr):
+    addr = normalize_address(addr)
+    URL_TEMPLATE = "http://faucet.ropsten.be:3001/donate/{}"
+    request = URL_TEMPLATE.format(addr.encode('hex'))
+    response = requests.get(request)
+    if response.status_code != 200:
+        log.error("Ropsten Faucet error code {}".format(response.status_code))
+        return False
+    response = response.json()
+    if response['paydate'] == 0:
+        log.warning("Ropsten Faucet warning {}".format(response['message']))
+        return False
+    # The paydate is not actually very reliable, usually some day in the past.
+    paydate = datetime.fromtimestamp(response['paydate'])
+    amount = int(response['amount']) / denoms.ether
+    log.info("Ropsten Faucet: {:.6f} ETH on {}".format(amount, paydate))
+    return True
 
 
 class Faucet(object):

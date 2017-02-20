@@ -3,8 +3,11 @@ import platform
 import signal
 import subprocess
 import unittest
+import requests
+from os import urandom
+from mock import patch, Mock
 
-from golem.ethereum.node import FullNode, Faucet, NodeProcess
+from golem.ethereum.node import FullNode, Faucet, NodeProcess, ropsten_faucet_donate
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
 
@@ -18,9 +21,9 @@ class EthereumClientTest(unittest.TestCase):
 
     def test_full_node(self):
         n = FullNode()
-        assert n.is_running() == True
+        assert n.is_running() is True
         n.stop()
-        assert n.is_running() == False
+        assert n.is_running() is False
 
     @unittest.skipIf(platform.system() == 'Windows', 'On Windows killing is hard')
     def test_full_node_remotely(self):
@@ -45,6 +48,36 @@ class EthereumClientTest(unittest.TestCase):
         log = proc.stdout.read()
         self.assertTrue("terminated" in log)
         self.assertEqual(proc.returncode, 0)
+
+
+class RopstenFaucetTest(unittest.TestCase):
+    @patch('requests.get')
+    def test_error_code(self, get):
+        addr = urandom(20)
+        response = Mock(spec=requests.Response)
+        response.status_code = 500
+        get.return_value = response
+        assert ropsten_faucet_donate(addr) is False
+
+    @patch('requests.get')
+    def test_error_msg(self, get):
+        addr = urandom(20)
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
+        response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
+        get.return_value = response
+        assert ropsten_faucet_donate(addr) is False
+
+    @patch('requests.get')
+    def test_success(self, get):
+        addr = urandom(20)
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
+        response.json.return_value = {'paydate': 1486605259, 'amount': 999999999999999}
+        get.return_value = response
+        assert ropsten_faucet_donate(addr) is True
+        assert get.call_count == 1
+        addr.encode('hex') in get.call_args[0][0]
 
 
 class EthereumFaucetTest(TempDirFixture):
