@@ -72,7 +72,6 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__faucet_request_ttl = 0
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
         super(PaymentProcessor, self).__init__(self.SENDOUT_TIMEOUT)
 
@@ -262,22 +261,13 @@ class PaymentProcessor(Service):
 
     def get_ethers_from_faucet(self):
         if self.__faucet and self.eth_balance(True) == 0:
-            if self.__faucet_request_ttl > 0:
-                # Waiting for transfer from the faucet
-                self.__faucet_request_ttl -= 1
-                return False
             addr = keys.privtoaddr(self.__privkey)
             ropsten_faucet_donate(addr)
-            self.__faucet_request_ttl = 10
             return False
         return True
 
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
-            if self.__faucet_request_ttl > 0:
-                # TODO: wait for transaction confirmation
-                self.__faucet_request_ttl -= 1
-                return False
             log.info("Requesting tGNT")
             addr = keys.privtoaddr(self.__privkey)
             nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
@@ -285,7 +275,6 @@ class PaymentProcessor(Service):
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
             tx.sign(self.__privkey)
-            self.__faucet_request_ttl = 10
             self.__client.send(tx)
             return False
         return True
