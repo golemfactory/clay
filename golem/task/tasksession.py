@@ -633,7 +633,7 @@ class TaskSession(MiddlemanSafeSession):
         return False
 
     def __send_delta_resource(self, msg):
-        res_file_path = self.task_manager.get_resources(msg.task_id, msg.resource_header,
+        res_file_path = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),
                                                         resource_types["zip"])
 
         if not res_file_path:
@@ -645,7 +645,7 @@ class TaskSession(MiddlemanSafeSession):
         self.conn.producer = EncryptFileProducer([res_file_path], self)
 
     def __send_resource_parts_list(self, msg):
-        res = self.task_manager.get_resources(msg.task_id, msg.resource_header,
+        res = self.task_manager.get_resources(msg.task_id, CBORSerializer.loads(msg.resource_header),
                                               resource_types["parts"])
         if res is None:
             return

@@ -56,6 +56,8 @@ class Message(object):
 
     @staticmethod
     def _unicode(value):
+        if value is None:
+            return None
         try:
             return unicode(value)
         except UnicodeDecodeError:
