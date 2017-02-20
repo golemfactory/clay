@@ -67,12 +67,15 @@ class SystemMonitor(object):
     def ping_request(self, port):
         import requests
         timeout = 1 # seconds
-        response = requests.post(
-            '%sping-me' % (self.config['HOST'],),
-            data={'port': port,},
-            timeout=timeout,
-        )
-        result = response.json()
+        try:
+            response = requests.post(
+                '%sping-me' % (self.config['HOST'],),
+                data={'port': port,},
+                timeout=timeout,
+            )
+            result = response.json()
+        except requests.ConnectionError as e:
+            result = {'success': False, 'description': 'Local error: %s' % e}
         log.debug('ping result %r', result)
         return result
 
