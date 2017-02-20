@@ -13,7 +13,7 @@ class EthereumClientTest(TempDirFixture):
         logging.basicConfig(level=logging.INFO)
 
     def test_client(self):
-        client = Client(datadir=self.tempdir)
+        client = Client()
         p = client.get_peer_count()
         assert type(p) is int
         s = client.is_syncing()
@@ -25,12 +25,12 @@ class EthereumClientTest(TempDirFixture):
         assert c == 0
 
     def test_send_transaction(self):
-        client = Client(self.tempdir)
-        self.assertRaises(ValueError,
-                          lambda: client.send_raw_transaction("fake data"))
+        client = Client()
+        with self.assertRaises(ValueError):
+            client.send_raw_transaction("fake data")
 
     def test_start_terminate(self):
-        client = Client(self.tempdir)
+        client = Client()
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
@@ -42,14 +42,13 @@ class EthereumClientTest(TempDirFixture):
     def test_get_logs(self):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
-
-        client = Client(self.tempdir)
-        assert client.get_logs(from_block='earliest', to_block='latest',
-                               topics=[log_id, addr]) == []
+        client = Client()
+        logs = client.get_logs(from_block=0, to_block=1, topics=[log_id, addr])
+        assert logs == []
 
     def test_filters(self):
         """ Test creating filter and getting logs """
-        client = Client(self.tempdir)
+        client = Client()
         filter_id = client.new_filter()
         assert type(filter_id) is unicode
         # Filter id is hex encoded 256-bit integer.

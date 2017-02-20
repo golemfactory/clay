@@ -12,20 +12,13 @@ log = logging.getLogger('golem.ethereum')
 class Client(object):
     """ RPC interface client for Ethereum node."""
 
-    STATIC_NODES = ["enode://f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e@94.23.17.170:30900"]  # noqa
-
     node = None
 
-    def __init__(self, datadir, nodes=None):
-        if not nodes:
-            nodes = Client.STATIC_NODES
+    def __init__(self):
         if not Client.node:
-            Client.node = NodeProcess(nodes, datadir)
-        else:
-            if Client.node.datadir != datadir:
-                raise Exception("Ethereum node's datadir cannot be changed")
+            Client.node = NodeProcess()
         if not Client.node.is_running():
-            Client.node.start(rpc=True, mining=True)
+            Client.node.start(rpc=True)
         self.web3 = Web3(HTTPProvider('http://localhost:{:d}'.format(Client.node.rpcport)))
 
     @staticmethod

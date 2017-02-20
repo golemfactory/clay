@@ -55,7 +55,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = "dd1c54a094d97c366546b4f29db19ded74cbbbff".decode('hex')
+    TESTGNT_ADDR = "689ed42Ec0C3b3B799Dc5659725Bf536635F45d1".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
     SYNC_CHECK_INTERVAL = 10
