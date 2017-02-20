@@ -40,23 +40,12 @@ from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
-from golem.task.taskmanager import TaskManagerEventListener
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
 log = logging.getLogger("golem.client")
-
-
-class ClientTaskManagerEventListener(TaskManagerEventListener):
-    def __init__(self, client):
-        TaskManagerEventListener.__init__(self)
-        self.client = client
-
-    def task_status_updated(self, task_id):
-        if self.client.rpc_publisher:
-            self.client.rpc_publisher.publish(Task.evt_task_status, task_id)
 
 
 class ClientTaskComputerEventListener(object):
@@ -150,11 +139,18 @@ class Client(object):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
+        dispatcher.connect(self.taskmanager_listener, signal='golem.taskmanager')
 
         atexit.register(self.quit)
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
+
+    def taskmanager_listener(self, sender, signal, event='default', **kwargs):
+        if event != 'task_status_updated':
+            return
+        if self.client.rpc_publisher:
+            self.client.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
 
     def start(self):
         if self.use_monitor:
@@ -196,7 +192,6 @@ class Client(object):
         self.task_server.start_accepting()
 
         self.p2pservice.set_task_server(self.task_server)
-        self.task_server.task_manager.register_listener(ClientTaskManagerEventListener(self))
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 

@@ -1,4 +1,7 @@
 import logging
+from pathlib import Path
+import pickle
+from pydispatch import dispatcher
 import time
 
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
@@ -14,17 +17,6 @@ from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
 logger = logging.getLogger(__name__)
-
-
-class TaskManagerEventListener:
-    def __init__(self):
-        pass
-
-    def task_status_updated(self, task_id):
-        pass
-
-    def subtask_status_updated(self, subtask_id):
-        pass
 
 
 def log_subtask_key_error(*args, **kwargs):
@@ -44,7 +36,7 @@ class TaskManager(TaskEventListener):
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
     def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
-                 use_distributed_resources=True):
+                 use_distributed_resources=True, tasks_dir="tasks"):
         super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
@@ -58,6 +50,9 @@ class TaskManager(TaskEventListener):
         self.listen_address = listen_address
         self.listen_port = listen_port
 
+        self.tasks_dir = Path(tasks_dir)
+        if not self.tasks_dir.is_dir():
+            self.tasks_dir.mkdir()
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
@@ -65,30 +60,14 @@ class TaskManager(TaskEventListener):
                                                          resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
-        self.listeners = []
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper()
+        self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
-
-    def register_listener(self, listener):
-        if not isinstance(listener, TaskManagerEventListener):
-            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskManagerEventListener".format(type(listener)))
-
-        if listener in self.listeners:
-            logger.error("listener {} already registered ".format(listener))
-            return
-
-        self.listeners.append(listener)
-
-    def unregister_listener(self, listener):
-        if listener in self.listeners:
-            self.listeners.remove(listener)
-        else:
-            logger.warning("Trying to unregister listener that wasn't registered {}".format(listener))
 
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
@@ -135,9 +114,33 @@ class TaskManager(TaskEventListener):
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
+        self.dump_task(task.header.task_id)
         logger.info("Task {} added".format(task.header.task_id))
 
         self.notice_task_updated(task.header.task_id)
+
+    def dump_task(self, task_id):
+        logger.warning('DUMP TASK')
+        try:
+            data = self.tasks[task_id], self.tasks_states[task_id]
+            filepath = self.tasks_dir / '%s.pickle' % (task_id,)
+            logger.warning('DUMP TASK %r', filepath)
+            with filepath.open('wb') as f:
+                pickle.dump(data, f, protocol=2)
+        except:
+            logger.exception('DUMP ERROR')
+
+    def restore_tasks(self):
+        logger.warning('RESTORE TASKS')
+        for path in self.tasks_dir.iterdir():
+            logger.warning('RESTORE TASKS %r', path)
+            if not path.suffix == 'pickle':
+                continue
+            logger.warning('RESTORE TASKS really %r', path)
+            with path.open('rb') as f:
+                task, state = pickle.load(f)
+                self.tasks[task.header.task_id] = task
+                self.tasks_states[task.header.task_id] = state
 
     @handle_task_key_error
     def resources_send(self, task_id):
@@ -577,8 +580,8 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def notice_task_updated(self, task_id):
         # self.save_state()
-        for l in self.listeners:
-            l.task_status_updated(task_id)
+        self.dump_task(task_id)
+        dispatcher.send(signal='golem.taskmanager', event='task_status_updated', task_id=task_id)
 
     def _check_compute_task_def(self, ctd, task_id):
         if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
