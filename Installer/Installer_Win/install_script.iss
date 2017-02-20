@@ -33,29 +33,20 @@ SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}"; Flags: uninsdeletevalue;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{sd}\Python27\Scripts\golemapp.exe"; Flags: uninsdeletevalue;
  
 ; Append python to PATH if does not already exist
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Python27\;{sd}\Python27\Scripts\"; Check: NeedsAddPath('{sd}\Python27')
 
+; Add OpenSSL to the PATH
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
+
 ; @todo do we need all languages?
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "czech"; MessagesFile: "compiler:Languages\Czech.isl"
-Name: "danish"; MessagesFile: "compiler:Languages\Danish.isl"
-Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
-Name: "french"; MessagesFile: "compiler:Languages\French.isl"
-Name: "german"; MessagesFile: "compiler:Languages\German.isl"
-Name: "greek"; MessagesFile: "compiler:Languages\Greek.isl"
-Name: "hungarian"; MessagesFile: "compiler:Languages\Hungarian.isl"
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
-Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
-Name: "norwegian"; MessagesFile: "compiler:Languages\Norwegian.isl"
 Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
-Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
+Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "slovenian"; MessagesFile: "compiler:Languages\Slovenian.isl"
-Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
 Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
@@ -66,14 +57,20 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Source: "{#Repository}\dist\golem-0.1.0-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\get-pip.py"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;    
 Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\libeay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\openssl.exe"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python\Scripts\golemapp.exe"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; Tasks: quicklaunchicon
 
 [Run]
  ; Install Python 2.7.6
@@ -84,7 +81,7 @@ Filename: "{sd}\Python27\python.exe"; Parameters: """{tmp}\ez_setup.py"""; Descr
 
                                      
 ; Install Docker @todo is this check enough
-Filename: "{tmp}\DockerToolbox.exe"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
+Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
 ; @todo how to install ipfs
 
 ; Install VC For Python 2.7
@@ -99,6 +96,9 @@ Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install htt
 
 ; Finally! Install golem!
 Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-0.1.0-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+
+; Configure docker              # @todo fix, doesn't work. Fails on the spaces.... ;(
+Filename: "powershell.exe"; Parameters: """{sd}\Program Files\Docker Toolbox\start.sh"""; Description: "Configure docker"
 
 [Code]
                                                                               
