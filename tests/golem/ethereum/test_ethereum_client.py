@@ -53,7 +53,7 @@ class EthereumClientTest(TempDirFixture):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
         client = Client()
-        logs = client.get_logs(from_block=0, to_block=1, topics=[log_id, addr])
+        logs = client.get_logs(from_block='latest', to_block='latest', topics=[log_id, addr])
         assert logs == []
 
     def test_filters(self):
