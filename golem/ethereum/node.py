@@ -95,7 +95,6 @@ class NodeProcess(object):
             '--port', str(self.port),
             '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--verbosity', '3',
-            '--etherbase', 'f'*40,  # Set fake etherbase -- required by RPC.
         ]
 
         if rpc:

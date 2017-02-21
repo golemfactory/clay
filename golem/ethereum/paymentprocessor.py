@@ -95,6 +95,7 @@ class PaymentProcessor(Service):
                 return False
             return True
 
+        # TODO: This can be improved now because we use Ethereum Ropsten.
         # Normally we should check the time of latest block, but Golem testnet
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.

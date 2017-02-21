@@ -1,6 +1,6 @@
 import logging
 
-from eth_abi.utils import zpad
+from ethereum.utils import zpad
 from ethereum.transactions import Transaction
 
 from golem.ethereum import Client

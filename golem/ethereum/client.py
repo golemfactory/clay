@@ -1,6 +1,7 @@
 import logging
 
 import rlp
+from ethereum.utils import zpad
 from web3 import Web3, HTTPProvider
 
 from .node import NodeProcess
@@ -19,6 +20,8 @@ class Client(object):
         if not Client.node.is_running():
             Client.node.start(rpc=True)
         self.web3 = Web3(HTTPProvider('http://localhost:{:d}'.format(Client.node.rpcport)))
+        # Set fake default account.
+        self.web3.eth.defaultAccount = '\xff' * 20
 
     @staticmethod
     def _kill_node():
@@ -60,7 +63,7 @@ class Client(object):
         hex_data = self.web3.toHex(raw_data)
         return self.web3.eth.sendRawTransaction(hex_data)
 
-    def get_balance(self, account, block_identifier=None):
+    def get_balance(self, account, block=None):
         """
         Returns the balance of the given account at the block specified by block_identifier
         :param account: The address to get the balance of
@@ -68,7 +71,7 @@ class Client(object):
         set with web3.eth.defaultBlock
         :return: Balance
         """
-        return self.web3.eth.getBalance(Client.__add_padding(account), block_identifier or self.web3.eth.defaultBlock)
+        return self.web3.eth.getBalance(account, block)
 
     def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0, data=None, nonce=0, block=None):
         """
@@ -86,9 +89,6 @@ class Client(object):
         :param block: integer block number, or the string "latest", "earliest" or "pending"
         :return: The returned data of the call, e.g. a codes functions return value
         """
-        _from = Client.__add_padding(_from) or self.web3.eth.defaultAccount
-        block = block or self.web3.eth.defaultBlock
-
         obj = {
             'from': _from,
             'to': to,
@@ -163,7 +163,6 @@ class Client(object):
         :param address: Address to validation
         :return: Padded address
         """
-        from eth_abi.utils import zpad
         if address is None:
             return address
         elif isinstance(address, basestring):
