@@ -366,9 +366,17 @@ class TaskComputer(object):
         self.waiting_for_task = None
         self.waiting_ttl = 0
 
+    def is_busy(self, task_id=None):
+        wft = bool(self.waiting_for_task)
+        if self.counting_task:
+            return True
+        elif task_id:
+            return wft and self.waiting_for_task != task_id
+        return wft
+
     def __request_task(self):
         with self.lock:
-            perform_request = not self.waiting_for_task and not self.counting_task
+            perform_request = not self.is_busy()
 
         if not perform_request:
             return

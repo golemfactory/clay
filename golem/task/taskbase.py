@@ -111,14 +111,6 @@ class TaskEventListener(object):
 
 class Task(object):
 
-    class ExtraData(object):
-        def __init__(self, should_wait=False, ctd=None, **kwargs):
-            self.should_wait = should_wait
-            self.ctd = ctd
-
-            for key, value in kwargs.iteritems():
-                setattr(self, key, value)
-
     @classmethod
     def build_task(cls, task_builder):
         if not isinstance(task_builder, TaskBuilder):
@@ -131,6 +123,7 @@ class Task(object):
         self.undeletable = []
 
         self.listeners = []
+        self.counting_nodes = {}
 
     def __getstate__(self):
         state_attr = vars(self).keys()
@@ -244,6 +237,9 @@ class Task(object):
         :return int: number should be between 0 and a result of get_total_tasks
         """
         return  # Implement in derived class
+
+    def has_next_subtask(self):
+        return self.get_tasks_left() > 0
 
     @abc.abstractmethod
     def restart(self):

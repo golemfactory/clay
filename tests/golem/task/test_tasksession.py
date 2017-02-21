@@ -10,12 +10,20 @@ from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
-                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask)
+                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
+                                             MessageWaitingForResults)
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+
+
+def Instance(cls):
+    class _Instance(cls):
+        def __eq__(self, other):
+            return isinstance(other, cls)
+    return _Instance()
 
 
 class TestTaskSession(LogTestCase, TempDirFixture):
@@ -82,28 +90,17 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts2.task_server.get_computing_trust.return_value = 0.1
         ts2.task_server.config_desc.computing_trust = 0.2
         ts2.task_server.config_desc.max_price = 100
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
+        ts2.task_manager.get_next_subtask.return_value = ComputeTaskDef()
+        ts2.task_manager.is_finishing.return_value = False
         ts2.interpret(mt)
         ts2.task_server.get_computing_trust.assert_called_with("DEF")
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
+        ts2.conn.send_message.call_args = []
         ts2.task_server.get_computing_trust.return_value = 0.8
         ts2.interpret(mt)
-        ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, MessageTaskToCompute)
-        ts2.task_manager.get_next_subtask.return_value = ("CTD", True, False)
-        ts2.interpret(mt)
-        ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, MessageCannotAssignTask)
-        self.assertEqual(ms.task_id, mt.task_id)
-        ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
-        ts2._react_to_cannot_compute_task(MessageCannotComputeTask("CTD"))
-        assert ts2.task_manager.task_computation_failure.called
-        ts2.task_manager.task_computation_failure.called = False
-        ts2.task_manager.get_node_id_for_subtask.return_value = "___"
-        ts2._react_to_cannot_compute_task(MessageCannotComputeTask("CTD"))
-        assert not ts2.task_manager.task_computation_failure.called
+        assert not ts2.conn.send_message.call_args
 
     def test_send_report_computed_task(self):
         ts = TaskSession(Mock())
@@ -397,6 +394,91 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
+
+    def test_react_to_want_to_compute_task(self):
+
+        ts = self.__create_task_session()
+        msg = MessageWantToComputeTask()
+
+        def __reset(has_task=True, has_subtasks=True, is_finishing=False, trust_value=1.):
+            tm = ts.task_manager
+            tm.has_task.return_value = has_task
+            tm.has_subtasks.return_value = has_subtasks
+            tm.is_finishing.return_value = is_finishing
+            tm.contest_manager.add_contender.called = False
+
+            tsrv = ts.task_server
+            tsrv.config_desc.computing_trust = 0.5
+            tsrv.get_computing_trust.return_value = trust_value
+
+            ts.send.called = False
+            ts.send.call_args = None
+            ts.dropped.called = False
+
+        __reset(has_task=False)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("Not my task")
+
+        __reset(has_subtasks=False)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("No more subtasks")
+
+        __reset(trust_value=0.1)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageCannotAssignTask)
+        assert ts.send.call_args[0][0].reason.startswith("Reputation")
+
+        __reset(is_finishing=True)
+
+        ts._react_to_want_to_compute_task(msg)
+        assert ts.send.called
+        assert isinstance(ts.send.call_args[0][0], MessageWaitingForResults)
+
+        __reset()
+
+        ts._react_to_want_to_compute_task(msg)
+        assert not ts.send.called
+        assert ts.task_manager.contest_manager.add_contender.called
+
+    def test_send_task_to_compute(self):
+        ts = self.__create_task_session()
+        ts.send_task_to_compute(Mock())
+        assert ts.task_manager.get_next_subtask.called
+        ts.send.assert_called_with(Instance(MessageTaskToCompute))
+
+    def test_send_cannot_assign_task(self):
+        ts = self.__create_task_session()
+        ts.send_cannot_assign_task("deadbeef", "some reason")
+        ts.send.assert_called_with(Instance(MessageCannotAssignTask))
+        assert ts.send.call_args[0][0].task_id == "deadbeef"
+        assert ts.send.call_args[0][0].reason == "some reason"
+        ts.disconnect.assert_called_with(ts.DCRNoMoreMessages)
+
+    @staticmethod
+    def __create_task_session():
+        conn = Mock()
+        tm = Mock()
+        tc = Mock()
+        tsrv = Mock()
+
+        ts = TaskSession(conn)
+        ts.send = Mock()
+        ts.dropped = Mock()
+        ts.disconnect = Mock()
+        ts.key_id = "KEY_ID"
+        ts.task_manager = tm
+        ts.task_computer = tc
+        ts.task_server = tsrv
+
+        return ts
 
 
 def executor_success(req, success, error):

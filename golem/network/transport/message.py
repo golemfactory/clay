@@ -1678,6 +1678,7 @@ class MessageCannotComputeTask(Message):
         return {self.REASON_STR: self.reason,
                 self.SUBTASK_ID_STR: self.subtask_id}
 
+
 RESOURCE_MSG_BASE = 3000
 
 

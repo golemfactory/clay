@@ -226,6 +226,25 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tc.lock_config(False)
         client.lock_config.assert_called_with(False)
 
+    def test_is_busy(self):
+        task_server = mock.MagicMock()
+        task_server.config_desc = config_desc()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+
+        assert not tc.is_busy()
+        assert not tc.is_busy("task")
+
+        tc.waiting_for_task = "task_2"
+
+        assert not tc.is_busy("task_2")
+        assert tc.is_busy("task_3")
+
+        tc.waiting_for_task = None
+        tc.counting_task = True
+
+        assert tc.is_busy()
+
+
     @staticmethod
     def __wait_for_tasks(tc):
         [t.join() for t in tc.current_computations]
@@ -246,6 +265,7 @@ class TestTaskThread(TestDirFixture):
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
         self.assertTrue(tc.counting_task)
+
 
 
 class TestTaskMonitor(TestDirFixture):

@@ -52,12 +52,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return new_task
 
 
-class AcceptClientVerdict(object):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
-
-
 class RenderingTask(CoreTask):
 
     ################
@@ -231,6 +225,12 @@ class RenderingTask(CoreTask):
         ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
         return ctd
 
+    def has_next_subtask(self):
+        return self.last_task != self.total_tasks or any(
+            sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]
+            for sub in self.subtasks_given.values()
+        )
+
     def _get_next_task(self):
         if self.last_task != self.total_tasks:
             self.last_task += 1
@@ -299,18 +299,7 @@ class RenderingTask(CoreTask):
 
     def _accept_client(self, node_id):
         client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
-        # if client.rejected():
-        #     return AcceptClientVerdict.REJECTED
-        # elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
-
-        if finishing >= max_finishing or client.started() - finishing >= max_finishing:
-            return AcceptClientVerdict.SHOULD_WAIT
-
         client.start()
-        return AcceptClientVerdict.ACCEPTED
 
     def _choose_adv_ver_file(self, tr_files, subtask_id):
         adv_test_file = None

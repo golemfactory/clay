@@ -13,10 +13,10 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
+from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.resource.dirmanager import get_test_task_path
-from apps.rendering.task.renderingtask import AcceptClientVerdict
-from apps.rendering.task.renderingtaskstate import RendererDefaults
+
 
 
 logger = logging.getLogger("apps.blender")
@@ -353,19 +353,13 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def query_extra_data(self, perf_index, num_cores=0, node_id=None, node_name=None):
 
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}".format(node_name))
-            else:
-                logger.warning("Client {} banned from this task".format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
-
         start_task, end_task = self._get_next_task()
+        if start_task is None or end_task is None:
+            return None
+
         scene_file = self._get_scene_file_rel_path()
+
+        self._accept_client(node_id)
 
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
@@ -412,8 +406,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
-        return self.ExtraData(ctd=ctd)
+        return self._new_compute_task_def(hash, extra_data, None, perf_index)
 
     def restart(self):
         super(BlenderRenderTask, self).restart()
