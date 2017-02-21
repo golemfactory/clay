@@ -1,6 +1,7 @@
 import logging
 
 from eth_abi.utils import zpad
+from ethereum.transactions import Transaction
 
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
@@ -24,10 +25,19 @@ class EthereumClientTest(TempDirFixture):
         assert type(c) is int
         assert c == 0
 
-    def test_send_transaction(self):
+    def test_send_raw_transaction(self):
         client = Client()
         with self.assertRaises(ValueError):
             client.send_raw_transaction("fake data")
+
+    def test_send_transaction(self):
+        client = Client()
+        addr = '\xff'*20
+        priv = '\xee'*32
+        tx = Transaction(1, 20*10**9, 21000, to=addr, value=0, data=b'')
+        tx.sign(priv)
+        with self.assertRaisesRegexp(ValueError, "Insufficient funds"):
+            client.send(tx)
 
     def test_start_terminate(self):
         client = Client()

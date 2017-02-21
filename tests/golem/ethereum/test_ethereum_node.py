@@ -39,11 +39,14 @@ class RopstenFaucetTest(unittest.TestCase):
 class EthereumNodeTest(unittest.TestCase):
     def test_ethereum_node(self):
         np = NodeProcess()
-        self.assertFalse(np.is_running())
-        np.start(None)
-        self.assertTrue(np.is_running())
+        assert np.is_running() is False
+        np.start(rpc=False)
+        assert np.is_running() is True
+        with self.assertRaises(RuntimeError):
+            np.start(rpc=True)
+        assert np.is_running() is True
         np.stop()
-        self.assertFalse(np.is_running())
+        assert np.is_running() is False
 
     def test_geth_version_check(self):
         min = NodeProcess.MIN_GETH_VERSION

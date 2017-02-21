@@ -58,14 +58,6 @@ class Faucet(object):
         h = h[2:].decode('hex')
         return h
 
-    @staticmethod
-    def deploy_contract(ethnode, init_code):
-        nonce = ethnode.get_transaction_count(Faucet.ADDR.encode('hex'))
-        tx = Transaction(nonce, 0, 3141592, to='', value=0, data=init_code)
-        tx.sign(Faucet.PRIVKEY)
-        ethnode.send(tx)
-        return tx.creates
-
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.5.0'
@@ -89,9 +81,9 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
-    def start(self, rpc, nodekey=None, port=None):
-        if self.__ps:
-            return
+    def start(self, rpc, port=None):
+        if self.is_running():
+            raise RuntimeError("Ethereum node already started")
 
         if not port:
             port = find_free_net_port()
@@ -111,11 +103,6 @@ class NodeProcess(object):
             args += [
                 '--rpc',
                 '--rpcport', str(self.rpcport)
-            ]
-
-        if nodekey:
-            args += [
-                '--nodekeyhex', nodekey.encode('hex'),
             ]
 
         self.__ps = psutil.Popen(args, close_fds=True)
