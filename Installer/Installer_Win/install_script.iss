@@ -56,7 +56,6 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 Source: "{#Repository}\dist\golem-0.1.0-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\get-pip.py"; DestDir: "{tmp}"; Flags: ignoreversion; 
 Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;    
 Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
@@ -75,10 +74,6 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 [Run]
  ; Install Python 2.7.6
 Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
- 
-; Install pip and setuptools
-Filename: "{sd}\Python27\python.exe"; Parameters: """{tmp}\ez_setup.py"""; Description: "Install setuptools"; Check: DependenciesSetup('setuptools')
-
                                      
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
