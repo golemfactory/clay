@@ -1,7 +1,6 @@
 import logging
 
 import rlp
-from ethereum.transactions import Transaction
 from web3 import Web3, HTTPProvider
 
 from .node import NodeProcess
@@ -52,24 +51,14 @@ class Client(object):
         """
         return self.web3.eth.getTransactionCount(Client.__add_padding(address))
 
-    def send_raw_transaction(self, data):
-        """
-        Sends a signed and serialized transaction
-        :param data: signed and serialized transaction
-        """
-        return self.web3.eth.sendRawTransaction(data)
-
     def send(self, transaction):
         """
-        Signs and sends the given transaction
-        :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
+        Sends signed Ethereum transaction.
         :return The 32 Bytes transaction hash as HEX string
         """
-        if isinstance(transaction, Transaction):
-            raw_data = rlp.encode(transaction)
-            hex_data = self.web3.toHex(raw_data)
-            return self.send_raw_transaction(hex_data)
-        return self.web3.eth.sendTransaction(transaction)
+        raw_data = rlp.encode(transaction)
+        hex_data = self.web3.toHex(raw_data)
+        return self.web3.eth.sendRawTransaction(hex_data)
 
     def get_balance(self, account, block_identifier=None):
         """

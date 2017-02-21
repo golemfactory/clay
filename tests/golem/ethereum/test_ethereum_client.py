@@ -28,7 +28,7 @@ class EthereumClientTest(TempDirFixture):
     def test_send_raw_transaction(self):
         client = Client()
         with self.assertRaises(ValueError):
-            client.send_raw_transaction("fake data")
+            client.send("fake data")
 
     def test_send_transaction(self):
         client = Client()
