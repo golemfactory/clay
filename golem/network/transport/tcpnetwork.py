@@ -503,7 +503,7 @@ class BasicProtocol(SessionProtocol):
         # Drop the connection if no messages were deserialized
         elif data:
             logger.error("Deserialization of messages failed")
-            self.session.dropped()
+            # self.session.dropped()
 
     def _data_to_messages(self):
         return Message.deserialize(self.db)
