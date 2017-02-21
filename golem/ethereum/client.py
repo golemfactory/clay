@@ -2,7 +2,7 @@ import logging
 
 import rlp
 from ethereum.utils import zpad
-from web3 import Web3, HTTPProvider
+from web3 import Web3, IPCProvider
 
 from .node import NodeProcess
 
@@ -18,8 +18,8 @@ class Client(object):
         if not Client.node:
             Client.node = NodeProcess()
         if not Client.node.is_running():
-            Client.node.start(rpc=True)
-        self.web3 = Web3(HTTPProvider('http://localhost:{:d}'.format(Client.node.rpcport)))
+            Client.node.start()
+        self.web3 = Web3(IPCProvider(Client.node.ipcpath))
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
 

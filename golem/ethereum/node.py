@@ -4,17 +4,17 @@ import atexit
 import logging
 import re
 import requests
+import socket
 import subprocess
 import time
 from datetime import datetime
 from distutils.version import StrictVersion
 
-import psutil
-
 from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
+from web3.providers.ipc import get_default_ipc_path
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -76,12 +76,11 @@ class NodeProcess(object):
         log.info("geth version {}".format(ver))
 
         self.__ps = None
-        self.rpcport = None
 
     def is_running(self):
         return self.__ps is not None
 
-    def start(self, rpc, port=None):
+    def start(self, port=None):
         if self.is_running():
             raise RuntimeError("Ethereum node already started")
 
@@ -93,30 +92,21 @@ class NodeProcess(object):
             self.__prog,
             '--testnet',
             '--port', str(self.port),
-            '--ipcdisable',  # Disable IPC transport - conflicts on Windows.
             '--verbosity', '3',
         ]
+        self.ipcpath = '/home/chfast/.ethereum/testnet/geth.ipc'
 
-        if rpc:
-            self.rpcport = find_free_net_port()
-            args += [
-                '--rpc',
-                '--rpcport', str(self.rpcport)
-            ]
-
-        self.__ps = psutil.Popen(args, close_fds=True)
+        self.__ps = subprocess.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
-        WAIT_PERIOD = 0.01
+        WAIT_PERIOD = 0.1
         wait_time = 0
-        while True:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        while sock.connect_ex(self.ipcpath) == 111:
             # FIXME: Add timeout limit, we don't want to loop here forever.
             time.sleep(WAIT_PERIOD)
             wait_time += WAIT_PERIOD
-            if not self.rpcport:
-                break
-            if self.rpcport in set(c.laddr[1] for c
-                                   in self.__ps.connections('tcp')):
-                break
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
 
     def stop(self):
@@ -126,7 +116,7 @@ class NodeProcess(object):
             try:
                 self.__ps.terminate()
                 self.__ps.wait()
-            except psutil.NoSuchProcess:
+            except subprocess.NoSuchProcess:
                 log.warn("Cannot terminate node: process {} no longer exists".format(self.__ps.pid))
 
             self.__ps = None

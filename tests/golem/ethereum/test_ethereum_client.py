@@ -44,7 +44,7 @@ class EthereumClientTest(TempDirFixture):
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
-        client.node.start(rpc=False)
+        client.node.start()
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
