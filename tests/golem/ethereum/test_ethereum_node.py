@@ -40,10 +40,10 @@ class EthereumNodeTest(unittest.TestCase):
     def test_ethereum_node(self):
         np = NodeProcess()
         assert np.is_running() is False
-        np.start(rpc=False)
+        np.start()
         assert np.is_running() is True
         with self.assertRaises(RuntimeError):
-            np.start(rpc=True)
+            np.start()
         assert np.is_running() is True
         np.stop()
         assert np.is_running() is False
