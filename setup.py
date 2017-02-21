@@ -4,6 +4,7 @@ from setuptools import setup
 
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
+from sys import argv
 
 requirements, dependencies = parse_requirements(path.dirname(__file__))
 
@@ -12,7 +13,7 @@ docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
 setup(
     name='golem',
-    version='0.1.0',
+    version=get_golem_version('bdist_wheel' in argv),
     description='Global, open sourced, decentralized supercomputer',
     long_description=get_long_description(path.abspath(path.dirname(__file__))),
     url='https://golem.network',

@@ -14,6 +14,12 @@ INSTALL_DOCKER=0
 INSTALL_GETH=0
 INSTALL_IPFS=0
 INSTALL_PIP=0
+declare -r CONFIG="$HOME/.local/.golem_version"
+CURRENT_VERSION="0.1.0"
+NEWEST_VERSION="0.1.0"
+declare -r HOST="https://golem.network/"
+PACKAGE="golem-0.1.0-py2-none-any.whl"
+
 
 # @brief print error message
 # @param error message
@@ -106,27 +112,55 @@ function install_dependencies()
     sudo apt-get install openssl python-dev python-qt4 pyqt4-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential
 }
 
+
+# @brief Read installed version and get newest version from server
+function get_version()
+{
+    version=$( pip list 2>/dev/null | grep 'golem' | awk '{print $2}' | sed 's/[()]//g' )
+    if [ -n "$version" ]; then
+        CURRENT_VERSION=$version
+    fi
+    file="version"
+    wget -q $HOST$file
+    NEWEST_VERSION=$(cat $file )
+    rm -f $file &>/dev/null
+}
+
+
 # @brief Download and install golem wheel
 # @return 1 if error occured, 0 otherwise
 function install_golem()
 {
-    package='golem-0.1.0-py2-none-any.whl'
-    wget 'https://golem.network/'$package
-    pip install $package
-    if [ $? -eq 0 ]; then
-        rm -f $package
-        return 0
+    wget $HOST$PACKAGE
+    if [ -f $PACKAGE ]; then
+        pip install $PACKAGE
+        if [ $? -eq 0 ]; then
+            rm -f $PACKAGE
+            return 0
+        else
+            error_msg "Some error occurred during installation"
+            error_msg "Try to install it with 'sudo python -m pip install $PACKAGE'"
+        fi
     else
-        error_msg "Some error occured during installation"
-        error_msg "Try to install it with 'sudo python -m pip install $package'"
-        return 1
+        error_msg "Cannot download $PACKAGE"
+        error_msg "Check you internet connection and contact Golem Team: http://golemproject.org:3000/ or contact@golem.network"
     fi
+    return 1
 }
+
+get_version
+if [ "$NEWEST_VERSION" > "$CURRENT_VERSION" ]; then
+    PACKAGE="golem-"$NEWEST_VERSION"-py2-none-any.whl"
+else
+    echo "Newest version ($NEWEST_VERSION) is already installed"
+    exit 0
+fi
 
 check_dependencies
 install_dependencies
 install_golem
 [ $? -ne 0 ] && exit 1
+echo "Successfully installed version $NEWEST_VERSION"
 if [ $INSTALL_DOCKER - eq 1 ]; then
     error_msg "You need to restart your computer to finish installation"
 fi

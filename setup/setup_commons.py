@@ -118,6 +118,19 @@ def try_pulling_docker_images():
                 sys.exit(1)
 
 
+def get_golem_version(increase):
+    from golem.core.common import get_golem_path
+    version_file = path.join(get_golem_path(), ".version")
+    with open(version_file, 'rb') as f:
+        version = f.read()
+    if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
+        v = version.split('.')
+        version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
+        with open(version_file, 'wb') as f:
+            f.write(version)
+    return version
+
+
 def __try_docker():
     try:
         subprocess.check_call(["docker", "info"])
