@@ -57,9 +57,12 @@ class TestCoreVerificator(TempDirFixture, LogTestCase):
         assert cv.get_verification_state("SUBTASK X") == SubtaskVerificationState.WRONG_ANSWER
 
         files = self.additional_dir_content([3])
-        cv._check_files("SUBTASK X", dict(), files)
-        assert cv.get_verification_state("SUBTASK X") == SubtaskVerificationState.VERIFIED
+        cv._check_files("SUBTASK X2", dict(), files)
+        assert cv.get_verification_state("SUBTASK X2") == SubtaskVerificationState.VERIFIED
 
         files = self.additional_dir_content([3])
         cv._check_files("SUBTASK Y", dict(), [files[0]])
         assert cv.get_verification_state("SUBTASK Y") == SubtaskVerificationState.VERIFIED
+
+        cv._check_files("SUBTASK Z", dict(), ["not a file"])
+        assert cv.get_verification_state("SUBTASK Z") == SubtaskVerificationState.WRONG_ANSWER

@@ -239,6 +239,13 @@ class TestBlenderTask(TempDirFixture):
                     cur_max_y = min_y
                 self.assertTrue(cur_max_y == 0)
 
+        self.bt.use_frames = True
+        self.bt.frames = [4, 5, 10, 11, 12]
+        self.bt.total_tasks = 20
+        self.bt.res_y = 300
+        assert self.bt._get_min_max_y(2) == (0.5, 0.75)
+
+
     def test_put_img_together_exr(self):
         for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
             res_y = 0

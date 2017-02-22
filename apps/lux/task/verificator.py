@@ -18,6 +18,7 @@ class LuxRenderVerificator(RenderingVerificator):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
         self.test_flm = None
         self.merge_ctd = None
+        self.verification_error = False
 
     def _check_files(self, subtask_id, subtask_info, tr_files):
         if len(tr_files) == 0:
@@ -37,6 +38,8 @@ class LuxRenderVerificator(RenderingVerificator):
                             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
                             return
                 self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+        if self.ver_states.get(subtask_id) != SubtaskVerificationState.VERIFIED:
+            self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
     def query_extra_data_for_advance_verification(self, new_flm):
         files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
