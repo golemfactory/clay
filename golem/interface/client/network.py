@@ -56,10 +56,10 @@ class Network(object):
 
         for peer in peers:
             values.append([
-                str(peer.address),
-                str(peer.port),
-                Network.__key_id(peer.key_id, full),
-                unicode(peer.node_name)
+                str(peer['address']),
+                str(peer['port']),
+                Network.__key_id(peer['key_id'], full),
+                unicode(peer['node_name'])
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values, sort=sort)
