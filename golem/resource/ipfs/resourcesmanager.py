@@ -22,7 +22,7 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
 
         for task_id in task_ids:
             task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
-            self.add_task(dir_files(task_root_dir), task_id)
+            self._add_task(dir_files(task_root_dir), task_id)
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:

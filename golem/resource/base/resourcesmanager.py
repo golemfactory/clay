@@ -7,7 +7,8 @@ from collections import deque
 from threading import Lock
 
 from golem.core.fileshelper import copy_file_tree, common_dir
-from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient
+from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient, AsyncRequest, \
+    async_run
 
 logger = logging.getLogger(__name__)
 
@@ -258,22 +259,31 @@ class AbstractResourceManager(IClientHandler):
     def unpin_resource(self, multihash, client=None, client_options=None):
         pass
 
-    def add_task(self, resources, task_id,
+    def add_task(self, files, task_id,
                  client=None, client_options=None):
+
+        request = AsyncRequest(self._add_task, files, task_id,
+                               client=client, client_options=client_options)
+        return async_run(request)
+
+    def _add_task(self, files, task_id,
+                  client=None, client_options=None):
 
         if self.storage.cache.get_prefix(task_id):
             logger.warn("Resource manager: Not re-adding task {}"
                         .format(task_id))
             return
 
-        if resources and len(resources) == 1:
-            prefix = os.path.dirname(next(iter(resources)))
+        if not files:
+            raise RuntimeError("Empty input task resources")
+        elif len(files) == 1:
+            prefix = os.path.dirname(next(iter(files)))
         else:
-            prefix = common_dir(resources)
+            prefix = common_dir(files)
 
         prefix = norm_path(prefix)
         self.storage.cache.set_prefix(task_id, prefix)
-        self.add_resources(resources, task_id,
+        self.add_resources(files, task_id,
                            absolute_path=True,
                            client=client,
                            client_options=client_options)
@@ -304,9 +314,8 @@ class AbstractResourceManager(IClientHandler):
             resource_path = self.storage.get_path(resource, task_id)
 
         if not os.path.exists(resource_path):
-            logger.error("Resource manager: resource '{}' does not exist"
-                         .format(resource_path))
-            return
+            raise RuntimeError("File '{}' does not exist"
+                               .format(resource_path))
 
         disk_resource = self.storage.get_path_and_hash(resource, task_id)
 

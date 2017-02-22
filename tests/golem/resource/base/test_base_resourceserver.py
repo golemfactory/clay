@@ -1,14 +1,15 @@
 import os
 import shutil
+import time
 import uuid
 
 from mock import patch
 
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.dirmanager import DirManager
-from golem.tools.testdirfixture import TestDirFixture
 from golem.resource.base.resourcesmanager import TestResourceManager
+from golem.resource.dirmanager import DirManager
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 node_name = 'test_suite'
 
@@ -36,11 +37,11 @@ class MockConfig:
         self.root_path = root_path
 
 
-class TestResourceServer(TestDirFixture):
+class TestResourceServer(TestDirFixtureWithReactor):
 
     def setUp(self):
 
-        TestDirFixture.setUp(self)
+        TestDirFixtureWithReactor.setUp(self)
 
         self.task_id = str(uuid.uuid4())
 
@@ -113,7 +114,18 @@ class TestResourceServer(TestDirFixture):
 
         self.assertEqual(decrypted, to_encrypt)
 
-    def testAddTask(self):
+    def _resources(self):
+        existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)
+        existing_paths = []
+
+        for resource in self.target_resources:
+            resource_path = os.path.join(existing_dir, resource)
+            existing_paths.append(resource_path)
+
+        return existing_paths
+
+    def _add_task(self):
+
         keys_auth = EllipticalKeysAuth(self.path)
         client = MockClient()
         new_config_desc = MockConfig(self.path, node_name)
@@ -124,26 +136,40 @@ class TestResourceServer(TestDirFixture):
         rm = rs.resource_manager
         rm.storage.clear_cache()
 
-        assert not rm.storage.get_resources(self.task_id)
+        existing_paths = self._resources()
+        return rm, rs, rs.add_task(existing_paths, self.task_id)
 
-        existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)
-        existing_paths = []
+    def testAddTask(self):
+        rm, rs, deferred = self._add_task()
 
-        for resource in self.target_resources:
-            resource_path = os.path.join(existing_dir, resource)
-            existing_paths.append(resource_path)
+        def test(*_):
+            resources = rm.storage.get_resources(self.task_id)
+            assert resources
+            assert len(resources) == len(self.target_resources)
 
-        rs.add_task(existing_paths, self.task_id)
-        resources = rm.storage.get_resources(self.task_id)
+        deferred.addCallbacks(
+            test,
+            lambda e: self.fail(e)
+        )
 
-        assert resources
-        assert len(resources) == len(self.target_resources)
+        started = time.time()
 
-        return rs
+        while not deferred.called:
+            if time.time() - started > 10:
+                self.fail("Test timed out")
+            time.sleep(0.1)
 
     def testChangeResourceDir(self):
-        rs = self.testAddTask()
-        rm = rs.resource_manager
+        keys_auth = EllipticalKeysAuth(self.path)
+        client = MockClient()
+
+        rm = TestResourceManager(self.dir_manager)
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
+
+        rm.add_resources(self._resources(), self.task_id,
+                         absolute_path=True)
+
         resources = rm.storage.get_resources(self.task_id)
 
         assert resources
@@ -163,8 +189,15 @@ class TestResourceServer(TestDirFixture):
             shutil.rmtree(new_path)
 
     def testRemoveTask(self):
-        rs = self.testAddTask()
+        keys_auth = EllipticalKeysAuth(self.path)
+        client = MockClient()
+
+        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
+                                self.dir_manager, keys_auth, client)
         rm = rs.resource_manager
+
+        rm.add_resources(self._resources(), self.task_id,
+                         absolute_path=True)
 
         assert rm.storage.get_resources(self.task_id)
 
