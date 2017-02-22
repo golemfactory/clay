@@ -55,19 +55,13 @@ class BaseResourceServer(object):
         self.get_resources()
 
     def add_task(self, files, task_id, client_options=None):
-        result = Deferred()
-
-        deferred = self.resource_manager.add_task(files, task_id,
-                                                  client_options=client_options)
-        deferred.addCallbacks(
-            lambda r: result.callback(r),
-            lambda e: self._add_task_error(e, result)
-        )
-
+        result = self.resource_manager.add_task(files, task_id,
+                                                client_options=client_options)
+        result.addErrback(lambda e: self._add_task_error(e, result))
         return result
 
     @staticmethod
-    def _add_task_error(error, deferred=None):
+    def _add_task_error(error, deferred):
         logger.error("Resource server: couldn't add a new task: {}".format(error))
         deferred.errback(error)
 
