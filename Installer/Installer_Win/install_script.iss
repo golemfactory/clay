@@ -2,13 +2,13 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Golem"
-#define MyAppVersion "0.3"
 #define MyAppPublisher "Golem Factory GmbH"
 #define MyAppURL "https://golem.network"
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
 ; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
-#define Repository "C:\golem"
+#define Repository "C:\golem"           
+#define MyAppVersion ReadIni(Repository+"\\.version", "version", "version", "0.3.0")
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -39,7 +39,7 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Python27\;{sd}\Python27\Scripts\"; Check: NeedsAddPath('{sd}\Python27')
 
 ; Add OpenSSL to the PATH
-Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
+Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
 
 ; @todo do we need all languages?
 [Languages]
@@ -54,9 +54,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "{#Repository}\dist\golem-0.1.0-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;    
+Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
+Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;                              
+Source: "{#Repository}\Installer\Installer_Win\deps\pywin32-220.win32-py2.7.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
 Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\libeay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
@@ -79,6 +81,10 @@ Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
 ; @todo how to install ipfs
 
+; Install geth
+Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; Parameters: "/SILENT"; StatusMsg: "Installing geth"; Description: "Install geth"
+Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; Parameters: "/SILENT"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
+
 ; Install VC For Python 2.7
 Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
 
@@ -90,10 +96,11 @@ Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install htt
 Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
 
 ; Finally! Install golem!
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-0.1.0-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
 ; Configure docker              # @todo fix, doesn't work. Fails on the spaces.... ;(
-Filename: "powershell.exe"; Parameters: """{sd}\Program Files\Docker Toolbox\start.sh"""; Description: "Configure docker"
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Program Files\Docker Toolbox\start.sh"""; Description: "Configure docker"
+Filename: "powershell.exe"; Parameters: "-Command ""& ""C:\Program Files\Docker Toolbox\docker-machine.exe"" env | Invoke-Expression"""; Description: "Configure docker"
 
 [Code]
                                                                               

@@ -119,14 +119,16 @@ def try_pulling_docker_images():
 
 
 def get_golem_version(increase):
+    from ConfigParser import ConfigParser
     from golem.core.common import get_golem_path
-    version_file = path.join(get_golem_path(), ".version")
-    with open(version_file, 'rb') as f:
-        version = f.read()
+    from os.path import join
+    config = ConfigParser()
+    config.read(join(get_golem_path(), '.version'))
+    version = config.get('version', 'version')
     if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
         v = version.split('.')
         version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
-        with open(version_file, 'wb') as f:
+        with open(join(get_golem_path(), '.version'), 'wb') as f:
             f.write(version)
     return version
 

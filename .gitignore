@@ -51,3 +51,7 @@ lextab.py
 yacctab.py
 # Local data
 data/
+
+# Install and build
+apps/rendering/resources/taskcollector/Release*
+Installer/Installer_Win/deps/*

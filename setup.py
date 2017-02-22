@@ -51,7 +51,7 @@ setup(
     },
     data_files=[
         (path.normpath('../../'), ['golemapp.py', 'golemcli.py']),
-        (path.normpath('../../golem'), ['logging.ini']),
+        (path.normpath('../../golem'), ['logging.ini', '.version']),
         (path.normpath('../../golem/apps'), [path.normpath('apps/registered.ini'), path.normpath('apps/images.ini')]),
         (path.normpath('../../golem/apps/blender/resources/scripts'),
          [path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),

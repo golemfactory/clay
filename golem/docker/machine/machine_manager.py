@@ -76,6 +76,16 @@ class DockerMachineManager(DockerConfigManager):
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
+    @staticmethod
+    def __parse_params(params):
+        from os import environ
+        envs = ["DOCKER_TLS_VERIFY", "DOCKER_HOST", "DOCKER_CERT_PATH", "DOCKER_MACHINE_NAME", "COMPOSE_CONVERT_PATHS"]
+        for line in params.split('\n'):
+            for env in envs:
+                if env in line:
+                    environ[env] = line.split('=')[-1].lstrip()
+
+
     def check_environment(self):
         logger.debug("DockerManager: checking VM availability")
 
@@ -83,6 +93,11 @@ class DockerMachineManager(DockerConfigManager):
             if not self.docker_machine:
                 active = self.docker_machine_command('active')
                 self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
+
+            if not is_linux():
+                env_params = self.docker_machine_command('env', self.docker_machine)
+                DockerMachineManager.__parse_params(env_params)
+
 
             # VirtualBox availability check
             self._import_virtualbox()
