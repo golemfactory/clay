@@ -5,22 +5,9 @@ import uuid
 from types import FunctionType
 from unittest import skipIf
 
-from golem.network.ipfs.client import IPFSClient, parse_response_entry, parse_response, IPFSAddress, ipfs_running
+from golem.network.ipfs.client import IPFSClient, IPFSAddress, ipfs_running
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
-
-
-def first_response_hash(response):
-    if response:
-        for item in response:
-            if isinstance(item, dict):
-                if 'Hash' in item:
-                    return item['Hash']
-            else:
-                result = first_response_hash(item)
-                if result:
-                    return result
-    return None
 
 
 @skipIf(not ipfs_running(), "IPFS daemon isn't running")
@@ -68,7 +55,7 @@ class TestIpfsClient(TestDirFixture):
 
         tmp_filename = 'tmp_file'
 
-        assert client.get_file(first_response_hash(response),
+        assert client.get_file(response['Hash'],
                                filepath=self.test_dir,
                                filename=tmp_filename)
 
@@ -82,7 +69,7 @@ class TestIpfsClient(TestDirFixture):
         response = client.add([self.test_dir_file])
 
         self.assertIsNotNone(response)
-        client.pin_add(first_response_hash(response))
+        client.pin_add(response['Hash'])
 
     def testPinRm(self):
         client = IPFSClient()
@@ -90,31 +77,8 @@ class TestIpfsClient(TestDirFixture):
 
         self.assertIsNotNone(response)
 
-        client.pin_add(first_response_hash(response))
-        client.pin_rm(first_response_hash(response))
-
-
-class TestParseResponseEntry(unittest.TestCase):
-    def test(self):
-        json_str = '{"a": [12, 1, 0]}'
-        other_str = '{ Something ]'
-
-        self.assertEqual(type(other_str), type(parse_response_entry(other_str)[0]))
-        self.assertEqual(dict, type(parse_response_entry(json_str)[0]))
-
-
-class TestParseResponse(unittest.TestCase):
-
-    def test(self):
-        valid_response = '[{"a":"b"}, {"b":1}]'
-        other_response = 'Something else'
-
-        response_obj = [[{u"a": u"b"}, {u"b": 1}]]
-        other_obj = [['Something else']]
-        parsed = parse_response(valid_response)[0]
-
-        self.assertEqual(response_obj, parsed)
-        self.assertEqual(other_obj, parse_response(other_response))
+        client.pin_add(response['Hash'])
+        client.pin_rm(response['Hash'])
 
 
 class TestIPFSClientMetaclass(unittest.TestCase):
@@ -161,36 +125,54 @@ class TestChunkedHttpClient(TestDirFixture):
         root_path = os.path.abspath(os.sep)
         client = IPFSClient()
 
-        self.added_files = []
-        self.added_files += client.add(self.test_dir_file_path)
-        self.added_files += client.add(self.test_file_path)
+        self.added_files = [
+            client.add(self.test_dir_file_path),
+            client.add(self.test_file_path)
+        ]
         target_filename = 'downloaded_file'
 
-        for entries in self.added_files:
-            for added in entries:
-                name = added['Name']
-                if name.startswith(root_path) and 'Hash' in added:
+        for added in self.added_files:
+            name = added['Name']
+            if name.startswith(root_path) and 'Hash' in added:
 
-                    result = client.get_file(added['Hash'],
-                                             filepath=self.target_dir,
-                                             filename=target_filename)
+                result = client.get_file(added['Hash'],
+                                         filepath=self.target_dir,
+                                         filename=target_filename)
 
-                    filename, _ = result[0]
-                    filepath = os.path.join(self.target_dir, filename)
+                filename, _ = result[0]
+                filepath = os.path.join(self.target_dir, filename)
 
-                    assert filename == target_filename
-                    assert os.path.exists(filepath)
+                assert filename == target_filename
+                assert os.path.exists(filepath)
 
-                    with self.assertRaises(Exception):
-                        client.get_file(added['Hash'],
-                                        filepath=self.target_dir,
-                                        filename=target_filename,
-                                        compress=False)
+                with self.assertRaises(Exception):
+                    client.get_file(added['Hash'],
+                                    filepath=self.target_dir,
+                                    filename=target_filename,
+                                    compress=False)
 
     def testGet(self):
+        root_path = os.path.abspath(os.sep)
         client = IPFSClient()
-        with self.assertRaises(NotImplementedError):
-            client.get("-")
+
+        self.added_files = [
+            client.add(self.test_dir_file_path),
+            client.add(self.test_file_path)
+        ]
+        self.names = [added['Name'] for added in self.added_files]
+
+        for added in self.added_files:
+            name = added['Name']
+            if name.startswith(root_path) and 'Hash' in added:
+
+                result = client.get_file(added['Hash'],
+                                         filepath=self.target_dir)
+
+                file_name, _ = result[0]
+                file_path = os.path.join(self.target_dir, file_name)
+
+                assert file_name in self.names
+                assert os.path.exists(file_path)
 
     def testBuildOptions(self):
         from golem.resource.client import ClientError
