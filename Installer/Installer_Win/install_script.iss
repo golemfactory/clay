@@ -82,8 +82,8 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; Parameters: "/SILENT"; StatusMsg: "Installing geth"; Description: "Install geth"
-Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; Parameters: "/SILENT"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
+Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
+Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
 
 ; Install VC For Python 2.7
 Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
@@ -98,8 +98,8 @@ Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install htt
 ; Finally! Install golem!
 Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
-; Configure docker              # @todo fix, doesn't work. Fails on the spaces.... ;(
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Program Files\Docker Toolbox\start.sh"""; Description: "Configure docker"
+; Configure docker
+Filename: "powershell.exe"; Parameters: "-Command ""& ""{sd}\Program Files\Docker Toolbox\start.sh"""""; Description: "Configure docker"
 Filename: "powershell.exe"; Parameters: "-Command ""& ""C:\Program Files\Docker Toolbox\docker-machine.exe"" env | Invoke-Expression"""; Description: "Configure docker"
 
 [Code]
