@@ -55,9 +55,12 @@ class TestIpfsClient(TestDirFixture):
 
         tmp_filename = 'tmp_file'
 
-        assert client.get_file(response['Hash'],
-                               filepath=self.test_dir,
-                               filename=tmp_filename)
+        get_response = client.get_file(response['Hash'],
+                                       filepath=self.test_dir,
+                                       filename=tmp_filename)
+
+        assert get_response['Name'] == os.path.join(self.test_dir, tmp_filename)
+        assert get_response['Hash'] == response['Hash']
 
         tmp_file_path = os.path.join(self.test_dir, tmp_filename)
 

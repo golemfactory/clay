@@ -268,9 +268,10 @@ class TestClient(IClient):
             os.makedirs(filepath)
         shutil.copy(path, os.path.join(filepath, filename))
 
-        return [
-            [os.path.join(filepath, filename), multihash]
-        ]
+        return dict(
+            Name=os.path.join(filepath, filename),
+            Hash=multihash
+        )
 
     def id(self, client_options=None, *args, **kwargs):
         return self._id

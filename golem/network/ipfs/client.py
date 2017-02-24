@@ -78,7 +78,7 @@ class IPFSClient(IClient):
         file_dst = os.path.join(file_path, file_name)
         shutil.move(file_src, file_dst)
 
-        return dict(Hash=multihash, Name=file_dst)
+        return dict(Name=file_dst, Hash=multihash)
 
     def __getattribute__(self, attr):
         if attr in IPFSCommands.__members__:
