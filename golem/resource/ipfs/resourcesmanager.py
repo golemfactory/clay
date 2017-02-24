@@ -28,14 +28,14 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
         if not client:
             client = self.new_client()
         return self._handle_retries(client.pin_add,
-                                    self.commands.pin,
+                                    self.commands.pin_add,
                                     multihash)
 
     def unpin_resource(self, multihash, client=None, client_options=None):
         if not client:
             client = self.new_client()
         return self._handle_retries(client.pin_rm,
-                                    self.commands.unpin,
+                                    self.commands.pin_rm,
                                     multihash)
 
     def build_client_options(self, node_id, **kwargs):

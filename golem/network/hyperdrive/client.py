@@ -42,7 +42,7 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
-    def get(self, multihash, client_options=None, **kwargs):
+    def get_file(self, multihash, client_options=None, **kwargs):
         dst_path = kwargs.pop('filepath')
         response = self._request(
             command='download',

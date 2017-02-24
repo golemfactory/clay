@@ -96,6 +96,7 @@ class CrossbarRouter(object):
                         'serializers': serializers,
                         'endpoint': {
                             'type': u'tcp',
+                            'interface': unicode(address.host),
                             'port': address.port
                         },
                         'url': unicode(address),

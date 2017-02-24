@@ -47,10 +47,10 @@ class TestSwiftClient(TempDirFixture):
 
         assert filename
         assert multihash
-        assert client.get(multihash,
-                          filename=self.dst_file_name,
-                          filepath=self.dst_file_path,
-                          client_options=options)
+        assert client.get_file(multihash,
+                               filename=self.dst_file_name,
+                               filepath=self.dst_file_path,
+                               client_options=options)
 
         dst_path = os.path.join(self.dst_file_path, self.dst_file_name)
 

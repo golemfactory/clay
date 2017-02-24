@@ -256,7 +256,7 @@ class TaskSession(MiddlemanSafeSession):
         :param ResourceHeader resource_header: description of resources that current node has
         :return:
         """
-        self.send(MessageGetResource(task_id, CBORSerializer.dumps(resource_header)))
+        self.send(MessageGetResource(task_id, resource_header))
 
     # TODO address, port and eth_account should be in node_info (or shouldn't be here at all)
     def send_report_computed_task(self, task_result, address, port, eth_account, node_info):

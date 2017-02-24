@@ -12,7 +12,7 @@ dependencies:
   pre:
     - sudo apt-get install -y python-qt4 pyqt4-dev-tools
     - if [ ! -e /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/PyQt4 ]; then ln -s /usr/lib/python2.7/dist-packages/PyQt4/ /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.x86_64-linux-gnu.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; fi
-    - if [ ! -e /usr/local/bin/ipfs ]; then wget http://52.40.149.24:9999/go-ipfs_v0.4.1_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.1_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
+    - if [ ! -e /usr/local/bin/ipfs ]; then wget https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.5_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
     - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1; cd golem-hyperdrive; npm install --save; cd -
     - /usr/local/bin/ipfs config --json Bootstrap "[]"
     - /usr/local/bin/ipfs config --json SupernodeRouting.Servers "[]"

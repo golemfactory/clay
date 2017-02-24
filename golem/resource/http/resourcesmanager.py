@@ -61,14 +61,14 @@ class HTTPResourceManagerClient(IClient):
 
         return results
 
-    def get(self, multihash, **kwargs):
+    def get_file(self, multihash, **kwargs):
 
         file_path = kwargs.pop('filepath')
         file_name = kwargs.pop('filename')
         dst_path = os.path.join(file_path, file_name)
         self._download(multihash, dst_path, **kwargs)
 
-        return [(file_name, multihash)]
+        return dict(Name=file_name, Hash=multihash)
 
     def id(self, *args, **kwargs):
         return None

@@ -142,9 +142,9 @@ class TestIPFSDaemonManager(unittest.TestCase):
 
         assert not status[0]
 
-    @patch('golem.network.ipfs.client.IPFSClient', autospec=True)
-    def testConnectToBootstrapNodes(self, MockClient):
-
+    @patch('golem.network.ipfs.client.IPFSClient')
+    @patch('golem.network.ipfs.client.IPFSClient.bootstrap_list', create=True)
+    def testConnectToBootstrapNodes(self, *_):
         invalid_node = 'invalid node'
 
         config = IPFSConfig(bootstrap_nodes=IPFS_BOOTSTRAP_NODES + [invalid_node])

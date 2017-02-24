@@ -44,24 +44,19 @@ def file_multihash(file_path):
 
 
 class IClient(object):
-    __metaclass__ = abc.ABCMeta
 
     @classmethod
-    @abc.abstractmethod
     def build_options(cls, node_id, **kwargs):
-        pass
+        raise NotImplementedError
 
-    @abc.abstractmethod
-    def add(self, files, client_options=None, **kwargs):
-        pass
+    def add(self, files, recursive=False, client_options=None, **kwargs):
+        raise NotImplementedError
 
-    @abc.abstractmethod
-    def get(self, multihash, client_options=None, **kwargs):
-        pass
+    def get_file(self, multihash, client_options=None, **kwargs):
+        raise NotImplementedError
 
-    @abc.abstractmethod
     def id(self, client_options=None, *args, **kwargs):
-        pass
+        raise NotImplementedError
 
 
 class IClientHandler(object):
@@ -264,16 +259,17 @@ class TestClient(IClient):
             Hash=resource_hash
         )
 
-    def get(self, multihash, client_options=None, filename=None, filepath=None, **_):
+    def get_file(self, multihash, client_options=None, filename=None, filepath=None, **_):
         path = self._resources[multihash]
 
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         shutil.copy(path, os.path.join(filepath, filename))
 
-        return [
-            [os.path.join(filepath, filename), multihash]
-        ]
+        return dict(
+            Name=os.path.join(filepath, filename),
+            Hash=multihash
+        )
 
     def id(self, client_options=None, *args, **kwargs):
         return self._id

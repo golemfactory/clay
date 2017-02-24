@@ -1,8 +1,12 @@
 import cPickle
 import os
 import unittest
+import uuid
 
+from apps.core.task.coretask import TaskResourceHeader
 from mock import Mock, MagicMock, patch
+
+from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -10,7 +14,9 @@ from golem.network.p2p.node import Node
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
-                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask)
+                                             MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
+                                             Message)
+from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
@@ -397,6 +403,20 @@ class TestTaskSession(LogTestCase, TempDirFixture):
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
+
+    def test_get_resource(self):
+        conn = BasicProtocol()
+        conn.transport = Mock()
+        conn.server = Mock()
+
+        db = DataBuffer()
+
+        sess = TaskSession(conn)
+        sess.send = lambda m: db.append_string(m.serialize())
+        sess._can_send = lambda *_: True
+        sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
+
+        assert Message.deserialize_message(db.buffered_data)
 
 
 def executor_success(req, success, error):

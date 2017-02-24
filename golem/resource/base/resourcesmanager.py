@@ -545,12 +545,12 @@ class AbstractResourceManager(IClientHandler):
         )
 
         if async:
-            self._async_call(client.get,
+            self._async_call(client.get_file,
                              success, error,
                              **kwargs)
         else:
             try:
-                data = client.get(**kwargs)
+                data = client.get_file(**kwargs)
                 success(data)
             except Exception as e:
                 error(e)

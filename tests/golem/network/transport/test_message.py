@@ -88,6 +88,25 @@ class TestMessages(unittest.TestCase):
         assert not serialized
         assert not Message.deserialize_message(None)
 
+    def test_unicode(self):
+        source = unicode("test string")
+        result = Message._unicode(source)
+        assert result is source
+
+        source = "\xd0\xd1\xd2\xd3"
+        result = Message._unicode(source)
+        assert result is source
+
+        source = "test string"
+        result = Message._unicode(source)
+        assert type(result) is unicode
+        assert result is not source
+        assert result == source
+
+        source = None
+        result = Message._unicode(source)
+        assert result is None
+
     def test_timestamp_and_timezones(self):
         epoch_t = 1475238345.0
         def set_tz(tz):
