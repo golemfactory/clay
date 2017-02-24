@@ -57,13 +57,12 @@ class BaseResourceServer(object):
     def add_task(self, files, task_id, client_options=None):
         result = self.resource_manager.add_task(files, task_id,
                                                 client_options=client_options)
-        result.addErrback(lambda e: self._add_task_error(e, result))
+        result.addErrback(self._add_task_error)
         return result
 
     @staticmethod
-    def _add_task_error(error, deferred):
-        logger.error("Resource server: couldn't add a new task: {}".format(error))
-        deferred.errback(error)
+    def _add_task_error(error):
+        logger.error("Resource server: add_task error: {}".format(error))
 
     def remove_task(self, task_id, client_options=None):
         self.resource_manager.remove_task(task_id, client_options=client_options)
