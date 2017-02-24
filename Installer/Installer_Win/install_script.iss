@@ -9,6 +9,7 @@
 ; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
 #define Repository "C:\golem"           
 #define MyAppVersion ReadIni(Repository+"\\.version", "version", "version", "0.3.0")
+#define AppIcon "favicon.ico"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -27,7 +28,7 @@ DisableProgramGroupPage=yes
 LicenseFile={#Repository}\LICENSE.txt
 OutputDir={#Repository}\Installer\Installer_Win
 OutputBaseFilename=setup
-SetupIconFile={#Repository}\Installer\favicon.ico
+SetupIconFile={#Repository}\Installer\{#AppIcon}
 Compression=lzma
 SolidCompression=yes
 
@@ -41,13 +42,13 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; Add OpenSSL to the PATH
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
 
-; @todo do we need all languages?
+; @todo do we need any more languages? It can be confusing
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
-Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
-Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
+;Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
+;Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
+;Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
+;Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -66,12 +67,13 @@ Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\openssl.exe"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
 
 [Run]
  ; Install Python 2.7.6
@@ -98,9 +100,9 @@ Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install htt
 ; Finally! Install golem!
 Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
-; Configure docker
-Filename: "powershell.exe"; Parameters: "-Command ""& ""{sd}\Program Files\Docker Toolbox\start.sh"""""; Description: "Configure docker"
-Filename: "powershell.exe"; Parameters: "-Command ""& ""C:\Program Files\Docker Toolbox\docker-machine.exe"" env | Invoke-Expression"""; Description: "Configure docker"
+; Configure docker                                   
+Filename: "powershell.exe"; Parameters: "-Command ""& cd """"{sd}\Program Files\Docker Toolbox\""""; .\start.sh """; Description: "Configure docker"
+Filename: "powershell.exe"; Parameters: "-Command ""& """"docker-machine env | Invoke-Expression"""""""; Description: "Configure docker" 
 
 [Code]
                                                                               
