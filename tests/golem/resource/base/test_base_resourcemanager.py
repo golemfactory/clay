@@ -179,29 +179,6 @@ class TestResourceStorage(_Common.ResourceSetUp):
         src_path = os.path.join(task_dir, 'dir', 'file')
         assert self.storage.relative_path(src_path, self.task_id) == os.path.join('dir', 'file')
 
-    def test_split_join_resources(self):
-
-        entries = [FileResource(r, str(uuid.uuid4()), task_id="task", path=r)
-                   for r in self.joined_resources]
-
-        resources_split = self.storage.split_resources(entries)
-        resources_joined = self.storage.join_resources(resources_split)
-
-        assert len(entries) == len(self.target_resources)
-        assert all([r[0] in self.split_resources for r in resources_split])
-        assert all([r[0] in self.joined_resources for r in resources_joined])
-
-        entries = [
-            ['resource', '1'],
-            [None, '2'],
-            None,
-            [['split', 'path'], '4']
-        ]
-        assert self.storage.join_resources(entries) == [
-            ['resource', '1'],
-            [os.path.join('split', 'path'), '4']
-        ]
-
     def test_copy(self):
 
         task_dir = self.storage.get_dir(self.task_id)
@@ -303,3 +280,26 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
                                                  self.resource_manager.commands.id,
                                                  str(uuid.uuid4()))
             assert logger.error.called
+
+    def test_to_from_wire(self):
+
+        entries = [FileResource(r, str(uuid.uuid4()), task_id="task", path=r)
+                   for r in self.joined_resources]
+
+        resources_split = self.resource_manager.to_wire(entries)
+        resources_joined = self.resource_manager.from_wire(resources_split)
+
+        assert len(entries) == len(self.target_resources)
+        assert all([r[0] in self.split_resources for r in resources_split])
+        assert all([r[0] in self.joined_resources for r in resources_joined])
+
+        entries = [
+            ['resource', '1'],
+            [None, '2'],
+            None,
+            [['split', 'path'], '4']
+        ]
+        assert self.resource_manager.from_wire(entries) == [
+            ['resource', '1'],
+            [os.path.join('split', 'path'), '4']
+        ]

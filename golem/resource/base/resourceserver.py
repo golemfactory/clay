@@ -124,9 +124,6 @@ class BaseResourceServer(object):
             if collected:
                 self.client.task_resource_collected(collected,
                                                     unpack_delta=False)
-            else:
-                logger.error("Unknown resource {} downloaded for task {}"
-                             .format(resource, task_id))
         else:
             logger.error("Empty resource downloaded for task {}"
                          .format(task_id))

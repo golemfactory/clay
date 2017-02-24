@@ -186,11 +186,12 @@ class TestResourceServer(TestDirFixture):
             relative_resources.append((resource.path.replace(common_path, '', 1),
                                        resource.hash))
 
-        assert len(rs_aux.pending_resources) == 0
-        rs_aux.download_resources(relative_resources, self.task_id)
-        assert len(rs_aux.pending_resources[self.task_id]) == len(resources)
+        task_id_2 = str(uuid.uuid4())
 
-        print len(resources)
+        assert len(rs_aux.pending_resources) == 0
+        rs_aux.download_resources(relative_resources, task_id_2)
+        assert len(rs_aux.pending_resources[task_id_2]) == len(resources)
+
         rs_aux._download_resources(async=False)
 
         for entry in relative_resources:
