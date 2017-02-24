@@ -1,27 +1,12 @@
-import abc
-import copy
-
-import subprocess
-from enum import Enum
-
-import jsonpickle as json
 import logging
 import os
-import shutil
-import tarfile
-import urllib
-import uuid
-from functools import wraps
-from threading import Lock
-from types import FunctionType
+import subprocess
 
-import ipfsApi
-import requests
-from ipfsApi.commands import ArgCommand
-from ipfsApi.http import HTTPClient, pass_defaults
+import ipfsapi
+import shutil
+from enum import Enum
 
 from golem.core.hostaddress import ip_address_private
-from golem.http.stream import StreamMonitor, ChunkStream
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.client import ClientConfig, ClientHandler, IClient, ClientOptions
 
@@ -42,8 +27,8 @@ class IPFSCommands(Enum):
     add = 0
     get = 1
     id = 2
-    pin = 3
-    unpin = 4
+    pin_add = 3
+    pin_rm = 4
 
     bootstrap_add = 5
     bootstrap_rm = 6
@@ -68,238 +53,44 @@ class IPFSConfig(ClientConfig):
             self.bootstrap_nodes = IPFS_BOOTSTRAP_NODES
 
 
-class IPFSHTTPClient(HTTPClient):
-
-    lock = Lock()
-    chunk_size = 1024
-
-    """
-    Class implements a workaround for the download method,
-    which hangs on reading http response stream data.
-    """
-
-    @pass_defaults
-    def download(self, path, args=[], opts={},
-                 filepath=None, filename=None,
-                 compress=True, archive=True, **kwargs):
-        """
-        Downloads a file from IPFS to the directory given by :filepath:
-        Support for :filename: was added (which replaces file's hash)
-        """
-        multihash = args[0]
-
-        url = self.base + path
-        work_dir = filepath or '.'
-        params = [('stream-channels', 'true')]
-        mode = 'r|gz' if compress else 'r|'
-
-        if compress:
-            params += [('compress', 'true')]
-            archive = True
-        if archive:
-            params += [('archive', 'true')]
-
-        if not (archive and compress):
-            raise Exception("Only compress + archive mode is supported")
-
-        for opt in opts.items():
-            params.append(opt)
-        for arg in args:
-            params.append(('arg', arg))
-
-        uri = '/'.join([''] + url.split('/')[3:])
-        query_params = '?' + urllib.urlencode(params) if params else ''
-
-        socket_stream = ChunkStream((self.host, self.port),
-                                    uri + query_params,
-                                    kwargs.pop('timeout', None))
-        socket_stream.connect()
-
-        try:
-            StreamMonitor.monitor(socket_stream)
-
-            with tarfile.open(fileobj=socket_stream, mode=mode) as tar_file:
-                return self._tar_extract(tar_file, work_dir,
-                                         filename, multihash)
-        finally:
-            socket_stream.disconnect()
-
-    @classmethod
-    def _tar_extract(cls, tar_file, work_dir, filename, multihash):
-
-        dst_path = os.path.join(work_dir, filename)
-        tmp_dir = os.path.join(work_dir, str(uuid.uuid4()))
-        tmp_path = os.path.join(tmp_dir, multihash)
-
-        if not os.path.exists(tmp_dir):
-            os.makedirs(tmp_dir)
-
-        with cls.lock:
-            if os.path.exists(dst_path):
-                os.remove(dst_path)
-
-        tar_file.extractall(tmp_dir)
-
-        if os.path.exists(tmp_path):
-            with cls.lock:
-                shutil.move(tmp_path, dst_path)
-
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            cls.__log_downloaded(filename, multihash, dst_path)
-            return filename, multihash
-
-        return None, None
-
-    @classmethod
-    def __log_downloaded(cls, filename, multihash, dst_path):
-        logger.debug("IPFS: downloaded {} ({}) to {}"
-                     .format(filename, multihash, dst_path))
-
-
-def parse_response(resp):
-    """ Returns python objects from a string """
-    result = []
-
-    if resp:
-        if isinstance(resp, basestring):
-            parsed = parse_response_entry(resp)
-            if parsed:
-                result.append(parsed)
-        elif isinstance(resp, list):
-            for sub_resp in resp:
-                if sub_resp:
-                    result.extend(parse_response(sub_resp))
-        else:
-            result.append(resp)
-
-    return result
-
-
-def parse_response_entry(entry):
-    parts = entry.split('\n')
-    result = []
-
-    for part in parts:
-        if part:
-            try:
-                result.append(json.loads(part))
-            except ValueError:
-                result.append(part)
-
-    return result
-
-
-def response_wrapper(func):
-    @wraps(func)
-    def wrapped(*args, **kwargs):
-        return parse_response(func(*args, **kwargs))
-    return wrapped
-
-
-class IPFSClientMetaClass(abc.ABCMeta):
-
-    """ IPFS api client methods decorated with response wrappers """
-
-    def __new__(mcs, class_name, bases, class_dict):
-        new_dict = {}
-        all_items = copy.copy(class_dict.items())
-
-        for base in bases:
-            all_items.extend(copy.copy(base.__dict__.items()))
-
-        for name, attribute in all_items:
-            if name in class_dict:
-                attribute = class_dict.get(name)
-            if type(attribute) == FunctionType and not name.startswith('_'):
-                attribute = response_wrapper(attribute)
-            new_dict[name] = attribute
-
-        instance = type.__new__(mcs, class_name, bases, new_dict)
-        instance._clientfactory = IPFSHTTPClient
-
-        return instance
-
-
-class IPFSClientFileCommand(ipfsApi.Command):
-
-    def request(self, client, *args, **kwargs):
-        return self.post_files(client, args[0], **kwargs)
-
-    def post_files(self, client, f, **kwargs):
-        responses = []
-        url = client.base + self.path + '?' + urllib.urlencode([
-            ('stream-channels', 'true'),
-            ('encoding', 'json')
-        ])
-
-        if isinstance(f, basestring):
-            responses.append(self.post_file(url, f))
-        else:
-            for file_path in f:
-                responses.append(self.post_file(url, file_path))
-
-        return responses
-
-    @staticmethod
-    def post_file(url, file_path):
-        if os.path.isfile(file_path):
-            with open(file_path, 'rb') as input_file:
-                file_name = os.path.basename(file_path)
-                files = dict(
-                    file=(
-                        file_name,
-                        input_file,
-                        'application/octet-stream'
-                    )
-                )
-                r = requests.post(url, files=files)
-                return r.text
-        return None
-
-
-class IPFSClient(IClient, ipfsApi.Client):
-
-    """ Class of ipfsApi.Client methods decorated with response wrapper """
-
-    __metaclass__ = IPFSClientMetaClass
-    _clientfactory = IPFSHTTPClient
+class IPFSClient(IClient):
 
     CLIENT_ID = 'ipfs'
-    VERSION = 1.0
+    VERSION = 1.1
 
-    def __init__(self,
-                 host=None,
-                 port=None,
-                 base=None,
-                 default_enc='json',
-                 **defaults):
-
-        super(IPFSClient, self).__init__(host=host, port=port,
-                                         base=base, default_enc=default_enc,
-                                         **defaults)
-
-        self._add = IPFSClientFileCommand('/add')
-        self._refs_local = ArgCommand('/refs/local')
-        self._bootstrap_list = ArgCommand('/bootstrap/list')
+    def __init__(self, **kwargs):
+        self._api = ipfsapi.connect(**kwargs)
 
     @staticmethod
     def build_options(node_id, **kwargs):
         return ClientOptions(IPFSClient.CLIENT_ID, IPFSClient.VERSION, **kwargs)
 
-    def swarm_connect(self, *args, **kwargs):
-        return self._swarm_connect.request(self._client, *args, **kwargs)
+    def get_file(self, multihash, client_options=None, **kwargs):
+        file_path = kwargs.get('filepath')
+        file_name = kwargs.pop('filename')
 
-    def refs_local(self, **kwargs):
-        return self._refs_local.request(self._client, **kwargs)
+        if not os.path.exists(file_path):
+            os.makedirs(file_path)
 
-    def bootstrap_list(self, **kwargs):
-        return self._bootstrap_list.request(self._client, **kwargs)
+        self.get(multihash, **kwargs)
 
-    def get_file(self, multihash, **kwargs):
-        return self._get.request(self._client, multihash, **kwargs)
+        file_src = os.path.join(file_path, multihash)
+        file_dst = os.path.join(file_path, file_name)
+        shutil.move(file_src, file_dst)
 
-    def get(self, multihash, **kwargs):
-        raise NotImplementedError("Please use the get_file method")
+        return dict(Name=file_dst, Hash=multihash)
+
+    def __getattribute__(self, attr):
+        if attr in IPFSCommands.__members__:
+            method = getattr(self._api, attr)
+
+            def wrapper(*args, **kwargs):
+                kwargs.pop('client_options', None)
+                return method(*args, **kwargs)
+
+            return wrapper
+
+        return object.__getattribute__(self, attr)
 
 
 class IPFSClientHandler(ClientHandler):
