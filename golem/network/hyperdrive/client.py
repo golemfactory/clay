@@ -64,7 +64,7 @@ class HyperdriveClient(IClient):
             command='cancel',
             hash=multihash
         )
-        return response['ok']
+        return response['hash']
 
     def _request(self, **data):
         response = requests.post(url=self._url,
