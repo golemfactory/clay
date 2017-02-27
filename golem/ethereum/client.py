@@ -19,7 +19,7 @@ class Client(object):
             Client.node = NodeProcess()
         if not Client.node.is_running():
             Client.node.start()
-        self.web3 = Web3(IPCProvider(Client.node.ipcpath))
+        self.web3 = Web3(IPCProvider(testnet=Client.node.testnet))
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
 

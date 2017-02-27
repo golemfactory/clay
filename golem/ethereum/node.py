@@ -94,19 +94,18 @@ class NodeProcess(object):
             '--port', str(self.port),
             '--verbosity', '3',
         ]
-        self.ipcpath = '/home/chfast/.ethereum/testnet/geth.ipc'
+        self.testnet = True
 
         self.__ps = subprocess.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.1
         wait_time = 0
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        while sock.connect_ex(self.ipcpath) == 111:
+        from web3 import Web3, IPCProvider
+        web3 = Web3(IPCProvider(testnet=self.testnet))
+        while not web3.isConnected():
             # FIXME: Add timeout limit, we don't want to loop here forever.
             time.sleep(WAIT_PERIOD)
             wait_time += WAIT_PERIOD
-        sock.shutdown(socket.SHUT_RDWR)
-        sock.close()
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
 
     def stop(self):
