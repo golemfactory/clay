@@ -32,7 +32,7 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.12
-crossbar
+crossbar==16.10.1
 jsonpickle
 pydispatcher
 devp2p>=0.5.1
