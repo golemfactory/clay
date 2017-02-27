@@ -16,6 +16,7 @@ between both roles).
 
 Follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
+Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
 [Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
 

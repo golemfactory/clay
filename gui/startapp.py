@@ -78,8 +78,11 @@ def start_client(start_ranking, datadir=None,
     config = client.config_desc
     methods = object_method_map(client, CORE_METHOD_MAP)
 
-    host, port = config.rpc_address, config.rpc_port
-    router = CrossbarRouter(host=host, port=port, datadir=client.datadir)
+    router = CrossbarRouter(
+        host=config.rpc_address,
+        port=config.rpc_port,
+        datadir=client.datadir
+    )
     session = Session(router.address, methods=methods)
 
     def router_ready(*_):

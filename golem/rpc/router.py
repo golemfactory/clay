@@ -47,6 +47,7 @@ class CrossbarRouter(object):
 
         self.options = self._build_options()
         self.config = self._build_config(self.address, self.serializers)
+        logger.debug('xbar init with cfg: %s', self.config)
 
     def start(self, reactor, callback, errback):
         reactor.callWhenRunning(self._start,
@@ -96,6 +97,7 @@ class CrossbarRouter(object):
                         'serializers': serializers,
                         'endpoint': {
                             'type': u'tcp',
+                            'interface': unicode(address.host),
                             'port': address.port
                         },
                         'url': unicode(address),

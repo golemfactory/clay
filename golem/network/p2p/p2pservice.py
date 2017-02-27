@@ -1,10 +1,11 @@
-import logging
-import random
-import time
 from collections import deque
-from threading import Lock
-
 from ipaddress import AddressValueError
+import logging
+from pydispatch import dispatcher
+import random
+from threading import Lock
+import time
+
 
 from golem.core.simplechallenge import create_challenge, accept_challenge, solve_challenge
 from golem.diag.service import DiagnosticsProvider
@@ -94,6 +95,9 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         def established(port):
             self.cur_port = port
             self.node.p2p_prv_port = port
+            dispatcher.send(signal='golem.p2p', event='listening', port=port)
+            logger.debug('accepting established %r', self.cur_port)
+
         super(P2PService, self).start_accepting(listening_established=established)
 
     def connect_to_network(self):

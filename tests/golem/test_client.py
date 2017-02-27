@@ -301,6 +301,21 @@ class TestClientRPCMethods(TestWithDatabase):
 
         return client
 
+    def test_unreachable_flag(self):
+        from pydispatch import dispatcher
+        import random
+        random.seed()
+        client = self.__new_client()
+        try:
+            port = random.randint(1, 50000)
+            self.assertFalse(hasattr(client, 'unreachable_flag'))
+            dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
+            self.assertFalse(hasattr(client, 'unreachable_flag'))
+            dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
+            self.assertTrue(hasattr(client, 'unreachable_flag'))
+        finally:
+            client.quit()
+
 
 class TestEventListener(unittest.TestCase):
 

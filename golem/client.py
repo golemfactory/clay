@@ -150,11 +150,17 @@ class Client(object):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
+        dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
         atexit.register(self.quit)
 
     def configure_rpc(self, rpc_session):
         self.rpc_publisher = Publisher(rpc_session)
+
+    def p2p_listener(self, sender, signal, event='default', **kwargs):
+        if event != 'unreachable':
+            return
+        self.unreachable_flag = True
 
     def start(self):
         if self.use_monitor:
@@ -767,7 +773,10 @@ class Client(object):
         if listen_port == 0 or task_server_port == 0:
             return u"Application not listening, check config file."
         elif not self.get_connected_peers():
-            return u"Not connected to Golem Network. Check seed parameters."
+            msg = u"Not connected to Golem Network. Check seed parameters."
+            if hasattr(self, 'unreachable_flag'):
+                msg += (" Port unreachable.")
+            return msg
         return u"Connected"
 
     def get_metadata(self):

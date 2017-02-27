@@ -341,12 +341,11 @@ class AbstractResourceManager(IClientHandler):
             success(filename, multihash, task_id)
             return
 
-        def success_wrapper(*args, **kwargs):
+        def success_wrapper(result, *args, **kwargs):
             self.__dec_downloads()
 
-            result = args[0][0]
-            result_filename = result[0]
-            result_multihash = result[1]
+            result_filename = result['Name']
+            result_multihash = result['Hash']
             result_path = self.storage.get_path(result_filename, task_id)
 
             self._clear_retry(self.commands.get, result_multihash)
@@ -394,7 +393,7 @@ class AbstractResourceManager(IClientHandler):
             except Exception as exc:
                 error_wrapper(exc)
             else:
-                success_wrapper([[filename, multihash]])
+                success_wrapper(dict(Name=filename, Hash=multihash))
 
         else:
 

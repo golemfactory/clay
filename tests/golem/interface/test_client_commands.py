@@ -146,14 +146,12 @@ class TestNetwork(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
 
-        PeerInfo = namedtuple('PeerInfo', ['address', 'port', 'key_id', 'node_name'])
-
         peer_info = [
-            PeerInfo(
-                '10.0.0.{}'.format(i),
-                '2500{}'.format(i),
-                'deadbeef0{}'.format(i) * 8,
-                'node_{}'.format(i)
+            dict(
+                address='10.0.0.{}'.format(i),
+                port='2500{}'.format(i),
+                key_id='deadbeef0{}'.format(i) * 8,
+                node_name='node_{}'.format(i)
             ) for i in range(1, 1 + 6)
         ]
 
