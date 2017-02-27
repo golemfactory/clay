@@ -1117,7 +1117,7 @@ def all_version(*_):
     git_rev = subprocess.check_output(['git', 'rev-parse', 'HEAD'])
     created = time.time()
 
-    file_path = os.path.join('build', 'golem', '.version')
+    file_path = os.path.join('build', 'golem', '.version.ini')
     if os.path.exists(file_path):
         os.remove(file_path)
 

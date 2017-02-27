@@ -46,12 +46,13 @@ function ask_user()
 function check_dependencies()
 {
     # check if pip is installed
-    if [ -n "$( pip -V 2>&1 | grep 'No command' )" ]; then
+    pip -v &>/dev/null
+    if [ $? -ne 0 ]; then
         INSTALL_PIP=1
     fi
 
     # Check if docker deamon exists
-    if [ -n "$( service docker status | grep 'Loaded: not-found (Reason: No such file or directory)' )" ]; then
+    if [ -z "$( service --status-all | grep -F 'docker' )" ]; then
         ask_user "Docker not found. Do you want to install it? (y/n)"
         INSTALL_DOCKER=$?
     fi
@@ -63,7 +64,8 @@ function check_dependencies()
     fi
 
     # check if ipfs is installed
-    if [ -n "$( ipfs version 2>&1 | grep 'No command' )" ]; then
+    ipfs version &>/dev/null
+    if [ $? -ne 0 ]; then
         ask_user "IPFS not found. Do you want to install it? (y/n)"
         INSTALL_IPFS=$?
     fi

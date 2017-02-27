@@ -2,10 +2,11 @@ from golem.core import common
 from golem.resource import dirmanager
 import os
 
-BLENDER_CROP_TEMPLATE_PATH = dirmanager.find_task_script(os.path.join(common.get_golem_path(), 'apps', 'blender'), "blendercrop.py.template")
+BLENDER_CROP_TEMPLATE_PATH = dirmanager.find_task_script(
+    os.path.join(common.get_golem_path(), 'apps', 'blender'), "blendercrop.py.template")
 if BLENDER_CROP_TEMPLATE_PATH is None:
-    raise IOError(None, 'Template file not found: %s' % os.path.join(common.get_golem_path(), 'apps', 'blender'))
-
+    raise IOError(None,
+                  'Template file not found: %s' % os.path.join(common.get_golem_path(), 'apps', 'blender'))
 
 
 def generate_blender_crop_file(resolution, borders_x, borders_y, use_compositing):

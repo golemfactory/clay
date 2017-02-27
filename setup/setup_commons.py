@@ -123,12 +123,13 @@ def get_golem_version(increase):
     from golem.core.common import get_golem_path
     from os.path import join
     config = ConfigParser()
-    config.read(join(get_golem_path(), '.version'))
+    config_path = join(get_golem_path(), '.version.ini')
+    config.read(config_path)
     version = config.get('version', 'version')
     if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
         v = version.split('.')
-        version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
-        with open(join(get_golem_path(), '.version'), 'wb') as f:
+        version = "[version]\nversion = {}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
+        with open(config_path, 'wb') as f:
             f.write(version)
     return version
 

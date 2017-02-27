@@ -3,7 +3,7 @@ def __read_version():
     from golem.core.common import get_golem_path
     from os.path import join
     config = ConfigParser()
-    config.read(join(get_golem_path(), '.version'))
+    config.read(join(get_golem_path(), '.version.ini'))
     version = config.get('version', 'version')
     splitted_version = version.split('.')
     return "{}.{}".format(splitted_version[0], splitted_version[1])
