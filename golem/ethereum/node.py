@@ -4,7 +4,6 @@ import atexit
 import logging
 import re
 import requests
-import socket
 import subprocess
 import time
 from datetime import datetime
@@ -14,7 +13,6 @@ from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
-from web3.providers.ipc import get_default_ipc_path
 
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -90,6 +88,7 @@ class NodeProcess(object):
         self.port = port
         args = [
             self.__prog,
+            '--light',
             '--testnet',
             '--port', str(self.port),
             '--verbosity', '3',
