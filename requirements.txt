@@ -4,7 +4,7 @@ docker-py==1.7.2
 pyvbox
 enum34
 ipaddress
-ipfs-api
+ipfsapi
 netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1

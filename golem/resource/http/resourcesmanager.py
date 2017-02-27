@@ -68,7 +68,7 @@ class HTTPResourceManagerClient(IClient):
         dst_path = os.path.join(file_path, file_name)
         self._download(multihash, dst_path, **kwargs)
 
-        return [(file_name, multihash)]
+        return dict(Name=file_name, Hash=multihash)
 
     def id(self, *args, **kwargs):
         return None
