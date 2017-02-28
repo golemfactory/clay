@@ -61,12 +61,12 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2.000000 ETH',
-                    'deposit_balance': '1.000000 ETH',
+                    'available_balance': '2.000000 GNT',
+                    'deposit_balance': '1.000000 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'local_balance': '3.000000 ETH',
-                    'reserved_balance': '1.000000 ETH',
-                    'total_balance': '4.000000 ETH'
+                    'local_balance': '3.000000 GNT',
+                    'reserved_balance': '1.000000 GNT',
+                    'total_balance': '4.000000 GNT'
                 },
             }
 
@@ -279,7 +279,7 @@ class TestPayments(unittest.TestCase):
             assert result.data[1][0] == [
                 u'6e6f64655f31',
                 u'waiting',
-                u'0.000000 ETH',
+                u'0.000000 GNT',
                 u'deadbeef01'
             ]
 
@@ -295,7 +295,7 @@ class TestPayments(unittest.TestCase):
                 u'subtask_1',
                 u'6e6f64655f31',
                 u'waiting',
-                u'0.000000 ETH',
+                u'0.000000 GNT',
             ]
             assert result.data[1][0][4]
 
