@@ -453,6 +453,12 @@ class Client(object):
                 return str(b), str(ab), str(d)
         return None, None, None
 
+    def get_crypto_prices(self):
+        if self.use_transaction_system():
+            gnt, eth = self.transaction_system.crypto_prices()
+            return str(gnt), str(eth)
+        return None, None
+
     def get_payments_list(self):
         if self.use_transaction_system():
             return self.transaction_system.get_payments_list()

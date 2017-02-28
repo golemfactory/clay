@@ -61,6 +61,9 @@ class EthereumTransactionSystem(TransactionSystem):
         """
         pass
 
+    def crypto_prices(self):
+        return self.__price_oracle.gnt_usd, self.__price_oracle.eth_usd
+
     def eth_to_usd(self, value):
         unit_price = self.__price_oracle.eth_usd()
         if unit_price is not None:
