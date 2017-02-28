@@ -38,4 +38,4 @@ def account():
 
 
 def _fmt(value):
-    return "{:.6f} ETH".format(value / denoms.ether)
+    return "{:.6f} GNT".format(value / denoms.ether)

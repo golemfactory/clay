@@ -112,13 +112,13 @@ class Settings(object):
             lambda x: -1. <= x <= 1.
         ),
         'min_price': Setting(
-            'Min ETH/h price (provider)',
+            'Min GNT/h price (provider)',
             'float >= 0',
             lambda x: float(x) * denoms.ether,
             lambda x: x >= 0
         ),
         'max_price': Setting(
-            'Max ETH/h price (requestor)',
+            'Max GNT/h price (requestor)',
             'float >= 0',
             lambda x: float(x) * denoms.ether,
             lambda x: x >= 0
