@@ -1,4 +1,5 @@
 from ethereum.utils import denoms
+from decimal import Decimal
 
 from golem.interface.command import command, CommandHelper
 
@@ -15,6 +16,10 @@ def account():
     computing_trust = wait(client.get_computing_trust(node_key))
     requesting_trust = wait(client.get_requesting_trust(node_key))
     payment_address = wait(client.get_payment_address())
+    gnt_price, eth_price = wait(client.get_crypto_prices())
+    gnt_price = float(Decimal(gnt_price))
+    eth_price = float(Decimal(eth_price))
+
 
     balance = wait(client.get_balance())
     if any(b is None for b in balance):
@@ -33,13 +38,17 @@ def account():
         provider_reputation=int(computing_trust * 100),
         finances=dict(
             eth_address=payment_address,
-            total_balance=_fmt(gnt_balance),
-            available_balance=_fmt(gnt_available),
-            reserved_balance=_fmt(gnt_reserved),
-            eth_balance=_fmt(eth_balance, unit="ETH")
+            total_balance =_fmt(gnt_balance, gnt_price),
+            available_balance =_fmt(gnt_available, gnt_price),
+            reserved_balance =_fmt(gnt_reserved, gnt_price),
+            eth_balance=_fmt(eth_balance, eth_price, unit="ETH")
         )
     )
 
 
-def _fmt(value, unit="GNT"):
-    return "{:.6f} {}".format(value / denoms.ether, unit)
+def _fmt(value, unit_price, unit="GNT"):
+    value = value / denoms.ether
+    if unit_price is not None:
+        usd_price = value * unit_price
+        return "{:.6f} {} ({:.2f} USD)".format(value, unit, usd_price)
+    return "{:.6f} {} (? USD)".format(value, unit)
