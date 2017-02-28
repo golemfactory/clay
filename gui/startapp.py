@@ -90,11 +90,6 @@ def start_client(start_ranking, datadir=None,
 
     def session_ready(*_):
         global process_monitor
-        gui_process = start_gui(router.address)
-
-        process_monitor = ProcessMonitor(gui_process)
-        process_monitor.add_shutdown_callback(stop_reactor)
-        process_monitor.start()
 
         try:
             client.configure_rpc(session)
@@ -102,6 +97,11 @@ def start_client(start_ranking, datadir=None,
         except Exception as exc:
             logger.exception(u"Client process error: {}"
                              .format(exc))
+
+        gui_process = start_gui(router.address)
+        process_monitor = ProcessMonitor(gui_process)
+        process_monitor.add_shutdown_callback(stop_reactor)
+        process_monitor.start()
 
     router.start(reactor, router_ready, start_error)
 

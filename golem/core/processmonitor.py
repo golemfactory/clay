@@ -1,7 +1,9 @@
+import subprocess
 import time
-from threading import Thread
 from multiprocessing import Process
-from psutil import Popen
+from threading import Thread
+
+import psutil
 
 
 class ProcessMonitor(Thread):
@@ -48,7 +50,7 @@ class ProcessMonitor(Thread):
 
     @staticmethod
     def exit_code(process):
-        if isinstance(process, Popen):
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
             process.poll()
             return process.returncode
         elif isinstance(process, Process):
@@ -56,7 +58,7 @@ class ProcessMonitor(Thread):
 
     @staticmethod
     def is_process_alive(process):
-        if isinstance(process, Popen):
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
             process.poll()
             return process.returncode is None
         elif isinstance(process, Process):

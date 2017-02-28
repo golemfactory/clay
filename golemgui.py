@@ -3,6 +3,7 @@
 import logging
 
 import click
+from ipaddress import AddressValueError
 from twisted.internet.defer import inlineCallbacks, setDebugging
 
 from apps.appsmanager import AppsManager
@@ -40,7 +41,7 @@ def check_rpc_address(ctx, param, address):
 
     try:
         SocketAddress(host, port)
-    except Exception as e:
+    except AddressValueError as e:
         return click.BadParameter(
             "Invalid network address specified: {}".format(e.message))
     return WebSocketAddress(host, port, u'golem')
@@ -79,11 +80,11 @@ def start_gui(rpc_address, gui_app=None):
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
     from golem.rpc.session import Client
 
-    reactor = install_qt5_reactor()
-
     gui_app = gui_app or GUIApp(rendering=True)
     events = object_method_map(gui_app.logic, GUI_EVENT_MAP)
     session = Session(rpc_address, events=events)
+
+    reactor = install_qt5_reactor()
 
     def connect():
         session.connect().addCallbacks(session_ready, start_error)
@@ -91,7 +92,6 @@ def start_gui(rpc_address, gui_app=None):
     def session_ready(*_):
         core_client = Client(session, CORE_METHOD_MAP)
         reactor.callFromThread(gui_app.start, core_client)
-        gui_app.start(core_client)
 
     reactor.callWhenRunning(connect)
     reactor.addSystemEventTrigger('before', 'shutdown', session.disconnect)
