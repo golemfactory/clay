@@ -12,9 +12,9 @@ environment:
       PYTHON_VERSION: "2.7.13"
       PYTHON_ARCH: "32"
 
-      GETH_VER: geth-windows-amd64-1.5.9-a07539fb
-      IPFS_VER: go-ipfs_v0.4.4_windows-386
-      OPENSSL_VER: openssl-1.0.2k-i386-win32
+      VER_GETH: geth-windows-amd64-1.5.9-a07539fb
+      VER_IPFS: go-ipfs_v0.4.4_windows-386
+      VER_OPENSSL: openssl-1.0.2k-i386-win32
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
@@ -48,8 +48,8 @@ install:
 
   # ssl
   - if not exist %OPENSSL_DIR% (
-      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%OPENSSL_VER%.zip &&
-      7z x %OPENSSL_VER%.zip -y -aoa -oC:\OpenSSL > NUL
+      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%VER_OPENSSL%.zip &&
+      7z x %VER_OPENSSL%.zip -y -aoa -oC:\OpenSSL > NUL
     )
 
   # geth
