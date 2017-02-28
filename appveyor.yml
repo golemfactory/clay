@@ -12,9 +12,9 @@ environment:
       PYTHON_VERSION: "2.7.13"
       PYTHON_ARCH: "32"
 
-      VER_GETH: geth-windows-386-1.5.5-ff07d548
-      VER_IPFS: go-ipfs_v0.4.4_windows-386
-      VER_OPENSSL: openssl-1.0.2j-i386-win32
+      GETH_VER: geth-windows-amd64-1.5.9-a07539fb
+      IPFS_VER: go-ipfs_v0.4.4_windows-386
+      OPENSSL_VER: openssl-1.0.2j-i386-win32
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
@@ -68,7 +68,7 @@ install:
   - ps: $IPFSProcess = Start-Process ipfs daemon -PassThru
 
   # freeimage
-  - appveyor DownloadFile "http://sourceforge.mirrorservice.org/f/fr/freeimage/Binary Distribution/3.17.0/%FREEIMAGE%"
+  - appveyor DownloadFile "https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%FREEIMAGE%"
   - 7z x %FREEIMAGE% -y -aoa -oC:\ > NUL
   - mkdir apps\rendering\resources\taskcollector\FreeImage\Release
   - copy /y C:\FreeImage\Dist\x32\FreeImage.dll apps\rendering\resources\taskcollector\Release

@@ -11,7 +11,7 @@ from golem.rpc.session import WebSocketAddress
 logger = logging.getLogger('golem.rpc.crossbar')
 
 CrossbarRouterOptions = namedtuple('CrossbarRouterOptions', ['cbdir', 'logdir', 'loglevel',
-                                                             'cdc', 'argv', 'config'])
+                                                             'argv', 'config'])
 
 
 class LoggerBridge(object):
@@ -70,14 +70,13 @@ class CrossbarRouter(object):
         checkconfig.check_config(self.config)
         self.node._config = self.config
 
-        return self.node.start(cdc_mode=options.cdc)
+        return self.node.start()
 
-    def _build_options(self, cdc=False, argv=None, config=None):
+    def _build_options(self, argv=None, config=None):
         return CrossbarRouterOptions(
             cbdir=self.working_dir,
             logdir=None,
             loglevel=self.log_level,
-            cdc=cdc,
             argv=argv,
             config=config
         )
