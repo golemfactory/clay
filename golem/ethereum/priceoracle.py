@@ -48,10 +48,13 @@ class PriceOracle(Service):
         return self.__eth_usd
 
     def update_prices(self):
-        print "update"
-        self.__gnt_usd = self.__fetch_price('golem-network-tokens')
-        self.__eth_usd = self.__fetch_price('ethereum')
-        self.__last_update = datetime.utcnow()
+        try:
+            self.__gnt_usd = self.__fetch_price('golem-network-tokens')
+            self.__eth_usd = self.__fetch_price('ethereum')
+            self.__last_update = datetime.utcnow()
+        except requests.exceptions.ConnectionError:
+            log.warning("Failed to retrieve crypto prices from api.coinmarketcap.com")
+            pass
 
     def _run(self):
         deadline = self.__last_update + self.UPDATE_PERIOD
