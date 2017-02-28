@@ -1,5 +1,5 @@
 from codecs import open
-from os import path
+from os import listdir, path
 from sys import platform
 
 import subprocess
@@ -7,6 +7,7 @@ import subprocess
 import sys
 from setuptools import find_packages
 from setuptools.command.test import test
+from golem.core.common import get_golem_path
 
 from gui.view.generateui import generate_ui_files
 
@@ -118,20 +119,43 @@ def try_pulling_docker_images():
                 sys.exit(1)
 
 
-def get_golem_version(increase):
-    from ConfigParser import ConfigParser
-    from golem.core.common import get_golem_path
-    from os.path import join
-    config = ConfigParser()
-    config_path = join(get_golem_path(), '.version.ini')
-    config.read(config_path)
-    version = config.get('version', 'version')
-    if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
-        v = version.split('.')
-        version = "[version]\nversion = {}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
-        with open(config_path, 'wb') as f:
-            f.write(version)
-    return version
+def move_wheel():
+    from shutil import move
+    path_ = path.join(get_golem_path(), 'dist')
+    files_ = [f for f in listdir(path_) if path.isfile(path.join(path_, f))]
+    files_.sort()
+    source = path.join(path_, files_[-1])
+    dst = path.join(path_, __file_name())
+    move(source, dst)
+
+
+def get_version():
+    from git import Repo
+    return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
+
+
+def update_ini():
+    version_file = path.join(get_golem_path(), '.version.ini')
+    version = "[version]\nversion = {}".format(get_version())
+    with open(version_file, 'wb') as f_:
+        f_.write(version)
+
+
+def __file_name():
+    """
+    Get wheel name
+    :return: Name for wheel
+    """
+    from git import Repo
+    repo = Repo(get_golem_path())
+    tag = repo.tags[-1]             # get latest tag
+    tag_id = tag.commit.hexsha      # get commit id from tag
+    commit_id = repo.head.commit.hexsha     # get last commit id
+    # @todo what with platform?
+    if commit_id != tag_id:         # devel package
+        return "golem-{}-0x{}{}-py27-none-any.whl".format(tag.name, commit_id[:4], commit_id[-4:])
+    else:                           # release package
+        return "golem-{}-py27-none-any.whl".format(tag.name)
 
 
 def __try_docker():
