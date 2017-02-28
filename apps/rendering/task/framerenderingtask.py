@@ -108,13 +108,13 @@ class FrameRenderingTask(RenderingTask):
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
         num_end = self.subtasks_given[subtask_id]['end_task']
+        frames = self.subtasks_given[subtask_id]['frames']
 
         for result_file in result_files:
             if not self.use_frames:
                 self._collect_image_part(num_start, result_file)
             elif self.total_tasks <= len(self.frames):
-                self._collect_frames(num_start, result_file,
-                                     self.subtasks_given[subtask_id]['frames'])
+                frames = self._collect_frames(num_start, result_file, frames)
             else:
                 self._collect_frame_part(num_start, result_file, parts)
 
@@ -144,7 +144,7 @@ class FrameRenderingTask(RenderingTask):
 
         if img:
             img_x, img_y = img.size
-            img = Image.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
+            img = img.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
                                resample=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
@@ -220,7 +220,7 @@ class FrameRenderingTask(RenderingTask):
             return [frames[(start_task - 1) / parts]], parts
 
     def _put_image_together(self):
-        output_file_name = u"{}".format(self.output_file, self.output_format)
+        output_file_name = self.output_file
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)

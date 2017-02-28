@@ -199,7 +199,7 @@ class LuxTask(RenderingTask):
 
         self.output_file, _ = os.path.splitext(self.output_file)
         self.output_format = self.output_format.lower()
-        self.numAdd = 0
+        self.num_add = 0
 
         self.preview_exr = None
 
@@ -359,7 +359,7 @@ class LuxTask(RenderingTask):
                "scene_file_src: {scene_file_src}".format(**extra_data)
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
-        self.numAdd += 1
+        self.num_add += 1
         if new_chunk_file_path.endswith(".exr"):
             self.__update_preview_from_exr(new_chunk_file_path)
         else:
@@ -371,12 +371,12 @@ class LuxTask(RenderingTask):
     @RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         preview_files = []
-        for subId, task in self.subtasks_given.iteritems():
-            if subId != subtask_id and task['status'] == 'Finished' and 'preview_file' in task:
+        for sub_id, task in self.subtasks_given.iteritems():
+            if sub_id != subtask_id and task['status'] == 'Finished' and 'preview_file' in task:
                 preview_files.append(task['preview_file'])
 
         self.preview_file_path = None
-        self.numAdd = 0
+        self.num_add = 0
 
         for f in preview_files:
             self._update_preview(f, None)
@@ -391,7 +391,7 @@ class LuxTask(RenderingTask):
         img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.numAdd))
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.num_add))
         img_current.save(self.preview_file_path, "BMP")
         img.close()
         scaled.close()
@@ -401,7 +401,7 @@ class LuxTask(RenderingTask):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
-            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.numAdd))
+            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.num_add))
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
