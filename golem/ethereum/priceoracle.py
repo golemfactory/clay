@@ -34,13 +34,15 @@ class PriceOracle(Service):
     @property
     def gnt_usd(self):
         if not self.up_to_date:
-            raise IOError("GNT price is not up to date")
+            log.error("GNT price is not up to date")
+            return None
         return self.__gnt_usd
 
     @property
     def eth_usd(self):
         if not self.up_to_date:
-            raise IOError("ETH price is not up to date")
+            log.error("ETH price is not up to date")
+            return None
         return self.__eth_usd
 
     def update_prices(self):
