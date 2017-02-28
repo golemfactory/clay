@@ -84,7 +84,10 @@ class DockerMachineManager(DockerConfigManager):
                 active = self.docker_machine_command('active')
                 self.docker_machine = active.strip().replace("\n", "") or FALLBACK_DOCKER_MACHINE_NAME
 
-            if is_windows():
+            # FIXME: proper docker machine and hypervisor detection
+            if is_linux():
+                raise EnvironmentError("not required on Linux")
+            elif is_windows():
                 # VirtualBox availability check
                 self._import_virtualbox()
                 if not self.virtual_box or not self.virtual_box.version:
