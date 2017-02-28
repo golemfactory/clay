@@ -456,7 +456,8 @@ class Client(object):
     def get_crypto_prices(self):
         if self.use_transaction_system():
             gnt, eth = self.transaction_system.crypto_prices()
-            return str(gnt), str(eth)
+            if gnt is not None:
+                return str(gnt), str(eth)
         return None, None
 
     def get_payments_list(self):
