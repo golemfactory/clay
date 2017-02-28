@@ -68,7 +68,7 @@ class GUIApp(object):
     def start(self, client):
         yield self.logic.register_client(client)
         yield self.logic.start()
-        self.gui.execute(using_qt5_reactor=True)
+        self.gui.execute()
 
 
 def start_error(err):

@@ -196,11 +196,33 @@ class TestDockerMachineManager(unittest.TestCase):
             'virtualbox': mock.MagicMock(),
             'virtualbox.library': mock.MagicMock()
         }):
+
             dmm = MockDockerMachineManager()
             dmm.docker_machine = MACHINE_NAME
             dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
-            dmm.check_environment()
-            assert dmm.docker_machine_available
+
+            with mock.patch('golem.docker.machine.machine_manager.is_linux', return_value=False):
+
+                with mock.patch('golem.docker.machine.machine_manager.is_windows', return_value=False):
+                    dmm.check_environment()
+                    assert dmm.docker_machine_available
+
+                with mock.patch('golem.docker.machine.machine_manager.is_windows', return_value=True):
+                    dmm.check_environment()
+                    assert dmm.docker_machine_available
+
+                    dmm._import_virtualbox = mock.Mock()
+                    dmm.virtual_box = None
+                    dmm.check_environment()
+                    assert not dmm.docker_machine_available
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
+
+            with mock.patch('golem.docker.machine.machine_manager.is_linux', return_value=True):
+                dmm.check_environment()
+                assert not dmm.docker_machine_available
 
     def test_update_config(self):
         status_switch = [True]

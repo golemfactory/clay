@@ -45,8 +45,7 @@ class ProcessMonitor(Thread):
             try:
                 process.terminate()
             except Exception as exc:
-                print("Error terminating process {}: {}"
-                      .format(process, exc))
+                print("Error terminating process {}: {}".format(process, exc))
 
     @staticmethod
     def exit_code(process):
