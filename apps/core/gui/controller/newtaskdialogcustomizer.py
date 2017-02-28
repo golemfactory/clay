@@ -360,7 +360,7 @@ class NewTaskDialogCustomizer(Customizer):
             else:
                 time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
                 cost = price * time_
-                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} ETH".format(cost))
+                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
         self.task_settings_changed()

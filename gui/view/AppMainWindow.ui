@@ -675,10 +675,10 @@
                     <item>
                      <widget class="QLabel" name="label_57">
                       <property name="toolTip">
-                       <string>ETH per an hour of computation</string>
+                       <string>GNT per an hour of computation</string>
                       </property>
                       <property name="text">
-                       <string>ETH/h</string>
+                       <string>GNT/h</string>
                       </property>
                      </widget>
                     </item>
@@ -1943,10 +1943,10 @@
                       <item>
                        <widget class="QLabel" name="label_31">
                         <property name="toolTip">
-                         <string>ETH per an hour of computation</string>
+                         <string>GNT per an hour of computation</string>
                         </property>
                         <property name="text">
-                         <string>ETH/h</string>
+                         <string>GNT/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2420,10 +2420,10 @@
                       <item>
                        <widget class="QLabel" name="label_33">
                         <property name="toolTip">
-                         <string>ETH per an hour of computation</string>
+                         <string>GNT per an hour of computation</string>
                         </property>
                         <property name="text">
-                         <string>ETH/h</string>
+                         <string>GNT/h</string>
                         </property>
                        </widget>
                       </item>
