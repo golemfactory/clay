@@ -62,11 +62,10 @@ class TestAccount(unittest.TestCase):
                 'Golem_ID': 'deadbeef',
                 'finances': {
                     'available_balance': '2.000000 GNT',
-                    'deposit_balance': '1.000000 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'local_balance': '3.000000 GNT',
+                    'eth_balance': '1.000000 ETH',
                     'reserved_balance': '1.000000 GNT',
-                    'total_balance': '4.000000 GNT'
+                    'total_balance': '3.000000 GNT'
                 },
             }
 
