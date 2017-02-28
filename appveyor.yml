@@ -14,7 +14,7 @@ environment:
 
       GETH_VER: geth-windows-amd64-1.5.9-a07539fb
       IPFS_VER: go-ipfs_v0.4.4_windows-386
-      OPENSSL_VER: openssl-1.0.2j-i386-win32
+      OPENSSL_VER: openssl-1.0.2k-i386-win32
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
@@ -47,9 +47,9 @@ install:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;%DIR_OPENSSL%;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
 
   # ssl
-  - if not exist %DIR_OPENSSL% (
-      appveyor DownloadFile https://indy.fulgan.com/SSL/%VER_OPENSSL%.zip &&
-      7z x %VER_OPENSSL%.zip -y -aoa -oC:\OpenSSL > NUL
+  - if not exist %OPENSSL_DIR% (
+      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%OPENSSL_VER%.zip &&
+      7z x %OPENSSL_VER%.zip -y -aoa -oC:\OpenSSL > NUL
     )
 
   # geth
