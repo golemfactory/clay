@@ -12,7 +12,7 @@ environment:
       PYTHON_VERSION: "2.7.13"
       PYTHON_ARCH: "32"
 
-      GETH_VER: geth-windows-386-1.5.5-ff07d548
+      GETH_VER: geth-windows-amd64-1.5.9-a07539fb
       IPFS_VER: go-ipfs_v0.4.4_windows-386
       OPENSSL_VER: openssl-1.0.2j-i386-win32
 

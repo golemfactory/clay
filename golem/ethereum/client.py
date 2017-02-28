@@ -1,8 +1,8 @@
 import logging
 
 import rlp
-from ethereum.transactions import Transaction
-from web3 import Web3, HTTPProvider
+from ethereum.utils import zpad
+from web3 import Web3, IPCProvider
 
 from .node import NodeProcess
 
@@ -12,21 +12,16 @@ log = logging.getLogger('golem.ethereum')
 class Client(object):
     """ RPC interface client for Ethereum node."""
 
-    STATIC_NODES = ["enode://f1fbbeff7e9777a3a930f1e55a5486476845f799f7d603f71be7b00898df98f2dc2e81b854d2c774c3d266f1fa105d130d4a43bc58e700155c4565726ae6804e@94.23.17.170:30900"]  # noqa
-
     node = None
 
-    def __init__(self, datadir, nodes=None):
-        if not nodes:
-            nodes = Client.STATIC_NODES
+    def __init__(self):
         if not Client.node:
-            Client.node = NodeProcess(nodes, datadir)
-        else:
-            if Client.node.datadir != datadir:
-                raise Exception("Ethereum node's datadir cannot be changed")
+            Client.node = NodeProcess()
         if not Client.node.is_running():
-            Client.node.start(rpc=True, mining=True)
-        self.web3 = Web3(HTTPProvider('http://localhost:{:d}'.format(Client.node.rpcport)))
+            Client.node.start()
+        self.web3 = Web3(IPCProvider(testnet=Client.node.testnet))
+        # Set fake default account.
+        self.web3.eth.defaultAccount = '\xff' * 20
 
     @staticmethod
     def _kill_node():
@@ -59,26 +54,16 @@ class Client(object):
         """
         return self.web3.eth.getTransactionCount(Client.__add_padding(address))
 
-    def send_raw_transaction(self, data):
-        """
-        Sends a signed and serialized transaction
-        :param data: signed and serialized transaction
-        """
-        return self.web3.eth.sendRawTransaction(data)
-
     def send(self, transaction):
         """
-        Signs and sends the given transaction
-        :param transaction: http://web3py.readthedocs.io/en/latest/web3.eth.html
+        Sends signed Ethereum transaction.
         :return The 32 Bytes transaction hash as HEX string
         """
-        if isinstance(transaction, Transaction):
-            raw_data = rlp.encode(transaction)
-            hex_data = self.web3.toHex(raw_data)
-            return self.send_raw_transaction(hex_data)
-        return self.web3.eth.sendTransaction(transaction)
+        raw_data = rlp.encode(transaction)
+        hex_data = self.web3.toHex(raw_data)
+        return self.web3.eth.sendRawTransaction(hex_data)
 
-    def get_balance(self, account, block_identifier=None):
+    def get_balance(self, account, block=None):
         """
         Returns the balance of the given account at the block specified by block_identifier
         :param account: The address to get the balance of
@@ -86,7 +71,7 @@ class Client(object):
         set with web3.eth.defaultBlock
         :return: Balance
         """
-        return self.web3.eth.getBalance(Client.__add_padding(account), block_identifier or self.web3.eth.defaultBlock)
+        return self.web3.eth.getBalance(account, block)
 
     def call(self, _from=None, to=None, gas=90000, gas_price=3000, value=0, data=None, nonce=0, block=None):
         """
@@ -104,9 +89,6 @@ class Client(object):
         :param block: integer block number, or the string "latest", "earliest" or "pending"
         :return: The returned data of the call, e.g. a codes functions return value
         """
-        _from = Client.__add_padding(_from) or self.web3.eth.defaultAccount
-        block = block or self.web3.eth.defaultBlock
-
         obj = {
             'from': _from,
             'to': to,
@@ -181,7 +163,6 @@ class Client(object):
         :param address: Address to validation
         :return: Padded address
         """
-        from eth_abi.utils import zpad
         if address is None:
             return address
         elif isinstance(address, basestring):

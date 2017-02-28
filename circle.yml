@@ -8,7 +8,8 @@ checkout:
 
 dependencies:
   pre:
-    - sudo apt-get install -y python-qt4 pyqt4-dev-tools
+    - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
+    - sudo apt-get install -y python-qt4 pyqt4-dev-tools geth
     - if [ ! -e /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/PyQt4 ]; then ln -s /usr/lib/python2.7/dist-packages/PyQt4/ /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; ln -s /usr/lib/python2.7/dist-packages/sip.x86_64-linux-gnu.so /home/ubuntu/virtualenvs/venv-system/lib/python2.7/site-packages/; fi
     - if [ ! -e /usr/local/bin/ipfs ]; then wget https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.5_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
     - /usr/local/bin/ipfs config --json Bootstrap "[]"
@@ -16,10 +17,6 @@ dependencies:
     - /usr/local/bin/ipfs config --json Addresses.Swarm '["/ip6/::/tcp/4001", "/ip6/::/udp/4002/utp", "/ip4/0.0.0.0/udp/4002/utp"]'
     - /usr/local/bin/ipfs daemon:
         background: true
-    - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update && sudo apt-get install geth
-    - geth --nodiscover --maxpeers 0 --exec "miner.makeDAG(0)" console
-  cache_directories:
-    - ~/.ethash
 
 test:
   pre:
