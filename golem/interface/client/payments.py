@@ -26,7 +26,7 @@ def __status(info):
 
 
 def __value(value):
-    return u"{:.6f} ETH".format(value / denoms.ether)
+    return u"{:.6f} GNT".format(value / denoms.ether)
 
 
 @command(argument=sort_incomes, help="Display incomes", root=True)

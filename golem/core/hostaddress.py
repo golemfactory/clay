@@ -105,17 +105,15 @@ def get_host_address_from_connection(connect_to=DEFAULT_CONNECT_TO, connect_to_p
             for s in [socket.socket(addr_family, socket.SOCK_DGRAM)]][0][1]
 
 
-def get_external_address(source_port=None):
+def get_external_address(source_port=0):
     """ Method try to get host public address with STUN protocol
-    :param int source_port: port that should be used for connection. Otherwise a free port picked by the OS will be used
-    :return (str, int, str): tuple with host public address, public port that is mapped to local <source_port> and
-     this host nat type
+    :param int source_port: port that should be used for connection.
+    If 0, a free port will be picked by OS.
+    :return (str, int, str): tuple with host public address, public port that is
+    mapped to local <source_port> and this host nat type
     """
-    if source_port:
-        nat_type, external_ip, external_port = stun.get_ip_info(source_port=source_port)
-    else:
-        nat_type, external_ip, external_port = stun.get_ip_info(source_port=0)
-    logger.debug("nat_type {}, external_ip {}, external_port {}".format(nat_type, external_ip, external_port))
+    nat_type, external_ip, external_port = stun.get_ip_info(source_port=source_port)
+    logger.debug("NAT {}, external [{}] {}".format(nat_type, external_ip, external_port))
     return external_ip, external_port, nat_type
 
 

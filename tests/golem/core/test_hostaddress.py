@@ -68,7 +68,7 @@ class TestHostAddress(unittest.TestCase):
         address = get_host_address_from_connection(use_ipv6=False)
         self.assertTrue(is_ip_address(address), "Incorrect IPv4 address: {}".format(address))
 
-    def testGetExternalAddress(self):
+    def test_get_external_address_live(self):
         """ Test getting host public address with STUN protocol """
         nats = ["Blocked", "Open Internet", "Full Cone", "Symmetric UDP Firewall",
                 "Restric NAT", "Restric Port NAT", "Symmetric NAT"]
@@ -78,11 +78,13 @@ class TestHostAddress(unittest.TestCase):
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
+    @patch('stun.get_ip_info')
+    def test_get_external_address_argument(self, stun):
+        stun.return_value = ('2607:f0d0:1002:51::4', 1234, "Open Internet")
         address, port, nat = get_external_address(9876)
-        self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
-        self.assertIsInstance(port, int, "Incorrect port type")
-        self.assertTrue(0 < port < 65535, "Incorrect port number")
-        self.assertIn(nat, nats, "Incorrect nat type")
+        assert stun.called_once_with(9876)
+        address, port, nat = get_external_address()
+        assert stun.called_once_with(0)
 
     def testGetHostAddress(self):
         self.assertGreater(len(get_host_address('127.0.0.1')), 0)
