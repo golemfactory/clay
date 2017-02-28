@@ -9,13 +9,15 @@ log = logging.getLogger("golem.srv.price")
 
 
 class PriceOracle(Service):
+    # FIXME: BRASS: don't update price too often, it's an unnecessary distraction.
+    # Around once a day should be enough.
     UPDATE_PERIOD = timedelta(0, 15*60)
 
     def __init__(self):
         self.__gnt_usd = Decimal()
         self.__eth_usd = Decimal()
         self.__last_update = datetime.min
-        super(PriceOracle, self).__init__()
+        super(PriceOracle, self).__init__(interval=60)
 
     @staticmethod
     def __fetch_price(token_name):
