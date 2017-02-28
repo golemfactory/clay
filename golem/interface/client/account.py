@@ -17,9 +17,8 @@ def account():
     requesting_trust = wait(client.get_requesting_trust(node_key))
     payment_address = wait(client.get_payment_address())
     gnt_price, eth_price = wait(client.get_crypto_prices())
-    gnt_price = float(Decimal(gnt_price))
-    eth_price = float(Decimal(eth_price))
-
+    gnt_price = deserialize(gnt_price)
+    eth_price = deserialize(eth_price)
 
     balance = wait(client.get_balance())
     if any(b is None for b in balance):
@@ -44,6 +43,12 @@ def account():
             eth_balance=_fmt(eth_balance, eth_price, unit="ETH")
         )
     )
+
+def deserialize(mb_decimal):
+    try:
+        return float(Decimal(mb_decimal))
+    except:
+        return None
 
 
 def _fmt(value, unit_price, unit="GNT"):
