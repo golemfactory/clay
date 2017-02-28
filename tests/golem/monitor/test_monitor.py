@@ -7,11 +7,15 @@ from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 
+
 class TestSystemMonitor(TestCase):
+    def setUp(self):
+        random.seed()
+
     def test_monitor_messages(self):
         nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
                                 ClientConfigDescriptor())
-        m = MONITOR_CONFIG
+        m = MONITOR_CONFIG.copy()
         m['HOST'] = "http://localhost/88881"
         monitor = SystemMonitor(nmm, m)
         monitor.start()
@@ -53,3 +57,28 @@ class TestSystemMonitor(TestCase):
 
         check(monitor.on_login, "Login")
         check(monitor.on_logout, "Logout")
+
+    def test_ping_request(self):
+        from pydispatch import dispatcher
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+        port = random.randint(20, 50000)
+        with mock.patch('requests.post') as post_mock:
+            post_mock.return_value = response_mock = mock.MagicMock()
+            response_mock.json = mock.MagicMock(return_value={'success': True})
+            dispatcher.send(signal='golem.p2p', event='no event at all', port=port)
+            self.assertEquals(post_mock.call_count, 0)
+            dispatcher.send(signal='golem.p2p', event='listening', port=port)
+            post_mock.assert_called_once_with(
+                '%sping-me' % (MONITOR_CONFIG['HOST'],),
+                data={'port': port},
+                timeout=mock.ANY,
+            )
+
+            signals = []
+            def l(sender, signal, event, **kwargs):
+                signals.append((signal, event, kwargs))
+            dispatcher.connect(l, signal="golem.p2p")
+            response_mock.json = mock.MagicMock(return_value={'success': False, 'description': 'failure'})
+            dispatcher.send(signal='golem.p2p', event='listening', port=port)
+            signals = [s for s in signals if s[1] != 'listening']
+            self.assertEquals(signals, [('golem.p2p', 'unreachable', {'port': port})])

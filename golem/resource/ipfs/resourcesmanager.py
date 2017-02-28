@@ -22,20 +22,20 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
 
         for task_id in task_ids:
             task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
-            self.add_task(dir_files(task_root_dir), task_id)
+            self._add_task(dir_files(task_root_dir), task_id)
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:
             client = self.new_client()
         return self._handle_retries(client.pin_add,
-                                    self.commands.pin,
+                                    self.commands.pin_add,
                                     multihash)
 
     def unpin_resource(self, multihash, client=None, client_options=None):
         if not client:
             client = self.new_client()
         return self._handle_retries(client.pin_rm,
-                                    self.commands.unpin,
+                                    self.commands.pin_rm,
                                     multihash)
 
     def build_client_options(self, node_id, **kwargs):
