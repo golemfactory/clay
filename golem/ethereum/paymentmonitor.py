@@ -35,6 +35,7 @@ class PaymentMonitor(Service):
         self.process_incoming_payments()
 
     def process_incoming_payments(self):
+        print("process incoming payments")
         if not self.__filter:
             # solidity Transfer() log id
             # FIXME: Take it from contract ABI
@@ -46,8 +47,11 @@ class PaymentMonitor(Service):
                                                      to_block='latest',
                                                      address=self.BANK_ADDR,
                                                      topics=topics)
+            print("filterid: {}".format(self.__filter))
 
         new_logs = self.__client.get_filter_changes(self.__filter)
+        print("new_logs: {}".format(new_logs))
+        print("self.__payments: {}".format(self.__payments))
         if not new_logs:
             return self.__payments
 
