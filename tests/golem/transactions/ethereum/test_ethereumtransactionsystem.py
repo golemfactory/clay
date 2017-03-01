@@ -27,4 +27,4 @@ class TestEthereumTransactionSystem(TestWithDatabase):
 
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (0, 0, 0)
+        assert e.get_balance() == (None, None, None)
