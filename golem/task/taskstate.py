@@ -1,8 +1,6 @@
 
 class TaskState(object):
-
     def __init__(self):
-
         self.status = TaskStatus.notStarted
         self.progress = 0.0
         self.remaining_time = 0
@@ -15,6 +13,9 @@ class TaskState(object):
         self.subtask_states = {}
 
         self.extra_data = {}
+
+    def __repr__(self):
+        return '<TaskStatus: %r %.2f>' % (self.status, self.progress)
 
     def get_subtask_state(self, subtask_id):
         if subtask_id in self.subtask_states:

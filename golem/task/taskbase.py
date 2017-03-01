@@ -18,7 +18,12 @@ class TaskHeader(object):
     def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
                  task_owner=None, deadline=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
                  min_version=APP_VERSION, max_price=0.0, docker_images=None, signature=None):
+        """
+        :param float max_price: maximum price that this node may par for an hour of computation
+        :param docker_images: docker image specification
+        """
 
+        # XXX self.task_definition = task_definition
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id
@@ -38,6 +43,8 @@ class TaskHeader(object):
         self.max_price = max_price
         self.signature = signature
 
+    def __repr__(self):
+        return '<Header: %r>' % (self.task_id,)
     def to_binary(self):
         return self.dict_to_binary(self.to_dict())
 
@@ -140,6 +147,9 @@ class Task(object):
     def __setstate__(self, dict_):
         self.__dict__ = dict_
         self.listeners = []
+
+    def __repr__(self):
+        return '<Task: %r>' % (self.header,)
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):

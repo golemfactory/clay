@@ -65,6 +65,14 @@ class TaskManager(TaskEventListener):
 
         self.comp_task_keeper = CompTaskKeeper()
         self.restore_tasks()
+        logger.warning('register REQUESTS_LISTENER')
+        dispatcher.connect(self.requests_listener, signal='golem.taskmanager.requests')
+
+    def requests_listener(self, sender, signal, event='default', **kwargs):
+        logger.warning('REVEAL YOURSELF') # won't work -- only RPC
+        if event != 'reveal_yourself':
+            return
+        kwargs['cbk'](self)
 
     def get_task_manager_root(self):
         return self.root_path
@@ -123,7 +131,7 @@ class TaskManager(TaskEventListener):
         logger.warning('DUMP TASK')
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
-            filepath = self.tasks_dir / '%s.pickle' % (task_id,)
+            filepath = self.tasks_dir / ('%s.pickle' % (task_id,))
             logger.warning('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
@@ -134,7 +142,7 @@ class TaskManager(TaskEventListener):
         logger.warning('RESTORE TASKS')
         for path in self.tasks_dir.iterdir():
             logger.warning('RESTORE TASKS %r', path)
-            if not path.suffix == 'pickle':
+            if not path.suffix == '.pickle':
                 continue
             logger.warning('RESTORE TASKS really %r', path)
             with path.open('rb') as f:

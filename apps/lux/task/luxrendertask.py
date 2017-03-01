@@ -107,76 +107,15 @@ class LuxRenderOptions(Options):
         self.haltspp = 1
 
 
-class LuxRenderTaskBuilder(RenderingTaskBuilder):
-    def build(self):
-        environment = LuxRenderEnvironment()
-        main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
-        if self.task_definition.docker_images is None:
-            self.task_definition.docker_images = environment.docker_images
-
-        lux_task = LuxTask(self.node_name,
-                           self.task_definition.task_id,
-                           main_scene_dir,
-                           self.task_definition.main_scene_file,
-                           environment.main_program_file,
-                           self._calculate_total(LuxRenderDefaults(), self.task_definition),
-                           self.task_definition.resolution[0],
-                           self.task_definition.resolution[1],
-                           os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
-                           self.task_definition.output_file,
-                           self.task_definition.output_format,
-                           self.task_definition.full_task_timeout,
-                           self.task_definition.subtask_timeout,
-                           self.task_definition.resources,
-                           self.task_definition.estimated_memory,
-                           self.root_path,
-                           self.task_definition.max_price,
-                           self.task_definition.options.halttime,
-                           self.task_definition.options.haltspp,
-                           docker_images=self.task_definition.docker_images
-                           )
-
-        self._set_verification_options(lux_task)
-        lux_task.initialize(self.dir_manager)
-        return lux_task
-
-
 class LuxTask(RenderingTask):
+    ENVIRONMENT_CLASS = LuxRenderEnvironment
 
     ################
     # Task methods #
     ################
 
-    def __init__(self,
-                 node_name,
-                 task_id,
-                 main_scene_dir,
-                 main_scene_file,
-                 main_program_file,
-                 total_tasks,
-                 res_x,
-                 res_y,
-                 outfilebasename,
-                 output_file,
-                 output_format,
-                 full_task_timeout,
-                 subtask_timeout,
-                 task_resources,
-                 estimated_memory,
-                 root_path,
-                 max_price,
-                 halttime,
-                 haltspp,
-                 return_address="",
-                 return_port=0,
-                 key_id="",
-                 docker_images=None):
-        
-        RenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
-                               LuxRenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
-                               main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price, docker_images)
+    def __init__(self, halttime, haltspp, **kwargs):
+        RenderingTask.__init__(self, **kwargs)
 
         self.tmp_dir = get_tmp_path(self.header.task_id, self.root_path)
         self.undeletable.append(self.__get_test_flm())
@@ -185,8 +124,9 @@ class LuxTask(RenderingTask):
         self.verification_error = False
         self.merge_timeout = MERGE_TIMEOUT
 
+        # Is it necessary to load scene_file contents here?
         try:
-            with open(main_scene_file) as f:
+            with open(self.main_scene_file) as f:
                 self.scene_file_src = f.read()
         except IOError as err:
             logger.error("Wrong scene file: {}".format(err))
@@ -523,3 +463,14 @@ class LuxTask(RenderingTask):
         if dir_ is None:
             dir_ = self.tmp_dir
         return os.path.join(dir_, "test_result.flm")
+
+
+class LuxRenderTaskBuilder(RenderingTaskBuilder):
+    TASK_CLASS = LuxTask
+    DEFAULTS = LuxRenderDefaults
+
+    def get_task_kwargs(self, **kwargs):
+        kwargs = super(LuxRenderTaskBuilder, self).get_task_kwargs(**kwargs)
+        kwargs['halttime'] = self.task_definition.options.halttime,
+        kwargs['haltspp'] = self.task_definition.options.haltspp,
+        return kwargs

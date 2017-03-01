@@ -57,7 +57,11 @@ class CoreTaskBuilder(TaskBuilder):
         self.dir_manager = dir_manager
 
     def build(self):
-        pass
+        task = self.TASK_CLASS(**self.get_task_kwargs())
+        return task
+
+    def get_task_kwargs(self, **kwargs):
+        return kwargs
 
 
 class CoreTask(Task):
@@ -67,28 +71,28 @@ class CoreTask(Task):
     # Task methods #
     ################
 
-    def __init__(self, src_code, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 task_timeout, subtask_timeout, resource_size, estimated_memory, max_price, docker_images=None):
-
-        """ Create more specific task implementation
-        :param src_code:
-        :param node_name:
-        :param task_id:
-        :param owner_address:
-        :param owner_port:
-        :param owner_key_id:
-        :param environment:
-        :param task_timeout:
-        :param subtask_timeout:
-        :param resource_size:
-        :param estimated_memory:
-        :param float max_price: maximum price that this node may par for an hour of computation
-        :param docker_images: docker image specification
+    def __init__(self, src_code, task_definition, node_name, owner_address, owner_port, owner_key_id, environment, resource_size):
+        """Create more specific task implementation
         """
+
+        self.task_definition = task_definition
+        task_timeout = task_definition.full_task_timeout
         deadline = timeout_to_deadline(task_timeout)
-        th = TaskHeader(node_name, task_id, owner_address, owner_port, owner_key_id, environment, Node(),
-                        deadline, subtask_timeout, resource_size, estimated_memory, max_price=max_price,
-                        docker_images=docker_images)
+        th = TaskHeader(
+            node_name=node_name,
+            task_id=task_definition.task_id,
+            task_owner_address=owner_address,
+            task_owner_port=owner_port,
+            task_owner_key_id=owner_key_id,
+            environment=environment,
+            task_owner=Node(),
+            deadline=deadline,
+            subtask_timeout=task_definition.subtask_timeout,
+            resource_size=resource_size,
+            estimated_memory=task_definition.estimated_memory,
+            max_price=task_definition.max_price,
+            docker_images=task_definition.docker_images,
+        )
 
         Task.__init__(self, th, src_code)
 

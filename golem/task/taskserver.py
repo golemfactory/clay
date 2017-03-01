@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import time
@@ -16,6 +17,9 @@ from tasksession import TaskSession
 from weakreflist.weakreflist import WeakList
 
 logger = logging.getLogger(__name__)
+
+
+tmp_cycler = itertools.cycle(range(50))
 
 
 class TaskServer(PendingConnectionsServer):
@@ -72,6 +76,9 @@ class TaskServer(PendingConnectionsServer):
         self.__remove_old_tasks()
         # self.__remove_old_sessions()
         self._remove_old_listenings()
+        if tmp_cycler.next() == 0:
+            logger.warning('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
+            logger.warning('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(env_id)

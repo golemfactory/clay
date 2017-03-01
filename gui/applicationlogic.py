@@ -3,6 +3,7 @@ from __future__ import division
 import jsonpickle as json
 import logging
 import os
+from pydispatch import dispatcher
 
 from ethereum.utils import denoms
 from PyQt4 import QtCore
@@ -79,7 +80,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def register_client(self, client):
-
+        # client is golem.rpc.session.Client
         datadir = yield client.get_datadir()
         config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
@@ -98,6 +99,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
+        try:
+            dispatcher.send(signal='applogic', event='client_registered', client=client, sender=self)
+        except:
+            logger.exception('couldnt send client_registered')
+            raise
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func
@@ -253,12 +259,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             logger.error(error_msg)
             return
 
-        tb = self.get_builder(ts)
-        t = Task.build_task(tb)
-        ts.task_state.outputs = t.get_output_names()
-        ts.task_state.status = TaskStatus.starting
-        self.customizer.update_tasks(self.tasks)
-        self.client.create_task(DictSerializer.dump(t))
+        def cbk(task):
+            ts.task_state.outputs = task.get_output_names()
+            ts.task_state.status = TaskStatus.starting
+            self.customizer.update_tasks(self.tasks)
+        self.client.create_task(self.build_and_serialize_task(ts, cbk))
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -412,13 +417,22 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            tb = self.get_builder(task_state)
-            t = Task.build_task(tb)
-            self.client.run_test_task(DictSerializer.dump(t))
+            self.client.run_test_task(self.build_and_serialize_task(task_state))
 
             return True
 
         return False
+
+    def build_and_serialize_task(self, task_state, cbk=None):
+        tb = self.get_builder(task_state)
+        t = Task.build_task(tb)
+        t_serialized = DictSerializer.dump(t)
+        t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
+        from pprint import pformat
+        logger.warning('test task serialized: %s', pformat(t_serialized))
+        if cbk:
+            cbk(t)
+        return t_serialized
 
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")

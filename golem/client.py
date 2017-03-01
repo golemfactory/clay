@@ -149,8 +149,8 @@ class Client(object):
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
             return
-        if self.client.rpc_publisher:
-            self.client.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
 
     def start(self):
         if self.use_monitor:
