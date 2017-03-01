@@ -79,9 +79,7 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    # XXX in progress: usuwanie copy&paste kodu z klass *Task. Uproszczenie __init__ i przekazywanie Kwargs dalej.
     def __init__(self, node_id, task_definition, total_tasks, root_path, owner_address="", owner_port=0, owner_key_id="", max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
-
         environment = self.ENVIRONMENT_CLASS()
         if task_definition.docker_images is None:
             task_definition.docker_images = environment.docker_images

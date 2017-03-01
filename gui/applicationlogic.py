@@ -3,7 +3,6 @@ from __future__ import division
 import jsonpickle as json
 import logging
 import os
-from pydispatch import dispatcher
 
 from ethereum.utils import denoms
 from PyQt4 import QtCore
@@ -99,11 +98,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
-        try:
-            dispatcher.send(signal='applogic', event='client_registered', client=client, sender=self)
-        except:
-            logger.exception('couldnt send client_registered')
-            raise
 
     def register_start_new_node_function(self, func):
         self.add_new_nodes_function = func

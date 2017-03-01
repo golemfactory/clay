@@ -3,7 +3,6 @@ import datetime
 import jsonpickle as json
 import logging
 import os
-from pydispatch import dispatcher
 import time
 from threading import Lock
 
@@ -75,13 +74,7 @@ class MainWindowCustomizer(Customizer):
         self.timer = QTimer()
         self.timer.start(1000)
         self.timer.timeout.connect(self.update_time)
-        logger.warning('send REVEAL!')
-        try:
-            dispatcher.send(signal='golem.taskmanager.requests', event='reveal_yourself', cbk=self.load_tasks)
-        except:
-            logger.exception('exc in send reveal')
-            raise
-        logger.warning('mainwindowcustomizer __init__ed')
+        logger.debug('mainwindowcustomizer __init__ed')
 
     def init_config(self):
         self.configuration_dialog_customizer = ConfigurationDialogCustomizer(

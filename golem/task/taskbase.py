@@ -23,7 +23,6 @@ class TaskHeader(object):
         :param docker_images: docker image specification
         """
 
-        # XXX self.task_definition = task_definition
         self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
         self.task_owner_key_id = task_owner_key_id

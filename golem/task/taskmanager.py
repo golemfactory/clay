@@ -65,14 +65,6 @@ class TaskManager(TaskEventListener):
 
         self.comp_task_keeper = CompTaskKeeper()
         self.restore_tasks()
-        logger.warning('register REQUESTS_LISTENER')
-        dispatcher.connect(self.requests_listener, signal='golem.taskmanager.requests')
-
-    def requests_listener(self, sender, signal, event='default', **kwargs):
-        logger.warning('REVEAL YOURSELF') # won't work -- only RPC
-        if event != 'reveal_yourself':
-            return
-        kwargs['cbk'](self)
 
     def get_task_manager_root(self):
         return self.root_path
@@ -149,6 +141,7 @@ class TaskManager(TaskEventListener):
                 task, state = pickle.load(f)
                 self.tasks[task.header.task_id] = task
                 self.tasks_states[task.header.task_id] = state
+            dispatcher.send(signal='golem.taskmanager', event='task_restored', task=task, state=state)
 
     @handle_task_key_error
     def resources_send(self, task_id):
