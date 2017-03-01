@@ -15,6 +15,7 @@ update_ini()
 setup(
     name='golem',
     version=get_version(),
+    platforms=sys.platform,
     description='Global, open sourced, decentralized supercomputer',
     long_description=get_long_description(path.abspath(path.dirname(__file__))),
     url='https://golem.network',

@@ -1,14 +1,13 @@
+import subprocess
+import sys
 from codecs import open
 from os import listdir, path
 from sys import platform
 
-import subprocess
-
-import sys
 from setuptools import find_packages
 from setuptools.command.test import test
-from golem.core.common import get_golem_path
 
+from golem.core.common import get_golem_path
 from gui.view.generateui import generate_ui_files
 
 
@@ -125,37 +124,49 @@ def move_wheel():
     files_ = [f for f in listdir(path_) if path.isfile(path.join(path_, f))]
     files_.sort()
     source = path.join(path_, files_[-1])
-    dst = path.join(path_, __file_name())
+    dst = path.join(path_, file_name())
     move(source, dst)
 
 
 def get_version():
     from git import Repo
-    return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
+    return Repo(get_golem_path()).tags[-2].name  # -2 because of 'brass0.3' tag
 
 
 def update_ini():
     version_file = path.join(get_golem_path(), '.version.ini')
-    version = "[version]\nversion = {}".format(get_version())
+    file_name_ = file_name().split('-')
+    tag = file_name_[1]
+    commit = file_name_[2]
+    version = "[version]\nversion = {}\n".format(tag + ("-" + commit + "-") if commit.startswith('0x') else "")
     with open(version_file, 'wb') as f_:
         f_.write(version)
 
 
-def __file_name():
+def file_name():
     """
     Get wheel name
     :return: Name for wheel
     """
     from git import Repo
     repo = Repo(get_golem_path())
-    tag = repo.tags[-1]             # get latest tag
-    tag_id = tag.commit.hexsha      # get commit id from tag
-    commit_id = repo.head.commit.hexsha     # get last commit id
-    # @todo what with platform?
-    if commit_id != tag_id:         # devel package
-        return "golem-{}-0x{}{}-py27-none-any.whl".format(tag.name, commit_id[:4], commit_id[-4:])
-    else:                           # release package
-        return "golem-{}-py27-none-any.whl".format(tag.name)
+    tag = repo.tags[-2]  # get latest tag
+    tag_id = tag.commit.hexsha  # get commit id from tag
+    commit_id = repo.head.commit.hexsha  # get last commit id
+    if platform.startswith('linux'):
+        from platform import architecture
+        if architecture()[0].startswith('64'):
+            plat = "linux_x86_64"
+        else:
+            plat = "linux_x86_64"
+    elif platform.startswith('win'):
+        plat = "win32"
+    else:
+        raise SystemError("Incorrect platform: {}".format(platform))
+    if commit_id != tag_id:  # devel package
+        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name, commit_id[:4], commit_id[-4:], plat)
+    else:  # release package
+        return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
 
 
 def __try_docker():
