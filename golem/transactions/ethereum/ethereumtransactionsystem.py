@@ -77,9 +77,11 @@ class EthereumTransactionSystem(TransactionSystem):
         return None
 
     def get_incoming_payments(self):
-        return [{'status': payment.status.value,
-                 'payer': payment.payer,
-                 'value': payment.value,
-                 'value_usd': self.gnt_to_usd(payment.value), # float or None
-                 'block_number': payment.extra['block_number']
-                 } for payment in self.__monitor.get_incoming_payments()]
+        payments = [{'status': payment.status.value,
+                     'payer': payment.payer,
+                     'value': payment.value,
+                     'value_usd': self.gnt_to_usd(payment.value), # float or None
+                     'block_number': payment.extra['block_number']
+        } for payment in self.__monitor.get_incoming_payments()]
+        print("payments: {}".format(payments))
+        return payments
