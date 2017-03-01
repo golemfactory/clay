@@ -3,6 +3,7 @@ from __future__ import division
 import jsonpickle as json
 import logging
 import os
+import decimal
 
 from ethereum.utils import denoms
 from PyQt5 import QtCore
@@ -163,6 +164,22 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
+        deferred = self.client.get_crypto_prices()
+        deferred.addCallback(self._write_crypto_prices)
+        deferred.addErrback(self._rpc_error)
+
+    def _write_crypto_prices(self, result_tuple):
+        def deserialize(mb_decimal):
+            try:
+                return float(decimal.Decimal(mb_decimal))
+            except decimal.InvalidOperation:
+                return None
+
+        if any(b is None for b in result_tuple):
+            return
+        gnt_price, eth_price = result_tuple
+        self.gnt_price = deserialize(gnt_price)
+        self.eth_price = deserialize(eth_price)
         deferred = self.client.get_balance()
         deferred.addCallback(self._update_payments_view)
         deferred.addErrback(self._rpc_error)
@@ -171,16 +188,24 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         if any(b is None for b in result_tuple):
             return
         gnt_balance, gnt_available, eth_balance = result_tuple
-        gnt_balance = int(gnt_balance)
-        gnt_available = int(gnt_available)
-        eth_balance = int(eth_balance)
+        gnt_balance = int(gnt_balance) / denoms.ether
+        gnt_available = int(gnt_available) / denoms.ether
+        eth_balance = int(eth_balance) / denoms.ether
+        def fmt_usd(value, unitprice):
+            if unitprice is None:
+                return "?"
+            return "{:.2f}".format(value * unitprice)
 
         gnt_reserved = gnt_balance - gnt_available
         ui = self.customizer.gui.ui
-        ui.localBalanceLabel.setText("{:.8f} GNT".format(gnt_balance / denoms.ether))
-        ui.availableBalanceLabel.setText("{:.8f} GNT".format(gnt_available / denoms.ether))
-        ui.reservedBalanceLabel.setText("{:.8f} GNT".format(gnt_reserved / denoms.ether))
-        ui.depositBalanceLabel.setText("{:.8f} ETH".format(eth_balance / denoms.ether))
+        lbt = "{:.8f} GNT ({} USD)".format(gnt_balance, fmt_usd(gnt_balance, self.gnt_price))
+        ui.localBalanceLabel.setText(lbt)
+        ab = "{:.8f} GNT ({} USD)".format(gnt_available, fmt_usd(gnt_available, self.gnt_price))
+        ui.availableBalanceLabel.setText(ab)
+        rb = "{:.8f} GNT ({} USD)".format(gnt_reserved, fmt_usd(gnt_reserved, self.gnt_price))
+        ui.reservedBalanceLabel.setText(rb)
+        db = "{:.8f} ETH ({} USD)".format(eth_balance, fmt_usd(eth_balance, self.eth_price))
+        ui.depositBalanceLabel.setText(db)
         ui.totalBalanceLabel.setText("N/A")
 
     @staticmethod
