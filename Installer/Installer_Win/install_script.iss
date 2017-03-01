@@ -8,7 +8,8 @@
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
 ; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
 #define Repository "C:\golem"           
-#define MyAppVersion ReadIni(Repository+"\\.version", "version", "version", "0.3.0")
+#expr Exec("powershell.exe python setup.py bdist_wheel", "", Repository, 1)
+#define MyAppVersion ReadIni(Repository+"\\.version", "version", "version", "0.1.0")
 #define AppIcon "favicon.ico"
 
 [Setup]
@@ -55,7 +56,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
 Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
 Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;                              
@@ -98,7 +99,7 @@ Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install htt
 Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
 
 ; Finally! Install golem!
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
 ; Configure docker                                   
 Filename: "powershell.exe"; Parameters: "-Command ""& cd """"{sd}\Program Files\Docker Toolbox\""""; .\start.sh """; Description: "Configure docker"

@@ -138,7 +138,7 @@ def update_ini():
     file_name_ = file_name().split('-')
     tag = file_name_[1]
     commit = file_name_[2]
-    version = "[version]\nversion = {}\n".format(tag + ("-" + commit + "-") if commit.startswith('0x') else "")
+    version = "[version]\nversion = {}\n".format(tag + ("-" + commit) if commit.startswith('0x') else "")
     with open(version_file, 'wb') as f_:
         f_.write(version)
 
@@ -158,7 +158,7 @@ def file_name():
         if architecture()[0].startswith('64'):
             plat = "linux_x86_64"
         else:
-            plat = "linux_x86_64"
+            plat = "linux_i386"
     elif platform.startswith('win'):
         plat = "win32"
     else:
