@@ -163,7 +163,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
-        self.client.get_balance().addCallback(self._update_payments_view)
+        deferred = self.client.get_balance()
+        deferred.addCallback(self._update_payments_view)
+        deferred.addErrback(self._rpc_error)
 
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):
@@ -180,6 +182,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         ui.reservedBalanceLabel.setText("{:.8f} GNT".format(gnt_reserved / denoms.ether))
         ui.depositBalanceLabel.setText("{:.8f} ETH".format(eth_balance / denoms.ether))
         ui.totalBalanceLabel.setText("N/A")
+
+    @staticmethod
+    def _rpc_error(error):
+        logger.error("GUI RPC error: {}".format(error))
 
     @inlineCallbacks
     def update_estimated_reputation(self):
