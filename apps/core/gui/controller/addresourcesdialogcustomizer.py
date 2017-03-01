@@ -1,5 +1,5 @@
-from PyQt4 import QtCore
-from PyQt4.QtGui import QHeaderView
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QHeaderView
 
 from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 from gui.view.checkabledirmodel import CheckableDirModel
@@ -18,10 +18,10 @@ class AddResourcesDialogCustomizer(ShowTaskResourcesDialogCustomizer):
         self.gui.ui.folderTreeView.setModel(fs_model)
 
         header = self.gui.ui.folderTreeView.header()
-        header.setResizeMode(QHeaderView.Stretch)
-        header.setResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
         for i in xrange(1, header.count()):
-            header.setResizeMode(i, QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(i, QHeaderView.ResizeToContents)
 
     def _set_folder_tree(self, gui):
         self.folder_tree = gui.ui.folderTreeView

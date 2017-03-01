@@ -1,5 +1,5 @@
 import inspect
-from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
 
 
 class TaskTableElem:
@@ -30,7 +30,7 @@ class TaskTableElem:
 
         self.progressBarInBoxLayoutWidget = QWidget()
         box_layout = QVBoxLayout()
-        box_layout.setMargin(3)
+        #box_layout.setMargin(3)
         box_layout.addWidget(self.progress_bar)
 
         self.progressBarInBoxLayoutWidget.setLayout(box_layout)

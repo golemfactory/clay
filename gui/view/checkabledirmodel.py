@@ -1,5 +1,5 @@
 import os
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtCore, QtWidgets
 
 
 def are_parent_and_child(parent, child):
@@ -10,9 +10,9 @@ def are_parent_and_child(parent, child):
     return False
 
 
-class CheckableDirModel(QtGui.QFileSystemModel):
+class CheckableDirModel(QtWidgets.QFileSystemModel):
     def __init__(self, parent=None):
-        QtGui.QFileSystemModel.__init__(self, None)
+        QtWidgets.QFileSystemModel.__init__(self, None)
         self.checks = {}
         self.start_files = {}
 
@@ -34,10 +34,10 @@ class CheckableDirModel(QtGui.QFileSystemModel):
                 self.checks[index] = QtCore.Qt.Checked
 
             return self.check_state(index)
-        return QtGui.QFileSystemModel.data(self, index, role)
+        return QtWidgets.QFileSystemModel.data(self, index, role)
 
     def flags(self, index):
-        return QtGui.QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
+        return QtWidgets.QFileSystemModel.flags(self, index) | QtCore.Qt.ItemIsUserCheckable
 
     def check_state(self, index):
         while index.isValid():
@@ -62,7 +62,7 @@ class CheckableDirModel(QtGui.QFileSystemModel):
             self.layoutChanged.emit()
             return True
 
-        return QtGui.QFileSystemModel.setData(self, index, value, role)
+        return QtWidgets.QFileSystemModel.setData(self, index, value, role)
 
     def add_checked_files_from_dir(self, dirFilePath, selection):
         for path, dirs, files in os.walk(unicode(dirFilePath)):

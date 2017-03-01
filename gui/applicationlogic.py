@@ -5,9 +5,9 @@ import logging
 import os
 
 from ethereum.utils import denoms
-from PyQt4 import QtCore
-from PyQt4.QtCore import QObject
-from PyQt4.QtGui import QTableWidgetItem
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -499,7 +499,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
-            from PyQt4.QtGui import QMessageBox
             ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
             ms_box.exec_()
             ms_box.show()

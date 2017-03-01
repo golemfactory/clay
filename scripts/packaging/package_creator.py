@@ -66,7 +66,7 @@ class LicenseCollector(object):
     MODULE_EXCEPTIONS = ['golem', 'apps', 'gui', 'encodings', 'importlib', 'lib',
                          'json', 'ctypes', 'sqlite3', 'distutils',
                          'pkg_resources', 'curses', 'pydoc_data',
-                         'unittest', 'compiler', 'xml', 'PyQt4',
+                         'unittest', 'compiler', 'xml', 'PyQt5',
                          'BUILD_CONSTANTS.pyc']
 
     # noinspection PyTypeChecker
@@ -952,7 +952,7 @@ def osx_rewrite_lib_paths(creator, exe_dir, lib_dir, *args):
         return os.path.join(exe_dir, _lib)
 
     def _make_lib_py_path(_lib):
-        return os.path.join(lib_dir, pydir_v, 'PyQt4', _lib + '.so')
+        return os.path.join(lib_dir, pydir_v, 'PyQt5', _lib + '.so')
 
     rewrite_libs = [
         'QtCore',
@@ -1036,7 +1036,7 @@ def win_clean_qt(creator, _, __, x_dir):
         return
 
     remove_dirs = ['doc', 'examples', 'plugins']
-    qt_dir = os.path.join(x_dir, 'PyQt4')
+    qt_dir = os.path.join(x_dir, 'PyQt5')
 
     for d in remove_dirs:
         dir_util.remove_tree(os.path.join(qt_dir, d))
@@ -1322,7 +1322,7 @@ build_options = {
             DirPackage('docker'),
             DirPackage('websocket'),
             DirPackage('PIL'),
-            DirPackage('PyQt4'),
+            DirPackage('PyQt5'),
             DirPackage('certifi'),
             DirPackage('psutil'),
             DirPackage('ndg.httpsclient'),

@@ -18,6 +18,7 @@ coverage:
     - "apps/core/gui/*"
     - "apps/rendering/resources/taskcollector/*"
     - "golem/testutils.py"
+    - "golem/tools/pyuic.py"
     - "save/*"
     - "scripts/*"
     - "tests/*"

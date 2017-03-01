@@ -1,5 +1,9 @@
+import subprocess
 import time
+from multiprocessing import Process
 from threading import Thread
+
+import psutil
 
 
 class ProcessMonitor(Thread):
@@ -16,8 +20,8 @@ class ProcessMonitor(Thread):
         while self.working:
             for process in self.child_processes:
                 if not self.is_process_alive(process):
-                    print "Subprocess {} exited with code {}. Terminating".format(process.pid,
-                                                                                  process.exitcode)
+                    print("Subprocess {} exited with code {}. Terminating"
+                          .format(process.pid, self.exit_code(process)))
                     self.exit()
             time.sleep(1)
 
@@ -41,8 +45,21 @@ class ProcessMonitor(Thread):
             try:
                 process.terminate()
             except Exception as exc:
-                print "Error terminating process {}: {}".format(process, exc)
+                print("Error terminating process {}: {}".format(process, exc))
+
+    @staticmethod
+    def exit_code(process):
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
+            process.poll()
+            return process.returncode
+        elif isinstance(process, Process):
+            return process.exitcode
 
     @staticmethod
     def is_process_alive(process):
-        return process and process.is_alive() and process.exitcode is None
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
+            process.poll()
+            return process.returncode is None
+        elif isinstance(process, Process):
+            return process.exitcode is None
+        return False

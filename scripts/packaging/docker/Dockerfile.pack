@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates apt-transport-https \
     wget curl \
     python-pip python-setuptools python-dev python \
-    python-qt4 pyqt4-dev-tools \
+    python-qt5 pyqt5-dev-tools \
     pkg-config g++ dh-autoreconf \
     libfreeimageplus-dev libjpeg-dev zlib1g-dev libopenexr-dev libgmp-dev libffi-dev libssl-dev iptables \
     libraw15 libdatrie1 libthai0 libpango1.0-0 libilmbase-dev libopenexr-dev \
