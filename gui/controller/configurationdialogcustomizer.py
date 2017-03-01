@@ -27,6 +27,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __init__(self, gui, logic):
         Customizer.__init__(self, gui, logic)
+        self.docker_config_changed = False
 
     def load_data(self):
         def load(config_desc):
