@@ -36,12 +36,18 @@ class TestBlenderFrameTask(TempDirFixture):
         super(TestBlenderFrameTask, self).setUp()
         program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
+        task_definition = RenderingTaskDefinition()
+        task_definition.options = BlenderRendererOptions()
         self.bt = BlenderRenderTask(node_name="example-node-name",
+                                    task_definition=task_definition,
+                                    total_tasks=6,
+                                    root_path=self.tempdir,
+                                )
+        """
                                     task_id="example-task-id",
                                     main_scene_dir=self.tempdir,
                                     main_scene_file=self.temp_file_name("example.blend"),
                                     main_program_file=program_file,
-                                    total_tasks=6,
                                     res_x=2,
                                     res_y=300,
                                     outfilebasename="example_out",
@@ -51,11 +57,11 @@ class TestBlenderFrameTask(TempDirFixture):
                                     subtask_timeout=1,
                                     task_resources=[],
                                     estimated_memory=123,
-                                    root_path=self.tempdir,
                                     use_frames=True,
                                     frames=[7, 8, 10],
                                     compositing=False,
                                     max_price=10)
+                                    """
 
         dm = DirManager(self.path)
         self.bt.initialize(dm)

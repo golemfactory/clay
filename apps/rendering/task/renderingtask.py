@@ -54,7 +54,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     def get_task_kwargs(self, **kwargs):
         # super() when ready
-        kwargs['node_id'] = self.node_name
+        kwargs['node_name'] = self.node_name
         kwargs['task_definition'] = self.task_definition
         kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS(), self.task_definition)
         kwargs['root_path'] = self.root_path
@@ -79,7 +79,7 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    def __init__(self, node_id, task_definition, total_tasks, root_path, owner_address="", owner_port=0, owner_key_id="", max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
+    def __init__(self, node_name, task_definition, total_tasks, root_path, owner_address="", owner_port=0, owner_key_id="", max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
         environment = self.ENVIRONMENT_CLASS()
         if task_definition.docker_images is None:
             task_definition.docker_images = environment.docker_images
@@ -102,7 +102,7 @@ class RenderingTask(CoreTask):
             self,
             src_code=src_code,
             task_definition=task_definition,
-            node_name=node_id,
+            node_name=node_name,
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
