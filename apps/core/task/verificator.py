@@ -3,6 +3,7 @@ import os
 
 from enum import Enum
 
+from apps.core.task.coretaskstate import AdvanceVerificationOptions
 from golem.core.common import HandleKeyError
 
 logger = logging.getLogger("apps.core")
@@ -28,6 +29,13 @@ class CoreVerificator(object):
         self.ver_states = {}
         self.advance_verification = advance_verification
         self.verification_options = verification_options
+
+    def set_verification_options(self, verification_options):
+        self.verification_options = verification_options
+        if verification_options is None:
+            self.advance_verification = False
+        else:
+            self.advance_verification = True
 
     def is_verified(self, subtask_id):
         return self.ver_states.get(subtask_id) == SubtaskVerificationState.VERIFIED

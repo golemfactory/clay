@@ -40,12 +40,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
             return defaults.default_subtasks
 
     def _set_verification_options(self, new_task):
-        if self.task_definition.verification_options is None:
-            new_task.verificator.advance_verification = False
-        else:
-            new_task.verificator.advance_verification = True
-            new_task.verificator.verification_options = self.task_definition.verification_options
-        return new_task
+        new_task.verificator.set_verification_options(self.task_definition.verification_options)
 
 
 class AcceptClientVerdict(object):

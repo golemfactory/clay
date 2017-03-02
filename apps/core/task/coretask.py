@@ -12,7 +12,6 @@ from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.coretaskstate import AdvanceVerificationOptions
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
@@ -114,7 +113,7 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verificator = verificator_class(AdvanceVerificationOptions())
+        self.verificator = verificator_class()
 
     def is_docker_task(self):
         return self.header.docker_images is not None
