@@ -18,7 +18,7 @@ logger = logging.getLogger("apps.core")
 
 
 def log_key_error(*args, **kwargs):
-    logger.warning("This is not my subtask {}".format(args[1]))
+    logger.warning("This is not my subtask {}".format(args[1]), exc_info=True)
     return False
 
 

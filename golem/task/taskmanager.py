@@ -52,7 +52,7 @@ class TaskManager(TaskEventListener):
 
         self.tasks_dir = Path(tasks_dir)
         if not self.tasks_dir.is_dir():
-            self.tasks_dir.mkdir()
+            self.tasks_dir.mkdir(parents=True)
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
@@ -120,15 +120,18 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task.header.task_id)
 
     def dump_task(self, task_id):
-        logger.warning('DUMP TASK')
+        logger.debug('DUMP TASK')
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
             filepath = self.tasks_dir / ('%s.pickle' % (task_id,))
-            logger.warning('DUMP TASK %r', filepath)
+            logger.debug('DUMP TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
         except:
             logger.exception('DUMP ERROR')
+            if filepath.exists():
+                filepath.unlink()
+            raise
 
     def restore_tasks(self):
         logger.warning('RESTORE TASKS')

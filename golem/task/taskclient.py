@@ -13,6 +13,15 @@ class TaskClient(object):
         self._finishing = 0
         self._lock = Lock()
 
+    def __setstate__(self, state):
+        self.__dict__ = state
+        self._lock = Lock()
+
+    def __getstate__(self):
+        state = self.__dict__
+        del state['_lock']
+        return state
+
     @staticmethod
     def assert_exists(node_id, node_dict):
         if node_id not in node_dict:

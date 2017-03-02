@@ -169,7 +169,6 @@ class Task(object):
         """
         return  # Implement in derived class
 
-    @abc.abstractmethod
     def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
         """ Called when a node asks with given parameters asks for a new subtask to compute.
         :param int perf_index: performance that given node declares

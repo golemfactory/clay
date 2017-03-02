@@ -111,6 +111,8 @@ class RenderingTask(CoreTask):
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
+        if isinstance(task_definition.output_file, unicode):
+            task_definition.output_file = task_definition.output_file.encode('utf-8', 'replace')
         self.outfilebasename = Path(task_definition.output_file).stem
         self.output_file = task_definition.output_file
         self.output_format = task_definition.output_format

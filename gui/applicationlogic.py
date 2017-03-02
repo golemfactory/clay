@@ -427,9 +427,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
         t_serialized = DictSerializer.dump(t)
-        t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
+        if 'task_definition' in t_serialized:
+            t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
         from pprint import pformat
-        logger.warning('test task serialized: %s', pformat(t_serialized))
+        logger.warning('task serialized: %s', pformat(t_serialized))
         if cbk:
             cbk(t)
         return t_serialized
