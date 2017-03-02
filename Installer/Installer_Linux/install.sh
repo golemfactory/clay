@@ -74,11 +74,9 @@ function check_dependencies()
 # @brief Install required dependencies
 function install_dependencies()
 {
-    # @todo can we do it without sudo? We can remove the last line and tell user to install it manually,
-    # but still we need sudo when installing docker and geth, so until we find a better solution, it can be done in this way
-    sudo apt-get update
+    apt-get update
     if [ $INSTALL_PIP -eq 1 ]; then
-        sudo apt-get install python-pip
+        apt-get install python-pip
         pip install --upgrade pip
     fi
     if [ $INSTALL_DOCKER -eq 1 ]; then
@@ -89,7 +87,7 @@ function install_dependencies()
         wget -qO- http://get.docker.com > $script
         if [ "$( md5sum $script | awk '{print $1}' )" == "$checksum" ]; then
             sh $script
-            sudo usermod -aG docker $(whoami)
+            usermod -aG docker $(whoami)
         else
             error_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
         fi
@@ -98,10 +96,10 @@ function install_dependencies()
     if [ $INSTALL_GETH -eq 1 ]; then
         echo "INSTALLING GET\n"
         # @todo any easy way? Without adding repository or building from source?
-        sudo apt-get install software-properties-common
-        sudo add-apt-repository -y ppa:ethereum/ethereum
-        sudo apt-get update
-        sudo apt-get install ethereum
+        apt-get install software-properties-common
+        add-apt-repository -y ppa:ethereum/ethereum
+        apt-get update
+        apt-get install ethereum
     fi
     if [ $INSTALL_IPFS -eq 1 ]; then
         url='https://dist.ipfs.io/go-ipfs/v0.4.4/'
@@ -111,7 +109,7 @@ function install_dependencies()
         rm -f $package
         mv go-ipfs/ipfs /usr/local/bin/ipfs
     fi
-    sudo apt-get install openssl python-dev python-qt4 pyqt4-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential
+    apt-get install openssl python-dev python-qt4 pyqt4-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential
 }
 
 
@@ -141,7 +139,7 @@ function install_golem()
             return 0
         else
             error_msg "Some error occurred during installation"
-            error_msg "Try to install it with 'sudo python -m pip install $PACKAGE'"
+            error_msg "Contact Golem Team: http://golemproject.org:3000/ or contact@golem.network"
         fi
     else
         error_msg "Cannot download $PACKAGE"
@@ -149,6 +147,12 @@ function install_golem()
     fi
     return 1
 }
+
+# Make sure only root can run our script
+if [[ $EUID -ne 0 ]]; then
+   error_msg "This script must be run as root"
+   exit 1
+fi
 
 get_version
 if [ "$NEWEST_VERSION" > "$CURRENT_VERSION" ]; then
@@ -163,7 +167,7 @@ install_dependencies
 install_golem
 [ $? -ne 0 ] && exit 1
 echo "Successfully installed version $NEWEST_VERSION"
-if [ $INSTALL_DOCKER - eq 1 ]; then
+if [ $INSTALL_DOCKER -eq 1 ]; then
     error_msg "You need to restart your computer to finish installation"
 fi
 exit 0
