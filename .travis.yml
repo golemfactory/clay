@@ -10,7 +10,7 @@ branches:
 
 before_install:
   - brew update
-  - brew install python qt@5.7 openexr xhyve
+  - brew install qt@5.7 openexr xhyve
   - brew install docker-machine docker-machine-driver-xhyve
   - brew install ethereum/ethereum/ethereum ipfs
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
