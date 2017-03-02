@@ -74,32 +74,30 @@ function check_dependencies()
 # @brief Install required dependencies
 function install_dependencies()
 {
-    apt-get update
+    to_install="openssl python-dev python-qt4 pyqt4-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential"
     if [ $INSTALL_PIP -eq 1 ]; then
-        apt-get install python-pip
-        pip install --upgrade pip
+        to_install=$to_install" python-pip"
     fi
     if [ $INSTALL_DOCKER -eq 1 ]; then
         echo "INSTALLING DOCKER\n"
         checksum='63c26d22854e74d5736fab6e560d268b'
         script='docker_install.sh'
         # @todo any easy way? This will add PPA, update & install via apt
-        wget -qO- http://get.docker.com > $script
-        if [ "$( md5sum $script | awk '{print $1}' )" == "$checksum" ]; then
-            sh $script
+        wget -qO- http://get.docker.com > "/tmp/"$script
+        if [ "$( md5sum /tmp/$script | awk '{print $1}' )" == "$checksum" ]; then
+            sh "/tmp/"$script
             usermod -aG docker $(whoami)
         else
             error_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
         fi
-        rm -f $script
+        rm -f "/tmp/"$script
     fi
     if [ $INSTALL_GETH -eq 1 ]; then
         echo "INSTALLING GET\n"
         # @todo any easy way? Without adding repository or building from source?
-        apt-get install software-properties-common
+        apt-get install -y software-properties-common
         add-apt-repository -y ppa:ethereum/ethereum
-        apt-get update
-        apt-get install ethereum
+        to_install=$to_install" ethereum"
     fi
     if [ $INSTALL_IPFS -eq 1 ]; then
         url='https://dist.ipfs.io/go-ipfs/v0.4.4/'
@@ -109,7 +107,9 @@ function install_dependencies()
         rm -f $package
         mv go-ipfs/ipfs /usr/local/bin/ipfs
     fi
-    apt-get install openssl python-dev python-qt4 pyqt4-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential
+    apt-get update
+    apt-get install -y $to_install
+    pip install --upgrade pip
 }
 
 
