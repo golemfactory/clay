@@ -16,10 +16,15 @@ def account():
     requesting_trust = wait(client.get_requesting_trust(node_key))
     payment_address = wait(client.get_payment_address())
 
-    b, ab, deposit = wait(client.get_balance())
-    b, ab, deposit = float(b), float(ab), float(deposit)
-    rb = b - ab
-    total = deposit + b
+    balance = wait(client.get_balance())
+    if any(b is None for b in balance):
+        balance = 0, 0, 0
+
+    gnt_balance, gnt_available, eth_balance = balance
+    gnt_balance = float(gnt_balance)
+    gnt_available = float(gnt_available)
+    eth_balance = float(eth_balance)
+    gnt_reserved = gnt_balance - gnt_available
 
     return dict(
         node_name=node['node_name'],
@@ -28,14 +33,13 @@ def account():
         provider_reputation=int(computing_trust * 100),
         finances=dict(
             eth_address=payment_address,
-            local_balance=_fmt(b),
-            total_balance=_fmt(total),
-            available_balance=_fmt(ab),
-            reserved_balance=_fmt(rb),
-            deposit_balance=_fmt(deposit)
+            total_balance=_fmt(gnt_balance),
+            available_balance=_fmt(gnt_available),
+            reserved_balance=_fmt(gnt_reserved),
+            eth_balance=_fmt(eth_balance, unit="ETH")
         )
     )
 
 
-def _fmt(value):
-    return "{:.6f} ETH".format(value / denoms.ether)
+def _fmt(value, unit="GNT"):
+    return "{:.6f} {}".format(value / denoms.ether, unit)

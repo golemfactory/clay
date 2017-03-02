@@ -258,7 +258,7 @@ class TaskManager(TaskEventListener):
     def get_value(self, subtask_id):
         """ Return value of a given subtask
         :param subtask_id:  id of a computed subtask
-        :return float: price that should be paid for given subtask
+        :return long: price that should be paid for given subtask
         """
         task_id = self.subtask2task_mapping[subtask_id]
         return self.tasks_states[task_id].subtask_states[subtask_id].value

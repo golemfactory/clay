@@ -2,9 +2,10 @@ from __future__ import division
 
 import logging
 import multiprocessing
-from PyQt4 import QtCore
+from PyQt5 import QtCore
 
-from PyQt4.QtGui import QMessageBox, QPalette
+from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QPalette
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from ethereum.utils import denoms
@@ -26,6 +27,7 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __init__(self, gui, logic):
         Customizer.__init__(self, gui, logic)
+        self.docker_config_changed = False
 
     def load_data(self):
         def load(config_desc):
@@ -44,14 +46,9 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.settingsOkButton.clicked.connect(self.__change_config)
         self.gui.ui.settingsCancelButton.clicked.connect(lambda: self.load_data())
 
-        QtCore.QObject.connect(self.gui.ui.numCoresSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__docker_config_changed)
-               
-        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageComboBox, QtCore.SIGNAL("currentIndexChanged(QString)"),
-                               self.__docker_config_changed)
-        QtCore.QObject.connect(self.gui.ui.maxMemoryUsageSpinBox, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__docker_config_changed)
-        
+        self.gui.ui.numCoresSpinBox.valueChanged.connect(self.__docker_config_changed)
+        self.gui.ui.maxMemoryUsageComboBox.currentIndexChanged.connect(self.__docker_config_changed)
+        self.gui.ui.maxMemoryUsageSpinBox.valueChanged.connect(self.__docker_config_changed)
 
         self.gui.ui.showDiskButton.clicked.connect(self.__show_disk_button_clicked)
         self.gui.ui.removeComputingButton.clicked.connect(self.__remove_from_computing)
@@ -59,16 +56,11 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.refreshComputingButton.clicked.connect(self.__refresh_disk_computed)
         self.gui.ui.refreshReceivedButton.clicked.connect(self.__refresh_disk_received)
 
-        QtCore.QObject.connect(self.gui.ui.requestingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__requesting_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.computingTrustSlider, QtCore.SIGNAL("valueChanged(const int)"),
-                               self.__computing_trust_slider_changed)
-        QtCore.QObject.connect(self.gui.ui.requestingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString)"),
-                               self.__requesting_trust_edited)
-        QtCore.QObject.connect(self.gui.ui.computingTrustLineEdit, QtCore.SIGNAL("textEdited(const QString)"),
-                               self.__computing_trust_edited)
-        QtCore.QObject.connect(self.gui.ui.ethAccountLineEdit, QtCore.SIGNAL("textChanged(QString)"),
-                               self.__check_eth_account)
+        self.gui.ui.requestingTrustSlider.valueChanged.connect(self.__requesting_trust_slider_changed)
+        self.gui.ui.computingTrustSlider.valueChanged.connect(self.__computing_trust_slider_changed)
+        self.gui.ui.requestingTrustLineEdit.textEdited.connect(self.__requesting_trust_edited)
+        self.gui.ui.computingTrustLineEdit.textEdited.connect(self.__computing_trust_edited)
+        self.gui.ui.ethAccountLineEdit.textChanged.connect(self.__check_eth_account)
 
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
 

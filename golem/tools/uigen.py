@@ -1,13 +1,24 @@
 import os
 import subprocess
+from contextlib import contextmanager
 
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
 
+@contextmanager
+def prepend_pyqt5_path():
+    import PyQt5
+    qt_path = os.path.dirname(PyQt5.__file__)
+    path = os.environ['PATH']
+
+    os.environ['PATH'] = qt_path + os.pathsep + path
+    yield
+    os.environ['PATH'] = path
+
+
 def call_pyrcc(py_file, qrc_file):
-    cmd = "pyrcc4 -o " + py_file + " " + qrc_file
-    print cmd
-    subprocess.call(cmd.split())
+    with prepend_pyqt5_path():
+        subprocess.check_call('pyrcc5 -o ' + py_file + ' ' + qrc_file, shell=True)
 
 
 def regenerate_ui_files(root_path):
@@ -42,9 +53,9 @@ def regenerate_ui_files(root_path):
             if not os.path.exists(pyuic_path):
                 raise IOError("Can't open file " + pyuic_path)
 
-            cmd = "python " + pyuic_path + " " + os.path.join(root_path, file_)
+            cmd = ["python", pyuic_path, os.path.join(root_path, file_)]
             print cmd
-            result = subprocess.check_output(cmd.split())
+            result = subprocess.check_output(cmd)
             with open(os.path.join(root_path, out_file), 'w') as f:
                 f.write(result)
 

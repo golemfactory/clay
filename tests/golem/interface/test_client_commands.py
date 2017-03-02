@@ -61,12 +61,11 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2.000000 ETH',
-                    'deposit_balance': '1.000000 ETH',
+                    'available_balance': '2.000000 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'local_balance': '3.000000 ETH',
-                    'reserved_balance': '1.000000 ETH',
-                    'total_balance': '4.000000 ETH'
+                    'eth_balance': '1.000000 ETH',
+                    'reserved_balance': '1.000000 GNT',
+                    'total_balance': '3.000000 GNT'
                 },
             }
 
@@ -146,14 +145,12 @@ class TestNetwork(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
 
-        PeerInfo = namedtuple('PeerInfo', ['address', 'port', 'key_id', 'node_name'])
-
         peer_info = [
-            PeerInfo(
-                '10.0.0.{}'.format(i),
-                '2500{}'.format(i),
-                'deadbeef0{}'.format(i) * 8,
-                'node_{}'.format(i)
+            dict(
+                address='10.0.0.{}'.format(i),
+                port='2500{}'.format(i),
+                key_id='deadbeef0{}'.format(i) * 8,
+                node_name='node_{}'.format(i)
             ) for i in range(1, 1 + 6)
         ]
 
@@ -281,7 +278,7 @@ class TestPayments(unittest.TestCase):
             assert result.data[1][0] == [
                 u'6e6f64655f31',
                 u'waiting',
-                u'0.000000 ETH',
+                u'0.000000 GNT',
                 u'deadbeef01'
             ]
 
@@ -297,7 +294,7 @@ class TestPayments(unittest.TestCase):
                 u'subtask_1',
                 u'6e6f64655f31',
                 u'waiting',
-                u'0.000000 ETH',
+                u'0.000000 GNT',
             ]
             assert result.data[1][0][4]
 

@@ -6,7 +6,7 @@ from os import path
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path
+from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
 from client import local_client
 
 __all__ = ['DockerJob']
@@ -116,6 +116,8 @@ class DockerJob(object):
 
         if is_windows():
             environment = None
+        elif is_osx():
+            environment = dict(OSX_USER=1)
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 

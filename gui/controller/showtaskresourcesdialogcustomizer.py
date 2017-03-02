@@ -1,5 +1,3 @@
-from PyQt4 import QtCore
-
 from customizer import Customizer
 
 
@@ -12,13 +10,8 @@ class ShowTaskResourcesDialogCustomizer(Customizer):
         self.folder_tree = gui.ui.folderTreeView
 
     def _setup_connections(self):
-        QtCore.QObject.connect(self.folder_tree
-                               , QtCore.SIGNAL("expanded (const QModelIndex)")
-                               , self.__tree_view_expanded)
-
-        QtCore.QObject.connect(self.folder_tree
-                               , QtCore.SIGNAL("collapsed (const QModelIndex)")
-                               , self.__tree_view_collapsed)
+        self.folder_tree.expanded.connect(self.__tree_view_expanded)
+        self.folder_tree.collapsed.connect(self.__tree_view_collapsed)
 
     def __tree_view_expanded(self, index):
         self.folder_tree.resizeColumnToContents(0)

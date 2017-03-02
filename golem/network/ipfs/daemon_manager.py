@@ -48,13 +48,12 @@ class IPFSDaemonManager(IPFSClientHandler):
 
         response = self._handle_retries(client.id, IPFSCommands.id)
 
-        if response and response[0]:
-            data = response[0]
-            self.node_id = data.get('ID')
-            self.public_key = data.get('PublicKey')
-            self.addresses = [IPFSAddress.parse(a) for a in data.get('Addresses')]
-            self.agent_version = data.get('AgentVersion')
-            self.proto_version = data.get('ProtoVersion')
+        if response:
+            self.node_id = response.get('ID')
+            self.public_key = response.get('PublicKey')
+            self.addresses = [IPFSAddress.parse(a) for a in response.get('Addresses')]
+            self.agent_version = response.get('AgentVersion')
+            self.proto_version = response.get('ProtoVersion')
 
             for ipfs_addr in self.addresses:
                 # filter out private addresses
@@ -157,8 +156,8 @@ class IPFSDaemonManager(IPFSClientHandler):
         result = self._handle_retries(client.bootstrap_list,
                                       IPFSCommands.bootstrap_list)
 
-        if result and result[0]:
-            return result[0].get('Peers', [])
+        if result:
+            return result.get('Peers', [])
         return []
 
     def _node_action(self, url, method, command, success, error, obj_id=None, async=True):

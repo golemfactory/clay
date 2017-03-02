@@ -3,8 +3,7 @@ from twisted.internet.defer import inlineCallbacks
 from gui.controller.customizer import Customizer
 
 from gui.view.envtableelem import EnvTableElem
-from PyQt4 import QtCore
-from PyQt4.Qt import Qt
+from PyQt5.Qt import Qt
 import logging
 
 logger = logging.getLogger("gui")
@@ -30,8 +29,7 @@ class EnvironmentsDialogCustomizer(Customizer):
 
     def _setup_connections(self):
         self.gui.ui.okButton.clicked.connect(self.gui.close)
-        QtCore.QObject.connect(self.gui.ui.tableWidget, QtCore.SIGNAL("cellClicked(int, int)"),
-                               self.__task_table_row_clicked)
+        self.gui.ui.tableWidget.cellClicked.connect(self.__task_table_row_clicked)
 
     @staticmethod
     def __print_supported(val):

@@ -28,7 +28,7 @@ class EthereumTransactionSystem(TransactionSystem):
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         datadir = path.join(datadir, "ethereum")
-        eth_node = Client(datadir=datadir)
+        eth_node = Client()
         self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
         self.__proc.start()
         self.__monitor = PaymentMonitor(eth_node, self.__node_address)
@@ -44,6 +44,8 @@ class EthereumTransactionSystem(TransactionSystem):
         return '0x' + self.__node_address.encode('hex')
 
     def get_balance(self):
+        if not self.__proc.balance_known():
+            return None, None, None
         gnt = self.__proc.gnt_balance()
         av_gnt = self.__proc._gnt_available()
         eth = self.__proc.eth_balance()

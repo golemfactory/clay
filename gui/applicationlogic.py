@@ -5,9 +5,9 @@ import logging
 import os
 
 from ethereum.utils import denoms
-from PyQt4 import QtCore
-from PyQt4.QtCore import QObject
-from PyQt4.QtGui import QTableWidgetItem
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -163,7 +163,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
-        self.client.get_balance().addCallback(self._update_payments_view)
+        deferred = self.client.get_balance()
+        deferred.addCallback(self._update_payments_view)
+        deferred.addErrback(self._rpc_error)
 
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):
@@ -180,6 +182,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         ui.reservedBalanceLabel.setText("{:.8f} GNT".format(gnt_reserved / denoms.ether))
         ui.depositBalanceLabel.setText("{:.8f} ETH".format(eth_balance / denoms.ether))
         ui.totalBalanceLabel.setText("N/A")
+
+    @staticmethod
+    def _rpc_error(error):
+        logger.error("GUI RPC error: {}".format(error))
 
     @inlineCallbacks
     def update_estimated_reputation(self):
@@ -501,7 +507,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
-            from PyQt4.QtGui import QMessageBox
             ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
             ms_box.exec_()
             ms_box.show()

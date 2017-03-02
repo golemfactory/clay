@@ -2,7 +2,7 @@ from __future__ import division
 
 from golem.model import PaymentStatus
 from gui.controller.customizer import Customizer
-from PyQt4.QtGui import QTableWidgetItem
+from PyQt5.QtWidgets import QTableWidgetItem
 from twisted.internet.defer import inlineCallbacks
 from ethereum.utils import denoms
 

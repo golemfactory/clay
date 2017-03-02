@@ -7,8 +7,9 @@ import time
 from threading import Lock
 
 from ethereum.utils import denoms
-from PyQt4.QtCore import QObject, SIGNAL, Qt, QTimer
-from PyQt4.QtGui import QFileDialog, QIcon, QPalette, QPixmap, QTreeWidgetItem, QMenu, QMessageBox
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtWidgets import QFileDialog, QTreeWidgetItem, QMenu, QMessageBox
+from PyQt5.QtGui import QIcon, QPalette, QPixmap
 from twisted.internet.defer import inlineCallbacks
 
 from golem.core.variables import APP_NAME, APP_VERSION
@@ -31,6 +32,7 @@ from gui.controller.paymentsdialogcustomizer import PaymentsDialogCustomizer
 from gui.controller.previewcontroller import PreviewController
 from gui.controller.showtaskresourcesdialogcustomizer import ShowTaskResourcesDialogCustomizer
 from gui.guidirmanager import get_icons_list
+from gui.view.event_filter import mouse_click
 from gui.view.dialog import PaymentsDialog, TaskDetailsDialog, SubtaskDetailsDialog, ChangeTaskDialog, \
     EnvironmentsDialog, NodeNameDialog, ShowTaskResourcesDialog
 from gui.view.tasktableelem import TaskTableElem, ItemMap
@@ -224,9 +226,8 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.taskTableWidget.doubleClicked.connect(self._task_table_row_double_clicked)
         self.gui.ui.taskTableWidget.customContextMenuRequested.connect(self._context_menu_requested)
         self.gui.ui.startTaskButton.clicked.connect(self._start_task_button_clicked)
-        QObject.connect(self.gui.ui.outputFile, SIGNAL("mouseReleaseEvent(int, int, QMouseEvent)"),
-                        self.__open_output_file)
         self.gui.ui.showResourceButton.clicked.connect(self._show_task_resource_clicked)
+        mouse_click(self.gui.ui.outputFile).connect(self.__open_output_file)
 
     def _setup_app_connections(self):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
@@ -245,7 +246,7 @@ class MainWindowCustomizer(Customizer):
 
     def _load_task_button_clicked(self):
         save_dir = get_save_dir()
-        file_name = QFileDialog.getOpenFileName(self.gui.window,
+        file_name, _ = QFileDialog.getOpenFileName(self.gui.window,
                                                 "Choose task file", save_dir,
                                                 "Golem Task (*.gt)")
         if os.path.exists(file_name):

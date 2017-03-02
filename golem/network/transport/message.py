@@ -6,7 +6,7 @@ import warnings
 
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
-from golem.core.simpleserializer import SimpleSerializer, CBORSerializer
+from golem.core.simpleserializer import CBORSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -32,18 +32,16 @@ class Message(object):
         """ Return short message representation for signature
         :return str: short hash of serialized and sorted message dictionary representation """
         sorted_dict = self._sort_obj(self.dict_repr())
-        return SimpleHash.hash(SimpleSerializer.dumps(sorted_dict))
+        return SimpleHash.hash(CBORSerializer.dumps(sorted_dict))
 
     def _sort_obj(self, v):
         if isinstance(v, dict):
             return self._sort_dict(v)
         # treat objects as dictionaries
         elif hasattr(v, '__dict__'):
-            return self._sort_dict(v.__dict__,
-                                   filter_properties=True)
-        # strings are iterable (see the case below)
+            return self._sort_dict(v.__dict__, filter_properties=True)
         elif isinstance(v, basestring):
-            return v
+            return self._unicode(v)
         elif isinstance(v, collections.Iterable):
             return v.__class__([self._sort_obj(_v) for _v in v])
         return v
@@ -53,8 +51,17 @@ class Message(object):
         for k, v in dictionary.iteritems():
             if filter_properties and (k.startswith('_') or callable(v)):
                 continue
-            result[k] = self._sort_obj(v)
+            result[self._unicode(k)] = self._sort_obj(v)
         return sorted(result.items())
+
+    @staticmethod
+    def _unicode(value):
+        if value is None:
+            return None
+        try:
+            return unicode(value)
+        except UnicodeDecodeError:
+            return value
 
     def serialize(self):
         """ Return serialized message
@@ -425,9 +432,6 @@ class MessagePeers(Message):
     def dict_repr(self):
         return {self.PEERS_STR: self.peers_array}
 
-    def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.peers_array)))
-
 
 class MessageGetTasks(Message):
     TYPE = P2P_MESSAGE_BASE + 5
@@ -475,9 +479,6 @@ class MessageTasks(Message):
 
     def dict_repr(self):
         return {self.TASKS_STR: self.tasks_array}
-
-    def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.tasks_array)))
 
 
 class MessageRemoveTask(Message):
@@ -551,9 +552,6 @@ class MessageResourcePeers(Message):
 
     def dict_repr(self):
         return {self.RESOURCE_PEERS_STR: self.resource_peers}
-
-    def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.resource_peers)))
 
 
 class MessageDegree(Message):
@@ -935,9 +933,6 @@ class MessageTaskToCompute(Message):
 
     def dict_repr(self):
         return {self.COMPUTE_TASK_DEF_STR: self.ctd}
-
-    def get_short_hash(self):
-        return SimpleHash.hash(SimpleSerializer.dumps(self._sort_obj(self.ctd)))
 
 
 class MessageCannotAssignTask(Message):

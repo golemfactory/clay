@@ -3,6 +3,7 @@ import logging
 from threading import Lock
 
 from enum import Enum
+from twisted.internet.defer import Deferred
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +55,14 @@ class BaseResourceServer(object):
         self.get_resources()
 
     def add_task(self, files, task_id, client_options=None):
-        self.resource_manager.add_task(files, task_id, client_options=client_options)
-        res = self.resource_manager.storage.get_resources(task_id)
-        res = self.resource_manager.storage.split_resources(res)
-        if res:
-            logger.debug("Resource server: resource list: {} (client options: {})"
-                         .format(res, client_options))
-        else:
-            logger.warn("Resource server: empty resource list: {}".format(res))
+        result = self.resource_manager.add_task(files, task_id,
+                                                client_options=client_options)
+        result.addErrback(self._add_task_error)
+        return result
+
+    @staticmethod
+    def _add_task_error(error):
+        logger.error("Resource server: add_task error: {}".format(error))
 
     def remove_task(self, task_id, client_options=None):
         self.resource_manager.remove_task(task_id, client_options=client_options)

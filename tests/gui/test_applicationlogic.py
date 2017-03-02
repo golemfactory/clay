@@ -6,7 +6,7 @@ import time
 import uuid
 
 from ethereum.utils import denoms
-from mock import Mock, ANY, call
+from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
 import golem
@@ -303,7 +303,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertTrue(logic.customizer.gui.ui.settingsOkButton.isEnabled())
         self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
-    def test_run_test_task(self):
+    @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    def test_run_test_task(self, *_):
         logic = self.logic
         gui = self.app
 
@@ -337,6 +338,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.progress_dialog.close()
         logic.test_task_started(True)
         self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
         time.sleep(0.5)
@@ -345,6 +347,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.progress_dialog.close()
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
@@ -353,17 +356,20 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.progress_dialog.close()
         time.sleep(0.5)
         logic.abort_test_task()
 
         ttb.src_code = "raise Exception('some error')"
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.progress_dialog.close()
         time.sleep(1)
         self.assertFalse(rpc_publisher.success)
 
         rpc_publisher.reset()
         logic.run_test_task(ts)
+        logic.progress_dialog.close()
         self.assertFalse(rpc_publisher.success)
 
         prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
@@ -452,6 +458,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         broken_benchmark.task_definition.main_program_file = u'Bździągwa'
         logic.customizer.show_error_window = Mock()
         logic.run_benchmark(broken_benchmark, m, m)
+        logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
@@ -459,6 +466,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
         logic.run_benchmark(broken_benchmark, m, m)
+        logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
@@ -467,6 +475,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
         broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
         logic.run_benchmark(broken_benchmark, m, m)
+        logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(u"Main scene file NOT EXISTING is not properly set")

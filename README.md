@@ -16,6 +16,7 @@ between both roles).
 
 Follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
+Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
 [Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
 
@@ -40,8 +41,8 @@ Golem communicates with external technologies some of them may be downloaded and
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python2.7](https://www.python.org/)
-* [PyQt4](https://www.riverbankcomputing.com/software/pyqt/intro)
-* [Qt4](https://www.qt.io/)
+* [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
+* [Qt5](https://www.qt.io/)
 * [SQLite3](https://sqlite.org/index.html)
 
 Benchmarks:
