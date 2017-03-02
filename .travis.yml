@@ -22,7 +22,7 @@ before_install:
 
   - sudo chown root:wheel $(brew --prefix)/opt/docker-machine-driver-xhyve/bin/docker-machine-driver-xhyve
   - sudo chmod u+s $(brew --prefix)/opt/docker-machine-driver-xhyve/bin/docker-machine-driver-xhyve
-  - docker-machine create --driver xhyve --xhyve-virtio-9p default
+  - docker-machine --github-api-token=${GITHUB_TOKEN} create --driver xhyve --xhyve-virtio-9p default
 
   - sudo pip install --upgrade pip setuptools packaging
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
