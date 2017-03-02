@@ -22,8 +22,8 @@ before_install:
   - sudo pip install --upgrade pip setuptools packaging
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
   - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
-  - pip install -r requirements.txt
+  - sudo pip install -r requirements.txt
   - docker-machine create --driver xhyve --xhyve-virtio-9p default
-  - python setup.py develop
+  - sudo python setup.py develop
 
 script: pytest tests
