@@ -232,8 +232,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.results == {}
         assert task.res_files == {}
         assert path.isdir(task.tmp_dir)
-        assert isinstance(task.verificator.verification_options, AdvanceVerificationOptions)
-        assert task.verificator.verification_options.type == 'forFirst'
+        assert task.verificator.verification_options is None
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)
