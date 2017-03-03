@@ -4,10 +4,10 @@ from os import path
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 
-@appveyor_skip
+@ci_skip
 class BlenderEnvTest(unittest.TestCase):
     def test_blender(self):
         """Basic environment test."""
