@@ -13,20 +13,11 @@ cache:
     - /usr/local/Cellar
     - $HOME/Library/Caches/Homebrew
     - $HOME/Library/Caches/pip
-    - $HOME/.docker
 
 before_install:
   - brew update
-  - brew install qt@5.7 openexr xhyve
+  - brew install qt@5.7 openexr
   - brew install ethereum/ethereum/ethereum ipfs
-  - brew install docker-machine docker-machine-driver-xhyve
-
-  - sudo chown root:wheel $(brew --prefix)/opt/docker-machine-driver-xhyve/bin/docker-machine-driver-xhyve
-  - sudo chmod u+s $(brew --prefix)/opt/docker-machine-driver-xhyve/bin/docker-machine-driver-xhyve
-  - mkdir -p ~/.docker/machine/cache/
-  - if [ ! -e ~/.docker/machine/cache/boot2docker.iso ]; then curl -Lo ~/.docker/machine/cache/boot2docker.iso https://github.com/boot2docker/boot2docker/releases/download/v17.03.0-ce/boot2docker.iso; fi
-  - docker-machine --debug --github-api-token=${GITHUB_TOKEN} create --driver xhyve --xhyve-virtio-9p default
-  - eval $(docker-machine env default)
 
   - sudo pip install --upgrade pip setuptools packaging
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
