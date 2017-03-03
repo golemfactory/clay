@@ -18,7 +18,6 @@ before_install:
   - brew update
   - brew install qt@5.7 openexr
   - brew install ethereum/ethereum/ethereum ipfs
-  - brew install nodejs
 
   - rm -rf ~/.ipfs
   - ipfs init
