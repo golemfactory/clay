@@ -1,7 +1,12 @@
+import os
+import subprocess
 import time
 from multiprocessing import Process
 
+
 import subprocess
+import psutil
+from mock import Mock, patch
 
 from golem.core.processmonitor import ProcessMonitor
 from golem.tools.assertlogs import LogTestCase
@@ -70,8 +75,8 @@ class TestProcessMonitor(LogTestCase):
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
 
-    def test_process_timeout(self):
-        mp1, mp2 = MockProcess(), MockProcess(timeout=1)
+    def test_monitor_2(self):
+        mp1, mp2 = MockProcess(), MockProcess(timeout=0)
 
         p1 = Process(target=mp1.run)
         p2 = Process(target=mp2.run)
@@ -90,7 +95,11 @@ class TestProcessMonitor(LogTestCase):
             self.fail("Processes not killed after timeout")
 
     def test_exit(self):
+        import logging
+        logger = logging.getLogger("golem.core")
+
         mp1, mp2 = MockProcess(), MockProcess()
+
         p1 = Process(target=mp1.run)
         p2 = Process(target=mp2.run)
 
@@ -98,7 +107,11 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
-        pm.add_callbacks(pm.kill_processes)
+
+        def callback():
+            logger.warning("Shutting down...")
+
+        pm.add_callbacks(callback)
         pm.start()
         pm.exit()
 
@@ -135,7 +148,7 @@ class TestProcessMonitor(LogTestCase):
 
         process.communicate()
         assert not ProcessMonitor.is_process_alive(process)
-        assert ProcessMonitor._exit_code(process) is not None
+        assert ProcessMonitor.exit_code(process) is not None
 
     def test_lifecycle_multiprocessing(self):
 
@@ -148,7 +161,7 @@ class TestProcessMonitor(LogTestCase):
         process.join()
 
         assert not ProcessMonitor.is_process_alive(process)
-        assert ProcessMonitor._exit_code(process) is not None
+        assert ProcessMonitor.exit_code(process) is not None
 
     def test_lifecycle_none(self):
 
@@ -157,7 +170,7 @@ class TestProcessMonitor(LogTestCase):
         assert not ProcessMonitor.is_process_alive(process)
         assert not ProcessMonitor.is_supported(process)
         assert not ProcessMonitor._pid(process)
-        assert ProcessMonitor._exit_code(process) is None
+        assert ProcessMonitor.exit_code(process) is None
 
     def test_kill_process_popen(self):
 
@@ -177,3 +190,52 @@ class TestProcessMonitor(LogTestCase):
 
         process = Process(target=sleep_1sec)
         ProcessMonitor.kill_process(process)
+
+    def test_exit_code(self):
+
+        process_psutil = psutil.Popen.__new__(psutil.Popen, None)
+        process_subprocess = subprocess.Popen.__new__(subprocess.Popen, None)
+        process_multiprocessing = Process.__new__(Process, None)
+
+        process_psutil.poll = Mock()
+        process_subprocess.poll = Mock()
+        process_multiprocessing._popen = Mock()
+        process_multiprocessing._parent_pid = os.getpid()
+        process_multiprocessing._name = "test"
+        process_multiprocessing._daemonic = False
+
+        process_psutil.returncode = None
+        process_subprocess.returncode = None
+
+        assert ProcessMonitor.is_process_alive(process_psutil)
+        assert ProcessMonitor.is_process_alive(process_subprocess)
+        with patch('multiprocessing.Process.is_alive', side_effect=lambda: False):
+            assert not ProcessMonitor.is_process_alive(process_multiprocessing)
+
+        assert ProcessMonitor.exit_code(None) is None
+        assert ProcessMonitor.exit_code(process_psutil) is None
+        assert ProcessMonitor.exit_code(process_subprocess) is None
+        with patch('multiprocessing.Process.exitcode') as exitcode:
+            exitcode.__get__ = Mock(return_value=None)
+            assert ProcessMonitor.exit_code(process_multiprocessing) is None
+
+        process_psutil.poll = Mock()
+        process_psutil.returncode = 0
+
+        process_subprocess.poll = Mock()
+        process_subprocess.returncode = 0
+
+        assert not ProcessMonitor.is_process_alive(None)
+        assert not ProcessMonitor.is_process_alive(process_psutil)
+        assert not ProcessMonitor.is_process_alive(process_subprocess)
+
+        with patch('multiprocessing.Process.exitcode') as exitcode:
+            exitcode.__get__ = Mock(return_value=0)
+            assert not ProcessMonitor.is_process_alive(process_multiprocessing)
+
+        assert ProcessMonitor.exit_code(process_psutil) == 0
+        assert ProcessMonitor.exit_code(process_subprocess) == 0
+
+        with patch('multiprocessing.Process.exitcode') as exitcode:
+            exitcode.__get__ = Mock(return_value=0)
+            assert ProcessMonitor.exit_code(process_multiprocessing) == 0

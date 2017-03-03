@@ -25,7 +25,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
 
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (0, 0, 0)
+        assert e.get_balance() == (None, None, None)
 
     def test_stop(self):
 
@@ -34,6 +34,7 @@ class TestEthereumTransactionSystem(TestWithDatabase):
         def init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
+            self.testnet = True
 
         with patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
             patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
@@ -42,7 +43,6 @@ class TestEthereumTransactionSystem(TestWithDatabase):
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
             patch(pkg + 'node.NodeProcess.__init__', init), \
-            patch('web3.Web3.__init__', init), \
             patch('web3.providers.rpc.HTTPProvider.__init__', init):
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)

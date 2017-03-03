@@ -41,8 +41,8 @@ Golem communicates with external technologies some of them may be downloaded and
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python2.7](https://www.python.org/)
-* [PyQt4](https://www.riverbankcomputing.com/software/pyqt/intro)
-* [Qt4](https://www.qt.io/)
+* [PyQt5](https://www.riverbankcomputing.com/software/pyqt/intro)
+* [Qt5](https://www.qt.io/)
 * [SQLite3](https://sqlite.org/index.html)
 
 Benchmarks:

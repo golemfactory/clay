@@ -1,9 +1,10 @@
 import sys
-from PyQt4 import QtCore
+from PyQt5 import QtCore
 from os import path
 
-from PyQt4.QtCore import QSize
-from PyQt4.QtGui import QApplication, QIcon
+from PyQt5.QtCore import QSize
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtGui import QIcon
 
 from golem.core.common import get_golem_path
 
@@ -31,21 +32,9 @@ class Gui:
         self.main_window = mainWindowClass()
         self.app_logic = app_logic
 
-    def execute(self, using_qt4_reactor=True):
+    def execute(self):
         self.main_window.show()
-
-        if not using_qt4_reactor:
-            res = self.app.exec_()
-            try:
-                self.app_logic.quit()
-            except Exception as err:
-                import logging
-                logger = logging.getLogger("gui")
-                logger.error("{}".format(err))
-            finally:
-                sys.exit(res)
-        else:
-            self.main_window.window.logic_quit_func = self.app_logic.quit
+        self.main_window.window.logic_quit_func = self.app_logic.quit
 
     def get_main_window(self):
         return self.main_window

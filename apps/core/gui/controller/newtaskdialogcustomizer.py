@@ -6,8 +6,7 @@ import time
 from copy import deepcopy
 
 from ethereum.utils import denoms
-from PyQt4.QtCore import QString
-from PyQt4.QtGui import QFileDialog
+from PyQt5.QtWidgets import QFileDialog
 from twisted.internet.defer import inlineCallbacks
 
 from golem.task.taskstate import TaskStatus
@@ -55,7 +54,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_verification_connections()
 
     def _setup_task_type_connections(self):
-        self.gui.ui.taskTypeComboBox.currentIndexChanged[QString].connect(self._task_type_value_changed)
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(self._task_type_value_changed)
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
@@ -153,10 +152,10 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _save_task_button_clicked(self):
         save_dir = get_save_dir()
-        file_name = QFileDialog.getSaveFileName(self.gui.window,
-                                                "Choose save file", save_dir, "Golem Task (*.gt)")
+        file_name, _ = QFileDialog.getSaveFileName(self.gui.window,
+                                                   "Choose save file", save_dir, "Golem Task (*.gt)")
 
-        if file_name != "":
+        if file_name:
             self._save_task(file_name)
 
     def _save_task(self, file_path):
@@ -360,7 +359,7 @@ class NewTaskDialogCustomizer(Customizer):
             else:
                 time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
                 cost = price * time_
-                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} ETH".format(cost))
+                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
         self.task_settings_changed()

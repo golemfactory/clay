@@ -66,8 +66,8 @@ ETH_ACCOUNT_NAME = ""
 USE_IP6 = 0
 ACCEPT_TASKS = 1
 
-# Default max price per hour -- 0.005 ETH ~ 0.05 USD
-MAX_PRICE = int(0.005 * denoms.ether)
+# Default max price per hour -- 5.0 GNT ~ 0.05 USD
+MAX_PRICE = int(5.0 * denoms.ether)
 
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10

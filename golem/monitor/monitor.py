@@ -51,6 +51,33 @@ class SystemMonitor(object):
         self.config = monitor_config
         self.sender_thread = self.create_sender_thread()
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
+        dispatcher.connect(self.p2p_listener, signal='golem.p2p')
+
+    def p2p_listener(self, sender, signal, event='default', **kwargs):
+        if event != 'listening':
+            return
+        try:
+            result = self.ping_request(kwargs['port'])
+            if not result['success']:
+                dispatcher.send('golem.p2p', event='unreachable', port=kwargs['port'])
+                log.warning('Port unreachable: %r -> %r', kwargs['port'], result['description'])
+        except:
+            log.exception('ping error')
+
+    def ping_request(self, port):
+        import requests
+        timeout = 1 # seconds
+        try:
+            response = requests.post(
+                '%sping-me' % (self.config['HOST'],),
+                data={'port': port,},
+                timeout=timeout,
+            )
+            result = response.json()
+        except requests.ConnectionError as e:
+            result = {'success': False, 'description': 'Local error: %s' % e}
+        log.debug('ping result %r', result)
+        return result
 
     def create_sender_thread(self):
         host = self.config['HOST']

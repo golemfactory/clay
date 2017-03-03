@@ -1,4 +1,4 @@
-from PyQt4.QtCore import QPoint
+from PyQt5.QtCore import QPoint
 
 from golem.task.taskstate import SubtaskState, SubtaskStatus
 from golem.tools.assertlogs import LogTestCase

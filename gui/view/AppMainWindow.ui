@@ -38,7 +38,16 @@
       <property name="sizeConstraint">
        <enum>QLayout::SetNoConstraint</enum>
       </property>
-      <property name="margin">
+      <property name="leftMargin">
+       <number>5</number>
+      </property>
+      <property name="topMargin">
+       <number>5</number>
+      </property>
+      <property name="rightMargin">
+       <number>5</number>
+      </property>
+      <property name="bottomMargin">
        <number>5</number>
       </property>
       <item>
@@ -90,7 +99,7 @@
             <string>New Task</string>
            </property>
            <property name="textAlignment">
-            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+            <set>AlignCenter</set>
            </property>
            <property name="icon">
             <iconset resource="icons.qrc">
@@ -105,7 +114,7 @@
             <string>Tasks</string>
            </property>
            <property name="textAlignment">
-            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+            <set>AlignCenter</set>
            </property>
            <property name="icon">
             <iconset resource="icons.qrc">
@@ -120,7 +129,7 @@
             <string>Status</string>
            </property>
            <property name="textAlignment">
-            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+            <set>AlignCenter</set>
            </property>
            <property name="icon">
             <iconset resource="icons.qrc">
@@ -135,7 +144,7 @@
             <string>Preferences</string>
            </property>
            <property name="textAlignment">
-            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+            <set>AlignCenter</set>
            </property>
            <property name="icon">
             <iconset resource="icons.qrc">
@@ -150,7 +159,7 @@
             <string>Account</string>
            </property>
            <property name="textAlignment">
-            <set>AlignHCenter|AlignVCenter|AlignCenter</set>
+            <set>AlignCenter</set>
            </property>
            <property name="icon">
             <iconset resource="icons.qrc">
@@ -675,10 +684,10 @@
                     <item>
                      <widget class="QLabel" name="label_57">
                       <property name="toolTip">
-                       <string>ETH per an hour of computation</string>
+                       <string>GNT per an hour of computation</string>
                       </property>
                       <property name="text">
-                       <string>ETH/h</string>
+                       <string>GNT/h</string>
                       </property>
                      </widget>
                     </item>
@@ -790,7 +799,16 @@
             <enum>Qt::LeftToRight</enum>
            </property>
            <layout class="QGridLayout" name="gridLayout_3" rowstretch="0,0" columnstretch="5,0">
-            <property name="margin">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
              <number>0</number>
             </property>
             <property name="spacing">
@@ -919,7 +937,16 @@
               <property name="sizeConstraint">
                <enum>QLayout::SetFixedSize</enum>
               </property>
-              <property name="margin">
+              <property name="leftMargin">
+               <number>5</number>
+              </property>
+              <property name="topMargin">
+               <number>5</number>
+              </property>
+              <property name="rightMargin">
+               <number>5</number>
+              </property>
+              <property name="bottomMargin">
                <number>5</number>
               </property>
               <item>
@@ -963,7 +990,7 @@
                  </spacer>
                 </item>
                 <item>
-                 <widget class="ClickableQLabel" name="previewLabel">
+                 <widget class="QLabel" name="previewLabel">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -1166,7 +1193,7 @@
                  </widget>
                 </item>
                 <item row="1" column="1">
-                 <widget class="ClickableQLabel" name="outputFile">
+                 <widget class="QLabel" name="outputFile">
                   <property name="text">
                    <string/>
                   </property>
@@ -1839,7 +1866,16 @@
                 </item>
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_7">
-                  <property name="margin">
+                  <property name="leftMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="bottomMargin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -1913,7 +1949,16 @@
                <layout class="QGridLayout" name="gridLayout_10">
                 <item row="0" column="0">
                  <layout class="QGridLayout" name="gridLayout_6">
-                  <property name="margin">
+                  <property name="leftMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>5</number>
+                  </property>
+                  <property name="bottomMargin">
                    <number>5</number>
                   </property>
                   <item row="0" column="0">
@@ -1943,10 +1988,10 @@
                       <item>
                        <widget class="QLabel" name="label_31">
                         <property name="toolTip">
-                         <string>ETH per an hour of computation</string>
+                         <string>GNT per an hour of computation</string>
                         </property>
                         <property name="text">
-                         <string>ETH/h</string>
+                         <string>GNT/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2420,10 +2465,10 @@
                       <item>
                        <widget class="QLabel" name="label_33">
                         <property name="toolTip">
-                         <string>ETH per an hour of computation</string>
+                         <string>GNT per an hour of computation</string>
                         </property>
                         <property name="text">
-                         <string>ETH/h</string>
+                         <string>GNT/h</string>
                         </property>
                        </widget>
                       </item>
@@ -2446,7 +2491,16 @@
               <property name="fieldGrowthPolicy">
                <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
               </property>
-              <property name="margin">
+              <property name="leftMargin">
+               <number>10</number>
+              </property>
+              <property name="topMargin">
+               <number>10</number>
+              </property>
+              <property name="rightMargin">
+               <number>10</number>
+              </property>
+              <property name="bottomMargin">
                <number>10</number>
               </property>
               <item row="0" column="0">
@@ -2757,7 +2811,16 @@
       </item>
       <item>
        <layout class="QHBoxLayout" name="footerLayout">
-        <property name="margin">
+        <property name="leftMargin">
+         <number>5</number>
+        </property>
+        <property name="topMargin">
+         <number>5</number>
+        </property>
+        <property name="rightMargin">
+         <number>5</number>
+        </property>
+        <property name="bottomMargin">
          <number>5</number>
         </property>
         <item>
@@ -2801,13 +2864,6 @@
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ClickableQLabel</class>
-   <extends>QLabel</extends>
-   <header>clickableqlabel.h</header>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="icons.qrc"/>
  </resources>

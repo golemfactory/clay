@@ -1,8 +1,10 @@
 import atexit
+import subprocess
 import time
 from multiprocessing import Process
-from subprocess import Popen
 from threading import Thread, Lock
+
+import psutil
 
 
 class ProcessMonitor(Thread):
@@ -29,7 +31,7 @@ class ProcessMonitor(Thread):
 
                 if not self.is_process_alive(process):
                     print "Subprocess {} exited with code {}".format(process.pid,
-                                                                     self._exit_code(process))
+                                                                     self.exit_code(process))
                     if self.working:
                         self.run_callbacks(process)
                     self._child_processes.pop(i)
@@ -71,29 +73,15 @@ class ProcessMonitor(Thread):
             try:
                 process.terminate()
 
-                if isinstance(process, Popen):
+                if isinstance(process, (psutil.Popen, subprocess.Popen)):
                     process.communicate()
                 elif isinstance(process, Process):
                     process.join()
 
             except Exception as exc:
-                print "Error terminating subprocess {}: {}".format(cls._pid(process), exc)
+                print("Error terminating process {}: {}".format(process, exc))
             else:
                 print "Subprocess {} terminated".format(cls._pid(process))
-
-    @staticmethod
-    def is_supported(process):
-        return isinstance(process, (Popen, Process))
-
-    @staticmethod
-    def is_process_alive(process):
-        if isinstance(process, Popen):
-            process.poll()
-            return process.returncode is None
-        elif isinstance(process, Process):
-            return process.is_alive()
-        else:
-            return False
 
     @staticmethod
     def _pid(process):
@@ -101,8 +89,22 @@ class ProcessMonitor(Thread):
             return process.pid
 
     @staticmethod
-    def _exit_code(process):
-        if isinstance(process, Popen):
+    def is_supported(process):
+        return isinstance(process, (psutil.Popen, subprocess.Popen, Process))
+
+    @staticmethod
+    def exit_code(process):
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
+            process.poll()
             return process.returncode
         elif isinstance(process, Process):
             return process.exitcode
+
+    @staticmethod
+    def is_process_alive(process):
+        if isinstance(process, (psutil.Popen, subprocess.Popen)):
+            process.poll()
+            return process.returncode is None
+        elif isinstance(process, Process):
+            return process.is_alive()
+        return False

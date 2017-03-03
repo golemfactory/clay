@@ -2,7 +2,7 @@ import sys
 from unittest import TestCase
 
 from mock import MagicMock, patch
-from PyQt4.QtGui import QApplication
+from PyQt5.QtWidgets import QApplication
 
 from gui.view.mainwindow import MainWindow
 from gui.view.appmainwindow import AppMainWindow

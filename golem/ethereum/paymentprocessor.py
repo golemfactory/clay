@@ -12,7 +12,7 @@ from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
 
 from .contracts import TestGNT
-from .node import Faucet
+from .node import ropsten_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
@@ -55,7 +55,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = "dd1c54a094d97c366546b4f29db19ded74cbbbff".decode('hex')
+    TESTGNT_ADDR = "689ed42Ec0C3b3B799Dc5659725Bf536635F45d1".decode('hex')
 
     SENDOUT_TIMEOUT = 1 * 60
     SYNC_CHECK_INTERVAL = 10
@@ -72,7 +72,6 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__faucet_request_ttl = 0
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
         super(PaymentProcessor, self).__init__(self.SENDOUT_TIMEOUT)
 
@@ -96,6 +95,7 @@ class PaymentProcessor(Service):
                 return False
             return True
 
+        # TODO: This can be improved now because we use Ethereum Ropsten.
         # Normally we should check the time of latest block, but Golem testnet
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.
@@ -116,6 +116,9 @@ class PaymentProcessor(Service):
             log.info("Synchronized!")
 
         return True
+
+    def balance_known(self):
+        return self.__gnt_balance is not None and self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
@@ -262,24 +265,13 @@ class PaymentProcessor(Service):
 
     def get_ethers_from_faucet(self):
         if self.__faucet and self.eth_balance(True) == 0:
-            if self.__faucet_request_ttl > 0:
-                # Waiting for transfer from the faucet
-                self.__faucet_request_ttl -= 1
-                return False
-            value = 100
-            log.info("Requesting {} ETH from Golem Faucet".format(value))
             addr = keys.privtoaddr(self.__privkey)
-            Faucet.gimme_money(self.__client, addr, value * denoms.ether)
-            self.__faucet_request_ttl = 10
+            ropsten_faucet_donate(addr)
             return False
         return True
 
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
-            if self.__faucet_request_ttl > 0:
-                # TODO: wait for transaction confirmation
-                self.__faucet_request_ttl -= 1
-                return False
             log.info("Requesting tGNT")
             addr = keys.privtoaddr(self.__privkey)
             nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
@@ -287,7 +279,6 @@ class PaymentProcessor(Service):
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
             tx.sign(self.__privkey)
-            self.__faucet_request_ttl = 10
             self.__client.send(tx)
             return False
         return True

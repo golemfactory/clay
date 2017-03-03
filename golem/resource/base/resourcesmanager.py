@@ -7,7 +7,8 @@ from collections import deque
 from threading import Lock
 
 from golem.core.fileshelper import copy_file_tree, common_dir
-from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient
+from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient, AsyncRequest, \
+    async_run
 
 logger = logging.getLogger(__name__)
 
@@ -340,12 +341,21 @@ class AbstractResourceManager(IClientHandler):
     def add_task(self, files, task_id,
                  client=None, client_options=None):
 
+        request = AsyncRequest(self._add_task, files, task_id,
+                               client=client, client_options=client_options)
+        return async_run(request)
+
+    def _add_task(self, files, task_id,
+                  client=None, client_options=None):
+
         if self.storage.cache.get_prefix(task_id):
             logger.warn("Resource manager: Task {} already exists"
                         .format(task_id))
             return
 
-        if len(files) == 1:
+        if not files:
+            raise RuntimeError("Empty input task resources")
+        elif len(files) == 1:
             prefix = os.path.dirname(next(iter(files)))
         else:
             prefix = common_dir(files)
@@ -382,9 +392,8 @@ class AbstractResourceManager(IClientHandler):
             file_path = self.storage.get_path(path, task_id)
 
         if not os.path.exists(file_path):
-            logger.error("Resource manager: file '{}' does not exist"
-                         .format(file_path))
-            return
+            raise RuntimeError("File '{}' does not exist"
+                               .format(file_path))
 
         local = self.storage.cache.get_by_path(path)
         if local and local.exists and local.task_id == task_id:

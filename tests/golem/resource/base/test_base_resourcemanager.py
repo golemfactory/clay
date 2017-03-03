@@ -217,7 +217,9 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == 1
 
-        self.resource_manager.add_file('/.!&^%', self.task_id)
+        with self.assertRaises(RuntimeError):
+            self.resource_manager.add_files(['/.!&^%'], self.task_id)
+
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == 1
 
@@ -241,7 +243,9 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         self.resource_manager.add_files([self.test_dir_file], self.task_id)
         assert len(storage.get_resources(self.task_id)) == 1
 
-        self.resource_manager.add_files(['/.!&^%'], self.task_id)
+        with self.assertRaises(RuntimeError):
+            self.resource_manager.add_files(['/.!&^%'], self.task_id)
+
         assert len(storage.get_resources(self.task_id)) == 1
 
     def test_add_task(self):
@@ -250,7 +254,7 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
 
         resource_paths = [storage.get_path(r, self.task_id) for r in self.target_resources]
 
-        self.resource_manager.add_task(resource_paths, self.task_id)
+        self.resource_manager._add_task(resource_paths, self.task_id)
         resources = storage.get_resources(self.task_id)
 
         assert len(resources) == len(self.target_resources)
@@ -258,17 +262,17 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         assert storage.cache.get_resources(self.task_id)
 
         new_task = str(uuid.uuid4())
-        self.resource_manager.add_task(resource_paths, new_task)
+        self.resource_manager._add_task(resource_paths, new_task)
         assert len(resources) == len(storage.get_resources(new_task))
 
-        self.resource_manager.add_task(resource_paths, new_task)
+        self.resource_manager._add_task(resource_paths, new_task)
         assert len(storage.get_resources(new_task)) == len(resources)
 
     def test_remove_task(self):
         self.resource_manager.storage.clear_cache()
 
         resource_paths = [self.resource_manager.storage.get_path(r, self.task_id) for r in self.target_resources]
-        self.resource_manager.add_task(resource_paths, self.task_id)
+        self.resource_manager._add_task(resource_paths, self.task_id)
         self.resource_manager.remove_task(self.task_id)
 
         assert not self.resource_manager.storage.cache.get_prefix(self.task_id)
