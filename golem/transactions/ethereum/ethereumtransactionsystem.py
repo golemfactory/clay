@@ -44,6 +44,8 @@ class EthereumTransactionSystem(TransactionSystem):
         return '0x' + self.__node_address.encode('hex')
 
     def get_balance(self):
+        if not self.__proc.balance_known():
+            return None, None, None
         gnt = self.__proc.gnt_balance()
         av_gnt = self.__proc._gnt_available()
         eth = self.__proc.eth_balance()

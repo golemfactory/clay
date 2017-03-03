@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from multiprocessing import freeze_support
 
 import click
@@ -64,7 +66,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
 
 def start_crossbar_worker(unbuffered, module):
     idx = sys.argv.index('-m')
-    sys.argv.pop(idx + 1)
+    sys.argv.pop(idx)
     sys.argv.pop(idx)
 
     if unbuffered:

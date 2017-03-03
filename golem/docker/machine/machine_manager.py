@@ -4,7 +4,7 @@ import time
 from contextlib import contextmanager
 from threading import Thread
 
-from golem.core.common import is_linux
+from golem.core.common import is_linux, is_windows
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
@@ -98,11 +98,14 @@ class DockerMachineManager(DockerConfigManager):
                 env_params = self.docker_machine_command('env', self.docker_machine)
                 DockerMachineManager.__parse_params(env_params)
 
-
-            # VirtualBox availability check
-            self._import_virtualbox()
-            if not self.virtual_box or not self.virtual_box.version:
-                raise EnvironmentError("Unknown VirtualBox version")
+            # FIXME: proper docker machine and hypervisor detection
+            if is_linux():
+                raise EnvironmentError("not required on Linux")
+            elif is_windows():
+                # VirtualBox availability check
+                self._import_virtualbox()
+                if not self.virtual_box or not self.virtual_box.version:
+                    raise EnvironmentError("Unknown VirtualBox version")
 
             # Docker Machine VM availability check
             self.docker_images = self.docker_machine_images()

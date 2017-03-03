@@ -1,4 +1,4 @@
-from PyQt4.QtGui import QAction
+from PyQt5.QtWidgets import QAction
 from golem.task.taskstate import SubtaskStatus
 
 

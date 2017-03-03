@@ -1,14 +1,14 @@
-from PyQt4.QtGui import QDialog
+from PyQt5.QtWidgets import QDialog
 
 from apps.core.gui.view.gen.ui_AddTaskResourcesDialog import Ui_AddTaskResourcesDialog
-from gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
-from gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
-from gen.ui_NodeNameDialog import Ui_NodeNameDialog
-from gen.ui_PaymentsDialog import Ui_PaymentsDialog
-from gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
-from gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
-from gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
-from gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
+from gui.view.gen.ui_ChangeTaskDialog import Ui_ChangeTaskDialog
+from gui.view.gen.ui_EnvironmentsDialog import Ui_EnvironmentsDialog
+from gui.view.gen.ui_NodeNameDialog import Ui_NodeNameDialog
+from gui.view.gen.ui_PaymentsDialog import Ui_PaymentsDialog
+from gui.view.gen.ui_ShowTaskResourcesDialog import Ui_ShowTaskResourceDialog
+from gui.view.gen.ui_SubtaskDetailsDialog import Ui_SubtaskDetailsDialog
+from gui.view.gen.ui_TaskDetailsDialog import Ui_TaskDetailsDialog
+from gui.view.gen.ui_TestingTaskProgressDialog import Ui_testingTaskProgressDialog
 from gui.view.gen.ui_UpdatingConfigDialog import Ui_updatingConfigDialog
 
 

@@ -1,5 +1,5 @@
 import datetime
-from PyQt4.QtGui import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
+from PyQt5.QtWidgets import QTableWidgetItem, QProgressBar, QWidget, QVBoxLayout
 
 
 class SubtaskTableElem:
@@ -36,7 +36,7 @@ class SubtaskTableElem:
 
         self.progressBarInBoxLayoutWidget = QWidget()
         boxLayout = QVBoxLayout()
-        boxLayout.setMargin(3)
+        #boxLayout.setMargin(3)
         boxLayout.addWidget(self.progress_bar)
 
         self.progressBarInBoxLayoutWidget.setLayout(boxLayout)

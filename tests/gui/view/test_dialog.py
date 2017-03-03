@@ -1,7 +1,7 @@
 import sys
 from unittest import TestCase
 
-from PyQt4.QtGui import QApplication, QMainWindow
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from gui.view.dialog import PaymentsDialog, EnvironmentsDialog, NodeNameDialog, ChangeTaskDialog
 

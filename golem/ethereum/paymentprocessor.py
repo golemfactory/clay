@@ -117,6 +117,9 @@ class PaymentProcessor(Service):
 
         return True
 
+    def balance_known(self):
+        return self.__gnt_balance is not None and self.__eth_balance is not None
+
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:

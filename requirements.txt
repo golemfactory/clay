@@ -15,7 +15,6 @@ pyelliptic==1.5.7
 pysha3==0.3
 pystun==0.1.0
 pytz
-qt4reactor==1.6
 requests>=2.12.4
 six==1.10.0
 Twisted>=16.5
@@ -41,3 +40,4 @@ scrypt
 packaging
 pyreadline
 pytest>=3.0.5
+qt5reactor

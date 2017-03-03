@@ -1,5 +1,4 @@
 from unittest import TestCase
-
 from mock import MagicMock
 
 from golem.task.taskstate import SubtaskState, SubtaskStatus
@@ -31,6 +30,19 @@ class TestPriorites(TestCase):
         assert subtasks_priority(s_fin) > subtasks_priority(s_wai)
 
 
+class MagicPoint(MagicMock):
+    def __init__(self, x, y):
+        super(MagicPoint, self).__init__()
+        self.x = x
+        self.y = y
+
+    def pos(self):
+        pos = MagicMock()
+        pos.x.return_value = self.x
+        pos.y.return_value = self.y
+        return pos
+
+
 class TestPreviewController(TestGui):
     def test_output_file(self):
         maincontroller = MagicMock()
@@ -59,18 +71,19 @@ class TestPreviewController(TestGui):
         pc = PreviewController(self.gui.get_main_window(), self.logic, maincontroller)
         td = TaskDesc()
         pc.set_preview(td)
-        pc._PreviewController__pixmap_clicked(10, 10)
+        point_10_10 = MagicPoint(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
         pc.maincontroller.current_task_highlighted = td
-        pc._PreviewController__pixmap_clicked(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
         td.definition.task_type = "TASKTYPE"
         td.definition.task_id = "XYZ"
         pc.logic.get_task.return_value = td
 
-        pc._PreviewController__pixmap_clicked(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
         task_type_mock = MagicMock()
@@ -81,26 +94,27 @@ class TestPreviewController(TestGui):
         subtask_mock.subtask_status = SubtaskStatus.finished
         td.task_state.subtask_states["abc"] = subtask_mock
 
-        pc._PreviewController__pixmap_clicked(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
-        pc._PreviewController__pixmap_clicked(0, 0)
+        point_0_0 = MagicPoint(0, 0)
+        pc._PreviewController__pixmap_clicked(point_0_0)
         pc.maincontroller.show_subtask_details_dialog.assert_not_called()
 
         subtask_mock.extra_data = {'start_task': 1, 'end_task': 2}
-        pc._PreviewController__pixmap_clicked(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         pc.maincontroller.show_subtask_details_dialog.assert_called_with(subtask_mock)
 
         td.task_state.outputs = ["output1", "output2"]
-        pc._PreviewController__pixmap_clicked(10, 10)
+        pc._PreviewController__pixmap_clicked(point_10_10)
         assert pc.maincontroller.show_subtask_details_dialog.call_count == 2
 
-        pc._PreviewController__mouse_on_pixmap_moved(0, 0)
+        pc._PreviewController__mouse_on_pixmap_moved(point_0_0)
         assert task_type_mock.get_task_border.call_count == 0
 
-        pc._PreviewController__mouse_on_pixmap_moved(10, 10)
+        pc._PreviewController__mouse_on_pixmap_moved(point_10_10)
         assert task_type_mock.get_task_border.call_count == 1
 
         td.task_state.outputs = ["output1"]
-        pc._PreviewController__mouse_on_pixmap_moved(10, 10)
+        pc._PreviewController__mouse_on_pixmap_moved(point_10_10)
         assert task_type_mock.get_task_border.call_count == 2

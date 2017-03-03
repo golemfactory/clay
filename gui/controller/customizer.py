@@ -1,8 +1,8 @@
 import os
 import subprocess
 
-from PyQt4.QtCore import QSettings
-from PyQt4.QtGui import QMessageBox
+from PyQt5.QtCore import QSettings
+from PyQt5.QtWidgets import QMessageBox
 
 from golem.core.simpleexccmd import is_windows
 

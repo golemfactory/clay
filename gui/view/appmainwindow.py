@@ -1,8 +1,9 @@
 import types
 from os import path
 
-from PyQt4.QtGui import QPixmap, QFrame, QHeaderView
-from gen.ui_AppMainWindow import Ui_MainWindow
+from PyQt5.QtWidgets import QFrame, QHeaderView
+from PyQt5.QtGui import QPixmap
+from gui.view.gen.ui_AppMainWindow import Ui_MainWindow
 from golem.core.common import get_golem_path
 from mainwindow import MainWindow
 
@@ -18,7 +19,7 @@ class AppMainWindow(object):
         table = self.ui.taskTableWidget
         header = table.horizontalHeader()
         header.setStretchLastSection(True)
-        header.setResizeMode(QHeaderView.Interactive)
+        header.setSectionResizeMode(QHeaderView.Interactive)
 
         def window_resize(instance, event):
             column_count = table.columnCount()
