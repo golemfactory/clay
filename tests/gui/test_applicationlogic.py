@@ -19,7 +19,7 @@ from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
@@ -434,7 +434,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
         self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
-    @appveyor_skip
+    @ci_skip
     def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path
