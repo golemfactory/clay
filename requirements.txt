@@ -34,7 +34,7 @@ PyYAML>=3.12
 crossbar==16.10.1
 jsonpickle
 pydispatcher
-devp2p>=0.5.1
+devp2p>=0.7.1
 scrypt
 packaging
 pyreadline
