@@ -1,26 +1,29 @@
-language: python
-python:
-  - "2.7"
-  #- "pypy" # pysha3 fails with PyPy
-  #- "3.3"
-  #- "3.4"
-  #- "3.5"
-  #- "3.5-dev" # 3.5 development branch
-  #- "nightly" # currently points to 3.6-dev
+language: generic
 
-script: python setup.py test
-
-cache: pip
+os: osx
+osx_image: xcode8.2  # OS X 10.12
 
 branches:
   only:
     - master
     - develop
 
-notifications:
-  webhooks:
-    urls:
-      - https://webhooks.gitter.im/e/ccf4cdfe14a6bda5aff9
-    on_success: change  # options: [always|never|change] default: always
-    on_failure: always  # options: [always|never|change] default: always
-    on_start: never     # options: [always|never|change] default: always
+cache:
+  directories:
+    - /usr/local/Cellar
+    - $HOME/Library/Caches/Homebrew
+    - $HOME/Library/Caches/pip
+
+before_install:
+  - brew update
+  - brew install qt@5.7 openexr
+  - brew install ethereum/ethereum/ethereum ipfs
+
+  - sudo pip install --upgrade pip setuptools packaging pytest mock
+  - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
+  - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
+  - sudo pip install -r requirements.txt
+
+  - sudo python setup.py develop
+
+script: python -m pytest tests

@@ -18,11 +18,11 @@ from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from test_docker_image import DockerTestCase
 
 
-@appveyor_skip
+@ci_skip
 class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"

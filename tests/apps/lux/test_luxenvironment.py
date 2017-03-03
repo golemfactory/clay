@@ -3,10 +3,10 @@ from os import path
 
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 
-@appveyor_skip
+@ci_skip
 class TestLuxRenderEnvironment(unittest.TestCase):
     def test_lux(self):
         env = LuxRenderEnvironment()
