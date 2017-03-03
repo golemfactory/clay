@@ -15,19 +15,33 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.core.task.coretask import CoreTask, logger
+from apps.core.task.coretaskstate import TaskDefinition
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
     def _get_core_task(self):
-        task = CoreTask("src code", "ABC", "xyz", "10.10.10.10", 123, "key",
-                       "environment", 3000, 30, 1024, 1024, 100)
+        task_definition = TaskDefinition()
+        task_definition.max_price = 100
+        task_definition.task_id = "xyz"
+        task_definition.estimated_memory = 1024
+        task_definition.full_task_timeout = 3000
+        task_definition.subtask_timeout = 30
+        task = CoreTask(
+            src_code="src code",
+            task_definition=task_definition,
+            node_name="ABC",
+            owner_address="10.10.10.10",
+            owner_port=123,
+            owner_key_id="key",
+            environment="environment",
+            resource_size=1024,
+        )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
 
     def test_core_task(self):
         task = self._get_core_task()
-        self.assertIsInstance(task, CoreTask)
         self.assertEqual(task.header.max_price, 100)
 
         subtask_id = "xxyyzz"

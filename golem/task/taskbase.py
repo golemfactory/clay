@@ -143,8 +143,8 @@ class Task(object):
         state_attr.remove('listeners')
         return {attr: deepcopy(getattr(self, attr)) for attr in state_attr}
 
-    def __setstate__(self, dict_):
-        self.__dict__ = dict_
+    def __setstate__(self, state):
+        self.__dict__ = state
         self.listeners = []
 
     def __repr__(self):

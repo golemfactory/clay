@@ -153,8 +153,7 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
         logger.info("Resources for task {} sent".format(task_id))
 
-    def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, price, max_resource_size,
-                         max_memory_size, num_cores=0, address=""):
+    def get_next_subtask(self, node_id, node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size, num_cores=0, address=""):
         """ Assign next subtask from task <task_id> to node with given id <node_id> and name. If subtask is assigned
         the function is returning a tuple (
         :param node_id:
@@ -172,40 +171,63 @@ class TaskManager(TaskEventListener):
         False (regardless new subtask was assigned or not). The third element describes whether we're waiting for
         client's other task results.
         """
-        if task_id in self.tasks:
-            task = self.tasks[task_id]
-            ts = self.tasks_states[task_id]
-            th = task.header
-            should_wait = False
-
-            if th.max_price < price:
-                return None, False, should_wait
-
-            if self.__has_subtasks(ts, task, max_resource_size, max_memory_size):
-                extra_data = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
-
-                should_wait = extra_data.should_wait
-                ctd = extra_data.ctd
-
-                if should_wait:
-                    return None, False, True
-                elif not self._check_compute_task_def(ctd, task_id):
-                    return None, False, False
-
-                ctd.key_id = th.task_owner_key_id
-                ctd.return_address = th.task_owner_address
-                ctd.return_port = th.task_owner_port
-                ctd.task_owner = th.task_owner
-                self.subtask2task_mapping[ctd.subtask_id] = task_id
-                self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
-                self.notice_task_updated(task_id)
-                return ctd, False, should_wait
-
-            logger.info("Cannot get next task for estimated performance {}".format(estimated_performance))
-            return None, False, should_wait
-        else:
+        logger.debug('get_next_subtask(%r, %r, %r, %r, %r, %r, %r, %r, %r)', node_id, node_name, task_id, estimated_performance, price, max_resource_size, max_memory_size, num_cores, address)
+        if task_id not in self.tasks:
             logger.info("Cannot find task {} in my tasks".format(task_id))
             return None, True, False
+
+        task = self.tasks[task_id]
+
+        if task.header.max_price < price:
+            return None, False, False
+
+        def has_subtasks():
+            if self.tasks_states[task_id].status not in self.activeStatus:
+                logger.debug('state no in activestatus')
+                return False
+            if not task.needs_computation():
+                logger.debug('not task.needs_computation')
+                return False
+            if task.header.resource_size > (long(max_resource_size) * 1024):
+                logger.debug('resources size >')
+                return False
+            if task.header.estimated_memory > (long(max_memory_size) * 1024):
+                logger.debug('estimated memory >')
+                return False
+            return True
+        if not has_subtasks():
+            logger.info("Cannot get next task for estimated performance {}".format(estimated_performance))
+            return None, False, False
+
+        extra_data = task.query_extra_data(estimated_performance, num_cores, node_id, node_name)
+        if extra_data.should_wait:
+            return None, False, True
+
+        ctd = extra_data.ctd
+
+        def check_compute_task_def():
+            if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
+                logger.debug('check ctd: ctd not instance or not subtask_id')
+                return False
+            if task_id != ctd.task_id or ctd.subtask_id in self.subtask2task_mapping:
+                logger.debug('check ctd: %r != %r or %r in self.subtask2task_maping', task_id, ctd.task_id, ctd.subtask_id)
+                return False
+            if ctd.subtask_id in self.tasks_states[ctd.task_id].subtask_states:
+                logger.debug('check ctd: subtask_states')
+                return False
+            return True
+        if not check_compute_task_def():
+            return None, False, False
+
+        ctd.key_id = task.header.task_owner_key_id
+        ctd.return_address = task.header.task_owner_address
+        ctd.return_port = task.header.task_owner_port
+        ctd.task_owner = task.header.task_owner
+
+        self.subtask2task_mapping[ctd.subtask_id] = task_id
+        self.__add_subtask_to_tasks_states(node_name, node_id, price, ctd, address)
+        self.notice_task_updated(task_id)
+        return ctd, False, extra_data.should_wait
 
     def get_tasks_headers(self):
         ret = []
@@ -459,7 +481,7 @@ class TaskManager(TaskEventListener):
 
     def get_subtasks(self, task_id):
         """
-        Get all subtasks related with given task id
+        Get all subtasks related to given task id
         :param task_id: Task ID
         :return: list of all subtasks related with @task_id or None if @task_id is not known
         """
@@ -558,25 +580,25 @@ class TaskManager(TaskEventListener):
 
         if ctd.task_id not in self.tasks_states:
             raise RuntimeError("Should never be here!")
-        else:
-            ts = self.tasks_states[ctd.task_id]
 
-            ss = SubtaskState()
-            ss.computer.node_id = node_id
-            ss.computer.node_name = node_name
-            ss.computer.performance = ctd.performance
-            ss.computer.ip_address = address
-            ss.computer.price = price
-            ss.time_started = time.time()
-            ss.deadline = ctd.deadline
-            # TODO: read node ip address
-            ss.subtask_definition = ctd.short_description
-            ss.subtask_id = ctd.subtask_id
-            ss.extra_data = ctd.extra_data
-            ss.subtask_status = TaskStatus.starting
-            ss.value = 0
+        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)', node_name, node_id, price, ctd, address)
 
-            ts.subtask_states[ctd.subtask_id] = ss
+        ss = SubtaskState()
+        ss.computer.node_id = node_id
+        ss.computer.node_name = node_name
+        ss.computer.performance = ctd.performance
+        ss.computer.ip_address = address
+        ss.computer.price = price
+        ss.time_started = time.time()
+        ss.deadline = ctd.deadline
+        # TODO: read node ip address
+        ss.subtask_definition = ctd.short_description
+        ss.subtask_id = ctd.subtask_id
+        ss.extra_data = ctd.extra_data
+        ss.subtask_status = TaskStatus.starting
+        ss.value = 0
+
+        self.tasks_states[ctd.task_id].subtask_states[ctd.subtask_id] = ss
 
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)
@@ -586,23 +608,3 @@ class TaskManager(TaskEventListener):
         # self.save_state()
         self.dump_task(task_id)
         dispatcher.send(signal='golem.taskmanager', event='task_status_updated', task_id=task_id)
-
-    def _check_compute_task_def(self, ctd, task_id):
-        if not isinstance(ctd, ComputeTaskDef) or not ctd.subtask_id:
-            return False
-        if task_id != ctd.task_id or self.subtask2task_mapping.get(ctd.subtask_id) is not None:
-            return False
-        if self.tasks_states[ctd.task_id].subtask_states.get(ctd.subtask_id) is not None:
-            return False
-        return True
-
-    def __has_subtasks(self, task_state, task, max_resource_size, max_memory_size):
-        if task_state.status not in self.activeStatus:
-            return False
-        if not task.needs_computation():
-            return False
-        if task.header.resource_size > (long(max_resource_size) * 1024):
-            return False
-        if task.header.estimated_memory > (long(max_memory_size) * 1024):
-            return False
-        return True

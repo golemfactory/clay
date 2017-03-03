@@ -17,12 +17,6 @@ class TaskState(object):
     def __repr__(self):
         return '<TaskStatus: %r %.2f>' % (self.status, self.progress)
 
-    def get_subtask_state(self, subtask_id):
-        if subtask_id in self.subtask_states:
-            return self.subtask_states[subtask_id]
-        else:
-            return None
-
 
 class ComputerState(object):
     def __init__(self):

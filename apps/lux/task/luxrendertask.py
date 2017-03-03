@@ -471,6 +471,6 @@ class LuxRenderTaskBuilder(RenderingTaskBuilder):
 
     def get_task_kwargs(self, **kwargs):
         kwargs = super(LuxRenderTaskBuilder, self).get_task_kwargs(**kwargs)
-        kwargs['halttime'] = self.task_definition.options.halttime,
-        kwargs['haltspp'] = self.task_definition.options.haltspp,
+        kwargs['halttime'] = self.task_definition.options.halttime
+        kwargs['haltspp'] = self.task_definition.options.haltspp
         return kwargs
