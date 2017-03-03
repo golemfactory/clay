@@ -139,9 +139,11 @@ class Task(object):
         self.listeners = []
 
     def __getstate__(self):
-        state_attr = vars(self).keys()
-        state_attr.remove('listeners')
-        return {attr: deepcopy(getattr(self, attr)) for attr in state_attr}
+        state = self.__dict__.copy()
+        del state['listeners']
+        from pprint import pformat
+        logger.warning(pformat(state))
+        return state
 
     def __setstate__(self, state):
         self.__dict__ = state

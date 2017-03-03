@@ -18,7 +18,7 @@ class TaskClient(object):
         self._lock = Lock()
 
     def __getstate__(self):
-        state = self.__dict__
+        state = self.__dict__.copy()
         del state['_lock']
         return state
 
