@@ -3,6 +3,7 @@ from os import makedirs, path, remove
 
 from mock import Mock
 
+from apps.core.task.coretaskstate import TaskDefinition
 from apps.core.task.coretaskstate import TaskState
 from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask
@@ -12,26 +13,58 @@ from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.tools.testdirfixture import TestDirFixture
 
 
+class RenderingTaskMock(RenderingTask):
+    class ENVIRONMENT_CLASS(object):
+        main_program_file = None
+        docker_images = []
+
+        def get_id(self):
+            return "TEST"
+
+    def __init__(self, main_program_file, *args, **kwargs):
+        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
+        super(RenderingTaskMock, self).__init__(*args, **kwargs)
+
+
 class TestRenderingTask(TestDirFixture):
-    def _init_task(self):
+    def setUp(self):
+        super(TestRenderingTask, self).setUp()
         files = self.additional_dir_content([3])
-        task = RenderingTask("ABC", "xyz", "10.10.10.10", 1023, "keyid",
-                             "DEFAULT", 3600, 600, files[0], set(), self.path,
-                             files[1], 100, 800, 600, files[2], files[2],
-                             ".png", self.path, 1024, 1000)
+        task_definition = TaskDefinition()
+        task_definition.max_price = 1000
+        task_definition.task_id = "xyz"
+        task_definition.estimated_memory = 1024
+        task_definition.full_task_timeout = 3600
+        task_definition.subtask_timeout = 600
+        task_definition.main_scene_file=files[1]
+        task_definition.resolution = [800, 600]
+        task_definition.output_file = files[2]
+        task_definition.output_format = ".png"
+
+        task = RenderingTaskMock(
+            main_program_file=files[0],
+            node_name="ABC",
+            task_definition=task_definition,
+            total_tasks=100,
+            root_path=self.path,
+            owner_address="10.10.10.10",
+            owner_port=1023,
+            owner_key_id="keyid",
+        )
+
         dm = DirManager(self.path)
         task.initialize(dm)
-        return task
+        self.task = task
 
     def test_paths(self):
-        rt = self._init_task()
+        rt = self.task
         res1 = path.join(self.path, "dir1", "dir2", "name1")
         res2 = path.join(self.path, "dir1", "dir2", "name2")
         rt.task_resources = [res1, res2]
         assert rt._get_working_directory() == "../.."
 
     def test_remove_from_preview(self):
-        rt = self._init_task()
+        rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
         tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
         makedirs(tmp_dir)
@@ -51,7 +84,7 @@ class TestRenderingTask(TestDirFixture):
         img.close()
 
     def test_update_task_state(self):
-        task = self._init_task()
+        task = self.task
         state = TaskState()
         task.update_task_state(state)
         assert state.extra_data.get("result_preview") is None
@@ -67,7 +100,7 @@ class TestRenderingTask(TestDirFixture):
         assert state.extra_data["result_preview"] == "preview_file"
 
     def test_mode_and_ext_in_open_preview(self):
-        task = self._init_task()
+        task = self.task
         preview = task._open_preview()
         assert path.isfile(task.preview_file_path)
         assert preview.mode == "RGB"

@@ -18,35 +18,6 @@ logger = logging.getLogger("apps.rendering")
 DEFAULT_PADDING = 4
 
 
-class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
-            if self.task_definition.options.use_frames:
-                return len(self.task_definition.options.frames)
-            else:
-                return defaults.default_subtasks
-
-        if self.task_definition.options.use_frames:
-            num_frames = len(self.task_definition.options.frames)
-            if definition.total_subtasks > num_frames:
-                est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
-                if est != definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
-                return est
-
-            est = int(
-                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(definition.total_subtasks)))))
-            if est != definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
-
-            return est
-
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
-        else:
-            return defaults.default_subtasks
-
-
 class FrameRendererOptions(Options):
     def __init__(self):
         super(FrameRendererOptions, self).__init__()
@@ -56,33 +27,27 @@ class FrameRendererOptions(Options):
 
 class FrameRenderingTask(RenderingTask):
 
+    VERIFICATOR_CLASS = FrameRenderingVerificator
+
     ################
     # Task methods #
     ################
 
-    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment,
-                 timeout, subtask_timeout, main_program_file, task_resources, main_scene_dir,
-                 main_scene_file, total_tasks, res_x, res_y, outfilebasename, output_file,
-                 output_format, root_path, estimated_memory, use_frames, frames, max_price,
-                 docker_images=None, verificatior_class=FrameRenderingVerificator):
-        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id,
-                               environment, timeout, subtask_timeout, main_program_file,
-                               task_resources, main_scene_dir, main_scene_file, total_tasks,
-                               res_x, res_y, outfilebasename, output_file, output_format,
-                               root_path, estimated_memory, max_price, docker_images,
-                               verificatior_class)
+    def __init__(self,  **kwargs):
+        super(FrameRenderingTask, self).__init__(**kwargs)
 
-        self.use_frames = use_frames
-        self.frames = frames
+        task_definition = kwargs['task_definition']
+        self.use_frames = task_definition.options.use_frames
+        self.frames = task_definition.options.frames
 
         self.frames_given = {}
-        for frame in frames:
+        for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
 
-        if use_frames:
-            self.preview_file_path = [None] * len(frames)
-            self.preview_task_file_path = [None] * len(frames)
+        if self.use_frames:
+            self.preview_file_path = [None] * len(self.frames)
+            self.preview_task_file_path = [None] * len(self.frames)
 
         self.verificator.use_frames = self.use_frames
         self.verificator.frames = self.frames
@@ -368,3 +333,34 @@ def __num_from_pixel(p_y, res_y, tasks):
     num = max(num, 1)
     num = min(num, tasks)
     return num
+
+
+class FrameRenderingTaskBuilder(RenderingTaskBuilder):
+    TASK_CLASS = FrameRenderingTask
+
+    def _calculate_total(self, defaults, definition):
+        if definition.optimize_total:
+            if self.task_definition.options.use_frames:
+                return len(self.task_definition.options.frames)
+            else:
+                return defaults.default_subtasks
+
+        if self.task_definition.options.use_frames:
+            num_frames = len(self.task_definition.options.frames)
+            if definition.total_subtasks > num_frames:
+                est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
+                if est != definition.total_subtasks:
+                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
+                return est
+
+            est = int(
+                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(definition.total_subtasks)))))
+            if est != definition.total_subtasks:
+                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
+
+            return est
+
+        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
+            return definition.total_subtasks
+        else:
+            return defaults.default_subtasks

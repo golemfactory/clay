@@ -6,22 +6,50 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.rendering.task.framerenderingtask import FrameRenderingTask, get_frame_name
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
+                                                    FrameRendererOptions)
+
+
+class FrameRenderingTaskMock(FrameRenderingTask):
+    class ENVIRONMENT_CLASS(object):
+        main_program_file = None
+        docker_images = []
+
+        def get_id(self):
+            return "TEST"
+
+    def __init__(self, main_program_file, *args, **kwargs):
+        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
+        super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
 
 class TestFrameRenderingTask(TestDirFixture):
+
     def _get_frame_task(self, use_frames=True):
         files_ = self.additional_dir_content([3])
-        task = FrameRenderingTask("ABC", "xyz", "10.10.10.10", 1023, "key_id", "DEFAULT", 3600, 600, files_[0], [],
-                                  self.path, files_[1], 3, 800, 600, files_[2], files_[2], "PNG", self.path, 1000,
-                                  use_frames, range(6), 15, None)
+        rt = RenderingTaskDefinition()
+        rt.options = FrameRendererOptions()
+        rt.options.use_frames = use_frames
+        rt.options.frames = range(6)
+        rt.main_scene_file = files_[1]
+        rt.output_format = "PNG"
+        rt.output_file = files_[2]
+        rt.resources = []
+        rt.resolution = [800, 600]
+        rt.full_task_timeout = 3600
+        rt.subtask_timeout = 600
+        rt.estimated_memory = 1000
+        rt.max_price = 15
+        task = FrameRenderingTaskMock(files_[0],
+                                      node_name="ABC",
+                                      task_definition=rt,
+                                      total_tasks=3,
+                                      root_path=self.path
+                                      )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
-
-    def test_task(self):
-        task = self._get_frame_task()
-        assert isinstance(task, FrameRenderingTask)
 
     def test_get_frame_name(self):
         assert get_frame_name("ABC", "png", 124) == "ABC0124.png"
@@ -64,7 +92,6 @@ class TestFrameRenderingTask(TestDirFixture):
         output_file = task.output_file
         assert os.path.isfile(output_file)
 
-
         task = self._get_frame_task()
         task.tmp_dir = self.path
         task._accept_client("NODE 1")
@@ -76,4 +103,3 @@ class TestFrameRenderingTask(TestDirFixture):
         task.accept_results("SUBTASK1", [img_file, img_file2])
         assert task.frames_given["4"][0] == img_file
         assert task.frames_given["5"][0] == img_file2
-

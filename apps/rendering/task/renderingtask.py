@@ -1,15 +1,17 @@
+from copy import deepcopy
 import logging
 import math
 import os
 import weakref
 
-from copy import deepcopy
-
+from pathlib import Path
 from PIL import Image, ImageChops
+
 
 from golem.core.common import get_golem_path, timeout_to_deadline
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
@@ -17,6 +19,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil
+from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
 
 
@@ -29,20 +32,6 @@ logger = logging.getLogger("apps.rendering")
 MAX_PENDING_CLIENT_RESULTS = 1
 
 
-class RenderingTaskBuilder(CoreTaskBuilder):
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
-            return defaults.default_subtasks
-
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
-        else:
-            return defaults.default_subtasks
-
-    def _set_verification_options(self, new_task):
-        new_task.verificator.set_verification_options(self.task_definition.verification_options)
-
-
 class AcceptClientVerdict(object):
     ACCEPTED = 0
     REJECTED = 1
@@ -51,43 +40,54 @@ class AcceptClientVerdict(object):
 
 class RenderingTask(CoreTask):
 
+    VERIFICATOR_CLASS = RenderingVerificator
+
     ################
     # Task methods #
     ################
 
-    def __init__(self, node_id, task_id, owner_address, owner_port, owner_key_id, environment,
-                 timeout, subtask_timeout, main_program_file, task_resources, main_scene_dir,
-                 main_scene_file, total_tasks, res_x, res_y, outfilebasename, output_file,
-                 output_format, root_path, estimated_memory, max_price, docker_images=None,
-                 verificator_class=RenderingVerificator,
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
+    def __init__(self, node_name, task_definition, total_tasks, root_path, owner_address="",
+                 owner_port=0, owner_key_id="", max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
 
+        environment = self.ENVIRONMENT_CLASS()
+        if task_definition.docker_images is None:
+            task_definition.docker_images = environment.docker_images
+
+        main_program_file = environment.main_program_file
         try:
             with open(main_program_file, "r") as src_file:
                 src_code = src_file.read()
         except IOError as err:
             logger.error("Wrong main program file: {}".format(err))
             src_code = ""
+        self.main_program_file = main_program_file
 
         resource_size = 0
-        task_resources = set(filter(os.path.isfile, task_resources))
+        task_resources = set(filter(os.path.isfile, task_definition.resources))
         for resource in task_resources:
             resource_size += os.stat(resource).st_size
 
-        CoreTask.__init__(self, src_code, node_id, task_id, owner_address, owner_port,
-                          owner_key_id, environment, timeout, subtask_timeout, resource_size,
-                          estimated_memory, max_price, docker_images, verificator_class)
+        CoreTask.__init__(
+            self,
+            src_code=src_code,
+            task_definition=task_definition,
+            node_name=node_name,
+            owner_address=owner_address,
+            owner_port=owner_port,
+            owner_key_id=owner_key_id,
+            environment=environment.get_id(),
+            resource_size=resource_size)
 
-        self.main_program_file = main_program_file
-        self.main_scene_file = main_scene_file
-        self.main_scene_dir = main_scene_dir
-        self.outfilebasename = outfilebasename
-        self.output_file = output_file
-        self.output_format = output_format
+        self.main_scene_file = task_definition.main_scene_file
+        self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
+        if isinstance(task_definition.output_file, unicode):
+            task_definition.output_file = task_definition.output_file.encode('utf-8', 'replace')
+        self.outfilebasename = Path(task_definition.output_file).stem
+        self.output_file = task_definition.output_file
+        self.output_format = task_definition.output_format
 
         self.total_tasks = total_tasks
-        self.res_x = res_x
-        self.res_y = res_y
+        self.res_x, self.res_y = task_definition.resolution
 
         self.root_path = root_path
         self.preview_file_path = None
@@ -296,8 +296,6 @@ class RenderingTask(CoreTask):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
-
-
     def __get_path(self, path):
         if is_windows():
             return self.__get_path_windows(path)
@@ -305,3 +303,34 @@ class RenderingTask(CoreTask):
 
     def __get_path_windows(self, path):
         return path.replace("\\", "/")
+
+
+class RenderingTaskBuilder(CoreTaskBuilder):
+    TASK_CLASS = RenderingTask
+    DEFAULTS = RendererDefaults
+
+    def _calculate_total(self, defaults, definition):
+        if definition.optimize_total:
+            return defaults.default_subtasks
+
+        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
+            return definition.total_subtasks
+        else:
+            return defaults.default_subtasks
+
+    def _set_verification_options(self, new_task):
+        new_task.verificator.set_verification_options(self.task_definition.verification_options)
+
+    def get_task_kwargs(self, **kwargs):
+        # super() when ready
+        kwargs['node_name'] = self.node_name
+        kwargs['task_definition'] = self.task_definition
+        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS(), self.task_definition)
+        kwargs['root_path'] = self.root_path
+        return kwargs
+
+    def build(self):
+        task = super(RenderingTaskBuilder, self).build()
+        self._set_verification_options(task)
+        task.initialize(self.dir_manager)
+        return task
