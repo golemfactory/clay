@@ -18,7 +18,7 @@ a = Analysis(['golemcli.py'],
 
              hiddenimports=[
                  'Cryptodome',
-                 'rlp', 'web3', 'pylru', 'ethereum-abi-utils',
+                 'rlp', 'web3', 'pylru',
                  'pysha3', 'requests', 'scrypt',
                  'OpenEXR', 'Imath'
              ],
