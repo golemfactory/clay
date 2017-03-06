@@ -274,9 +274,9 @@ class MainWindowCustomizer(Customizer):
 
     def load_tasks(self, task_manager):
         """Loads tasks that are already in manager."""
-        logger.warning('LOAD TASKSclient: %r', self.logic.client)
+        logger.debug('LOAD TASKS client: %r', self.logic.client)
         for task in task_manager.tasks:
-            logger.warning('LOAD TASK: %r', task)
+            logger.debug('LOAD TASK: %r', task)
             self._add_task(task.header.task_id, 'Restored', 'task_name')
 
     def _add_task(self, task_id, status, task_name):

@@ -134,16 +134,21 @@ class TaskManager(TaskEventListener):
             raise
 
     def restore_tasks(self):
-        logger.warning('RESTORE TASKS')
+        logger.debug('RESTORE TASKS')
         for path in self.tasks_dir.iterdir():
-            logger.warning('RESTORE TASKS %r', path)
+            logger.debug('RESTORE TASKS %r', path)
             if not path.suffix == '.pickle':
                 continue
-            logger.warning('RESTORE TASKS really %r', path)
+            logger.debug('RESTORE TASKS really %r', path)
             with path.open('rb') as f:
-                task, state = pickle.load(f)
-                self.tasks[task.header.task_id] = task
-                self.tasks_states[task.header.task_id] = state
+                try:
+                    task, state = pickle.load(f)
+                    self.tasks[task.header.task_id] = task
+                    self.tasks_states[task.header.task_id] = state
+                except (pickle.UnpicklingError, EOFError, ImportError):
+                    logger.exception('Problem restoring task from: %s', path)
+                    path.unlink()
+                    continue
             dispatcher.send(signal='golem.taskmanager', event='task_restored', task=task, state=state)
 
     @handle_task_key_error

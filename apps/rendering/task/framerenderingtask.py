@@ -78,7 +78,7 @@ class FrameRenderingTask(RenderingTask):
     @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, result_type=0):
         should_accept = self.should_accept(subtask_id)
-        logger.warning('computation_finished(%r, %r, %r) should_accept: %r', subtask_id, task_results, result_type, should_accept)
+        logger.debug('computation_finished(%r, %r, %r) should_accept: %r', subtask_id, task_results, result_type, should_accept)
         if not should_accept:
             return
 
