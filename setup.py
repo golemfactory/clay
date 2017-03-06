@@ -6,21 +6,10 @@ import subprocess
 import sys
 from os import path
 
-import imp
-from setuptools import find_packages
-
+from setuptools import find_packages, Command, setup
 from setuptools.command.test import test as TestCommand
 
-try:
-    from cx_Freeze import setup
-    use_cx_Freeze = True
-except ImportError:
-    from setuptools import setup
-    use_cx_Freeze = False
-
-
 from gui.view.generateui import generate_ui_files
-
 
 ui_err = ""
 
@@ -84,6 +73,7 @@ def try_building_docker_images():
             finally:
                 os.chdir(cwd)
 
+
 def try_pulling_docker_images():
     err_msg = try_docker()
     if err_msg:
@@ -133,6 +123,36 @@ class PyTest(TestCommand):
         sys.exit(errno)
 
 
+class PyInstaller(Command):
+
+    description = "run pyinstaller and packaging actions"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    @classmethod
+    def run(cls):
+        import subprocess
+        import shutil
+
+        build_dir = os.path.join('build')
+        dist_dir = os.path.join('dist')
+
+        for directory in [build_dir, dist_dir]:
+            if os.path.exists(directory):
+                shutil.rmtree(directory)
+
+        for spec in ['golemapp.spec', 'golemcli.spec']:
+            subprocess.check_call(['python', '-m', 'PyInstaller', spec])
+
+        # FIXME: drop Qt
+        shutil.copy('golemgui.py', dist_dir)
+
+
 def parse_requirements(requirements_file):
     requirements = []
     dependency_links = []
@@ -168,23 +188,6 @@ def current_dir():
 requirements, dependency_links = parse_requirements('requirements.txt')
 test_requirements = ['mock', 'pytest']
 
-options = {}
-executables = []
-cmdclass = {'test': PyTest}
-packages = find_required_packages()
-
-if use_cx_Freeze:
-
-    package_creator = imp.load_source(
-        'package_creator',
-        os.path.join('scripts', 'packaging', 'package_creator.py')
-    )
-    package_creator.update_setup_config(
-        setup_dir=current_dir(),
-        options=options,
-        cmdclass=cmdclass,
-        executables=executables
-    )
 
 setup(
     name='golem',
@@ -195,7 +198,7 @@ setup(
     author="Golem Team",
     author_email='contact@golemproject.net',
     url='http://golemproject.net',
-    packages=packages,
+    packages=find_required_packages(),
     entry_points={
         'console_scripts': [
             'golemapp = golemapp:start',
@@ -220,9 +223,11 @@ setup(
     #     'Programming Language :: Python :: 3.3',
     #     'Programming Language :: Python :: 3.4',
     # ],
-    cmdclass=cmdclass,
-    options=options,
-    executables=executables,
+    cmdclass={
+        'test': PyTest,
+        'pyinstaller': PyInstaller
+    },
+    options={},
     test_suite='tests',
     tests_require=test_requirements
 )
