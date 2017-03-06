@@ -2,7 +2,7 @@ import logging
 
 import rlp
 from ethereum.utils import zpad
-from web3 import Web3, IPCProvider
+from web3 import Web3, IPCProvider, HTTPProvider
 
 from .node import NodeProcess
 
@@ -20,6 +20,7 @@ class Client(object):
         if not Client.node.is_running():
             Client.node.start()
         self.web3 = Web3(IPCProvider(testnet=Client.node.testnet))
+        # self.web3 = Web3(HTTPProvider('http://localhost:8545'))
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
 
@@ -124,8 +125,6 @@ class Client(object):
             for i in xrange(len(topics)):
                 topics[i] = Client.__add_padding(topics[i])
         obj = {
-            'fromBlock': from_block,
-            'toBlock': to_block,
             'address': Client.__add_padding(address),
             'topics': topics
         }

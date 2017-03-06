@@ -18,7 +18,7 @@ class IncomingPayment(object):
 
 
 class PaymentMonitor(Service):
-    BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
+    BANK_ADDR = "0x689ed42Ec0C3b3B799Dc5659725Bf536635F45d1"
 
     def __init__(self, client, addr):
         self.__client = client
@@ -47,36 +47,48 @@ class PaymentMonitor(Service):
                                                      to_block='latest',
                                                      address=self.BANK_ADDR,
                                                      topics=topics)
-            print("filterid: {}".format(self.__filter))
 
+
+        print("filterid: {}".format(self.__filter))
         new_logs = self.__client.get_filter_changes(self.__filter)
+        # new_logs = self.__client.get_filter_changes("0x18539ff71780544925d16e21f36aa091")
         print("new_logs: {}".format(new_logs))
         print("self.__payments: {}".format(self.__payments))
         if not new_logs:
             return self.__payments
 
-        for l in new_logs:
-            payer = l['topics'][1][26:].decode('hex')
-            if len(payer) != 20:
-                raise ValueError("Incorrect payer length: {}. Should be 20".format(len(payer)))
-            payee = l['topics'][2][26:].decode('hex')
-            if payee != self.__addr:
-                raise ValueError("Payee should be: {}, but is: {}".format(self.__addr, payee))
-            value = int(l['data'], 16)
-            block_number = l['blockNumber']
-            block_hash = l['blockHash'][2:].decode('hex')
-            if len(block_hash) != 32:
-                raise ValueError("Incorrect block hash length: {} .Should be 32".format(len(block_hash)))
-            tx_hash = l['transactionHash'][2:].decode('hex')
-            if len(tx_hash) != 32:
-                raise ValueError("Incorrect tx length: {}. Should be 32".format(len(tx_hash)))
-            payment = IncomingPayment(payer, value)
-            payment.extra = {'block_number': block_number,
-                             'block_hash': block_hash,
-                             'tx_hash': tx_hash}
+        for log in new_logs:
+            payment = log2payment(log, self.__addr)
+            if payment.extra['block_hash'] is None:
+                continue
             self.__payments.append(payment)
             dispatcher.send(signal='golem.monitor', event='income', addr=payer.encode('hex'), value=value)
             log.info("Incoming payment: {} -> ({} ETH)".format(
                 payer.encode('hex'), value / denoms.ether))
 
         return self.__payments
+
+def log2payment(l, my_own_address):
+    payer = l['topics'][1][26:].decode('hex')
+    if len(payer) != 20:
+        raise ValueError("Incorrect payer length: {}. Should be 20".format(len(payer)))
+    payee = l['topics'][2][26:].decode('hex')
+    print l['topics'][2][26:]
+    if payee != my_own_address:
+        raise ValueError("Payee should be: {}, but is: {}".format(my_own_address, payee))
+    value = int(l['data'], 16)
+    block_number = l['blockNumber']
+    print("lblockhash: {}".format(l))
+    block_hash = None
+    if l['blockHash']:
+        block_hash = l['blockHash'][2:].decode('hex')
+        if len(block_hash) != 32:
+            raise ValueError("Incorrect block hash length: {} .Should be 32".format(len(block_hash)))
+    tx_hash = l['transactionHash'][2:].decode('hex')
+    if len(tx_hash) != 32:
+        raise ValueError("Incorrect tx length: {}. Should be 32".format(len(tx_hash)))
+    payment = IncomingPayment(payer, value)
+    payment.extra = {'block_number': block_number,
+                     'block_hash': block_hash,
+                     'tx_hash': tx_hash}
+    return payment
