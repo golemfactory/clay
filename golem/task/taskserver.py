@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import time
@@ -18,6 +19,9 @@ from weakreflist.weakreflist import WeakList
 logger = logging.getLogger(__name__)
 
 
+tmp_cycler = itertools.cycle(range(50))
+
+
 class TaskServer(PendingConnectionsServer):
     def __init__(self, node, config_desc, keys_auth, client,
                  use_ipv6=False, use_docker_machine_manager=True):
@@ -29,7 +33,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_keeper = TaskHeaderKeeper(client.environments_manager, min_price=config_desc.min_price)
         self.task_manager = TaskManager(config_desc.node_name, self.node, self.keys_auth,
                                         root_path=TaskServer.__get_task_manager_root(client.datadir),
-                                        use_distributed_resources=config_desc.use_distributed_resource_management)
+                                        use_distributed_resources=config_desc.use_distributed_resource_management,
+                                        tasks_dir=os.path.join(client.datadir, 'tasks'))
         self.task_computer = TaskComputer(config_desc.node_name, task_server=self,
                                           use_docker_machine_manager=use_docker_machine_manager)
         self.task_connections_helper = TaskConnectionsHelper()
@@ -71,6 +76,9 @@ class TaskServer(PendingConnectionsServer):
         self.__remove_old_tasks()
         # self.__remove_old_sessions()
         self._remove_old_listenings()
+        if tmp_cycler.next() == 0:
+            logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
+            logger.debug('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(env_id)
