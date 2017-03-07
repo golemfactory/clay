@@ -10,11 +10,9 @@ from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
-__all__ = ['DockerManager', 'FALLBACK_DOCKER_MACHINE_NAME']
 logger = logging.getLogger(__name__)
 
 FALLBACK_DOCKER_MACHINE_NAME = 'golem'
-
 CONSTRAINT_KEYS = dict(
     mem='memory_size',
     cpu='cpu_count',

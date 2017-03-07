@@ -145,7 +145,7 @@ class MockDockerManager(DockerManager):
         elif key == 'env':
             return '\n'.join([
                 'SET GOLEM_TEST=1',
-                'SET DOCKER_CERT_PATH="/tmp/golem"'
+                'SET DOCKER_CERT_PATH="{}"'.format(os.path.join('tmp', 'golem'))
             ])
         elif key == 'list':
             return MACHINE_NAME
@@ -208,6 +208,8 @@ class TestDockerManager(unittest.TestCase):
         config = MockConfig(0, 768, 512)
 
         dmm = MockDockerManager()
+        dmm.hypervisor = mock.Mock()
+        dmm.hypervisor.constraints.return_value = dmm.defaults
 
         dmm.build_config(config)
         dmm.check_environment()
@@ -417,7 +419,7 @@ class TestDockerManager(unittest.TestCase):
 
         with mock.patch.dict('os.environ', environ):
             dmm._set_docker_machine_env()
-            assert dmm._config_dir == '/tmp'
+            assert dmm._config_dir == 'tmp'
 
 
 class TestVirtualBoxHypervisor(unittest.TestCase):
