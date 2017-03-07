@@ -154,6 +154,10 @@ class MockDockerManager(DockerManager):
 
         return MACHINE_NAME
 
+    @staticmethod
+    def _set_env_variable(name, value):
+        pass
+
 
 class TestDockerManager(unittest.TestCase):
 

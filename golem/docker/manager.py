@@ -305,7 +305,7 @@ class DockerManager(DockerConfigManager):
                 cmd, params = line.split(' ', 1)
                 if cmd.lower() == 'set':
                     var, val = params.split('=', 1)
-                    os.environ[var] = val
+                    self._set_env_variable(var, val)
 
                     if var == 'DOCKER_CERT_PATH':
                         split = val.replace('"', '').split(os.path.sep)
@@ -314,6 +314,10 @@ class DockerManager(DockerConfigManager):
             logger.info('DockerMachine: env updated')
         else:
             logger.warn('DockerMachine: env update failed')
+
+    @staticmethod
+    def _set_env_variable(name, value):
+        os.environ[name] = value
 
 
 class Hypervisor(object):
