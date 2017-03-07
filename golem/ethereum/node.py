@@ -62,7 +62,6 @@ class NodeProcess(object):
     MAX_GETH_VERSION = '1.5.999'
 
     def __init__(self):
-        self.port = None
         self.__prog = find_program('geth')
         if not self.__prog:
             raise OSError("Ethereum client 'geth' not found")
@@ -78,19 +77,14 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
-    def start(self, port=None):
+    def start(self):
         if self.is_running():
             raise RuntimeError("Ethereum node already started")
 
-        if not port:
-            port = find_free_net_port()
-
-        self.port = port
         args = [
             self.__prog,
             '--light',
             '--testnet',
-            '--port', str(self.port),
             '--verbosity', '3',
         ]
         self.testnet = True
@@ -118,6 +112,5 @@ class NodeProcess(object):
                 log.warn("Cannot terminate node: process {} no longer exists".format(self.__ps.pid))
 
             self.__ps = None
-            self.rpcport = None
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
