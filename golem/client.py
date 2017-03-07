@@ -297,7 +297,6 @@ class Client(object):
     def create_task(self, t_dict):
         try:
             new_task = DictSerializer.load(t_dict)
-            new_task.task_definition.max_price = int(new_task.task_definition.max_price)
             new_task.header.max_price = int(new_task.header.max_price)
             self.enqueue_new_task(new_task)
         except Exception:

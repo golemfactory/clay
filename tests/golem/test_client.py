@@ -10,6 +10,7 @@ from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import Task, TaskHeader
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
@@ -247,7 +248,9 @@ class TestClientRPCMethods(TestWithDatabase):
             self.assertIs(c.rpc_publisher.session, rpc_session)
 
             # create task rpc
-            task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
+            t = Task(TaskHeader("node_name", "task_id", "10.10.10.10", 123, "owner_id", "DEFAULT"),
+                     "print('hello')")
+            task_dict = DictSerializer.dump(t)
             c.create_task(task_dict)
             self.assertTrue(c.enqueue_new_task.called)
 

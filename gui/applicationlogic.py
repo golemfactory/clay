@@ -429,8 +429,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def build_and_serialize_task(self, task_state, cbk=None):
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
-        t.task_definition.max_price = str(t.task_definition.max_price)
-        t.header.max_price = str(t.task_definition.max_price)
+        if hasattr(t, "task_definition") and hasattr(t.task_definition, "max_price"):
+            t.task_definition.max_price = str(t.task_definition.max_price)
+        t.header.max_price = str(t.header.max_price)
         t_serialized = DictSerializer.dump(t)
         if 'task_definition' in t_serialized:
             t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
