@@ -248,8 +248,8 @@ class BlenderRenderTask(FrameRenderingTask):
         self.verificator.compositing = self.compositing
         self.verificator.output_format = self.output_format
         self.verificator.src_code = self.src_code
-        self.verificator.docker_images = self.docker_images
-        self.verificator.verification_timeout = self.subtask_timeout
+        self.verificator.docker_images = self.task_definition.docker_images
+        self.verificator.verification_timeout = self.task_definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -525,14 +525,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """
     TASK_CLASS = BlenderRenderTask
     DEFAULTS = BlenderDefaults
-
-    def _set_verification_options(self, new_task):
-        new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
-        if new_task.advanceVerification:
-            box_x = min(new_task.verification_options.box_size[0], new_task.res_x)
-            box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
-            new_task.box_size = (box_x, box_y)
-        return new_task
 
 
 class CustomCollector(RenderingTaskCollector):
