@@ -1,8 +1,8 @@
 import logging
 import subprocess
+import sys
 from os import path
 
-import sys
 from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -10,6 +10,7 @@ from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
+from golem.docker.manager import DockerManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
@@ -62,7 +63,6 @@ def start_client(start_ranking, datadir=None,
 
     config_logging(log_name)
     logger = logging.getLogger("golem.client")
-    environments = load_environments()
 
     if not reactor:
         from twisted.internet import reactor
@@ -70,6 +70,10 @@ def start_client(start_ranking, datadir=None,
 
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
+
+    docker_manager = DockerManager.install(client.config_desc)
+    docker_manager.check_environment()
+    environments = load_environments()
 
     for env in environments:
         client.environments_manager.add_environment(env)
