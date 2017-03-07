@@ -125,6 +125,8 @@ class Payments(object):
     incomes                 = 'pay.incomes'
     income                  = 'pay.income'
 
+    crypto_prices           = 'pay.crypto_prices'
+
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 

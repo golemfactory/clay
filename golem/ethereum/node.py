@@ -80,7 +80,8 @@ class NodeProcess(object):
 
     def start(self, port=None):
         if self.is_running():
-            raise RuntimeError("Ethereum node already started")
+            self.use_existing_node(port)
+            return
 
         if not port:
             port = find_free_net_port()
@@ -106,6 +107,12 @@ class NodeProcess(object):
             time.sleep(WAIT_PERIOD)
             wait_time += WAIT_PERIOD
         log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
+
+    def use_existing_node(port):
+        if not port:
+            port = find_free_net_port()
+        self.port = port
+        self.testnet = True
 
     def stop(self):
         if self.__ps:

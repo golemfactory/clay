@@ -6,6 +6,7 @@ from ethereum import keys
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.paymentmonitor import PaymentMonitor
+from golem.ethereum.priceoracle import PriceOracle
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -33,6 +34,8 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__proc.start()
         self.__monitor = PaymentMonitor(eth_node, self.__node_address)
         self.__monitor.start()
+        self.__price_oracle = PriceOracle()
+        self.__price_oracle.start()
         # TODO: We can keep address in PaymentMonitor only
 
     def add_payment_info(self, *args, **kwargs):
@@ -58,9 +61,27 @@ class EthereumTransactionSystem(TransactionSystem):
         """
         pass
 
+    def crypto_prices(self):
+        return self.__price_oracle.gnt_usd, self.__price_oracle.eth_usd
+
+    def eth_to_usd(self, value):
+        unit_price = self.__price_oracle.eth_usd()
+        if unit_price is not None:
+            return value * unit_price
+        return None
+
+    def gnt_to_usd(self, value):
+        unit_price = self.__price_oracle.gnt_usd()
+        if unit_price is not None:
+            return value * unit_price
+        return None
+
     def get_incoming_payments(self):
-        return [{'status': payment.status.value,
-                 'payer': payment.payer,
-                 'value': payment.value,
-                 'block_number': payment.extra['block_number']
-                 } for payment in self.__monitor.get_incoming_payments()]
+        payments = [{'status': payment.status.value,
+                     'payer': payment.payer,
+                     'value': payment.value,
+                     'value_usd': self.gnt_to_usd(payment.value), # float or None
+                     'block_number': payment.extra['block_number']
+        } for payment in self.__monitor.get_incoming_payments()]
+        print("payments: {}".format(payments))
+        return payments

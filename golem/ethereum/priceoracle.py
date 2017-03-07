@@ -9,13 +9,15 @@ log = logging.getLogger("golem.srv.price")
 
 
 class PriceOracle(Service):
+    # FIXME: BRASS: don't update price too often, it's an unnecessary distraction.
+    # Around once a day should be enough.
     UPDATE_PERIOD = timedelta(0, 15*60)
 
     def __init__(self):
         self.__gnt_usd = Decimal()
         self.__eth_usd = Decimal()
         self.__last_update = datetime.min
-        super(PriceOracle, self).__init__()
+        super(PriceOracle, self).__init__(interval=60)
 
     @staticmethod
     def __fetch_price(token_name):
@@ -34,20 +36,25 @@ class PriceOracle(Service):
     @property
     def gnt_usd(self):
         if not self.up_to_date:
-            raise IOError("GNT price is not up to date")
+            log.error("GNT price is not up to date")
+            return None
         return self.__gnt_usd
 
     @property
     def eth_usd(self):
         if not self.up_to_date:
-            raise IOError("ETH price is not up to date")
+            log.error("ETH price is not up to date")
+            return None
         return self.__eth_usd
 
     def update_prices(self):
-        print "update"
-        self.__gnt_usd = self.__fetch_price('golem-network-tokens')
-        self.__eth_usd = self.__fetch_price('ethereum')
-        self.__last_update = datetime.utcnow()
+        try:
+            self.__gnt_usd = self.__fetch_price('golem-network-tokens')
+            self.__eth_usd = self.__fetch_price('ethereum')
+            self.__last_update = datetime.utcnow()
+        except requests.exceptions.ConnectionError:
+            log.warning("Failed to retrieve crypto prices from api.coinmarketcap.com")
+            pass
 
     def _run(self):
         deadline = self.__last_update + self.UPDATE_PERIOD
