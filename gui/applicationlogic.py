@@ -417,20 +417,25 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            self.client.run_test_task(self.build_and_serialize_task(task_state))
-
-            return True
+            try:
+                self.client.run_test_task(self.build_and_serialize_task(task_state))
+                return True
+            except Exception as ex:
+                self.test_task_computation_error(ex)
+                return False
 
         return False
 
     def build_and_serialize_task(self, task_state, cbk=None):
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
+        t.task_definition.max_price = str(t.task_definition.max_price)
+        t.header.max_price = str(t.task_definition.max_price)
         t_serialized = DictSerializer.dump(t)
         if 'task_definition' in t_serialized:
             t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
         from pprint import pformat
-        logger.warning('task serialized: %s', pformat(t_serialized))
+        logger.debug('task serialized: %s', pformat(t_serialized))
         if cbk:
             cbk(t)
         return t_serialized
