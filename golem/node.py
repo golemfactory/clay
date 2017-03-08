@@ -55,8 +55,6 @@ class Node(object):
 
     def run(self, use_rpc=False):
         try:
-            # Import reactor locally because it also installs it and GUI
-            # requires Qt reactor version.
             from twisted.internet import reactor
             if use_rpc:
                 config = self.client.config_desc

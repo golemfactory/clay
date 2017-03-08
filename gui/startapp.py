@@ -65,6 +65,8 @@ def start_client(start_ranking, datadir=None,
     environments = load_environments()
 
     if not reactor:
+        from golem.twisted.reactor import geventreactor
+        geventreactor.install()
         from twisted.internet import reactor
     process_monitor = None
 
