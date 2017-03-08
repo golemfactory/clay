@@ -76,13 +76,10 @@ class NodeProcess(object):
         log.info("geth version {}".format(ver))
 
         self.__ps = None # child process
-        self.__system_geth = False # some external geth, not a child process
+        self.system_geth = False # some external geth, not a child process
 
     def is_running(self):
-        return self.__ps is not None or self.__system_geth
-
-    def is_reusing(self):
-        return self.__system_geth
+        return self.__ps is not None or self.system_geth
 
     def start(self):
         if self.__ps is not None:
@@ -95,7 +92,7 @@ class NodeProcess(object):
             running_chain = identify_chain(self.testnet)
             if running_chain == the_chain:
                 log.info("Using existing Ethereum node {}".format(running_chain))
-                self.__system_geth = True
+                self.system_geth = True
                 return
             else:
                 log.error("Some other Ethereum instance is listening...")

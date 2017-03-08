@@ -59,8 +59,8 @@ class EthereumNodeTest(unittest.TestCase):
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True
-        assert np.is_reusing() is False
-        assert np1.is_reusing() is True
+        assert np.system_geth is False
+        assert np1.system_geth is True
 
     def test_geth_version_check(self):
         min = NodeProcess.MIN_GETH_VERSION
