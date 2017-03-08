@@ -164,8 +164,6 @@ class DockerManager(DockerConfigManager):
                 with self.hypervisor.restart_ctx(name) as vm:
                     self.hypervisor.constrain(vm, **diff)
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 logger.error("DockerMachine: error setting '{}' VM's constraints: {}"
                              .format(name, e))
             self._set_docker_machine_env()
@@ -626,7 +624,8 @@ class XhyveHypervisor(Hypervisor):
 
     @contextmanager
     def recover_ctx(self, name):
-        self.restart_ctx(name)
+        with self.restart_ctx(name) as _name:
+            yield _name
 
     @contextmanager
     def restart_ctx(self, name):
@@ -666,7 +665,7 @@ class XhyveHypervisor(Hypervisor):
 
         try:
             with open(config_path) as config_file:
-                config = config_path, json.loads(config_file.read())
+                config = json.loads(config_file.read())
         except (IOError, TypeError, ValueError):
             logger.error("Xhyve: error reading '{}' configuration"
                          .format(name))
