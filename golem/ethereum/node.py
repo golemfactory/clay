@@ -105,7 +105,7 @@ class NodeProcess(object):
 
         args = [
             self.__prog,
-            '--light',
+            # '--light', # blocked by https://github.com/ethereum/go-ethereum/issues/3752
             '--testnet',
             '--verbosity', '3',
         ]
