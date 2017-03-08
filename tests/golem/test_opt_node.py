@@ -68,13 +68,13 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.core.common.config_logging')
-    def test_node_address_passed_to_client(self, config_logging, mock_reactor,
-                                           mock_client):
+    @patch('golemapp.delete_reactor')
+    def test_node_address_passed_to_client(self, delete_reactor, config_logging,
+                                           mock_reactor, mock_client):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
         node_address = '1.2.3.4'
-
         runner = CliRunner()
         args = self.args + ['--node-address', node_address]
         return_value = runner.invoke(start, args, catch_exceptions=False)

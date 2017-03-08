@@ -34,17 +34,22 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
+
+    def setUp(self):
+        super(TestGolemApp, self).setUp()
+
+    def tearDown(self):
+        super(TestGolemApp, self).tearDown()
+
     @ci_skip
-    def test_start_gui(self):
+    @patch('gui.startapp.start_app')
+    @patch('twisted.internet.reactor', create=True)
+    def test_start_gui(self, reactor, start_app):
         runner = CliRunner()
-
-        with patch('gui.startapp.start_app') as start_app:
-            print runner.invoke(start, ['--datadir', self.path], catch_exceptions=False).output
-            assert start_app.called
-
-        with patch('gui.startapp.start_app') as start_app:
-            runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
-            assert start_app.called
+        runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
+        assert start_app.called
+        runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
+        assert start_app.called
 
     @ci_skip
     @patch('golemapp.OptNode')

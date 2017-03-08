@@ -238,6 +238,7 @@ class TestClient(TestWithDatabase):
         self.client.db = None
         self.client.quit()
 
+    @patch('twisted.internet.reactor', create=True)
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
