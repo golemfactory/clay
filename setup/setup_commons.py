@@ -128,9 +128,10 @@ def get_golem_version(increase):
     version = config.get('version', 'version')
     if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
         v = version.split('.')
-        version = "[version]\nversion = {}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
+        version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
+        v = "[version]\nversion = {}".format(version)
         with open(config_path, 'wb') as f:
-            f.write(version)
+            f.write(v)
     return version
 
 

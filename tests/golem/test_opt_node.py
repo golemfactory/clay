@@ -6,7 +6,7 @@ from mock import patch, call, Mock
 from golem.core.compress import save
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import TempDirFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, OptNode
 
@@ -25,7 +25,7 @@ class TestNode(TestWithDatabase):
     def tearDown(self):
         super(TestNode, self).tearDown()
 
-    @appveyor_skip
+    @ci_skip
     @patch('twisted.internet.reactor', create=True)
     def test_help(self, mock_reactor):
         runner = CliRunner()
@@ -34,7 +34,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
 
-    @appveyor_skip
+    @ci_skip
     @patch('twisted.internet.reactor', create=True)
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
@@ -43,7 +43,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     @patch('twisted.internet.reactor', create=True)
     def test_node_address_valid(self, mock_reactor, mock_node):
@@ -62,7 +62,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
     def test_node_address_passed_to_client(self, mock_reactor, mock_client):
@@ -80,7 +80,7 @@ class TestNode(TestWithDatabase):
                                        node_address=node_address,
                                        transaction_system=True)
 
-    @appveyor_skip
+    @ci_skip
     def test_node_address_invalid(self):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
@@ -89,14 +89,14 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
 
-    @appveyor_skip
+    @ci_skip
     def test_node_address_missing(self):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
         self.assertEquals(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
@@ -112,7 +112,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(peer_arg), 1)
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node):
         addr1 = '10.30.10.216:40111'
@@ -130,7 +130,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
         self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_bad_peer(self, mock_node):
         addr1 = '10.30.10.216:40111'
@@ -140,7 +140,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_peers(self, mock_node):
         runner = CliRunner()
@@ -161,7 +161,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
         self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_rpc_address(self, mock_node):
         runner = CliRunner()
@@ -187,7 +187,7 @@ class TestNode(TestWithDatabase):
             )
             assert return_value.exit_code != 0
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_wrong_task(self, mock_node):
         runner = CliRunner()
@@ -195,7 +195,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_task(self, mock_node):
         a = A()
@@ -212,7 +212,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(task_arg), 2)
         self.assertIsInstance(task_arg[0], A)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_task_from_json(self, mock_node):
         test_json_file = os.path.join(self.path, 'task.json')
@@ -240,7 +240,7 @@ class TestNode(TestWithDatabase):
             if os.path.exists(test_json_file):
                 os.remove(test_json_file)
 
-    @appveyor_skip
+    @ci_skip
     @patch('golemapp.OptNode')
     def test_task_from_invalid_json(self, mock_node):
         test_json_file = os.path.join(self.path, 'task.json')

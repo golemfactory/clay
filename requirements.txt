@@ -40,8 +40,5 @@ devp2p>=0.5.1
 scrypt
 packaging
 pyreadline
-<<<<<<< HEAD
 pytest>=3.0.5
-=======
->>>>>>> origin/develop
 qt5reactor

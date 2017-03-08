@@ -8,7 +8,7 @@ from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging
+from golem.core.common import config_logging, get_golem_path
 from golem.core.processmonitor import ProcessMonitor
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
@@ -48,7 +48,8 @@ def start_gui(address):
     if hasattr(sys, 'frozen') and sys.frozen:
         return subprocess.Popen(['golemgui'] + args)
     else:
-        return subprocess.Popen(['python', 'golemgui.py'] + args)
+        golem_gui = path.join(get_golem_path(), "golemgui.py")
+        return subprocess.Popen(['python', golem_gui] + args)
 
 
 def start_client(start_ranking, datadir=None,
