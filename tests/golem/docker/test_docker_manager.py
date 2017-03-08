@@ -4,9 +4,10 @@ import unittest
 from contextlib import contextmanager
 
 import mock
-
-from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor
+from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
+    Hypervisor, logger
 from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 
 MACHINE_NAME = FALLBACK_DOCKER_MACHINE_NAME
 
@@ -159,6 +160,20 @@ class MockDockerManager(DockerManager):
     @staticmethod
     def _set_env_variable(name, value):
         pass
+
+
+def raise_exception(msg, *args, **kwargs):
+    raise TypeError(msg)
+
+
+class Erroneous(mock.Mock):
+    @property
+    def cpu_count(self):
+        raise_exception("Read")
+
+    @cpu_count.setter
+    def cpu_count(self, value):
+        raise_exception("Write")
 
 
 class TestDockerManager(unittest.TestCase):
@@ -434,7 +449,43 @@ class TestDockerManager(unittest.TestCase):
             assert dmm._config_dir == 'tmp'
 
 
-class TestVirtualBoxHypervisor(unittest.TestCase):
+class TestHypervisor(LogTestCase):
+
+    def test_remove(self):
+        hypervisor = Hypervisor(MockDockerManager())
+        hypervisor.remove('test')
+
+        assert ['rm', 'test', None, False, False] \
+            in hypervisor._docker_manager.command_calls
+
+        # errors
+        with mock.patch.object(hypervisor._docker_manager, 'command',
+                               raise_exception):
+            with self.assertLogs(logger, 'WARN'):
+                assert not hypervisor.remove('test')
+
+    def test_not_implemented(self):
+        hypervisor = Hypervisor(MockDockerManager())
+
+        with self.assertRaises(NotImplementedError):
+            hypervisor.constrain(MACHINE_NAME, param_1=1)
+
+        with self.assertRaises(NotImplementedError):
+            hypervisor.constraints(MACHINE_NAME)
+
+        with self.assertRaises(NotImplementedError):
+            with hypervisor.restart_ctx(MACHINE_NAME):
+                pass
+
+        with self.assertRaises(NotImplementedError):
+            with hypervisor.recover_ctx(MACHINE_NAME):
+                pass
+
+        with self.assertRaises(NotImplementedError):
+            hypervisor._new_instance(None)
+
+
+class TestVirtualBoxHypervisor(LogTestCase):
 
     def setUp(self):
         self.docker_manager = mock.Mock()
@@ -512,11 +563,11 @@ class TestVirtualBoxHypervisor(unittest.TestCase):
         assert ['create', 'test', ('--driver', 'virtualbox'), False, False] \
             in self.hypervisor._docker_manager.command_calls
 
-    def test_remove(self):
-        self.hypervisor._docker_manager = MockDockerManager()
-        self.hypervisor.remove('test')
-        assert ['rm', 'test', None, False, False] \
-            in self.hypervisor._docker_manager.command_calls
+        # errors
+        with mock.patch.object(self.hypervisor._docker_manager, 'command',
+                               raise_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                assert not self.hypervisor.create('test')
 
     def test_constraints(self):
         machine = mock.Mock()
@@ -532,6 +583,12 @@ class TestVirtualBoxHypervisor(unittest.TestCase):
         read = self.hypervisor.constraints(MACHINE_NAME)
         for key, value in constraints.iteritems():
             assert value == read[key]
+
+        # errors
+        with mock.patch.object(self.hypervisor, '_machine_from_arg',
+                               return_value=Erroneous()):
+            with self.assertLogs(logger, 'ERROR'):
+                self.hypervisor.constrain(MACHINE_NAME, cpu_count=1)
 
     def test_session_from_arg(self):
         assert self.hypervisor._session_from_arg(MACHINE_NAME).__class__ is not None
@@ -552,19 +609,16 @@ class TestVirtualBoxHypervisor(unittest.TestCase):
         assert self.hypervisor._machine_from_arg(None) is None
         assert not self.virtualbox.find_machine.called
 
-        self.virtualbox.find_machine = lambda *_: self._raise_exception('Test exception')
+        self.virtualbox.find_machine = lambda *_: raise_exception('Test exception')
 
         assert not self.hypervisor._machine_from_arg(MACHINE_NAME)
 
-    @staticmethod
-    def _raise_exception(msg):
-        raise Exception(msg)
 
-
-class TestXhyveHypervisor(TempDirFixture):
+class TestXhyveHypervisor(TempDirFixture, LogTestCase):
 
     def setUp(self):
-        super(TestXhyveHypervisor, self).setUp()
+        TempDirFixture.setUp(self)
+        LogTestCase.setUp(self)
 
         self.docker_manager = mock.Mock()
         self.virtualbox = mock.Mock()
@@ -590,11 +644,11 @@ class TestXhyveHypervisor(TempDirFixture):
             self.hypervisor.options['mem'], str(constraints['memory_size'])
         ], False, False] in self.hypervisor._docker_manager.command_calls
 
-    def test_remove(self):
-        self.hypervisor._docker_manager = MockDockerManager()
-        self.hypervisor.remove('test')
-        assert ['rm', 'test', None, False, False] \
-            in self.hypervisor._docker_manager.command_calls
+        # errors
+        with mock.patch.object(self.hypervisor._docker_manager, 'command',
+                               raise_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                assert not self.hypervisor.create('test')
 
     def test_constraints(self):
 
@@ -619,12 +673,20 @@ class TestXhyveHypervisor(TempDirFixture):
 
         if not os.path.exists(config_dir):
             os.makedirs(config_dir)
-
         with open(config_file, 'w') as f:
             f.write(json.dumps(constraints))
 
         self.hypervisor.constrain(MACHINE_NAME, **config)
         assert config == self.hypervisor.constraints(MACHINE_NAME)
+
+        self.hypervisor.constrain(MACHINE_NAME)
+        assert config == self.hypervisor.constraints(MACHINE_NAME)
+
+        # errors
+        with mock.patch.object(self.hypervisor._docker_manager, 'command',
+                               lambda *_: raise_exception(TypeError)):
+            with self.assertLogs(logger, 'ERROR'):
+                self.hypervisor.constraints(MACHINE_NAME)
 
     def test_recover_ctx(self):
 
