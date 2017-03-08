@@ -63,7 +63,7 @@ class TaskManager(TaskEventListener):
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
-        self.comp_task_keeper = CompTaskKeeper()
+        self.comp_task_keeper = CompTaskKeeper(self.tasks_dir)
         self.restore_tasks()
 
     def get_task_manager_root(self):

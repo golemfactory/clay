@@ -430,7 +430,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         if 'task_definition' in t_serialized:
             t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
         from pprint import pformat
-        logger.warning('task serialized: %s', pformat(t_serialized))
+        logger.debug('task serialized: %s', pformat(t_serialized))
         if cbk:
             cbk(t)
         return t_serialized

@@ -86,7 +86,7 @@ class TaskServer(PendingConnectionsServer):
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
         theader = self.task_keeper.get_task()
-        if theader not None:
+        if theader is None:
             return None
         try:
             trust = self.client.get_requesting_trust(theader.task_owner_key_id)

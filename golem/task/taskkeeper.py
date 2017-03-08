@@ -10,7 +10,7 @@ from golem.core.variables import APP_VERSION
 
 from .taskbase import TaskHeader, ComputeTaskDef
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.task.taskkeeper')
 
 
 def compute_subtask_value(price, computation_time):
@@ -44,11 +44,35 @@ class CompTaskKeeper(object):
 
     handle_key_error = HandleKeyError(log_key_error)
 
-    def __init__(self):
+    def __init__(self, tasks_path):
         """ Create new instance of compuatational task's definition's keeper
+
+        tasks_path: pathlib.Path to tasks directory
         """
         self.active_tasks = {}  # information about tasks that this node wants to compute
         self.subtask_to_task = {}  # maps subtasks id to tasks id
+        self.dump_path = tasks_path / "comp_task_keeper.pickle"
+        self.restore()
+
+    def dump(self):
+        logger.debug('COMPTASK DUMP: %s', self.dump_path)
+        with self.dump_path.open('wb') as f:
+            dump_data = self.active_tasks, self.subtask_to_task
+            pickle.dump(f, dump_data)
+
+    def restore(self):
+        logger.debug('COMPTASK RESTORE: %s', self.dump_path)
+        if not self.dump_path.exists():
+            logger.debug('No previous comptask dump found.')
+            return
+        with self.dump_path.open('rb') as f:
+            try:
+                active_tasks, subtask_to_task = pickle.load(f)
+            except pickle.UnpicklingError:
+                logger.exception('Problem restoring dumpfile: %s', self.dump_path)
+                return
+        self.active_tasks.update(active_tasks)
+        self.subtask_to_task.update(subtask_to_task)
 
     def add_request(self, theader, price):
         if not type(price) in (int, long):
@@ -60,6 +84,7 @@ class CompTaskKeeper(object):
             self.active_tasks[task_id].requests += 1
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, price)
+        self.dump()
 
     @handle_key_error
     def get_subtask_ttl(self, task_id):
@@ -76,6 +101,7 @@ class CompTaskKeeper(object):
             task.requests -= 1
             task.subtasks[comp_task_def.subtask_id] = comp_task_def
             self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+            self.dump()
             return True
 
     def get_task_id_for_subtask(self, subtask_id):
@@ -93,18 +119,9 @@ class CompTaskKeeper(object):
         return compute_subtask_value(price, computing_time)
 
     @handle_key_error
-    def remove_task(self, task_id):
-        del self.active_tasks[task_id]
-
-    @handle_key_error
     def request_failure(self, task_id):
         self.active_tasks[task_id].requests -= 1
-
-    def remove_old_tasks(self):
-        time_ = get_timestamp_utc()
-        for task_id, task in self.active_tasks.items():
-            if time_ > task.header.deadline and len(task.subtasks) == 0:
-                self.remove_task(task_id)
+        self.dump()
 
 
 class TaskHeaderKeeper(object):
@@ -114,9 +131,9 @@ class TaskHeaderKeeper(object):
 
     def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=180,
                  verification_timeout=3600):
-        self.task_headers = {}  # all computing tasks that this node now about
+        self.task_headers = {}  # all computing tasks that this node nows about
         self.supported_tasks = []  # ids of tasks that this node may try to compute
-        self.removed_tasks = {}  # tasks that were removed from network recently, so they won't be add to again
+        self.removed_tasks = {}  # tasks that were removed from network recently, so they won't be added again to task_headers
 
         self.min_price = min_price
         self.app_version = app_version
