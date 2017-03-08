@@ -59,30 +59,27 @@ class FrameRenderingTask(RenderingTask):
     # Task methods #
     ################
 
-    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                 total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, use_frames, frames, max_price, docker_images=None):
-        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                               subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                               estimated_memory, max_price, docker_images)
+    def __init__(self, **kwargs):
+        RenderingTask.__init__(self, **kwargs)
 
-        self.use_frames = use_frames
-        self.frames = frames
+        task_definition = kwargs['task_definition']
+        self.use_frames = task_definition.options.use_frames
+        self.frames = task_definition.options.frames
 
         self.frames_given = {}
-        for frame in frames:
+        for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
 
-        if use_frames:
-            self.preview_file_path = [None] * len(frames)
-            self.preview_task_file_path = [None] * len(frames)
+        if self.use_frames:
+            self.preview_file_path = [None] * len(self.frames)
+            self.preview_task_file_path = [None] * len(self.frames)
 
     @RenderingTask.handle_key_error
     def computation_finished(self, subtask_id, task_results, result_type=0):
-        if not self.should_accept(subtask_id):
+        should_accept = self.should_accept(subtask_id)
+        logger.debug('computation_finished(%r, %r, %r) should_accept: %r', subtask_id, task_results, result_type, should_accept)
+        if not should_accept:
             return
 
         self.interpret_task_results(subtask_id, task_results, result_type)

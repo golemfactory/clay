@@ -1,12 +1,12 @@
 from apps.blender.blenderenvironment import BlenderEnvironment
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 from test_docker_image import DockerTestCase
 
 
-@appveyor_skip
+@ci_skip
 class TestDockerEnvironment(DockerTestCase):
     def test_docker_environment(self):
         with self.assertRaises(AttributeError):

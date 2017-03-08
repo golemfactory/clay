@@ -13,7 +13,7 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 from golem.testutils import TempDirFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 
 class TestBlenderBenchmark(unittest.TestCase):
@@ -38,7 +38,7 @@ class TestBlenderBenchmark(unittest.TestCase):
         self.assertTrue(os.path.isfile(self.bb.task_definition.main_program_file))
 
 
-@appveyor_skip
+@ci_skip
 class TestBenchmarkRunner(TempDirFixture):
 
     def test_run(self):

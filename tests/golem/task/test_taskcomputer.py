@@ -8,12 +8,12 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 
-@appveyor_skip
+@ci_skip
 class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_init(self):
         task_server = mock.MagicMock()
@@ -231,7 +231,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         [t.join() for t in tc.current_computations]
 
 
-@appveyor_skip
+@ci_skip
 class TestTaskThread(TestDirFixture):
     def test_thread(self):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])

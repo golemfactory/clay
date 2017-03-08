@@ -14,7 +14,7 @@ from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from test_docker_image import DockerTestCase
 
 logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"),
@@ -87,7 +87,7 @@ class TestDockerJob(DockerTestCase):
         return self.test_job
 
 
-@appveyor_skip
+@ci_skip
 class TestBaseDockerJob(TestDockerJob):
     """Tests Docker job using the base image golem/base"""
 
