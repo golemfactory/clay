@@ -81,6 +81,9 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None or self.__system_geth
 
+    def is_reusing(self):
+        return self.__system_geth
+
     def start(self):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
@@ -91,7 +94,7 @@ class NodeProcess(object):
                 the_chain = "ropsten"
             running_chain = identify_chain(self.testnet)
             if running_chain == the_chain:
-                log.info("Using existing Ethereum node ()".format(running_chain))
+                log.info("Using existing Ethereum node {}".format(running_chain))
                 self.__system_geth = True
                 return
             else:
@@ -135,11 +138,11 @@ class NodeProcess(object):
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
 
-"""
-Check if chain which external Ethereum node is running
-is one we want to use.
-"""
 def identify_chain(testnet):
+    """
+    Check if chain which external Ethereum node is running
+    is one we want to use.
+    """
     web3 = Web3(IPCProvider(testnet=testnet))
     ropsten = u'0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d'
     mainnet = u'0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3'

@@ -50,6 +50,18 @@ class EthereumNodeTest(unittest.TestCase):
         np.stop()
         assert np.is_running() is False
 
+    @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
+                     "geth is already running; skipping starting and stopping tests")
+    def test_ethereum_node_reuse(self):
+        np = NodeProcess()
+        np.start()
+        np1 = NodeProcess()
+        np1.start()
+        assert np.is_running() is True
+        assert np1.is_running() is True
+        assert np.is_reusing() is False
+        assert np1.is_reusing() is True
+
     def test_geth_version_check(self):
         min = NodeProcess.MIN_GETH_VERSION
         max = NodeProcess.MAX_GETH_VERSION
