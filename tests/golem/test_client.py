@@ -10,6 +10,7 @@ from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
@@ -219,6 +220,25 @@ class TestClientRPCMethods(TestWithDatabase):
 
         self.assertIsInstance(c.get_dir_manager(), DirManager)
         c.quit()
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_enqueue_new_task(self, _):
+        c = self.__new_client()
+        c.resource_server = Mock()
+        c.keys_auth = Mock()
+        c.keys_auth.key_id = str(uuid.uuid4())
+
+        task = Mock()
+        task.header.task_id = str(uuid.uuid4())
+
+        try:
+            c.enqueue_new_task(task)
+            task.get_resources.assert_called_with(task.header.task_id, None, resource_types["hashes"])
+            c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
+            assert c.resource_server.add_task.called
+            assert not c.task_server.task_manager.add_new_task.called
+        finally:
+            c.quit()
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_misc(self, _):
