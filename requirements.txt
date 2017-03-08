@@ -47,3 +47,4 @@ qt5reactor
 GitPython>=2.1.0
 semantic_version
 pyOpenSSL==16.2.0
+gevent>=1.1.0
