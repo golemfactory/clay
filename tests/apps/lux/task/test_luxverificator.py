@@ -14,7 +14,7 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)
         lrv._check_files("SUBTASK1", {}, [])
         assert lrv.get_verification_state("SUBTASK1") == SubtaskVerificationState.WRONG_ANSWER
-        lrv.advance_verification = False
+        lrv.advanced_verification = False
         lrv._check_files("SUBTASK2", {}, ["not existing"])
         assert lrv.get_verification_state("SUBTASK2") == SubtaskVerificationState.WRONG_ANSWER
 

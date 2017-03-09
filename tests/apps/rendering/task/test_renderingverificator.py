@@ -67,7 +67,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         # ADVANCE VERIFICATION
 
         rv.task_ref = Mock()
-        rv.advance_verification = True
+        rv.advanced_verification = True
         rv.verification_options = AdvanceRenderingVerificationOptions()
         rv.verification_options.type = "forAll"
         rv.verification_options.box_size = [5, 5]
@@ -114,9 +114,9 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
     def test_choose_adv_ver_file(self):
         rv = RenderingVerificator()
         rv.verification_options = AdvanceRenderingVerificationOptions()
-        rv.advance_verification = False
+        rv.advanced_verification = False
         assert rv._choose_adv_ver_file(range(5), {"node_id": "nodeX"}) is None
-        rv.advance_verification = True
+        rv.advanced_verification = True
         rv.verification_options.type = "forFirst"
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
         rv.verified_clients.append("NodeX")

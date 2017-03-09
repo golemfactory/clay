@@ -33,7 +33,7 @@ class FrameRenderingTask(RenderingTask):
     # Task methods #
     ################
 
-    def __init__(self,  **kwargs):
+    def __init__(self, **kwargs):
         super(FrameRenderingTask, self).__init__(**kwargs)
 
         task_definition = kwargs['task_definition']

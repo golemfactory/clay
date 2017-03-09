@@ -23,24 +23,23 @@ class TestLuxRenderDefaults(unittest.TestCase):
 
 class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
 
-    def __get_test_lux_task(self):
+    def get_test_lux_task(self):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         td.options = lro
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
-        return  lb.build()
-
+        return lb.build()
 
     def test_luxtask(self):
-        luxtask = self.__get_test_lux_task()
+        luxtask = self.get_test_lux_task()
 
         self.__after_test_errors(luxtask)
 
         self.__queries(luxtask)
 
     def test_query_extra_data(self):
-        luxtask = self.__get_test_lux_task()
+        luxtask = self.get_test_lux_task()
         luxtask._get_scene_file_rel_path = Mock()
         luxtask._get_scene_file_rel_path.return_value = os.path.join(self.path, 'scene')
         luxtask.main_program_file = os.path.join(self.path, 'program.py')
@@ -86,7 +85,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         assert set(ctd.extra_data['flm_files']) == {"xxyyzzfile", "abcdfile"}
 
     def test_remove_from_preview(self):
-        luxtask = self.__get_test_lux_task()
+        luxtask = self.get_test_lux_task()
         luxtask.tmp_path = self.path
         luxtask.res_x = 800
         luxtask.res_y = 600
@@ -120,7 +119,7 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         assert preview_img.getpixel((100, 100)) == (0, 127, 127)
 
     def test_accept_results(self):
-        luxtask = self.__get_test_lux_task()
+        luxtask = self.get_test_lux_task()
         luxtask.total_tasks = 20
         luxtask.res_x = 800
         luxtask.res_y = 600

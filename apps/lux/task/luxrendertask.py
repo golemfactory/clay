@@ -271,7 +271,7 @@ class LuxTask(RenderingTask):
 
         if self.num_tasks_received == self.total_tasks:
             if self.num_tasks_received == self.total_tasks:
-                if self.verificator.advance_verification and os.path.isfile(self.__get_test_flm()):
+                if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
                     self.__generate_final_flm_advanced_verification()
                 else:
                     self.__generate_final_flm()

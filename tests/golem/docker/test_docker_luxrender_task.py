@@ -170,7 +170,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         extra_data = task.query_extra_data(10000, node_id="Bla")
         ctd = extra_data.ctd
-        task.verificator.advance_verification = True
+        task.verificator.advanced_verification = True
         bad_file = path.join(path.dirname(test_file), "badfile.flm")
         open(bad_file, "w").close()
         task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
@@ -205,7 +205,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.last_task = 0
         self.assertFalse(task.verify_task())
         remove(outfile)
-        task.verificator.advance_verification = False
+        task.verificator.advanced_verification = False
         extra_data = task.query_extra_data(10)
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)

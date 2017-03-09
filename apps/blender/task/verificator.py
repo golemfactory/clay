@@ -19,7 +19,7 @@ class BlenderVerificator(FrameRenderingVerificator):
 
     def set_verification_options(self, verification_options):
         super(BlenderVerificator, self).set_verification_options(verification_options)
-        if self.advance_verification:
+        if self.advanced_verification:
             box_x = min(verification_options.box_size[0], self.res_x)
             box_y = min(verification_options.box_size[1], self.res_y / self.total_tasks)
             self.box_size = (box_x, box_y)
@@ -45,8 +45,8 @@ class BlenderVerificator(FrameRenderingVerificator):
         extra_data['output_format'] = self.output_format
         return extra_data, (0, 0)
 
-    def query_extra_data_for_advance_verification(self, extra_data):
-        ctd = super(BlenderVerificator, self).query_extra_data_for_advance_verification(extra_data)
+    def query_extra_data_for_advanced_verification(self, extra_data):
+        ctd = super(BlenderVerificator, self).query_extra_data_for_advanced_verification(extra_data)
         ctd.subtask_id = str(random.getrandbits(128))
         ctd.src_code = self.src_code
         ctd.docker_images = self.docker_images

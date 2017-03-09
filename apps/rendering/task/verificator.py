@@ -17,8 +17,8 @@ logger = logging.getLogger("apps.rendering")
 
 
 class RenderingVerificator(CoreVerificator):
-    def __init__(self, verification_options=None, advance_verification=False):
-        super(RenderingVerificator, self).__init__(verification_options, advance_verification)
+    def __init__(self, verification_options=None, advanced_verification=False):
+        super(RenderingVerificator, self).__init__(verification_options, advanced_verification)
         self.tmp_dir = None
         self.res_x = 0
         self.res_y = 0
@@ -75,7 +75,7 @@ class RenderingVerificator(CoreVerificator):
 
     def _choose_adv_ver_file(self, tr_files, subtask_info):
         adv_test_file = None
-        if self.advance_verification:
+        if self.advanced_verification:
             if self.__use_adv_verification(subtask_info):
                 adv_test_file = random.choice(tr_files)
         return adv_test_file
@@ -103,14 +103,14 @@ class RenderingVerificator(CoreVerificator):
             if not os.path.isdir(extra_data['tmp_path']):
                 os.mkdir(extra_data['tmp_path'])
         except Exception:
-            logger.exception("Error during scope changing in advance verification")
+            logger.exception("Error during scope changing in advanced verification")
         return extra_data, start_box
 
     def _run_task(self, extra_data):
         computer = LocalComputer(self.task_ref(), self.root_path,
                                  self.__box_rendered,
                                  self.__box_render_error,
-                                 lambda: self.query_extra_data_for_advance_verification(
+                                 lambda: self.query_extra_data_for_advanced_verification(
                                      extra_data),
                                  additional_resources=[])
         computer.run()
@@ -125,13 +125,13 @@ class RenderingVerificator(CoreVerificator):
                 logger.error("No image file created")
             return img
 
-    def query_extra_data_for_advance_verification(self, extra_data):
+    def query_extra_data_for_advanced_verification(self, extra_data):
         ctd = ComputeTaskDef()
         ctd.extra_data = extra_data
         return ctd
 
     def __box_rendered(self, results):
-        logger.info("Box for advance verification created")
+        logger.info("Box for advanced verification created")
 
     def __box_render_error(self, error):
         logger.error("Cannot verify img: {}".format(error))

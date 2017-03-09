@@ -25,17 +25,17 @@ class SubtaskVerificationState(Enum):
 class CoreVerificator(object):
     handle_key_error_for_state = HandleKeyError(state_check_log_key_error)
 
-    def __init__(self, verification_options=None, advance_verification=False):
+    def __init__(self, verification_options=None, advanced_verification=False):
         self.ver_states = {}
-        self.advance_verification = advance_verification
+        self.advanced_verification = advanced_verification
         self.verification_options = verification_options
 
     def set_verification_options(self, verification_options):
         self.verification_options = verification_options
         if verification_options is None:
-            self.advance_verification = False
+            self.advanced_verification = False
         else:
-            self.advance_verification = True
+            self.advanced_verification = True
 
     def is_verified(self, subtask_id):
         return self.ver_states.get(subtask_id) == SubtaskVerificationState.VERIFIED

@@ -28,7 +28,7 @@ class LuxRenderVerificator(RenderingVerificator):
         for tr_file in tr_files:
             tr_file = os.path.normpath(tr_file)
             if tr_file.upper().endswith('.FLM'):
-                if self.advance_verification:
+                if self.advanced_verification:
                     if not os.path.isfile(self.test_flm):
                         logger.warning("Advanced verification set, but couldn't find test result!")
                         logger.warning("Skipping verification")
@@ -41,7 +41,7 @@ class LuxRenderVerificator(RenderingVerificator):
         if self.ver_states.get(subtask_id) != SubtaskVerificationState.VERIFIED:
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-    def query_extra_data_for_advance_verification(self, new_flm):
+    def query_extra_data_for_advanced_verification(self, new_flm):
         files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
         merge_ctd = deepcopy(self.merge_ctd)
         merge_ctd.extra_data['flm_files'] = files
@@ -50,7 +50,7 @@ class LuxRenderVerificator(RenderingVerificator):
     def merge_flm_files(self, new_flm, output):
         computer = LocalComputer(self.task_ref(), self.root_path, self.__verify_flm_ready,
                                  self.__verify_flm_failure,
-                                 lambda: self.query_extra_data_for_advance_verification(new_flm),
+                                 lambda: self.query_extra_data_for_advanced_verification(new_flm),
                                  use_task_resources=False,
                                  additional_resources=[self.test_flm, new_flm])
         computer.run()
