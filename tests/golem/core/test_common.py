@@ -45,12 +45,14 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
         "loggingconfig.py",
         "golem/core/common.py",
     ]
+
     def test_config_logging(self):
         """Tests wether logging is properly configured"""
         datadir = os.path.join(self.path, "data_test")
         logsdir = os.path.join(datadir, "logs")
 
         suffix = "_tests"
-        config_logging(suffix, datadir=datadir)
+        with patch('logging.config.dictConfig') as m_dconfig:
+            config_logging(suffix, datadir=datadir)
+            m_dconfig.assert_called_once_with(ANY)
         self.assertTrue(os.path.exists(logsdir))
-        self.assertTrue(os.path.exists(os.path.join(logsdir, 'golem_tests.log')))
