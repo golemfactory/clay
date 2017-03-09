@@ -3,6 +3,8 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
+from twisted.internet.defer import Deferred
+
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
@@ -200,114 +202,9 @@ class TestClient(TestWithDatabase):
 
 class TestClientRPCMethods(TestWithDatabase):
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_node(self, _):
-        c = self.__new_client()
-        self.assertIsInstance(c.get_node(), dict)
-        self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
-        c.quit()
+    def setUp(self):
+        super(TestClientRPCMethods, self).setUp()
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_dir_manager(self, _):
-        c = self.__new_client()
-        self.assertIsInstance(c.get_dir_manager(), Mock)
-
-        c.task_server = TaskServer.__new__(TaskServer)
-        c.task_server.task_manager = TaskManager.__new__(TaskManager)
-        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
-        c.task_server.task_computer.current_computations = []
-
-        self.assertIsInstance(c.get_dir_manager(), DirManager)
-        c.quit()
-
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_enqueue_new_task(self, _):
-        c = self.__new_client()
-        c.resource_server = Mock()
-        c.keys_auth = Mock()
-        c.keys_auth.key_id = str(uuid.uuid4())
-
-        task = Mock()
-        task.header.task_id = str(uuid.uuid4())
-
-        try:
-            c.enqueue_new_task(task)
-            task.get_resources.assert_called_with(task.header.task_id, None, resource_types["hashes"])
-            c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
-            assert c.resource_server.add_task.called
-            assert not c.task_server.task_manager.add_new_task.called
-        finally:
-            c.quit()
-
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_misc(self, _):
-        c = self.__new_client()
-        c.enqueue_new_task = Mock()
-
-        try:
-            # settings
-            new_node_name = str(uuid.uuid4())
-            self.assertNotEqual(c.get_setting('node_name'), new_node_name)
-            c.update_setting('node_name', new_node_name)
-            self.assertEqual(c.get_setting('node_name'), new_node_name)
-            self.assertEqual(c.get_settings()['node_name'], new_node_name)
-
-            newer_node_name = str(uuid.uuid4())
-            self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
-            settings = c.get_settings()
-            settings['node_name'] = newer_node_name
-            c.update_settings(settings)
-            self.assertEqual(c.get_setting('node_name'), newer_node_name)
-
-            # configure rpc
-            rpc_session = Mock()
-            self.assertIsNone(c.rpc_publisher)
-            c.configure_rpc(rpc_session)
-            self.assertIs(c.rpc_publisher.session, rpc_session)
-
-            # create task rpc
-            task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
-            c.create_task(task_dict)
-            self.assertTrue(c.enqueue_new_task.called)
-
-            # status without peers
-            self.assertTrue(c.connection_status().startswith(u"Not connected"))
-
-            # peers
-            c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
-            c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
-
-            known_peers = c.get_known_peers()
-            self.assertEqual(len(known_peers), 3)
-            self.assertTrue(all(peer for peer in known_peers))
-
-            connected_peers = c.get_connected_peers()
-            self.assertEqual(len(connected_peers), 4)
-            self.assertTrue(all(peer for peer in connected_peers))
-
-            # status with peers
-            self.assertTrue(c.connection_status().startswith(u"Connected"))
-            # status without ports
-            c.p2pservice.cur_port = 0
-            self.assertTrue(c.connection_status().startswith(u"Application not listening"))
-
-            # public key
-            self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
-
-        except:
-            raise
-        finally:
-            c.quit()
-
-    @staticmethod
-    def __new_session():
-        session = Mock()
-        for attr in PeerSessionInfo.attributes:
-            setattr(session, attr, str(uuid.uuid4()))
-        return session
-
-    def __new_client(self):
         client = Client(datadir=self.path,
                         transaction_system=True,
                         connect_to_known_hosts=False,
@@ -319,22 +216,128 @@ class TestClientRPCMethods(TestWithDatabase):
         client.task_server = Mock()
         client.monitor = Mock()
 
-        return client
+        self.client = client
+
+    def tearDown(self):
+        self.client.quit()
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_node(self, _):
+        c = self.client
+        self.assertIsInstance(c.get_node(), dict)
+        self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_dir_manager(self, _):
+        c = self.client
+        self.assertIsInstance(c.get_dir_manager(), Mock)
+
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
+        c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
+        c.task_server.task_computer.current_computations = []
+
+        self.assertIsInstance(c.get_dir_manager(), DirManager)
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_enqueue_new_task(self, _):
+        c = self.client
+        c.resource_server = Mock()
+        c.keys_auth = Mock()
+        c.keys_auth.key_id = str(uuid.uuid4())
+
+        task = Mock()
+        task.header.task_id = str(uuid.uuid4())
+
+        c.enqueue_new_task(task)
+        task.get_resources.assert_called_with(task.header.task_id, None, resource_types["hashes"])
+        c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
+        assert c.resource_server.add_task.called
+        assert not c.task_server.task_manager.add_new_task.called
+
+        deferred = Deferred()
+        deferred.callback(True)
+
+        c.resource_server.add_task.called = False
+        c.resource_server.add_task.return_value = deferred
+
+        c.enqueue_new_task(task)
+        assert c.resource_server.add_task.called
+        assert c.task_server.task_manager.add_new_task.called
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_misc(self, _):
+        c = self.client
+        c.enqueue_new_task = Mock()
+
+        # settings
+        new_node_name = str(uuid.uuid4())
+        self.assertNotEqual(c.get_setting('node_name'), new_node_name)
+        c.update_setting('node_name', new_node_name)
+        self.assertEqual(c.get_setting('node_name'), new_node_name)
+        self.assertEqual(c.get_settings()['node_name'], new_node_name)
+
+        newer_node_name = str(uuid.uuid4())
+        self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
+        settings = c.get_settings()
+        settings['node_name'] = newer_node_name
+        c.update_settings(settings)
+        self.assertEqual(c.get_setting('node_name'), newer_node_name)
+
+        # configure rpc
+        rpc_session = Mock()
+        self.assertIsNone(c.rpc_publisher)
+        c.configure_rpc(rpc_session)
+        self.assertIs(c.rpc_publisher.session, rpc_session)
+
+        # create task rpc
+        task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
+        c.create_task(task_dict)
+        self.assertTrue(c.enqueue_new_task.called)
+
+        # status without peers
+        self.assertTrue(c.connection_status().startswith(u"Not connected"))
+
+        # peers
+        c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
+        c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
+
+        known_peers = c.get_known_peers()
+        self.assertEqual(len(known_peers), 3)
+        self.assertTrue(all(peer for peer in known_peers))
+
+        connected_peers = c.get_connected_peers()
+        self.assertEqual(len(connected_peers), 4)
+        self.assertTrue(all(peer for peer in connected_peers))
+
+        # status with peers
+        self.assertTrue(c.connection_status().startswith(u"Connected"))
+        # status without ports
+        c.p2pservice.cur_port = 0
+        self.assertTrue(c.connection_status().startswith(u"Application not listening"))
+
+        # public key
+        self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
 
     def test_unreachable_flag(self):
         from pydispatch import dispatcher
         import random
         random.seed()
-        client = self.__new_client()
-        try:
-            port = random.randint(1, 50000)
-            self.assertFalse(hasattr(client, 'unreachable_flag'))
-            dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
-            self.assertFalse(hasattr(client, 'unreachable_flag'))
-            dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
-            self.assertTrue(hasattr(client, 'unreachable_flag'))
-        finally:
-            client.quit()
+
+        port = random.randint(1, 50000)
+        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
+        dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
+        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
+        dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
+        self.assertTrue(hasattr(self.client, 'unreachable_flag'))
+
+    @staticmethod
+    def __new_session():
+        session = Mock()
+        for attr in PeerSessionInfo.attributes:
+            setattr(session, attr, str(uuid.uuid4()))
+        return session
 
 
 class TestEventListener(unittest.TestCase):
