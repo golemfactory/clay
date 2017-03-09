@@ -1,3 +1,5 @@
+from mock import Mock
+
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -53,16 +55,16 @@ class TestCoreVerificator(TempDirFixture, LogTestCase):
 
     def test_check_files(self):
         cv = CoreVerificator()
-        cv._check_files("SUBTASK X", dict(), [])
+        cv._check_files("SUBTASK X", dict(), [], Mock())
         assert cv.get_verification_state("SUBTASK X") == SubtaskVerificationState.WRONG_ANSWER
 
         files = self.additional_dir_content([3])
-        cv._check_files("SUBTASK X2", dict(), files)
+        cv._check_files("SUBTASK X2", dict(), files, Mock())
         assert cv.get_verification_state("SUBTASK X2") == SubtaskVerificationState.VERIFIED
 
         files = self.additional_dir_content([3])
-        cv._check_files("SUBTASK Y", dict(), [files[0]])
+        cv._check_files("SUBTASK Y", dict(), [files[0]], Mock())
         assert cv.get_verification_state("SUBTASK Y") == SubtaskVerificationState.VERIFIED
 
-        cv._check_files("SUBTASK Z", dict(), ["not a file"])
+        cv._check_files("SUBTASK Z", dict(), ["not a file"], Mock())
         assert cv.get_verification_state("SUBTASK Z") == SubtaskVerificationState.WRONG_ANSWER

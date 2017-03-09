@@ -142,7 +142,7 @@ class Task(object):
         state = self.__dict__.copy()
         del state['listeners']
         from pprint import pformat
-        logger.warning(pformat(state))
+        logger.debug(pformat(state))
         return state
 
     def __setstate__(self, state):

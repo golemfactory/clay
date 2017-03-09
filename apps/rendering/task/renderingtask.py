@@ -2,7 +2,6 @@ from copy import deepcopy
 import logging
 import math
 import os
-import weakref
 
 from pathlib import Path
 from PIL import Image, ImageChops
@@ -11,7 +10,6 @@ from PIL import Image, ImageChops
 from golem.core.common import get_golem_path, timeout_to_deadline
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskclient import TaskClient
@@ -115,7 +113,6 @@ class RenderingTask(CoreTask):
         self.verificator.res_y = self.res_y
         self.verificator.total_tasks = self.total_tasks
         self.verificator.root_path = self.root_path
-        self.verificator.task_ref = weakref.ref(self)
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):

@@ -35,17 +35,17 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()
         # No subtask info
-        assert rv.verify("Subtask1", dict(), ["file1"]) == SubtaskVerificationState.UNKNOWN
+        assert rv.verify("Subtask1", dict(), ["file1"], Mock()) == SubtaskVerificationState.UNKNOWN
 
         rv.res_x = 800
         rv.res_y = 600
         rv.total_tasks = 30
         # No data
-        assert rv.verify("Subtask1", {"start_task": 3}, []) == \
+        assert rv.verify("Subtask1", {"start_task": 3}, [], Mock()) == \
                          SubtaskVerificationState.WRONG_ANSWER
 
         # Result is not an image
-        assert rv.verify("Subtask1", {"start_task": 3}, ["file1"]) == \
+        assert rv.verify("Subtask1", {"start_task": 3}, ["file1"], Mock()) == \
                SubtaskVerificationState.WRONG_ANSWER
 
         img_path = os.path.join(self.path, "img1.png")
@@ -61,12 +61,11 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         img.save(img_path3)
 
         # Proper simple verification - just check if there's a image with right size in results
-        assert rv.verify("Subtask1", {"start_task": 3}, [img_path, img_path2]) == \
+        assert rv.verify("Subtask1", {"start_task": 3}, [img_path, img_path2], Mock()) == \
                SubtaskVerificationState.VERIFIED
 
         # ADVANCE VERIFICATION
 
-        rv.task_ref = Mock()
         rv.advanced_verification = True
         rv.verification_options = AdvanceRenderingVerificationOptions()
         rv.verification_options.type = "forAll"
@@ -77,20 +76,20 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         # No image files in results
         computer_mock.return_value.tt.result.get.return_value = self.additional_dir_content([3])
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
-                         [img_path]) == SubtaskVerificationState.WRONG_ANSWER
+                         [img_path], Mock()) == SubtaskVerificationState.WRONG_ANSWER
 
         # Properly verified
         adv_ver_res = [img_path3,  os.path.join(ver_dir, "cos.log")]
         computer_mock.return_value.tt.result.get.return_value = adv_ver_res
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
                                       "node_id": "ONENODE"},
-                         [img_path]) == SubtaskVerificationState.VERIFIED
+                         [img_path], Mock()) == SubtaskVerificationState.VERIFIED
 
         if is_linux() and os.geteuid() == 0:
             rv.tmp_dir = "/nonexisting"
             assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
                                           "node_id": "ONENODE"},
-                             [img_path]) == SubtaskVerificationState.UNKNOWN
+                             [img_path], Mock()) == SubtaskVerificationState.UNKNOWN
 
     def test_get_part_img_size(self):
         rv = RenderingVerificator()
@@ -135,22 +134,22 @@ class TestFrameRenderingVerificator(TempDirFixture):
         frv = FrameRenderingVerificator()
         frv.total_tasks = 20
         frv.use_frames = False
-        frv._check_files("id1", {"frames": [3]}, [])
+        frv._check_files("id1", {"frames": [3]}, [], Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
         frv.use_frames = True
         frv.frames = [3, 4, 5, 6]
-        frv._check_files("id1", {"frames": [3]}, [])
+        frv._check_files("id1", {"frames": [3]}, [], Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
         frv.total_tasks = 2
-        frv._check_files("id1", {"frames": [3]}, [])
+        frv._check_files("id1", {"frames": [3]}, [], Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
-        frv._check_files("id1", {"frames": [3, 4]}, ["file1"])
+        frv._check_files("id1", {"frames": [3, 4]}, ["file1"], Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
-        frv._check_files("id1", {"frames": [3, 4], "start_task": 1}, ["file1", "file2"])
+        frv._check_files("id1", {"frames": [3, 4], "start_task": 1}, ["file1", "file2"], Mock())
         assert frv.ver_states["id1"] == SubtaskVerificationState.WRONG_ANSWER
 
     def test_get_part_img_size(self):

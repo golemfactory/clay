@@ -45,11 +45,11 @@ class CoreVerificator(object):
         return self.ver_states[subtask_id]
 
     @handle_key_error_for_state
-    def verify(self, subtask_id, subtask_info, tr_files):
-        self._check_files(subtask_id, subtask_info, tr_files)
+    def verify(self, subtask_id, subtask_info, tr_files, task):
+        self._check_files(subtask_id, subtask_info, tr_files, task)
         return self.ver_states[subtask_id]
 
-    def _check_files(self, subtask_id, subtask_info, tr_files):
+    def _check_files(self, subtask_id, subtask_info, tr_files, task):
         for tr_file in tr_files:
             if os.path.isfile(tr_file):
                 self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED

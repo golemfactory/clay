@@ -51,6 +51,7 @@ class BlenderVerificator(FrameRenderingVerificator):
         ctd.src_code = self.src_code
         ctd.docker_images = self.docker_images
         ctd.deadline = timeout_to_deadline(self.verification_timeout)
+        return ctd
 
     def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
         x, y = self._get_part_size(subtask_id, subtask_info)

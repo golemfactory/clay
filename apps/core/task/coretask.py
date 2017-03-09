@@ -128,7 +128,7 @@ class CoreTask(Task):
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
         ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
-                                            result_files)
+                                            result_files, self)
         if ver_state == SubtaskVerificationState.VERIFIED:
             self.accept_results(subtask_id, result_files)
         # TODO Add support for different verification states

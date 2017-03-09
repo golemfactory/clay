@@ -25,15 +25,14 @@ class RenderingVerificator(CoreVerificator):
         self.total_tasks = 0
         self.root_path = ""
         self.verified_clients = list()
-        self.task_ref = None
 
-    def _check_files(self, subtask_id, subtask_info, tr_files):
-        if self._verify_imgs(subtask_id, subtask_info, tr_files):
+    def _check_files(self, subtask_id, subtask_info, tr_files, task):
+        if self._verify_imgs(subtask_id, subtask_info, tr_files, task):
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
         else:
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-    def _verify_imgs(self, subtask_id, subtask_info, tr_files):
+    def _verify_imgs(self, subtask_id, subtask_info, tr_files, task):
         if len(tr_files) == 0:
             return False
 
@@ -47,7 +46,7 @@ class RenderingVerificator(CoreVerificator):
                 start_box = self._get_box_start(x0, y0, x1, y1)
                 logger.debug('testBox: {}'.format(start_box))
                 cmp_file, cmp_start_box = self._get_cmp_file(tr_file, start_box, subtask_id,
-                                                             subtask_info)
+                                                             subtask_info, task)
                 logger.debug('cmp_start_box {}'.format(cmp_start_box))
                 if not advance_verify_img(tr_file, res_x, res_y, start_box,
                                           self.verification_options.box_size, cmp_file,
@@ -89,9 +88,9 @@ class RenderingVerificator(CoreVerificator):
         img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
-    def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info):
+    def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info, task):
         extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file, subtask_info)
-        cmp_file = self._run_task(extra_data)
+        cmp_file = self._run_task(extra_data, task)
 
         return cmp_file, new_start_box
 
@@ -106,8 +105,8 @@ class RenderingVerificator(CoreVerificator):
             logger.exception("Error during scope changing in advanced verification")
         return extra_data, start_box
 
-    def _run_task(self, extra_data):
-        computer = LocalComputer(self.task_ref(), self.root_path,
+    def _run_task(self, extra_data, task):
+        computer = LocalComputer(task, self.root_path,
                                  self.__box_rendered,
                                  self.__box_render_error,
                                  lambda: self.query_extra_data_for_advanced_verification(
@@ -155,13 +154,13 @@ class FrameRenderingVerificator(RenderingVerificator):
         self.use_frames = False
         self.frames = []
 
-    def _check_files(self, subtask_id, subtask_info, tr_files):
+    def _check_files(self, subtask_id, subtask_info, tr_files, task):
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list):
                 self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
                 return
-        if not self._verify_imgs(subtask_id, subtask_info, tr_files):
+        if not self._verify_imgs(subtask_id, subtask_info, tr_files, task):
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
         else:
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
