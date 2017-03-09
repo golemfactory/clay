@@ -4,45 +4,45 @@ from golem.core.keysauth import mk_privkey, privtopub
 
 
 def key_in_hex(key):
-    return ':'.join(x.encode('hex') for x in key)
+    return ''.join(x.encode('hex') for x in key)
 
 
 class TestKeygenHelper(TestCase):
     """First three test vectors from http://www.di-mgt.com.au/sha_testvectors.html"""
     def test_mk_privkey(self):
         key = key_in_hex(mk_privkey(str("")))
-        self.assertEqual(key, "a7:ff:c6:f8:bf:1e:d7:66:51:c1:47:56:a0:61:d6:62:f5:80:ff:4d:e4:3b:49:fa:82:d8:0a:4b:80:f8:43:4a")
+        self.assertEqual(key, "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a")
 
         key = key_in_hex(mk_privkey(str("abc")))
-        self.assertEqual(key, "3a:98:5d:a7:4f:e2:25:b2:04:5c:17:2d:6b:d3:90:bd:85:5f:08:6e:3e:9d:52:5b:46:bf:e2:45:11:43:15:32")
+        self.assertEqual(key, "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532")
 
         key = key_in_hex(mk_privkey(str("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")))
-        self.assertEqual(key, "41:c0:db:a2:a9:d6:24:08:49:10:03:76:a8:23:5e:2c:82:e1:b9:99:8a:99:9e:21:db:32:dd:97:49:6d:33:76")
+        self.assertEqual(key, "41c0dba2a9d6240849100376a8235e2c82e1b9998a999e21db32dd97496d3376")
 
         key = key_in_hex(mk_privkey(str("ala")))
-        self.assertEqual(key, "dd:8a:21:63:67:a5:61:6f:25:ce:f9:dc:48:ed:a8:6d:6e:a6:8c:b5:9f:9f:0d:f6:9a:f3:49:14:e3:ce:77:50")
+        self.assertEqual(key, "dd8a216367a5616f25cef9dc48eda86d6ea68cb59f9f0df69af34914e3ce7750")
 
         key = key_in_hex(mk_privkey(str("102")))
-        self.assertEqual(key, "36:72:ce:6f:f4:6a:e7:4b:28:1f:cb:27:88:1a:ff:d1:8e:54:e3:ef:ac:c1:10:31:36:4b:69:41:6c:92:64:b1")
+        self.assertEqual(key, "3672ce6ff46ae74b281fcb27881affd18e54e3efacc11031364b69416c9264b1")
 
         key = key_in_hex(mk_privkey(str("-4")))
-        self.assertEqual(key, "73:8d:11:18:1b:63:c5:15:90:e9:b6:c7:42:66:b8:03:09:4e:f0:54:36:74:8e:df:0b:26:5c:75:7d:77:a5:76")
+        self.assertEqual(key, "738d11181b63c51590e9b6c74266b803094ef05436748edf0b265c757d77a576")
 
         key = key_in_hex(mk_privkey(str("0.234")))
-        self.assertEqual(key, "6f:ad:32:c1:06:f7:30:f4:b4:83:d2:d3:57:52:5d:63:79:b4:eb:ad:ae:1e:00:06:1a:95:ab:c5:b3:7a:e6:78")
+        self.assertEqual(key, "6fad32c106f730f4b483d2d357525d6379b4ebadae1e00061a95abc5b37ae678")
 
     def test_privtopub(self):
         key = key_in_hex(privtopub(mk_privkey(str(""))))
-        self.assertEqual(key, "c9:88:c2:98:ec:51:45:16:12:11:76:a5:11:7c:8a:4f:96:92:91:4b:0e:19:7d:2d:42:5d:73:3f:83:e4:1b:89:1e:d9:b8:24:59:32:8c:1a:b7:e3:c2:05:07:c8:6e:8b:ea:d9:32:0b:95:0c:56:56:09:f8:60:eb:b5:37:70:88")
+        self.assertEqual(key, "c988c298ec514516121176a5117c8a4f9692914b0e197d2d425d733f83e41b891ed9b82459328c1ab7e3c20507c86e8bead9320b950c565609f860ebb5377088")
 
         key = key_in_hex(privtopub(mk_privkey(str("ala"))))
-        self.assertEqual(key, "88:aa:ea:31:f4:2c:37:a4:29:ba:5a:7a:52:2d:0a:00:6f:b6:81:ce:20:cd:fc:85:2f:61:8e:e6:80:22:8a:2e:d0:ae:aa:72:e2:9c:05:9d:58:9e:d0:8c:64:25:c3:d7:40:05:68:60:f3:69:c8:be:0e:3c:8b:69:70:d1:7a:b4")
+        self.assertEqual(key, "88aaea31f42c37a429ba5a7a522d0a006fb681ce20cdfc852f618ee680228a2ed0aeaa72e29c059d589ed08c6425c3d740056860f369c8be0e3c8b6970d17ab4")
 
         key = key_in_hex(privtopub(mk_privkey(str("102"))))
-        self.assertEqual(key, "78:b9:32:5c:46:6c:77:f4:ac:35:0f:ee:37:75:03:e7:0d:49:d2:92:4a:54:bd:eb:21:4c:3c:6f:da:d4:e2:c8:0f:16:0b:69:f2:3d:c6:0e:1e:da:4b:30:52:9e:a1:11:13:b7:a5:c0:33:1c:87:fa:a0:7c:29:84:fa:9e:ca:aa")
+        self.assertEqual(key, "78b9325c466c77f4ac350fee377503e70d49d2924a54bdeb214c3c6fdad4e2c80f160b69f23dc60e1eda4b30529ea11113b7a5c0331c87faa07c2984fa9ecaaa")
 
         key = key_in_hex(privtopub(mk_privkey(str("-4"))))
-        self.assertEqual(key, "9d:36:a5:fe:87:b2:8a:af:88:67:a4:31:67:2a:4f:f3:37:f7:51:ab:74:e8:c9:bf:9b:cb:d5:ee:33:54:ab:91:74:90:89:aa:47:25:b8:1b:cd:97:d2:e8:1d:ae:3d:74:e1:e0:18:44:38:74:98:c7:7d:9f:0d:9b:36:b5:c4:c1")
+        self.assertEqual(key, "9d36a5fe87b28aaf8867a431672a4ff337f751ab74e8c9bf9bcbd5ee3354ab91749089aa4725b81bcd97d2e81dae3d74e1e01844387498c77d9f0d9b36b5c4c1")
 
         key = key_in_hex(privtopub(mk_privkey(str("0.234"))))
-        self.assertEqual(key, "2c:b3:35:f6:f2:a5:26:2c:ba:b5:85:10:47:37:d6:b1:56:fb:6e:20:73:f1:91:e4:35:b6:34:0f:d6:90:3b:d5:d3:f1:91:35:db:08:28:43:88:1e:40:96:d7:5d:b4:c3:54:84:a5:fd:8a:cc:30:85:ca:08:84:f5:a4:5c:fa:64")
+        self.assertEqual(key, "2cb335f6f2a5262cbab585104737d6b156fb6e2073f191e435b6340fd6903bd5d3f19135db082843881e4096d75db4c35484a5fd8acc3085ca0884f5a45cfa64")
