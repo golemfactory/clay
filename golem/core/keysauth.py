@@ -2,6 +2,7 @@ import abc
 import logging
 import os
 from hashlib import sha256
+from _pysha3 import sha3_256, keccak_256
 
 import bitcoin
 from Crypto.PublicKey import RSA
@@ -10,8 +11,6 @@ from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
 from devp2p.crypto import ECCx
-from sha3 import sha3_256
-
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from simpleenv import get_local_datadir
 from simplehash import SimpleHash
@@ -32,7 +31,7 @@ def sha2(seed):
 
 
 def mk_privkey(seed):
-    return sha3(seed)
+    return keccak_256(seed).digest()
 
 
 def privtopub(raw_privkey):
@@ -437,6 +436,7 @@ class EllipticalKeysAuth(KeysAuth):
 
     def sign(self, data):
         """ Sign given data with ECDSA
+        sha3 is used to shorten the data and speedup calculations
         :param str data: data to be signed
         :return: signed data
         """
@@ -445,6 +445,7 @@ class EllipticalKeysAuth(KeysAuth):
     def verify(self, sig, data, public_key=None):
         """
         Verify the validity of an ECDSA signature
+        sha3 is used to shorten the data and speedup calculations
         :param str sig: ECDSA signature
         :param str data: expected data
         :param None|str public_key: *Default: None* public key that should be used to verify signed data.
