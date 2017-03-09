@@ -4,6 +4,8 @@ from ethereum.utils import zpad
 from ethereum.transactions import Transaction
 
 from golem.ethereum import Client
+import unittest
+from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening
 from golem.testutils import TempDirFixture
 
 
@@ -39,6 +41,8 @@ class EthereumClientTest(TempDirFixture):
         with self.assertRaisesRegexp(ValueError, "Insufficient funds"):
             client.send(tx)
 
+    @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
+                     "geth is already running; skipping starting and stopping tests")
     def test_start_terminate(self):
         client = Client()
         assert client.node.is_running()

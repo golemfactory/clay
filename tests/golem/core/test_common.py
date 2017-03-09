@@ -1,9 +1,12 @@
+# -*- coding: utf-8 -*-
+
 import os
 from unittest import TestCase
 
 from mock import patch, ANY
 
 from golem.core.common import HandleKeyError, HandleAttributeError, config_logging
+from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 
 
@@ -36,36 +39,20 @@ class TestHandleAttibuteError(TestCase):
         assert self.func("Abc") == 6
 
 
-class TestConfigLogging(TempDirFixture):
+class TestConfigLogging(TempDirFixture, PEP8MixIn):
     """ Test config logger """
+    PEP8_FILES = [
+        "loggingconfig.py",
+        "golem/core/common.py",
+    ]
 
-    @patch('logging.config.fileConfig')
-    def test_config_logging_basestring(self, file_config):
-        """ Test config when log file path is encoded as basestring """
+    def test_config_logging(self):
+        """Tests wether logging is properly configured"""
+        datadir = os.path.join(self.path, "data_test")
+        logsdir = os.path.join(datadir, "logs")
 
-        self.logname = os.path.join(self.path, "dir", "log.txt")
-        self.dirname = os.path.dirname(self.logname)
-        config_logging(self.logname)
-
-        assert os.path.exists(self.dirname)
-        file_config.assert_called_with(ANY,
-                                       defaults={'logname': self.logname.encode('string-escape')},
-                                       disable_existing_loggers=False)
-        file_config.reset_mock()
-
-    @patch('logging.config.fileConfig')
-    def test_config_logging_unicode(self, file_config):
-        """ Test config when log file path is encoded as unicode """
-
-        self.logname = os.path.join(self.path, "dir", "log.txt")
-        self.dirname = os.path.dirname(self.logname)
-        logname_u = unicode(self.logname)
-        dirname_u = unicode(self.dirname)
-
-        config_logging(logname_u)
-
-        assert os.path.exists(dirname_u)
-        file_config.assert_called_with(ANY,
-                                       defaults={'logname': logname_u.encode('unicode-escape')},
-                                       disable_existing_loggers=False)
-        file_config.reset_mock()
+        suffix = "_tests"
+        with patch('logging.config.dictConfig') as m_dconfig:
+            config_logging(suffix, datadir=datadir)
+            m_dconfig.assert_called_once_with(ANY)
+        self.assertTrue(os.path.exists(logsdir))

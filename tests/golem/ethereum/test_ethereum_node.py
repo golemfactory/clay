@@ -3,7 +3,7 @@ import requests
 from os import urandom
 from mock import patch, Mock
 
-from golem.ethereum.node import NodeProcess, ropsten_faucet_donate
+from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening
 
 
 class RopstenFaucetTest(unittest.TestCase):
@@ -37,6 +37,8 @@ class RopstenFaucetTest(unittest.TestCase):
 
 
 class EthereumNodeTest(unittest.TestCase):
+    @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
+                     "geth is already running; skipping starting and stopping tests")
     def test_ethereum_node(self):
         np = NodeProcess()
         assert np.is_running() is False
@@ -47,6 +49,18 @@ class EthereumNodeTest(unittest.TestCase):
         assert np.is_running() is True
         np.stop()
         assert np.is_running() is False
+
+    @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
+                     "geth is already running; skipping starting and stopping tests")
+    def test_ethereum_node_reuse(self):
+        np = NodeProcess()
+        np.start()
+        np1 = NodeProcess()
+        np1.start()
+        assert np.is_running() is True
+        assert np1.is_running() is True
+        assert np.system_geth is False
+        assert np1.system_geth is True
 
     def test_geth_version_check(self):
         min = NodeProcess.MIN_GETH_VERSION
