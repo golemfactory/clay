@@ -125,7 +125,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         assert msg
 
         self.task_session_2._react_to_resource_list(msg)
-        self.resource_server_2.get_resources(async=False)
+        self.resource_server_2._download_resources(async=False)
 
         for r in self.resources_relative:
             sha_256_1 = file_sha_256(os.path.join(self.resource_dir_1, r))
