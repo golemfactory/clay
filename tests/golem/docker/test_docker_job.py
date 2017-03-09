@@ -10,6 +10,7 @@ from os import path
 import docker.errors
 import requests
 
+from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
 from golem.docker.image import DockerImage
@@ -17,9 +18,7 @@ from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
 from test_docker_image import DockerTestCase
 
-logging.config.fileConfig(path.join(path.dirname(__file__), "logging.ini"),
-                          disable_existing_loggers=False)
-
+config_logging('docker_test')
 
 class TestDockerJob(DockerTestCase):
     """Common superclass for Docker job tests"""

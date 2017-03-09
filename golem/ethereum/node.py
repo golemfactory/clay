@@ -19,6 +19,7 @@ from golem.utils import find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
 
+from web3 import Web3, IPCProvider
 
 def ropsten_faucet_donate(addr):
     addr = normalize_address(addr)
@@ -60,9 +61,10 @@ class Faucet(object):
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.5.0'
     MAX_GETH_VERSION = '1.5.999'
+    testnet = True
 
     def __init__(self):
-        self.port = None
+        log.info("Find geth node or start our own")
         self.__prog = find_program('geth')
         if not self.__prog:
             raise OSError("Ethereum client 'geth' not found")
@@ -73,33 +75,45 @@ class NodeProcess(object):
             raise OSError("Incompatible Ethereum client 'geth' version: {}".format(ver))
         log.info("geth version {}".format(ver))
 
-        self.__ps = None
+        self.__ps = None # child process
+        self.system_geth = False # some external geth, not a child process
 
     def is_running(self):
-        return self.__ps is not None
+        return self.__ps is not None or self.system_geth
 
-    def start(self, port=None):
-        if self.is_running():
-            raise RuntimeError("Ethereum node already started")
+    def start(self):
+        if self.__ps is not None:
+            raise RuntimeError("Ethereum node already started by us")
 
-        if not port:
-            port = find_free_net_port()
+        if is_geth_listening(self.testnet):
+            the_chain = "mainnet"
+            if self.testnet:
+                the_chain = "ropsten"
+            running_chain = identify_chain(self.testnet)
+            if running_chain == the_chain:
+                log.info("Using existing Ethereum node {}".format(running_chain))
+                self.system_geth = True
+                return
+            else:
+                log.error("Some other Ethereum instance is listening...")
+                log.error("It seems to be running wrong chain!")
+                log.error("Looking for {}; geth is running {}".format(the_chain, running_chain))
+                msg = "Ethereum client runs wrong chain: {}".format(running_chain)
+                raise OSError(msg)
 
-        self.port = port
+        log.info("Will attempt to start new Ethereum node")
+
         args = [
             self.__prog,
-            '--light',
+            # '--light', # blocked by https://github.com/ethereum/go-ethereum/issues/3752
             '--testnet',
-            '--port', str(self.port),
             '--verbosity', '3',
         ]
-        self.testnet = True
 
         self.__ps = subprocess.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
         WAIT_PERIOD = 0.1
         wait_time = 0
-        from web3 import Web3, IPCProvider
         web3 = Web3(IPCProvider(testnet=self.testnet))
         while not web3.isConnected():
             # FIXME: Add timeout limit, we don't want to loop here forever.
@@ -118,6 +132,24 @@ class NodeProcess(object):
                 log.warn("Cannot terminate node: process {} no longer exists".format(self.__ps.pid))
 
             self.__ps = None
-            self.rpcport = None
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
+
+def identify_chain(testnet):
+    """
+    Check if chain which external Ethereum node is running
+    is one we want to use.
+    """
+    web3 = Web3(IPCProvider(testnet=testnet))
+    ropsten = u'0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d'
+    mainnet = u'0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3'
+    block = web3.eth.getBlock(0)
+    if testnet and block['hash'] == ropsten:
+        return "ropsten"
+    if not testnet and block['hash'] == mainnet:
+        return "mainnet"
+    return None
+
+def is_geth_listening(testnet):
+    web3 = Web3(IPCProvider(testnet=testnet))
+    return web3.isConnected()

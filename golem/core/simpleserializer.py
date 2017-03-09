@@ -1,11 +1,15 @@
 import collections
 import inspect
+import logging
 import sys
 import types
 
 import cbor2
 import jsonpickle
 import pytz
+
+
+logger = logging.getLogger('golem.core.simpleserializer')
 
 
 class DictCoder(object):
@@ -71,6 +75,8 @@ class DictCoder(object):
             except UnicodeDecodeError:
                 return obj
         elif isinstance(obj, collections.Iterable):
+            if isinstance(obj, (set, frozenset)):
+                logger.warning('set/frozenset have known problems with umsgpack: %r', obj)
             return obj.__class__([cls._to_dict_traverse_obj(o, typed) for o in obj])
         elif cls.deep_serialization:
             if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
