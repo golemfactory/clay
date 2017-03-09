@@ -6,9 +6,10 @@ import uuid
 import ovh
 import requests
 
+from golem.resource.base.resourcetest import AddGetResources
 from golem.resource.client import file_multihash
 from golem.resource.swift.api import api_translate_exceptions
-from golem.resource.swift.resourcemanager import OpenStackSwiftClient
+from golem.resource.swift.resourcemanager import OpenStackSwiftClient, OpenStackSwiftResourceManager
 from golem.testutils import TempDirFixture
 
 
@@ -59,6 +60,11 @@ class TestSwiftClient(TempDirFixture):
 
         client.delete(multihash,
                       client_options=options)
+
+
+class TestSwiftResources(AddGetResources):
+    __test__ = True
+    _resource_manager_class = OpenStackSwiftResourceManager
 
 
 class TestTranslateExceptions(unittest.TestCase):

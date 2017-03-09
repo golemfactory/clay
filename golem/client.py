@@ -255,10 +255,10 @@ class Client(object):
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
-        self.task_server.task_manager.add_new_task(task)
-        files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
+        files = task.get_resources(task_id, None, resource_types["hashes"])
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
-        self.resource_server.add_task(files, task_id, client_options=client_options)
+        deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
+        deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
