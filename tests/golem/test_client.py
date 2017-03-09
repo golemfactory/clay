@@ -5,7 +5,7 @@ import uuid
 from ethereum.utils import denoms
 from twisted.internet.defer import Deferred
 
-from golem.client import Client, ClientTaskComputerEventListener
+from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.ethereum.paymentmonitor import IncomingPayment
@@ -16,6 +16,7 @@ from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from mock import Mock, MagicMock, patch
@@ -200,7 +201,7 @@ class TestClient(TestWithDatabase):
         c.quit()
 
 
-class TestClientRPCMethods(TestWithDatabase):
+class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
@@ -291,6 +292,12 @@ class TestClientRPCMethods(TestWithDatabase):
         self.assertIsNone(c.rpc_publisher)
         c.configure_rpc(rpc_session)
         self.assertIs(c.rpc_publisher.session, rpc_session)
+
+        # try to create task with error
+        task_dict = {"some data": "with no sense"}
+        with self.assertLogs(log, level="WARNING"):
+            c.create_task(task_dict)
+        self.assertFalse(c.enqueue_new_task.called)
 
         # create task rpc
         t = Task(TaskHeader("node_name", "task_id", "10.10.10.10", 123, "owner_id", "DEFAULT"),

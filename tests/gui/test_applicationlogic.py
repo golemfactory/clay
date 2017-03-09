@@ -60,22 +60,31 @@ class TTask(Task):
         return ["output1", "output2", "output3"]
 
 
+class TTaskWithDef(TTask):
+    def __init__(self):
+        super(TTaskWithDef, self).__init__()
+        self.task_definition = TaskDefinition()
+        self.task_definition.max_price = 100 * denoms.ether
+
+
 class TTaskBuilder(TaskBuilder):
 
-    def __init__(self, path):
+    def __init__(self, path, task_class=TTask):
         self.path = path
         self.src_code = "output = {'data': n, 'result_type': 0}"
         self.extra_data = {"n": 421}
+        self.task_class = task_class
 
     def build(self):
-        t = TTask()
+        t = self.task_class()
         t.header = TaskHeader(
             node_name="node1",
             task_id="xyz",
             task_owner_address="127.0.0.1",
             task_owner_port=45000,
             task_owner_key_id="key2",
-            environment="test"
+            environment="test",
+            max_price=30 * denoms.ether
         )
         t.header.root_path = self.path
         t.src_code = self.src_code
@@ -381,6 +390,10 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.clone_task("xyz")
 
         self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
+
+        ttb = TTaskBuilder(self.path, TTaskWithDef)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert logic.run_test_task(ts)
 
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
