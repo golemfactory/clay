@@ -67,6 +67,13 @@ class TTaskWithDef(TTask):
         self.task_definition.max_price = 100 * denoms.ether
 
 
+class TTaskWithError(TTask):
+    def __init__(self):
+        super(TTaskWithDef, self).__init__()
+        self.task_definition = TaskDefinition()
+        self.task_definition.max_price = "ABCDEFGHT"
+
+
 class TTaskBuilder(TaskBuilder):
 
     def __init__(self, path, task_class=TTask):
@@ -394,6 +401,10 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
         assert logic.run_test_task(ts)
+
+        ttb = TTaskBuilder(self.path, TTaskWithError)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert not logic.run_test_task(ts)
 
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
