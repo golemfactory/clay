@@ -1,15 +1,22 @@
-import time
 from datetime import datetime
+from pathlib import Path
+import random
+import shutil
+import tempfile
+import time
 from unittest import TestCase
 
 from mock import Mock
+from mock import patch
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
 from golem.task.taskbase import TaskHeader, ComputeTaskDef
+from golem.task.taskkeeper import CompTaskInfo
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
+from golem.testutils import PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 
@@ -223,9 +230,36 @@ class TestCompSubtaskInfo(TestCase):
         self.assertIsInstance(csi, CompSubtaskInfo)
 
 
-class TestCompTaskKeeper(LogTestCase):
-    def test_comp_keeper(self):
-        ctk = CompTaskKeeper()
+class TestCompTaskKeeper(LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        "golem/task/taskkeeper.py",
+    ]
+    def setUp(self):
+        super(TestCompTaskKeeper, self).setUp()
+        random.seed()
+
+    def test_persistance(self):
+        """Tests wether tasks are persistent between restarts."""
+        tasks_dir = Path(tempfile.mkdtemp(prefix='golemtest'))
+        try:
+            ctk = CompTaskKeeper(tasks_dir)
+
+            test_headers = []
+            for x in range(100):
+                header = get_task_header()
+                header.task_id = "test%d-%d" % (x, random.random()*1000)
+                test_headers.append(header)
+                ctk.add_request(header, int(random.random()*100))
+            del ctk
+            ctk = CompTaskKeeper(tasks_dir)
+            for header in test_headers:
+                self.assertIn(header.task_id, ctk.active_tasks)
+        finally:
+            shutil.rmtree(str(tasks_dir))
+
+    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    def test_comp_keeper(self, dump_mock):
+        ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
         header.task_id = "xyz"
         with self.assertRaises(TypeError):
@@ -246,15 +280,16 @@ class TestCompTaskKeeper(LogTestCase):
         self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)
         self.assertEqual(ctk.get_value("xyz2", 4.5), 32)
         header.task_id = "xyz"
-        thread = Mock()
+        thread = get_task_header()
         thread.task_id = "qaz123WSX"
-        thread.header = Mock()
         with self.assertRaises(ValueError):
             ctk.add_request(thread, -1)
         with self.assertRaises(TypeError):
             ctk.add_request(thread, '1')
         ctk.add_request(thread, 12)
-        ctk.active_tasks["qwerty"] = Mock()
+        header = get_task_header()
+        header.task_id = "qwerty"
+        ctk.active_tasks["qwerty"] = CompTaskInfo(header, 12)
         ctk.active_tasks["qwerty"].price = "abc"
         with self.assertRaises(TypeError):
             ctk.get_value('qwerty', 12)
@@ -274,27 +309,9 @@ class TestCompTaskKeeper(LogTestCase):
         ctk.request_failure("xyz")
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
-        with self.assertLogs(logger, level="WARNING"):
-            ctk.remove_task("abc")
-        self.assertIsNotNone(ctk.active_tasks.get("xyz"))
-        with self.assertNoLogs(logger, level="WARNING"):
-            ctk.remove_task("xyz")
-        self.assertIsNone(ctk.active_tasks.get("xyz"))
-
-        header.deadline = get_timestamp_utc() - 1
-        ctk.add_request(header, 23)
-        self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        ctk.remove_old_tasks()
-        self.assertIsNone(ctk.active_tasks.get("xyz"))
-        ctk.add_request(header, 23)
-        ctd.task_id = "xyz"
-        ctd.subtask_id = "xxyyzz"
-        ctk.receive_subtask(ctd)
-        ctk.remove_old_tasks()
-        self.assertIsNotNone(ctk.active_tasks.get("xyz"))
-
-    def test_get_task_env(self):
-        ctk = CompTaskKeeper()
+    @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
+    def test_get_task_env(self, dump_mock):
+        ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):
             assert ctk.get_task_env("task1") is None
 
@@ -308,5 +325,3 @@ class TestCompTaskKeeper(LogTestCase):
 
         assert ctk.get_task_env("abc") == "NOTDEFAULT"
         assert ctk.get_task_env("xyz") == "DEFAULT"
-
-

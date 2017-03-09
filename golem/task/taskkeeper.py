@@ -1,9 +1,10 @@
 from __future__ import division
 
 import logging
+import math
+import pickle
 import random
 import time
-from math import ceil
 
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
@@ -14,7 +15,7 @@ logger = logging.getLogger('golem.task.taskkeeper')
 
 
 def compute_subtask_value(price, computation_time):
-    return int(ceil(price * computation_time / 3600))
+    return int(math.ceil(price * computation_time / 3600))
 
 
 class CompTaskInfo(object):
@@ -23,6 +24,9 @@ class CompTaskInfo(object):
         self.price = price
         self.requests = 1
         self.subtasks = {}
+
+    def __repr__(self):
+        return "<CompTaskInfo(%r, %r) reqs: %r>" % (self.header, self.price, self.requests)
 
 
 class CompSubtaskInfo(object):
@@ -58,7 +62,10 @@ class CompTaskKeeper(object):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
-            pickle.dump(f, dump_data)
+            from pprint import pformat
+            for task in self.active_tasks.values():
+                logger.debug('dump_data: %s', pformat(task))
+            pickle.dump(dump_data, f)
 
     def restore(self):
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
@@ -68,13 +75,14 @@ class CompTaskKeeper(object):
         with self.dump_path.open('rb') as f:
             try:
                 active_tasks, subtask_to_task = pickle.load(f)
-            except pickle.UnpicklingError:
+            except (pickle.UnpicklingError, EOFError):
                 logger.exception('Problem restoring dumpfile: %s', self.dump_path)
                 return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
 
     def add_request(self, theader, price):
+        logger.debug('CT.add_request()')
         if not type(price) in (int, long):
             raise TypeError("Incorrect 'price' type: {}. Should be int or long".format(type(price)))
         if price < 0:
@@ -96,6 +104,7 @@ class CompTaskKeeper(object):
 
     @handle_key_error
     def receive_subtask(self, comp_task_def):
+        logger.debug('CT.receive_subtask()')
         task = self.active_tasks[comp_task_def.task_id]
         if task.requests > 0 and comp_task_def.subtask_id not in task.subtasks:
             task.requests -= 1
@@ -120,6 +129,7 @@ class CompTaskKeeper(object):
 
     @handle_key_error
     def request_failure(self, task_id):
+        logger.debug('CT.request_failure(%r)', task_id)
         self.active_tasks[task_id].requests -= 1
         self.dump()
 

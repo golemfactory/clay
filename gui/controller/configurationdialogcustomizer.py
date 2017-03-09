@@ -363,7 +363,7 @@ class ConfigurationDialogCustomizer(Customizer):
             self.__set_account_ok()
         else:
             self.__set_account_error()
-            logger.warning("Wrong ethereum address: {}".format(text))
+            logger.warning("Wrong ethereum address: %r", text)
 
     def __show_advance_clicked(self):
         self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
