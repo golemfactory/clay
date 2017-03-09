@@ -611,9 +611,32 @@ class TestVirtualBoxHypervisor(LogTestCase):
         assert self.hypervisor._machine_from_arg(None) is None
         assert not self.virtualbox.find_machine.called
 
-        self.virtualbox.find_machine = lambda *_: raise_exception('Test exception')
+        self.virtualbox.find_machine = lambda *_: raise_exception(
+            'Test exception')
 
         assert not self.hypervisor._machine_from_arg(MACHINE_NAME)
+
+    def test_power_up(self):
+        with mock.patch.object(self.hypervisor, '_machine_from_arg') \
+                as _mfa:
+            assert self.hypervisor.power_up(MACHINE_NAME)
+            assert _mfa.called
+
+        with mock.patch.object(self.hypervisor, '_machine_from_arg',
+                               raise_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                assert not self.hypervisor.power_up(MACHINE_NAME)
+
+    def test_power_down(self):
+        with mock.patch.object(self.hypervisor, '_session_from_arg') \
+                as _sfa:
+            assert self.hypervisor.power_down(MACHINE_NAME)
+            assert _sfa.called
+
+        with mock.patch.object(self.hypervisor, '_session_from_arg',
+                               raise_exception):
+            with self.assertLogs(logger, 'ERROR'):
+                assert not self.hypervisor.power_down(MACHINE_NAME)
 
 
 class TestXhyveHypervisor(TempDirFixture, LogTestCase):
