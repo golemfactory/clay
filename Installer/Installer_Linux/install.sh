@@ -188,10 +188,11 @@ function main()
 
 main
 result=$?
-if [[ $result -eq 0 ]]; then
+if [[ $INSTALL_DOCKER -eq 1 ]]; then
     info_msg "You need to restart your PC to finish installation"
-    exit 0
-else
+fi
+if [[ $result -eq 1 ]]; then
     error_msg "Installation failed"
     exit 1
 fi
+exit 0
