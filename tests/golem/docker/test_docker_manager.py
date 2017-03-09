@@ -522,13 +522,14 @@ class TestVirtualBoxHypervisor(LogTestCase):
 
         vms = [None]
         with self.hypervisor.restart_ctx(MACHINE_NAME) as vm:
+            assert self.hypervisor._docker_manager.stop_docker_machine.called
             assert session.console.power_down.called
             assert machine.create_session.called
             assert vm
             vms[0] = vm
 
         assert vms[0].save_settings.called
-        assert session.power_up.called
+        assert self.hypervisor._docker_manager.start_docker_machine.called
 
         session.machine.state = None
 
@@ -556,6 +557,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
             assert vm
 
         assert session.unlock_machine.called
+        assert self.hypervisor._docker_manager.start_docker_machine.called
 
     def test_create(self):
         self.hypervisor._docker_manager = MockDockerManager()

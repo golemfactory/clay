@@ -249,6 +249,7 @@ class DockerManager(DockerConfigManager):
         if not command:
             return ''
 
+        command = command[:]
         if args:
             command += args
         if machine_name:
@@ -390,10 +391,14 @@ class VirtualBoxHypervisor(Hypervisor):
             yield None
             return
 
+        running = self._docker_manager.docker_machine_running()
+        if running:
+            self._docker_manager.stop_docker_machine()
+
         session = immutable_vm.create_session(self.LockType.write)
         vm = session.machine
 
-        if str(vm.state) in self.power_down_states + self.running_states:
+        if str(vm.state) in self.power_down_states:
             self.power_down(session)
 
         try:
@@ -406,10 +411,12 @@ class VirtualBoxHypervisor(Hypervisor):
 
         try:
             session.unlock_machine()
-            session.power_up(vm).disconnect()
         except Exception as e:
-            logger.warn("VirtualBox: VM session release error: {}"
-                        .format(e))
+            logger.warn("VirtualBox: error unlocking VM '{}': {}"
+                        .format(name, e))
+
+        if running:
+            self._docker_manager.start_docker_machine()
 
     @contextmanager
     def recover_ctx(self, name):
@@ -432,10 +439,11 @@ class VirtualBoxHypervisor(Hypervisor):
 
         try:
             session.unlock_machine()
-            self.power_up(vm).disconnect()
         except Exception as e:
-            logger.warn("VirtualBox: error unlocking VM: {}"
-                        .format(e))
+            logger.warn("VirtualBox: error unlocking VM '{}': {}"
+                        .format(name, e))
+
+        self._docker_manager.start_docker_machine()
 
     def create(self, name, **params):
         logger.info("VirtualBox: creating VM '{}'".format(name))
