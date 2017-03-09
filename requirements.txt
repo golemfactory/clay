@@ -12,6 +12,7 @@ OpenEXR==1.2.0
 peewee>=2.8.1
 Pillow==3.0.0
 psutil>=4.3.1
+pycodestyle
 pyelliptic==1.5.7
 pysha3>=1.0.1
 pystun==0.1.0
