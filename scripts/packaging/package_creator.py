@@ -854,7 +854,7 @@ class Pack(Command):
         if not isinstance(exclude, list):
             exclude = [exclude]
 
-        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', 'logging.ini'] + [entry.split('.')[0] for entry in exclude]
+        white_list = ['BUILD_CONSTANTS', 'cx_Freeze', 'loggingconfig.py'] + [entry.split('.')[0] for entry in exclude]
         tmp_file = src_file + "-" + str(uuid.uuid4())
 
         zip_in = zipfile.ZipFile(src_file, 'r')
@@ -1372,7 +1372,7 @@ build_options = {
         ],
         # Patch missing module files
         'copy_files': {
-            '': ['logging.ini'],
+            '': ['loggingconfig.py'],
             'bitcoin': ['english.txt'],
             'treq': ['_version'],
             'apps': [

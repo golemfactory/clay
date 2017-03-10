@@ -254,7 +254,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
 
     def _load_payment_params(self, definition):
-        price = definition.max_price / denoms.ether
+        price = int(definition.max_price) / denoms.ether
         self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(price))
         self._set_new_pessimistic_cost()
 
