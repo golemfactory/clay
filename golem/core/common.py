@@ -1,14 +1,12 @@
-import os
-import errno
-import sys
 from calendar import timegm
 from datetime import datetime
+import errno
+import os
 from os import path
-
+from pathlib import Path
 import pytz
-
-
-LOG_NAME = "golem.log"
+import sys
+import logging.config
 
 
 def is_windows():
@@ -97,26 +95,28 @@ class HandleAttributeError(HandleError):
         super(HandleAttributeError, self).__init__(AttributeError, handle_error)
 
 
-def config_logging(logname=LOG_NAME):
+def config_logging(suffix='', datadir=None):
     """Config logger"""
+    try:
+        from loggingconfig_local import LOGGING
+    except ImportError:
+        from loggingconfig import LOGGING
 
-    # \t and other special chars cause problems with log handlers
-    if isinstance(logname, unicode):
-        escaping = 'unicode-escape'
+    logdir_path = Path('logs')
+    if datadir is not None:
+        logdir_path = Path(datadir) / logdir_path
+        datadir += '/'
     else:
-        escaping = 'string-escape'
+        datadir = ''
+    if not logdir_path.exists():
+        logdir_path.mkdir(parents=True)
 
-    logname = logname.encode(escaping)
-    directory = os.path.dirname(logname)
+    for handler in LOGGING.get('handlers', {}).values():
+        if 'filename' in handler:
+            handler['filename'] %= {
+                'datadir': datadir,
+                'suffix': suffix,
+            }
 
-    if directory:
-        try:
-            os.makedirs(directory)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-
-    import logging.config
-    config_file = path.normpath(path.join(get_golem_path(), "logging.ini"))
-    logging.config.fileConfig(config_file, defaults={'logname': logname}, disable_existing_loggers=False)
+    logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)

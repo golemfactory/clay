@@ -261,12 +261,15 @@ class TestClient(IClient):
             Hash=resource_hash
         )
 
-    def get_file(self, multihash, filename=None, filepath=None, **_):
-        path = self._resources.get(multihash)
+    def get_file(self, multihash, client_options=None, filename=None, filepath=None, **_):
+        path = self._resources[multihash]
+        dst = os.path.join(filepath, filename)
 
         if not os.path.exists(filepath):
             os.makedirs(filepath)
-        shutil.copy(path, os.path.join(filepath, filename))
+
+        if path != dst:
+            shutil.copy(path, dst)
 
         return dict(
             Name=os.path.join(filepath, filename),
