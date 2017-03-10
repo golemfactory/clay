@@ -295,8 +295,12 @@ class Client(object):
             return False
 
     def create_task(self, t_dict):
-        new_task = DictSerializer.load(t_dict)
-        self.enqueue_new_task(new_task)
+        try:
+            new_task = DictSerializer.load(t_dict)
+            new_task.header.max_price = int(new_task.header.max_price)
+            self.enqueue_new_task(new_task)
+        except Exception:
+            log.exception("Cannot create task {}".format(t_dict))
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)
