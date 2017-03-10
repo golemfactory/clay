@@ -5,17 +5,18 @@ import uuid
 from ethereum.utils import denoms
 from twisted.internet.defer import Deferred
 
-from golem.client import Client, ClientTaskComputerEventListener
+from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import resource_types
+from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from mock import Mock, MagicMock, patch
@@ -200,7 +201,7 @@ class TestClient(TestWithDatabase):
         c.quit()
 
 
-class TestClientRPCMethods(TestWithDatabase):
+class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
@@ -250,6 +251,7 @@ class TestClientRPCMethods(TestWithDatabase):
         task = Mock()
         task.header.task_id = str(uuid.uuid4())
 
+
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(task.header.task_id, None, resource_types["hashes"])
         c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
@@ -291,8 +293,16 @@ class TestClientRPCMethods(TestWithDatabase):
         c.configure_rpc(rpc_session)
         self.assertIs(c.rpc_publisher.session, rpc_session)
 
+        # try to create task with error
+        task_dict = {"some data": "with no sense"}
+        with self.assertLogs(log, level="WARNING"):
+            c.create_task(task_dict)
+        self.assertFalse(c.enqueue_new_task.called)
+
         # create task rpc
-        task_dict = dict(_cls=('golem.task.taskbase', 'Task'), should_wait=False)
+        t = Task(TaskHeader("node_name", "task_id", "10.10.10.10", 123, "owner_id", "DEFAULT"),
+                 "print('hello')")
+        task_dict = DictSerializer.dump(t)
         c.create_task(task_dict)
         self.assertTrue(c.enqueue_new_task.called)
 
