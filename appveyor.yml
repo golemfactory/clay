@@ -33,7 +33,7 @@ environment:
       PYWIN32: pywin32-220.win32-py2.7.exe
       FREEIMAGE: FreeImage3170Win32Win64.zip
 
-      WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
+      WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'
