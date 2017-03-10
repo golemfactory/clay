@@ -10,7 +10,7 @@ from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
-from devp2p.crypto import ECCx
+from crypto import ECCx
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from simpleenv import get_local_datadir
 from simplehash import SimpleHash
