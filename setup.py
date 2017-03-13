@@ -10,6 +10,7 @@ from setuptools import find_packages
 
 from setuptools.command.test import test as TestCommand
 
+
 try:
     from cx_Freeze import setup
     use_cx_Freeze = True
@@ -147,3 +148,9 @@ except EnvironmentError as err:
         Generate_ui_files function returned {}
         ***************************************************************
         """.format(err)
+
+from golem.docker.manager import DockerManager
+from golem.tools.ci import in_appveyor, in_travis
+
+if not (in_appveyor() or in_travis()):
+    DockerManager.pull_images()

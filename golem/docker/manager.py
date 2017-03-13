@@ -126,11 +126,11 @@ class DockerManager(DockerConfigManager):
             self._set_docker_machine_env()
 
         try:
-            self._pull_images()
+            self.pull_images()
         except Exception as exc:
             logger.error("Docker: error pulling images: {}"
                          .format(exc))
-            self._build_images()
+            self.build_images()
 
         self._env_checked = True
         return bool(self.docker_machine)
@@ -288,7 +288,7 @@ class DockerManager(DockerConfigManager):
         return self._config_dir
 
     @classmethod
-    def _build_images(cls):
+    def build_images(cls):
         cwd = os.getcwdu()
 
         for entry in cls._collect_images():
@@ -309,7 +309,7 @@ class DockerManager(DockerConfigManager):
                     os.chdir(cwd)
 
     @classmethod
-    def _pull_images(cls):
+    def pull_images(cls):
         for entry in cls._collect_images():
             image, docker_file, tag = entry
             version = '{}:{}'.format(image, tag)
