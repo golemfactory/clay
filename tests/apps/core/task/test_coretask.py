@@ -1,5 +1,6 @@
-import shutil
 import os
+import shutil
+import unittest
 import zlib
 from copy import copy
 
@@ -14,7 +15,7 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.core.task.coretask import CoreTask, logger
+from apps.core.task.coretask import CoreTask, logger, log_key_error, TaskTypeInfo, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 
 
@@ -253,3 +254,80 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                 task._interpret_log(files[1])
 
             os.chmod(files[1], 0o700)
+
+    def test_needs_computation(self):
+        c = self._get_core_task()
+
+
+class TestLogKeyError(LogTestCase):
+    def test_log_key_error(self):
+        with self.assertLogs(logger, level="WARNING") as l:
+            assert not log_key_error("arg1", 131, "arg31380", [], arg="31", kwarg=231)
+        assert "131" in l.output[0]
+
+
+class TestTaskTypeInfo(unittest.TestCase):
+    def test_init(self):
+        tti = TaskTypeInfo("Name1", "Definition1", "Defaults", "Options", "builder")
+        assert tti.name == "Name1"
+        assert tti.defaults == "Defaults"
+        assert tti.options == "Options"
+        assert tti.task_builder_type == "builder"
+        assert tti.definition == "Definition1"
+        assert tti.dialog is None
+        assert tti.dialog_controller is None
+        assert tti.output_formats == []
+        assert tti.output_file_ext == []
+
+        tti = TaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2", "builder2", "dialog",
+                           "controller")
+        assert tti.name == "Name2"
+        assert tti.defaults == "Defaults2"
+        assert tti.options == "Options2"
+        assert tti.task_builder_type == "builder2"
+        assert tti.definition == "Definition2"
+        assert tti.dialog == "dialog"
+        assert tti.dialog_controller == "controller"
+        assert tti.output_formats == []
+        assert tti.output_file_ext == []
+
+    def test_preview_methods(self):
+        assert TaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
+        assert TaskTypeInfo.get_task_border("subtask1", None, 10) == []
+
+
+class TestCoreTaskBuilder(unittest.TestCase):
+
+    def _get_core_task_builder(self):
+        return CoreTaskBuilder("Node1", MagicMock(), "path", "manager")
+
+    def test_init(self):
+        builder = self._get_core_task_builder()
+        assert builder.TASK_CLASS == CoreTaskBuilder.TASK_CLASS
+        assert builder.TASK_CLASS == CoreTask
+        assert builder.task_definition is not None
+        assert builder.node_name == "Node1"
+        assert builder.root_path == "path"
+        assert builder.dir_manager == "manager"
+
+    def test_get_task_kwargs(self):
+        builder = self._get_core_task_builder()
+
+        class C(object):
+            pass
+
+        c = C()
+        kwargs = builder.get_task_kwargs(arg1="arg1", arg2=1380, arg3=c)
+        assert kwargs["arg1"] == "arg1"
+        assert kwargs["arg2"] == 1380
+        assert kwargs["arg3"] == c
+        assert kwargs["node_name"] == "Node1"
+        assert kwargs["src_code"] == ""
+        assert kwargs["environment"] is None
+        assert isinstance(kwargs["task_definition"], MagicMock)
+
+    def test_build(self):
+        builder = self._get_core_task_builder()
+        assert isinstance(builder.build(), CoreTask)
+
+

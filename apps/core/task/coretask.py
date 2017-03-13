@@ -56,8 +56,8 @@ class CoreTask(Task):
     # Task methods #
     ################
 
-    def __init__(self, src_code, task_definition, node_name, owner_address, owner_port,
-                 owner_key_id, environment, resource_size):
+    def __init__(self, src_code, task_definition, node_name, environment, resource_size=0,
+                 owner_address="", owner_port=0, owner_key_id=""):
         """Create more specific task implementation
 
         """
@@ -348,10 +348,16 @@ class CoreTaskBuilder(TaskBuilder):
         self.node_name = node_name
         self.root_path = root_path
         self.dir_manager = dir_manager
+        self.src_code = ""
+        self.environment = None
 
     def build(self):
         task = self.TASK_CLASS(**self.get_task_kwargs())
         return task
 
     def get_task_kwargs(self, **kwargs):
+        kwargs["src_code"] = self.src_code
+        kwargs["task_definition"] = self.task_definition
+        kwargs["node_name"] = self.node_name
+        kwargs["environment"] = self.environment
         return kwargs
