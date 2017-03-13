@@ -18,24 +18,6 @@ except ImportError:
     use_cx_Freeze = False
 
 
-from gui.view.generateui import generate_ui_files
-
-
-ui_err = ""
-
-try:
-    generate_ui_files()
-except EnvironmentError as err:
-    ui_err = \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
-
 class PyTest(TestCommand):
     ''' py.test integration with setuptools,
         https://pytest.org/latest/goodpractises.html\
@@ -153,5 +135,15 @@ setup(
     tests_require=test_requirements
 )
 
-if ui_err:
-    print(ui_err)
+
+try:
+    from gui.view.generateui import generate_ui_files
+    generate_ui_files()
+except EnvironmentError as err:
+    print """
+        ***************************************************************
+        Generating UI elements was not possible.
+        Golem will work only in command line mode.
+        Generate_ui_files function returned {}
+        ***************************************************************
+        """.format(err)

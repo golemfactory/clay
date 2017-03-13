@@ -1,11 +1,10 @@
 import os
-import uuid
-
 import time
-
+import uuid
 from unittest.case import skipIf
 
 from golem.network.ipfs.client import ipfs_running
+from golem.resource.base.resourcetest import AddGetResources
 from golem.resource.dirmanager import DirManager
 from golem.resource.ipfs.resourcesmanager import IPFSResourceManager
 from golem.tools.testdirfixture import TestDirFixture
@@ -112,3 +111,9 @@ class TestIPFSResourceManager(TestDirFixture):
                          success, error,
                          async=async)
         wait()
+
+
+@skipIf(not ipfs_running(), "IPFS daemon isn't running")
+class TestIPFSResources(AddGetResources):
+    __test__ = True
+    _resource_manager_class = IPFSResourceManager

@@ -11,39 +11,11 @@ from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.renderingtaskcollector import exr_to_pil, RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from apps.rendering.task.verificator import FrameRenderingVerificator
 
 logger = logging.getLogger("apps.rendering")
 
 DEFAULT_PADDING = 4
-
-
-class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
-            if self.task_definition.options.use_frames:
-                return len(self.task_definition.options.frames)
-            else:
-                return defaults.default_subtasks
-
-        if self.task_definition.options.use_frames:
-            num_frames = len(self.task_definition.options.frames)
-            if definition.total_subtasks > num_frames:
-                est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
-                if est != definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
-                return est
-
-            est = int(
-                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(definition.total_subtasks)))))
-            if est != definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
-
-            return est
-
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
-        else:
-            return defaults.default_subtasks
 
 
 class FrameRendererOptions(Options):
@@ -55,79 +27,30 @@ class FrameRendererOptions(Options):
 
 class FrameRenderingTask(RenderingTask):
 
+    VERIFICATOR_CLASS = FrameRenderingVerificator
+
     ################
     # Task methods #
     ################
 
-    def __init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                 subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                 total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                 estimated_memory, use_frames, frames, max_price, docker_images=None):
-        RenderingTask.__init__(self, node_name, task_id, owner_address, owner_port, owner_key_id, environment, timeout,
-                               subtask_timeout, main_program_file, task_resources, main_scene_dir, main_scene_file,
-                               total_tasks, res_x, res_y, outfilebasename, output_file, output_format, root_path,
-                               estimated_memory, max_price, docker_images)
+    def __init__(self, **kwargs):
+        super(FrameRenderingTask, self).__init__(**kwargs)
 
-        self.use_frames = use_frames
-        self.frames = frames
+        task_definition = kwargs['task_definition']
+        self.use_frames = task_definition.options.use_frames
+        self.frames = task_definition.options.frames
 
         self.frames_given = {}
-        for frame in frames:
+        for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
 
-        if use_frames:
-            self.preview_file_path = [None] * len(frames)
-            self.preview_task_file_path = [None] * len(frames)
+        if self.use_frames:
+            self.preview_file_path = [None] * len(self.frames)
+            self.preview_task_file_path = [None] * len(self.frames)
 
-    @RenderingTask.handle_key_error
-    def computation_finished(self, subtask_id, task_results, result_type=0):
-        if not self.should_accept(subtask_id):
-            return
-
-        self.interpret_task_results(subtask_id, task_results, result_type)
-        tr_files = self.results[subtask_id]
-
-        if len(tr_files) > 0:
-            num_start = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_end = self.subtasks_given[subtask_id]['end_task']
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
-            frames_list = []
-
-            if self.use_frames and self.total_tasks <= len(self.frames):
-                frames_list = self.subtasks_given[subtask_id]['frames']
-                if len(tr_files) < len(frames_list):
-                    self._mark_subtask_failed(subtask_id)
-                    if not self.use_frames:
-                        self._update_task_preview()
-                    else:
-                        self._update_frame_task_preview()
-                    return
-
-            if not self._verify_imgs(subtask_id, tr_files):
-                self._mark_subtask_failed(subtask_id)
-                if not self.use_frames:
-                    self._update_task_preview()
-                else:
-                    self._update_frame_task_preview()
-                return
-
-            self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
-
-            for tr_file in tr_files:
-
-                if not self.use_frames:
-                    self._collect_image_part(num_start, tr_file)
-                elif self.total_tasks <= len(self.frames):
-                    frames_list = self._collect_frames(num_start, tr_file, frames_list)
-                else:
-                    self._collect_frame_part(num_start, tr_file, parts)
-
-            self.num_tasks_received += num_end - num_start + 1
-
-        if self.num_tasks_received == self.total_tasks and not self.use_frames:
-            self._put_image_together()
+        self.verificator.use_frames = self.use_frames
+        self.verificator.frames = self.frames
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
@@ -143,6 +66,27 @@ class FrameRenderingTask(RenderingTask):
             return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
         else:
             return super(FrameRenderingTask, self).get_output_names()
+
+    def accept_results(self, subtask_id, result_files):
+        super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
+        num_start = self.subtasks_given[subtask_id]['start_task']
+        parts = self.subtasks_given[subtask_id]['parts']
+        num_end = self.subtasks_given[subtask_id]['end_task']
+        frames = self.subtasks_given[subtask_id]['frames']
+
+        for result_file in result_files:
+            if not self.use_frames:
+                self._collect_image_part(num_start, result_file)
+            elif self.total_tasks <= len(self.frames):
+                frames = self._collect_frames(num_start, result_file, frames)
+            else:
+                self._collect_frame_part(num_start, result_file, parts)
+
+            self.num_tasks_received += num_end - num_start + 1
+
+            if self.num_tasks_received == self.total_tasks and not self.use_frames:
+                self._put_image_together()
 
     #########################
     # Specific task methods #
@@ -165,7 +109,7 @@ class FrameRenderingTask(RenderingTask):
 
         if img:
             img_x, img_y = img.size
-            img = Image.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
+            img = img.resize((int(round(self.scale_factor * img_x)), int(round(self.scale_factor * img_y))),
                                resample=Image.BILINEAR)
             img.save(self.preview_file_path[num], "BMP")
             img.save(self.preview_task_file_path[num], "BMP")
@@ -230,17 +174,6 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
-    @RenderingTask.handle_key_error
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        if not self.use_frames or self.__full_frames():
-            return RenderingTask._get_part_img_size(self, subtask_id, adv_test_file)
-        else:
-            start_task = self.subtasks_given[subtask_id]['start_task']
-            parts = self.subtasks_given[subtask_id]['parts']
-            num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(float(self.res_y) / float(parts)))
-            return 1, (num_task - 1) * img_height + 1, self.res_x - 1, num_task * img_height - 1
-
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
             subtasks_frames = int(math.ceil(float(len(frames)) / float(total_tasks)))
@@ -252,7 +185,7 @@ class FrameRenderingTask(RenderingTask):
             return [frames[(start_task - 1) / parts]], parts
 
     def _put_image_together(self):
-        output_file_name = u"{}".format(self.output_file, self.output_format)
+        output_file_name = self.output_file
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
@@ -400,3 +333,34 @@ def __num_from_pixel(p_y, res_y, tasks):
     num = max(num, 1)
     num = min(num, tasks)
     return num
+
+
+class FrameRenderingTaskBuilder(RenderingTaskBuilder):
+    TASK_CLASS = FrameRenderingTask
+
+    def _calculate_total(self, defaults, definition):
+        if definition.optimize_total:
+            if self.task_definition.options.use_frames:
+                return len(self.task_definition.options.frames)
+            else:
+                return defaults.default_subtasks
+
+        if self.task_definition.options.use_frames:
+            num_frames = len(self.task_definition.options.frames)
+            if definition.total_subtasks > num_frames:
+                est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
+                if est != definition.total_subtasks:
+                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
+                return est
+
+            est = int(
+                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(definition.total_subtasks)))))
+            if est != definition.total_subtasks:
+                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
+
+            return est
+
+        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
+            return definition.total_subtasks
+        else:
+            return defaults.default_subtasks

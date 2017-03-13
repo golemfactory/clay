@@ -6,17 +6,17 @@ from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
+from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.resource.dirmanager import get_test_task_path
 from apps.rendering.task.renderingtask import AcceptClientVerdict
-from apps.rendering.task.renderingtaskstate import RendererDefaults
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 
 logger = logging.getLogger("apps.blender")
@@ -231,96 +231,25 @@ class BlenderRendererOptions(FrameRendererOptions):
         self.compositing = False
 
 
-class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
-    """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
-    renderer options
-    """
-    def build(self):
-        main_scene_dir = os.path.dirname(self.task_definition.main_scene_file)
-        environment = BlenderEnvironment()
-        if self.task_definition.docker_images is None:
-            self.task_definition.docker_images = environment.docker_images
-
-        blender_task = BlenderRenderTask(self.node_name,
-                                         self.task_definition.task_id,
-                                         main_scene_dir,
-                                         self.task_definition.main_scene_file,
-                                         environment.main_program_file,
-                                         self._calculate_total(BlenderDefaults(), self.task_definition),
-                                         self.task_definition.resolution[0],
-                                         self.task_definition.resolution[1],
-                                         os.path.splitext(os.path.basename(self.task_definition.output_file))[0],
-                                         self.task_definition.output_file,
-                                         self.task_definition.output_format,
-                                         self.task_definition.full_task_timeout,
-                                         self.task_definition.subtask_timeout,
-                                         self.task_definition.resources,
-                                         self.task_definition.estimated_memory,
-                                         self.root_path,
-                                         self.task_definition.options.use_frames,
-                                         self.task_definition.options.frames,
-                                         self.task_definition.options.compositing,
-                                         self.task_definition.max_price,
-                                         docker_images=self.task_definition.docker_images)
-        self._set_verification_options(blender_task)
-        blender_task.initialize(self.dir_manager)
-        return blender_task
-
-    def _set_verification_options(self, new_task):
-        new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
-        if new_task.advanceVerification:
-            box_x = min(new_task.verification_options.box_size[0], new_task.res_x)
-            box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
-            new_task.box_size = (box_x, box_y)
-        return new_task
-
-
 class BlenderRenderTask(FrameRenderingTask):
+    ENVIRONMENT_CLASS = BlenderEnvironment
+    VERIFICATOR_CLASS = BlenderVerificator
 
     ################
     # Task methods #
     ################
-
-    def __init__(self,
-                 node_name,
-                 task_id,
-                 main_scene_dir,
-                 main_scene_file,
-                 main_program_file,
-                 total_tasks,
-                 res_x,
-                 res_y,
-                 outfilebasename,
-                 output_file,
-                 output_format,
-                 full_task_timeout,
-                 subtask_timeout,
-                 task_resources,
-                 estimated_memory,
-                 root_path,
-                 use_frames,
-                 frames,
-                 compositing,
-                 max_price,
-                 return_address="",
-                 return_port=0,
-                 key_id="",
-                 docker_images=None):
-
-        FrameRenderingTask.__init__(self, node_name, task_id, return_address, return_port, key_id,
-                                    BlenderEnvironment.get_id(), full_task_timeout, subtask_timeout,
-                                    main_program_file, task_resources, main_scene_dir, main_scene_file,
-                                    total_tasks, res_x, res_y, outfilebasename, output_file, output_format,
-                                    root_path, estimated_memory, use_frames, frames, max_price, docker_images)
-
-        self.compositing = compositing
-        self.frames_given = {}
-        for frame in frames:
-            frame_key = unicode(frame)
-            self.frames_given[frame_key] = {}
-
+    def __init__(self, task_definition, **kwargs):
+        self.compositing = task_definition.options.compositing
         self.preview_updater = None
         self.preview_updaters = None
+
+        FrameRenderingTask.__init__(self, task_definition=task_definition, **kwargs)
+
+        self.verificator.compositing = self.compositing
+        self.verificator.output_format = self.output_format
+        self.verificator.src_code = self.src_code
+        self.verificator.docker_images = self.task_definition.docker_images
+        self.verificator.verification_timeout = self.task_definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -467,66 +396,12 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
-    def query_extra_data_for_advance_verification(self, extra_data):
-        ctd = self.query_extra_data_for_test_task()
-        ctd.extra_data = extra_data
-        return ctd
-
     def _get_min_max_y(self, start_task):
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
         return get_min_max_y(start_task, parts, self.res_y)
-
-    def _get_part_size(self, subtask_id):
-        start_task = self.subtasks_given[subtask_id]['start_task']
-        if not self.use_frames:
-            res_y = self._get_part_size_from_subtask_number(start_task)
-        elif len(self.frames) >= self.total_tasks:
-            res_y = self.res_y
-        else:
-            parts = self.total_tasks / len(self.frames)
-            res_y = int(math.floor(float(self.res_y) / float(parts)))
-        return self.res_x, res_y
-
-    def _get_part_size_from_subtask_number(self, subtask_number):
-        
-        if self.res_y % self.total_tasks == 0:
-            res_y = self.res_y / self.total_tasks
-        else:
-            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
-            # ceiling will be height of subtasks with smaller num
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
-            if subtask_number > ceiling_subtasks:
-                res_y = ceiling_height - 1
-            else:
-                res_y = ceiling_height
-        return res_y
-
-    @FrameRenderingTask.handle_key_error
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        x, y = self._get_part_size(subtask_id)
-        return 0, 0, x, y
-
-    @FrameRenderingTask.handle_key_error
-    def _change_scope(self, subtask_id, start_box, tr_file):
-        extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
-        min_x = start_box[0] / float(self.res_x)
-        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / float(self.res_x)
-        start_y = start_box[1] + (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
-        max_y = float(self.res_y - start_y) / self.res_y
-        min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(min_x, max_x),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing
-        )
-        extra_data['script_src'] = script_src
-        extra_data['output_format'] = self.output_format
-        return extra_data, (0, 0)
 
     def after_test(self, results, tmp_dir):
         ret = []
@@ -594,6 +469,7 @@ class BlenderRenderTask(FrameRenderingTask):
     
     def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
+        logger.debug('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
@@ -643,6 +519,14 @@ class BlenderRenderTask(FrameRenderingTask):
         self._update_frame_task_preview()
 
 
+class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
+    """ Build new Blender tasks using RenderingTaskDefintions and BlenderRendererOptions as taskdefinition
+    renderer options
+    """
+    TASK_CLASS = BlenderRenderTask
+    DEFAULTS = BlenderDefaults
+
+
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):
         RenderingTaskCollector.__init__(self, paste, width, height)
@@ -660,6 +544,7 @@ class CustomCollector(RenderingTaskCollector):
 
 
 def generate_expected_offsets(parts, res_x, res_y):
+    logger.debug('generate_expected_offsets(%r, %r, %r)', parts, res_x, res_y)
     # returns expected offsets for preview; the highest value is preview's height
     scale_factor = __scale_factor(res_x, res_y)
     expected_offsets = [0]
@@ -695,9 +580,6 @@ def get_min_max_y(task_num, parts, res_y):
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = float(max_y) / float(res_y)
     return min_y, max_y
-
-
-
 
 
 def __scale_factor(res_x, res_y):

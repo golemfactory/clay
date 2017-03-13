@@ -2,7 +2,7 @@ include golemapp.py
 include requirements.txt
 include README.md
 include LICENSE.txt
-include logging.ini
+include loggingconfig.py
 include golem/ethereum/genesis_golem.json
 include golem/ethereum/mine_pending_transactions.js
 include gui/view/nopreview.png
