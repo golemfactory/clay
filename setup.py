@@ -9,22 +9,6 @@ from os import path
 from setuptools import find_packages, Command, setup
 from setuptools.command.test import test as TestCommand
 
-from gui.view.generateui import generate_ui_files
-
-ui_err = ""
-
-try:
-    generate_ui_files()
-except EnvironmentError as err:
-    ui_err = \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
 
 def try_docker():
     try:
@@ -231,6 +215,23 @@ setup(
     test_suite='tests',
     tests_require=test_requirements
 )
+
+from gui.view.generateui import generate_ui_files
+
+
+ui_err = ""
+
+try:
+    generate_ui_files()
+except EnvironmentError as err:
+    ui_err = \
+        """
+        ***************************************************************
+        Generating UI elements was not possible.
+        Golem will work only in command line mode.
+        Generate_ui_files function returned {}
+        ***************************************************************
+        """.format(err)
 
 
 def print_errors(ui_err, docker_err):

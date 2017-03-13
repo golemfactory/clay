@@ -6,13 +6,12 @@ from golem.core.common import HandleKeyError, timeout_to_deadline
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
-
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.coretaskstate import AdvanceVerificationOptions
+from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -48,31 +47,19 @@ class TaskTypeInfo(object):
         return []
 
 
-class CoreTaskBuilder(TaskBuilder):
-    def __init__(self, node_name, task_definition, root_path, dir_manager):
-        super(CoreTaskBuilder, self).__init__()
-        self.task_definition = task_definition
-        self.node_name = node_name
-        self.root_path = root_path
-        self.dir_manager = dir_manager
-
-    def build(self):
-        task = self.TASK_CLASS(**self.get_task_kwargs())
-        return task
-
-    def get_task_kwargs(self, **kwargs):
-        return kwargs
-
-
 class CoreTask(Task):
+
+    VERIFICATOR_CLASS = CoreVerificator
     handle_key_error = HandleKeyError(log_key_error)
 
     ################
     # Task methods #
     ################
 
-    def __init__(self, src_code, task_definition, node_name, owner_address, owner_port, owner_key_id, environment, resource_size):
+    def __init__(self, src_code, task_definition, node_name, owner_address, owner_port,
+                 owner_key_id, environment, resource_size):
         """Create more specific task implementation
+
         """
 
         self.task_definition = task_definition
@@ -116,13 +103,14 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.verification_options = AdvanceVerificationOptions()
+        self.verificator = self.VERIFICATOR_CLASS()
 
     def is_docker_task(self):
         return self.header.docker_images is not None
 
     def initialize(self, dir_manager):
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
+        self.verificator.tmp_dir = self.tmp_dir
 
     def needs_computation(self):
         return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
@@ -132,6 +120,23 @@ class CoreTask(Task):
 
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
+
+    def computation_finished(self, subtask_id, task_result, result_type=0):
+        if not self.should_accept(subtask_id):
+            logger.info("Not accepting results for {}".format(subtask_id))
+            return
+        self.interpret_task_results(subtask_id, task_result, result_type)
+        result_files = self.results.get(subtask_id)
+        ver_state = self.verificator.verify(subtask_id, self.subtasks_given.get(subtask_id),
+                                            result_files, self)
+        if ver_state == SubtaskVerificationState.VERIFIED:
+            self.accept_results(subtask_id, result_files)
+        # TODO Add support for different verification states
+        else:
+            self.computation_failed(subtask_id)
+
+    def accept_results(self, subtask_id, result_files):
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -332,3 +337,21 @@ class CoreTask(Task):
     def _get_resources_root_dir(self):
         prefix = os.path.commonprefix(self.task_resources)
         return os.path.dirname(prefix)
+
+
+class CoreTaskBuilder(TaskBuilder):
+    TASK_CLASS = CoreTask
+
+    def __init__(self, node_name, task_definition, root_path, dir_manager):
+        super(CoreTaskBuilder, self).__init__()
+        self.task_definition = task_definition
+        self.node_name = node_name
+        self.root_path = root_path
+        self.dir_manager = dir_manager
+
+    def build(self):
+        task = self.TASK_CLASS(**self.get_task_kwargs())
+        return task
+
+    def get_task_kwargs(self, **kwargs):
+        return kwargs
