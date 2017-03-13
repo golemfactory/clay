@@ -39,8 +39,7 @@ class DockerManager(DockerConfigManager):
         super(DockerManager, self).__init__()
 
         self.hypervisor = None
-        self.docker_machine = None
-        self.docker_images = []
+        self.docker_machine = FALLBACK_DOCKER_MACHINE_NAME
 
         self.min_constraints = dict(
             memory_size=1024,
@@ -74,20 +73,13 @@ class DockerManager(DockerConfigManager):
             if is_linux():
                 raise EnvironmentError("native Linux environment")
 
-            # Read active docker machine name
-            try:
-                self.docker_machine = self.command('active').strip().replace("\n", "")
-            except Exception:
-                self.docker_machine = FALLBACK_DOCKER_MACHINE_NAME
-
             # Check if a supported VM hypervisor is present
             self.hypervisor = self._get_hypervisor()
             if not self.hypervisor:
                 raise EnvironmentError("No supported hypervisor found")
 
             # Check if DockerMachine VM is present
-            self.docker_images = self.docker_machine_images()
-            if self.docker_machine not in self.docker_images:
+            if self.docker_machine not in self.docker_machine_images():
                 logger.info("Docker machine VM '{}' does not exist"
                             .format(self.docker_machine))
                 self.hypervisor.create(self.docker_machine,

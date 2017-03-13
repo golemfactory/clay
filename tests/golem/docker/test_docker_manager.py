@@ -131,7 +131,6 @@ class MockDockerManager(DockerManager):
     def set_defaults(self, config_dir=None):
         self._config = dict(self.defaults)
         self._config_dir = config_dir
-        self.docker_images = [MACHINE_NAME]
         self.docker_machine = MACHINE_NAME
 
     def command(self, key, machine_name=None, args=None, check_output=True, shell=False):
