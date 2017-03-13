@@ -9,11 +9,11 @@ import time
 from datetime import datetime
 from distutils.version import StrictVersion
 
-from devp2p.crypto import privtopub
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
 
+from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
 
