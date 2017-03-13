@@ -257,6 +257,72 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_needs_computation(self):
         c = self._get_core_task()
+        c.total_tasks = 13
+        assert c.needs_computation()
+        c.last_task = 4
+        assert c.needs_computation()
+        c.last_task = 13
+        assert not c.needs_computation()
+        c.num_failed_subtasks = 5
+        assert c.needs_computation()
+        c.num_failed_subtasks = 0
+        assert not c.needs_computation()
+
+    def test_get_active_tasks(self):
+        c = self._get_core_task()
+        assert c.get_active_tasks() == 0
+        c.last_task = 5
+        assert c.get_active_tasks() == 5
+        c.last_task = 27
+        assert c.get_active_tasks() == 27
+
+    def test_get_tasks_left(self):
+        c = self._get_core_task()
+        c.total_tasks = 13
+        assert c.get_tasks_left() == 13
+        c.last_task = 3
+        assert c.get_tasks_left() == 10
+        c.num_failed_subtasks = 2
+        assert c.get_tasks_left() == 12
+        c.num_failed_subtasks = 3
+        assert c.get_tasks_left() == 13
+        c.last_task = 13
+        assert c.get_tasks_left() == 3
+        c.num_failed_subtasks = 0
+        assert c.get_tasks_left() == 0
+
+    def test_abort(self):
+        c = self._get_core_task()
+        c.abort()
+
+    def test_get_progress(self):
+        c = self._get_core_task()
+        assert c.get_progress() == 0
+        c.total_tasks = 13
+        assert c.get_progress() == 0
+        c.num_tasks_received = 1
+        assert abs(c.get_progress() - 0.0769) < 0.01
+        c.num_tasks_received = 7
+        assert abs(c.get_progress() - 0.538) < 0.01
+        c.num_tasks_received = 13
+        assert c.get_progress() == 1
+
+    def test_update_task_state(self):
+        c = self._get_core_task()
+        c.update_task_state("subtask1")
+
+    def test_get_trust_mod(self):
+        c = self._get_core_task()
+        assert c.get_trust_mod("subtask1") == 1.0
+
+    def test_add_resources(self):
+        c = self._get_core_task()
+        c.add_resources(["file1", "file2"])
+        assert c.res_files == ["file1", "file2"]
+
+    def test_query_extra_data_for_test_task(self):
+        c = self._get_core_task()
+        assert c.query_extra_data_for_test_task() is None
 
 
 class TestLogKeyError(LogTestCase):

@@ -402,7 +402,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def get_resources(self, task_id, resource_header, resource_type=0):
         task = self.tasks[task_id]
-        return task.get_resources(task_id, resource_header, resource_type)
+        return task.get_resources(resource_header, resource_type)
 
     @handle_task_key_error
     def restart_task(self, task_id):

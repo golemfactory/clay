@@ -278,21 +278,6 @@ class RenderingTask(CoreTask):
             return True
         return False
 
-    def _accept_client(self, node_id):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
-        # if client.rejected():
-        #     return AcceptClientVerdict.REJECTED
-        # elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
-
-        if finishing >= max_finishing or client.started() - finishing >= max_finishing:
-            return AcceptClientVerdict.SHOULD_WAIT
-
-        client.start()
-        return AcceptClientVerdict.ACCEPTED
-
     def __get_path(self, path):
         if is_windows():
             return self.__get_path_windows(path)
