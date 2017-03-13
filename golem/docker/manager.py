@@ -6,11 +6,15 @@ import time
 from contextlib import contextmanager
 from threading import Thread
 
-from golem.core.common import is_linux, is_windows, is_osx
+from golem.core.common import is_linux, is_windows, is_osx, get_golem_path
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
 logger = logging.getLogger(__name__)
+
+ROOT_DIR = get_golem_path()
+APPS_DIR = os.path.join(ROOT_DIR, 'apps')
+IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
 
 FALLBACK_DOCKER_MACHINE_NAME = 'golem'
 CONSTRAINT_KEYS = dict(
@@ -32,6 +36,14 @@ class DockerManager(DockerConfigManager):
         env=['docker-machine', 'env'],
         status=['docker-machine', 'status'],
         inspect=['docker-machine', 'inspect']
+    )
+
+    docker_commands = dict(
+        build=['docker', 'build'],
+        tag=['docker', 'tag'],
+        pull=['docker', 'pull'],
+        version=['docker', '-v'],
+        images=['docker', 'images', '-q']
     )
 
     def __init__(self, config_desc=None):
@@ -69,6 +81,21 @@ class DockerManager(DockerConfigManager):
         return None
 
     def check_environment(self):
+
+        try:
+            self.command('version')
+        except Exception as err:
+            logger.error(
+                """
+                ***************************************************************
+                Docker is not available, not building images.
+                Golem will not be able to compute anything.
+                Command 'docker info' returned {}
+                ***************************************************************
+                """.format(err)
+            )
+            raise EnvironmentError
+
         try:
             if is_linux():
                 raise EnvironmentError("native Linux environment")
@@ -78,23 +105,32 @@ class DockerManager(DockerConfigManager):
             if not self.hypervisor:
                 raise EnvironmentError("No supported hypervisor found")
 
-            # Check if DockerMachine VM is present
-            if self.docker_machine not in self.docker_machine_images():
-                logger.info("Docker machine VM '{}' does not exist"
-                            .format(self.docker_machine))
-                self.hypervisor.create(self.docker_machine,
-                                       **(self._config or self.defaults))
-
-            if not self.docker_machine_running():
-                self.start_docker_machine()
-
-            self._set_docker_machine_env()
-
         except Exception as exc:
 
             self.docker_machine = None
             logger.warn("Docker machine is not available: {}"
                         .format(exc))
+
+        else:
+
+            # Check if DockerMachine VM is present
+            if self.docker_machine not in self.docker_machine_images():
+                logger.info("Docker machine VM '{}' does not exist"
+                            .format(self.docker_machine))
+
+                self.hypervisor.create(self.docker_machine,
+                                       **(self._config or self.defaults))
+
+            if not self.docker_machine_running():
+                self.start_docker_machine()
+            self._set_docker_machine_env()
+
+        try:
+            self._pull_images()
+        except Exception as exc:
+            logger.error("Docker: error pulling images: {}"
+                         .format(exc))
+            self._build_images()
 
         self._env_checked = True
         return bool(self.docker_machine)
@@ -215,14 +251,6 @@ class DockerManager(DockerConfigManager):
         except Exception as e:
             logger.error("DockerMachine: failed to start the VM: {}"
                          .format(e))
-        else:
-            try:
-                docker_images = self.docker_machine_images()
-                if docker_images:
-                    self.docker_images = docker_images
-            except Exception as e:
-                logger.error("DockerMachine: failed to update VM list: {}"
-                             .format(e))
 
     def stop_docker_machine(self, name=None):
         name = name or self.docker_machine
@@ -236,8 +264,11 @@ class DockerManager(DockerConfigManager):
                         .format(e))
         return False
 
-    def command(self, key, machine_name=None, args=None, check_output=True, shell=False):
-        command = self.docker_machine_commands.get(key, None)
+    @classmethod
+    def command(cls, key, machine_name=None, args=None, check_output=True, shell=False):
+        command = cls.docker_machine_commands.get(key)
+        if not command:
+            command = cls.docker_commands.get(key)
         if not command:
             return ''
 
@@ -255,6 +286,49 @@ class DockerManager(DockerConfigManager):
     @property
     def config_dir(self):
         return self._config_dir
+
+    @classmethod
+    def _build_images(cls):
+        cwd = os.getcwdu()
+
+        for entry in cls._collect_images():
+            image, docker_file, tag = entry
+            version = '{}:{}'.format(image, tag)
+
+            if not cls.command('images', args=[version],
+                               check_output=True):
+                try:
+                    os.chdir(APPS_DIR)
+                    logger.warn('Docker: building image {}'
+                                .format(version))
+                    cls.command('build', args=['-t', image,
+                                               '-f', docker_file,
+                                               '.'])
+                    cls.command('tag', args=[image, version])
+                finally:
+                    os.chdir(cwd)
+
+    @classmethod
+    def _pull_images(cls):
+        for entry in cls._collect_images():
+            image, docker_file, tag = entry
+            version = '{}:{}'.format(image, tag)
+
+            if not cls.command('images', args=[version],
+                               check_output=True):
+
+                logger.warn('Docker: pulling image {}'
+                            .format(version))
+                cls.command('pull', args=[version])
+
+    @classmethod
+    def _collect_images(cls):
+        images = []
+        with open(IMAGES_INI) as f:
+            for line in f:
+                if line:
+                    images.append(line.split())
+        return images
 
     @staticmethod
     def _diff_constraints(old_values, new_values):

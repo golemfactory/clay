@@ -2,7 +2,6 @@
 
 import os
 import re
-import subprocess
 import sys
 from os import path
 
@@ -35,79 +34,6 @@ except EnvironmentError as err:
             Generate_ui_files function returned {}
             ***************************************************************
             """.format(err)
-
-
-def try_docker():
-    try:
-        subprocess.check_call(["docker", "info"])
-    except Exception as err:
-        return \
-            """
-            ***************************************************************
-            Docker not available, not building images.
-            Golem will not be able to compute anything.
-            Command 'docker info' returned {}
-            ***************************************************************
-            """.format(err)
-
-
-def try_building_docker_images():
-    err_msg = try_docker()
-    if err_msg:
-        return err_msg
-    images_dir = 'apps'
-    cwd = os.getcwdu()
-
-    with open(path.join(images_dir,  'images.ini')) as f:
-        for line in f:
-            try:
-                image, docker_file, tag = line.split()
-                if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
-                    print "\n Image {} exists - skipping".format(image)
-                    continue
-
-                docker_file_dir = path.join(images_dir, os.path.dirname(docker_file))
-                os.chdir(docker_file_dir)
-
-                docker_file = path.basename(docker_file)
-                cmd = "docker build -t {} -f {} .".format(image, docker_file)
-                print "\nRunning '{}' ...\n".format(cmd)
-                subprocess.check_call(cmd.split(" "))
-                cmd = "docker tag {} {}:{}".format(image, image, tag)
-                print "\nRunning '{}' ...\n".format(cmd)
-                subprocess.check_call(cmd.split(" "))
-            except ValueError:
-                print "Skipping line {}".format(line)
-            except subprocess.CalledProcessError as err:
-                print "Docker build failed: {}".format(err)
-                sys.exit(1)
-            finally:
-                os.chdir(cwd)
-
-def try_pulling_docker_images():
-    err_msg = try_docker()
-    if err_msg:
-        return err_msg
-    images_dir = 'apps'
-
-    with open(path.join(images_dir, 'images.ini')) as f:
-        for line in f:
-            try:
-                image, docker_file, tag = line.split()
-                if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
-                    print("\n Image {} exists - skipping".format(image))
-                    continue
-                cmd = "docker pull {}:{}".format(image, tag)
-                print("\nRunning '{}' ...\n".format(cmd))
-                subprocess.check_call(cmd.split(" "))
-            except ValueError:
-                print("Skipping line {}".format(line))
-            except subprocess.CalledProcessError as err:
-                print("Docker pull failed: {}".format(err))
-                sys.exit(1)
-
-
-docker_err = try_pulling_docker_images()
 
 
 class PyTest(TestCommand):
@@ -227,11 +153,5 @@ setup(
     tests_require=test_requirements
 )
 
-
-def print_errors(ui_err, docker_err):
-    if ui_err:
-        print(ui_err)
-    if docker_err:
-        print(docker_err)
-
-print_errors(ui_err, docker_err)
+if ui_err:
+    print(ui_err)

@@ -1,5 +1,6 @@
 import json
 import os
+import types
 import unittest
 from contextlib import contextmanager
 
@@ -151,6 +152,8 @@ class MockDockerManager(DockerManager):
             return MACHINE_NAME
         elif key == 'status':
             return 'Running'
+        elif key == 'version':
+            return '1.0.0'
         elif key not in self.docker_machine_commands:
             raise KeyError(key)
 
@@ -234,6 +237,8 @@ class TestDockerManager(unittest.TestCase):
         config = MockConfig(0, 768, 512)
 
         dmm = MockDockerManager()
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
         dmm.hypervisor = mock.Mock()
         dmm.hypervisor.constraints.return_value = dmm.defaults
 
@@ -346,6 +351,8 @@ class TestDockerManager(unittest.TestCase):
         dmm.stop_docker_machine = mock.Mock()
         dmm.docker_machine_running = lambda *_: False
         dmm._set_docker_machine_env = mock.Mock()
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance'):
             dmm.check_environment()
@@ -354,13 +361,19 @@ class TestDockerManager(unittest.TestCase):
             assert not dmm.hypervisor.create.called
             assert dmm.start_docker_machine.called
             assert dmm._set_docker_machine_env.called
+            assert dmm._pull_images.called
+            assert not dmm._build_images.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=True)
     @mock.patch('golem.docker.manager.is_osx', return_value=False)
     def test_check_environment_linux(self, *_):
         dmm = MockDockerManager()
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
         assert not dmm.check_environment()
+        assert dmm._pull_images.called
+        assert not dmm._build_images.called
         assert not dmm.docker_machine
         assert dmm._env_checked
 
@@ -374,12 +387,16 @@ class TestDockerManager(unittest.TestCase):
         dmm.stop_docker_machine = mock.Mock()
         dmm.docker_machine_running = lambda *_: False
         dmm._set_docker_machine_env = mock.Mock()
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
 
         with mock.patch('golem.docker.manager.XhyveHypervisor.instance'):
             dmm.check_environment()
 
             assert dmm.docker_machine == MACHINE_NAME
             assert not dmm.hypervisor.create.called
+            assert dmm._pull_images.called
+            assert not dmm._build_images.called
             assert dmm.start_docker_machine.called
             assert dmm._set_docker_machine_env.called
 
@@ -388,9 +405,69 @@ class TestDockerManager(unittest.TestCase):
     @mock.patch('golem.docker.manager.is_osx', return_value=False)
     def test_check_environment_none(self, *_):
         dmm = MockDockerManager()
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
         assert not dmm.check_environment()
         assert not dmm.docker_machine
+        assert dmm._pull_images.called
+        assert not dmm._build_images.called
         assert dmm._env_checked
+
+    @mock.patch('golem.docker.manager.is_windows', return_value=False)
+    @mock.patch('golem.docker.manager.is_linux', return_value=False)
+    @mock.patch('golem.docker.manager.is_osx', return_value=False)
+    def test_check_environment_unsupported(self, *_):
+        dmm = MockDockerManager()
+        dmm.command = lambda *a, **kw: raise_exception('Docker not available')
+        dmm._pull_images = mock.Mock()
+        dmm._build_images = mock.Mock()
+
+        with self.assertRaises(EnvironmentError):
+            dmm.check_environment()
+
+        assert not dmm._pull_images.called
+        assert not dmm._build_images.called
+        assert not dmm._env_checked
+
+    def test_pull_images(self):
+        pulls = [0]
+
+        def command(key, *args, **kwargs):
+            if key == 'images':
+                return ''
+            elif key == 'pull':
+                pulls[0] += 1
+                return True
+
+        with mock.patch.object(MockDockerManager, 'command', side_effect=command):
+            dmm = MockDockerManager()
+            dmm._pull_images()
+
+        assert pulls[0] == 3
+
+    @mock.patch('os.chdir')
+    def test_build_images(self, os_chdir):
+
+        builds = [0]
+        tags = [0]
+
+        def command(key, *args, **kwargs):
+            if key == 'images':
+                return ''
+            elif key == 'build':
+                builds[0] += 1
+                return True
+            elif key == 'tag':
+                tags[0] += 1
+                return True
+
+        with mock.patch.object(MockDockerManager, 'command', side_effect=command):
+            dmm = MockDockerManager()
+            dmm._build_images()
+
+        assert builds[0] == 3
+        assert tags[0] == 3
+        assert len(os_chdir.mock_calls) == 6
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()
