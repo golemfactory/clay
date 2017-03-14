@@ -33,6 +33,10 @@ def wait_for(condition, timeout, step=0.1):
     return False
 
 
+def check_deadline(deadline, expected):
+    return expected <= deadline <= expected + 1
+
+
 class PaymentStatusTest(unittest.TestCase):
     def test_status(self):
         s = PaymentStatus(1)
@@ -210,25 +214,25 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         now = int(time.time())
         assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
-        assert self.pp.deadline == now + self.pp.DEFAULT_DEADLINE
+        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
         assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
-        assert self.pp.deadline == now + self.pp.DEFAULT_DEADLINE
+        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
 
         assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
-        assert self.pp.deadline == now + 1
+        assert check_deadline(self.pp.deadline, now + 1)
 
         assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
-        assert self.pp.deadline == now + 1
+        assert check_deadline(self.pp.deadline, now + 1)
 
         assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
-        assert self.pp.deadline == now + 1
+        assert check_deadline(self.pp.deadline, now + 1)
 
         assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
-        assert self.pp.deadline == now
+        assert check_deadline(self.pp.deadline, now)
 
         assert self.pp.add(Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
-        assert self.pp.deadline == now - 1
+        assert check_deadline(self.pp.deadline, now - 1)
 
     def test_payment_deadline_not_reached(self):
         a1 = urandom(20)
@@ -245,9 +249,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         p = Payment.create(subtask="p1", payee=a1, value=1111)
         assert self.pp.add(p, deadline=1111)
-        assert self.pp.deadline == now + 1111
+        assert check_deadline(self.pp.deadline, now + 1111)
         assert not self.pp.sendout()
-        assert self.pp.deadline == now + 1111
+        assert check_deadline(self.pp.deadline, now + 1111)
 
     def test_synchronized(self):
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
