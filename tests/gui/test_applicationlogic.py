@@ -12,6 +12,7 @@ from twisted.internet.defer import Deferred
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import wait_for
 from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -23,6 +24,7 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
 from apps.blender.benchmark.benchmark import BlenderBenchmark
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import Gui
@@ -318,94 +320,6 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertTrue(logic.customizer.gui.ui.settingsOkButton.isEnabled())
         self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
-    @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
-    @patch('gui.view.dialog.QDialogPlus.show')
-    def test_run_test_task(self, *_):
-        logic = self.logic
-        gui = self.app
-
-        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
-        rpc_publisher = MockRPCPublisher(success_aliases=[rpc.mapping.aliases.Task.evt_task_check_success],
-                                         error_aliases=[rpc.mapping.aliases.Task.evt_task_check_error])
-
-        logic.root_path = self.path
-        logic.client = rpc_client
-
-        self.client.datadir = logic.root_path
-        self.client.rpc_publisher = rpc_publisher
-
-        logic.customizer = MainWindowCustomizer(gui.main_window, logic)
-        logic.customizer.new_task_dialog_customizer = Mock()
-        logic.customizer.show_warning_window = Mock()
-
-        ts = TaskDesc()
-        files = self.additional_dir_content([1])
-        ts.definition.main_program_file = files[0]
-        ts.definition.task_type = "TESTTASK"
-        f = self.additional_dir_content([2])
-        ts.definition.output_file = f[0]
-        ts.definition.main_scene_file = f[1]  # FIXME Remove me
-
-        task_type = Mock()
-        ttb = TTaskBuilder(self.path)
-        task_type.task_builder_type.return_value = ttb
-        logic.task_types["TESTTASK"] = task_type
-
-        rpc_publisher.reset()
-        logic.run_test_task(ts)
-        logic.progress_dialog.close()
-        logic.test_task_started(True)
-        self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
-        time.sleep(0.5)
-        self.assertTrue(rpc_publisher.success)
-
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
-        rpc_publisher.reset()
-        logic.run_test_task(ts)
-        logic.progress_dialog.close()
-        time.sleep(0.5)
-        self.assertTrue(rpc_publisher.success)
-
-        # since PythonTestVM does not support end_comp() method,
-        # this is only a smoke test instead of actual test
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
-        rpc_publisher.reset()
-        logic.run_test_task(ts)
-        logic.progress_dialog.close()
-        time.sleep(0.5)
-        logic.abort_test_task()
-
-        ttb.src_code = "raise Exception('some error')"
-        rpc_publisher.reset()
-        logic.run_test_task(ts)
-        logic.progress_dialog.close()
-        time.sleep(1)
-        self.assertFalse(rpc_publisher.success)
-
-        rpc_publisher.reset()
-        logic.run_test_task(ts)
-        logic.progress_dialog.close()
-        self.assertFalse(rpc_publisher.success)
-
-        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
-        logic.task_settings_changed()
-        self.assertGreater(logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count,
-                           prev_call_count)
-
-        logic.tasks["xyz"] = ts
-        logic.clone_task("xyz")
-
-        self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
-
-        ttb = TTaskBuilder(self.path, TTaskWithDef)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert logic.run_test_task(ts)
-
-        ttb = TTaskBuilder(self.path, TTaskWithError)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert not logic.run_test_task(ts)
-
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
         self.app.main_window.show()
@@ -529,7 +443,6 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ts.definition.task_type = "Blender"
         ts.definition.main_program_file = "nonexisting"
         self.assertFalse(logic._validate_task_state(ts))
-        print logic.customizer.show_error_window
         logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
 
         with self.assertLogs(logger, level="WARNING"):
@@ -553,3 +466,108 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.register_new_test_task_type(task_type)
         with self.assertRaises(RuntimeError):
             logic.register_new_test_task_type(task_type)
+
+
+class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
+
+    def setUp(self):
+        TestDirFixtureWithReactor.setUp(self)
+        self.client = Client.__new__(Client)
+        from threading import Lock
+        self.client.lock = Lock()
+        self.client.task_tester = None
+        self.logic = GuiApplicationLogic()
+        self.app = Gui(self.logic, AppMainWindow)
+
+    def tearDown(self):
+        self.app.app.exit(0)
+        self.app.app.deleteLater()
+        TestDirFixtureWithReactor.tearDown(self)
+
+    @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    @patch('gui.view.dialog.QDialogPlus.show')
+    def test_run_test_task(self, *_):
+        logic = self.logic
+        gui = self.app
+
+        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_publisher = MockRPCPublisher(success_aliases=[rpc.mapping.aliases.Task.evt_task_check_success],
+                                         error_aliases=[rpc.mapping.aliases.Task.evt_task_check_error])
+
+        logic.root_path = self.path
+        logic.client = rpc_client
+
+        self.client.datadir = logic.root_path
+        self.client.rpc_publisher = rpc_publisher
+
+        logic.customizer = MainWindowCustomizer(gui.main_window, logic)
+        logic.customizer.new_task_dialog_customizer = Mock()
+        logic.customizer.show_warning_window = Mock()
+
+        ts = TaskDesc()
+        files = self.additional_dir_content([1])
+        ts.definition.main_program_file = files[0]
+        ts.definition.task_type = "TESTTASK"
+        f = self.additional_dir_content([2])
+        ts.definition.output_file = f[0]
+        ts.definition.main_scene_file = f[1]  # FIXME Remove me
+
+        task_type = Mock()
+        ttb = TTaskBuilder(self.path)
+        task_type.task_builder_type.return_value = ttb
+        logic.task_types["TESTTASK"] = task_type
+
+        rpc_publisher.reset()
+        wait_for(logic.run_test_task(ts))
+        logic.progress_dialog.close()
+        logic.test_task_started(True)
+        self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
+        time.sleep(0.5)
+        self.assertTrue(rpc_publisher.success)
+
+        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        rpc_publisher.reset()
+        wait_for(logic.run_test_task(ts))
+        logic.progress_dialog.close()
+        time.sleep(0.5)
+        self.assertTrue(rpc_publisher.success)
+
+        # since PythonTestVM does not support end_comp() method,
+        # this is only a smoke test instead of actual test
+        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        rpc_publisher.reset()
+        wait_for(logic.run_test_task(ts))
+        logic.progress_dialog.close()
+        time.sleep(0.5)
+        logic.abort_test_task()
+
+        ttb.src_code = "raise Exception('some error')"
+        rpc_publisher.reset()
+        wait_for(logic.run_test_task(ts))
+        logic.progress_dialog.close()
+        time.sleep(1)
+        self.assertFalse(rpc_publisher.success)
+
+        rpc_publisher.reset()
+        wait_for(logic.run_test_task(ts))
+        logic.progress_dialog.close()
+        self.assertFalse(rpc_publisher.success)
+
+        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        logic.task_settings_changed()
+        self.assertGreater(logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count,
+                           prev_call_count)
+
+        logic.tasks["xyz"] = ts
+        logic.clone_task("xyz")
+
+        self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
+
+        ttb = TTaskBuilder(self.path, TTaskWithDef)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert wait_for(logic.run_test_task(ts)) is not False
+
+        ttb = TTaskBuilder(self.path, TTaskWithError)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert wait_for(logic.run_test_task(ts)) is False
