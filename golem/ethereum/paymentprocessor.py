@@ -200,12 +200,12 @@ class PaymentProcessor(Service):
 
     def sendout(self):
         if not self.__awaiting:
-            return
+            return False
 
         now = int(time.time())
         if self.deadline > now:
             log.info("Next sendout in {} s".format(self.deadline - now))
-            return
+            return False
 
         payments = self.__awaiting  # FIXME: Should this list be synchronized?
         self.__awaiting = []
@@ -246,6 +246,7 @@ class PaymentProcessor(Service):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
         self.__gnt_reserved -= value
+        return True
 
     def monitor_progress(self):
         confirmed = []
