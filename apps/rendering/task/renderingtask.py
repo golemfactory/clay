@@ -12,7 +12,6 @@ from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
@@ -27,15 +26,6 @@ SUBTASK_TIMEOUT = 220.0
 logger = logging.getLogger("apps.rendering")
 
 
-MAX_PENDING_CLIENT_RESULTS = 1
-
-
-class AcceptClientVerdict(object):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
-
-
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
@@ -45,7 +35,7 @@ class RenderingTask(CoreTask):
     ################
 
     def __init__(self, node_name, task_definition, total_tasks, root_path, owner_address="",
-                 owner_port=0, owner_key_id="", max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
+                 owner_port=0, owner_key_id=""):
 
         environment = self.ENVIRONMENT_CLASS()
         if task_definition.docker_images is None:
@@ -95,7 +85,6 @@ class RenderingTask(CoreTask):
 
         self.collected_file_names = {}
 
-        self.max_pending_client_results = max_pending_client_results
         preview_x = 300
         preview_y = 200
         if self.res_x != 0 and self.res_y != 0:
@@ -277,21 +266,6 @@ class RenderingTask(CoreTask):
         if self.output_format.upper() in unsupported_formats:
             return True
         return False
-
-    def _accept_client(self, node_id):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
-        # if client.rejected():
-        #     return AcceptClientVerdict.REJECTED
-        # elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
-
-        if finishing >= max_finishing or client.started() - finishing >= max_finishing:
-            return AcceptClientVerdict.SHOULD_WAIT
-
-        client.start()
-        return AcceptClientVerdict.ACCEPTED
 
     def __get_path(self, path):
         if is_windows():
