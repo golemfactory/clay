@@ -12,10 +12,9 @@ from golem.task.taskstate import SubtaskStatus
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
-from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import AcceptClientVerdict
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 

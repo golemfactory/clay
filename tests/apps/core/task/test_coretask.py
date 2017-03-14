@@ -324,6 +324,11 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
+    def test_get_resources(self):
+        c = self._get_core_task()
+        print c.tmp_dir
+        c.get_resources("abc")
+
 
 class TestLogKeyError(LogTestCase):
     def test_log_key_error(self):

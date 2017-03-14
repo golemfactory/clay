@@ -10,7 +10,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
 from apps.lux.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
-from apps.rendering.task.renderingtask import AcceptClientVerdict
+from apps.core.task.coretask import AcceptClientVerdict
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
