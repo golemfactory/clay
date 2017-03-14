@@ -1,21 +1,26 @@
 import os
 import shutil
 import unittest
+import zipfile
 import zlib
 from copy import copy
 
 from mock import MagicMock
 
+
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
+from golem.resource.resource import TaskResourceHeader
+from golem.resource.resourcesmanager import DistributedResourceManager
 from golem.task.taskbase import result_types, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.core.task.coretask import CoreTask, logger, log_key_error, TaskTypeInfo, CoreTaskBuilder
+from apps.core.task.coretask import (CoreTask, logger, log_key_error, TaskTypeInfo,
+                                     CoreTaskBuilder, AcceptClientVerdict)
 from apps.core.task.coretaskstate import TaskDefinition
 
 
@@ -326,8 +331,52 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_get_resources(self):
         c = self._get_core_task()
-        print c.tmp_dir
-        c.get_resources("abc")
+        th = TaskResourceHeader(self.path)
+        assert c.get_resources(th) is None
+
+        files = self.additional_dir_content([[1], [[1], [2, [3]]]])
+        c.task_resources = files[1:]
+        resource = c.get_resources(th)
+        assert os.path.isfile(resource)
+        assert zipfile.is_zipfile(resource)
+        z = zipfile.ZipFile(resource)
+        in_z = z.namelist()
+        assert len(in_z) == 6
+
+        assert c.get_resources(th, 2) == files[1:]
+
+        th2, p = c.get_resources(th, 1)
+        assert p == []
+        assert th2.files_data == []
+        assert th2.sub_dir_headers == []
+
+        with open(files[0], 'w') as f:
+            f.write("ABCD")
+
+        drm = DistributedResourceManager(os.path.dirname(files[0]))
+        res_files = drm.split_file(files[0])
+        c.add_resources({files[0]: res_files})
+        th2, p = c.get_resources(th, 1)
+        assert len(p) == 1
+        assert len(th2.files_data) == 1
+        assert th2.sub_dir_headers == []
+
+    def test_result_incoming(self):
+        c = self._get_core_task()
+        assert c._accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
+        c.subtasks_given["subtask1"] = {"node_id": "Node 1"}
+        assert c.counting_nodes["Node 1"]._finishing == 0
+        c.result_incoming("subtask1")
+        assert c.counting_nodes["Node 1"]._finishing == 1
+        assert c._accept_client("Node 1") == AcceptClientVerdict.SHOULD_WAIT
+        c._mark_subtask_failed("subtask1")
+        assert c._accept_client("Node 1") == AcceptClientVerdict.REJECTED
+
+    def test_create_path_in_load_task_result(self):
+        c = self._get_core_task()
+        assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
+        c.load_task_results(MagicMock(), result_types['data'], "subtask1")
+        assert os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
 
 
 class TestLogKeyError(LogTestCase):
