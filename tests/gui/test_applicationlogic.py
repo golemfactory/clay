@@ -542,10 +542,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
         logic.client.query_task_state = query_task_state
         with self.assertLogs(logger, level="WARNING"):
-            try:
-                logic.task_status_changed("unknown id")
-            except Exception as e:
-                print "Exc occurred", e
+            logic.task_status_changed("unknown id")
 
         task_type = Mock()
         task_type.name = "NAME1"
