@@ -566,8 +566,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert wait_for(logic.run_test_task(ts)) is not False
+        assert wait_for(logic.run_test_task(ts))
 
         ttb = TTaskBuilder(self.path, TTaskWithError)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert wait_for(logic.run_test_task(ts)) is False
+        assert not wait_for(logic.run_test_task(ts))

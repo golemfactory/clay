@@ -265,11 +265,7 @@ class Client(object):
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
-
         if self.task_tester is None:
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
-
             request = AsyncRequest(self._run_test_task, t_dict)
             async_run(request)
             return True
@@ -293,6 +289,8 @@ class Client(object):
         t = DictSerializer.load(t_dict)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
