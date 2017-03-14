@@ -18,8 +18,8 @@ a = Analysis(['golemapp.py'],
 
              hiddenimports=[
                  'Cryptodome',
-                 'rlp', 'web3', 'pylru',
-                 'pysha3', 'requests', 'scrypt',
+                 'rlp', 'web3', 'pylru', 'xml',
+                 'sha3', 'requests', 'scrypt',
                  'OpenEXR', 'Imath'
              ],
 
@@ -44,4 +44,4 @@ exe = EXE(pyz,
           debug=False,
           strip=False,
           upx=on_path('upx'),
-          console=False)
+          console=True)
