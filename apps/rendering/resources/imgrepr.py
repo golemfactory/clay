@@ -2,7 +2,7 @@ import os
 import abc
 import logging
 import math
-from copy import copy
+from copy import deepcopy
 import OpenEXR
 import Imath
 from PIL import Image
@@ -19,6 +19,10 @@ class ImgRepr(object):
 
     @abc.abstractmethod
     def get_pixel(self, (i, j)):
+        return
+
+    @abc.abstractmethod
+    def set_pixel(self, (i, j), color):
         return
 
     @abc.abstractmethod
@@ -40,6 +44,10 @@ class PILImgRepr(ImgRepr):
 
     def get_pixel(self, (i, j)):
         return list(self.img.getpixel((i, j)))
+
+    def set_pixel(self, (i, j), color):
+        color = tuple(int(c) for c in color)
+        self.img.putpixel((i, j), color)
 
 
 class EXRImgRepr(ImgRepr):
@@ -149,7 +157,7 @@ def blend(img1, img2, alpha):
         logger.error("Both images must have the same size.")
         return
 
-    img = copy(img1)
+    img = deepcopy(img1)
 
     for x in range(0, res_x):
         for y in range(0, res_y):
