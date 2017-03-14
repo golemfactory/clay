@@ -102,10 +102,6 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; Install geth
 Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
 
-; Configure docker                                   
-Filename: "powershell.exe"; Parameters: "-Command ""& cd """"{sd}\Program Files\Docker Toolbox\""""; .\start.sh;  """"docker-machine env | Invoke-Expression"""""""; Description: "Configure docker"
-; Filename: "powershell.exe"; Parameters: "-Command ""& """"docker-machine env | Invoke-Expression"""""""; Description: "Configure docker" 
-
 ; Finally! Install golem!
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip install """"{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
