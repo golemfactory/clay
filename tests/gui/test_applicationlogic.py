@@ -9,7 +9,6 @@ from ethereum.utils import denoms
 from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
-import golem
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
@@ -231,7 +230,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.customizer = Mock()
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
 
         description = u"New description"
 
@@ -320,14 +319,15 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
     @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    @patch('gui.view.dialog.QDialogPlus.show')
     def test_run_test_task(self, *_):
         logic = self.logic
         gui = self.app
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
-        rpc_publisher = MockRPCPublisher(success_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_success],
-                                         error_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_error])
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_publisher = MockRPCPublisher(success_aliases=[rpc.mapping.aliases.Task.evt_task_check_success],
+                                         error_aliases=[rpc.mapping.aliases.Task.evt_task_check_error])
 
         logic.root_path = self.path
         logic.client = rpc_client
@@ -464,7 +464,9 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.logic.datadir = self.path
         logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
         logic.customizer.show_error_window = Mock()
-        logic.customizer.show_warning_window =  Mock()
+        logic.customizer.show_warning_window = Mock()
+        logic.customizer.current_task_highlighted = Mock()
+        logic.client = Mock()
         self.logic.dir_manager = DirManager(self.path)
         register_task_types(logic)
 
@@ -533,8 +535,17 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         with self.assertLogs(logger, level="WARNING"):
             logic.set_current_task_type("unknown task")
 
+        def query_task_state(*_):
+            deferred = Deferred()
+            deferred.callback(True)
+            return deferred
+
+        logic.client.query_task_state = query_task_state
         with self.assertLogs(logger, level="WARNING"):
-            logic.task_status_changed("unknown id")
+            try:
+                logic.task_status_changed("unknown id")
+            except Exception as e:
+                print "Exc occurred", e
 
         task_type = Mock()
         task_type.name = "NAME1"
