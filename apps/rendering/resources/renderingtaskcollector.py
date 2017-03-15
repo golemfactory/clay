@@ -1,18 +1,15 @@
 import glob
 import logging
 import math
-import OpenEXR
-import Imath
 import os
+
+import Imath
+import OpenEXR
 from PIL import Image, ImageChops
 
 from golem.core.common import is_windows
 
 logger = logging.getLogger("apps.rendering")
-
-
-def print_progress(i, total):
-    print "\rProgress: {} %       ".format(100.0 * float(i + 1) / total),
 
 
 def open_exr_as_rgbf_images(exr_file):
@@ -77,43 +74,29 @@ def get_list_rgbf_extrema(rgbf_list):
         darkest = min(d, darkest)
         lightest = max(l, lightest)
 
-        print_progress(i, len(rgbf_list))
-
-    print ""
-
     return darkest, lightest
 
 
 def compose_final_image(open_exr_files):
     rgbfs = []
 
-    print "Reading input files"
     for i, open_exr_im_file in enumerate(open_exr_files):
         rgbf = open_exr_as_rgbf_images(open_exr_im_file)
         rgbfs.append(rgbf)
 
-        print_progress(i, len(open_exr_files))
-
-    print "\nFinding extremas for all chunks"
     darkest, lightest = get_list_rgbf_extrema(rgbfs)
 
     rgb8_images = []
 
-    print "Converting chunks to rgb8 images"
     for i, rgbf in enumerate(rgbfs):
         rgb8_im = convert_rgbf_images_to_rgb8_image(rgbf, lightest, darkest)
         rgb8_images.append(rgb8_im)
         rgb8_im.close()
 
-        print_progress(i, len(rgbfs))
-
     final_img = rgb8_images[0]
 
-    print "\nCompositing the final image"
     for i in range(1, len(rgb8_images)):
         final_img = ImageChops.add(final_img, rgb8_images[i])
-
-        print_progress(i, len(rgb8_images))
 
     return final_img
 
@@ -123,20 +106,6 @@ def get_exr_files(path):
         return glob.glob(path + "/*.exr")
     else:
         return glob.glob(path + "/*.exr") + glob.glob(path + "/*.EXR")
-
-
-def test_it():
-    image = 'test/test_chunk_00000.tga'
-    watermark = 'test/test_chunk_00001.png'
-
-    wmark = Image.open(watermark)
-    img = Image.open(image)
-
-    out = ImageChops.add(img, wmark)
-
-    out.save("result.png", "PNG")
-    wmark.close()
-    img.close()
 
 
 def exr_to_pil(exr_file):
@@ -161,7 +130,7 @@ def exr_to_pil(exr_file):
     return Image.merge("RGB", rgb8)
 
 
-class RenderingTaskCollector:
+class RenderingTaskCollector(object):
     def __init__(self, paste=False, width=1, height=1):
         self.darkest = None
         self.lightest = None
@@ -207,16 +176,15 @@ class RenderingTaskCollector:
 
         self.accepted_alpha_files.append(img_file)
 
-    def finalize(self, show_progress=False):
+    def finalize(self):
         if len(self.accepted_img_files) == 0:
             return None
         are_exr = self.accepted_img_files[0].upper().endswith("EXR")
-        if show_progress:
-            print "Adding all accepted chunks to the final image"
+
         if are_exr:
-            final_img = self.finalize_exr(show_progress)
+            final_img = self.finalize_exr()
         else:
-            final_img = self.finalize_not_exr(show_progress)
+            final_img = self.finalize_not_exr()
                     
         if len(self.accepted_alpha_files) > 0:
             final_alpha = convert_rgbf_images_to_l_image(open_exr_as_rgbf_images(self.accepted_alpha_files[0]),
@@ -233,7 +201,7 @@ class RenderingTaskCollector:
 
         return final_img
 
-    def finalize_exr(self, show_progress=False):
+    def finalize_exr(self):
         if self.lightest == self.darkest:
             self.lightest = self.darkest + 0.1
 
@@ -257,12 +225,10 @@ class RenderingTaskCollector:
                 final_img = self._paste_image(final_img, rgb8_im, i)
                 
             rgb8_im.close()
-            
-            if show_progress:
-                print_progress(i, len(self.accepted_img_files))
+
         return final_img
         
-    def finalize_not_exr(self, show_progress=False):
+    def finalize_not_exr(self):
         _, output_format = os.path.splitext(self.accepted_img_files[0])
         output_format = output_format[1:].upper()
         res_y = 0
@@ -293,8 +259,6 @@ class RenderingTaskCollector:
                 _, img_y = img.size
                 offset += img_y
                 img.close()
-            if show_progress:
-                print_progress(i, len(self.accepted_img_files))        
         return final_img
 
     def _paste_image(self, final_img, new_part, num):
