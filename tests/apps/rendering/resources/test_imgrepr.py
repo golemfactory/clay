@@ -210,6 +210,7 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert isinstance(exr_img, EXRImgRepr)
         assert exr_img.get_size() == (10, 10)
 
+        img_path = self.temp_file_name("img.jpg")
         pil_img = get_pil_img_repr(img_path)
         assert isinstance(pil_img, PILImgRepr)
         assert pil_img.get_size() == (10, 10)
