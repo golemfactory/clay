@@ -309,17 +309,24 @@ class TaskServer(PendingConnectionsServer):
         self.task_manager.task_computation_failure(subtask_id, err)
 
     def accept_result(self, subtask_id, account_info):
-        task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-        if value and self.client.transaction_system:
-            if account_info.eth_account.address:
-                self.client.transaction_system.add_payment_info(
-                    task_id, subtask_id, value, account_info)
-            else:
-                logger.warning("Unknown payment address of {} ({})".format(
-                    account_info.node_name, account_info.addr))
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
         Trust.COMPUTED.increase(account_info.key_id, mod)
+
+        task_id = self.task_manager.get_task_id(subtask_id)
+        value = self.task_manager.get_value(subtask_id)
+        if not value:
+            logger.info(u"Invaluable subtask: %r value: %r", subtask_id, value)
+            return
+
+        if not self.client.transaction_system:
+            logger.info(u"Transaction system not ready. Ignoring payment for subtask: %r", subtask_id)
+            return
+
+        if not account_info.eth_account.address:
+            logger.warning(u"Unknown payment address of %r (%r). Subtask: %r", account_info.node_name, account_info.addr, subtask_id)
+            return
+
+        payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)

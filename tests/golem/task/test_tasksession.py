@@ -20,11 +20,14 @@ from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
+from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase, TempDirFixture):
+class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
+    PEP8_FILES = ['golem/task/tasksession.py', ]
+
     def test_init(self):
         ts = TaskSession(Mock())
         self.assertIsInstance(ts, TaskSession)

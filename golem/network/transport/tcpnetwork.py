@@ -331,7 +331,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
-        logger.info("Connection failure. {}".format(err_desc))
+        logger.info(u"Connection failure. {}".format(err_desc))
         TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
