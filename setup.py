@@ -8,7 +8,6 @@ from sys import argv
 
 requirements, dependencies = parse_requirements(path.dirname(__file__))
 
-ui_err = generate_ui()
 docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
 update_ini()
@@ -52,8 +51,7 @@ setup(
         ]
     },
     data_files=[
-        (path.normpath('../../'), ['golemapp.py', 'golemcli.py']),
-        (path.normpath('../../golem'), ['logging.ini', '.version.ini']),
+        (path.normpath('../../'), ['golemapp.py', 'golemcli.py', 'golemgui.py', 'loggingconfig.py', '.version.ini']),
         (path.normpath('../../golem/apps'), [path.normpath('apps/registered.ini'), path.normpath('apps/images.ini')]),
         (path.normpath('../../golem/apps/blender/resources/scripts'),
          [path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
@@ -68,6 +66,8 @@ setup(
           path.normpath('gui/view/img/user.png'), path.normpath('gui/view/img/eye.png')]),
     ]
 )
+
+ui_err = generate_ui()
 
 print_errors(ui_err, docker_err, task_collector_err)
 

@@ -1,8 +1,10 @@
 import unittest
 
 import mock
+
+from golem.core.common import is_linux
 from golem.docker.machine.machine_manager import DockerMachineManager
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 MACHINE_NAME = 'default'
 
@@ -133,7 +135,7 @@ class MockDockerMachineManager(DockerMachineManager):
         return MACHINE_NAME
 
 
-@appveyor_skip
+@ci_skip
 class TestDockerMachineManager(unittest.TestCase):
 
     def test_build_config(self):
@@ -179,13 +181,14 @@ class TestDockerMachineManager(unittest.TestCase):
             mock_virtualbox.version = None
             mock_virtualbox_module.VirtualBox.return_value = mock_virtualbox
 
-            dmm = MockDockerMachineManager()
-            dmm.docker_machine = MACHINE_NAME
-            dmm.check_environment()
-            assert not dmm.docker_machine_available
+            if is_linux():
+                dmm = MockDockerMachineManager()
+                dmm.docker_machine = MACHINE_NAME
+                dmm.check_environment()
+                assert not dmm.docker_machine_available
 
             dmm = MockDockerMachineManager()
-            dmm.docker_machine = None
+            dmm.docker_machine = '!'
             dmm.check_environment()
             assert not dmm.docker_machine_available
 
@@ -193,11 +196,33 @@ class TestDockerMachineManager(unittest.TestCase):
             'virtualbox': mock.MagicMock(),
             'virtualbox.library': mock.MagicMock()
         }):
+
             dmm = MockDockerMachineManager()
             dmm.docker_machine = MACHINE_NAME
             dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
-            dmm.check_environment()
-            assert dmm.docker_machine_available
+
+            with mock.patch('golem.docker.machine.machine_manager.is_linux', return_value=False):
+
+                with mock.patch('golem.docker.machine.machine_manager.is_windows', return_value=False):
+                    dmm.check_environment()
+                    assert dmm.docker_machine_available
+
+                with mock.patch('golem.docker.machine.machine_manager.is_windows', return_value=True):
+                    dmm.check_environment()
+                    assert dmm.docker_machine_available
+
+                    dmm._import_virtualbox = mock.Mock()
+                    dmm.virtual_box = None
+                    dmm.check_environment()
+                    assert not dmm.docker_machine_available
+
+            dmm = MockDockerMachineManager()
+            dmm.docker_machine = MACHINE_NAME
+            dmm.docker_machine_images = lambda *_: [MACHINE_NAME]
+
+            with mock.patch('golem.docker.machine.machine_manager.is_linux', return_value=True):
+                dmm.check_environment()
+                assert not dmm.docker_machine_available
 
     def test_update_config(self):
         status_switch = [True]

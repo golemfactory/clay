@@ -7,9 +7,9 @@
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
 ; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
-#define Repository "C:\golem"           
+#define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py bdist_wheel", "", Repository, 1)
-#define MyAppVersion ReadIni(Repository+"\\.version", "version", "version", "0.1.0")
+#define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.3.0")
 #define AppIcon "favicon.ico"
 
 [Setup]
@@ -68,6 +68,7 @@ Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\openssl.exe"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\requirements.txt"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -79,6 +80,21 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 [Run]
  ; Install Python 2.7.6
 Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
+
+; Install pywin
+Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
+
+; Install VC For Python 2.7
+Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
+
+; Install external wheels
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-win32.whl"""; Description: "Install sip"; Check: DependenciesSetup('sip')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-win32.whl"""; Description: "Install PyQt5"; Check: DependenciesSetup('PyQt5')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl"""; Description: "Install OpenEXR"; Check: DependenciesSetup('OpenEXR')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl"""; Description: "Install PyEthash"; Check: DependenciesSetup('PyEthash')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl"""; Description: "Install secp256k1"; Check: DependenciesSetup('secp256k1')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install -r {tmp}\requirements.txt"""; Description: "Install setuptools"; Check: DependenciesSetup('setuptools')
                                      
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
@@ -86,31 +102,17 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 
 ; Install geth
 Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
-Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
-
-; Install VC For Python 2.7
-Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
-
-; Install external wheels
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/PyQt4-4.11.4-cp27-none-win32.whl"""; Description: "Install PyQt4"; Check: DependenciesSetup('PyQt4')
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl"""; Description: "Install OpenEXR"; Check: DependenciesSetup('OpenEXR')
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl"""; Description: "Install geth"; Check: DependenciesSetup('geth')
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl"""; Description: "Install secp256k1"; Check: DependenciesSetup('secp256k1')
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
 
 ; Finally! Install golem!
-Filename: "cmd.exe"; Parameters: "/C ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install ""{app}\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
-; Configure docker                                   
-Filename: "powershell.exe"; Parameters: "-Command ""& cd """"{sd}\Program Files\Docker Toolbox\""""; .\start.sh """; Description: "Configure docker"
-Filename: "powershell.exe"; Parameters: "-Command ""& """"docker-machine env | Invoke-Expression"""""""; Description: "Configure docker" 
 
 [Code]
                                                                               
 // This function checks the registry for an existing Docker installation
 function IsDockerInstalled: boolean;
 begin
-   Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );
+   Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );                                                                                                                         
 end;
 
 // This function checks the registry for an existing Python 2.7.x installation

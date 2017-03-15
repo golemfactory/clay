@@ -18,7 +18,7 @@ class IncomingPayment(object):
 
 
 class PaymentMonitor(Service):
-    BANK_ADDR = "0xcfdc7367e9ece2588afe4f530a9adaa69d5eaedb"
+    BANK_ADDR = "0x689ed42Ec0C3b3B799Dc5659725Bf536635F45d1"
 
     def __init__(self, client, addr):
         self.__client = client
@@ -35,6 +35,7 @@ class PaymentMonitor(Service):
         self.process_incoming_payments()
 
     def process_incoming_payments(self):
+        log.debug("process incoming payments")
         if not self.__filter:
             # solidity Transfer() log id
             # FIXME: Take it from contract ABI
@@ -59,10 +60,14 @@ class PaymentMonitor(Service):
             if payee != self.__addr:
                 raise ValueError("Payee should be: {}, but is: {}".format(self.__addr, payee))
             value = int(l['data'], 16)
+
+            log.debug("BlockHash: {}; BlockNumber: {}".format(l['blockHash'], l['blockNumber']))
             block_number = l['blockNumber']
-            block_hash = l['blockHash'][2:].decode('hex')
-            if len(block_hash) != 32:
-                raise ValueError("Incorrect block hash length: {} .Should be 32".format(len(block_hash)))
+            block_hash = None
+            if l['blockHash']:
+                block_hash = l['blockHash'][2:].decode('hex')
+                if len(block_hash) != 32:
+                    raise ValueError("Incorrect block hash length: {} .Should be 32".format(len(block_hash)))
             tx_hash = l['transactionHash'][2:].decode('hex')
             if len(tx_hash) != 32:
                 raise ValueError("Incorrect tx length: {}. Should be 32".format(len(tx_hash)))
@@ -72,7 +77,7 @@ class PaymentMonitor(Service):
                              'tx_hash': tx_hash}
             self.__payments.append(payment)
             dispatcher.send(signal='golem.monitor', event='income', addr=payer.encode('hex'), value=value)
-            log.info("Incoming payment: {} -> ({} ETH)".format(
+            log.info("Incoming payment: {} -> ({} GNT)".format(
                 payer.encode('hex'), value / denoms.ether))
 
         return self.__payments

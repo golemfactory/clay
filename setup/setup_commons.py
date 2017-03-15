@@ -169,6 +169,23 @@ def file_name():
         return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
 
 
+def get_golem_version(increase):
+    from ConfigParser import ConfigParser
+    from golem.core.common import get_golem_path
+    from os.path import join
+    config = ConfigParser()
+    config_path = join(get_golem_path(), '.version.ini')
+    config.read(config_path)
+    version = config.get('version', 'version')
+    if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
+        v = version.split('.')
+        version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
+        v = "[version]\nversion = {}".format(version)
+        with open(config_path, 'wb') as f:
+            f.write(v)
+    return version
+
+
 def __try_docker():
     try:
         subprocess.check_call(["docker", "info"])

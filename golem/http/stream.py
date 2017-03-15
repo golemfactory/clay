@@ -6,6 +6,7 @@ import uuid
 from threading import Lock, Thread
 
 import requests
+import select
 from requests.exceptions import HTTPError
 
 from golem.core.common import is_windows
@@ -289,8 +290,19 @@ class ChunkStream:
 
                 if dt >= timeout:
                     raise requests.exceptions.ConnectTimeout("Socket connection timeout")
+                timeout -= dt
             else:
                 raise
+
+        # wait until writeable
+        w = False
+        ns, ws = [], [self.sock]
+        start = time.time()
+
+        while not w:
+            _, w, _ = select.select(ns, ws, ns, self._conn_sleep)
+            if time.time() - start >= timeout:
+                raise requests.exceptions.ConnectTimeout("Socket connection timeout")
 
     def __disconnect(self):
         if self.done:

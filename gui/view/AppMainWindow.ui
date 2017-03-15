@@ -198,8 +198,11 @@
                     <property name="enabled">
                      <bool>false</bool>
                     </property>
+                    <property name="minimum">
+                     <number>1</number>
+                    </property>
                     <property name="maximum">
-                     <number>1000000000</number>
+                     <number>100</number>
                     </property>
                    </widget>
                   </item>
@@ -220,6 +223,9 @@
                    <widget class="QSpinBox" name="verificationSizeYSpinBox">
                     <property name="enabled">
                      <bool>false</bool>
+                    </property>
+                    <property name="minimum">
+                     <number>1</number>
                     </property>
                    </widget>
                   </item>
@@ -963,7 +969,7 @@
                  </spacer>
                 </item>
                 <item>
-                 <widget class="ClickableQLabel" name="previewLabel">
+                 <widget class="QLabel" name="previewLabel">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                     <horstretch>0</horstretch>
@@ -1166,7 +1172,7 @@
                  </widget>
                 </item>
                 <item row="1" column="1">
-                 <widget class="ClickableQLabel" name="outputFile">
+                 <widget class="QLabel" name="outputFile">
                   <property name="text">
                    <string/>
                   </property>
@@ -2801,13 +2807,6 @@
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ClickableQLabel</class>
-   <extends>QLabel</extends>
-   <header>clickableqlabel.h</header>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="icons.qrc"/>
  </resources>

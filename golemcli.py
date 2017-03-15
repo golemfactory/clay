@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import argparse
 import sys
 
@@ -44,7 +46,7 @@ def start():
     interactive = parsed.interactive
 
     if interactive:
-        config_logging("golem_cli.log")
+        config_logging("_cli")
         cli = CLI()
     else:
         import logging

@@ -1,6 +1,6 @@
 import unittest
 
-from PyQt4.QtGui import QTableWidgetItem
+from PyQt5.QtWidgets import QTableWidgetItem
 
 from golem.model import PaymentStatus
 

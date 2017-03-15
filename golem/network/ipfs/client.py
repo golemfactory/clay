@@ -5,6 +5,8 @@ import subprocess
 import ipfsapi
 import shutil
 from enum import Enum
+from ipfsapi.exceptions import CommunicationError, EncoderError
+from requests import HTTPError
 
 from golem.core.hostaddress import ip_address_private
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -86,7 +88,10 @@ class IPFSClient(IClient):
 
             def wrapper(*args, **kwargs):
                 kwargs.pop('client_options', None)
-                return method(*args, **kwargs)
+                try:
+                    return method(*args, **kwargs)
+                except (CommunicationError, EncoderError) as e:
+                    raise HTTPError(e)
 
             return wrapper
 

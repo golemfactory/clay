@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from multiprocessing import freeze_support
 
 import click
@@ -52,7 +54,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
     elif gui:
         start_app(rendering=True, **config)
     else:
-        config_logging()
+        config_logging(datadir=datadir)
 
         node = OptNode(node_address=node_address, **config)
         node.initialize()
@@ -64,7 +66,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
 
 def start_crossbar_worker(unbuffered, module):
     idx = sys.argv.index('-m')
-    sys.argv.pop(idx + 1)
+    sys.argv.pop(idx)
     sys.argv.pop(idx)
 
     if unbuffered:
@@ -82,16 +84,20 @@ def __pull_docker_images():
     from os.path import join
     with open(join(get_golem_path(), 'apps', 'images.ini'), 'rb') as file_:
         data = file_.read().split('\n')
-    blender_image = "{}:{}".format(data[1].split()[0], data[1].split()[2])
-    luxrender_image = "{}:{}".format(data[2].split()[0], data[2].split()[2])
-    blender_error = None
-    lux_error = None
-    res = call(["docker", "pull", blender_image], stderr=blender_error) +\
-          call(["docker", "pull", luxrender_image], stderr=lux_error)
+    res = 0
+    err = None
+    error_message = ""
+    for line in data[1:]:
+        if line:
+            image = "{}:{}".format(line.split()[0], line.split()[2])
+            res |= call(["docker", "pull", image], stderr=err)
+            if err:
+                error_message += "\n{}:{}".format(line.split()[0].split('/')[-1], err)
+            err = None
     if res != 0:
         print("***************************************************************\n"
-              "Error occurred during pulling docker images!\n{}\n{}\n"
-              "***************************************************************".format(blender_error, lux_error))
+              "Error occurred during pulling docker images!{}\n"
+              "***************************************************************".format(error_message))
         exit(1)
 
 

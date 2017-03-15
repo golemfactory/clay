@@ -2,6 +2,7 @@ from __future__ import division
 
 import logging
 from pydispatch import dispatcher
+import sys
 import time
 
 from ethereum import abi, keys, utils
@@ -43,6 +44,9 @@ def _encode_payments(payments):
 
 
 class PaymentProcessor(Service):
+    # Default deadline in seconds for new payments.
+    DEFAULT_DEADLINE = 10 * 60
+
     # Gas price: 20 shannons, Homestead suggested gas price.
     GAS_PRICE = 20 * 10 ** 9
 
@@ -57,7 +61,6 @@ class PaymentProcessor(Service):
 
     TESTGNT_ADDR = "689ed42Ec0C3b3B799Dc5659725Bf536635F45d1".decode('hex')
 
-    SENDOUT_TIMEOUT = 1 * 60
     SYNC_CHECK_INTERVAL = 10
 
     def __init__(self, client, privkey, faucet=False):
@@ -73,7 +76,8 @@ class PaymentProcessor(Service):
         self.__temp_sync = False
         self.__faucet = faucet
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
-        super(PaymentProcessor, self).__init__(self.SENDOUT_TIMEOUT)
+        self.deadline = sys.maxsize
+        super(PaymentProcessor, self).__init__(13)
 
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
@@ -117,6 +121,9 @@ class PaymentProcessor(Service):
 
         return True
 
+    def balance_known(self):
+        return self.__gnt_balance is not None and self.__eth_balance is not None
+
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
@@ -159,7 +166,7 @@ class PaymentProcessor(Service):
     def _gnt_available(self):
         return self.gnt_balance() - self.__gnt_reserved
 
-    def add(self, payment):
+    def add(self, payment, deadline=DEFAULT_DEADLINE):
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError("Invalid payment status: {}".format(payment.status))
 
@@ -180,17 +187,29 @@ class PaymentProcessor(Service):
 
         self.__awaiting.append(payment)
         self.__gnt_reserved += payment.value
+
+        # Set new deadline if not set already or shorter than the current one.
+        # TODO: Optimize by checking the time once per service update.
+        new_deadline = int(time.time()) + deadline
+        if new_deadline < self.deadline:
+            self.deadline = new_deadline
+
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
             av_gnt / denoms.ether, self.__gnt_reserved / denoms.ether))
         return True
 
     def sendout(self):
-        log.debug("Sendout ping")
         if not self.__awaiting:
-            return
+            return False
+
+        now = int(time.time())
+        if self.deadline > now:
+            log.info("Next sendout in {} s".format(self.deadline - now))
+            return False
 
         payments = self.__awaiting  # FIXME: Should this list be synchronized?
         self.__awaiting = []
+        self.deadline = sys.maxsize
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
         p, value = _encode_payments(payments)
@@ -227,6 +246,7 @@ class PaymentProcessor(Service):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
         self.__gnt_reserved -= value
+        return True
 
     def monitor_progress(self):
         confirmed = []

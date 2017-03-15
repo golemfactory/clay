@@ -12,61 +12,56 @@ environment:
       PYTHON_VERSION: "2.7.13"
       PYTHON_ARCH: "32"
 
-      GETH_VER: geth-windows-amd64-1.5.9-a07539fb
-      IPFS_VER: go-ipfs_v0.4.4_windows-386
-      OPENSSL_VER: openssl-1.0.2k-i386-win32
+      VER_GETH: geth-windows-amd64-1.5.9-a07539fb
+      VER_IPFS: go-ipfs_v0.4.4_windows-386
+      VER_OPENSSL: openssl-1.0.2k-i386-win32
 
-      OPENSSL_DIR: C:\OpenSSL
-      GETH_DIR: C:\%GETH_VER%
-      IPFS_DIR: C:\go-ipfs
-      WHEELS_DIR: C:\wheels
+      DIR_OPENSSL: C:\OpenSSL
+      DIR_GETH: C:\%VER_GETH%
+      DIR_IPFS: C:\go-ipfs
+      DIR_WHEELS: C:\wheels
 
-      WHEEL_PYQT4: PyQt4-4.11.4-cp27-none-win32.whl
+      WHEEL_SIP: sip-4.19-cp27-cp27m-win32.whl
+      WHEEL_PYQT: PyQt5-5.7.1-cp27-cp27m-win32.whl
       WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
-      WHEEL_DEVP2P: devp2p-0.8.0-py2.py3-none-any.whl
+
+      WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1%)
 
       PYWIN32: pywin32-220.win32-py2.7.exe
 
-      WHEELS_URL: https://github.com/golemfactory/golem/wiki/wheels
+      WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
 
 cache:
-  - '%OPENSSL_DIR%            -> appveyor.yml'
-  - '%IPFS_DIR%               -> appveyor.yml'
-  - '%GETH_DIR%               -> appveyor.yml'
-  - '%WHEELS_DIR%             -> requirements.txt'
+  - '%DIR_OPENSSL%            -> appveyor.yml'
+  - '%DIR_IPFS%               -> appveyor.yml'
+  - '%DIR_GETH%               -> appveyor.yml'
+  - '%DIR_WHEELS%             -> requirements.txt'
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
   - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
-  # enable rdp
-  # - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
-
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt4;%OPENSSL_DIR%;%GETH_DIR%;%IPFS_DIR%;%SystemRoot%\system32;%PATH%
-  # docker
-  # - choco install -y virtualbox
-  # - choco install -y docker-machine
-  # - docker-machine.exe create -d virtualbox default
-  # - docker-machine.exe env default
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;%DIR_OPENSSL%;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
 
   # ssl
   - if not exist %OPENSSL_DIR% (
-      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%OPENSSL_VER%.zip &&
-      7z x %OPENSSL_VER%.zip -y -aoa -oC:\OpenSSL > NUL
+      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%VER_OPENSSL%.zip &&
+      7z x %VER_OPENSSL%.zip -y -aoa -oC:\OpenSSL > NUL
     )
 
   # geth
-  - if not exist %GETH_DIR% (
-      appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%GETH_VER%.zip &&
-      7z x %GETH_VER%.zip -y -aoa -oC:\ > NUL
+  - if not exist %DIR_GETH% (
+      appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%VER_GETH%.zip &&
+      7z x %VER_GETH%.zip -y -aoa -oC:\ > NUL
     )
 
   # ipfs
-  - if not exist %IPFS_DIR% (
-      appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%IPFS_VER%.zip &&
-      7z x %IPFS_VER%.zip -y -aoa -oC:\ > NUL
+  - if not exist %DIR_IPFS% (
+      appveyor DownloadFile https://dist.ipfs.io/go-ipfs/v0.4.4/%VER_IPFS%.zip &&
+      7z x %VER_IPFS%.zip -y -aoa -oC:\ > NUL
     )
+
   - ipfs init
   - ps: $IPFSProcess = Start-Process ipfs daemon -PassThru
 
@@ -74,41 +69,24 @@ install:
   - pip install --disable-pip-version-check --user --upgrade pip
 
   # pywin32
-  - appveyor DownloadFile %WHEELS_URL%/%PYWIN32%
-  - easy_install.exe %PYWIN32%
+  - if not exist %DIR_WHEELS% (
+      mkdir %DIR_WHEELS%
+    )
+  - if not exist %DIR_WHEELS%\%PYWIN32% (
+      appveyor DownloadFile %WHEELS_URL%/%PYWIN32% &&
+      move %PYWIN32% %DIR_WHEELS%\%PYWIN32%
+    )
+  - easy_install.exe %DIR_WHEELS%\%PYWIN32%
   - easy_install.exe wheel
 
   # prebuilt packages
-  - if not exist %WHEELS_DIR% mkdir %WHEELS_DIR%
-  - if not exist %WHEELS_DIR%\%WHEEL_PYQT4% (
-      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYQT4% &&
-      move %WHEEL_PYQT4% %WHEELS_DIR%\%WHEEL_PYQT4%
+  - for %%w in %WHEELS% do (
+      if not exist %WHEELS_URL%\%%w (
+        appveyor DownloadFile %WHEELS_URL%/%%w &&
+        move %%w %DIR_WHEELS%\%%w
+      ) &&
+      pip install %DIR_WHEELS%\%%w
     )
-  - pip install %WHEELS_DIR%\%WHEEL_PYQT4%
-
-  - if not exist %WHEELS_DIR%\%WHEEL_OPENEXR% (
-      appveyor DownloadFile %WHEELS_URL%/%WHEEL_OPENEXR% &&
-      move %WHEEL_OPENEXR% %WHEELS_DIR%\%WHEEL_OPENEXR%
-    )
-  - pip install %WHEELS_DIR%\%WHEEL_OPENEXR%
-
-  - if not exist %WHEELS_DIR%\%WHEEL_PYETHASH% (
-      appveyor DownloadFile %WHEELS_URL%/%WHEEL_PYETHASH% &&
-      move %WHEEL_PYETHASH% %WHEELS_DIR%\%WHEEL_PYETHASH%
-    )
-  - pip install %WHEELS_DIR%\%WHEEL_PYETHASH%
-
-  - if not exist %WHEELS_DIR%\%WHEEL_SECP256K1% (
-      appveyor DownloadFile %WHEELS_URL%/%WHEEL_SECP256K1% &&
-      move %WHEEL_SECP256K1% %WHEELS_DIR%\%WHEEL_SECP256K1%
-    )
-  - pip install %WHEELS_DIR%\%WHEEL_SECP256K1%
-
-  - if not exist %WHEELS_DIR%\%WHEEL_DEVP2P% (
-      appveyor DownloadFile %WHEELS_URL%/%WHEEL_DEVP2P% &&
-      move %WHEEL_DEVP2P% %WHEELS_DIR%\%WHEEL_DEVP2P%
-    )
-  - pip install %WHEELS_DIR%\%WHEEL_DEVP2P%
 
   - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 

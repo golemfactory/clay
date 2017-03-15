@@ -18,11 +18,11 @@ from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from test_docker_image import DockerTestCase
 
 
-@appveyor_skip
+@ci_skip
 class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
@@ -232,8 +232,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.results == {}
         assert task.res_files == {}
         assert path.isdir(task.tmp_dir)
-        assert isinstance(task.verification_options, AdvanceVerificationOptions)
-        assert task.verification_options.type == 'forFirst'
+        assert task.verificator.verification_options is None
 
     def test_blender_render_subtask(self):
         self._test_blender_subtask(self.BLENDER_TASK_FILE)

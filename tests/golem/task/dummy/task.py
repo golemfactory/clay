@@ -92,6 +92,15 @@ class DummyTask(Task):
         self.assigned_subtasks = {}
         self._lock = Lock()
 
+    def __setstate__(self, state):
+        super(DummyTask, self).__setstate__(state)
+        self._lock = Lock()
+
+    def __getstate__(self):
+        state = super(DummyTask, self).__getstate__()
+        del state['_lock']
+        return state
+
     def initialize(self, dir_manager):
         """Create resource files for this task
         :param DirManager dir_manager: DirManager instance to access tmp and
@@ -202,7 +211,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
         return self.task_resources
 
     def add_resources(self, resource_parts):

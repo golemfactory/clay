@@ -33,6 +33,10 @@ def wait_for(condition, timeout, step=0.1):
     return False
 
 
+def check_deadline(deadline, expected):
+    return expected <= deadline <= expected + 1
+
+
 class PaymentStatusTest(unittest.TestCase):
     def test_status(self):
         s = PaymentStatus(1)
@@ -193,11 +197,61 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1))
         assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1))
 
-        self.pp.sendout()
+        self.pp.deadline = int(time.time())
+        assert self.pp.sendout()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
         assert tx.value == 0
         assert len(tx.data) == 4 + 2*32 + 3*32  # Id + array abi + bytes32[3]
+
+    def test_payment_deadline(self):
+        a1 = urandom(20)
+        a2 = urandom(20)
+        a3 = urandom(20)
+
+        self.client.get_balance.return_value = 100 * denoms.ether
+        self.client.call.return_value = hex(100 * denoms.ether)[:-1]
+
+        now = int(time.time())
+        assert self.pp.add(Payment.create(subtask="p1", payee=a1, value=1))
+        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
+
+        assert self.pp.add(Payment.create(subtask="p2", payee=a2, value=1), deadline=20000)
+        assert check_deadline(self.pp.deadline, now + self.pp.DEFAULT_DEADLINE)
+
+        assert self.pp.add(Payment.create(subtask="p3", payee=a2, value=1), deadline=1)
+        assert check_deadline(self.pp.deadline, now + 1)
+
+        assert self.pp.add(Payment.create(subtask="p4", payee=a3, value=1))
+        assert check_deadline(self.pp.deadline, now + 1)
+
+        assert self.pp.add(Payment.create(subtask="p5", payee=a3, value=1), deadline=1)
+        assert check_deadline(self.pp.deadline, now + 1)
+
+        assert self.pp.add(Payment.create(subtask="p6", payee=a3, value=1), deadline=0)
+        assert check_deadline(self.pp.deadline, now)
+
+        assert self.pp.add(Payment.create(subtask="p7", payee=a3, value=1), deadline=-1)
+        assert check_deadline(self.pp.deadline, now - 1)
+
+    def test_payment_deadline_not_reached(self):
+        a1 = urandom(20)
+
+        self.client.get_balance.return_value = 100 * denoms.ether
+        self.client.call.return_value = hex(100 * denoms.ether)[:-1]
+
+        now = int(time.time())
+        inf = now + 12*30*24*60*60
+        deadline = self.pp.deadline
+        assert self.pp.deadline > inf
+        assert not self.pp.sendout()
+        assert self.pp.deadline == deadline
+
+        p = Payment.create(subtask="p1", payee=a1, value=1111)
+        assert self.pp.add(p, deadline=1111)
+        assert check_deadline(self.pp.deadline, now + 1111)
+        assert not self.pp.sendout()
+        assert check_deadline(self.pp.deadline, now + 1111)
 
     def test_synchronized(self):
         I = PaymentProcessor.SYNC_CHECK_INTERVAL
@@ -293,7 +347,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp._eth_reserved() == PaymentProcessor.SINGLE_PAYMENT_ETH_COST
         assert self.pp._eth_available() == balance_eth - PaymentProcessor.SINGLE_PAYMENT_ETH_COST
 
-        self.pp.sendout()
+        self.pp.deadline = int(time.time())
+        assert self.pp.sendout()
         assert self.client.send.call_count == 1
         tx = self.client.send.call_args[0][0]
         assert tx.value == 0
@@ -433,6 +488,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.pp._gnt_reserved() == value
 
         # Sendout.
+        self.pp.deadline = int(time.time())
         self.clock.advance(600)
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_available() == b - value

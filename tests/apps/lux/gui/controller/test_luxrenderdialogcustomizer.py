@@ -1,5 +1,5 @@
-from PyQt4.QtCore import Qt, QSettings
-from PyQt4.QtTest import QTest
+from PyQt5.QtCore import Qt, QSettings
+from PyQt5.QtTest import QTest
 from mock import Mock, patch
 import os
 
@@ -57,7 +57,8 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
         lux_customizer.get_task_specific_options(definition)
         lux_customizer.load_task_definition(definition)
 
-        path = u"{}".format(lux_customizer.load_setting('main_scene_path', os.path.expanduser('~')).toString())
+        path = u"{}".format(str(lux_customizer.load_setting('main_scene_path', os.path.expanduser('~'))))
+        mock_file_dialog.getOpenFileName.return_value = path, None
         QTest.mouseClick(lux_customizer.gui.ui.chooseMainSceneFileButton, Qt.LeftButton)
         mock_file_dialog.getOpenFileName.assert_called_with(lux_customizer.gui,
                                                             "Choose main scene file",
