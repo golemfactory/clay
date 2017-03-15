@@ -14,7 +14,8 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
+from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.taskserver import TASK_CONN_TYPES
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
@@ -124,7 +125,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session = Mock()
         session.address = "10.10.10.10"
         session.port = 1020
-        ts.conn_established_for_type[TaskConnTypes.TaskRequest](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
                                                                 1, 2)
         self.assertEqual(session.task_id, "xyz")
         self.assertEqual(session.key_id, "key")
@@ -326,7 +327,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session.address = '127.0.0.1'
         session.port = 65535
 
-        ts.conn_established_for_type[TaskConnTypes.TaskFailure](
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
         self.assertEqual(ts.task_sessions[subtask_id], session)
@@ -440,12 +441,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertFalse(ts._add_pending_request.called)
 
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
                                                    ANY, ANY, ANY, ANY)
 
         node.nat_type = None
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.Middleman,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
                                                    ANY, ANY, ANY, ANY)
 
     def test_remove_task_session(self):

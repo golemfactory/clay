@@ -246,7 +246,7 @@ class TaskSession(MiddlemanSafeSession):
 
     @log_error
     def inform_worker_about_payment(self, payment):
-        if payment.subtask != self.subtask:
+        if payment.subtask != self.subtask_id:
             logger.debug('Ignoring payment info: pmnt.subtask %r != self.subtask %r', payment.subtask, self.subtask_id)
             return
         transaction_id = payment.details.get('tx', None)
