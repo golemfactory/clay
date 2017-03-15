@@ -123,20 +123,24 @@ def load_img(file_):
 
 
 def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, cmp_start_box):
-    img = load_img(file_)
-    cmp_img = load_img(compare_file)
-    if img is None or cmp_img is None:
-        return False
-    if img.get_size() != (res_x, res_y):
-        return False
-    if box_size < 0 or box_size > img.get_size():
-        logger.error("Wrong box size for advanced verification {}".format(box_size))
+    try:
+        img = load_img(file_)
+        cmp_img = load_img(compare_file)
+        if img is None or cmp_img is None:
+            return False
+        if img.get_size() != (res_x, res_y):
+            return False
+        if box_size[0] <= 0 or box_size[1] <= 0 or box_size[0] > res_x or box_size[1] > res_y:
+            logger.error("Wrong box size for advanced verification {}".format(box_size))
 
-    if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
-        return compare_imgs(img, cmp_img, start1=start_box, start2=cmp_start_box, box=box_size)
-    else:
-        return compare_imgs(img, cmp_img, max_col=1, start1=start_box, start2=cmp_start_box,
-                            box=box_size)
+        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
+            return compare_imgs(img, cmp_img, start1=start_box, start2=cmp_start_box, box=box_size)
+        else:
+            return compare_imgs(img, cmp_img, max_col=1, start1=start_box, start2=cmp_start_box,
+                                box=box_size)
+    except Exception:
+        logger.exception("Cannot verify images {} and {}".format(file_, compare_file))
+        return False
 
 
 def verify_img(file_, res_x, res_y):

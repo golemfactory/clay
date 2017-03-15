@@ -7,9 +7,10 @@ from PIL import Image
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
-from apps.rendering.resources.imgrepr import (blend, compare_exr_imgs, compare_imgs,
-                                              compare_pil_imgs, count_mse, count_psnr, EXRImgRepr,
-                                              ImgRepr, load_img, logger, PILImgRepr, verify_img)
+from apps.rendering.resources.imgrepr import (advance_verify_img, blend, compare_exr_imgs,
+                                              compare_imgs, compare_pil_imgs, count_mse,
+                                              count_psnr, EXRImgRepr, ImgRepr, load_img, logger,
+                                              PILImgRepr, verify_img)
 
 
 class TImgRepr(ImgRepr):
@@ -38,6 +39,7 @@ class TestImgRepr(unittest.TestCase):
         t.get_pixel((0, 0))
         t.get_size()
         t.copy()
+        t.set_pixel((0, 0), (0, 0, 0))
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
@@ -439,20 +441,26 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert compare_imgs(exr_img2, exr_img2_copy)
         assert not compare_imgs(exr_img2, exr_img2_copy, max_col=1)
 
+    def test_advance_verify_img(self):
+        img_path = self.temp_file_name("path1.png")
+        make_test_img(img_path)
 
+        assert not advance_verify_img("not an image", 10, 10, (0, 0), (2, 2), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), "not an image", (0, 0))
 
+        assert advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), img_path, (0, 0))
 
+        assert not advance_verify_img(img_path, 10, 9, (0, 0), (2, 2), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 9, 10, (0, 0), (2, 2), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (0, 2), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 0), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (11, 10), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (10, 11), img_path, (0, 0))
 
+        exr_path = _get_test_exr()
 
-
-
-
-
-
-
-
-
-
-
-
-
+        assert advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path, (0, 0))
+        exr_path2 = _get_test_exr(alt=True)
+        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path2, (0, 0))
+        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), exr_path, (0, 0))
