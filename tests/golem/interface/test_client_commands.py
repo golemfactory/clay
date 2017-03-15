@@ -487,7 +487,6 @@ class TestTasks(TempDirFixture):
 
                 call_args = client.create_task.call_args[0]
                 assert len(call_args) == 1
-                print call_args[0]
                 assert isinstance(DictSerializer.load(call_args[0]), BlenderRenderTask)
 
             with self._run_context(run_error):
@@ -515,22 +514,13 @@ class TestTasks(TempDirFixture):
 
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
-
-        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition,
-                                           root_path=self.tempdir, dir_manager=dir_manager)
-
-        task = builder.build()
-        task.__dict__.update(Benchmark().task_definition.__dict__)
-        task.task_id = "deadbeef"
-        task.task_type = "Blender"
-        task.docker_images = None
-        task.options = BlenderRendererOptions()
+        definition.task_id = "deadbeef"
+        definition.task_type = "Blender"
 
         task_file_name = os.path.join(self.path, 'task_file.gt')
 
         with open(task_file_name, 'wb') as task_file:
-            print str(DictSerializer.dump(task))
-            task_file.write(jsonpickle.dumps(task))
+            task_file.write(jsonpickle.dumps(definition))
 
         return task_file_name
 

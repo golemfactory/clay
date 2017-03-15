@@ -245,7 +245,7 @@ class Client(object):
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
-        files = task.get_resources(task_id, None, resource_types["hashes"])
+        files = task.get_resources(None, resource_types["hashes"])
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
         deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
         deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
@@ -295,8 +295,12 @@ class Client(object):
             return False
 
     def create_task(self, t_dict):
-        new_task = DictSerializer.load(t_dict)
-        self.enqueue_new_task(new_task)
+        try:
+            new_task = DictSerializer.load(t_dict)
+            new_task.header.max_price = int(new_task.header.max_price)
+            self.enqueue_new_task(new_task)
+        except Exception:
+            log.exception("Cannot create task {}".format(t_dict))
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)

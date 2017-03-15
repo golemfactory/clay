@@ -417,20 +417,26 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            self.client.run_test_task(self.build_and_serialize_task(task_state))
-
-            return True
+            try:
+                self.client.run_test_task(self.build_and_serialize_task(task_state))
+                return True
+            except Exception as ex:
+                self.test_task_computation_error(ex)
 
         return False
 
     def build_and_serialize_task(self, task_state, cbk=None):
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
+        t.header.max_price = str(t.header.max_price)
         t_serialized = DictSerializer.dump(t)
         if 'task_definition' in t_serialized:
-            t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
+            t_serialized_def = t_serialized['task_definition']
+            t_serialized_def['resources'] = list(t_serialized_def['resources'])
+            if 'max_price' in t_serialized_def:
+                t_serialized_def['max_price'] = str(t_serialized_def['max_price'])
         from pprint import pformat
-        logger.warning('task serialized: %s', pformat(t_serialized))
+        logger.debug('task serialized: %s', pformat(t_serialized))
         if cbk:
             cbk(t)
         return t_serialized

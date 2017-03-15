@@ -6,17 +6,16 @@ from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
+from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.core.task.coretask import TaskTypeInfo
+from apps.blender.task.verificator import BlenderVerificator
+from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.resource.dirmanager import get_test_task_path
-from apps.rendering.task.renderingtask import AcceptClientVerdict
-from apps.rendering.task.renderingtaskstate import RendererDefaults
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 
 logger = logging.getLogger("apps.blender")
@@ -233,17 +232,23 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
+    VERIFICATOR_CLASS = BlenderVerificator
 
     ################
     # Task methods #
     ################
-
     def __init__(self, task_definition, **kwargs):
         self.compositing = task_definition.options.compositing
         self.preview_updater = None
         self.preview_updaters = None
 
         FrameRenderingTask.__init__(self, task_definition=task_definition, **kwargs)
+
+        self.verificator.compositing = self.compositing
+        self.verificator.output_format = self.output_format
+        self.verificator.src_code = self.src_code
+        self.verificator.docker_images = self.task_definition.docker_images
+        self.verificator.verification_timeout = self.task_definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -390,66 +395,12 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
-    def query_extra_data_for_advance_verification(self, extra_data):
-        ctd = self.query_extra_data_for_test_task()
-        ctd.extra_data = extra_data
-        return ctd
-
     def _get_min_max_y(self, start_task):
         if self.use_frames:
             parts = self.total_tasks / len(self.frames)
         else:
             parts = self.total_tasks
         return get_min_max_y(start_task, parts, self.res_y)
-
-    def _get_part_size(self, subtask_id):
-        start_task = self.subtasks_given[subtask_id]['start_task']
-        if not self.use_frames:
-            res_y = self._get_part_size_from_subtask_number(start_task)
-        elif len(self.frames) >= self.total_tasks:
-            res_y = self.res_y
-        else:
-            parts = self.total_tasks / len(self.frames)
-            res_y = int(math.floor(float(self.res_y) / float(parts)))
-        return self.res_x, res_y
-
-    def _get_part_size_from_subtask_number(self, subtask_number):
-        
-        if self.res_y % self.total_tasks == 0:
-            res_y = self.res_y / self.total_tasks
-        else:
-            # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
-            # ceiling will be height of subtasks with smaller num
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
-            ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
-            if subtask_number > ceiling_subtasks:
-                res_y = ceiling_height - 1
-            else:
-                res_y = ceiling_height
-        return res_y
-
-    @FrameRenderingTask.handle_key_error
-    def _get_part_img_size(self, subtask_id, adv_test_file):
-        x, y = self._get_part_size(subtask_id)
-        return 0, 0, x, y
-
-    @FrameRenderingTask.handle_key_error
-    def _change_scope(self, subtask_id, start_box, tr_file):
-        extra_data, _ = FrameRenderingTask._change_scope(self, subtask_id, start_box, tr_file)
-        min_x = start_box[0] / float(self.res_x)
-        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / float(self.res_x)
-        start_y = start_box[1] + (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
-        max_y = float(self.res_y - start_y) / self.res_y
-        min_y = max(float(self.res_y - start_y - self.verification_options.box_size[1] - 1) / self.res_y, 0.0)
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(min_x, max_x),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing
-        )
-        extra_data['script_src'] = script_src
-        extra_data['output_format'] = self.output_format
-        return extra_data, (0, 0)
 
     def after_test(self, results, tmp_dir):
         ret = []
@@ -574,14 +525,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     TASK_CLASS = BlenderRenderTask
     DEFAULTS = BlenderDefaults
 
-    def _set_verification_options(self, new_task):
-        new_task = FrameRenderingTaskBuilder._set_verification_options(self, new_task)
-        if new_task.advanceVerification:
-            box_x = min(new_task.verification_options.box_size[0], new_task.res_x)
-            box_y = min(new_task.verification_options.box_size[1], new_task.res_y / new_task.total_tasks)
-            new_task.box_size = (box_x, box_y)
-        return new_task
-
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):
@@ -636,9 +579,6 @@ def get_min_max_y(task_num, parts, res_y):
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = float(max_y) / float(res_y)
     return min_y, max_y
-
-
-
 
 
 def __scale_factor(res_x, res_y):

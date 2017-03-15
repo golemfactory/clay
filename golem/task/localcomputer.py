@@ -90,7 +90,7 @@ class LocalComputer(object):
         self.test_task_res_dir = get_test_task_path(self.root_path)
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(self.task.header.task_id, rh, resource_types["zip"], self.tmp_dir)
+            res_file = self.task.get_resources(rh, resource_types["zip"], self.tmp_dir)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
