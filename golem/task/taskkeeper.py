@@ -141,7 +141,7 @@ class TaskHeaderKeeper(object):
 
     def __init__(self, environments_manager, min_price=0.0, app_version=APP_VERSION, remove_task_timeout=180,
                  verification_timeout=3600):
-        self.task_headers = {}  # all computing tasks that this node nows about
+        self.task_headers = {}  # all computing tasks that this node knows about
         self.supported_tasks = []  # ids of tasks that this node may try to compute
         self.removed_tasks = {}  # tasks that were removed from network recently, so they won't be added again to task_headers
 

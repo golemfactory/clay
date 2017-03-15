@@ -1,8 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 import random
-import shutil
-import tempfile
 import time
 from unittest import TestCase
 
@@ -17,6 +15,7 @@ from golem.task.taskbase import TaskHeader, ComputeTaskDef
 from golem.task.taskkeeper import CompTaskInfo
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
@@ -230,32 +229,31 @@ class TestCompSubtaskInfo(TestCase):
         self.assertIsInstance(csi, CompSubtaskInfo)
 
 
-class TestCompTaskKeeper(LogTestCase, PEP8MixIn):
+class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = [
         "golem/task/taskkeeper.py",
     ]
+
     def setUp(self):
         super(TestCompTaskKeeper, self).setUp()
         random.seed()
 
     def test_persistance(self):
-        """Tests wether tasks are persistent between restarts."""
-        tasks_dir = Path(tempfile.mkdtemp(prefix='golemtest'))
-        try:
-            ctk = CompTaskKeeper(tasks_dir)
+        """Tests whether tasks are persistent between restarts."""
+        tasks_dir = Path(self.path)
+        ctk = CompTaskKeeper(tasks_dir)
 
-            test_headers = []
-            for x in range(100):
-                header = get_task_header()
-                header.task_id = "test%d-%d" % (x, random.random()*1000)
-                test_headers.append(header)
-                ctk.add_request(header, int(random.random()*100))
-            del ctk
-            ctk = CompTaskKeeper(tasks_dir)
-            for header in test_headers:
-                self.assertIn(header.task_id, ctk.active_tasks)
-        finally:
-            shutil.rmtree(str(tasks_dir))
+        test_headers = []
+        for x in range(100):
+            header = get_task_header()
+            header.task_id = "test%d-%d" % (x, random.random()*1000)
+            test_headers.append(header)
+            ctk.add_request(header, int(random.random()*100))
+        del ctk
+
+        ctk = CompTaskKeeper(tasks_dir)
+        for header in test_headers:
+            self.assertIn(header.task_id, ctk.active_tasks)
 
     @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_comp_keeper(self, dump_mock):
