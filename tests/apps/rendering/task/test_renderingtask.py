@@ -7,10 +7,11 @@ from apps.core.task.coretaskstate import TaskDefinition
 from apps.core.task.coretaskstate import TaskState
 from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask
-from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions, RenderingTaskDefinition)
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.tools.testdirfixture import TestDirFixture
+
 
 class RenderingTaskMock(RenderingTask):
     class ENVIRONMENT_CLASS(object):
@@ -23,6 +24,7 @@ class RenderingTaskMock(RenderingTask):
     def __init__(self, main_program_file, *args, **kwargs):
         self.ENVIRONMENT_CLASS.main_program_file = main_program_file
         super(RenderingTaskMock, self).__init__(*args, **kwargs)
+
 
 class TestRenderingTask(TestDirFixture):
     def setUp(self):
@@ -38,7 +40,6 @@ class TestRenderingTask(TestDirFixture):
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
         task_definition.output_format = ".png"
-
 
         task = RenderingTaskMock(
             main_program_file=files[0],
@@ -61,17 +62,6 @@ class TestRenderingTask(TestDirFixture):
         res2 = path.join(self.path, "dir1", "dir2", "name2")
         rt.task_resources = [res1, res2]
         assert rt._get_working_directory() == "../.."
-
-    def test_box_start(self):
-        rt = self.task
-        rt.verification_options = AdvanceRenderingVerificationOptions()
-        rt.verification_options.box_size = (5, 5)
-        sizes = [(24, 12, 44, 20), (0, 0, 800, 600), (10, 150, 12, 152)]
-        for size in sizes:
-            for i in range(20):
-                x, y = rt._get_box_start(*size)
-                assert size[0] <= x <= size[2]
-                assert size[1] <= y <= size[3]
 
     def test_remove_from_preview(self):
         rt = self.task

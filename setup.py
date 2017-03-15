@@ -8,7 +8,6 @@ from sys import argv
 
 requirements, dependencies = parse_requirements(path.dirname(__file__))
 
-ui_err = generate_ui()
 docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
 setup(
@@ -65,5 +64,7 @@ setup(
           path.normpath('gui/view/img/user.png'), path.normpath('gui/view/img/eye.png')]),
     ]
 )
+
+ui_err = generate_ui()
 
 print_errors(ui_err, docker_err, task_collector_err)
