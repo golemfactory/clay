@@ -1,5 +1,5 @@
 from codecs import open
-from os import path
+from os import path, walk
 from sys import platform
 
 import subprocess
@@ -133,6 +133,30 @@ def get_golem_version(increase):
         with open(config_path, 'wb') as f:
             f.write(v)
     return version
+
+
+def get_files():
+    from golem.core.common import get_golem_path
+    golem_path = get_golem_path()
+    extensions = ['py', 'pyc', 'pyd', 'ini', 'template', 'dll', 'png', 'txt']
+    excluded = ['golem.egg-info', 'build', 'tests', 'Installer', '.git']
+    beginnig = "../../golem/"
+    result = []
+    for root, dirs, files in walk('.', topdown=False):
+        if root != '.' and root.split('/')[1] in excluded:
+            continue
+        srcs = []
+        if root == '.':
+            dst = path.normpath(path.join("../..", root.replace(golem_path, '')))
+        else:
+            dst = path.normpath(path.join(beginnig, root.replace(golem_path, '')))
+        for name in files:
+            f_ = "{}/{}".format(root, name)
+            if f_.split('.')[-1] in extensions:
+                srcs.append(path.normpath(f_.replace(golem_path, '')))
+        if len(srcs) > 0:
+            result.append((dst, srcs))
+    return result
 
 
 def __try_docker():

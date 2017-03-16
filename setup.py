@@ -6,8 +6,9 @@ from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
 from sys import argv
 
+if 'bdist_wheel' in argv:
+    ui_err = generate_ui()
 requirements, dependencies = parse_requirements(path.dirname(__file__))
-
 docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
 setup(
@@ -48,23 +49,10 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
-    data_files=[
-        (path.normpath('../../'), ['golemapp.py', 'golemcli.py', 'golemgui.py', 'loggingconfig.py', '.version.ini']),
-        (path.normpath('../../golem/apps'), [path.normpath('apps/registered.ini'), path.normpath('apps/images.ini')]),
-        (path.normpath('../../golem/apps/blender/resources/scripts'),
-         [path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
-          path.normpath('apps/blender/resources/scripts/docker_blendertask.py')]),
-        (path.normpath('../../golem/apps/lux/resources/scripts'),
-         [path.normpath('apps/lux/resources/scripts/docker_luxtask.py')]),
-        (path.normpath('../../golem/gui/view/'), [path.normpath('gui/view/nopreview.png')]),
-        (path.normpath('../../golem/gui/view/img'),
-         [path.normpath('gui/view/img/favicon-48x48.png'), path.normpath('gui/view/img/favicon-256x256.png'),
-          path.normpath('gui/view/img/favicon-32x32.png'), path.normpath('gui/view/img/new.png'),
-          path.normpath('gui/view/img/task.png'), path.normpath('gui/view/img/settings.png'),
-          path.normpath('gui/view/img/user.png'), path.normpath('gui/view/img/eye.png')]),
-    ]
+    data_files=get_files()
 )
 
-ui_err = generate_ui()
+if 'bdist_wheel' not in argv:
+    ui_err = generate_ui()
 
 print_errors(ui_err, docker_err, task_collector_err)
