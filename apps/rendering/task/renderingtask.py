@@ -256,6 +256,7 @@ class RenderingTask(CoreTask):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
                                    int(round(self.res_y * self.scale_factor))))
+            logger.debug('Saving new preview: %r', self.preview_file_path)
             img.save(self.preview_file_path, ext)
             img.close()
 
