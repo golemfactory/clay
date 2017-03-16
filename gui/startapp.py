@@ -2,6 +2,9 @@ import logging
 import os
 import subprocess
 import sys
+from os import path
+from twisted.internet.defer import setDebugging
+from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
@@ -59,9 +62,13 @@ def start_client(start_ranking, datadir=None,
         if is_windows():
             from twisted.internet import iocpreactor
             iocpreactor.install()
-        from golem.twisted.reactor import geventreactor
-        geventreactor.install()
+        else:
+	    from golem.twisted.reactor import geventreactor
+            geventreactor.install()
         from twisted.internet import reactor
+    from golem.rpc.router import CrossbarRouter
+
+    process_monitor = None
 
     from golem.core.processmonitor import ProcessMonitor
     from golem.docker.manager import DockerManager

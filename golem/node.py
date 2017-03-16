@@ -60,6 +60,9 @@ class Node(object):
             if is_windows() and 'twisted.internet.reactor' not in sys.modules:
                 from twisted.internet import iocpreactor
                 iocpreactor.install()
+            elif 'twisted.internet.reactor' not in sys.modules:
+            	from golem.reactor import geventreactor
+            	geventreactor.install()
             from twisted.internet import reactor
 
             if use_rpc:
