@@ -76,6 +76,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         queue = Queue()
 
         with patch('gui.startapp.start_gui'), \
+             patch('golem.reactor.geventreactor.install'), \
              patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success")), \
              patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err)), \
              patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails)), \
@@ -152,7 +153,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 thread.daemon = True
                 thread.start()
 
-                started = time.time()
+                deadline = time.time() + 10
                 while True:
 
                     if logger.error.called:
@@ -163,7 +164,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                         assert unicode(message).find(expected_result) != -1
                         break
 
-                    elif time.time() > started + 10:
+                    elif time.time() > deadline:
                         raise Exception(u"Test timed out")
                     else:
                         time.sleep(0.1)

@@ -54,8 +54,12 @@ class Node(object):
             self.client.enqueue_new_task(golem_task)
 
     def run(self, use_rpc=False):
+        if 'twisted.internet.reactor' not in sys.modules:
+            from golem.reactor import geventreactor
+            geventreactor.install()
+        from twisted.internet import reactor
+
         try:
-            from twisted.internet import reactor
             if use_rpc:
                 config = self.client.config_desc
                 reactor.callWhenRunning(self._start_rpc_server,

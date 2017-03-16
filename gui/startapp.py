@@ -1,8 +1,8 @@
 import logging
 import subprocess
+import sys
 from os import path
 
-import sys
 from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -11,7 +11,6 @@ from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
 from golem.rpc.mapping.core import CORE_METHOD_MAP
-from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
 
 CLIENT_LOG_NAME = "golem_client.log"
@@ -65,9 +64,11 @@ def start_client(start_ranking, datadir=None,
     environments = load_environments()
 
     if not reactor:
-        from golem.twisted.reactor import geventreactor
+        from golem.reactor import geventreactor
         geventreactor.install()
         from twisted.internet import reactor
+    from golem.rpc.router import CrossbarRouter
+
     process_monitor = None
 
     if not client:
