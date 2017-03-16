@@ -30,6 +30,9 @@ class TImgRepr(ImgRepr):
     def copy(self):
         super(TImgRepr, self).copy()
 
+    def to_pil(self):
+        super(TImgRepr, self).to_pil()
+
 
 class TestImgRepr(unittest.TestCase):
 
@@ -39,6 +42,7 @@ class TestImgRepr(unittest.TestCase):
         t.get_pixel((0, 0))
         t.get_size()
         t.copy()
+        t.to_pil()
         t.set_pixel((0, 0), (0, 0, 0))
 
 

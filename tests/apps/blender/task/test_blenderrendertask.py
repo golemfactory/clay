@@ -284,6 +284,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.assertTrue(path.isfile(self.bt.output_file))
             img = Image.open(self.bt.output_file)
             img_x, img_y = img.size
+            img.close()
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
         self.bt.restart()

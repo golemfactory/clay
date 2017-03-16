@@ -13,7 +13,8 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
-from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector, exr_to_pil
+from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
@@ -58,10 +59,8 @@ class PreviewUpdater(object):
             self.chunks[subtask_number] = subtask_path
         
         try:
-            if subtask_path.upper().endswith(".EXR"):
-                img = exr_to_pil(subtask_path)
-            else:
-                img = Image.open(subtask_path)
+            img_repr = load_img(subtask_path)
+            img = img_repr.to_pil()
 
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
@@ -451,10 +450,8 @@ class BlenderRenderTask(FrameRenderingTask):
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
         if final:
-            if new_chunk_file_path.upper().endswith(".EXR"):
-                img = exr_to_pil(new_chunk_file_path)
-            else:
-                img = Image.open(new_chunk_file_path)
+            img_repr = load_img(new_chunk_file_path)
+            img = img_repr.to_pil()
             scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))),
                                 resample=Image.BILINEAR)
             scaled.save(self._get_preview_file_path(num), "BMP")

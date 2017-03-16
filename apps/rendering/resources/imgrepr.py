@@ -33,6 +33,10 @@ class ImgRepr(object):
     def copy(self):
         return
 
+    @abc.abstractmethod
+    def to_pil(self):
+        return
+
 
 class PILImgRepr(ImgRepr):
     def __init__(self):
@@ -55,6 +59,9 @@ class PILImgRepr(ImgRepr):
 
     def copy(self):
         return deepcopy(self)
+
+    def to_pil(self):
+        return self.img
 
 
 class EXRImgRepr(ImgRepr):
@@ -86,10 +93,18 @@ class EXRImgRepr(ImgRepr):
         for c in range(0, len(self.rgb)):
             self.rgb[c].putpixel((i, j), max(min(self.max, color[c]), self.min))
 
-    def to_pil(self):
+    def get_rgbf_extrema(self):
         extrema = [im.getextrema() for im in self.rgb]
         darkest = min([lo for (lo, hi) in extrema])
         lightest = max([hi for (lo, hi) in extrema])
+        return lightest, darkest
+
+    def to_pil(self, use_extremas=False):
+        if use_extremas:
+            lightest, darkest = self.get_rgbf_extrema()
+        else:
+            lightest = self.max
+            darkest = self.min
         scale = 255.0 / (lightest - darkest)
 
         def normalize_0_255(v):
@@ -97,6 +112,10 @@ class EXRImgRepr(ImgRepr):
 
         rgb8 = [im.point(normalize_0_255).convert("L") for im in self.rgb]
         return Image.merge("RGB", rgb8)
+
+    def to_l_image(self):
+        img = self.to_pil()
+        return img.convert('L')
 
     def copy(self):
         e = EXRImgRepr()

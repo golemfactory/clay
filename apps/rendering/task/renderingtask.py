@@ -15,7 +15,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.renderingtaskcollector import exr_to_pil
+from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
 
@@ -133,11 +133,8 @@ class RenderingTask(CoreTask):
         return self.preview_file_path
 
     def _update_preview(self, new_chunk_file_path, num_start):
-
-        if new_chunk_file_path.upper().endswith(".EXR"):
-            img = exr_to_pil(new_chunk_file_path)
-        else:
-            img = Image.open(new_chunk_file_path)
+        img_repr = load_img(new_chunk_file_path)
+        img = img_repr.to_pil()
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
