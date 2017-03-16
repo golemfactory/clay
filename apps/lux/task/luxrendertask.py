@@ -13,15 +13,13 @@ from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
-from apps.core.task.verificator import SubtaskVerificationState
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
-from apps.rendering.task.renderingtask import (RenderingTask, RenderingTaskBuilder,
-                                               AcceptClientVerdict)
+from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from apps.rendering.task.renderingtaskstate import RendererDefaults, RenderingTaskDefinition
 
 logger = logging.getLogger("apps.lux")
@@ -141,6 +139,11 @@ class LuxTask(RenderingTask):
         self.num_add = 0
 
         self.preview_exr = None
+
+    def __getstate__(self):
+        state = super(LuxTask, self).__getstate__()
+        state['preview_exr'] = None
+        return state
 
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
@@ -300,7 +303,7 @@ class LuxTask(RenderingTask):
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
         if new_chunk_file_path.endswith(".exr"):
-            self.__update_preview_from_exr(new_chunk_file_path)
+            self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
     
@@ -336,7 +339,7 @@ class LuxTask(RenderingTask):
         scaled.close()
         img_current.close()
 
-    def __update_preview_from_exr(self, new_chunk_file):
+    def _update_preview_from_exr(self, new_chunk_file):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:

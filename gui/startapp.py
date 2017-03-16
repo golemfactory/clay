@@ -1,6 +1,5 @@
 import logging
 import subprocess
-from os import path
 
 import sys
 from twisted.internet.defer import setDebugging
@@ -41,8 +40,8 @@ def start_error(err):
 
 
 def start_gui(address):
-    args = ['-r', '{}:{}'.format(address.host, address.port)]
-    return subprocess.Popen(['python', 'golemgui.py'] + args)
+    return subprocess.Popen([sys.executable, 'golemgui.py', '-r',
+                             '{}:{}'.format(address.host, address.port)])
 
 
 def start_client(start_ranking, datadir=None,
