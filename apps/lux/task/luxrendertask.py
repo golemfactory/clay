@@ -140,6 +140,11 @@ class LuxTask(RenderingTask):
 
         self.preview_exr = None
 
+    def __getstate__(self):
+        state = super(LuxTask, self).__getstate__()
+        state['preview_exr'] = None
+        return state
+
     def initialize(self, dir_manager):
         super(LuxTask, self).initialize(dir_manager)
         self.verificator.test_flm = self.__get_test_flm()
@@ -298,7 +303,7 @@ class LuxTask(RenderingTask):
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
         if new_chunk_file_path.endswith(".exr"):
-            self.__update_preview_from_exr(new_chunk_file_path)
+            self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
     
@@ -334,7 +339,7 @@ class LuxTask(RenderingTask):
         scaled.close()
         img_current.close()
 
-    def __update_preview_from_exr(self, new_chunk_file):
+    def _update_preview_from_exr(self, new_chunk_file):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
