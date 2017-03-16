@@ -128,7 +128,7 @@ class TaskManager(TaskEventListener):
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
         except:
-            logger.exception('DUMP ERROR')
+            logger.exception('DUMP ERROR task_id: %r task: %r state: %r', task_id, self.tasks.get(task_id, '<not found>'), self.tasks_states.get(task_id, '<not found>'))
             if filepath.exists():
                 filepath.unlink()
             raise
