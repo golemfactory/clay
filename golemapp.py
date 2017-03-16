@@ -6,7 +6,6 @@ import click
 
 from golem.node import OptNode
 
-
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
