@@ -41,8 +41,8 @@ sdist/
 
 # Golem files
 *.db
-*.log
-*.log.20*
+logs/*
+loggingconfig_local.py
 gui/view/gen/icons_rc.py
 golem/monitorconfig_local.py
 

@@ -6,6 +6,7 @@ import uuid
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
@@ -42,8 +43,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         super(TestTaskManager, self).tearDown()
         shutil.rmtree(str(self.tm.tasks_dir))
 
-    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0, subtask_timeout=120.0):
-        header = TaskHeader(
+    def _get_task_header(self, task_id, timeout, subtask_timeout):
+        return TaskHeader(
             node_name="test_node_%s" % (self.test_nonce,),
             task_id=task_id,
             task_owner_address="task_owner_address_%s" % (self.test_nonce,),
@@ -56,6 +57,10 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
         )
+
+    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0,
+                       subtask_timeout=120.0):
+        header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='')
 
         ctd = ComputeTaskDef()
@@ -188,9 +193,14 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         resources = ['first', 'second']
 
         task_mock = self._get_task_mock()
-        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources) as resources_mock:
+        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources):
             self.tm.add_new_task(task_mock)
             assert self.tm.get_resources(task_id, task_mock.header) is resources
+
+        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'")
+        self.tm.tasks["xyz"] = task
+        self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
+
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     @patch("golem.task.taskmanager.get_external_address")

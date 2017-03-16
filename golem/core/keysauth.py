@@ -2,15 +2,15 @@ import abc
 import logging
 import os
 from hashlib import sha256
+from _pysha3 import sha3_256, keccak_256
 
+import bitcoin
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
-from devp2p.crypto import mk_privkey, privtopub, ECCx
-from sha3 import sha3_256
-
+from crypto import ECCx
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from simpleenv import get_local_datadir
 from simplehash import SimpleHash
@@ -28,6 +28,16 @@ def sha3(seed):
 
 def sha2(seed):
     return int("0x" + sha256(seed).hexdigest(), 16)
+
+
+def mk_privkey(seed):
+    return keccak_256(seed).digest()
+
+
+def privtopub(raw_privkey):
+    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey), 'bin_electrum')
+    assert len(raw_pubkey) == 64
+    return raw_pubkey
 
 
 def get_random(min_value=0, max_value=None):
@@ -207,6 +217,7 @@ class KeysAuth(object):
 
 class RSAKeysAuth(KeysAuth):
     """RSA Cryptographic authorization manager. Create and keeps private and public keys based on RSA."""
+
     def cnt_key_id(self, public_key):
         """ Return id generated from given public key (sha1 hexdigest of openssh format).
         :param public_key: public key that will be used to generate id
@@ -382,6 +393,7 @@ class RSAKeysAuth(KeysAuth):
 class EllipticalKeysAuth(KeysAuth):
     """Elliptical curves cryptographic authorization manager. Create and keeps private and public keys based on ECC
     (curve secp256k1)."""
+
     def __init__(self, datadir, private_key_name=PRIVATE_KEY, public_key_name=PUBLIC_KEY):
         """
         Create new ECC keys authorization manager, load or create keys.
@@ -424,6 +436,7 @@ class EllipticalKeysAuth(KeysAuth):
 
     def sign(self, data):
         """ Sign given data with ECDSA
+        sha3 is used to shorten the data and speedup calculations
         :param str data: data to be signed
         :return: signed data
         """
@@ -432,6 +445,7 @@ class EllipticalKeysAuth(KeysAuth):
     def verify(self, sig, data, public_key=None):
         """
         Verify the validity of an ECDSA signature
+        sha3 is used to shorten the data and speedup calculations
         :param str sig: ECDSA signature
         :param str data: expected data
         :param None|str public_key: *Default: None* public key that should be used to verify signed data.

@@ -1,6 +1,8 @@
 from unittest import TestCase
 
-from apps.core.task.coretaskstate import TaskDesc, CoreTaskDefaults
+from apps.core.task.coretaskstate import TaskDesc, CoreTaskDefaults, Options
+
+from golem.environments.environment import Environment
 
 
 class TestTaskDesc(TestCase):
@@ -20,3 +22,12 @@ class TestCoreTaskDefautls(TestCase):
         assert defaults.max_subtasks == 50
         assert defaults.default_subtasks == 20
         assert defaults.task_name == ""
+
+
+class TestOptions(TestCase):
+    def test_option(self):
+        opt = Options()
+        assert isinstance(opt.environment, Environment)
+        assert opt.name == ""
+        opt.add_to_resources([])
+        opt.remove_from_resources([])

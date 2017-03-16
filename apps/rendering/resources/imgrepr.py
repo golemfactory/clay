@@ -102,7 +102,7 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, c
     if img.get_size() != (res_x, res_y):
         return False
     if box_size < 0 or box_size > img.get_size():
-        logger.error("Wrong box size for advance verification {}".format(box_size))
+        logger.error("Wrong box size for advanced verification {}".format(box_size))
 
     if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
         return __compare_imgs(img, cmp_img, start1=start_box, start2=cmp_start_box, box=box_size)

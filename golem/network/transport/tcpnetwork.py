@@ -39,7 +39,7 @@ class SocketAddress(object):
         try:
             SocketAddress(address, port)
         except (AddressValueError, TypeError) as err:
-            logger.info("Wrong address {}".format(err))
+            logger.info(u"Wrong address {}".format(err))
             return False
         return True
 
@@ -276,7 +276,7 @@ class TCPNetwork(Network):
             del self.active_listeners[port]
             return defer
         else:
-            logger.warning("Can't stop listening on port {}, wasn't listening.".format(port))
+            logger.warning(u"Can't stop listening on port {}, wasn't listening.".format(port))
             TCPNetwork.__stop_listening_failure(None, listening_info.stopped_errback, **kwargs)
 
     def __filter_host_addresses(self, addresses):
@@ -291,7 +291,7 @@ class TCPNetwork(Network):
         addresses = self.__filter_host_addresses(addresses)
 
         if len(addresses) == 0:
-            logger.warning("No addresses for connection given")
+            logger.warning(u"No addresses for connection given")
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
             return
 
@@ -307,14 +307,14 @@ class TCPNetwork(Network):
                                          **kwargs)
 
     def __try_to_connect_to_address(self, address, port, established_callback, failure_callback, **kwargs):
-        logger.debug("Connection to host {}: {}".format(address, port))
+        logger.debug(u"Connection to host {}: {}".format(address, port))
 
         use_ipv6 = False
         try:
             ip = ip_address(address.decode())
             use_ipv6 = ip.version == 6
         except ValueError:
-            logger.warning("{} address is invalid".format(address))
+            logger.warning(u"{} address is invalid".format(address))
         if use_ipv6:
             endpoint = TCP6ClientEndpoint(self.reactor, address, port, self.timeout)
         else:
@@ -327,11 +327,11 @@ class TCPNetwork(Network):
 
     def __connection_established(self, conn, established_callback, **kwargs):
         pp = conn.transport.getPeer()
-        logger.debug("Connection established {} {}".format(pp.host, pp.port))
+        logger.debug(u"Connection established {} {}".format(pp.host, pp.port))
         TCPNetwork.__call_established_callback(established_callback, conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
-        logger.info("Connection failure. {}".format(err_desc))
+        logger.info(u"Connection failure. {}".format(err_desc))
         TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
@@ -371,7 +371,7 @@ class TCPNetwork(Network):
             port += 1
             self.__try_to_listen_on_port(port, max_port, established_callback, failure_callback, **kwargs)
         else:
-            logger.debug("Can't listen on port {}: {}".format(port, err))
+            logger.debug(u"Can't listen on port {}: {}".format(port, err))
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     @staticmethod
@@ -395,7 +395,7 @@ class TCPNetwork(Network):
     @staticmethod
     def __stop_listening_success(result, callback, **kwargs):
         if result:
-            logger.info("Stop listening result {}".format(result))
+            logger.info(u"Stop listening result {}".format(result))
         if callback is None:
             return
         if len(kwargs) == 0:
@@ -405,7 +405,7 @@ class TCPNetwork(Network):
 
     @staticmethod
     def __stop_listening_failure(fail, errback, **kwargs):
-        logger.error("Can't stop listening {}".format(fail))
+        logger.error(u"Can't stop listening {}".format(fail))
         TCPNetwork.__call_failure_callback(errback, **kwargs)
 
 #############
@@ -430,7 +430,7 @@ class BasicProtocol(SessionProtocol):
         """
         if not self.opened:
             logger.error(msg)
-            logger.error("Send message failed - connection closed.")
+            logger.error(u"Send message failed - connection closed.")
             return False
 
         msg_to_send = self._prepare_msg_to_send(msg)
@@ -470,7 +470,7 @@ class BasicProtocol(SessionProtocol):
             return None
 
         if not self.session:
-            logger.warning("No session argument in connection state")
+            logger.warning(u"No session argument in connection state")
             return None
 
         self._interpret(data)
@@ -505,7 +505,7 @@ class BasicProtocol(SessionProtocol):
                 self.session.interpret(m)
         # Drop the connection if no messages were deserialized
         elif data:
-            logger.error("Deserialization of messages failed")
+            logger.error(u"Deserialization of messages failed")
             # self.session.dropped()
 
     def _data_to_messages(self):
@@ -548,12 +548,12 @@ class SafeProtocol(ServerProtocol):
 
     def _prepare_msg_to_send(self, msg):
         if self.session is None:
-            logger.error("Wrong session, not sending message")
+            logger.error(u"Wrong session, not sending message")
             return None
 
         msg = self.session.sign(msg)
         if not msg:
-            logger.error("Wrong session, not sending message")
+            logger.error(u"Wrong session, not sending message")
             return None
         ser_msg = msg.serialize()
         enc_msg = self.session.encrypt(ser_msg)
@@ -570,12 +570,12 @@ class SafeProtocol(ServerProtocol):
         for msg in self.db.get_len_prefixed_string():
             dec_msg = self.session.decrypt(msg)
             if not dec_msg:
-                logger.warning("Decryption of message failed")
+                logger.warning(u"Decryption of message failed")
                 break
 
             m = Message.deserialize_message(dec_msg)
             if not m:
-                logger.warning("Deserialization of message failed")
+                logger.warning(u"Deserialization of message failed")
                 break
 
             m.encrypted = dec_msg != msg
@@ -631,7 +631,7 @@ class FilesProtocol(SafeProtocol):
         if self._check_stream(data):
             self.consumer.dataReceived(data)
         else:
-            logger.error("Wrong stream received")
+            logger.error(u"Wrong stream received")
             self.close_now()
 
     def _check_stream(self, data):
@@ -728,13 +728,13 @@ class FileProducer(object):
     def init_data(self):
         """  Open first file from list and read first chunk of data """
         if len(self.file_list) == 0:
-            logger.warning("Empty file list to send")
+            logger.warning(u"Empty file list to send")
             self.data = None
             return
         self.fh = open(self.file_list[-1], 'rb')
         self.size = os.path.getsize(self.file_list[-1])
         self.extra_data['file_sizes'].append(self.size)
-        logger.info("Sending file {}, size:{}".format(self.file_list[-1], self.size))
+        logger.info(u"Sending file {}, size:{}".format(self.file_list[-1], self.size))
         self._prepare_init_data()
 
     def register(self):
@@ -846,7 +846,7 @@ class FileConsumer(object):
     def _get_first_chunk(self, data):
         self.last_percent = 0
         (self.file_size,) = struct.unpack("!L", data[:LONG_STANDARD_SIZE])
-        logger.info("Receiving file {}, size {}".format(self.file_list[-1], self.file_size))
+        logger.info(u"Receiving file {}, size {}".format(self.file_list[-1], self.file_size))
         if self.fh:
             raise ValueError("File descriptor is set")
 
@@ -966,7 +966,7 @@ class DataProducer(object):
     def load_data(self):
         """ Load first chunk of data """
         self.size = len(self.data_to_send)
-        logger.info("Sending file size:{}".format(self.size))
+        logger.info(u"Sending file size:{}".format(self.size))
         self._prepare_init_data()
         self.it = self.buff_size
 
@@ -1064,7 +1064,7 @@ class DataConsumer(object):
     def _get_first_chunk(self, data):
         self.last_percent = 0
         (self.data_size,) = struct.unpack("!L", data[:LONG_STANDARD_SIZE])
-        logger.debug("Receiving data size {}".format(self.data_size))
+        logger.debug(u"Receiving data size {}".format(self.data_size))
         return data[LONG_STANDARD_SIZE:]
 
     def _print_progress(self):

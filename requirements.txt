@@ -11,8 +11,9 @@ OpenEXR==1.2.0
 peewee>=2.8.1
 Pillow==3.0.0
 psutil>=4.3.1
+pycodestyle
 pyelliptic==1.5.7
-pysha3>=1.0.1
+pysha3>=1.0.2
 pystun==0.1.0
 pytz
 requests>=2.12.4
@@ -35,7 +36,7 @@ PyYAML>=3.12
 crossbar==16.10.1
 jsonpickle
 pydispatcher
-devp2p>=0.5.1
+Crypto
 scrypt
 packaging
 pyreadline

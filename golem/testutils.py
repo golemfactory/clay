@@ -1,5 +1,7 @@
 import logging
 import os
+from pathlib import Path
+import pycodestyle
 import shutil
 import tempfile
 import unittest
@@ -46,6 +48,7 @@ class TempDirFixture(unittest.TestCase):
         self.path = self.tempdir  # Alias for legacy tests
         if not is_windows():
             os.chmod(self.tempdir, 0770)
+        self.new_path = Path(self.path)
 
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
@@ -126,3 +129,10 @@ class TestGui(TempDirFixture):
         self.gui.app.exit(0)
         self.gui.app.deleteLater()
 
+
+class PEP8MixIn(object):
+    def test_conformance(self):
+        """Test that we conform to PEP-8."""
+        style = pycodestyle.StyleGuide(ignore=['E501'])
+        result = style.check_files(self.PEP8_FILES)
+        self.assertEqual(result.total_errors, 0, "Found code style errors (and warnings).")

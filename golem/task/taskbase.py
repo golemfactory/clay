@@ -141,8 +141,6 @@ class Task(object):
     def __getstate__(self):
         state = self.__dict__.copy()
         del state['listeners']
-        from pprint import pformat
-        logger.warning(pformat(state))
         return state
 
     def __setstate__(self, state):
@@ -278,10 +276,9 @@ class Task(object):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
         """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
         preparing resources depends from declared resource_type
-        :param task_id: FIXME
         :param ResourceHeader resource_header: description of resources that computing node already have for this task
         :param int resource_type: resource type from resources_types (0 for zip, 1 for hash list)
         :param str tmp_dir: additional directory that can be used during file transfer

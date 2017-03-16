@@ -6,7 +6,7 @@ from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationO
 logger = logging.getLogger("apps.core")
 
 
-def read_advance_verification_params(gui, definition):
+def read_advanced_verification_params(gui, definition):
     if gui.ui.advanceVerificationCheckBox.isChecked():
         definition.verification_options = AdvanceRenderingVerificationOptions()
         if gui.ui.verificationForAllRadioButton.isChecked():

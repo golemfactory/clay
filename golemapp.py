@@ -50,7 +50,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
     elif gui:
         start_app(rendering=True, **config)
     else:
-        config_logging()
+        config_logging(datadir=datadir)
 
         node = OptNode(node_address=node_address, **config)
         node.initialize()

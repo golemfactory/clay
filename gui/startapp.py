@@ -13,8 +13,6 @@ from golem.core.processmonitor import ProcessMonitor
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, object_method_map
 
-CLIENT_LOG_NAME = "golem_client.log"
-
 setDebugging(True)
 apps_manager = AppsManager()
 apps_manager.load_apps()
@@ -54,12 +52,7 @@ def start_client(start_ranking, datadir=None,
                  transaction_system=False, client=None,
                  reactor=None, **config_overrides):
 
-    if datadir:
-        log_name = path.join(datadir, CLIENT_LOG_NAME)
-    else:
-        log_name = CLIENT_LOG_NAME
-
-    config_logging(log_name)
+    config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     environments = load_environments()
 

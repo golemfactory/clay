@@ -8,7 +8,6 @@ from twisted.internet.defer import Deferred
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import config_logging
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
@@ -57,13 +56,6 @@ def session_call(resolve_fn):
 
 
 class TestStartAppFunc(TestDirFixtureWithReactor):
-
-    @patch('logging.config.fileConfig')
-    def test_config_logging(self, _):
-        path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
-        config_logging(path)
-        assert os.path.exists(os.path.dirname(path))
-
     def test_load_environments(self):
         envs = load_environments()
         for el in envs:

@@ -2,8 +2,7 @@ import time
 from os import path
 from random import random, randint
 
-from devp2p.crypto import ECCx
-
+from golem.core.crypto import ECCx
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.transport.message import MessageWantToComputeTask
