@@ -1978,6 +1978,9 @@ def init_messages():
     MessageResourceFormat()
     MessageAcceptResourceFormat()
 
+    Message.registered_message_types[MessageSubtaskPayment.TYPE] = MessageSubtaskPayment
+    Message.registered_message_types[MessageSubtaskPaymentRequest.TYPE] = MessageSubtaskPaymentRequest
+
     # Resource messages
     MessageGetResource()
     MessageResource()

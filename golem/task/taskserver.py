@@ -1,8 +1,9 @@
+from collections import deque
 import itertools
 import logging
 import os
+from pydispatch import dispatcher
 import time
-from collections import deque
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
@@ -59,6 +60,13 @@ class TaskServer(PendingConnectionsServer):
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
+        dispatcher.connect(self.paymentprocessor_listener, signal="golem.paymentprocessor")
+
+    def paymentprocessor_listener(self, sender, signal, event='default', **kwargs):
+        if event != 'payment.confirmed':
+            return
+        payment = kwargs.pop('payment')
+        self._add_pending_request(TASK_CONN_TYPES['payment'], subtask_id=payment.subtask)
 
     def start_accepting(self):
         PendingConnectionsServer.start_accepting(self)
@@ -287,7 +295,7 @@ class TaskServer(PendingConnectionsServer):
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
     def reward_for_subtask_paid(self, subtask_id):
-        logger.info("Receive payment for subtask {}".format(subtask_id))
+        logger.info("Received payment for subtask %r", subtask_id)
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(subtask_id)
         if task_id is None:
             logger.warning("Received payment for unknown subtask {}".format(subtask_id))
@@ -335,17 +343,6 @@ class TaskServer(PendingConnectionsServer):
     def decrease_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
         Trust.PAYMENT.decrease(node_id, self.max_trust)
-
-    def pay_for_task(self, task_id, payments):
-        if not self.client.transaction_system:
-            return
-
-        all_payments = {eth_account: desc.value for eth_account, desc in payments.items()}
-        try:
-            self.client.transaction_system.pay_for_task(task_id, all_payments)
-        except Exception as err:
-            # FIXME: Decide what to do when payment failed
-            logger.error("Can't pay for task: {}".format(err))
 
     def reject_result(self, subtask_id, account_info):
         mod = min(max(self.task_manager.get_trust_mod(subtask_id), self.min_trust), self.max_trust)
@@ -765,14 +762,12 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(ans_conn_id)
         self.remove_responses(ans_conn_id)
 
-    def __connection_for_middleman_final_failure(self, *args, **kwargs):
-        pass
+    def connection_for_payment_established(self, session, conn_id, key_id, subtask_id):
+        payment = Payment.objects.get(subtask=msg.subtask_id)
+        session.inform_worker_about_payment(payment)
 
-    def __connection_for_nat_punch_final_failure(self, *args, **kwargs):
+    def noop(self, *args, **kwargs):
         pass
-
-    def connection_for_payment_established(self, session, conn_id, key_id, asking_node_info, self_node_info, ans_conn_id):
-        session.inform_worker_about_payment(XXX)
 
     # SYNC METHODS
     #############################
@@ -857,7 +852,7 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
             TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_failure,
             TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
-            TASK_CONN_TYPES['payment']: self.connection_for_payment_failure,
+            TASK_CONN_TYPES['payment']: self.noop,
         })
 
     def _set_conn_final_failure(self):
@@ -868,9 +863,9 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['task_result']: self.__connection_for_task_result_final_failure,
             TASK_CONN_TYPES['task_failure']: self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
-            TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_final_failure,
-            TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_final_failure,
-            TASK_CONN_TYPES['payment']: self.connection_for_payment_final_failure,
+            TASK_CONN_TYPES['middleman']: self.noop,
+            TASK_CONN_TYPES['nat_punch']: self.noop,
+            TASK_CONN_TYPES['payment']: self.noop,
         })
 
     def _set_listen_established(self):

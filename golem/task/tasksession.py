@@ -1,6 +1,5 @@
 import logging
 import os
-from pydispatch import dispatcher
 import struct
 import time
 
@@ -75,7 +74,6 @@ class TaskSession(MiddlemanSafeSession):
         self.err_msg = None  # Keep track of errors
 
         self.__set_msg_interpretations()
-        dispatcher.connect(self.paymentprocessor_listener, signal="golem.paymentprocessor")
 
     ########################
     # BasicSession methods #
@@ -238,14 +236,9 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.accept_result(subtask_id, self.result_owner)
         self.send(message.MessageSubtaskResultAccepted(subtask_id))
 
-    def paymentprocessor_listener(self, sender, signal, event='default', **kwargs):
-        if event != 'payment.confirmed':
-            return
-        payment = kwargs.pop('payment')
-        self.inform_worker_about_payment(payment)
-
     @log_error
     def inform_worker_about_payment(self, payment):
+        logger.debug('inform_worker_about_payment(%r)', payment)
         if payment.subtask != self.subtask_id:
             logger.debug('Ignoring payment info: pmnt.subtask %r != self.subtask %r', payment.subtask, self.subtask_id)
             return
@@ -539,8 +532,7 @@ class TaskSession(MiddlemanSafeSession):
             return
 
         if msg.proto_id != TASK_PROTOCOL_ID:
-            logger.error("Protocol version mismatch {} vs {} (local)"
-                         .format(msg.proto_id, TASK_PROTOCOL_ID))
+            logger.error("Task protocol version mismatch %r (msg) vs %r (local)", msg.proto_id, TASK_PROTOCOL_ID)
             self.disconnect(TaskSession.DCRProtocolVersion)
             return
 
@@ -601,7 +593,7 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.reward_for_subtask_paid(subtask_id=msg.subtask_id)
 
     def _react_to_subtask_payment_request(self, msg):
-        payment = Payment.objects.get(subtask=msg.subtask_id)
+        payment = Payment.get(Payment.subtask == msg.subtask_id)
         self.inform_worker_about_payment(payment)
 
     def send(self, msg, send_unverified=False):

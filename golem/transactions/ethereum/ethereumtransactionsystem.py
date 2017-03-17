@@ -51,13 +51,6 @@ class EthereumTransactionSystem(TransactionSystem):
         eth = self.__proc.eth_balance()
         return gnt, av_gnt, eth
 
-    def pay_for_task(self, task_id, payments):
-        """ Pay for task using Ethereum connector
-        :param task_id: pay for task with given id
-        :param dict payments: all payments group by ethereum address
-        """
-        pass
-
     def get_incoming_payments(self):
         return [{'status': payment.status.value,
                  'payer': payment.payer,

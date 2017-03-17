@@ -51,13 +51,6 @@ class TransactionSystem(object):
     def add_to_waiting_payments(self, task_id, node_id, value):
         return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value=value)
 
-    def pay_for_task(self, task_id, payments):
-        """ Pay for task using specific system. This method should be implemented in derived classes
-        :param str task_id: finished task
-        :param payments: payments representation
-        """
-        raise NotImplementedError
-
     def check_payments(self):
         # TODO Some code from taskkeeper
         # now = datetime.datetime.now()
