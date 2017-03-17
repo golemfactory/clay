@@ -46,7 +46,7 @@ class RenderingTask(CoreTask):
             with open(main_program_file, "r") as src_file:
                 src_code = src_file.read()
         except IOError as err:
-            logger.error("Wrong main program file: {}".format(err))
+            logger.warning("Wrong main program file: {}".format(err))
             src_code = ""
         self.main_program_file = main_program_file
 
@@ -114,9 +114,8 @@ class RenderingTask(CoreTask):
 
     @CoreTask.handle_key_error
     def restart_subtask(self, subtask_id):
-        if subtask_id in self.subtasks_given:
-            if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
-                self._remove_from_preview(subtask_id)
+        if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
+            self._remove_from_preview(subtask_id)
         CoreTask.restart_subtask(self, subtask_id)
 
     def update_task_state(self, task_state):
@@ -285,6 +284,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
             return definition.total_subtasks
         else:
+            logger.warning("Cannot set total subtasks to {}. Changing to {}".format(
+                definition.total_subtasks, defaults.default_subtasks))
             return defaults.default_subtasks
 
     def _set_verification_options(self, new_task):
