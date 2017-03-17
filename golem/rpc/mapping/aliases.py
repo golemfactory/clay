@@ -125,6 +125,7 @@ class Payments(object):
     incomes                 = 'pay.incomes'
     income                  = 'pay.income'
 
+    evt_balance             = 'evt.pay.balance'
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 
@@ -133,7 +134,7 @@ class UI(object):
 
     quit                    = 'ui.quit'
 
-    evt_lock_config         = 'evt.ui.widget.config.lock'
+    evt_lock_config         = 'evt.ui.config.widget.lock'
 
 
 class Applications(object):

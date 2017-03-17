@@ -37,7 +37,7 @@ from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
-from golem.rpc.mapping.aliases import Task, Network, Environment, UI
+from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskserver import TaskServer
@@ -100,6 +100,7 @@ class Client(object):
         self.task_server = None
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
+        self.last_balance_time = time.time()
 
         self.last_node_state_snapshot = None
 
@@ -155,8 +156,7 @@ class Client(object):
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
             return
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
+        self._publish(Task.evt_task_status, kwargs['task_id'])
 
     def start(self):
         if self.use_monitor:
@@ -266,25 +266,21 @@ class Client(object):
     def run_test_task(self, t_dict):
         def on_success(*args, **kwargs):
             self.task_tester = None
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_success, *args, **kwargs)
+            self._publish(Task.evt_task_check_success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
             self.task_tester = None
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
+            self._publish(Task.evt_task_check_error, *args, **kwargs)
 
         if self.task_tester is None:
             t = DictSerializer.load(t_dict)
             self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
             self.task_tester.run()
 
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
+            self._publish(Task.evt_task_check_started, True)
             return True
 
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        self._publish(Task.evt_task_check_error, u"Another test is running")
         return False
 
     def abort_test_task(self):
@@ -668,13 +664,18 @@ class Client(object):
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
 
-    def lock_config(self, on=True):
+    def publish_balance(self):
+        pass
+
+    def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
-            self.rpc_publisher.publish(UI.evt_lock_config, on)
+            self.rpc_publisher.publish(event_name, *args, **kwargs)
+
+    def lock_config(self, on=True):
+        self._publish(UI.evt_lock_config, on)
 
     def config_changed(self):
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Environment.evt_opts_changed)
+        self._publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
@@ -692,6 +693,8 @@ class Client(object):
         return new_value
 
     def __do_work(self):
+        now = time.time()
+
         if self.p2pservice:
             if self.config_desc.send_pings:
                 self.p2pservice.ping_peers(self.config_desc.pings_interval)
@@ -717,7 +720,7 @@ class Client(object):
             except:
                 log.exception("check_payments failed")
 
-            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
+            if now - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
                 dispatcher.send(
                     signal='golem.monitor',
                     event='stats_snapshot',
@@ -735,10 +738,19 @@ class Client(object):
                     # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
-            if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
+            if now - self.last_net_check_time >= self.config_desc.network_check_interval:
                 self.last_net_check_time = time.time()
-                if self.rpc_publisher:
-                    self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
+                self._publish(Network.evt_connection, self.connection_status())
+
+            if now - self.last_balance_time >= 3:
+                self.last_balance_time = time.time()
+                gnt, av_gnt, eth = self.get_balance()
+                balance = dict(
+                    GNT=gnt,
+                    GNT_available=av_gnt,
+                    ETH=eth
+                )
+                self._publish(Payments.evt_balance, balance)
 
     def __make_node_state_snapshot(self, is_running=True):
 
