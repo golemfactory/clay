@@ -31,25 +31,28 @@ class RenderingTaskCollector(object):
         img_repr = load_img(self.accepted_img_files[0])
         if isinstance(img_repr, EXRImgRepr):
             final_img = self.finalize_exr(img_repr)
+            self.finalize_alpha(final_img)
         else:
             final_img = self.finalize_pil()
-
-        if len(self.accepted_alpha_files) > 0:
-            e = EXRImgRepr()
-            e.load_from_file(self.accepted_alpha_files[0])
-            final_alpha = e.to_l_image()
-
-            for img in self.accepted_alpha_files[1:]:
-                e = EXRImgRepr()
-                e.load_from_file(img)
-                l_im = e.to_l_image()
-                final_alpha = ImageChops.add(final_alpha, l_im)
-                l_im.close()
-
-            final_img.putalpha(final_alpha)
-            final_alpha.close()
-
         return final_img
+
+    def finalize_alpha(self, final_img):
+        if len(self.accepted_alpha_files) == 0:
+            return
+
+        e = EXRImgRepr()
+        e.load_from_file(self.accepted_alpha_files[0])
+        final_alpha = e.to_l_image()
+
+        for img in self.accepted_alpha_files[1:]:
+            e = EXRImgRepr()
+            e.load_from_file(img)
+            l_im = e.to_l_image()
+            final_alpha = ImageChops.add(final_alpha, l_im)
+            l_im.close()
+
+        final_img.putalpha(final_alpha)
+        final_alpha.close()
 
     def finalize_exr(self, exr_repr):
 
@@ -95,10 +98,10 @@ class RenderingTaskCollector(object):
         final_img = Image.new(band, (res_x, res_y))
         offset = 0
         for img_path in self.accepted_img_files:
+            img = Image.open(img_path)
             if not self.paste:
-                final_img = ImageChops.add(final_img, img_path)
+                final_img = ImageChops.add(final_img, img)
             else:
-                img = Image.open(img_path)
                 final_img.paste(img, (0, offset))
                 _, img_y = img.size
                 offset += img_y

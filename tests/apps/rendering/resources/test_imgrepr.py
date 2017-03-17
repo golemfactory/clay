@@ -197,6 +197,24 @@ class TestExrImgRepr(TempDirFixture):
         p = PILImgRepr()
         p.load_from_file(img_file)
 
+        img2 = e.to_pil(use_extremas=True)
+        assert isinstance(img2, Image.Image )
+        img_alt = get_exr_img_repr(alt=True)
+        img3 = img_alt.to_pil(use_extremas=True)
+        assert isinstance(img3, Image.Image)
+
+    def test_to_l_image(self):
+        e = get_exr_img_repr()
+        img = e.to_l_image()
+        assert isinstance(img, Image.Image)
+        assert img.mode == "L"
+
+    def test_get_rgbf_extrema(self):
+        e = get_exr_img_repr(alt=True)
+        assert e.get_rgbf_extrema() == (0.0, 0.0)
+        e = get_exr_img_repr()
+        assert e.get_rgbf_extrema() == (3.71875, 0.10687255859375)
+
 
 class TestImgFunctions(TempDirFixture, LogTestCase):
     def test_verify_img(self):

@@ -105,6 +105,9 @@ class EXRImgRepr(ImgRepr):
         else:
             lightest = self.max
             darkest = self.min
+
+        if lightest == darkest:
+            lightest = 0.1 + darkest
         scale = 255.0 / (lightest - darkest)
 
         def normalize_0_255(v):
