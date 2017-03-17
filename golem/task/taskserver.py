@@ -17,10 +17,10 @@ from taskmanager import TaskManager
 from tasksession import TaskSession
 from weakreflist.weakreflist import WeakList
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.task.taskserver')
 
 
-tmp_cycler = itertools.cycle(range(50))
+tmp_cycler = itertools.cycle(range(550))
 
 
 class TaskServer(PendingConnectionsServer):
@@ -66,7 +66,17 @@ class TaskServer(PendingConnectionsServer):
         if event != 'payment.confirmed':
             return
         payment = kwargs.pop('payment')
-        self._add_pending_request(TASK_CONN_TYPES['payment'], subtask_id=payment.subtask)
+        logging.debug('Notified about payment.confirmed: %r', payment)
+        task_id = self.task_manager.subtask2task_mapping[payment.subtask]
+        task = self.task_manager.tasks[task_id]
+        # XXX
+        self._add_pending_request(
+            req_type=TASK_CONN_TYPES['payment'],
+            task_owner=task.header.task_owner,
+            port=task.header.task_owner_port,
+            key_id=task.header.task_owner_key_id,
+            args={'subtask_id': payment.subtask}
+        )
 
     def start_accepting(self):
         PendingConnectionsServer.start_accepting(self)
@@ -335,6 +345,7 @@ class TaskServer(PendingConnectionsServer):
             return
 
         payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
+        logger.debug(u'Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
@@ -763,6 +774,7 @@ class TaskServer(PendingConnectionsServer):
         self.remove_responses(ans_conn_id)
 
     def connection_for_payment_established(self, session, conn_id, key_id, subtask_id):
+        logger.debug('connection_for_payment_established()')
         payment = Payment.objects.get(subtask=msg.subtask_id)
         session.inform_worker_about_payment(payment)
 
