@@ -38,6 +38,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
         self.__proc.add(payment)
+        return payment
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
