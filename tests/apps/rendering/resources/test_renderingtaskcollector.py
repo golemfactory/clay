@@ -1,15 +1,26 @@
+import os
+
 from PIL import Image
 
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgrepr import compare_pil_imgs, advance_verify_img
+from apps.rendering.resources.imgrepr import compare_pil_imgs, advance_verify_img, load_img
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
     img = Image.new('RGB', size, color)
     img.save(img_path)
     img.close()
+
+
+def _get_test_exr(alt=False):
+    if not alt:
+        filename = 'testfile.EXR'
+    else:
+        filename = 'testfile2.EXR'
+
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
 
 
 class TestRenderingTaskCollector(TestDirFixture):
@@ -63,4 +74,14 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img = collector.finalize()
         assert final_img.size == (10, 10)
 
+    def test_finalize_alpha(self):
+        collector = RenderingTaskCollector()
 
+        a = collector.add_alpha_file(_get_test_exr())
+        b = collector.add_alpha_file(_get_test_exr(alt=True))
+
+        img_path = self.temp_file_name("img1.png")
+        make_test_img(img_path)
+        img_repr = load_img(img_path)
+
+        collector.finalize_alpha(img_repr.img)

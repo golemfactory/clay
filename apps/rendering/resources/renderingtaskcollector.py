@@ -12,6 +12,7 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingTaskCollector(object):
     def __init__(self, paste=False, width=1, height=1):
+
         self.accepted_img_files = []
         self.accepted_alpha_files = []
         self.paste = paste
@@ -19,12 +20,24 @@ class RenderingTaskCollector(object):
         self.height = height
 
     def add_img_file(self, img_file):
+        """
+        Add file path to the image with subtask result
+        :param str img_file: path to the file
+        """
         self.accepted_img_files.append(img_file)
 
     def add_alpha_file(self, img_file):
+        """
+        Add file path to the image with alpha channel
+        :param str img_file: path to the file
+        """
         self.accepted_alpha_files.append(img_file)
 
     def finalize(self):
+        """
+        Connect all collected files and return final image
+        :return Image.Image:
+        """
         if len(self.accepted_img_files) == 0:
             return None
 
@@ -37,6 +50,11 @@ class RenderingTaskCollector(object):
         return final_img
 
     def finalize_alpha(self, final_img):
+        """
+        Load collected alpha files, add them as chops and put to final image as an alpha channel
+        :param Image.Image final_img: image hat should have alpha channel added
+        :return:
+        """
         if len(self.accepted_alpha_files) == 0:
             return
 
