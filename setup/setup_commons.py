@@ -143,7 +143,7 @@ def get_files():
     beginnig = "../../golem/"
     result = []
     for root, dirs, files in walk('.', topdown=False):
-        if root != '.' and root.split('/')[1] in excluded:
+        if root != '.' and root.split(path.sep)[1] in excluded:
             continue
         srcs = []
         if root == '.':

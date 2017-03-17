@@ -64,12 +64,9 @@ Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir:
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\libeay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\openssl.exe"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\requirements.txt"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
-; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
 Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
@@ -80,9 +77,6 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
  ; Install Python 2.7.6
 Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
 
-; Install pywin
-Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
-
 ; Install VC For Python 2.7
 Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
 
@@ -92,8 +86,6 @@ Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.ex
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl"""; Description: "Install OpenEXR"; Check: DependenciesSetup('OpenEXR')
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl"""; Description: "Install PyEthash"; Check: DependenciesSetup('PyEthash')
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl"""; Description: "Install secp256k1"; Check: DependenciesSetup('secp256k1')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl"""; Description: "Install devp2p"; Check: DependenciesSetup('devp2p')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install -r {tmp}\requirements.txt"""; Description: "Install setuptools"; Check: DependenciesSetup('setuptools')
                                      
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
@@ -104,6 +96,9 @@ Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing 
 
 ; Finally! Install golem!
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip install """"{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+
+; Install pywin
+Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
 
 
 [Code]
