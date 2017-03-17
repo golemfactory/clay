@@ -8,12 +8,11 @@ from twisted.internet.defer import Deferred
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import config_logging
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
-from golem.tools.appveyor import appveyor_patch
+from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golemgui import start_gui, GUIApp
 from gui.startapp import load_environments, start_client
@@ -57,13 +56,6 @@ def session_call(resolve_fn):
 
 
 class TestStartAppFunc(TestDirFixtureWithReactor):
-
-    @patch('logging.config.fileConfig')
-    def test_config_logging(self, _):
-        path = os.path.join(self.path, 'subdir1', 'subdir2', "golem.test")
-        config_logging(path)
-        assert os.path.exists(os.path.dirname(path))
-
     def test_load_environments(self):
         envs = load_environments()
         for el in envs:
@@ -172,44 +164,44 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 self.fail(u"Cannot start gui process: {}".format(exc))
 
     @patch('logging.config.fileConfig')
-    @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
-                    return_value=True)
-    @appveyor_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-                    return_value=True)
+    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+              return_value=True)
+    @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
+              return_value=True)
     def test_start_client_success(self, *_):
         self._start_client(expected_result=u"Success")
 
     @patch('logging.config.fileConfig')
-    @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
-                    return_value=True)
-    @appveyor_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-                    return_value=True)
+    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+              return_value=True)
+    @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
+              return_value=True)
     def test_start_client_router_failure(self, *_):
         self._start_client(router_fails=True,
                            expected_result=u"Router error")
 
     @patch('logging.config.fileConfig')
-    @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
-                    return_value=True)
-    @appveyor_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-                    return_value=True)
+    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+              return_value=True)
+    @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
+              return_value=True)
     def test_start_client_session_failure(self, *_):
         self._start_client(session_fails=True,
                            expected_result=u"Session error")
 
     @patch('logging.config.fileConfig')
-    @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
-                    return_value=True)
-    @appveyor_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-                    return_value=True)
+    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+              return_value=True)
+    @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
+              return_value=True)
     def test_start_gui_success(self, *_):
         self._start_gui(expected_result=u"Success")
 
     @patch('logging.config.fileConfig')
-    @appveyor_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
-                    return_value=True)
-    @appveyor_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
-                    return_value=True)
+    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+              return_value=True)
+    @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
+              return_value=True)
     def test_start_gui_failure(self, *_):
         self._start_gui(session_fails=True,
                         expected_result=u"Session error")

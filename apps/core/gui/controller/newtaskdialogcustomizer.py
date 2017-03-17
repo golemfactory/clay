@@ -14,7 +14,7 @@ from golem.task.taskstate import TaskStatus
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
 from apps.core.gui.verificationparamshelper import (
     load_verification_params, set_verification_widgets_state,
-    verification_random_changed, read_advance_verification_params)
+    verification_random_changed, read_advanced_verification_params)
 from apps.core.task.coretaskstate import TaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
@@ -101,7 +101,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.verificationRandomRadioButton.toggled.connect(
             self.__verification_random_changed)
         self.gui.ui.advanceVerificationCheckBox.stateChanged.connect(
-            self.__advance_verification_changed)
+            self.__advanced_verification_changed)
 
     def _init(self):
         self._set_uid()
@@ -254,7 +254,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
 
     def _load_payment_params(self, definition):
-        price = definition.max_price / denoms.ether
+        price = int(definition.max_price) / denoms.ether
         self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(price))
         self._set_new_pessimistic_cost()
 
@@ -287,7 +287,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.get_task_specific_options(definition)
         self.logic.options = definition.options
         self._read_resource_params(definition)
-        self._read_advance_verification_params(definition)  # FIMXE
+        self._read_advanced_verification_params(definition)  # FIMXE
 
         return definition
 
@@ -320,8 +320,8 @@ class NewTaskDialogCustomizer(Customizer):
         except ValueError:
             logger.warning("Wrong price value")
 
-    def _read_advance_verification_params(self, definition):
-        read_advance_verification_params(self.gui, definition)
+    def _read_advanced_verification_params(self, definition):
+        read_advanced_verification_params(self.gui, definition)
 
     def _read_resource_params(self, definition):
         definition.add_to_resources()
@@ -431,7 +431,7 @@ class NewTaskDialogCustomizer(Customizer):
         task_type = self.gui.ui.taskTypeComboBox.itemText(index)
         return self.logic.get_task_type(u"{}".format(task_type))
 
-    def __advance_verification_changed(self):
+    def __advanced_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
         set_verification_widgets_state(self.gui, state)
         self.task_settings_changed()

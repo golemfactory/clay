@@ -9,7 +9,6 @@ from ethereum.utils import denoms
 from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
-import golem
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
@@ -19,7 +18,7 @@ from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus
 from golem.testutils import DatabaseFixture
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
@@ -60,22 +59,38 @@ class TTask(Task):
         return ["output1", "output2", "output3"]
 
 
+class TTaskWithDef(TTask):
+    def __init__(self):
+        super(TTaskWithDef, self).__init__()
+        self.task_definition = TaskDefinition()
+        self.task_definition.max_price = 100 * denoms.ether
+
+
+class TTaskWithError(TTask):
+    def __init__(self):
+        super(TTaskWithDef, self).__init__()
+        self.task_definition = TaskDefinition()
+        self.task_definition.max_price = "ABCDEFGHT"
+
+
 class TTaskBuilder(TaskBuilder):
 
-    def __init__(self, path):
+    def __init__(self, path, task_class=TTask):
         self.path = path
         self.src_code = "output = {'data': n, 'result_type': 0}"
         self.extra_data = {"n": 421}
+        self.task_class = task_class
 
     def build(self):
-        t = TTask()
+        t = self.task_class()
         t.header = TaskHeader(
             node_name="node1",
             task_id="xyz",
             task_owner_address="127.0.0.1",
             task_owner_port=45000,
             task_owner_key_id="key2",
-            environment="test"
+            environment="test",
+            max_price=30 * denoms.ether
         )
         t.header.root_path = self.path
         t.src_code = self.src_code
@@ -215,7 +230,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.customizer = Mock()
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
 
         description = u"New description"
 
@@ -304,14 +319,15 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
     @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    @patch('gui.view.dialog.QDialogPlus.show')
     def test_run_test_task(self, *_):
         logic = self.logic
         gui = self.app
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = golem.rpc.session.Client(rpc_session, CORE_METHOD_MAP)
-        rpc_publisher = MockRPCPublisher(success_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_success],
-                                         error_aliases=[golem.rpc.mapping.aliases.Task.evt_task_check_error])
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+        rpc_publisher = MockRPCPublisher(success_aliases=[rpc.mapping.aliases.Task.evt_task_check_success],
+                                         error_aliases=[rpc.mapping.aliases.Task.evt_task_check_error])
 
         logic.root_path = self.path
         logic.client = rpc_client
@@ -382,6 +398,14 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
 
         self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
 
+        ttb = TTaskBuilder(self.path, TTaskWithDef)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert logic.run_test_task(ts)
+
+        ttb = TTaskBuilder(self.path, TTaskWithError)
+        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        assert not logic.run_test_task(ts)
+
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
         self.app.main_window.show()
@@ -434,13 +458,15 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
         self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
-    @appveyor_skip
+    @ci_skip
     def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path
         logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
         logic.customizer.show_error_window = Mock()
-        logic.customizer.show_warning_window =  Mock()
+        logic.customizer.show_warning_window = Mock()
+        logic.customizer.current_task_highlighted = Mock()
+        logic.client = Mock()
         self.logic.dir_manager = DirManager(self.path)
         register_task_types(logic)
 
@@ -509,6 +535,12 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         with self.assertLogs(logger, level="WARNING"):
             logic.set_current_task_type("unknown task")
 
+        def query_task_state(*_):
+            deferred = Deferred()
+            deferred.callback(True)
+            return deferred
+
+        logic.client.query_task_state = query_task_state
         with self.assertLogs(logger, level="WARNING"):
             logic.task_status_changed("unknown id")
 

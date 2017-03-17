@@ -79,7 +79,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def register_client(self, client):
-
+        # client is golem.rpc.session.Client
         datadir = yield client.get_datadir()
         config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
@@ -259,12 +259,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             logger.error(error_msg)
             return
 
-        tb = self.get_builder(ts)
-        t = Task.build_task(tb)
-        ts.task_state.outputs = t.get_output_names()
-        ts.task_state.status = TaskStatus.starting
-        self.customizer.update_tasks(self.tasks)
-        self.client.create_task(DictSerializer.dump(t))
+        def cbk(task):
+            ts.task_state.outputs = task.get_output_names()
+            ts.task_state.status = TaskStatus.starting
+            self.customizer.update_tasks(self.tasks)
+        self.client.create_task(self.build_and_serialize_task(ts, cbk))
 
     def restart_task(self, task_id):
         self.client.restart_task(task_id)
@@ -418,13 +417,29 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            tb = self.get_builder(task_state)
-            t = Task.build_task(tb)
-            self.client.run_test_task(DictSerializer.dump(t))
-
-            return True
+            try:
+                self.client.run_test_task(self.build_and_serialize_task(task_state))
+                return True
+            except Exception as ex:
+                self.test_task_computation_error(ex)
 
         return False
+
+    def build_and_serialize_task(self, task_state, cbk=None):
+        tb = self.get_builder(task_state)
+        t = Task.build_task(tb)
+        t.header.max_price = str(t.header.max_price)
+        t_serialized = DictSerializer.dump(t)
+        if 'task_definition' in t_serialized:
+            t_serialized_def = t_serialized['task_definition']
+            t_serialized_def['resources'] = list(t_serialized_def['resources'])
+            if 'max_price' in t_serialized_def:
+                t_serialized_def['max_price'] = str(t_serialized_def['max_price'])
+        from pprint import pformat
+        logger.debug('task serialized: %s', pformat(t_serialized))
+        if cbk:
+            cbk(t)
+        return t_serialized
 
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")

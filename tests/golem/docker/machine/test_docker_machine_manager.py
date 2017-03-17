@@ -4,7 +4,7 @@ import mock
 
 from golem.core.common import is_linux
 from golem.docker.machine.machine_manager import DockerMachineManager
-from golem.tools.appveyor import appveyor_skip
+from golem.tools.ci import ci_skip
 
 MACHINE_NAME = 'default'
 
@@ -135,7 +135,7 @@ class MockDockerMachineManager(DockerMachineManager):
         return MACHINE_NAME
 
 
-@appveyor_skip
+@ci_skip
 class TestDockerMachineManager(unittest.TestCase):
 
     def test_build_config(self):
