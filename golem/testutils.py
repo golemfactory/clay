@@ -1,5 +1,6 @@
 import logging
 import os
+from pathlib import Path
 import pycodestyle
 import shutil
 import tempfile
@@ -47,6 +48,7 @@ class TempDirFixture(unittest.TestCase):
         self.path = self.tempdir  # Alias for legacy tests
         if not is_windows():
             os.chmod(self.tempdir, 0770)
+        self.new_path = Path(self.path)
 
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
