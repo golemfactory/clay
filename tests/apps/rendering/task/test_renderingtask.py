@@ -171,6 +171,35 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
 
+    def test_get_outer_task(self):
+        task = self.task
+        task.output_format = "exr"
+        assert task._use_outer_task_collector()
+        task.output_format = "EXR"
+        assert task._use_outer_task_collector()
+        task.output_format = "eps"
+        assert task._use_outer_task_collector()
+        task.output_format = "EPS"
+        assert task._use_outer_task_collector()
+        task.output_format = "png"
+        assert not task._use_outer_task_collector()
+        task.output_format = "PNG"
+        assert not task._use_outer_task_collector()
+        task.output_format = "jpg"
+        assert not task._use_outer_task_collector()
+        task.output_format = "JPG"
+        assert not task._use_outer_task_collector()
+        task.output_format = "bmp"
+        assert not task._use_outer_task_collector()
+        task.output_format = "tga"
+        assert not task._use_outer_task_collector()
+        task.output_format = "TGA"
+        assert not task._use_outer_task_collector()
+
+    def test_get_scene_file_path(self):
+        task = self.task
+        assert task._get_scene_file_rel_path() == ''
+
 
 class TestGetTaskBorder(unittest.TestCase):
 
