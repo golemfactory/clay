@@ -4,6 +4,7 @@ from PIL import Image
 from mock import patch, Mock
 
 from golem.core.common import is_linux
+from golem.task.taskbase import Task
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -127,6 +128,29 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
         rv.verification_options.probability = 0.0
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+
+    def test_error_in_change_scope(self):
+        rv = RenderingVerificator()
+        rv.tmp_dir = None
+        subtask_info = {'start_task': 1, 'tmp_path': 'blabla'}
+        with self.assertRaises(Exception):
+            rv.change_scope("subtask_id", (0, 0), self.temp_file_name("tmpfile"), subtask_info)
+
+    def test_box_render_error(self):
+        rv = RenderingVerificator()
+        with self.assertLogs(logger, level="WARNING") as l:
+            rv._RenderingVerificator__box_render_error("some error")
+            assert any("some error" in log for log in l.output)
+
+    def test_run_task_with_errors(self):
+        rv = RenderingVerificator()
+        rv.root_path = self.path
+        extra_data = {}
+
+        class MockTask(Task):
+            pass
+
+        assert rv._run_task(extra_data, MockTask(Mock(), Mock())) is None
 
 
 class TestFrameRenderingVerificator(TempDirFixture):

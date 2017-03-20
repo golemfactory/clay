@@ -97,12 +97,9 @@ class RenderingVerificator(CoreVerificator):
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        try:
-            extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
-            if not os.path.isdir(extra_data['tmp_path']):
-                os.mkdir(extra_data['tmp_path'])
-        except Exception:
-            logger.exception("Error during scope changing in advanced verification")
+        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
+        if not os.path.isdir(extra_data['tmp_path']):
+            os.mkdir(extra_data['tmp_path'])
         return extra_data, start_box
 
     def _run_task(self, extra_data, task):
