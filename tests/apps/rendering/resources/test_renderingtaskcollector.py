@@ -27,8 +27,8 @@ class TestRenderingTaskCollector(TestDirFixture):
     def test_init(self):
         collector = RenderingTaskCollector()
         assert not collector.paste
-        assert collector.width == 1
-        assert collector.height == 1
+        assert collector.width is None
+        assert collector.height is None
         assert collector.accepted_img_files == []
         assert collector.accepted_alpha_files == []
 
@@ -77,11 +77,26 @@ class TestRenderingTaskCollector(TestDirFixture):
     def test_finalize_alpha(self):
         collector = RenderingTaskCollector()
 
-        a = collector.add_alpha_file(_get_test_exr())
-        b = collector.add_alpha_file(_get_test_exr(alt=True))
+        collector.add_alpha_file(_get_test_exr())
+        collector.add_alpha_file(_get_test_exr(alt=True))
 
         img_path = self.temp_file_name("img1.png")
         make_test_img(img_path)
         img_repr = load_img(img_path)
 
         collector.finalize_alpha(img_repr.img)
+
+    def test_finalize_exr(self):
+        collector = RenderingTaskCollector()
+        collector.add_img_file(_get_test_exr())
+        collector.add_img_file(_get_test_exr(alt=True))
+        img = collector.finalize()
+        assert isinstance(img, Image.Image)
+        assert img.size == (10, 10)
+
+        collector = RenderingTaskCollector(paste=True)
+        collector.add_img_file(_get_test_exr())
+        collector.add_img_file(_get_test_exr(alt=True))
+        img = collector.finalize()
+        assert isinstance(img, Image.Image)
+        assert img.size == (10, 20)

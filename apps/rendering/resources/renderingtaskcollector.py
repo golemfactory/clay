@@ -11,7 +11,7 @@ logger = logging.getLogger("apps.rendering")
 
 
 class RenderingTaskCollector(object):
-    def __init__(self, paste=False, width=1, height=1):
+    def __init__(self, paste=False, width=None, height=None):
 
         self.accepted_img_files = []
         self.accepted_alpha_files = []
