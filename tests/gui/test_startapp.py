@@ -1,9 +1,9 @@
-import os
 import time
 from Queue import Queue
 from threading import Thread
 
-from mock import Mock, patch
+import sys
+from mock import Mock, patch, mock
 from twisted.internet.defer import Deferred
 
 from golem.client import Client
@@ -11,7 +11,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
-from golem.rpc.session import WebSocketAddress
+from golem.rpc.session import WebSocketAddress, RPCAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golemgui import start_gui, GUIApp
@@ -221,3 +221,21 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         start_app(datadir=self.tempdir)
         _start_client.assert_called_with(True, self.tempdir, False)
+
+    def test_start_gui_subprocess(self):
+
+        from gui.startapp import start_gui as start
+
+        rpc_address = RPCAddress('tcp', '127.0.0.1', 12345)
+        address_str = '{}:{}'.format(rpc_address.host, rpc_address.port)
+
+        with patch('subprocess.Popen') as popen:
+
+            start(rpc_address)
+            popen.assert_called_with([sys.executable, 'golemgui.py', '-r', address_str])
+
+        with patch('subprocess.Popen') as popen, \
+             patch.object(sys, 'executable', 'python_binary'):
+
+            start(rpc_address)
+            popen.assert_called_with(['python_binary', mock.ANY, mock.ANY, mock.ANY])

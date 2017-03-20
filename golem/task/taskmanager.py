@@ -130,7 +130,7 @@ class TaskManager(TaskEventListener):
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
         except:
-            logger.exception('DUMP ERROR')
+            logger.exception('DUMP ERROR task_id: %r task: %r state: %r', task_id, self.tasks.get(task_id, '<not found>'), self.tasks_states.get(task_id, '<not found>'))
             if filepath.exists():
                 filepath.unlink()
             raise
@@ -404,7 +404,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def get_resources(self, task_id, resource_header, resource_type=0):
         task = self.tasks[task_id]
-        return task.get_resources(task_id, resource_header, resource_type)
+        return task.get_resources(resource_header, resource_type)
 
     @handle_task_key_error
     def restart_task(self, task_id):

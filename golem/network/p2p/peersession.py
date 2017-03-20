@@ -1,8 +1,7 @@
 import logging
 import time
 
-from devp2p.crypto import ECIESDecryptionError
-
+from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \

@@ -1279,7 +1279,7 @@ osx_exe_options = {
 exe_options = {
     "packages": [
         "os", "sys", "pkg_resources", "encodings", "click",
-        "bitcoin", "devp2p", "service_identity", "OpenEXR",
+        "bitcoin", "service_identity", "OpenEXR",
         "Crypto", "OpenSSL", "ssl"
     ],
     "excludes": [
@@ -1314,7 +1314,6 @@ build_options = {
             DirPackage('pkg_resources'),
             DirPackage('psutil'),
             DirPackage('cffi'),
-            DirPackage('devp2p'),
             DirPackage('pycparser'),
             DirPackage('Crypto'),
             DirPackage('bitcoin'),
