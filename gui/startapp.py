@@ -41,7 +41,7 @@ def start_error(err):
 
 
 def start_gui(address):
-    return subprocess.Popen([sys.executable, join(get_golem_path(), "golemgui.py"), '-r',
+    return subprocess.Popen([sys.executable, join(get_golem_path(), "gui", "golemgui.py"), '-r',
                              '{}:{}'.format(address.host, address.port)])
 
 
