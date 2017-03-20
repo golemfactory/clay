@@ -191,7 +191,6 @@ class RenderingTask(CoreTask):
                "{}".format(self.res_y),
                "{}".format(output_file_name)] + files
 
-        print cmd
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):

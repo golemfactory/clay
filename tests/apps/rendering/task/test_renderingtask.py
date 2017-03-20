@@ -1,3 +1,4 @@
+import ntpath
 import unittest
 from os import makedirs, path, remove
 
@@ -12,8 +13,10 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.task.taskstate import SubtaskStatus
-from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.ci import ci_skip
+from golem.tools.testdirfixture import TestDirFixture
+
 
 
 def _get_test_exr(alt=False):
@@ -92,11 +95,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     @patch("apps.rendering.task.renderingtask.is_windows")
     def test_paths2(self, mock_is_windows):
         rt = self.task
-        res1 = "{}\\dir1\\dir2\\name1".format(self.path)
-        res2 = "{}\\dir1\\dir2\\name2".format(self.path)
+        npath = "\\".join(path.split(self.path))
+        res1 = "{}\\dir1\\dir2\\name1".format(npath)
+        res2 = "{}\\dir1\\dir2\\name2".format(npath)
         rt.task_resources = [res1, res2]
         mock_is_windows.return_value = True
-        assert rt._get_working_directory() == "../.."
+        with patch("apps.rendering.task.renderingtask.os.path", ntpath):
+            assert rt._get_working_directory() == "../.."
 
     def test_remove_from_preview(self):
         rt = self.task
@@ -155,7 +160,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert preview.size == (267, 200)
         preview.close()
 
-    def test_restart_subtas(self):
+    def test_restart_subtask(self):
         task = self.task
         with self.assertLogs(core_logger, level="WARNING"):
             task.restart_subtask("Not existing")
@@ -233,6 +238,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.last_task = 10
         assert task._get_next_task() == (None, None)
 
+
+    @ci_skip
     def test_put_collected_files_together(self):
         output_name = self.temp_file_name("output.exr")
         exr1 = _get_test_exr()
