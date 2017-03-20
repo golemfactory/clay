@@ -1,10 +1,11 @@
 import unittest
 from os import makedirs, path, remove
 
-from mock import Mock
+from mock import Mock, patch
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState
 from apps.core.task.coretask import logger as core_logger
+from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, logger
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -13,6 +14,15 @@ from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.assertlogs import LogTestCase
+
+
+def _get_test_exr(alt=False):
+    if not alt:
+        filename = 'testfile.EXR'
+    else:
+        filename = 'testfile2.EXR'
+
+    return path.join(path.dirname(path.dirname(path.abspath(__file__))), "resources", filename)
 
 
 class RenderingTaskMock(RenderingTask):
@@ -79,6 +89,15 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         rt.task_resources = [res1, res2]
         assert rt._get_working_directory() == "../.."
 
+    @patch("apps.rendering.task.renderingtask.is_windows")
+    def test_paths2(self, mock_is_windows):
+        rt = self.task
+        res1 = "{}\\dir1\\dir2\\name1".format(self.path)
+        res2 = "{}\\dir1\\dir2\\name2".format(self.path)
+        rt.task_resources = [res1, res2]
+        mock_is_windows.return_value = True
+        assert rt._get_working_directory() == "../.."
+
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
@@ -98,6 +117,9 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert img.getpixel((199, 4)) == (1, 255, 255)
         assert img.getpixel((100, 16)) == (1, 255, 255)
         img.close()
+
+        rt.preview_file_path = []
+        rt._remove_from_preview("abc")
 
     def test_update_task_state(self):
         task = self.task
@@ -199,6 +221,30 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_get_scene_file_path(self):
         task = self.task
         assert task._get_scene_file_rel_path() == ''
+
+    def test_get_preview_file_path(self):
+        assert self.task.get_preview_file_path() is None
+        self.task._open_preview()
+        assert path.isfile(self.task.get_preview_file_path())
+
+    def test_get_next_task_if_not_tasks(self):
+        task = self.task
+        task.total_tasks = 10
+        task.last_task = 10
+        assert task._get_next_task() == (None, None)
+
+    def test_put_collected_files_together(self):
+        output_name = self.temp_file_name("output.exr")
+        exr1 = _get_test_exr()
+        exr2 = _get_test_exr(alt=True)
+        assert path.isfile(exr1)
+        assert path.isfile(exr2)
+        assert load_img(output_name) is None
+        self.task.res_x = 10
+        self.task.res_y = 20
+
+        self.task._put_collected_files_together(output_name, [exr1, exr2], "paste")
+        assert load_img(output_name) is not None
 
 
 class TestGetTaskBorder(unittest.TestCase):
