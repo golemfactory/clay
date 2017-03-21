@@ -4,6 +4,7 @@ import jsonpickle as json
 import logging
 import os
 
+from PyQt5.QtCore import Qt
 from ethereum.utils import denoms
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
@@ -514,9 +515,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
-            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
+            ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(msg),
+                                 QMessageBox.Ok, self)
+            ms_box.setWindowModality(Qt.WindowModal)
             ms_box.exec_()
-            ms_box.show()
         msg = u"Task tested successfully"
         self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button

@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtCore import QObject
 from ethereum.utils import denoms
-from mock import patch, MagicMock
+from mock import patch, MagicMock, ANY
 from PIL import Image
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
@@ -164,15 +164,18 @@ class TestMainWindowCustomizer(TestGui):
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[0]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[1]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[2]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
 
