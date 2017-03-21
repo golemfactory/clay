@@ -6,7 +6,12 @@
 #define MyAppURL "https://golem.network"
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
-; NOTE 2: make sure that you've got DockerToolbox.exe, InstallDocker.msi and python-2.7.13.msi in {#Repository}\Installer\Inetaller_Win\deps
+; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
+; https://www.microsoft.com/en-us/download/details.aspx?id=40784 vcredist_x86.exe
+; https://www.microsoft.com/en-us/download/details.aspx?id=44266
+; https://www.python.org/ftp/python/2.7.13/python-2.7.13.msi
+; https://download.docker.com/win/stable/InstallDocker.msi
+; https://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py2.7.exe/download
 #define Repository "C:\golem"           
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.3.0")
 #define AppIcon "favicon.ico"
@@ -39,16 +44,15 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; Append python to PATH if does not already exist
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Python27\;{sd}\Python27\Scripts\"; Check: NeedsAddPath('{sd}\Python27')
 
+; Append Docker to PATH
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox";
+
 ; Add OpenSSL to the PATH
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
 
 ; @todo do we need any more languages? It can be confusing
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
-;Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
-;Name: "japanese"; MessagesFile: "compiler:Languages\Japanese.isl"
-;Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
-;Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -60,11 +64,12 @@ Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir:
 Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
 Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;                              
 Source: "{#Repository}\Installer\Installer_Win\deps\pywin32-220.win32-py2.7.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
+Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;  
 Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\libeay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;   
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
@@ -78,7 +83,10 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
 
 ; Install VC For Python 2.7
-Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"
+Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"         
+
+; Install runtime
+Filename: "{tmp}\vcredist_x86.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime"
 
 ; Install external wheels
 Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-win32.whl"""; Description: "Install sip"; Check: DependenciesSetup('sip')
