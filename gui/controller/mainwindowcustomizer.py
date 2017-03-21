@@ -259,7 +259,11 @@ class MainWindowCustomizer(Customizer):
         except Exception as err:
             definition = None
             logger.error("Can't loads the file {}: {}".format(file_path, err))
-            QMessageBox().critical(None, "Error", "This is not a proper gt file: {}".format(err))
+            msg_box = QMessageBox(QMessageBox.Critical, 'Error',
+                                  "This is not a proper gt file: {}".format(err),
+                                  QMessageBox.Ok, self.gui.window)
+            msg_box.setWindowModality(Qt.WindowModal)
+            msg_box.exec_()
         finally:
             f.close()
 

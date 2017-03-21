@@ -3,7 +3,7 @@ import os
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 from ethereum.utils import denoms
-from mock import MagicMock
+from mock import MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from gui.application import Gui
@@ -18,6 +18,7 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         super(TestConfigurationDialogCustomizer, self).setUp()
         self.logic = MagicMock()
         self.gui = Gui(self.logic, AppMainWindow)
+        self.gui.main_window.show = MagicMock()
 
     def tearDown(self):
         super(TestConfigurationDialogCustomizer, self).tearDown()
@@ -61,6 +62,60 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         customizer.gui.ui.minPriceLineEdit.setText(u"0.1 ETH")
         with self.assertLogs(logger, level=1):
             self.__click_ok(customizer)
+
+    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    def test_remove_from_computing(self, msg_box):
+        msg_box.return_value = msg_box
+        msg_box.Yes = 1
+        msg_box.No = 2
+
+        customizer = ConfigurationDialogCustomizer(self.gui.main_window, self.logic)
+
+        msg_box.exec_.return_value = msg_box.No
+
+        customizer._ConfigurationDialogCustomizer__remove_from_computing()
+        assert not self.logic.remove_computed_files.called
+
+        msg_box.exec_.return_value = msg_box.Yes
+
+        customizer._ConfigurationDialogCustomizer__remove_from_computing()
+        assert self.logic.remove_computed_files.called
+
+    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    def test_remove_from_distributed(self, msg_box):
+        msg_box.return_value = msg_box
+        msg_box.Yes = 1
+        msg_box.No = 2
+
+        customizer = ConfigurationDialogCustomizer(self.gui.main_window, self.logic)
+
+        msg_box.exec_.return_value = msg_box.No
+
+        customizer._ConfigurationDialogCustomizer__remove_from_distributed()
+        assert not self.logic.remove_distributed_files.called
+
+        msg_box.exec_.return_value = msg_box.Yes
+
+        customizer._ConfigurationDialogCustomizer__remove_from_distributed()
+        assert self.logic.remove_distributed_files.called
+
+    @patch('gui.controller.configurationdialogcustomizer.QMessageBox')
+    def test_remove_from_received(self, msg_box):
+        msg_box.return_value = msg_box
+        msg_box.Yes = 1
+        msg_box.No = 2
+
+        customizer = ConfigurationDialogCustomizer(self.gui.main_window, self.logic)
+
+        msg_box.exec_.return_value = msg_box.No
+
+        customizer._ConfigurationDialogCustomizer__remove_from_received()
+        assert not self.logic.remove_received_files.called
+
+        msg_box.exec_.return_value = msg_box.Yes
+
+        customizer._ConfigurationDialogCustomizer__remove_from_received()
+        assert self.logic.remove_received_files.called
 
     def __click_ok(self, customizer):
         QTest.mouseClick(customizer.gui.ui.settingsOkButton, Qt.LeftButton)
