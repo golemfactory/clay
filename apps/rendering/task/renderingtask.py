@@ -177,14 +177,8 @@ class RenderingTask(CoreTask):
                 img_task.putpixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):
-        if is_windows():
-            task_collector_name = "taskcollector.exe"
-        else:
-            task_collector_name = "taskcollector"
-        task_collector_path = os.path.normpath(
-            os.path.join(get_golem_path(), "apps", "rendering", "resources", "taskcollector",
-                         "Release", task_collector_name)
-        )
+        task_collector_path = self._get_task_collector_path()
+
         cmd = ["{}".format(task_collector_path),
                "{}".format(arg),
                "{}".format(self.res_x),
@@ -192,6 +186,15 @@ class RenderingTask(CoreTask):
                "{}".format(output_file_name)] + files
 
         exec_cmd(cmd)
+
+    @staticmethod
+    def _get_task_collector_path():
+        if is_windows():
+            task_collector_name = "taskcollector.exe"
+        else:
+            task_collector_name = "taskcollector"
+        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
+                                             "taskcollector", "Release", task_collector_name))
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
         ctd = ComputeTaskDef()
