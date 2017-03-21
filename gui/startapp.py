@@ -2,10 +2,8 @@ import logging
 import subprocess
 import sys
 from os import path
-
 from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
-
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.common import config_logging
@@ -42,12 +40,8 @@ def start_error(err):
 
 
 def start_gui(address):
-    args = ['-r', '{}:{}'.format(address.host, address.port)]
-
-    if hasattr(sys, 'frozen') and sys.frozen:
-        return subprocess.Popen(['golemgui'] + args)
-    else:
-        return subprocess.Popen(['python', 'golemgui.py'] + args)
+    return subprocess.Popen([sys.executable, 'golemgui.py', '-r',
+                             '{}:{}'.format(address.host, address.port)])
 
 
 def start_client(start_ranking, datadir=None,

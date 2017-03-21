@@ -253,7 +253,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(task.header.task_id, None, resource_types["hashes"])
+        task.get_resources.assert_called_with(None, resource_types["hashes"])
         c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.add_new_task.called
