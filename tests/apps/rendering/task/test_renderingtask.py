@@ -249,8 +249,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         self.task.res_y = 20
 
         self.task._put_collected_files_together(output_name, [exr1, exr2], "paste")
-        # FIXME
-        # assert load_img(output_name) is not None
+        assert load_img(output_name) is not None
 
     def test_get_task_collector_path(self):
         assert path.isfile(self.task._get_task_collector_path())
