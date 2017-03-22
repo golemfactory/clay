@@ -1,11 +1,14 @@
-import unittest
 import os
+from pathlib import Path
+import pickle
+import unittest
 
 from mock import Mock
 from PIL import Image
 
 from golem.resource.dirmanager import DirManager
-from golem.tools.testdirfixture import TestDirFixture
+from golem.testutils import TempDirFixture
+from golem.testutils import PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
@@ -21,7 +24,10 @@ class TestLuxRenderDefaults(unittest.TestCase):
         self.assertTrue(os.path.isfile(ld.main_program_file))
 
 
-class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
+class TestLuxRenderTaskBuilder(TempDirFixture, LogTestCase):
+    PEP8_FILES = [
+        'apps/lux/task/luxrendertask.py',
+    ]
 
     def get_test_lux_task(self):
         td = RenderingTaskDefinition()
@@ -142,5 +148,13 @@ class TestLuxRenderTaskBuilder(TestDirFixture, LogTestCase):
         assert luxtask.num_tasks_received == 1
         assert luxtask.collected_file_names[1] == flm_file
 
+    def test_pickling(self):
+        """Test for issue #873
 
-
+        https://github.com/golemfactory/golem/issues/873
+        """
+        p = Path(__file__).parent / "samples" / "GoldenGate.exr"
+        luxtask = self.get_test_lux_task()
+        luxtask.res_x, luxtask.res_y = 1262, 860
+        luxtask._update_preview_from_exr(str(p))
+        pickled = pickle.dumps(luxtask)

@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+from sys import argv
+
 from setuptools import setup
 
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
-from sys import argv
 
+if 'bdist_wheel' in argv:
+    ui_err = generate_ui()
 requirements, dependencies = parse_requirements(path.dirname(__file__))
-
 docker_err = try_pulling_docker_images()
 task_collector_err = TaskCollectorBuilder().build()
 update_ini()
@@ -51,7 +53,8 @@ setup(
         ]
     },
     data_files=[
-        (path.normpath('../../'), ['golemapp.py', 'golemcli.py', 'golemgui.py', 'loggingconfig.py', '.version.ini']),
+        (path.normpath('../../'), ['golemapp.py', 'golemcli.py', 'loggingconfig.py', '.version.ini']),
+        (path.normpath('../../gui'), ['golemgui.py']),
         (path.normpath('../../golem/apps'), [path.normpath('apps/registered.ini'), path.normpath('apps/images.ini')]),
         (path.normpath('../../golem/apps/blender/resources/scripts'),
          [path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
@@ -67,7 +70,8 @@ setup(
     ]
 )
 
-ui_err = generate_ui()
+if 'bdist_wheel' not in argv:
+    ui_err = generate_ui()
 
 print_errors(ui_err, docker_err, task_collector_err)
 

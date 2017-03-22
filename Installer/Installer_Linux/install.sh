@@ -56,12 +56,14 @@ function info_msg()
 # @return 1 if answer is 'yes', 0 if 'no'
 function ask_user()
 {
-    read -p "$@ " yn
-    case $yn in
-        y|Y ) return 1;;
-        n|N ) return 0;;
-        * ) warning_msg "Please answer yes or no.";;
-    esac
+    while [ 1 ]; do
+        read -p "$@ " yn
+        case $yn in
+            y|Y ) return 1;;
+            n|N ) return 0;;
+            * ) warning_msg "Please answer yes or no.";;
+        esac
+    done
 }
 
 # @brief check if dependencies (pip, Docker, IPFS and Ethereum) are installed and set proper 'global' variables
