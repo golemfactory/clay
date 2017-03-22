@@ -43,6 +43,7 @@ class DockerManager(DockerConfigManager):
         tag=['docker', 'tag'],
         pull=['docker', 'pull'],
         version=['docker', '-v'],
+        help=['docker', '--help'],
         images=['docker', 'images', '-q']
     )
 
@@ -83,7 +84,10 @@ class DockerManager(DockerConfigManager):
     def check_environment(self):
 
         try:
-            self.command('version')
+            # We're checking the availability of "docker" command line utility
+            # (other commands may result in an error if docker env variables
+            # are set incorrectly)
+            self.command('help')
         except Exception as err:
             logger.error(
                 """
