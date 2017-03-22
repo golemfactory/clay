@@ -1,13 +1,15 @@
+import sys
 import time
 from Queue import Queue
+from os.path import join
 from threading import Thread
 
-import sys
 from mock import Mock, patch, mock
 from twisted.internet.defer import Deferred
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_golem_path
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
