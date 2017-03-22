@@ -30,7 +30,6 @@ environment:
       WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1%)
 
       PYWIN32: pywin32-220.win32-py2.7.exe
-      FREEIMAGE: FreeImage3170Win32Win64.zip
 
       WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
 
@@ -65,13 +64,6 @@ install:
 
   - ipfs init
   - ps: $IPFSProcess = Start-Process ipfs daemon -PassThru
-
-  # freeimage
-  - appveyor DownloadFile "https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%FREEIMAGE%"
-  - 7z x %FREEIMAGE% -y -aoa -oC:\ > NUL
-  - mkdir apps\rendering\resources\taskcollector\FreeImage\Release
-  - copy /y C:\FreeImage\Dist\x32\FreeImage.dll apps\rendering\resources\taskcollector\Release
-  - copy /y C:\FreeImage\Dist\x32\FreeImage.lib apps\rendering\resources\taskcollector\FreeImage\Release
 
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip

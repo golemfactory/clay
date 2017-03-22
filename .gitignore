@@ -60,3 +60,9 @@ lextab.py
 yacctab.py
 # Local data
 data/
+
+# Install and build
+apps/rendering/resources/taskcollector/Release/*
+apps/rendering/resources/taskcollector/taskcollector.vcxproj
+Installer/Installer_Win/deps/*
+Installer/Installer_Win/golem-*

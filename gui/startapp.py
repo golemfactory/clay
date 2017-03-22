@@ -1,17 +1,17 @@
 import logging
 import subprocess
 import sys
-
-from golem.core.deferred import install_event_logger
-from twisted.internet.error import ReactorAlreadyRunning
+from os.path import join
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging
+from golem.core.common import config_logging, get_golem_path
+from golem.core.deferred import install_event_logger
 from golem.core.processmonitor import ProcessMonitor
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
+from twisted.internet.error import ReactorAlreadyRunning
 
 apps_manager = AppsManager()
 apps_manager.load_apps()
@@ -39,7 +39,7 @@ def start_error(err):
 
 
 def start_gui(address):
-    return subprocess.Popen([sys.executable, 'golemgui.py', '-r',
+    return subprocess.Popen([sys.executable, join(get_golem_path(), "gui", "golemgui.py"), '-r',
                              '{}:{}'.format(address.host, address.port)])
 
 
@@ -107,6 +107,5 @@ def start_client(start_ranking, datadir=None,
 
 def start_app(start_ranking=True, datadir=None,
               transaction_system=False, rendering=False, **config_overrides):
-
     start_client(start_ranking, datadir,
                  transaction_system, **config_overrides)

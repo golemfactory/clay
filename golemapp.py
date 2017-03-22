@@ -44,6 +44,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
 
+    # Pull docker images
+    __pull_docker_images()
+
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(u, m)
@@ -73,6 +76,29 @@ def start_crossbar_worker(unbuffered, module):
     import importlib
     module = importlib.import_module(module)
     module.run()
+
+
+def __pull_docker_images():
+    from golem.core.common import get_golem_path
+    from subprocess import call
+    from os.path import join
+    with open(join(get_golem_path(), 'apps', 'images.ini'), 'rb') as file_:
+        data = file_.read().split('\n')
+    res = 0
+    err = None
+    error_message = ""
+    for line in data[1:]:
+        if line:
+            image = "{}:{}".format(line.split()[0], line.split()[2])
+            res |= call(["docker", "pull", image], stderr=err)
+            if err:
+                error_message += "\n{}:{}".format(line.split()[0].split('/')[-1], err)
+            err = None
+    if res != 0:
+        print("***************************************************************\n"
+              "Error occurred during pulling docker images!{}\n"
+              "***************************************************************".format(error_message))
+        exit(1)
 
 
 if __name__ == '__main__':
