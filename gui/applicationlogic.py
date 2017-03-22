@@ -143,7 +143,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
     def update_peers_view(self):
-        self.client.get_connected_peers().addCallback(self._update_peers_view)
+        self.client.get_connected_peers().addCallbacks(
+            self._update_peers_view, self._rpc_error
+        )
 
     def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable
@@ -164,9 +166,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
-        deferred = self.client.get_balance()
-        deferred.addCallback(self._update_payments_view)
-        deferred.addErrback(self._rpc_error)
+        self.client.get_balance().addCallbacks(
+            self._update_payments_view, self._rpc_error
+        )
 
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):

@@ -1,8 +1,7 @@
 import logging
 import subprocess
-
 import sys
-from twisted.internet.defer import setDebugging
+
 from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
@@ -13,7 +12,6 @@ from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
 
-setDebugging(True)
 apps_manager = AppsManager()
 apps_manager.load_apps()
 
