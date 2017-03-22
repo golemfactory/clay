@@ -459,7 +459,9 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    def test_messages(self):
+    @patch('gui.applicationlogic.QMessageBox')
+    def test_messages(self, msg_box):
+        msg_box.return_value = msg_box
         logic = self.logic
         self.logic.datadir = self.path
         logic.customizer = MainWindowCustomizer(self.app.main_window, logic)
@@ -516,6 +518,9 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. "
         logic.test_task_computation_success([], 10000)
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
+        logic.test_task_computation_success([], 10000, msg="Warning message")
+        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
+        assert msg_box.exec_.called
 
         rts.definition = BlenderBenchmark().task_definition
         rts.definition.output_file = 1342
@@ -529,7 +534,6 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ts.definition.task_type = "Blender"
         ts.definition.main_program_file = "nonexisting"
         self.assertFalse(logic._validate_task_state(ts))
-        print logic.customizer.show_error_window
         logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
 
         with self.assertLogs(logger, level="WARNING"):
