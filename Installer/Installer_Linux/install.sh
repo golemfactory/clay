@@ -27,7 +27,7 @@ declare -i reinstall=0
 # PACKAGE VERSION
 CURRENT_VERSION="0.1.0"
 NEWEST_VERSION="0.1.0"
-PACKAGE="golem-0.1.0-py2-none-any.whl"
+PACKAGE="golem-0.1.0-cp27-none-linux_x86_64.whl"
 
 
 # @brief print error message
@@ -135,7 +135,7 @@ function get_golem_version()
     info_msg "Checking Golem version"
     installed_version=$( pip list 2>/dev/null | grep 'golem' | awk '{print $2}' | sed 's/[()]//g' )
     newest_version=$(wget -O- -q $HOST$version_file)
-    PACKAGE="golem-$newest_version-py2-none-any.whl"
+    PACKAGE="golem-$newest_version-cp27-none-linux_x86_64.whl"
     if [[ ! "$newest_version" > "$installed_version" ]]; then     # @todo need to be upgraded in versioning
         ask_user "Newest version ($newest_version) is already installed. Do you want to reinstall? (y/n)"
         reinstall=$?
