@@ -1,3 +1,3 @@
-from .client import Client
+from golem.ethereum.client import Client
 
 # flake8: noqa
