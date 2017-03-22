@@ -72,13 +72,10 @@ def parse_requirements(my_path):
     return requirements, dependency_links
 
 
-def print_errors(ui_err, docker_err, task_err):
-    if ui_err:
-        print(ui_err)
-    if docker_err:
-        print(docker_err)
-    if task_err:
-        print(task_err)
+def print_errors(*errors):
+    for error in errors:
+        if error:
+            print(error)
 
 
 def generate_ui():
@@ -93,29 +90,6 @@ def generate_ui():
             Generate_ui_files function returned {}
             ***************************************************************
             """.format(err)
-
-
-def try_pulling_docker_images():
-    err_msg = __try_docker()
-    if err_msg:
-        return err_msg
-    images_dir = 'apps'
-
-    with open(path.join(images_dir, 'images.ini')) as f:
-        for line in f:
-            try:
-                image, docker_file, tag = line.split()
-                if subprocess.check_output(["docker", "images", "-q", image + ":" + tag]):
-                    print("\n Image {} exists - skipping".format(image))
-                    continue
-                cmd = "docker pull {}:{}".format(image, tag)
-                print("\nRunning '{}' ...\n".format(cmd))
-                subprocess.check_call(cmd.split(" "))
-            except ValueError:
-                print("Skipping line {}".format(line))
-            except subprocess.CalledProcessError as err:
-                print("Docker pull failed: {}".format(err))
-                sys.exit(1)
 
 
 def get_golem_version(increase):
@@ -157,17 +131,3 @@ def get_files():
         if len(srcs) > 0:
             result.append((dst, srcs))
     return result
-
-
-def __try_docker():
-    try:
-        subprocess.check_call(["docker", "info"])
-    except Exception as err:
-        return \
-            """
-            ***************************************************************
-            Docker not available, not building images.
-            Golem will not be able to compute anything.
-            Command 'docker info' returned {}
-            ***************************************************************
-            """.format(err)
