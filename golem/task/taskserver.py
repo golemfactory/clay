@@ -69,7 +69,6 @@ class TaskServer(PendingConnectionsServer):
         logging.debug('Notified about payment.confirmed: %r', payment)
         task_id = self.task_manager.subtask2task_mapping[payment.subtask]
         task = self.task_manager.tasks[task_id]
-        # XXX
         self._add_pending_request(
             req_type=TASK_CONN_TYPES['payment'],
             task_owner=task.header.task_owner,
@@ -346,6 +345,14 @@ class TaskServer(PendingConnectionsServer):
 
         payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
         logger.debug(u'Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
+        task = self.task_manager.tasks[task_id]
+        self._add_pending_request(
+            req_type=TASK_CONN_TYPES['payment'],
+            task_owner=task.header.task_owner,
+            port=task.header.task_owner_port,
+            key_id=task.header.task_owner_key_id,
+            args={'subtask_id': payment.subtask}
+        )
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
@@ -779,7 +786,7 @@ class TaskServer(PendingConnectionsServer):
         session.inform_worker_about_payment(payment)
 
     def noop(self, *args, **kwargs):
-        pass
+        logger.debug('Noop(%r, %r)', args, kwargs)
 
     # SYNC METHODS
     #############################

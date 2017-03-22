@@ -1,4 +1,8 @@
+from __future__ import absolute_import
+
+
 import datetime
+from ethereum.utils import denoms
 import jsonpickle as json
 import logging
 from enum import Enum
@@ -137,6 +141,10 @@ class Payment(BaseModel):
         # For convenience always have .details as a dictionary
         if self.details is None:
             self.details = {}
+
+    def __repr__(self):
+        tx = self.details.get('tx', 'NULL')
+        return "<Payment stid: %r v: %.3f s: %r tx: %s>" % (self.subtask, self.value/denoms.ether, self.status, tx)
 
 
 class ReceivedPayment(BaseModel):
