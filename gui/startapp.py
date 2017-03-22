@@ -2,6 +2,7 @@ import logging
 import subprocess
 import sys
 
+from golem.core.deferred import install_event_logger
 from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
@@ -48,6 +49,7 @@ def start_client(start_ranking, datadir=None,
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
+    install_event_logger()
     environments = load_environments()
 
     if not reactor:
