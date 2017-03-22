@@ -7,14 +7,13 @@ from mock import Mock
 from PIL import Image
 
 from golem.resource.dirmanager import DirManager
-from golem.testutils import TempDirFixture
-from golem.testutils import PEP8MixIn
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
-from apps.lux.task.luxrendertask import LuxRenderDefaults, LuxRenderTaskBuilder, LuxRenderOptions, logger
-from apps.core.task.coretask import AcceptClientVerdict
-
+from apps.core.task.coretask import AcceptClientVerdict, TaskTypeInfo
+from apps.lux.task.luxrendertask import (logger, LuxRenderDefaults, LuxRenderOptions,
+                                         LuxRenderTaskBuilder, LuxRenderTaskTypeInfo)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
@@ -24,7 +23,7 @@ class TestLuxRenderDefaults(unittest.TestCase):
         self.assertTrue(os.path.isfile(ld.main_program_file))
 
 
-class TestLuxRenderTaskBuilder(TempDirFixture, LogTestCase, PEP8MixIn):
+class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/luxrendertask.py',
     ]
@@ -158,3 +157,91 @@ class TestLuxRenderTaskBuilder(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask.res_x, luxtask.res_y = 1262, 860
         luxtask._update_preview_from_exr(str(p))
         pickled = pickle.dumps(luxtask)
+
+
+class TestLuxRenderTaskTypeInfo(TempDirFixture):
+    def test_init(self):
+        typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
+        assert isinstance(typeinfo, TaskTypeInfo)
+        assert typeinfo.output_formats == ["exr", "png", "tga"]
+        assert typeinfo.output_file_ext == ["lxs"]
+        assert typeinfo.name == "LuxRender"
+        assert isinstance(typeinfo.defaults, LuxRenderDefaults)
+        assert typeinfo.options == LuxRenderOptions
+        assert typeinfo.definition == RenderingTaskDefinition
+        assert typeinfo.task_builder_type == LuxRenderTaskBuilder
+        assert typeinfo.dialog == "dialog"
+        assert typeinfo.dialog_controller == "controller"
+
+    def test_get_task_border(self):
+        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        definition = RenderingTaskDefinition()
+        definition.resolution = (4, 4)
+        border = typeinfo.get_task_border("subtask1", definition, 10)
+        for i in range(4):
+            assert (i, 0) in border
+            assert (i, 3) in border
+        for j in range(4):
+            assert (0, j) in border
+            assert (3, j) in border
+
+        definition.resolution = (300, 200)
+        border = typeinfo.get_task_border("subtask1", definition, 10)
+        for i in range(300):
+            assert (i, 0) in border
+            assert (i, 199) in border
+        for j in range(200):
+            assert (0, j) in border
+            assert (299, j) in border
+        assert (300, 199) not in border
+        assert (299, 201) not in border
+        assert (0, 200) not in border
+        assert (300, 0) not in border
+
+        definition.resolution = (300, 300)
+        border = typeinfo.get_task_border("subtask1", definition, 10)
+        for i in range(200):
+            assert (i, 0) in border
+            assert (i, 199) in border
+        for j in range(200):
+            assert (0, j) in border
+            assert (199, j) in border
+        assert (200, 199) not in border
+        assert (199, 200) not in border
+        assert (0, 200) not in border
+        assert (200, 0) not in border
+
+        definition.resolution = (1000, 100)
+        border = typeinfo.get_task_border("subtask1", definition, 10)
+        for i in range(300):
+            assert (i, 0) in border
+            assert (i, 29) in border
+        for j in range(30):
+            assert (0, j) in border
+            assert (299, j) in border
+        assert (30, 299) not in border
+        assert (29, 200) not in border
+        assert (0, 30) not in border
+        assert (300, 0) not in border
+
+        definition.resolution = (100, 1000)
+        border = typeinfo.get_task_border("subtask1", definition, 10)
+        for i in range(20):
+            assert (i, 0) in border
+            assert (i, 199) in border
+        for j in range(200):
+            assert (0, j) in border
+            assert (19, j) in border
+        assert (20, 199) not in border
+        assert (19, 200) not in border
+        assert (20, 0) not in border
+        assert (0, 200) not in border
+
+    def test_get_task_num_from_pixels(self):
+        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        definition = RenderingTaskDefinition()
+        definition.resolution = (0, 0)
+        assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
+
+
+

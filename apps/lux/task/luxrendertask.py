@@ -73,15 +73,13 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
             scale_factor = min(1.0, scale_factor)
         else:
             scale_factor = 1.0
-        border = []
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        for i in range(0, y):
-            border.append((0, i))
-            border.append((x - 1, i))
-        for i in range(0, x):
-            border.append((i, 0))
-            border.append((i, y - 1))
+        print x
+        print y
+        print scale_factor
+        border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
+        border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
         return border
 
     @classmethod
