@@ -254,6 +254,14 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_get_task_collector_path(self):
         assert path.isfile(self.task._get_task_collector_path())
 
+        mock_is_windows = Mock()
+        mock_is_windows.return_value = False
+        with patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
+            linux_path = self.task._get_task_collector_path()
+            mock_is_windows.return_value = True
+            windows_path = self.task._get_task_collector_path()
+            assert windows_path == linux_path + ".exe"
+
 
 class TestGetTaskBorder(unittest.TestCase):
 
