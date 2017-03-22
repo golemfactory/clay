@@ -24,5 +24,6 @@ coverage:
     - "tests/*"
     - "setup.py"
     - "Installer/*"
+    - "setup/*"
 comment:
   layout: header, diff, changes, sunburst, uncovered
