@@ -154,6 +154,8 @@ class MockDockerManager(DockerManager):
             return 'Running'
         elif key == 'version':
             return '1.0.0'
+        elif key == 'help':
+            return '[help contents]'
         elif key not in self.docker_machine_commands:
             raise KeyError(key)
 
