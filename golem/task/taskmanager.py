@@ -53,6 +53,9 @@ class TaskManager(TaskEventListener):
         self.listen_address = listen_address
         self.listen_port = listen_port
 
+        # FIXME Remove this variable and make task persistance obligatory after it is more tested
+        self.task_persistance = False
+
         self.tasks_dir = Path(tasks_dir)
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
@@ -67,7 +70,8 @@ class TaskManager(TaskEventListener):
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper()
-        self.restore_tasks()
+        if self.task_persistance:
+            self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
@@ -114,10 +118,11 @@ class TaskManager(TaskEventListener):
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
-        self.dump_task(task.header.task_id)
 
-        logger.info("Task {} added".format(task.header.task_id))
-        self.notice_task_updated(task.header.task_id)
+        if self.task_persistance:
+            self.dump_task(task.header.task_id)
+            logger.info("Task {} added".format(task.header.task_id))
+            self.notice_task_updated(task.header.task_id)
 
     def dump_task(self, task_id):
         logger.debug('DUMP TASK')
@@ -611,5 +616,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def notice_task_updated(self, task_id):
         # self.save_state()
-        self.dump_task(task_id)
+        if self.task_persistance:
+            self.dump_task(task_id)
         dispatcher.send(signal='golem.taskmanager', event='task_status_updated', task_id=task_id)
