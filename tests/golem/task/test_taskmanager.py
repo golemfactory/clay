@@ -9,6 +9,7 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.threads import wait_for
 from golem.network.p2p.node import Node
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
@@ -44,8 +45,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         super(TestTaskManager, self).tearDown()
         shutil.rmtree(str(self.tm.tasks_dir))
 
-    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0, subtask_timeout=120.0):
-        header = TaskHeader(
+    def _get_task_header(self, task_id, timeout, subtask_timeout):
+        return TaskHeader(
             node_name="test_node_%s" % (self.test_nonce,),
             task_id=task_id,
             task_owner_address="task_owner_address_%s" % (self.test_nonce,),
@@ -58,6 +59,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
         )
+
+    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0,
+                       subtask_timeout=120.0):
+        header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='')
 
         ctd = ComputeTaskDef()
@@ -190,9 +195,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         resources = ['first', 'second']
 
         task_mock = self._get_task_mock()
-        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources) as resources_mock:
+        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources):
             wait_for(self.tm.add_new_task(task_mock))
             assert self.tm.get_resources(task_id, task_mock.header) is resources
+
+        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'")
+        self.tm.tasks["xyz"] = task
+        self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     @patch("golem.task.taskmanager.get_external_address")
@@ -542,7 +551,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def test_update_signatures(self, _):
         node = Node("node", "key_id", "10.0.0.10", 40103, "1.2.3.4", 40103, None, 40102, 40102)
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234, "key_id", "environment", task_owner=node), '')
-
 
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
         wait_for(self.tm.add_new_task(task))

@@ -41,10 +41,19 @@ sdist/
 
 # Golem files
 *.db
-logs/*
-loggingconfig_local.py
+
 gui/view/gen/icons_rc.py
 golem/monitorconfig_local.py
+
+# Logs
+logs/*
+tests/logs/*
+loggingconfig_local.py
+golem.log*
+golem_cli.log*
+golem_gui.log*
+golem_client.log*
+*.log
 
 # Project structure parse results
 lextab.py

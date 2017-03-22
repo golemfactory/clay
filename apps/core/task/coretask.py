@@ -2,6 +2,8 @@ import copy
 import logging
 import os
 
+from enum import Enum
+
 from golem.core.common import HandleKeyError, timeout_to_deadline
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
@@ -9,7 +11,9 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
@@ -19,6 +23,15 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **kwargs):
     logger.warning("This is not my subtask {}".format(args[1]), exc_info=True)
     return False
+
+
+class AcceptClientVerdict(Enum):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
+MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class TaskTypeInfo(object):
@@ -56,8 +69,9 @@ class CoreTask(Task):
     # Task methods #
     ################
 
-    def __init__(self, src_code, task_definition, node_name, owner_address, owner_port,
-                 owner_key_id, environment, resource_size):
+    def __init__(self, src_code, task_definition, node_name, environment, resource_size=0,
+                 owner_address="", owner_port=0, owner_key_id="",
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
         """Create more specific task implementation
 
         """
@@ -97,13 +111,14 @@ class CoreTask(Task):
 
         self.root_path = None
 
-        self.stdout = {}  # for each subtask keep information about stdout received from computing node
-        self.stderr = {}  # for each subtask keep information about stderr received from computing node
-        self.results = {}  # for each subtask keep information about files containing results
+        self.stdout = {}  # for each subtask keep info about stdout received from computing node
+        self.stderr = {}  # for each subtask keep info about stderr received from computing node
+        self.results = {}  # for each subtask keep info about files containing results
 
         self.res_files = {}
         self.tmp_dir = None
         self.verificator = self.VERIFICATOR_CLASS()
+        self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
         return self.header.docker_images is not None
@@ -160,16 +175,19 @@ class CoreTask(Task):
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
-        was_failure_before = self.subtasks_given[subtask_id]['status'] in [SubtaskStatus.failure, SubtaskStatus.resent]
-        if subtask_id in self.subtasks_given:
-            if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.starting:
-                self._mark_subtask_failed(subtask_id)
-            elif self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
-                self._mark_subtask_failed(subtask_id)
-                tasks = self.subtasks_given[subtask_id]['end_task'] - self.subtasks_given[subtask_id]['start_task'] + 1
-                self.num_tasks_received -= tasks
+        subtask_info = self.subtasks_given[subtask_id]
+        was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
+                                                        SubtaskStatus.resent]
+
+        if subtask_info['status'] == SubtaskStatus.starting:
+            self._mark_subtask_failed(subtask_id)
+        elif subtask_info['status'] == SubtaskStatus.finished:
+            self._mark_subtask_failed(subtask_id)
+            tasks = subtask_info['end_task'] - subtask_info['start_task'] + 1
+            self.num_tasks_received -= tasks
+
         if not was_failure_before:
-            self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
+            subtask_info['status'] = SubtaskStatus.restarted
 
     def abort(self):
         pass
@@ -179,7 +197,7 @@ class CoreTask(Task):
             return 0.0
         return float(self.num_tasks_received) / self.total_tasks
 
-    def get_resources(self, task_id, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
 
         dir_name = self._get_resources_root_dir()
         if tmp_dir is None:
@@ -190,7 +208,8 @@ class CoreTask(Task):
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
             elif resource_type == resource_types["parts"]:
-                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header, dir_name,
+                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
+                                                                               dir_name,
                                                                                self.res_files)
             elif resource_type == resource_types["hashes"]:
                 return copy.copy(self.task_resources)
@@ -266,10 +285,10 @@ class CoreTask(Task):
             return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
-        """ From a list of files received in task_results, return only files that don't have extension
-        <log_ext> or <err_log_ext>. File with log_ext is saved as stdout for this subtask (only one file
-        is currently supported). File with err_log_ext is save as stderr for this subtask (only one file is
-        currently supported).
+        """ From a list of files received in task_results, return only files that don't
+        have extension <log_ext> or <err_log_ext>. File with log_ext is saved as stdout
+        for this subtask (only one file is currently supported). File with err_log_ext is save
+        as stderr for this subtask (only one file is currently supported).
         :param list task_results: list of files
         :param str subtask_id: if of a given subtask
         :param str log_ext: extension that stdout files have
@@ -291,7 +310,8 @@ class CoreTask(Task):
                     os.rename(tr, new_tr)
                     filtered_task_results.append(new_tr)
                 except (IOError, OSError) as err:
-                    logger.warning("Problem with moving file {} to new location: {}".format(tr, err))
+                    logger.warning("Problem with moving file {} to new location: {}".format(tr,
+                                                                                            err))
 
         return filtered_task_results
 
@@ -338,6 +358,19 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(self.task_resources)
         return os.path.dirname(prefix)
 
+    def _accept_client(self, node_id):
+        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        finishing = client.finishing()
+        max_finishing = self.max_pending_client_results
+
+        if client.rejected():
+            return AcceptClientVerdict.REJECTED
+        elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
+            return AcceptClientVerdict.SHOULD_WAIT
+
+        client.start()
+        return AcceptClientVerdict.ACCEPTED
+
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
@@ -348,10 +381,16 @@ class CoreTaskBuilder(TaskBuilder):
         self.node_name = node_name
         self.root_path = root_path
         self.dir_manager = dir_manager
+        self.src_code = ""
+        self.environment = None
 
     def build(self):
         task = self.TASK_CLASS(**self.get_task_kwargs())
         return task
 
     def get_task_kwargs(self, **kwargs):
+        kwargs["src_code"] = self.src_code
+        kwargs["task_definition"] = self.task_definition
+        kwargs["node_name"] = self.node_name
+        kwargs["environment"] = self.environment
         return kwargs

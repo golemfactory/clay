@@ -31,3 +31,12 @@ class TestCustomizer(unittest.TestCase):
         finally:
             if os.path.isfile(file_name):
                 os.remove(file_name)
+
+    @patch('gui.controller.customizer.QMessageBox')
+    def test_show_warning_window(self, mock_messagebox):
+        mock_messagebox.return_value = mock_messagebox
+
+        customizer = Customizer(Mock(), Mock())
+        customizer.show_warning_window("Test warning message")
+
+        assert mock_messagebox.exec_.called

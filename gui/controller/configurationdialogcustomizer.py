@@ -3,6 +3,7 @@ from __future__ import division
 import logging
 import multiprocessing
 from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
 
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPalette
@@ -196,30 +197,39 @@ class ConfigurationDialogCustomizer(Customizer):
         self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all computed files?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all computed files?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_computed_files()
             self.__load_resource_config()
         else:
             pass
 
     def __remove_from_distributed(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all distributed resources?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all distributed resources?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_distributed_files()
             self.__load_resource_config()
         else:
             pass
 
     def __remove_from_received(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all received task results?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all received task results?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_received_files()
             self.__load_resource_config()
         else:
@@ -251,7 +261,6 @@ class ConfigurationDialogCustomizer(Customizer):
             self.gui.ui.requestingTrustSlider.setValue(trust)
         except ValueError:
             return
-        
 
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
@@ -263,8 +272,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__recount_performance()
         self.load_data()
         self.docker_config_changed = False
-        
-
 
     def __read_basic_config(self, cfg_desc):
         cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())

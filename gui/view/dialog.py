@@ -20,7 +20,7 @@ class Dialog(object):
         self.ui.setupUi(self.window)
 
     def show(self):
-        self.window.show()
+        self.window.open()
 
     def close(self):
         try:
@@ -28,6 +28,7 @@ class Dialog(object):
         except AttributeError:
             pass
         self.window.close()
+
 
 class QDialogPlus(QDialog):
     def __init__(self, parent):
