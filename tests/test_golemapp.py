@@ -38,10 +38,10 @@ class TestGolemApp(TempDirFixture):
     def test_start_gui(self):
         runner = CliRunner()
 
-        with patch('golemapp.start_app') as start_app:
+        with patch('gui.startapp.start_app') as start_app:
             print runner.invoke(start, ['--datadir', self.path], catch_exceptions=False).output
             assert start_app.called
 
-        with patch('golemapp.start_app') as start_app:
+        with patch('gui.startapp.start_app') as start_app:
             runner.invoke(start, ['--gui', '--datadir', self.path], catch_exceptions=False)
             assert start_app.called

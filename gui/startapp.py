@@ -5,16 +5,16 @@ import sys
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging, get_golem_path
+from golem.core.common import config_logging
+from golem.core.common import get_golem_path
+from golem.core.deferred import install_unhandled_error_logger
 from golem.core.processmonitor import ProcessMonitor
 from golem.docker.manager import DockerManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
-from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
-setDebugging(True)
 apps_manager = AppsManager()
 apps_manager.load_apps()
 
@@ -56,6 +56,7 @@ def start_client(start_ranking, datadir=None,
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
+    install_unhandled_error_logger()
 
     if not reactor:
         from twisted.internet import reactor
