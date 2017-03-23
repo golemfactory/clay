@@ -2,7 +2,7 @@
 from twisted.internet.defer import DebugInfo
 
 
-def install_event_logger():
+def install_unhandled_error_logger():
     import logging
     logger = logging.getLogger('golem')
 

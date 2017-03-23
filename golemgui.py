@@ -5,7 +5,7 @@ import logging
 import click
 from apps.appsmanager import AppsManager
 from golem.core.common import config_logging
-from golem.core.deferred import install_event_logger
+from golem.core.deferred import install_unhandled_error_logger
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session, WebSocketAddress
@@ -14,7 +14,7 @@ from twisted.internet.defer import inlineCallbacks
 
 config_logging("_gui")
 logger = logging.getLogger("app")
-install_event_logger()
+install_unhandled_error_logger()
 
 apps_manager = AppsManager()
 apps_manager.load_apps()
