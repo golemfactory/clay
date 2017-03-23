@@ -120,3 +120,10 @@ def config_logging(suffix='', datadir=None):
 
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
+
+
+def log_text(text):
+    try:
+        return text.decode("utf-8", "ignore")
+    except ValueError:
+        return ""

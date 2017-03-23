@@ -6,7 +6,7 @@ import time
 from copy import copy
 from threading import Lock
 
-from golem.core.hostaddress import get_host_addresses
+
 from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, TCP6ServerEndpoint, \
     TCP6ClientEndpoint
@@ -16,7 +16,9 @@ from zope.interface import implements
 
 from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
+from golem.core.common import log_text
 from golem.core.databuffer import DataBuffer
+from golem.core.hostaddress import get_host_addresses
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
 from network import Network, SessionProtocol
@@ -39,7 +41,7 @@ class SocketAddress(object):
         try:
             SocketAddress(address, port)
         except (AddressValueError, TypeError) as err:
-            logger.info(u"Wrong address {}".format(err))
+            logger.info(log_text("Wrong address {}".format(err)))
             return False
         return True
 
@@ -331,7 +333,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
-        logger.info(u"Connection failure. {}".format(err_desc))
+        logger.info(log_text("Connection failure. {}".format(err_desc)))
         TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
@@ -371,7 +373,7 @@ class TCPNetwork(Network):
             port += 1
             self.__try_to_listen_on_port(port, max_port, established_callback, failure_callback, **kwargs)
         else:
-            logger.debug(u"Can't listen on port {}: {}".format(port, err))
+            logger.debug(log_text("Can't listen on port {}: {}".format(port, err)))
             TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     @staticmethod
@@ -405,7 +407,7 @@ class TCPNetwork(Network):
 
     @staticmethod
     def __stop_listening_failure(fail, errback, **kwargs):
-        logger.error(u"Can't stop listening {}".format(fail))
+        logger.error(log_text("Can't stop listening {}".format(fail)))
         TCPNetwork.__call_failure_callback(errback, **kwargs)
 
 #############
@@ -429,7 +431,7 @@ class BasicProtocol(SessionProtocol):
         :return bool: return True if message has been send, False if an error has
         """
         if not self.opened:
-            logger.error(msg)
+            logger.error(log_text(u"".format(msg)))
             logger.error(u"Send message failed - connection closed.")
             return False
 
