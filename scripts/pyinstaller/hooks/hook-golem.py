@@ -6,6 +6,7 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = collect_data_files('gui') + [
     ('loggingconfig.py', '.'),
+    ('.version.ini', '.'),
     ('gui/view/*', 'gui/view'),
     ('apps/*.ini', 'apps'),
     ('apps/blender/resources/scripts/blendercrop.py.template', 'apps/blender/resources/scripts/'),
