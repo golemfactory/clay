@@ -39,7 +39,7 @@ class TaskManager(TaskEventListener):
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
     def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
-                 use_distributed_resources=True, tasks_dir="tasks"):
+                 use_distributed_resources=True, tasks_dir="tasks", task_persistance=False):
         super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
@@ -54,7 +54,8 @@ class TaskManager(TaskEventListener):
         self.listen_port = listen_port
 
         # FIXME Remove this variable and make task persistance obligatory after it is more tested
-        self.task_persistance = False
+        # Remember to also remove it from init params
+        self.task_persistance = task_persistance
 
         self.tasks_dir = Path(tasks_dir)
         if not self.tasks_dir.is_dir():

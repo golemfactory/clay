@@ -15,6 +15,7 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus, ComputerState
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
@@ -26,6 +27,14 @@ class TaskMock(Task):
         state = super(TaskMock, self).__getstate__()
         del state['query_extra_data_return_value']
         return state
+
+
+class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
+    def test_restore(self):
+        keys_auth = Mock()
+        with self.assertLogs(logger, level="DEBUG") as l:
+            TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistance=True)
+        assert any("RESTORE TASKS" in log for log in l.output)
 
 
 class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
