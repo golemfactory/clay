@@ -14,7 +14,7 @@ from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.startapp import load_environments, start_client
-from mock import Mock, patch
+from mock import Mock, patch, ANY
 from twisted.internet.defer import Deferred
 
 
@@ -221,13 +221,12 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
             with patch('subprocess.Popen') as popen:
 
                 _start_gui(rpc_address)
-                popen.assert_called_with([sys.executable,
-                                          os.path.join(get_golem_path(), sys.argv[0]),
+                popen.assert_called_with([sys.executable, ANY,
                                           '--qt', '-r', address_str])
 
             with patch('subprocess.Popen') as popen, \
                  patch.object(sys, 'executable', 'python_binary'):
 
                 _start_gui(rpc_address)
-                popen.assert_called_with(['python_binary', sys.argv[0],
+                popen.assert_called_with(['python_binary', ANY,
                                           '--qt', '-r', address_str])
