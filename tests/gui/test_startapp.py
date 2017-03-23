@@ -1,13 +1,15 @@
+import sys
 import time
 from Queue import Queue
+from os.path import join
 from threading import Thread
 
-import sys
 from mock import Mock, patch, mock
 from twisted.internet.defer import Deferred
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_golem_path
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
@@ -164,7 +166,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 self.fail(u"Cannot start gui process: {}".format(exc))
 
     @patch('logging.config.fileConfig')
-    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+    @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
@@ -172,7 +174,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         self._start_client(expected_result=u"Success")
 
     @patch('logging.config.fileConfig')
-    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+    @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
@@ -181,7 +183,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                            expected_result=u"Router error")
 
     @patch('logging.config.fileConfig')
-    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+    @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
@@ -190,7 +192,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                            expected_result=u"Session error")
 
     @patch('logging.config.fileConfig')
-    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+    @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)
@@ -198,7 +200,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         self._start_gui(expected_result=u"Success")
 
     @patch('logging.config.fileConfig')
-    @ci_patch('golem.docker.machine.machine_manager.DockerMachineManager.check_environment',
+    @ci_patch('golem.docker.manager.DockerManager.check_environment',
               return_value=True)
     @ci_patch('golem.docker.environment.DockerEnvironment.check_docker_images',
               return_value=True)

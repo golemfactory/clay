@@ -1,7 +1,7 @@
 import logging
 import subprocess
-
 import sys
+
 from twisted.internet.defer import setDebugging
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -9,6 +9,7 @@ from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.common import config_logging
 from golem.core.processmonitor import ProcessMonitor
+from golem.docker.manager import DockerManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
@@ -40,7 +41,7 @@ def start_error(err):
 
 
 def start_gui(address):
-    return subprocess.Popen([sys.executable, 'golemgui.py', '-r',
+    return subprocess.Popen([sys.executable, "golemgui.py", '-r',
                              '{}:{}'.format(address.host, address.port)])
 
 
@@ -50,7 +51,6 @@ def start_client(start_ranking, datadir=None,
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
-    environments = load_environments()
 
     if not reactor:
         from twisted.internet import reactor
@@ -58,6 +58,10 @@ def start_client(start_ranking, datadir=None,
 
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
+
+    docker_manager = DockerManager.install(client.config_desc)
+    docker_manager.check_environment()
+    environments = load_environments()
 
     for env in environments:
         client.environments_manager.add_environment(env)
@@ -107,6 +111,5 @@ def start_client(start_ranking, datadir=None,
 
 def start_app(start_ranking=True, datadir=None,
               transaction_system=False, rendering=False, **config_overrides):
-
     start_client(start_ranking, datadir,
                  transaction_system, **config_overrides)

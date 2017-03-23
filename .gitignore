@@ -41,13 +41,28 @@ sdist/
 
 # Golem files
 *.db
-logs/*
-loggingconfig_local.py
+
 gui/view/gen/icons_rc.py
 golem/monitorconfig_local.py
+
+# Logs
+logs/*
+tests/logs/*
+loggingconfig_local.py
+golem.log*
+golem_cli.log*
+golem_gui.log*
+golem_client.log*
+*.log
 
 # Project structure parse results
 lextab.py
 yacctab.py
 # Local data
 data/
+
+# Install and build
+apps/rendering/resources/taskcollector/Release/*
+apps/rendering/resources/taskcollector/taskcollector.vcxproj
+Installer/Installer_Win/deps/*
+Installer/Installer_Win/golem-*
