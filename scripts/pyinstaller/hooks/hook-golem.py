@@ -10,4 +10,6 @@ datas = collect_data_files('gui') + [
     ('gui/view/*', 'gui/view'),
     ('apps/*.ini', 'apps'),
     ('apps/blender/resources/scripts/blendercrop.py.template', 'apps/blender/resources/scripts/'),
+    ('apps/blender/resources/scripts/docker_blendertask.py', 'apps/blender/resources/scripts/'),
+    ('apps/lux/resources/scripts/docker_luxtask.py', 'apps/lux/resources/scripts/'),
 ]

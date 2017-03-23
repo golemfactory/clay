@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import logging
 
 import click
@@ -101,14 +99,3 @@ def start_gui(rpc_address, gui_app=None):
     finally:
         if gui_app and gui_app.gui and gui_app.gui.app:
             gui_app.gui.app.deleteLater()
-
-
-@click.command()
-@click.option('--rpc-address', '-r', multiple=False, callback=check_rpc_address,
-              help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-def main(rpc_address):
-    start_gui(rpc_address)
-
-
-if __name__ == '__main__':
-    main()
