@@ -13,7 +13,8 @@
 ; https://download.docker.com/win/stable/InstallDocker.msi
 ; https://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py2.7.exe/download
 #define Repository "C:\golem"           
-#define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.3.0")
+#expr Exec("powershell.exe python setup.py bdist_wheel", "", Repository, 1)
+#define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
 #define AppIcon "favicon.ico"
 
 [Setup]
@@ -59,7 +60,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"; DestDir: "{app}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
 Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
 Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;                              
@@ -103,7 +104,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
 
 ; Finally! Install golem!
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip install """"{app}\golem-{#SetupSetting("AppVersion")}-py2-none-any.whl"""""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
+Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install """"{app}\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"""""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
 
 ; Install pywin
 Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
