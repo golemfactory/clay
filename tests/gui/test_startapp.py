@@ -230,3 +230,10 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 _start_gui(rpc_address)
                 popen.assert_called_with(['python_binary', ANY,
                                           '--qt', '-r', address_str])
+
+            with patch('subprocess.Popen') as popen, \
+                 patch.object(sys, 'frozen', True, create=True):
+
+                _start_gui(rpc_address)
+                popen.assert_called_with([sys.executable,
+                                          '--qt', '-r', address_str])
