@@ -33,7 +33,7 @@ class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
     def test_restore(self):
         keys_auth = Mock()
         with self.assertLogs(logger, level="DEBUG") as l:
-            TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistance=True)
+            TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistence=True)
         assert any("RESTORE TASKS" in log for log in l.output)
 
 
@@ -384,7 +384,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def test_resource_send(self, mock_addr):
         from pydispatch import dispatcher
         mock_addr.return_value = self.addr_return
-        self.tm.task_persistance = True
+        self.tm.task_persistence = True
         t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'")
         listener_mock = Mock()
         def listener(sender, signal, event, task_id):
