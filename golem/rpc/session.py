@@ -128,11 +128,17 @@ class Client(object):
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
             deferred = self._session.call(method_alias, *args, **kwargs)
+            deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
             deferred.errback(ProtocolError(u"RPC: session is not yet established"))
 
         return deferred
+
+    @staticmethod
+    def _on_error(err):
+        logger.error(u"RPC: call error: {}".format(err))
+        raise err
 
 
 class Publisher(object):
