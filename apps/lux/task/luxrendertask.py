@@ -306,7 +306,7 @@ class LuxTask(RenderingTask):
             self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
-    
+
     def _update_task_preview(self):
         pass
 
