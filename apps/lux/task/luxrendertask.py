@@ -64,20 +64,17 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         preview_x = 300
         preview_y = 200
         res_x, res_y = definition.resolution
-        if res_x != 0 and res_y != 0:
-            if float(res_x) / float(res_y) > float(preview_x) / float(
-                    preview_y):
-                scale_factor = float(preview_x) / float(res_x)
-            else:
-                scale_factor = float(preview_y) / float(res_y)
-            scale_factor = min(1.0, scale_factor)
+        if res_x == 0 or res_y == 0:
+            return []
+
+        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
+            scale_factor = float(preview_x) / float(res_x)
         else:
-            scale_factor = 1.0
+            scale_factor = float(preview_y) / float(res_y)
+        scale_factor = min(1.0, scale_factor)
+
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        print x
-        print y
-        print scale_factor
         border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
         border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
         return border

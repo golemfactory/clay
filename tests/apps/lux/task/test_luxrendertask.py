@@ -237,6 +237,13 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         assert (20, 0) not in border
         assert (0, 200) not in border
 
+        definition.resolution = (0, 4)
+        assert typeinfo.get_task_border("subtask1", definition, 10) == []
+        definition.resolution = (4, 0)
+        assert typeinfo.get_task_border("subtask1", definition, 10) == []
+        definition.resolution = (0, 0)
+        assert typeinfo.get_task_border("subtask1", definition, 10) == []
+
     def test_get_task_num_from_pixels(self):
         typeinfo = LuxRenderTaskTypeInfo(None, None)
         definition = RenderingTaskDefinition()
