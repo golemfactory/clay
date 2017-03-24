@@ -70,12 +70,11 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
+    @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("runner.reactor")
-    def test_run_requesting_node(self, mock_reactor):
+    def test_run_requesting_node(self, mock_reactor, enqueue_new_task):
         client = runner.run_requesting_node(self.path, 3)
-        tasks = client.task_server.task_manager.tasks
-        self.assertEqual(len(tasks), 1)
-        self.assertIsInstance(tasks.values()[0], task.DummyTask)
+        self.assertTrue(enqueue_new_task.called)
         client.quit()
 
     @mock.patch("runner.reactor")

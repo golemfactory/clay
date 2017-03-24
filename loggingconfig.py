@@ -54,5 +54,9 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'apps': {
+            'level': 'DEBUG',
+            'propagate': True,
+        },
     },
 }

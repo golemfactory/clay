@@ -4,6 +4,7 @@ import jsonpickle as json
 import logging
 import os
 
+from PyQt5.QtCore import Qt
 from ethereum.utils import denoms
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
@@ -142,7 +143,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
     def update_peers_view(self):
-        self.client.get_connected_peers().addCallback(self._update_peers_view)
+        self.client.get_connected_peers().addCallbacks(
+            self._update_peers_view, self._rpc_error
+        )
 
     def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable
@@ -163,9 +166,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
-        deferred = self.client.get_balance()
-        deferred.addCallback(self._update_payments_view)
-        deferred.addErrback(self._rpc_error)
+        self.client.get_balance().addCallbacks(
+            self._update_payments_view, self._rpc_error
+        )
 
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):
@@ -417,18 +420,24 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
             self.progress_dialog.show()
 
-            self.client.run_test_task(self.build_and_serialize_task(task_state))
-
-            return True
+            try:
+                self.client.run_test_task(self.build_and_serialize_task(task_state))
+                return True
+            except Exception as ex:
+                self.test_task_computation_error(ex)
 
         return False
 
     def build_and_serialize_task(self, task_state, cbk=None):
         tb = self.get_builder(task_state)
         t = Task.build_task(tb)
+        t.header.max_price = str(t.header.max_price)
         t_serialized = DictSerializer.dump(t)
         if 'task_definition' in t_serialized:
-            t_serialized['task_definition']['resources'] = list(t_serialized['task_definition']['resources'])
+            t_serialized_def = t_serialized['task_definition']
+            t_serialized_def['resources'] = list(t_serialized_def['resources'])
+            if 'max_price' in t_serialized_def:
+                t_serialized_def['max_price'] = str(t_serialized_def['max_price'])
         from pprint import pformat
         logger.debug('task serialized: %s', pformat(t_serialized))
         if cbk:
@@ -508,9 +517,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         if msg is not None:
-            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
+            ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(msg),
+                                 QMessageBox.Ok, self)
+            ms_box.setWindowModality(Qt.WindowModal)
             ms_box.exec_()
-            ms_box.show()
         msg = u"Task tested successfully"
         self.progress_dialog_customizer.show_message(msg)
         self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button

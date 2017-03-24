@@ -35,6 +35,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
@@ -245,10 +246,10 @@ class Client(object):
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
-        self.task_server.task_manager.add_new_task(task)
-        files = self.task_server.task_manager.get_resources(task_id, None, resource_types["hashes"])
+        files = task.get_resources(None, resource_types["hashes"])
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
-        self.resource_server.add_task(files, task_id, client_options=client_options)
+        deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
+        deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -264,6 +265,17 @@ class Client(object):
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
+        if self.task_tester is None:
+            request = AsyncRequest(self._run_test_task, t_dict)
+            async_run(request)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
+
+    def _run_test_task(self, t_dict):
+
         def on_success(*args, **kwargs):
             self.task_tester = None
             if self.rpc_publisher:
@@ -274,18 +286,11 @@ class Client(object):
             if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        if self.task_tester is None:
-            t = DictSerializer.load(t_dict)
-            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-            self.task_tester.run()
-
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
-            return True
-
+        t = DictSerializer.load(t_dict)
+        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        self.task_tester.run()
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
-        return False
+            self.rpc_publisher.publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
@@ -295,8 +300,12 @@ class Client(object):
             return False
 
     def create_task(self, t_dict):
-        new_task = DictSerializer.load(t_dict)
-        self.enqueue_new_task(new_task)
+        try:
+            new_task = DictSerializer.load(t_dict)
+            new_task.header.max_price = int(new_task.header.max_price)
+            self.enqueue_new_task(new_task)
+        except Exception:
+            log.exception("Cannot create task {}".format(t_dict))
 
     def abort_task(self, task_id):
         self.task_server.task_manager.abort_task(task_id)

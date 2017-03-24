@@ -3,16 +3,20 @@ import shutil
 import time
 import uuid
 
+from mock import Mock, patch
+
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.core.threads import wait_for
 from golem.network.p2p.node import Node
+from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus, ComputerState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-from mock import Mock, patch
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
 class TaskMock(Task):
@@ -25,7 +29,15 @@ class TaskMock(Task):
         return state
 
 
-class TestTaskManager(LogTestCase, TestDirFixture):
+class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
+    def test_restore(self):
+        keys_auth = Mock()
+        with self.assertLogs(logger, level="DEBUG") as l:
+            TaskManager("ABC", Node(), keys_auth, root_path=self.path, task_persistence=True)
+        assert any("RESTORE TASKS" in log for log in l.output)
+
+
+class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def setUp(self):
         super(TestTaskManager, self).setUp()
         random.seed()
@@ -42,8 +54,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         super(TestTaskManager, self).tearDown()
         shutil.rmtree(str(self.tm.tasks_dir))
 
-    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0, subtask_timeout=120.0):
-        header = TaskHeader(
+    def _get_task_header(self, task_id, timeout, subtask_timeout):
+        return TaskHeader(
             node_name="test_node_%s" % (self.test_nonce,),
             task_id=task_id,
             task_owner_address="task_owner_address_%s" % (self.test_nonce,),
@@ -56,6 +68,10 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
         )
+
+    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0,
+                       subtask_timeout=120.0):
+        header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='')
 
         ctd = ComputeTaskDef()
@@ -83,7 +99,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_mock = self._get_task_mock()
 
         # Task's initial state is set to 'waiting' (found in activeStatus)
-        self.tm.add_new_task(task_mock)
+        wait_for(self.tm.add_new_task(task_mock))
 
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is not None
@@ -147,7 +163,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         task_mock = self._get_task_mock()
 
-        self.tm.add_new_task(task_mock)
+        wait_for(self.tm.add_new_task(task_mock))
         with self.assertLogs(logger, level="WARNING") as l:
             self.tm.set_value("xyz", "xxyyzz", 13)
         assert any("not my subtask" in log for log in l.output)
@@ -188,9 +204,13 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         resources = ['first', 'second']
 
         task_mock = self._get_task_mock()
-        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources) as resources_mock:
-            self.tm.add_new_task(task_mock)
+        with patch('golem.task.taskmanager.TaskManager.get_resources', return_value=resources):
+            wait_for(self.tm.add_new_task(task_mock))
             assert self.tm.get_resources(task_id, task_mock.header) is resources
+
+        task = Task(self._get_task_header("xyz", 120, 120), "print 'hello world'")
+        self.tm.tasks["xyz"] = task
+        self.tm.get_resources("xyz", TaskResourceHeader(self.path), 0)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     @patch("golem.task.taskmanager.get_external_address")
@@ -238,7 +258,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
                 self.restarted[subtask_id] = True
 
         t = TestTask(th, "print 'Hello world'", ["xxyyzz"], verify_subtasks={"xxyyzz": True})
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
         assert ctd.subtask_id == "xxyyzz"
@@ -256,7 +276,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         th.task_id = "abc"
         t2 = TestTask(th, "print 'Hello world'", ["aabbcc"], verify_subtasks={"aabbcc": True})
-        self.tm.add_new_task(t2)
+        wait_for(self.tm.add_new_task(t2))
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
         assert ctd.subtask_id == "aabbcc"
@@ -271,7 +291,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         th.task_id = "qwe"
         t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
-        self.tm.add_new_task(t3)
+        wait_for(self.tm.add_new_task(t3))
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
         assert ctd.subtask_id == "qqwwee"
@@ -286,7 +306,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
 
         th.task_id = "task4"
         t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"], {'ttt4': False, 'sss4': True})
-        self.tm.add_new_task(t2)
+        wait_for(self.tm.add_new_task(t2))
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2,
                                                            "10.10.10.10")
         assert not wrong_task
@@ -325,7 +345,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_state.computer = Mock()
         task_state.subtask_states[subtask_id] = subtask_state
 
-        self.tm.add_new_task(task_mock)
+        wait_for(self.tm.add_new_task(task_mock))
         self.tm.subtask2task_mapping[subtask_id] = "xyz"
         self.tm.tasks_states["xyz"] = task_state
 
@@ -338,7 +358,6 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             self.tm.task_result_incoming(subtask_id)
             assert not result_incoming_mock.called
 
-
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
     @patch("golem.task.taskmanager.get_external_address")
     def test_get_subtasks(self, mock_addr, nc_mock):
@@ -346,9 +365,9 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         assert self.tm.get_subtasks("Task 1") is None
 
         task_mock = self._get_task_mock()
-        self.tm.add_new_task(task_mock)
+        wait_for(self.tm.add_new_task(task_mock))
         task_mock2 = self._get_task_mock("TASK 1", "SUBTASK 1")
-        self.tm.add_new_task(task_mock2)
+        wait_for(self.tm.add_new_task(task_mock2))
         assert self.tm.get_subtasks("xyz") == []
         assert self.tm.get_subtasks("TASK 1") == []
 
@@ -365,6 +384,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
     def test_resource_send(self, mock_addr):
         from pydispatch import dispatcher
         mock_addr.return_value = self.addr_return
+        self.tm.task_persistence = True
         t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'")
         listener_mock = Mock()
         def listener(sender, signal, event, task_id):
@@ -373,7 +393,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             listener_mock()
         dispatcher.connect(listener, signal='golem.taskmanager')
         try:
-            self.tm.add_new_task(t)
+            wait_for(self.tm.add_new_task(t))
             self.tm.resources_send("xyz")
             self.assertEquals(listener_mock.call_count, 2)
         finally:
@@ -384,7 +404,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         mock_addr.return_value = self.addr_return
         # Task with timeout
         t = self._get_task_mock(timeout=0.05)
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
         time.sleep(0.1)
         self.tm.check_timeouts()
@@ -392,7 +412,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         # Task with subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
             t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc", timeout=10, subtask_timeout=0.1)
-            self.tm.add_new_task(t2)
+            wait_for(self.tm.add_new_task(t2))
             self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2, "10.10.10.10")
             time.sleep(0.1)
             self.tm.check_timeouts()
@@ -401,7 +421,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         # Task with task and subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
             t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty", timeout=0.1, subtask_timeout=0.1)
-            self.tm.add_new_task(t3)
+            wait_for(self.tm.add_new_task(t3))
             self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2, "10.10.10.10")
             time.sleep(0.1)
             self.tm.check_timeouts()
@@ -421,7 +441,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
             assert self.tm.query_task_state("xyz") is None
 
         t = self._get_task_mock()
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertNoLogs(logger, level="WARNING"):
             ts = self.tm.query_task_state("xyz")
         assert ts is not None
@@ -433,7 +453,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.resume_task("xyz") is None
         t = self._get_task_mock()
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.resume_task("xyz")
         assert self.tm.tasks["xyz"].task_status == TaskStatus.starting
@@ -445,7 +465,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.restart_task("xyz") is None
         t = self._get_task_mock()
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.restart_task("xyz")
         assert self.tm.tasks["xyz"].task_status == TaskStatus.waiting
@@ -469,7 +489,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.abort_task("xyz") is None
         t = self._get_task_mock()
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.abort_task("xyz")
         assert self.tm.tasks["xyz"].task_status == TaskStatus.aborted
@@ -481,7 +501,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.pause_task("xyz") is None
         t = self._get_task_mock()
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.pause_task("xyz")
         assert self.tm.tasks["xyz"].task_status == TaskStatus.paused
@@ -528,7 +548,7 @@ class TestTaskManager(LogTestCase, TestDirFixture):
     def test_change_timeouts(self, mock_addr):
         mock_addr.return_value = self.addr_return
         t = self._get_task_mock(timeout=20, subtask_timeout=40)
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         assert get_timestamp_utc() + 15 <= t.header.deadline
         assert t.header.deadline <= get_timestamp_utc() + 20
         assert t.header.subtask_timeout == 40
@@ -542,9 +562,8 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         node = Node("node", "key_id", "10.0.0.10", 40103, "1.2.3.4", 40103, None, 40102, 40102)
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234, "key_id", "environment", task_owner=node), '')
 
-
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
-        self.tm.add_new_task(task)
+        wait_for(self.tm.add_new_task(task))
         sig = task.header.signature
 
         self.tm.update_task_signatures()
@@ -558,9 +577,9 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         task_id = 'qaz123WSX'
         subtask_id = "qweasdzxc"
         t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
-        self.tm.add_new_task(t)
+        wait_for(self.tm.add_new_task(t))
         with self.assertRaises(RuntimeError):
-            self.tm.add_new_task(t)
+            wait_for(self.tm.add_new_task(t))
         with self.assertRaises(TypeError):
             self.tm.set_value(task_id, subtask_id, "incorrect value")
         self.tm.key_id = None
@@ -568,10 +587,10 @@ class TestTaskManager(LogTestCase, TestDirFixture):
         self.tm.listen_port = "not a port"
         t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
         with self.assertRaises(ValueError):
-            self.tm.add_new_task(t)
+            wait_for(self.tm.add_new_task(t))
         self.tm.key_id = "1"
         with self.assertRaises(IOError):
-            self.tm.add_new_task(t)
+            wait_for(self.tm.add_new_task(t))
 
     @classmethod
     def __build_tasks(cls, n):
