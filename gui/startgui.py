@@ -1,21 +1,18 @@
-#!/usr/bin/env python
-
 import logging
 
 import click
-from ipaddress import AddressValueError
-from twisted.internet.defer import inlineCallbacks, setDebugging
-
 from apps.appsmanager import AppsManager
 from golem.core.common import config_logging
+from golem.core.deferred import install_unhandled_error_logger
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session, WebSocketAddress
+from ipaddress import AddressValueError
+from twisted.internet.defer import inlineCallbacks
 
 config_logging("_gui")
 logger = logging.getLogger("app")
-
-setDebugging(True)
+install_unhandled_error_logger()
 
 apps_manager = AppsManager()
 apps_manager.load_apps()
@@ -72,7 +69,7 @@ class GUIApp(object):
 
 
 def start_error(err):
-    logger.error(u"GUI process error: {}".format(err))
+    logger.error("GUI process error: {}".format(err))
 
 
 def start_gui(rpc_address, gui_app=None):
@@ -101,14 +98,3 @@ def start_gui(rpc_address, gui_app=None):
     finally:
         if gui_app and gui_app.gui and gui_app.gui.app:
             gui_app.gui.app.deleteLater()
-
-
-@click.command()
-@click.option('--rpc-address', '-r', multiple=False, callback=check_rpc_address,
-              help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-def main(rpc_address):
-    start_gui(rpc_address)
-
-
-if __name__ == '__main__':
-    main()

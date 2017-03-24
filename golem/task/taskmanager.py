@@ -39,7 +39,7 @@ class TaskManager(TaskEventListener):
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
     def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
-                 use_distributed_resources=True, tasks_dir="tasks"):
+                 use_distributed_resources=True, tasks_dir="tasks", task_persistence=False):
         super(TaskManager, self).__init__()
         self.node_name = node_name
         self.node = node
@@ -52,6 +52,10 @@ class TaskManager(TaskEventListener):
 
         self.listen_address = listen_address
         self.listen_port = listen_port
+
+        # FIXME Remove this variable and make task persistance obligatory after it is more tested
+        # Remember to also remove it from init params
+        self.task_persistence = task_persistence
 
         self.tasks_dir = Path(tasks_dir)
         if not self.tasks_dir.is_dir():
@@ -67,7 +71,8 @@ class TaskManager(TaskEventListener):
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper()
-        self.restore_tasks()
+        if self.task_persistence:
+            self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
@@ -114,10 +119,11 @@ class TaskManager(TaskEventListener):
         ts.time_started = time.time()
 
         self.tasks_states[task.header.task_id] = ts
-        self.dump_task(task.header.task_id)
 
-        logger.info("Task {} added".format(task.header.task_id))
-        self.notice_task_updated(task.header.task_id)
+        if self.task_persistence:
+            self.dump_task(task.header.task_id)
+            logger.info("Task {} added".format(task.header.task_id))
+            self.notice_task_updated(task.header.task_id)
 
     def dump_task(self, task_id):
         logger.debug('DUMP TASK')
@@ -611,5 +617,6 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def notice_task_updated(self, task_id):
         # self.save_state()
-        self.dump_task(task_id)
+        if self.task_persistence:
+            self.dump_task(task_id)
         dispatcher.send(signal='golem.taskmanager', event='task_status_updated', task_id=task_id)

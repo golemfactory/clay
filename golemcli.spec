@@ -22,6 +22,9 @@ a = Analysis(['golemcli.py'],
                  'sha3', 'requests', 'scrypt',
                  'OpenEXR', 'Imath'
              ],
+             excludes=[
+                 'PyQt5', 'sip'
+             ],
 
              pathex=[],
              binaries=[],

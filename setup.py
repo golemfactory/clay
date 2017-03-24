@@ -41,7 +41,10 @@ setup(
     #     'test': ['coverage'],
     # },
     include_package_data=True,
-    cmdclass={'test': PyTest},
+    cmdclass={
+        'test': PyTest,
+        'pyinstaller': PyInstaller
+    },
     test_suite='tests',
     tests_require=['mock', 'pytest'],
     entry_points={
@@ -54,7 +57,7 @@ setup(
     },
     data_files=[
         (path.normpath('../../'), [
-            'golemapp.py', 'golemcli.py', 'golemgui.py', 'loggingconfig.py', '.version.ini'
+            'golemapp.py', 'golemcli.py', 'loggingconfig.py', '.version.ini'
         ]),
         (path.normpath('../../golem/apps'), [
             path.normpath('apps/registered.ini'),

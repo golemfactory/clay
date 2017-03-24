@@ -1,20 +1,20 @@
 import logging
+import os
 import subprocess
 import sys
-
-from twisted.internet.defer import setDebugging
-from twisted.internet.error import ReactorAlreadyRunning
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
 from golem.core.common import config_logging
+from golem.core.common import get_golem_path
+from golem.core.deferred import install_unhandled_error_logger
 from golem.core.processmonitor import ProcessMonitor
 from golem.docker.manager import DockerManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
+from twisted.internet.error import ReactorAlreadyRunning
 
-setDebugging(True)
 apps_manager = AppsManager()
 apps_manager.load_apps()
 
@@ -41,8 +41,13 @@ def start_error(err):
 
 
 def start_gui(address):
-    return subprocess.Popen([sys.executable, "golemgui.py", '-r',
-                             '{}:{}'.format(address.host, address.port)])
+    if hasattr(sys, 'frozen') and sys.frozen:
+        runner = [sys.executable]
+    else:
+        runner = [sys.executable,
+                  os.path.join(get_golem_path(), sys.argv[0])]
+    return subprocess.Popen(runner + ['--qt', '-r',
+                                      '{}:{}'.format(address.host, address.port)])
 
 
 def start_client(start_ranking, datadir=None,
@@ -51,6 +56,7 @@ def start_client(start_ranking, datadir=None,
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
+    install_unhandled_error_logger()
 
     if not reactor:
         from twisted.internet import reactor
@@ -87,7 +93,7 @@ def start_client(start_ranking, datadir=None,
             client.configure_rpc(session)
             client.start()
         except Exception as exc:
-            logger.exception(u"Client process error: {}"
+            logger.exception("Client process error: {}"
                              .format(exc))
 
         gui_process = start_gui(router.address)
@@ -103,7 +109,7 @@ def start_client(start_ranking, datadir=None,
     try:
         reactor.run()
     except ReactorAlreadyRunning:
-        logger.debug(u"Client process: reactor is already running")
+        logger.debug("Client process: reactor is already running")
 
     if process_monitor:
         process_monitor.exit()

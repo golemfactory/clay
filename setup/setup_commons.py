@@ -2,7 +2,7 @@ from codecs import open
 from os import listdir, path, walk
 from sys import platform
 
-from setuptools import find_packages
+from setuptools import find_packages, Command
 from setuptools.command.test import test
 
 from golem.core.common import get_golem_path
@@ -33,6 +33,35 @@ class PyTest(test):
         import sys
         errno = pytest.main(self.pytest_args)
         sys.exit(errno)
+
+
+class PyInstaller(Command):
+    description = "run pyinstaller and packaging actions"
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    @classmethod
+    def run(cls):
+        import subprocess
+        import shutil
+
+        build_dir = path.join('build')
+        dist_dir = path.join('dist')
+        taskcollector_dir = path.join('apps', 'rendering', 'resources', 'taskcollector', 'Release')
+
+        for directory in [build_dir, dist_dir]:
+            if path.exists(directory):
+                shutil.rmtree(directory)
+
+        for spec in ['golemapp.spec', 'golemcli.spec']:
+            subprocess.check_call(['python', '-m', 'PyInstaller', spec])
+
+        shutil.copytree(taskcollector_dir, path.join(dist_dir, taskcollector_dir))
 
 
 def get_long_description(my_path):
