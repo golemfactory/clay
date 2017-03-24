@@ -24,7 +24,7 @@ class TestLuxRenderDefaults(unittest.TestCase):
         self.assertTrue(os.path.isfile(ld.main_program_file))
 
 
-class TestLuxRenderTaskBuilder(TempDirFixture, LogTestCase):
+class TestLuxRenderTaskBuilder(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/luxrendertask.py',
     ]

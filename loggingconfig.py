@@ -17,9 +17,11 @@ LOGGING = {
     'disable_existing_loggers': False,  # False is required for golem.tools.assertlogs
     'formatters': {
         'simple': {
+            '()': 'golem.utils.UnicodeFormatter',
             'format': '%(levelname)-8s [%(name)-35s] %(message)s',
         },
         'date': {
+            '()': 'golem.utils.UnicodeFormatter',
             'format': '%(asctime)s %(levelname)-8s %(name)-35s %(message)s',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
@@ -57,6 +59,11 @@ LOGGING = {
         'apps': {
             'level': 'DEBUG',
             'propagate': True,
+        },
+        'test': {
+            'level': 'DEBUG',
+            'propagate': False,
+            'handlers': ['console', 'file', ],
         },
     },
 }
