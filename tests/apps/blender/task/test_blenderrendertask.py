@@ -16,7 +16,10 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions, RenderingTaskDefinition
+from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.task.renderingtaskstate import (AdvanceRenderingVerificationOptions,
+                                                    RenderingTaskDefinition)
+
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus, SubtaskState
@@ -69,7 +72,8 @@ class TestBlenderFrameTask(TempDirFixture):
 
         self.bt.computation_failed(extra_data.ctd.subtask_id)
         self.bt.computation_finished(extra_data.ctd.subtask_id, [], 0)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.failure
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.failure
 
         # Successful computation
 
@@ -84,7 +88,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file1, "PNG")
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.finished
 
         extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
         assert extra_data.ctd is not None
@@ -94,17 +99,44 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == SubtaskStatus.finished
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
 
         assert len(self.bt.preview_file_path) == len(self.bt.frames)
         assert len(self.bt.preview_task_file_path) == len(self.bt.frames)
 
+    def test_query_extra_data(self):
 
-class TestBlenderTask(TempDirFixture):
+        # If num frames == num subtask, make sure that blender script describe whole frame
+        self.bt.total_tasks = 3
+        extra_data = self.bt.query_extra_data(100, node_id="node1", node_name="node11",
+                                              num_cores=0)
+        assert not extra_data.should_wait
+        assert extra_data.ctd is not None
+        assert "border_max_y = 1" in extra_data.ctd.extra_data['script_src']
+        assert "border_min_y = 0" in extra_data.ctd.extra_data['script_src']
+
+    def test_put_frame_together(self):
+        self.bt.output_format = "EXR"
+        self.bt.output_file += ".EXR"
+        chunks = 12
+        res_y = 0
+        for i in range(1, chunks + 1):  # Subtask numbers start from 1.
+            y = randrange(1, 100)
+            res_y += y
+            file1 = self.temp_file_name('chunk{}.exr'.format(i))
+            exr = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, y))
+            data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
+            exr.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
+            exr.close()
+            self.bt.frames_given["7"][i-1] = file1
+        self.bt._put_frame_together(7, 2)
+
+
+class TestBlenderTask(TempDirFixture, LogTestCase):
     def build_bt(self, res_x, res_y, total_tasks, frames=None):
-        program_file = self.temp_file_name('program')
         output_file = self.temp_file_name('output')
         if frames is None:
             use_frames = False
@@ -121,10 +153,10 @@ class TestBlenderTask(TempDirFixture):
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         bt = BlenderRenderTask(node_name="example-node-name",
-                                    task_definition=task_definition,
-                                    total_tasks=total_tasks,
-                                    root_path=self.tempdir,
-                                )
+                               task_definition=task_definition,
+                               total_tasks=total_tasks,
+                               root_path=self.tempdir,
+                               )
         bt.initialize(DirManager(self.tempdir))
         return bt
     
@@ -153,11 +185,11 @@ class TestBlenderTask(TempDirFixture):
         warnings = self.bt.after_test(results, None)
         
         self.assertEqual(warnings, None)
-        
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Warning: path 'example/directory/to/file/f1.png' "
-                         "not found\nwarning: Path 'example/directory/to/file2.png' not fouND")
+                         "not found\nwarning: Path 'example/directory/to/file2.png' not fouND"
+                         "warning: Path 'example/directory/to/file2.png' not fouND")
         
         with open(errlog, 'w') as fd_err:
             fd_err.write("Warning: path 'example/directory/to/another/file3.png' "
@@ -169,6 +201,7 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue("f1.png" in warnings)
         self.assertTrue("file2.png" in warnings)
         self.assertTrue("file3.png" in warnings)
+        self.assertEquals(warnings.count("file2.png"), 1)
         self.assertFalse("file4.png" in warnings)
 
         with open(outlog, 'w') as fd_out:
@@ -233,7 +266,6 @@ class TestBlenderTask(TempDirFixture):
         self.bt.res_y = 300
         assert self.bt._get_min_max_y(2) == (0.5, 0.75)
 
-
     def test_put_img_together_exr(self):
         for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
             res_y = 0
@@ -258,6 +290,28 @@ class TestBlenderTask(TempDirFixture):
         assert self.bt.preview_updater.chunks == {}
         assert self.bt.preview_updater.perfectly_placed_subtasks == 0
         assert self.bt.preview_updater.perfect_match_area_y == 0
+
+    def test_put_img_together_exr_to_exr(self):
+        self.bt.output_format = "EXR"
+        self.bt.output_file += ".EXR"
+        for chunks in [1, 5, 7, 11, 13, 31, 57]:
+            res_y = 0
+            self.bt.collected_file_names = {}
+            for i in range(1, chunks + 1):  # Subtask numbers start from 1.
+                y = randrange(1, 100)
+                res_y += y
+                file1 = self.temp_file_name('chunk{}.exr'.format(i))
+                exr = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, y))
+                data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
+                exr.writePixels({'R': data, 'G': data, 'B': data, 'F': data, 'A': data})
+                exr.close()
+                self.bt.collected_file_names[i] = file1
+            self.bt.res_y = res_y
+            self.bt._put_image_together()
+            self.assertTrue(path.isfile(self.bt.output_file))
+            img = load_img(self.bt.output_file)
+            img_x, img_y = img.get_size()
+            self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
     def test_put_img_together_not_exr(self):
         for output_format in ["PNG", "JPEG", "BMP"]:
@@ -299,7 +353,7 @@ class TestBlenderTask(TempDirFixture):
         img2.close()        
         
         bt._update_frame_preview(file1, 1, part=1)
-        self.assertTrue(bt.preview_updaters[0].perfect_match_area_y == 99)
+        assert bt.preview_updaters[0].perfect_match_area_y == 99
         self.assertTrue(bt.preview_updaters[0].perfectly_placed_subtasks == 1)
         
         bt._update_frame_preview(file2, 1, part=2)
@@ -318,6 +372,7 @@ class TestBlenderTask(TempDirFixture):
         
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
+        print img.size
         self.assertTrue(img.size == (300, 200))
         img = Image.open(file4)
         self.assertTrue(img.size == (300, 200))
@@ -360,12 +415,23 @@ class TestBlenderTask(TempDirFixture):
         self.assertTrue(pixel == color)
 
     def test_query_extra_data(self):
-        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node',
+                                              node_name='node')
         assert extra_data.ctd
+        subtask_id = extra_data.ctd.subtask_id
         assert not extra_data.should_wait
 
-        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node', node_name='node')
+        extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node',
+                                              node_name='node')
         assert extra_data.should_wait
+
+        # Write log with warning and don't return data or should wait if client was banned
+        self.bt.computation_failed(subtask_id)
+        with self.assertLogs(logger, level="WARNING"):
+            extra_data = self.bt.query_extra_data(100000, num_cores=0, node_id='node',
+                                                  node_name='node')
+        assert extra_data.ctd is None
+        assert not extra_data.should_wait
 
     @ci_skip
     def test_advanced_verification(self):
@@ -373,8 +439,8 @@ class TestBlenderTask(TempDirFixture):
         bb.task_definition.verification_options = AdvanceRenderingVerificationOptions()
         bb.task_definition.verification_options.type = 'forAll'
         dm = DirManager(self.tempdir)
-        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=bb.task_definition, root_path=self.tempdir,
-                                           dir_manager=dm)
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=bb.task_definition,
+                                           root_path=self.tempdir, dir_manager=dm)
         task = builder.build()
         tmpdir = dm.get_task_temporary_dir(task.header.task_id, True)
         ed = task.query_extra_data(1000, 4, "NODE_ID", "NODE_NAME")
@@ -441,7 +507,8 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
-        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition, root_path=self.tempdir,
+        builder = BlenderRenderTaskBuilder(node_name="ABC", task_definition=definition,
+                                           root_path=self.tempdir,
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
@@ -473,8 +540,11 @@ class TestHelpers(unittest.TestCase):
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True
         definition.options.frames = range(30)
-        border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
-        assert border == []
+        assert BlenderTaskTypeInfo.get_task_border(subtask, definition, 30) == []
+
+        definition.options.use_frames = False
+        definition.resolution = (0, 0)
+        assert BlenderTaskTypeInfo.get_task_border(subtask, definition, 30) == []
 
     def test_get_task_num_from_pixels(self):
         offsets = generate_expected_offsets(30, 1920, 1080)
@@ -485,7 +555,8 @@ class TestHelpers(unittest.TestCase):
 
         for k in range(1, 31):
             task_definition.options.use_frames = False
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(6, offsets[k] + 1, task_definition, 30)
+            num = BlenderTaskTypeInfo.get_task_num_from_pixels(6, offsets[k] + 1,
+                                                               task_definition, 30)
             assert num == k
 
             task_definition.options.use_frames = True
@@ -495,5 +566,10 @@ class TestHelpers(unittest.TestCase):
             
             i = (k - 1) % 15 + 1
             task_definition.options.frames = range(2)
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(1, frame_offsets[i] + 3, task_definition, 30, (k - 1)/15 + 1)
+            num = BlenderTaskTypeInfo.get_task_num_from_pixels(1, frame_offsets[i] + 3,
+                                                               task_definition, 30, (k - 1)/15 + 1)
             assert num == k
+
+        task_definition.options.use_frames = False
+        assert BlenderTaskTypeInfo.get_task_num_from_pixels(5, 1200,
+                                                            task_definition, 30) == 30

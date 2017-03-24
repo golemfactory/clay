@@ -404,24 +404,28 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def after_test(self, results, tmp_dir):
         ret = []
-        if results and results.get("data"):
-            for filename in results["data"]:
-                if filename.lower().endswith(".log"):
-                    with open(filename, "r") as f:
-                        warnings = self.__find_missing_files_warnings(f.read())
-                        for w in warnings:
-                            w = u"    {}\n".format(w)
-                            if len(ret) == 0:
-                                ret.append(u"Additional data is missing:\n")
+        if not results or not results.get("data"):
+            return
 
-                            if w not in ret:
-                                ret.append(w)
-                        if warnings:
-                            ret.append(u"\nMake sure you added all required files to resources.")
-                        f.seek(0)
-                        warning = self.__find_wrong_renderer_warning(f.read())
-                        if warning:
-                            ret.append(u"\n{}\n".format(warning))
+        for filename in results["data"]:
+            if not filename.lower().endswith(".log"):
+                return
+
+            with open(filename, "r") as f:
+                warnings = self.__find_missing_files_warnings(f.read())
+                for w in warnings:
+                    w = u"    {}\n".format(w)
+                    if len(ret) == 0:
+                        ret.append(u"Additional data is missing:\n")
+
+                    if w not in ret:
+                        ret.append(w)
+                if warnings:
+                    ret.append(u"\nMake sure you added all required files to resources.")
+                f.seek(0)
+                warning = self.__find_wrong_renderer_warning(f.read())
+                if warning:
+                    ret.append(u"\n{}\n".format(warning))
 
         if len(ret) > 0:
             return "".join(ret)
@@ -441,31 +445,27 @@ class BlenderRenderTask(FrameRenderingTask):
                 return l[len(text):]
         return ""
 
-    def __get_frame_num_from_output_file(self, file_):
-        file_name = os.path.basename(file_)
-        file_name, ext = os.path.splitext(file_name)
-        idx = file_name.find(self.outfilebasename)
-        return int(file_name[idx + len(self.outfilebasename):])
-
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+        num = self.frames.index(frame_num)
         if final:
             if new_chunk_file_path.upper().endswith(".EXR"):
                 img = exr_to_pil(new_chunk_file_path)
-            else:   
+            else:
                 img = Image.open(new_chunk_file_path)
-            scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))), 
+            scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))),
                                 resample=Image.BILINEAR)
-            scaled.save(self.preview_file_path[self.frames.index(frame_num)], "BMP")
-            scaled.save(self.preview_task_file_path[self.frames.index(frame_num)], "BMP")
+            scaled.save(self._get_preview_file_path(num), "BMP")
+            scaled.save(self._get_preview_task_file_path(num), "BMP")
+
             scaled.close()
             img.close()
         else:
-            self.preview_updaters[self.frames.index(frame_num)].update_preview(new_chunk_file_path, part)
+            self.preview_updaters[num].update_preview(new_chunk_file_path, part)
             self._update_frame_task_preview()
-    
+
     def _put_image_together(self):
         output_file_name = u"{}".format(self.output_file, self.output_format)
         logger.debug('_put_image_together() out: %r', output_file_name)
