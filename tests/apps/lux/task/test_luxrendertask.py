@@ -6,7 +6,7 @@ import unittest
 from mock import Mock
 from PIL import Image
 
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import DirManager, get_test_task_path
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
@@ -64,6 +64,17 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         luxtask._accept_client.return_value = AcceptClientVerdict.REJECTED
 
+        result = luxtask.query_extra_data(0)
+        assert result.ctd is None
+        assert not result.should_wait
+
+        luxtask._accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        result = luxtask.query_extra_data(0)
+        assert result.ctd is not None
+        assert not result.should_wait
+
+        luxtask.total_tasks = 10
+        luxtask.last_task = 10
         result = luxtask.query_extra_data(0)
         assert result.ctd is None
         assert not result.should_wait
@@ -157,6 +168,20 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask.res_x, luxtask.res_y = 1262, 860
         luxtask._update_preview_from_exr(str(p))
         pickled = pickle.dumps(luxtask)
+
+    def test_query_extra_data_for_test_task(self):
+        # make sure that test task path is creatd
+        luxtask = self.get_test_lux_task()
+        luxtask._get_scene_file_rel_path = Mock()
+        luxtask._get_scene_file_rel_path.return_value = os.path.join(self.path, 'scene')
+        assert not os.path.exists(get_test_task_path(luxtask.root_path))
+        luxtask.query_extra_data_for_test_task()
+        assert os.path.exists(get_test_task_path(luxtask.root_path))
+
+    def test_update_task_preview(self):
+        luxtask = self.get_test_lux_task()
+        luxtask._update_task_preview()
+
 
 
 class TestLuxRenderTaskTypeInfo(TempDirFixture):
