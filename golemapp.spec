@@ -1,4 +1,5 @@
 # -*- mode: python -*-
+import glob
 import os
 
 block_cipher = None
@@ -12,20 +13,36 @@ def on_path(app):
     return False
 
 
+def tree(directory):
+
+    def glob_dir(_dir):
+        return '{}/*'.format(_dir)
+
+    def traverse(_dir):
+        files = []
+        for entry in glob.glob(_dir):
+            if entry.endswith('.pyc') or entry.endswith('.pyd'):
+                continue
+            elif os.path.isfile(entry):
+                files.append(entry)
+            elif os.path.isdir(entry):
+                files += traverse(glob_dir(entry))
+        return files
+
+    return [(f, os.path.dirname(f)) for f in
+            traverse(glob_dir(directory))]
+
+
 a = Analysis(['golemapp.py'],
-
              hookspath=['./scripts/pyinstaller/hooks'],
-
              hiddenimports=[
-                 'Cryptodome',
-                 'rlp', 'web3', 'pylru', 'xml',
-                 'sha3', 'requests', 'scrypt',
-                 'OpenEXR', 'Imath'
+                'OpenEXR', 'sha3', 'scrypt',
+                'requests', 'web3', 'rlp', 'pylru',
+                'Imath'
              ],
-
              pathex=[],
              binaries=[],
-             datas=[],
+             datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark'),
              runtime_hooks=[],
              win_no_prefer_redirects=False,
              win_private_assemblies=False,

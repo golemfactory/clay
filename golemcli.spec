@@ -13,19 +13,11 @@ def on_path(app):
 
 
 a = Analysis(['golemcli.py'],
-
              hookspath=['./scripts/pyinstaller/hooks'],
-
-             hiddenimports=[
-                 'Cryptodome',
-                 'rlp', 'web3', 'pylru', 'xml',
-                 'sha3', 'requests', 'scrypt',
-                 'OpenEXR', 'Imath'
-             ],
+             hiddenimports=[],
              excludes=[
                  'PyQt5', 'sip'
              ],
-
              pathex=[],
              binaries=[],
              datas=[],
