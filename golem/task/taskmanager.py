@@ -70,7 +70,7 @@ class TaskManager(TaskEventListener):
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
         self.use_distributed_resources = use_distributed_resources
 
-        self.comp_task_keeper = CompTaskKeeper(self.tasks_dir)
+        self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
         if self.task_persistence:
             self.restore_tasks()
 

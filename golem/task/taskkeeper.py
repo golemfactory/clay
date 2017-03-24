@@ -48,7 +48,7 @@ class CompTaskKeeper(object):
 
     handle_key_error = HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path):
+    def __init__(self, tasks_path, persist=True):
         """ Create new instance of compuatational task's definition's keeper
 
         tasks_path: pathlib.Path to tasks directory
@@ -56,9 +56,12 @@ class CompTaskKeeper(object):
         self.active_tasks = {}  # information about tasks that this node wants to compute
         self.subtask_to_task = {}  # maps subtasks id to tasks id
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
+        self.persist = persist
         self.restore()
 
     def dump(self):
+        if not self.persist:
+            return
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
             dump_data = self.active_tasks, self.subtask_to_task
@@ -68,6 +71,8 @@ class CompTaskKeeper(object):
             pickle.dump(dump_data, f)
 
     def restore(self):
+        if not self.persist:
+            return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
