@@ -183,7 +183,7 @@ class MessageRedefined(Message):
     """New style Message."""
 
     def __init__(self, **kwargs):
-        self.load_dict_repr(kwargs.pop(dict_repr, None))
+        self.load_dict_repr(kwargs.pop('dict_repr', None))
         super(MessageRedefined, self).__init__(**kwargs)
 
     def load_dict_repr(self, dict_repr):
@@ -1700,7 +1700,7 @@ class MessageSubtaskPayment(MessageRedefined):
         'transaction_id': 'TRANSACTION_ID',
     }
 
-    def __init__(self, subtask_id, reward, transaction_id, **kwargs):
+    def __init__(self, subtask_id=None, reward=None, transaction_id=None, **kwargs):
         """Informs about payment for a subtask.
         It succeeds MessageSubtaskResultAccepted but could
         be sent after a delay. It is also sent in response to
@@ -1717,7 +1717,7 @@ class MessageSubtaskPayment(MessageRedefined):
 
         self.subtask_id = subtask_id
         self.reward = reward
-        self.payment_id = payment_id
+        self.transaction_id = transaction_id
         super(MessageSubtaskPayment, self).__init__(**kwargs)
 
 
@@ -1728,7 +1728,7 @@ class MessageSubtaskPaymentRequest(MessageRedefined):
         'subtask_id': 'SUB_TASK_ID',
     }
 
-    def __init__(self, subtask_id, **kwargs):
+    def __init__(self, subtask_id=None, **kwargs):
         """Requests information about payment for a subtask.
 
         :param str subtask_id: accepted subtask id

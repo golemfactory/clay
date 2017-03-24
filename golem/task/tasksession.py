@@ -1,4 +1,8 @@
+from __future__ import absolute_import
+
+from ethereum.utils import denoms
 import logging
+import functools
 import os
 import struct
 import time
@@ -35,6 +39,7 @@ def call_task_computer_and_drop_after_attr_error(*args, **kwargs):
 
 def dropped_after():
     def inner(f):
+        @functools.wraps(f)
         def curry(self, *args, **kwargs):
             result = f(self, *args, **kwargs)
             self.dropped()
@@ -236,12 +241,9 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.accept_result(subtask_id, self.result_owner)
         self.send(message.MessageSubtaskResultAccepted(subtask_id))
 
-    @log_error
+    @log_error()
     def inform_worker_about_payment(self, payment):
         logger.debug('inform_worker_about_payment(%r)', payment)
-        if payment.subtask != self.subtask_id:
-            logger.debug('Ignoring payment info: pmnt.subtask %r != self.subtask %r', payment.subtask, self.subtask_id)
-            return
         transaction_id = payment.details.get('tx', None)
         self.send(message.MessageSubtaskPayment(subtask_id=payment.subtask, reward=payment.value/denoms.ether, transaction_id=transaction_id))
 
@@ -590,7 +592,10 @@ class TaskSession(MiddlemanSafeSession):
         pass
 
     def _react_to_subtask_payment(self, msg):
-        self.task_server.reward_for_subtask_paid(subtask_id=msg.subtask_id)
+        if msg.transaction_id is None:
+            logger.debug('PAYMENT PENDING %r for %r', msg.reward, msg.subtask_id)
+            return
+        self.task_server.reward_for_subtask_paid(subtask_id=msg.subtask_id, reward=msg.reward, transaction_id=msg.transaction_id)
 
     def _react_to_subtask_payment_request(self, msg):
         payment = Payment.get(Payment.subtask == msg.subtask_id)
@@ -601,7 +606,6 @@ class TaskSession(MiddlemanSafeSession):
             self.msgs_to_send.append(msg)
             return
         MiddlemanSafeSession.send(self, msg, send_unverified=send_unverified)
-        # print "Task Session Sending to {}:{}: {}".format(self.address, self.port, msg)
         self.task_server.set_last_message("->", time.localtime(), msg, self.address, self.port)
 
     def _check_ctd_params(self, ctd):

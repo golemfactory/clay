@@ -1,4 +1,5 @@
 from collections import deque
+import datetime
 import itertools
 import logging
 import os
@@ -51,6 +52,7 @@ class TaskServer(PendingConnectionsServer):
 
         self.results_to_send = {}
         self.failures_to_send = {}
+        self.payments_to_send = set()
 
         self.use_ipv6 = use_ipv6
 
@@ -67,15 +69,7 @@ class TaskServer(PendingConnectionsServer):
             return
         payment = kwargs.pop('payment')
         logging.debug('Notified about payment.confirmed: %r', payment)
-        task_id = self.task_manager.subtask2task_mapping[payment.subtask]
-        task = self.task_manager.tasks[task_id]
-        self._add_pending_request(
-            req_type=TASK_CONN_TYPES['payment'],
-            task_owner=task.header.task_owner,
-            port=task.header.task_owner_port,
-            key_id=task.header.task_owner_key_id,
-            args={'subtask_id': payment.subtask}
-        )
+        self.payments_to_send.add(payment)
 
     def start_accepting(self):
         PendingConnectionsServer.start_accepting(self)
@@ -87,6 +81,7 @@ class TaskServer(PendingConnectionsServer):
     def sync_network(self):
         self._sync_pending()
         self.__send_waiting_results()
+        self.send_waiting_payments()
         self.task_computer.run()
         self.task_connections_helper.sync()
         self._sync_forwarded_session_requests()
@@ -303,7 +298,7 @@ class TaskServer(PendingConnectionsServer):
         else:
             logger.warning("Not my subtask rejected {}".format(subtask_id))
 
-    def reward_for_subtask_paid(self, subtask_id):
+    def reward_for_subtask_paid(self, subtask_id, reward, transaction_id):
         logger.info("Received payment for subtask %r", subtask_id)
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(subtask_id)
         if task_id is None:
@@ -313,6 +308,10 @@ class TaskServer(PendingConnectionsServer):
         if node_id is None:
             logger.warning("Unknown node try to make a payment for task {}".format(task_id))
             return
+        transaction =  #XXX
+        # check if this is my addr
+        # check if tx already burned for another task
+        incomes_
         Trust.PAYMENT.increase(node_id, self.max_trust)
 
     def subtask_accepted(self, subtask_id, reward):
@@ -345,14 +344,7 @@ class TaskServer(PendingConnectionsServer):
 
         payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
         logger.debug(u'Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
-        task = self.task_manager.tasks[task_id]
-        self._add_pending_request(
-            req_type=TASK_CONN_TYPES['payment'],
-            task_owner=task.header.task_owner,
-            port=task.header.task_owner_port,
-            key_id=task.header.task_owner_key_id,
-            args={'subtask_id': payment.subtask}
-        )
+        self.payments_to_send.add(payment)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
@@ -468,6 +460,7 @@ class TaskServer(PendingConnectionsServer):
         for key_id, data in self.forwarded_session_requests.items():
             if data:
                 if now - data['time'] >= self.forwarded_session_request_timeout:
+                    logger.debug('connection timeout: %s', data)
                     self.final_conn_failure(data['conn_id'])
                     self.remove_forwarded_session_request(key_id)
             else:
@@ -540,9 +533,9 @@ class TaskServer(PendingConnectionsServer):
             pc.status = PenConnStatus.WaitingAlt
             pc.time = time.time()
 
-    def __connection_for_task_result_established(self, session, conn_id, key_id, waiting_task_result):
-        self.remove_forwarded_session_request(key_id)
-        session.key_id = key_id
+    def __connection_for_task_result_established(self, session, conn_id, waiting_task_result):
+        self.remove_forwarded_session_request(waiting_task_result.owner_key_id)
+        session.key_id = waiting_task_result.owner_key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[waiting_task_result.subtask_id] = session
@@ -554,18 +547,17 @@ class TaskServer(PendingConnectionsServer):
                                           payment_addr,
                                           self.node)
 
-    def __connection_for_task_result_failure(self, conn_id, key_id, waiting_task_result):
+    def __connection_for_task_result_failure(self, conn_id, waiting_task_result):
 
         def response(session):
-            self.__connection_for_task_result_established(
-                session, conn_id, key_id, waiting_task_result)
+            self.__connection_for_task_result_established(session, conn_id, waiting_task_result)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
             self.response_list[conn_id] = deque([response])
 
-        self.client.want_to_start_task_session(key_id, self.node, conn_id)
+        self.client.want_to_start_task_session(wating_task_result, key_id, self.node, conn_id)
 
         pc = self.pending_connections.get(conn_id)
         if pc:
@@ -782,7 +774,9 @@ class TaskServer(PendingConnectionsServer):
 
     def connection_for_payment_established(self, session, conn_id, key_id, subtask_id):
         logger.debug('connection_for_payment_established()')
+        self.task_sessions[subtask_id] = session
         payment = Payment.objects.get(subtask=msg.subtask_id)
+        session.send_hello()
         session.inform_worker_about_payment(payment)
 
     def noop(self, *args, **kwargs):
@@ -807,6 +801,43 @@ class TaskServer(PendingConnectionsServer):
                 self.task_sessions[subtask_id].task_computer.session_timeout()
             self.task_sessions[subtask_id].dropped()
 
+    def send_waiting_payments(self):
+        def _find_sessions(payment):
+            if payment.subtask in self.task_sessions:
+                return [self.task_sessions[payment.subtask]]
+            logger.debug('%r not found in self.task_sessions{%r}', payment.subtask, self.task_sessions)
+            for s in self.task_sessions_incoming:
+                logger.debug('Checking session: %r', s)
+                if s.subtask_id == payment.subtask:
+                    return [s]
+                task_id = self.task_manager.subtask2task_mapping[payment.subtask]
+                if s.task_id == task_id:
+                    return [s]
+            logger.debug('Just propagate payment through network.')
+            return self.task_sessions_incoming
+
+        for payment in self.payments_to_send.copy():
+            if hasattr(payment, '_last_try') and (datetime.datetime.now() - payment._last_try) < datetime.timedelta(seconds=30):
+                continue
+            payment._last_try = datetime.datetime.now()
+
+            sessions = _find_sessions(payment)
+            if not sessions:
+                task_id = self.task_manager.subtask2task_mapping[payment.subtask]
+                task = self.task_manager.tasks[task_id]
+                self._add_pending_request(
+                    req_type=TASK_CONN_TYPES['payment'],
+                    task_owner=task.header.task_owner,
+                    port=task.header.task_owner_port,
+                    key_id=task.header.task_owner_key_id,
+                    args={'subtask_id': payment.subtask}
+                )
+                return
+
+            for session in sessions:
+                session.inform_worker_about_payment(payment)
+            self.payments_to_send.remove(payment)
+
     def __send_waiting_results(self):
         for subtask_id in self.results_to_send.keys():
             wtr = self.results_to_send[subtask_id]
@@ -818,10 +849,9 @@ class TaskServer(PendingConnectionsServer):
                     wtr.last_sending_trial = now
                     session = self.task_sessions.get(subtask_id, None)
                     if session:
-                        self.__connection_for_task_result_established(session, session.conn_id,
-                                                                      wtr.owner_key_id, wtr)
+                        self.__connection_for_task_result_established(session, session.conn_id, wtr)
                     else:
-                        args = {'key_id': wtr.owner_key_id, 'waiting_task_result': wtr}
+                        args = {'waiting_task_result': wtr}
                         self._add_pending_request(TASK_CONN_TYPES['task_result'],
                                                   wtr.owner, wtr.owner_port,
                                                   wtr.owner_key_id, args)
