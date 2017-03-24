@@ -129,7 +129,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         with patch('logging.getLogger', return_value=logger), \
              patch('gui.startgui.start_error', side_effect=lambda err: logger.error(err)), \
-             patch('gui.startgui.GUIApp.start', side_effect=lambda *a, **kw: logger.error(u"Success")), \
+             patch('gui.startgui.GUIApp.start', side_effect=lambda *a, **kw: logger.error("Success")), \
              patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor), \
              patch('golem.rpc.session.Session.connect', session_connect(session_fails)), \
              patch('golem.rpc.session.Session.call', session_call(resolve_call)):
@@ -139,7 +139,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 from gui.startgui import GUIApp, start_gui
 
                 gui_app = GUIApp(rendering=True)
-                gui_app.gui.execute = lambda *a, **kw: logger.error(u"Success")
+                gui_app.gui.execute = lambda *a, **kw: logger.error("Success")
                 gui_app.logic.customizer = Mock()
 
                 thread = Thread(target=lambda: start_gui(address, gui_app))
