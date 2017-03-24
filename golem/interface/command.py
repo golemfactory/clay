@@ -1,12 +1,10 @@
 import inspect
 import types
-from Queue import Queue, Empty
+
 from contextlib import contextmanager
 from operator import itemgetter
 
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.python.failure import Failure
-
+from golem.core.threads import wait_for
 from golem.interface.exceptions import CommandException
 
 
@@ -408,20 +406,7 @@ class CommandHelper(object):
 
     @staticmethod
     def wait_for(deferred, timeout=10):
-        if not isinstance(deferred, Deferred):
-            return deferred
-
-        queue = Queue()
-        deferred.addBoth(queue.put)
-
-        try:
-            result = queue.get(True, timeout)
-        except Empty:
-            raise TimeoutError("Command timed out")
-
-        if isinstance(result, Failure):
-            result.raiseException()
-        return result
+        return wait_for(deferred, timeout=timeout)
 
     @classmethod
     def wrap_call(cls, elem, instance=None):

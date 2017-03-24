@@ -4,11 +4,14 @@ import pickle
 from pydispatch import dispatcher
 import time
 
+from twisted.internet.defer import inlineCallbacks
+
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     timeout_to_deadline
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
 from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
@@ -69,6 +72,11 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
+    def get_external_address(self):
+        request = AsyncRequest(get_external_address, self.listen_port)
+        return async_run(request)
+
+    @inlineCallbacks
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task has been already added")
@@ -78,7 +86,7 @@ class TaskManager(TaskEventListener):
             raise IOError("Incorrect socket address")
 
         prev_pub_addr, prev_pub_port, prev_nat_type = self.node.pub_addr, self.node.pub_port, self.node.nat_type
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = get_external_address(self.listen_port)
+        self.node.pub_addr, self.node.pub_port, self.node.nat_type = yield self.get_external_address()
 
         if prev_pub_addr != self.node.pub_addr or \
            prev_pub_port != self.node.pub_port or \
@@ -95,19 +103,11 @@ class TaskManager(TaskEventListener):
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.register_listener(self)
+        task.task_status = TaskStatus.waiting
 
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
-
-        # if self.use_distributed_resources:
-        #     task.task_status = TaskStatus.sending
-        #     ts.status = TaskStatus.sending
-        # else:
-        #     task.task_status = TaskStatus.waiting
-        #     ts.status = TaskStatus.waiting
-
-        task.task_status = TaskStatus.waiting
         ts.status = TaskStatus.waiting
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
@@ -115,8 +115,8 @@ class TaskManager(TaskEventListener):
 
         self.tasks_states[task.header.task_id] = ts
         self.dump_task(task.header.task_id)
-        logger.info("Task {} added".format(task.header.task_id))
 
+        logger.info("Task {} added".format(task.header.task_id))
         self.notice_task_updated(task.header.task_id)
 
     def dump_task(self, task_id):
