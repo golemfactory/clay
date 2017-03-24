@@ -53,7 +53,7 @@ LOGGING = {
     },
     'loggers': {
         'golem': {
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'propagate': True,
         },
         'apps': {
