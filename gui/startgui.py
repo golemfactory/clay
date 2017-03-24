@@ -69,7 +69,7 @@ class GUIApp(object):
 
 
 def start_error(err):
-    logger.error(u"GUI process error: {}".format(err))
+    logger.error("GUI process error: {}".format(err))
 
 
 def start_gui(rpc_address, gui_app=None):

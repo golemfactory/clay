@@ -93,7 +93,7 @@ def start_client(start_ranking, datadir=None,
             client.configure_rpc(session)
             client.start()
         except Exception as exc:
-            logger.exception(u"Client process error: {}"
+            logger.exception("Client process error: {}"
                              .format(exc))
 
         gui_process = start_gui(router.address)
@@ -109,7 +109,7 @@ def start_client(start_ranking, datadir=None,
     try:
         reactor.run()
     except ReactorAlreadyRunning:
-        logger.debug(u"Client process: reactor is already running")
+        logger.debug("Client process: reactor is already running")
 
     if process_monitor:
         process_monitor.exit()
