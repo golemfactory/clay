@@ -1,45 +1,43 @@
-from apps.blender.resources import scenefileeditor
 import mock
-import os
-import tempfile
-import unittest
 
-class TestSceneFileEditor(unittest.TestCase):
+from apps.blender.resources import scenefileeditor
+
+from golem.testutils import TempDirFixture
+
+
+class TestSceneFileEditor(TempDirFixture):
     def test_crop_file_generation_dummy(self):
         """Test blender script generation with simplistic template."""
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as f:
-                filepath = f.name
-                f.write('''%(resolution_x)d
+        filepath = self.temp_file_name("tmpscene")
+        with open(filepath, 'w') as f:
+            f.write('''%(resolution_x)d
 %(resolution_y)d
 %(border_min_x).3f
 %(border_max_x).3f
 %(border_min_y).3f
 %(border_max_y).3f
 %(use_compositing)r''')
-            # Unfortunatelly on windows you can't open tempfile second time
-            # that's why we are leaving with statement and using delete=False.
-            orig_path = scenefileeditor.BLENDER_CROP_TEMPLATE_PATH
-            scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = filepath
-            try:
-                result = scenefileeditor.generate_blender_crop_file(
-                    resolution=(1,2),
-                    borders_x=(3.01, 3.02),
-                    borders_y=(4.01, 4.02),
-                    use_compositing=True
-                )
-            finally:
-                scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = orig_path
-            expected = '''1
+        # Unfortunatelly on windows you can't open tempfile second time
+        # that's why we are leaving with statement and using delete=False.
+        orig_path = scenefileeditor.BLENDER_CROP_TEMPLATE_PATH
+        scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = filepath
+        try:
+            result = scenefileeditor.generate_blender_crop_file(
+                resolution=(1,2),
+                borders_x=(3.01, 3.02),
+                borders_y=(4.01, 4.02),
+                use_compositing=True
+            )
+        finally:
+            scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = orig_path
+        expected = '''1
 2
 3.010
 3.020
 4.010
 4.020
 True'''
-            self.assertEqual(result, expected)
-        finally:
-            os.unlink(filepath)
+        self.assertEqual(result, expected)
 
     def test_crop_file_generation_full(self):
         """Mocks blender by providing bpy and tests wether generated script acted as expected."""
@@ -94,3 +92,9 @@ True'''
         # test calls
         bpy_m.ops.render.render.assert_called_once_with()
         bpy_m.ops.file.report_missing_files.assert_called_once_with()
+
+    @mock.patch("golem.resource.dirmanager")
+    def test_crop_template_path_error(self, mock_manager):
+        mock_manager.find_task_script.return_value = None
+        with self.assertRaises(IOError):
+            reload(scenefileeditor)
