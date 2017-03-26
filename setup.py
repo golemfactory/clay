@@ -7,7 +7,7 @@ from setuptools import setup
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
 
-if 'bdist_wheel' in argv:
+if 'bdist_wheel' in argv or 'pyinstaller' in argv:
     ui_err = generate_ui()
 
 directory = path.abspath(path.dirname(__file__))
@@ -62,12 +62,16 @@ setup(
             path.normpath('apps/registered.ini'),
             path.normpath('apps/images.ini')
         ]),
+        (path.normpath('../../golem/apps/core/benchmark/minilight'), [
+            path.normpath('apps/core/benchmark/minilight/cornellbox.ml.txt'),
+        ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
             path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
         ]),
         (path.normpath('../../golem/apps/lux/resources/scripts'), [
-            path.normpath('apps/lux/resources/scripts/docker_luxtask.py')
+            path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
+            path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
         ]),
         (path.normpath('../../golem/gui/view/'), [
             path.normpath('gui/view/nopreview.png')
@@ -89,7 +93,7 @@ if not (in_appveyor() or in_travis()):
 
 task_collector_err = TaskCollectorBuilder().build()
 
-if 'bdist_wheel' not in argv:
+if 'bdist_wheel' not in argv and 'pyinstaller' not in argv:
     ui_err = generate_ui()
 
 print_errors(ui_err, task_collector_err)
