@@ -14,9 +14,16 @@ class EthereumClientTest(TempDirFixture):
         super(EthereumClientTest, self).setUp()
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
+        self.manage_client = not is_geth_listening(NodeProcess.testnet)
+        self.client = Client()
+
+    def tearDown(self):
+        if self.manage_client:
+            self.client.node.stop()
+        super(EthereumClientTest, self).tearDown()
 
     def test_client(self):
-        client = Client()
+        client = self.client
         p = client.get_peer_count()
         assert type(p) is int
         s = client.is_syncing()
@@ -28,12 +35,13 @@ class EthereumClientTest(TempDirFixture):
         assert c == 0
 
     def test_send_raw_transaction(self):
-        client = Client()
+        client = self.client
         with self.assertRaises(ValueError):
             client.send("fake data")
+        client.node.stop()
 
     def test_send_transaction(self):
-        client = Client()
+        client = self.client
         addr = '\xff'*20
         priv = '\xee'*32
         tx = Transaction(1, 20*10**9, 21000, to=addr, value=0, data=b'')
@@ -44,7 +52,7 @@ class EthereumClientTest(TempDirFixture):
     @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
                      "geth is already running; skipping starting and stopping tests")
     def test_start_terminate(self):
-        client = Client()
+        client = self.client
         assert client.node.is_running()
         client.node.stop()
         assert not client.node.is_running()
@@ -56,13 +64,13 @@ class EthereumClientTest(TempDirFixture):
     def test_get_logs(self):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
-        client = Client()
+        client = self.client
         logs = client.get_logs(from_block='latest', to_block='latest', topics=[log_id, addr])
         assert logs == []
 
     def test_filters(self):
         """ Test creating filter and getting logs """
-        client = Client()
+        client = self.client
         filter_id = client.new_filter()
         assert type(filter_id) is unicode
         # Filter id is hex encoded 256-bit integer.

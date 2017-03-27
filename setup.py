@@ -15,7 +15,8 @@ requirements, dependencies = parse_requirements(directory)
 
 setup(
     name='golem',
-    version=get_golem_version('bdist_wheel' in argv),
+    version=get_version(),
+    platforms=platform,
     description='Global, open sourced, decentralized supercomputer',
     long_description=get_long_description(directory),
     url='https://golem.network',
@@ -95,5 +96,7 @@ task_collector_err = TaskCollectorBuilder().build()
 
 if 'bdist_wheel' not in argv and 'pyinstaller' not in argv:
     ui_err = generate_ui()
+else:
+    move_wheel()
 
 print_errors(ui_err, task_collector_err)
