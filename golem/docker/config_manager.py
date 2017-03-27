@@ -58,9 +58,10 @@ class DockerConfigManager(object):
 
     @classmethod
     def install(cls, *args, **kwargs):
-        docker_manager = cls(*args, **kwargs)
-        DockerTaskThread.docker_manager = docker_manager
-        return docker_manager
+        if not DockerTaskThread.docker_manager:
+            docker_manager = cls(*args, **kwargs)
+            DockerTaskThread.docker_manager = docker_manager
+        return DockerTaskThread.docker_manager
 
     @contextmanager
     def _try(self):

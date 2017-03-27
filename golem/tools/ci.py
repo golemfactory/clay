@@ -1,7 +1,4 @@
 import os
-import unittest
-
-import mock
 
 
 def in_appveyor():
@@ -13,12 +10,14 @@ def in_travis():
 
 
 def ci_skip(obj):
+    import unittest
     if in_appveyor() or in_travis():
         return unittest.skip('Unsupported CI environment')
     return obj
 
 
 def ci_patch(*args, **kwargs):
+    import mock
     if in_appveyor() or in_travis():
         return mock.patch(*args, **kwargs)
     return _identity

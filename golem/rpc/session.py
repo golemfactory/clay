@@ -103,11 +103,11 @@ class Session(ApplicationSession):
                 yield self.subs[event_name].unsubscibe()
                 self.subs.pop(event_name, None)
             else:
-                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
+                logger.error("RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error(u"RPC: Session error: {}".format(err))
+        logger.error("RPC: Session error: {}".format(err))
 
 
 class Client(object):
@@ -128,11 +128,17 @@ class Client(object):
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
             deferred = self._session.call(method_alias, *args, **kwargs)
+            deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
             deferred.errback(ProtocolError(u"RPC: session is not yet established"))
 
         return deferred
+
+    @staticmethod
+    def _on_error(err):
+        logger.error("RPC: call error: {}".format(err))
+        raise err
 
 
 class Publisher(object):
