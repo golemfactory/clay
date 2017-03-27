@@ -36,6 +36,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
@@ -274,6 +275,17 @@ class Client(object):
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
+        if self.task_tester is None:
+            request = AsyncRequest(self._run_test_task, t_dict)
+            async_run(request)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
+
+    def _run_test_task(self, t_dict):
+
         def on_success(*args, **kwargs):
             self.task_tester = None
             if self.rpc_publisher:
@@ -284,18 +296,11 @@ class Client(object):
             if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        if self.task_tester is None:
-            t = DictSerializer.load(t_dict)
-            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-            self.task_tester.run()
-
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
-            return True
-
+        t = DictSerializer.load(t_dict)
+        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        self.task_tester.run()
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
-        return False
+            self.rpc_publisher.publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
