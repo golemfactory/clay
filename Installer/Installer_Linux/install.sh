@@ -17,6 +17,7 @@ declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r ipfs_url='https://dist.ipfs.io/go-ipfs/v0.4.6/'
 declare -r ipfs_package='go-ipfs_v0.4.6_linux-amd64.tar.gz'
+declare -r hyperg='https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.1.2/hyperg_0.1.2_linux-amd64.tar.bz2'
 
 # Questions
 declare -i INSTALL_DOCKER=0
@@ -27,7 +28,8 @@ declare -i reinstall=0
 # PACKAGE VERSION
 CURRENT_VERSION="0.1.0"
 NEWEST_VERSION="0.1.0"
-PACKAGE="golem-0.1.0-cp27-none-linux_x86_64.whl"
+PACKAGE="golem-linux.tar.gz"
+GOLEM_DIR=$HOME'/golem/'
 
 
 # @brief print error message
@@ -128,49 +130,43 @@ function install_dependencies()
         fi
         rm -f /tmp/$docker_script
     fi
-}
 
-function get_golem_version()
-{
-    info_msg "Checking Golem version"
-    installed_version=$( pip list 2>/dev/null | grep 'golem' | awk '{print $2}' | sed 's/[()]//g' )
-    newest_version=$(wget -O- -q $HOST$version_file)
-    PACKAGE="golem-$newest_version-cp27-none-linux_x86_64.whl"
-    if [[ ! "$newest_version" > "$installed_version" ]]; then     # @todo need to be upgraded in versioning
-        ask_user "Newest version ($newest_version) is already installed. Do you want to reinstall? (y/n)"
-        reinstall=$?
-        [[ $reinstall -eq 0 ]] && return 1
+    if [[ ! -f /usr/local/bin/hyperg ]]; then
+        info_msg "Installing HyperG"
+        wget -qO- $hyperg /tmp/hyperg.tar.bz2
+        tar -vxjf /tmp/hyperg.tar.bz2
+        mv /tmp/hyperg $HOME/
+        rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
-    return 0
 }
 
-# @brief Download and install golem wheel
+# @brief Download and install golem
 # @return 1 if error occurred, 0 otherwise
 function install_golem()
 {
-    wget $HOST$PACKAGE
-    if [[ -f $PACKAGE ]]; then
-        if [[ $reinstall -eq 0 ]]; then
-            pip install $PACKAGE
-            result=$?
-        else
-            pip install --upgrade --force-reinstall $PACKAGE
-            result=$?
-        fi
-        if [[ $result -eq 0 ]]; then
-            rm -f $PACKAGE
-            return 0
-        else
-            error_msg "Some error occurred during installation"
-            error_msg "Contact Golem Team: http://golemproject.org:3000/ or contact@golem.network"
-        fi
-        rm -f $PACKAGE
-    else
-        error_msg "Cannot download $PACKAGE"
-        error_msg "Check you internet connection and contact Golem Team: http://golemproject.org:3000/ or contact@golem.network"
+    wget -qO- $HOST$PACKAGE > /tmp/$PACKAGE
+    if [[ ! -f /tmp/$PACKAGE ]]; then
+        error_msg "Cannot download package"
+        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        return 1
     fi
-    return 1
+    tar -zxvf /tmp/$PACKAGE
+    if [[ -f $GOLEM_DIR/golemapp ]]; then
+        CURRENT_VERSION=$( $GOLEM_DIR/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        NEWEST_VERSION=$( /tmp/dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+    fi
+    if [[ $CURRENT_VERSION >= $NEWEST_VERSION ]]; then
+        ask_user "Newest version already installed. Do you want to reinstall Golem? (y/n)"
+        [[ $? -eq 0 ]] && return 0
+    fi
+    mv /tmp/dist/* $GOLEM_DIR
+    rm -f /tmp/$PACKAGE &>/dev/null
+    rm -rf /tmp/dist &>/dev/null
+    [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
+    [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
+    return 0
 }
+
 
 # @brief Main function
 function main()
@@ -182,10 +178,6 @@ function main()
     fi
     check_dependencies
     install_dependencies
-    get_golem_version
-    [[ $? -ne 0 ]] && return 0
-    install_golem
-    [[ $? -ne 0 ]] && return 1 || return 0
 }
 
 main
