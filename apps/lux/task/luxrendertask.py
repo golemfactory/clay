@@ -268,18 +268,20 @@ class LuxTask(RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.num_tasks_received == self.total_tasks:
-                if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
-                    self.__generate_final_flm_advanced_verification()
-                else:
-                    self.__generate_final_flm()
+            if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
+                self.__generate_final_flm_advanced_verification()
+            else:
+                self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
-        with open(find_task_script(APP_DIR, "docker_luxmerge.py")) as f:
-            src_code = f.read()
-        if src_code is None:
+        script_file = find_task_script(APP_DIR, "docker_luxmerge.py")
+
+        if script_file is None:
             logger.error("Cannot find merger script")
             return
+
+        with open(script_file) as f:
+            src_code = f.read()
 
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id

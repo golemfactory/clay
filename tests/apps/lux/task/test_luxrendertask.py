@@ -3,7 +3,7 @@ from pathlib import Path
 import pickle
 import unittest
 
-from mock import Mock
+from mock import Mock, patch
 from PIL import Image
 
 from golem.resource.dirmanager import DirManager, get_test_task_path
@@ -146,9 +146,10 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         flm_file = os.path.join(self.path, "result.flm")
         open(flm_file, 'w').close()
         luxtask.subtasks_given["SUBTASK1"] = {"start_task": 1, "node_id": "NODE_1"}
+        log_file = self.temp_file_name("stdout.log")
 
         luxtask._accept_client("NODE_1")
-        luxtask.accept_results("SUBTASK1", [img_file, flm_file])
+        luxtask.accept_results("SUBTASK1", [img_file, flm_file, log_file])
 
         assert luxtask.subtasks_given["SUBTASK1"]['preview_file'] == img_file
         assert os.path.isfile(luxtask.preview_file_path)
@@ -181,6 +182,18 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_update_task_preview(self):
         luxtask = self.get_test_lux_task()
         luxtask._update_task_preview()
+
+    @patch("apps.lux.task.luxrendertask.find_task_script")
+    def test_get_merge_ctd_error(self, find_task_script_mock):
+        # If Lux cannot find merge script, an error log should be returned
+        find_task_script_mock.return_value = None
+
+        with self.assertLogs(logger, level="ERROR") as l:
+            assert self.get_test_lux_task()
+
+        assert any("Cannot find merger script" in log for log in l.output)
+
+
 
 
 
