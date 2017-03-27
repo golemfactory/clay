@@ -18,7 +18,8 @@ class LoggerBridge(object):
 
     def __getattr__(self, item):
         def bridge(_msg, *_, **kwargs):
-            return getattr(logger, item)(_msg.format(**kwargs))
+            attr = 'error' if not hasattr(logger, item) else item
+            return getattr(logger, attr)(_msg.format(**kwargs))
         return bridge
 
 
