@@ -99,7 +99,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         task_mock = self._get_task_mock()
 
         # Task's initial state is set to 'waiting' (found in activeStatus)
-        wait_for(self.tm.add_new_task(task_mock))
+        wait_for(self.tm.add_new_task(task_mock), 20)
 
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is not None
