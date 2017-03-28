@@ -45,3 +45,9 @@ class TestSceneFileEditor(TestDirFixture):
         assert len(re.findall('"bool write_exr" \["false"\]', out)) == 1
         out = regenerate_lux_file(scene_file_src2, xres, yres, halttime, haltspp, writeinterval, crop, "exr")
         assert len(re.findall('"bool write_exr" \["true"\]', out)) == 1
+
+        scene_file_src2 = 'Film "fleximage"\n "bool write_exr" ["true"]\n "integer xresolution" [200] "integer yresolution" [100]\n "integer writeinterval" [15]\n "integer halttime" [10]\n "float cropwindow" [0, 1, 0, 1]'
+        out = regenerate_lux_file(scene_file_src2, xres, yres, halttime, haltspp, writeinterval,
+                                  crop, output_format)
+        self.assertTrue('"integer halttime" [' + str(halttime) + ']' in out)
+        self.assertTrue('"integer haltspp" [' + str(haltspp) + ']' in out)
