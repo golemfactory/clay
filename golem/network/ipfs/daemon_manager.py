@@ -1,5 +1,4 @@
 import logging
-import time
 
 import ipaddress
 
@@ -160,7 +159,7 @@ class IPFSDaemonManager(IPFSClientHandler):
         return []
 
     def _node_action(self, url, method, command, success, error, obj_id=None, async=True):
-        def closure():
+        def closure(*_):
             self._handle_retries(method, command, url,
                                  obj_id=obj_id,
                                  raise_exc=True)
