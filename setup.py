@@ -13,6 +13,8 @@ if 'bdist_wheel' in argv or 'pyinstaller' in argv:
 directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
 
+update_variables()
+
 setup(
     name='golem',
     version=get_version(),
@@ -96,7 +98,8 @@ task_collector_err = TaskCollectorBuilder().build()
 
 if 'bdist_wheel' not in argv and 'pyinstaller' not in argv:
     ui_err = generate_ui()
-else:
+elif 'bdist_wheel' in argv:
     move_wheel()
+
 
 print_errors(ui_err, task_collector_err)

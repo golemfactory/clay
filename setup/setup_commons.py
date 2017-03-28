@@ -119,6 +119,18 @@ def generate_ui():
             """.format(err)
 
 
+def update_variables():
+    import re
+    file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
+    with open(file_, 'rb') as f_:
+        variables = f_.read()
+    v = get_version().split('.')
+    version = "{}.{}".format(v[0], v[1])
+    variables = re.sub(r"APP_VERSION = \".*\"", "APP_VERSION = \"{}\"".format(version), variables)
+    with open(file_, 'wb') as f_:
+        f_.write(variables)
+
+
 def move_wheel():
     from shutil import move
     path_ = path.join(get_golem_path(), 'dist')

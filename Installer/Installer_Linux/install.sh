@@ -131,11 +131,11 @@ function install_dependencies()
         rm -f /tmp/$docker_script
     fi
 
-    if [[ ! -f /usr/local/bin/hyperg ]]; then
+    if [[ ! -f $HOME/hyperg/hyperg ]]; then
         info_msg "Installing HyperG"
-        wget -qO- $hyperg /tmp/hyperg.tar.bz2
+        wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
-        mv /tmp/hyperg $HOME/
+        mv hyperg $HOME/
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
 }
@@ -153,15 +153,16 @@ function install_golem()
     tar -zxvf /tmp/$PACKAGE
     if [[ -f $GOLEM_DIR/golemapp ]]; then
         CURRENT_VERSION=$( $GOLEM_DIR/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        NEWEST_VERSION=$( /tmp/dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        NEWEST_VERSION=$( dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
     fi
-    if [[ $CURRENT_VERSION >= $NEWEST_VERSION ]]; then
+    if [[ ! "$CURRENT_VERSION" < "$NEWEST_VERSION" ]]; then
         ask_user "Newest version already installed. Do you want to reinstall Golem? (y/n)"
         [[ $? -eq 0 ]] && return 0
     fi
-    mv /tmp/dist/* $GOLEM_DIR
+    [[ ! -d $GOLEM_DIR ]] && mkdir -p $GOLEM_DIR
+    mv dist/* $GOLEM_DIR
     rm -f /tmp/$PACKAGE &>/dev/null
-    rm -rf /tmp/dist &>/dev/null
+    rm -rf dist &>/dev/null
     [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
     [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
     return 0
@@ -178,6 +179,8 @@ function main()
     fi
     check_dependencies
     install_dependencies
+    install_golem
+    return $?
 }
 
 main
