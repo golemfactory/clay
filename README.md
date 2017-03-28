@@ -14,11 +14,12 @@ between both roles).
 
 ## Installing and testing
 
-Follow the installation instruction from
+For Mac OS X follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem),
+and for MS Windows and Linux follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
 Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
-[Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
+[Golem MS Windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
 
 [Golem Linux package](https://www.dropbox.com/s/2nn5lg7x0c3q23z/golem-linux.zip?dl=0)
 
