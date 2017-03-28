@@ -61,16 +61,16 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         :param int output_num: number of final output files
         :return list: list of pixels that belong to a subtask border
         """
-        preview_x = 300
-        preview_y = 200
+        preview_x = 300.0
+        preview_y = 200.0
         res_x, res_y = definition.resolution
         if res_x == 0 or res_y == 0:
             return []
 
-        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
-            scale_factor = float(preview_x) / float(res_x)
+        if float(res_x) / res_y > preview_x / preview_y:
+            scale_factor = preview_x / res_x
         else:
-            scale_factor = float(preview_y) / float(res_y)
+            scale_factor = preview_y / res_y
         scale_factor = min(1.0, scale_factor)
 
         x = int(round(res_x * scale_factor))
@@ -408,8 +408,7 @@ class LuxTask(RenderingTask):
         self.__generate_final_file(new_flm)
 
     def __get_test_flm(self):
-        dir_ = self.tmp_dir
-        return os.path.join(dir_, "test_result.flm")
+        return os.path.join(self.tmp_dir, "test_result.flm")
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
