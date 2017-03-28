@@ -407,9 +407,8 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self, dir_=None):
-        if dir_ is None:
-            dir_ = self.tmp_dir
+    def __get_test_flm(self):
+        dir_ = self.tmp_dir
         return os.path.join(dir_, "test_result.flm")
 
 
