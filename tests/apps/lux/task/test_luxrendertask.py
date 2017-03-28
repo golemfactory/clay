@@ -6,6 +6,7 @@ import unittest
 from mock import Mock, patch
 from PIL import Image
 
+from golem.core.common import is_linux
 from golem.resource.dirmanager import DirManager, get_test_task_path
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -193,8 +194,56 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         assert any("Cannot find merger script" in log for log in l.output)
 
+    def test_update_preview_with_exr(self):
+        # FIxme this test should be lighter with smaller image
+        p = Path(__file__).parent / "samples" / "GoldenGate.exr"
+        luxtask = self.get_test_lux_task()
+        luxtask.res_x, luxtask.res_y = 1262, 860
+        luxtask._update_preview(str(p), 1)
+        # Run update again (should blend)
+        luxtask._update_preview(str(p), 2)
 
+    def test_errors(self):
+        luxtask = self.get_test_lux_task()
+        luxtask.output_format = "png"
+        luxtask.output_file = os.path.join(self.path, "inside", "outputfile")
+        os.makedirs(os.path.join(self.path, "inside"))
+        with self.assertLogs(logger, level="ERROR") as l:
+            luxtask._LuxTask__final_flm_failure("some error")
+        assert any("some error" in log for log in l.output)
 
+        with self.assertLogs(logger, level="ERROR") as l:
+            luxtask._LuxTask__final_img_error("different error")
+        assert any("different error" in log for log in l.output)
+
+        with self.assertLogs(logger, level="ERROR") as l:
+            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]])})
+        assert any("No final file generated" in log for log in l.output)
+
+        with self.assertLogs(logger, level="ERROR") as l:
+            luxtask._LuxTask__final_flm_ready({"data": self.additional_dir_content([1, [2]])})
+        assert any("No flm file created" in log for log in l.output)
+
+        if not is_linux():
+            return
+
+        output_file = os.path.join(self.path, "inside", "outputfile.png")
+        with open(output_file, 'w') as f:
+            f.write("not empty")
+
+        os.chmod(output_file, 0o400)
+
+        assert os.path.isfile(os.path.join(self.path, "inside", "outputfile.png"))
+        diff_output = self.temp_file_name("diff_output.png")
+
+        with open(self.temp_file_name("diff_output.png"), 'w') as f:
+            f.write("not_empty")
+        with self.assertLogs(logger, level="WARNING") as l:
+            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]]) +
+                                                       [diff_output]})
+        assert any("Couldn't rename" in log for log in l.output)
+
+        os.chmod(output_file, 0o700)
 
 
 class TestLuxRenderTaskTypeInfo(TempDirFixture):
@@ -287,6 +336,3 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         definition = RenderingTaskDefinition()
         definition.resolution = (0, 0)
         assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
-
-
-
