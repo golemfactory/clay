@@ -162,6 +162,8 @@ def file_name():
             plat = "linux_i386"
     elif platform.startswith('win'):
         plat = "win32"
+    elif platform.startswith('darwin'):
+        plat = "macosx_10_12_x86_64"
     else:
         raise SystemError("Incorrect platform: {}".format(platform))
     if commit_id != tag_id:  # devel package
