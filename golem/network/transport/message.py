@@ -99,16 +99,16 @@ class Message(object):
             try:
                 msg = server.decrypt(msg)
             except AssertionError:
-                logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+                logger.info("Failed to decrypt message, maybe it's not encrypted?")
                 encrypted = False
             except Exception as err:
-                logger.error("Failed to decrypt message {}".format(str(err)))
+                logger.info("Failed to decrypt message {}".format(str(err)))
                 continue
 
             m = cls.deserialize_message(msg)
 
             if m is None:
-                logger.error("Failed to deserialize message {}".format(msg))
+                logger.info("Failed to deserialize message {}".format(msg))
                 continue
 
             m.encrypted = encrypted
