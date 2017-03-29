@@ -16,11 +16,16 @@ P2P_PROTOCOL_ID = 11
 
 
 class PeerSessionInfo(object):
+    #attributes = [
+    #    'address', 'port',
+    #    'verified', 'degree', 'key_id',
+    #    'node_name', 'node_info',
+    #    'listen_port', 'conn_id'
+    #]
+
     attributes = [
-        'address', 'port',
-        'verified', 'degree', 'key_id',
-        'node_name', 'node_info',
-        'listen_port', 'conn_id'
+        'remote_pubkey',
+        'ip_port'
     ]
 
     def __init__(self, session):
@@ -29,7 +34,7 @@ class PeerSessionInfo(object):
 
     def get_simplified_repr(self):
         repr = self.__dict__
-        del repr['node_info']
+        #del repr['node_info']
         return repr
 
 

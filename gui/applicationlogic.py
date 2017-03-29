@@ -157,10 +157,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 table.insertRow(i)
 
         for i, peer in enumerate(peers):
-            table.setItem(i, 0, QTableWidgetItem(peer['address']))
-            table.setItem(i, 1, QTableWidgetItem(str(peer['port'])))
-            table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
-            table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
+            table.setItem(i, 0, QTableWidgetItem(peer['remote_pubkey']))
+            table.setItem(i, 1, QTableWidgetItem(str(peer['ip_port'])))
+            #table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
+            #table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
         deferred = self.client.get_balance()
