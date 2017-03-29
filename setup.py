@@ -63,7 +63,7 @@ setup(
     },
     data_files=[
         (path.normpath('../../'), [
-            'golemapp.py', 'golemcli.py', 'loggingconfig.py', '.version.ini'
+            'golemapp.py', 'golemcli.py', 'loggingconfig.py'
         ]),
         (path.normpath('../../golem/apps'), [
             path.normpath('apps/registered.ini'),
