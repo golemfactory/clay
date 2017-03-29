@@ -4,11 +4,13 @@ from PIL import Image
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
-                                                    FrameRendererOptions)
+                                                    FrameRenderingTaskBuilder,
+                                                    FrameRendererOptions, logger)
 
 
 class FrameRenderingTaskMock(FrameRenderingTask):
@@ -103,3 +105,73 @@ class TestFrameRenderingTask(TestDirFixture):
         task.accept_results("SUBTASK1", [img_file, img_file2])
         assert task.frames_given["4"][0] == img_file
         assert task.frames_given["5"][0] == img_file2
+
+
+class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
+    def test_calculate_total(self):
+        definition = RenderingTaskDefinition()
+        definition.optimize_total = True
+        definition.total_subtasks = 12
+        definition.options = FrameRendererOptions()
+        definition.options.use_frames = True
+        definition.options.frames = range(1, 7)
+        builder = FrameRenderingTaskBuilder(root_path=self.path, dir_manager=DirManager(self.path),
+                                            node_name="SOME NODE NAME", task_definition=definition)
+
+        class Defaults(object):
+            def __init__(self, default_subtasks, min_subtasks, max_subtasks):
+                self.default_subtasks = default_subtasks
+                self.min_subtasks = min_subtasks
+                self.max_subtasks = max_subtasks
+
+        defaults = Defaults(13, 3, 33)
+        assert builder._calculate_total(defaults) == 6
+
+        definition.options.use_frames = False
+        assert builder._calculate_total(defaults) == 13
+
+        definition.optimize_total = False
+        assert builder._calculate_total(defaults) == 12
+
+        definition.total_subtasks = 2
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 3
+        assert builder._calculate_total(defaults) == 3
+
+        definition.total_subtasks = 34
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 33
+        assert builder._calculate_total(defaults) == 33
+
+        definition.total_subtasks = 6
+        definition.options.use_frames = True
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
+
+        definition.total_subtasks = 3
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 3
+
+        definition.total_subtasks = 12
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 12
+
+        definition.total_subtasks = 4
+        with self.assertLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 3
+
+        definition.total_subtasks = 13
+        with self.assertLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 12
+
+        definition.total_subtasks = 17
+        with self.assertLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 12
+
+        definition.total_subtasks = 18
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 18
+
+

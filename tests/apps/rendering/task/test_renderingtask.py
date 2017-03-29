@@ -298,27 +298,27 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
                 self.max_subtasks = max_subtasks
 
         defaults = Defaults()
-        assert builder._calculate_total(defaults, definition) == 13
+        assert builder._calculate_total(defaults) == 13
 
         defaults.default_subtasks = 17
-        assert builder._calculate_total(defaults, definition) == 17
+        assert builder._calculate_total(defaults) == 17
 
         definition.optimize_total = False
         definition.total_subtasks = 18
-        assert builder._calculate_total(defaults, definition) == 18
+        assert builder._calculate_total(defaults) == 18
 
         definition.total_subtasks = 2
         with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults, definition) == 17
+            assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 3
         with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults, definition) == 3
+            assert builder._calculate_total(defaults) == 3
 
         definition.total_subtasks = 34
         with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults, definition) == 17
+            assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 33
         with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults, definition) == 33
+            assert builder._calculate_total(defaults) == 33

@@ -346,8 +346,8 @@ def __num_from_pixel(p_y, res_y, tasks):
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     TASK_CLASS = FrameRenderingTask
 
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
+    def _calculate_total(self, defaults):
+        if self.task_definition.optimize_total:
             if self.task_definition.options.use_frames:
                 return len(self.task_definition.options.frames)
             else:
@@ -355,20 +355,20 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
         if self.task_definition.options.use_frames:
             num_frames = len(self.task_definition.options.frames)
-            if definition.total_subtasks > num_frames:
-                est = int(math.floor(float(definition.total_subtasks) / float(num_frames))) * num_frames
-                if est != definition.total_subtasks:
+            if self.task_definition.total_subtasks > num_frames:
+                est = int(math.floor(float(self.task_definition.total_subtasks) / float(num_frames))) * num_frames
+                if est != self.task_definition.total_subtasks:
                     logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
                 return est
 
             est = int(
-                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(definition.total_subtasks)))))
-            if est != definition.total_subtasks:
+                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(self.task_definition.total_subtasks)))))
+            if est != self.task_definition.total_subtasks:
                 logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
 
             return est
 
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
+        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
+            return self.task_definition.total_subtasks
         else:
             return defaults.default_subtasks

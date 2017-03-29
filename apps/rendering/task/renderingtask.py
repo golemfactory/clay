@@ -286,15 +286,15 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
 
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
+    def _calculate_total(self, defaults):
+        if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
+        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
+            return self.task_definition.total_subtasks
         else:
             logger.warning("Cannot set total subtasks to {}. Changing to {}".format(
-                definition.total_subtasks, defaults.default_subtasks))
+                self.task_definition.total_subtasks, defaults.default_subtasks))
             return defaults.default_subtasks
 
     def _set_verification_options(self, new_task):
@@ -304,7 +304,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         # super() when ready
         kwargs['node_name'] = self.node_name
         kwargs['task_definition'] = self.task_definition
-        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS(), self.task_definition)
+        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
         kwargs['root_path'] = self.root_path
         return kwargs
 
