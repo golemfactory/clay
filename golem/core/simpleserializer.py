@@ -7,6 +7,7 @@ import types
 import cbor2
 import jsonpickle
 import pytz
+from rlp import Serializable
 
 from golem.core.common import to_unicode
 
@@ -196,3 +197,17 @@ class CBORSerializer(object):
     @classmethod
     def dumps(cls, obj):
         return cbor2.dumps(obj, encoders=cls.encoders, datetime_as_timestamp=True, timezone=pytz.utc)
+
+class CBORSedes(Serializable):
+
+    def __init__(self):
+        Serializable.__init__(self)
+
+    @classmethod
+    def serialize(cls, obj):
+        return CBORSerializer.dumps(obj)
+
+
+    @classmethod
+    def deserialize(cls, serial, exclude=None, **kwargs):
+        return CBORSerializer.loads(serial)
