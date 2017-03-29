@@ -299,7 +299,7 @@ class LuxTask(RenderingTask):
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
-        if new_chunk_file_path.endswith(".exr"):
+        if new_chunk_file_path.upper().endswith(".EXR"):
             self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
