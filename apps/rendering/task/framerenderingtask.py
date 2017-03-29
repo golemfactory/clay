@@ -105,7 +105,7 @@ class FrameRenderingTask(RenderingTask):
             img_x, img_y = img.size
             img = img.resize((int(round(self.scale_factor * img_x)),
                               int(round(self.scale_factor * img_y))),
-                              resample=Image.BILINEAR)
+                             resample=Image.BILINEAR)
             img.save(self._get_preview_file_path(num), "BMP")
             img.save(self._get_preview_task_file_path(num), "BMP")
 
@@ -207,11 +207,6 @@ class FrameRenderingTask(RenderingTask):
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
-
-    def _copy_frames(self):
-        output_dir = os.path.dirname(self.output_file)
-        for file in self.collected_file_names.values():
-            shutil.copy(file, os.path.join(output_dir, os.path.basename(file)))
 
     def _collect_image_part(self, num_start, tr_file):
         self.collected_file_names[num_start] = tr_file
