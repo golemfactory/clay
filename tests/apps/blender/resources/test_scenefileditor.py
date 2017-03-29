@@ -98,3 +98,7 @@ True'''
         mock_manager.find_task_script.return_value = None
         with self.assertRaises(IOError):
             reload(scenefileeditor)
+
+    def tearDown(self):
+        super(TestSceneFileEditor, self).tearDown()
+        reload(scenefileeditor)
