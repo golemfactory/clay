@@ -180,16 +180,16 @@ function main()
     check_dependencies
     install_dependencies
     install_golem
-    return $?
+    result=$?
+    if [[ $INSTALL_DOCKER -eq 1 ]]; then
+        info_msg "You need to restart your PC to finish installation"
+    fi
+    if [[ $result -eq 1 ]]; then
+        error_msg "Installation failed"
+        exit 1
+    fi
+    return $result
 }
 
 main
-result=$?
-if [[ $INSTALL_DOCKER -eq 1 ]]; then
-    info_msg "You need to restart your PC to finish installation"
-fi
-if [[ $result -eq 1 ]]; then
-    error_msg "Installation failed"
-    exit 1
-fi
-exit 0
+exit $?
