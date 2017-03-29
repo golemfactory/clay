@@ -116,7 +116,8 @@ class TaskSession(MiddlemanSafeSession):
         try:
             data = self.task_server.decrypt(data)
         except AssertionError:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+            logger.info("Failed to decrypt message from {}:{}, "
+                        "maybe it's not encrypted?".format(self.address, self.port))
         except Exception as err:
             logger.warning("Fail to decrypt message {}".format(err))
             self.dropped()
@@ -520,13 +521,13 @@ class TaskSession(MiddlemanSafeSession):
             send_hello = True
 
         if not self.verify(msg):
-            logger.error("Wrong signature for Hello msg")
+            logger.info("Wrong signature for Hello msg")
             self.disconnect(TaskSession.DCRUnverified)
             return
 
         if msg.proto_id != TASK_PROTOCOL_ID:
-            logger.error("Protocol version mismatch {} vs {} (local)"
-                         .format(msg.proto_id, TASK_PROTOCOL_ID))
+            logger.info("Protocol version mismatch {} vs {} (local)"
+                        .format(msg.proto_id, TASK_PROTOCOL_ID))
             self.disconnect(TaskSession.DCRProtocolVersion)
             return
 

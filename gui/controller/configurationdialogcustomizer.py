@@ -61,7 +61,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.computingTrustSlider.valueChanged.connect(self.__computing_trust_slider_changed)
         self.gui.ui.requestingTrustLineEdit.textEdited.connect(self.__requesting_trust_edited)
         self.gui.ui.computingTrustLineEdit.textEdited.connect(self.__computing_trust_edited)
-        self.gui.ui.ethAccountLineEdit.textChanged.connect(self.__check_eth_account)
 
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
 
@@ -174,7 +173,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
-        self.__check_eth_account()
         min_price = config_desc.min_price / denoms.ether
         max_price = config_desc.max_price / denoms.ether
         self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
@@ -350,7 +348,6 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.max_price = int(max_price * denoms.ether)
         except ValueError as err:
             logger.warning("Wrong max price value: {}".format(err))
-        self.__check_eth_account()
 
     def __set_account_error(self):
         palette = QPalette()
@@ -370,7 +367,7 @@ class ConfigurationDialogCustomizer(Customizer):
             self.__set_account_ok()
         else:
             self.__set_account_error()
-            logger.warning("Wrong ethereum address: %r", text)
+            logger.info("Wrong ethereum address in gui: %r", text)
 
     def __show_advance_clicked(self):
         self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())
