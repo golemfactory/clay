@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import atexit
 import logging
 from pydispatch import dispatcher
@@ -45,6 +46,17 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
+from devp2p.app import BaseApp
+from devp2p.discovery import NodeDiscovery
+from devp2p.peermanager import PeerManager
+from devp2p.service import BaseService
+from devp2p import crypto
+from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
+import random
+import ethereum.slogging as slogging
+from logging import StreamHandler
+
+devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
 
 
@@ -59,9 +71,16 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(object):
+class Client(BaseApp):
+    client_name = 'golem'
+    default_config = dict(BaseApp.default_config)
+    services = [NodeDiscovery, PeerManager]
+
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
+
+        slogging.configure(u':info')
+        devp2plog.info('starting')
 
         # TODO: Should we init it only once?
         init_messages()
@@ -86,6 +105,33 @@ class Client(object):
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
+
+        if ('ceb6294a907dd32a4e8a5622903868178cdd788976d9e7338b29735be0c436114a5828063ddddfdeda7e22ac1bf88ba195238590709a83a0ce791b9765f5be26' == encode_hex(self.keys_auth.public_key)):
+            incr = 0
+        else:
+            incr = 1
+
+        config = {
+            'node': {
+                'privkey_hex': encode_hex(self.keys_auth._private_key),
+                'pubkey_hex': encode_hex(self.keys_auth.public_key)
+            },
+            'discovery': {
+                'listen_host': '0.0.0.0',
+                'listen_port': 20170 + incr,
+                'bootstrap_nodes': [
+                    'enode://ceb6294a907dd32a4e8a5622903868178cdd788976d9e7338b29735be0c436114a5828063ddddfdeda7e22ac1bf88ba195238590709a83a0ce791b9765f5be26@127.0.0.1:20170'
+                ]
+            },
+            'p2p': {
+                'listen_host': '0.0.0.0',
+                'listen_port': 20170 + incr,
+                'min_peers': 2,
+                'max_peers': 5
+            }
+        }
+
+        BaseApp.__init__(self, config)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
@@ -163,6 +209,7 @@ class Client(object):
             self.init_monitor()
         self.start_network()
         self.do_work_task.start(0.1, False)
+        BaseApp.start(self)
 
     def start_network(self):
         log.info("Starting network ...")
@@ -174,6 +221,13 @@ class Client(object):
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
+
+        for service in Client.services:
+            assert issubclass(service, BaseService)
+            assert service.name not in self.services
+            service.register_with_app(self)
+            assert hasattr(self.services, service.name)
+
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6,
                                       use_docker_machine_manager=self.use_docker_machine_manager)
@@ -191,14 +245,14 @@ class Client(object):
         self.resource_server.start_accepting()
         time.sleep(1.0)
 
-        self.p2pservice.set_resource_server(self.resource_server)
+        #self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
 
         log.info("Starting task server ...")
         self.task_server.start_accepting()
 
-        self.p2pservice.set_task_server(self.task_server)
-        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
+        #self.p2pservice.set_task_server(self.task_server)
+        #self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
         if self.monitor:

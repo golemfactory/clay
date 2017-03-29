@@ -602,7 +602,8 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Return a list of a known tasks headers
         :return list: list of task header
         """
-        return self.task_server.get_tasks_headers()
+        return []
+        #return self.task_server.get_tasks_headers()
 
     def add_task_header(self, th_dict_repr):
         """ Add new task header to a list of known task headers
