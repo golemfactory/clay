@@ -146,16 +146,6 @@ def get_version():
     return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
 
 
-def update_ini():
-    version_file = path.join(get_golem_path(), '.version.ini')
-    file_name_ = file_name().split('-')
-    tag = file_name_[1]
-    commit = file_name_[2]
-    version = "[version]\nversion = {}\n".format(tag + ("-" + commit) if commit.startswith('0x') else "")
-    with open(version_file, 'wb') as f_:
-        f_.write(version)
-
-
 def file_name():
     """
     Get wheel name

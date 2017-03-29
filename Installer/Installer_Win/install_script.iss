@@ -13,8 +13,10 @@
 ; https://download.docker.com/win/stable/InstallDocker.msi
 ; https://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py2.7.exe/download
 #define Repository "C:\golem"           
-#expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
+;#expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
+#expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
+#expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
 
 [Setup]
@@ -57,7 +59,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
-
+                                               
 [Files]
 Source: "{#Repository}\dist\*"; DestDir: {app};
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
