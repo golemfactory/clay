@@ -186,7 +186,6 @@ function main()
     fi
     if [[ $result -eq 1 ]]; then
         error_msg "Installation failed"
-        exit 1
     fi
     return $result
 }
