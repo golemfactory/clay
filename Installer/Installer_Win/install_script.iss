@@ -9,11 +9,9 @@
 ; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
 ; https://www.microsoft.com/en-us/download/details.aspx?id=40784 vcredist_x86.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
-; https://www.python.org/ftp/python/2.7.13/python-2.7.13.msi
 ; https://download.docker.com/win/stable/InstallDocker.msi
-; https://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py2.7.exe/download
-#define Repository "C:\golem"           
-;#expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
+#define Repository "C:\golem"
+#expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
 #expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
@@ -43,9 +41,6 @@ SolidCompression=yes
 ; Set environment variable to point to company installation
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{sd}\Python27\Scripts\golemapp.exe"; Flags: uninsdeletevalue;
  
-; Append python to PATH if does not already exist
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Python27\;{sd}\Python27\Scripts\"; Check: NeedsAddPath('{sd}\Python27')
-
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox";
 
