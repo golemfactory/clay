@@ -195,10 +195,9 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("Cannot find merger script" in log for log in l.output)
 
     def test_update_preview_with_exr(self):
-        # FIxme this test should be lighter with smaller image
-        p = Path(__file__).parent / "samples" / "GoldenGate.exr"
+        p = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
         luxtask = self.get_test_lux_task()
-        luxtask.res_x, luxtask.res_y = 1262, 860
+        luxtask.res_x, luxtask.res_y = 10, 10
         luxtask._update_preview(str(p), 1)
         # Run update again (should blend)
         luxtask._update_preview(str(p), 2)
