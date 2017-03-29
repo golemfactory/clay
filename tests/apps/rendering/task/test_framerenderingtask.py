@@ -100,11 +100,38 @@ class TestFrameRenderingTask(TestDirFixture):
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
                                            "end_task": 3, "frames": [4, 5]}
         img_file2 = os.path.join(self.path, "img2.png")
-        img_2 = img.save(img_file2)
+        img.save(img_file2)
         img.close()
         task.accept_results("SUBTASK1", [img_file, img_file2])
         assert task.frames_given["4"][0] == img_file
         assert task.frames_given["5"][0] == img_file2
+
+    def test_get_output_names(self):
+        frame_task = self._get_frame_task(True)
+        output_names = frame_task.get_output_names()
+        assert len(output_names) == len(frame_task.frames)
+        frame_task = self._get_frame_task(False)
+        output_names = frame_task.get_output_names()
+        assert len(output_names) == 0
+
+    def test_update_frame_preview(self):
+        frame_task = self._get_frame_task()
+        frame_task.res_x = 10
+        frame_task.res_y = 20
+        frame_task.total_tasks = 4
+        frame_task.frames = [5, 7]
+        frame_task.scale_factor = 1
+        new_img = Image.new("RGB", (10, 10), (0, 255, 0))
+        img_path = self.temp_file_name("image1.png")
+        new_img.save(img_path)
+        frame_task._update_frame_preview(img_path, 5)
+
+        new_img = Image.new("RGB", (10, 10), (255, 0, 0))
+        img_path = self.temp_file_name("image2.png")
+        new_img.save(img_path)
+        frame_task._update_frame_preview(img_path, 5, 2)
+        frame_task._update_frame_preview(img_path, 7, 2)
+        frame_task._update_frame_preview(img_path, 7, 1, True)
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
@@ -173,5 +200,3 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.total_subtasks = 18
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 18
-
-
