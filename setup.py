@@ -7,11 +7,15 @@ from setuptools import setup
 from setup.setup_commons import *
 from setup.taskcollector_builder import TaskCollectorBuilder
 
-if 'bdist_wheel' in argv or 'pyinstaller' in argv:
-    ui_err = generate_ui()
+building_wheel = 'bdist_wheel' in argv
+building_binary = 'pyinstaller' in argv
 
 directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
+task_collector_err = TaskCollectorBuilder().build()
+
+if building_wheel or building_binary:
+    ui_err = generate_ui()
 
 update_variables()
 
@@ -94,11 +98,9 @@ from golem.tools.ci import in_appveyor, in_travis
 if not (in_appveyor() or in_travis()):
     DockerManager.pull_images()
 
-task_collector_err = TaskCollectorBuilder().build()
-
-if 'bdist_wheel' not in argv and 'pyinstaller' not in argv:
+if not (building_wheel or building_binary):
     ui_err = generate_ui()
-elif 'bdist_wheel' in argv:
+elif building_wheel:
     move_wheel()
 
 

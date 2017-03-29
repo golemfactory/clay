@@ -61,27 +61,22 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         :param int output_num: number of final output files
         :return list: list of pixels that belong to a subtask border
         """
-        preview_x = 300
-        preview_y = 200
+        preview_x = 300.0
+        preview_y = 200.0
         res_x, res_y = definition.resolution
-        if res_x != 0 and res_y != 0:
-            if float(res_x) / float(res_y) > float(preview_x) / float(
-                    preview_y):
-                scale_factor = float(preview_x) / float(res_x)
-            else:
-                scale_factor = float(preview_y) / float(res_y)
-            scale_factor = min(1.0, scale_factor)
+        if res_x == 0 or res_y == 0:
+            return []
+
+        if float(res_x) / res_y > preview_x / preview_y:
+            scale_factor = preview_x / res_x
         else:
-            scale_factor = 1.0
-        border = []
+            scale_factor = preview_y / res_y
+        scale_factor = min(1.0, scale_factor)
+
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        for i in range(0, y):
-            border.append((0, i))
-            border.append((x - 1, i))
-        for i in range(0, x):
-            border.append((i, 0))
-            border.append((i, y - 1))
+        border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
+        border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
         return border
 
     @classmethod
@@ -273,18 +268,20 @@ class LuxTask(RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.num_tasks_received == self.total_tasks:
-                if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
-                    self.__generate_final_flm_advanced_verification()
-                else:
-                    self.__generate_final_flm()
+            if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
+                self.__generate_final_flm_advanced_verification()
+            else:
+                self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
-        with open(find_task_script(APP_DIR, "docker_luxmerge.py")) as f:
-            src_code = f.read()
-        if src_code is None:
+        script_file = find_task_script(APP_DIR, "docker_luxmerge.py")
+
+        if script_file is None:
             logger.error("Cannot find merger script")
             return
+
+        with open(script_file) as f:
+            src_code = f.read()
 
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
@@ -410,10 +407,8 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self, dir_=None):
-        if dir_ is None:
-            dir_ = self.tmp_dir
-        return os.path.join(dir_, "test_result.flm")
+    def __get_test_flm(self):
+        return os.path.join(self.tmp_dir, "test_result.flm")
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):
