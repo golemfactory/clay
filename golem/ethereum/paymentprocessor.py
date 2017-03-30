@@ -8,6 +8,7 @@ import time
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from twisted.internet.defer import inlineCallbacks
 
 from golem.resource.client import async_run, AsyncRequest
 from golem.transactions.service import Service
@@ -302,8 +303,15 @@ class PaymentProcessor(Service):
             return False
         return True
 
+    @inlineCallbacks
     def _run(self):
-        if not self.synchronized() or self._waiting_for_faucet:
+        if self._waiting_for_faucet:
+            return
+
+        synchronized = yield async_run(AsyncRequest(self.synchronized),
+                                       error=self._on_get_ether_failure)
+
+        if not synchronized:
             return
 
         self._waiting_for_faucet = True

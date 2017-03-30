@@ -103,11 +103,11 @@ class Session(ApplicationSession):
                 yield self.subs[event_name].unsubscibe()
                 self.subs.pop(event_name, None)
             else:
-                logger.error("RPC: Not subscribed to: {}".format(event_name))
+                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: Session error: {}".format(err))
+        logger.error(u"RPC: Session error: {}".format(err))
 
 
 class Client(object):
@@ -137,7 +137,7 @@ class Client(object):
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: call error: {}".format(err))
+        logger.error(u"RPC: call error: {}".format(err))
         raise err
 
 

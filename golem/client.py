@@ -11,6 +11,7 @@ from os import path, makedirs
 from threading import Lock
 
 from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -460,25 +461,30 @@ class Client(object):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = self.transaction_system.get_balance()
+            req = AsyncRequest(self.transaction_system.get_balance)
+            b, ab, d = yield async_run(req)
             if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+                returnValue((str(b), str(ab), str(d)))
+        returnValue((None, None, None))
 
     def get_payments_list(self):
         if self.use_transaction_system():
             return self.transaction_system.get_payments_list()
         return ()
 
+    @inlineCallbacks
     def get_incomes_list(self):
         if self.transaction_system:
-            return self.transaction_system.get_incoming_payments()
+            req = AsyncRequest(self.transaction_system.get_incoming_payments)
+            result = yield async_run(req)
+            returnValue(result)
         # FIXME use method that connect payment with expected payments
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
-        return ()
+        returnValue(())
 
     def get_task_cost(self, task_id):
         """

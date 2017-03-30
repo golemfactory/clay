@@ -8,6 +8,7 @@ from twisted.internet.defer import Deferred
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import wait_for
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -20,6 +21,8 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from mock import Mock, MagicMock, patch
+
+from golem.tools.testwithreactor import TestWithReactor
 
 
 class TestCreateClient(TestDirFixture):
@@ -45,7 +48,15 @@ class TestCreateClient(TestDirFixture):
                    use_monitor=False)
 
 
-class TestClient(TestWithDatabase):
+class TestClient(TestWithDatabase, TestWithReactor):
+
+    def setUp(self):
+        TestWithReactor.setUp(self)
+        TestWithDatabase.setUp(self)
+
+    def tearDown(self):
+        TestWithDatabase.tearDown(self)
+        TestWithReactor.tearDown(self)
 
     def test_payment_func(self):
         c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
@@ -64,13 +75,17 @@ class TestClient(TestWithDatabase):
         c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
         c.check_payments()
 
-        self.assertEqual(c.get_incomes_list(), [])
+        incomes = wait_for(c.get_incomes_list())
+
+        self.assertEqual(incomes, [])
         payment = IncomingPayment("0x00003", 30 * denoms.ether)
         payment.extra = {'block_number': 311,
                          'block_hash': "hash1",
                          'tx_hash': "hash2"}
         c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
-        incomes = c.get_incomes_list()
+
+        incomes = wait_for(c.get_incomes_list())
+
         self.assertEqual(len(incomes), 1)
         self.assertEqual(incomes[0]['block_number'], 311)
         self.assertEqual(incomes[0]['value'], 30 * denoms.ether)

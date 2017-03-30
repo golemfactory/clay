@@ -25,14 +25,6 @@ from golem.testutils import DatabaseFixture
 SYNC_TEST_INTERVAL = 0.01
 
 
-def wait_for(condition, timeout, step=0.1):
-    for _ in xrange(int(timeout / step)):
-        if condition():
-            return True
-        time.sleep(step)
-    return False
-
-
 def check_deadline(deadline, expected):
     return expected <= deadline <= expected + 1
 
