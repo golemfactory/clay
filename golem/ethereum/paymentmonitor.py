@@ -3,6 +3,7 @@ from __future__ import division
 from ethereum.utils import denoms, zpad
 from pydispatch import dispatcher
 
+from golem.resource.client import async_run, AsyncRequest
 from golem.transactions.service import Service
 from golem.model import PaymentStatus
 
@@ -32,7 +33,7 @@ class PaymentMonitor(Service):
         return self.__payments
 
     def _run(self):
-        self.process_incoming_payments()
+        async_run(AsyncRequest(self.process_incoming_payments))
 
     def process_incoming_payments(self):
         log.debug("process incoming payments")
