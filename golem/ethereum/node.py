@@ -23,7 +23,7 @@ from web3 import Web3, IPCProvider
 
 def ropsten_faucet_donate(addr):
     addr = normalize_address(addr)
-    URL_TEMPLATE = "http://faucet.ropsten.be:3001/donate/{}"
+    URL_TEMPLATE = "http://188.165.227.180:3000/donate/{}"
     request = URL_TEMPLATE.format(addr.encode('hex'))
     response = requests.get(request)
     if response.status_code != 200:
