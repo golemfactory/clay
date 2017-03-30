@@ -1,19 +1,16 @@
 from __future__ import division
 
 import logging
-from pydispatch import dispatcher
 import sys
 import time
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
-from twisted.internet.defer import inlineCallbacks
+from pydispatch import dispatcher
 
-from golem.resource.client import async_run, AsyncRequest
-from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
-
+from golem.transactions.service import Service
 from .contracts import TestGNT
 from .node import ropsten_faucet_donate
 
@@ -303,29 +300,15 @@ class PaymentProcessor(Service):
             return False
         return True
 
-    @inlineCallbacks
     def _run(self):
         if self._waiting_for_faucet:
             return
 
-        synchronized = yield async_run(AsyncRequest(self.synchronized),
-                                       error=self._on_get_ether_failure)
-
-        if not synchronized:
-            return
-
         self._waiting_for_faucet = True
-        async_run(AsyncRequest(self.get_ether_from_faucet),
-                  success=self._on_get_ether_success,
-                  error=self._on_get_ether_failure)
 
-    def _on_get_ether_success(self, result):
-        if result and self.get_gnt_from_faucet():
-            self.monitor_progress()
-            self.sendout()
-        self._waiting_for_faucet = False
-
-    def _on_get_ether_failure(self, result):
-        self._waiting_for_faucet = False
-        log.warn("Couldn't get ether from faucet: {}"
-                 .format(result))
+        try:
+            if self.synchronized() and self.get_ether_from_faucet():
+                self.monitor_progress()
+                self.sendout()
+        finally:
+            self._waiting_for_faucet = False
