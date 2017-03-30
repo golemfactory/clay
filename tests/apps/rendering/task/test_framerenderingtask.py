@@ -137,6 +137,9 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test_paste_new_chunk(self):
         task = self._get_frame_task()
+        task.res_x = 10
+        task.res_y = 20
+        task.scale_factor = 1
         preview_path = self.temp_file_name("image1.png")
         with self.assertLogs(logger, level="ERROR") as l:
             assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
@@ -146,6 +149,17 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(logger, level="ERROR") as l:
             assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
         assert any("Can't add new chunk to preview" in log for log in l.output)
+        assert any("Can't generate preview" in log for log in l.output)
+
+        img = Image.new("RGB", (10, 10), (0, 122, 0))
+        img.save(preview_path)
+        with self.assertLogs(logger, level="ERROR"):
+            new_img = task._paste_new_chunk("nota image", preview_path, 1, 10)
+        assert isinstance(new_img, Image.Image)
+        with self.assertNoLogs(logger, level="ERROR"):
+            new_img = task._paste_new_chunk(img, preview_path, 1, 10)
+        assert isinstance(new_img, Image.Image)
+
 
     def test_mark_task_area(self):
         task = self._get_frame_task()
