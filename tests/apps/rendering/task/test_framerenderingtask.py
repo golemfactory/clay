@@ -26,7 +26,7 @@ class FrameRenderingTaskMock(FrameRenderingTask):
         super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
 
-class TestFrameRenderingTask(TestDirFixture):
+class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def _get_frame_task(self, use_frames=True):
         files_ = self.additional_dir_content([3])
@@ -132,6 +132,51 @@ class TestFrameRenderingTask(TestDirFixture):
         frame_task._update_frame_preview(img_path, 5, 2)
         frame_task._update_frame_preview(img_path, 7, 2)
         frame_task._update_frame_preview(img_path, 7, 1, True)
+
+    def test_paste_new_chunk(self):
+        task = self._get_frame_task()
+        preview_path = self.temp_file_name("image1.png")
+        with self.assertLogs(logger, level="ERROR") as l:
+            assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
+        assert any("Can't generate preview" in log for log in l.output)
+        with open(preview_path, 'w') as f:
+            f.write("not an image, again not an image")
+        with self.assertLogs(logger, level="ERROR") as l:
+            assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
+        assert any("Can't add new chunk to preview" in log for log in l.output)
+
+    def test_mark_task_area(self):
+        task = self._get_frame_task()
+        task.total_tasks = 4
+        task.frames = [3, 4, 6, 7]
+        task.scale_factor = 0.5
+        task.res_x = 20
+        task.res_y = 40
+        img = Image.new("RGB", (10, 20), (0, 0, 0))
+        task._mark_task_area({'start_task': 2}, img, (121, 0, 0))
+        for i in range(10):
+            for j in range(20):
+                assert img.getpixel((i, j)) == (121, 0, 0)
+
+        task.total_tasks = 2
+        task._mark_task_area({'start_task': 2}, img, (0, 13, 0))
+        for i in range(10):
+            for j in range(20):
+                assert img.getpixel((i, j)) == (0, 13, 0)
+
+        task.total_tasks = 8
+        task._mark_task_area({'start_task': 2}, img, (0, 0, 201))
+        for i in range(10):
+            for j in range(10):
+                assert img.getpixel((i, j)) == (0, 13, 0)
+            for j in range(10, 20):
+                assert img.getpixel((i, j)) == (0, 0, 201)
+
+    def test_choose_frames(self):
+        task = self._get_frame_task()
+        task.total_tasks = 5
+        task.frames = [x * 10 for x in range(1, 16)]
+        assert task._choose_frames(task.frames, 2, 5) == ([40, 50, 60], 1)
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
