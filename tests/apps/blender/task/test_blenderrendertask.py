@@ -188,7 +188,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Warning: path 'example/directory/to/file/f1.png' "
-                         "not found\nwarning: Path 'example/directory/to/file2.png' not fouND"
+                         "not found\nwarning: Path 'example/directory/to/file2.png' not fouND\n"
                          "warning: Path 'example/directory/to/file2.png' not fouND")
         
         with open(errlog, 'w') as fd_err:

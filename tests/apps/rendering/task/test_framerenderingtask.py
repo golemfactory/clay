@@ -1,5 +1,6 @@
 import os
 
+from pathlib import Path
 from PIL import Image
 
 from golem.resource.dirmanager import DirManager
@@ -7,6 +8,7 @@ from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
                                                     FrameRenderingTaskBuilder,
@@ -177,6 +179,46 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.total_tasks = 5
         task.frames = [x * 10 for x in range(1, 16)]
         assert task._choose_frames(task.frames, 2, 5) == ([40, 50, 60], 1)
+
+    def test_update_preview_task_file_path(self):
+        task = self._get_frame_task()
+        img = Image.new("RGB", (10, 10), (0, 0, 0))
+        tmp_path = self.temp_file_name("img.png")
+        img.save(tmp_path)
+        task._update_preview_task_file_path(tmp_path)
+        task = self._get_frame_task(False)
+        task._update_preview_task_file_path(tmp_path)
+
+    def test_put_image_together(self):
+        task = self._get_frame_task(False)
+        task.output_format = "exr"
+        task.output_file = self.temp_file_name("output.exr")
+        task.res_x = 10
+        task.res_y = 20
+        exr_1 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
+        exr_2 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile2.EXR"
+        task.collected_file_names["abc"] = str(exr_1)
+        task.collected_file_names["def"] = str(exr_2)
+        task._put_image_together()
+        img_repr = load_img(task.output_file)
+        assert isinstance(img_repr, EXRImgRepr)
+
+    def test_put_frame_together(self):
+        task = self._get_frame_task(True)
+        task.output_format = "exr"
+        task.outfilebasename = "output"
+        task.output_file = self.temp_file_name("output.exr")
+        task.frames = [3, 5]
+        task.total_tasks = 4
+        task.res_x = 10
+        task.res_y = 20
+        exr_1 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
+        exr_2 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile2.EXR"
+        task.frames_given["5"] = {"abc": str(exr_1), "def": str(exr_2)}
+        task._put_frame_together(5, 1)
+        out_path = os.path.join(self.path, "output0005.exr")
+        img_repr = load_img(out_path)
+        assert isinstance(img_repr, EXRImgRepr)
 
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):

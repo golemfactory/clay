@@ -7,7 +7,7 @@ from mock import Mock, patch
 from apps.core.task.coretaskstate import TaskDefinition, TaskState
 from apps.core.task.coretask import logger as core_logger
 from apps.rendering.resources.imgrepr import load_img
-from apps.rendering.task.framerenderingtask import get_task_border, FrameRendererOptions
+from apps.rendering.task.framerenderingtask import FrameRendererOptions
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, logger
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
@@ -261,27 +261,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             mock_is_windows.return_value = True
             windows_path = self.task._get_task_collector_path()
             assert windows_path == linux_path + ".exe"
-
-
-class TestGetTaskBorder(unittest.TestCase):
-
-    def test(self):
-        subtask = Mock()
-        subtask.extra_data = {'start_task': 0, 'end_task': 1}
-        definition = RenderingTaskDefinition()
-        definition.resolution = [300, 200]
-        definition.options = FrameRendererOptions()
-        border = get_task_border(subtask, definition, 1)
-        assert len(border) == 1400
-
-        definition.options.use_frames = True
-        definition.options.frames = range(100)
-        border = get_task_border(subtask, definition, 1)
-        assert not border
-
-        subtask.extra_data = {'start_task': 0, 'end_task': 1000}
-        border = get_task_border(subtask, definition, 1000)
-        assert len(border) == 640
 
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):

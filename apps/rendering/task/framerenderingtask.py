@@ -204,6 +204,7 @@ class FrameRenderingTask(RenderingTask):
             collector.finalize().save(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name, collected.values(), "paste")
+
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
@@ -275,67 +276,6 @@ def get_frame_name(output_name, ext, frame_num):
         return u"{}.{}".format(output_name[:idl+1] + str(frame_num).zfill(idr-idl) + output_name[idr+1:], ext)
     else:
         return u"{}{}.{}".format(output_name, str(frame_num).zfill(DEFAULT_PADDING), ext)
-
-
-def get_task_border(subtask, definition, total_subtasks, output_num=1):
-    res_x, res_y = definition.resolution
-    start_task = subtask.extra_data['start_task']
-    end_task = subtask.extra_data['end_task']
-    frames = len(definition.options.frames)
-
-    if not definition.options.use_frames:
-        return __get_border(start_task, end_task, total_subtasks, res_x, res_y)
-
-    if total_subtasks > frames:
-        parts = total_subtasks / frames
-        return __get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1, parts, res_x, res_y)
-
-    return []
-
-
-def get_task_num_from_pixels(p_x, p_y, definition, total_subtasks, output_num=1):
-    res_y = definition.resolution[1]
-    if not definition.options.use_frames:
-        return __num_from_pixel(p_y, res_y, total_subtasks)
-
-    frames = len(definition.options.frames)
-
-    if total_subtasks <= frames:
-        subtask_frames = int(math.ceil(float(frames) / float(total_subtasks)))
-        return int(math.ceil(float(output_num) / subtask_frames))
-
-    parts = total_subtasks / frames
-    return (output_num - 1) * parts + __num_from_pixel(p_y, res_y, parts)
-
-
-def __get_border(start_task, end_task, parts, res_x, res_y):
-    preview_x = 300
-    preview_y = 200
-    if res_x != 0 and res_y != 0:
-        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
-            scale_factor = float(preview_x) / float(res_x)
-        else:
-            scale_factor = float(preview_y) / float(res_y)
-        scale_factor = min(1.0, scale_factor)
-    else:
-        scale_factor = 1.0
-    border = []
-    upper = int(math.floor(float(res_y) * scale_factor / float(parts) * (start_task - 1)))
-    lower = int(math.floor(float(res_y) * scale_factor / float(parts) * end_task))
-    for i in range(upper, lower):
-        border.append((0, i))
-        border.append((res_x - 1, i))
-    for i in range(0, res_x):
-        border.append((i, upper))
-        border.append((i, lower))
-    return border
-
-
-def __num_from_pixel(p_y, res_y, tasks):
-    num = int(math.ceil(float(tasks) * float(p_y) / float(res_y)))
-    num = max(num, 1)
-    num = min(num, tasks)
-    return num
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
