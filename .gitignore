@@ -41,6 +41,7 @@ sdist/
 
 # Golem files
 *.db
+.version.ini
 
 gui/view/gen/icons_rc.py
 golem/monitorconfig_local.py

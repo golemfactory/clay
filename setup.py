@@ -17,6 +17,8 @@ task_collector_err = TaskCollectorBuilder().build()
 if building_wheel or building_binary:
     ui_err = generate_ui()
 
+update_variables()
+
 setup(
     name='golem',
     version=get_version(),
@@ -61,7 +63,7 @@ setup(
     },
     data_files=[
         (path.normpath('../../'), [
-            'golemapp.py', 'golemcli.py', 'loggingconfig.py', '.version.ini'
+            'golemapp.py', 'golemcli.py', 'loggingconfig.py'
         ]),
         (path.normpath('../../golem/apps'), [
             path.normpath('apps/registered.ini'),
@@ -100,5 +102,6 @@ if not (building_wheel or building_binary):
     ui_err = generate_ui()
 elif building_wheel:
     move_wheel()
+
 
 print_errors(ui_err, task_collector_err)

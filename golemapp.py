@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
+import sys
 from multiprocessing import freeze_support
 
 import click
-import sys
 
 from golem.node import OptNode
 
@@ -24,6 +24,7 @@ from golem.node import OptNode
               help="Request task from file")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
+@click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
@@ -36,8 +37,12 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, m):
+def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
     freeze_support()
+    if version:
+        from golem.core.variables import APP_VERSION
+        print ("GOLEM version: {}".format(APP_VERSION))
+        return 0
 
     config = dict(datadir=datadir, transaction_system=payments)
     if rpc_address:

@@ -1,13 +1,3 @@
-def __read_version():
-    from ConfigParser import ConfigParser
-    from golem.core.common import get_golem_path
-    from os.path import join
-    config = ConfigParser()
-    config.read(join(get_golem_path(), '.version.ini'))
-    version = config.get('version', 'version')
-    splitted_version = version.split('.')
-    return "{}.{}".format(splitted_version[0], splitted_version[1])
-
 # CONST
 LONG_STANDARD_SIZE = 4
 
@@ -15,7 +5,7 @@ LONG_STANDARD_SIZE = 4
 #       VARIABLES          #
 ############################
 APP_NAME = "Brass Golem"
-APP_VERSION = __read_version()
+APP_VERSION = "0.3"
 PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"

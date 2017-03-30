@@ -119,6 +119,18 @@ def generate_ui():
             """.format(err)
 
 
+def update_variables():
+    import re
+    file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
+    with open(file_, 'rb') as f_:
+        variables = f_.read()
+    v = get_version().split('.')
+    version = "{}.{}".format(v[0], v[1])
+    variables = re.sub(r"APP_VERSION = \".*\"", "APP_VERSION = \"{}\"".format(version), variables)
+    with open(file_, 'wb') as f_:
+        f_.write(variables)
+
+
 def move_wheel():
     from shutil import move
     path_ = path.join(get_golem_path(), 'dist')
@@ -132,16 +144,6 @@ def move_wheel():
 def get_version():
     from git import Repo
     return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
-
-
-def update_ini():
-    version_file = path.join(get_golem_path(), '.version.ini')
-    file_name_ = file_name().split('-')
-    tag = file_name_[1]
-    commit = file_name_[2]
-    version = "[version]\nversion = {}\n".format(tag + ("-" + commit) if commit.startswith('0x') else "")
-    with open(version_file, 'wb') as f_:
-        f_.write(version)
 
 
 def file_name():

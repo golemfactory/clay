@@ -9,12 +9,12 @@
 ; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
 ; https://www.microsoft.com/en-us/download/details.aspx?id=40784 vcredist_x86.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
-; https://www.python.org/ftp/python/2.7.13/python-2.7.13.msi
-; https://download.docker.com/win/stable/InstallDocker.msi
-; https://sourceforge.net/projects/pywin32/files/pywin32/Build%20220/pywin32-220.win32-py2.7.exe/download
-#define Repository "C:\golem"           
-#expr Exec("powershell.exe python setup.py bdist_wheel", "", Repository, 1)
+; https://download.docker.com/win/stable/DockerToolbox.exe
+#define Repository "C:\golem"
+#expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
+#expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
 #define MyAppVersion ReadIni(Repository+"\\.version.ini", "version", "version", "0.1.0")
+#expr Exec("powershell.exe Remove-Item .version.ini", "", Repository, 1)
 #define AppIcon "favicon.ico"
 
 [Setup]
@@ -23,9 +23,8 @@
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
 AppId={{C8E494CC-06C7-40CB-827A-20D07903013F}
 AppName={#MyAppName}
-AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+AppVersion={#MyAppVersion}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
@@ -40,16 +39,16 @@ SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{sd}\Python27\Scripts\golemapp.exe"; Flags: uninsdeletevalue;
- 
-; Append python to PATH if does not already exist
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Python27\;{sd}\Python27\Scripts\"; Check: NeedsAddPath('{sd}\Python27')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golemapp.exe"; Flags: uninsdeletevalue;
 
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox";
 
 ; Add OpenSSL to the PATH
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
+    
+; Add HyperG to the PATH
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG\hyperg.exe"; Check: NeedsAddPath('{pf}\HyperG\hyperg.exe')
 
 ; @todo do we need any more languages? It can be confusing
 [Languages]
@@ -58,57 +57,31 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
-
+                                               
 [Files]
-Source: "{#Repository}\dist\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"; DestDir: "{app}"; Flags: ignoreversion;
+Source: "{#Repository}\dist\*"; DestDir: {app};
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
-Source: "{#Repository}\Installer\Installer_Win\deps\python-2.7.13.msi"; DestDir: "{tmp}"; Flags: ignoreversion;                              
-Source: "{#Repository}\Installer\Installer_Win\deps\pywin32-220.win32-py2.7.exe"; DestDir: "{tmp}"; Flags: ignoreversion;          
-Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;  
-Source: "{#Repository}\Installer\Installer_Win\deps\VCForPython27.msi"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\HashInfo.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\libeay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\OpenSSL License.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ReadMe.txt"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;   
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\ssleay32.dll"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
+Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;    
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{sd}\Python27\Scripts\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
 
 [Run]
- ; Install Python 2.7.6
-Filename: "msiexec"; Parameters: "/i ""{tmp}\python-2.7.13.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Flags: 64bit; Description: "Install Python 2.7"; Check: PythonSetup
-
-; Install VC For Python 2.7
-Filename: "msiexec"; Parameters: "/i ""{tmp}\VCForPython27.msi"" /qb! ALLUSERS=1 ADDLOCAL=ALL"; Description: "Install VC for python 2.7"         
-
 ; Install runtime
 Filename: "{tmp}\vcredist_x86.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime"
-
-; Install external wheels
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-win32.whl"""; Description: "Install sip"; Check: DependenciesSetup('sip')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-win32.whl"""; Description: "Install PyQt5"; Check: DependenciesSetup('PyQt5')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl"""; Description: "Install OpenEXR"; Check: DependenciesSetup('OpenEXR')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl"""; Description: "Install PyEthash"; Check: DependenciesSetup('PyEthash')
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl"""; Description: "Install secp256k1"; Check: DependenciesSetup('secp256k1')
                                      
 ; Install Docker @todo is this check enough
 Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
-
-; Finally! Install golem!
-Filename: "powershell.exe"; Parameters: "-Command ""{sd}\Python27\Scripts\pip.exe install """"{app}\golem-{#SetupSetting("AppVersion")}-cp27-none-win32.whl"""""""; Description: "Install Golem"; Check: DependenciesSetup('Golem')
-
-; Install pywin
-Filename: "{tmp}\pywin32-220.win32-py2.7.exe"; StatusMsg: "Installing pywin32"; Description: "Install pywin32"
-
+Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"       
 
 [Code]
                                                                               
@@ -117,65 +90,6 @@ function IsDockerInstalled: boolean;
 begin
    Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );                                                                                                                         
 end;
-
-// This function checks the registry for an existing Python 2.7.x installation
-function IsPythonInstalled: boolean;
-begin
-   Result := RegKeyExists(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Python.exe' );
-end;
- 
- 
-// This function checks if Python is installed and brings up user confirmation to automatically install it
-function PythonSetup(): boolean;
- 
-var
-  installPythonResult : Boolean;
-  check : Boolean;
- 
-begin
-  // Check if installer is being run in silent mode and skip all dialogs
-  if WizardSilent() then
-  begin
-    Result := True;
-    Exit;
-  end;
- 
-  check := IsPythonInstalled;
-  if not check then
-  begin
-    installPythonResult := MsgBox('The toolkit requires Python 2.7 to be installed! Do you want to have it automatically installed for you?', mbConfirmation, MB_YESNO) = IDYES;
-    if not installPythonResult then
-    begin
-      MsgBox('Python 2.7.6 will not be installed! Remember to install it later manually on your own!', mbInformation, MB_OK);
-      Result := False;
-    end;
-  end;
-  Result := True;
-end;
- 
- 
-// This function returns True if Python 2.7 registry key is detected on the system
-function DependenciesSetup(Param: String): Boolean;
- 
-var
-  check : Boolean;
- 
-begin
-  if WizardSilent() then
-  begin
-    Result := True;
-    Exit;
-  end;
- 
-  check := IsPythonInstalled;
-  if not check then
-  begin
-    MsgBox('Could not install ' + Param + ' because Python 2.7 was not detected on the system!', mbInformation, MB_OK);
-    Result := False;
-  end;
-  Result := True;
-end;
- 
  
 // This function will return True if the Param already exists in the system PATH
 function NeedsAddPath(Param: String): Boolean;

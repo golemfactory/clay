@@ -6,7 +6,6 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = collect_data_files('gui') + [
     ('loggingconfig.py', '.'),
-    ('.version.ini', '.'),
     ('gui/view/*', 'gui/view'),
     ('apps/*.ini', 'apps'),
     ('apps/core/benchmark/minilight/cornellbox.ml.txt', 'apps/core/benchmark/minilight'),
