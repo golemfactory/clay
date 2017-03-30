@@ -96,7 +96,7 @@ function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
     apt-get update
-    apt-get install -y openssl qt5-defaultlibffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool
+    apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
