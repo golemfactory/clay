@@ -12,7 +12,7 @@
 # CONSTANTS
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r HOST="https://golem.network/"
-declare -r docker_checksum='63c26d22854e74d5736fab6e560d268b'
+declare -r docker_checksum='7c05297d59f526693c069748d5378373'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r ipfs_url='https://dist.ipfs.io/go-ipfs/v0.4.6/'
@@ -96,7 +96,7 @@ function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
     apt-get update
-    apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool
+    apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
