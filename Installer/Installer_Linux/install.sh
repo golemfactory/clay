@@ -96,9 +96,7 @@ function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
     apt-get update
-    apt-get install -y openssl python-dev python-pyqt5 qt5-default pyqt5-dev-tools libffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool python-netifaces python-psutil build-essential python-pip
-    pip install --upgrade pip
-    pip install service-identity zope.interface websocket-client openexr certifi devp2p cbor2 dill base58 multihash ovh weakreflist
+    apt-get install -y openssl qt5-defaultlibffi-dev pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
@@ -136,6 +134,7 @@ function install_dependencies()
         wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
         mv hyperg $HOME/
+        [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
 }
