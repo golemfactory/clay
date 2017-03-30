@@ -159,13 +159,13 @@ class FrameRenderingTask(RenderingTask):
             RenderingTask._mark_task_area(self, subtask, img_task, color)
         elif self.__full_frames():
             for i in range(0, int(round(self.res_x * self.scale_factor))):
-                for j in range(0, int(round(self.res_y))):
+                for j in range(0, int(round(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
             parts = self.total_tasks / len(self.frames)
             upper = int(math.ceil(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts))
             lower = int(math.floor(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts + 1))
-            for i in range(0, self.res_x):
+            for i in range(0, int(round(self.res_x * self.scale_factor))):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
