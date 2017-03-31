@@ -34,7 +34,7 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.12
-crossbar
+crossbar==17.2.1
 jsonpickle
 pydispatcher
 Crypto

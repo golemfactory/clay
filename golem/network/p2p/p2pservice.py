@@ -26,7 +26,7 @@ SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash chal
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 HISTORY_LEN = 5  # How many entries from challenge history should we remember
 
-SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
+SEEDS = [('188.165.227.180', 40102), ('188.165.227.180', 40104), ('94.23.196.166', 40102), ('94.23.196.166', 40104)]
 
 
 class P2PService(PendingConnectionsServer, DiagnosticsProvider):
