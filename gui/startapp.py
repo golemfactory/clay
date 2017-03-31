@@ -5,13 +5,10 @@ import sys
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging
+from golem.core.common import config_logging, is_windows
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
-from golem.core.processmonitor import ProcessMonitor
-from golem.docker.manager import DockerManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
-from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map
 from twisted.internet.error import ReactorAlreadyRunning
 
@@ -59,9 +56,16 @@ def start_client(start_ranking, datadir=None,
     install_unhandled_error_logger()
 
     if not reactor:
+        if is_windows():
+            from twisted.internet import iocpreactor
+            iocpreactor.install()
         from twisted.internet import reactor
-    process_monitor = None
 
+    from golem.core.processmonitor import ProcessMonitor
+    from golem.docker.manager import DockerManager
+    from golem.rpc.router import CrossbarRouter
+
+    process_monitor = None
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
 
