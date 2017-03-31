@@ -14,7 +14,7 @@ between both roles).
 
 ## Installing and testing
 
-For Mac OS X follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem),
+For Mac OS X (ver. 10.12 (Sierra) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem),
 and for MS Windows and Linux follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
 Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
