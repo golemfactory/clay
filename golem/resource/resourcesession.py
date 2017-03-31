@@ -131,7 +131,7 @@ class ResourceSession(BasicSafeSession):
                 self.resource_server.add_resource_to_send(self.file_name, self.copies)
             self.copies = 0
         else:
-            self.resource_server.resource_downloaded(self.file_name, self.address, self.port)
+            self.resource_server._download_success(self.file_name, self.address, self.port)
             self.dropped()
         self.file_name = None
 

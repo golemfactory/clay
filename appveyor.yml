@@ -12,6 +12,8 @@ environment:
       PYTHON_VERSION: "2.7.13"
       PYTHON_ARCH: "32"
 
+      NODEJS_VERSION: "6"
+
       VER_GETH: geth-windows-amd64-1.5.9-a07539fb
       VER_IPFS: go-ipfs_v0.4.4_windows-386
       VER_OPENSSL: openssl-1.0.2k-i386-win32
@@ -55,6 +57,14 @@ install:
       appveyor DownloadFile https://gethstore.blob.core.windows.net/builds/%VER_GETH%.zip &&
       7z x %VER_GETH%.zip -y -aoa -oC:\ > NUL
     )
+
+  # nodejs
+  - ps: Install-Product node $env:NODEJS_VERSION
+
+  # golem-hyperdrive
+  - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
+  - cd golem-hyperdrive && npm install --save && cd ..
+  - ps: $HyperdriveProcess = Start-Process node golem-hyperdrive\src\main.js -PassThru
 
   # ipfs
   - if not exist %DIR_IPFS% (
@@ -103,3 +113,4 @@ test_script:
 
 on_finish:
   - ps: Stop-Process -Id $IPFSProcess.Id
+  - ps: Stop-Process -Id $HyperdriveProcess.Id

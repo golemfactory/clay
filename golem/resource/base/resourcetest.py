@@ -79,7 +79,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         task_server_1.client = self.client_1
         task_server_2.client = self.client_2
         task_server_1.keys_auth = self.client_1.keys_auth
-        task_server_1.keys_auth = self.client_2.keys_auth
+        task_server_2.keys_auth = self.client_2.keys_auth
         task_server_1.sync_network = task_server_2.sync_network = Mock()
         task_server_1.start_accepting = task_server_2.start_accepting = Mock()
         task_server_1.task_computer = task_server_2.task_computer = Mock()
@@ -125,9 +125,16 @@ class AddGetResources(TempDirFixture, LogTestCase):
         assert msg
 
         self.task_session_2._react_to_resource_list(msg)
-        self.resource_server_2.get_resources(async=False)
+        self.resource_server_2._download_resources(async=False)
 
         for r in self.resources_relative:
-            sha_256_1 = file_sha_256(os.path.join(self.resource_dir_1, r))
-            sha_256_2 = file_sha_256(os.path.join(self.resource_dir_2, r))
-            assert sha_256_1 == sha_256_2
+            location_1 = os.path.join(self.resource_dir_1, r)
+            location_2 = os.path.join(self.resource_dir_2, r)
+
+            assert os.path.exists(location_1)
+            assert os.path.exists(location_2)
+
+            sha_256_1 = file_sha_256(location_1)
+            sha_256_2 = file_sha_256(location_2)
+            assert sha_256_1 == sha_256_2, '{} != {}'.format(
+                sha_256_1.encode('hex'), sha_256_2.encode('hex'))

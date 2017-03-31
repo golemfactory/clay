@@ -16,7 +16,7 @@ apps_manager = AppsManager()
 apps_manager.load_apps()
 
 
-def stop_reactor():
+def stop_reactor(*_):
     from twisted.internet import reactor
     if reactor.running:
         reactor.stop()
@@ -102,7 +102,7 @@ def start_client(start_ranking, datadir=None,
 
         gui_process = start_gui(router.address)
         process_monitor = ProcessMonitor(gui_process)
-        process_monitor.add_shutdown_callback(stop_reactor)
+        process_monitor.add_callbacks(stop_reactor)
         process_monitor.start()
 
     router.start(reactor, router_ready, start_error)

@@ -21,8 +21,15 @@ class IPFSResourceManager(AbstractResourceManager, IPFSClientHandler):
         task_ids = self.storage.list_dir(dir_name)
 
         for task_id in task_ids:
-            task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
-            self._add_task(dir_files(task_root_dir), task_id)
+            # FIXME: review directory structure
+            if 'benchmark' in task_id:
+                continue
+            try:
+                task_root_dir = self.storage.dir_manager.get_task_resource_dir(task_id)
+                self._add_task(dir_files(task_root_dir), task_id)
+            except Exception as e:
+                logger.warn("Couldn't load task resources ({}): {}"
+                            .format(task_id, e))
 
     def pin_resource(self, multihash, client=None, client_options=None):
         if not client:
