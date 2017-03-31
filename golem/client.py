@@ -54,6 +54,7 @@ from devp2p import crypto
 from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
 import random
 import ethereum.slogging as slogging
+from golem.network.p2p.golemservice import GolemService
 from logging import StreamHandler
 
 devp2plog = slogging.get_logger('app')
@@ -74,7 +75,7 @@ class ClientTaskComputerEventListener(object):
 class Client(BaseApp):
     client_name = 'golem'
     default_config = dict(BaseApp.default_config)
-    services = [NodeDiscovery, PeerManager]
+    services = [NodeDiscovery, PeerManager, GolemService]
 
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
@@ -208,8 +209,9 @@ class Client(BaseApp):
         if self.use_monitor:
             self.init_monitor()
         self.start_network()
-        self.do_work_task.start(0.1, False)
+
         BaseApp.start(self)
+        self.do_work_task.start(0.1, False)
 
     def start_network(self):
         log.info("Starting network ...")
@@ -231,6 +233,8 @@ class Client(BaseApp):
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6,
                                       use_docker_machine_manager=self.use_docker_machine_manager)
+
+        self.services.golemservice.set_task_server(self.task_server)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -769,6 +773,7 @@ class Client(BaseApp):
 
             #try:
                 #self.p2pservice.sync_network()
+            self.services.golemservice.get_tasks()
             #except:
                 #log.exception("p2pservice.sync_network failed")
             try:
