@@ -35,7 +35,8 @@ class DockerManager(DockerConfigManager):
         list=['docker-machine', 'ls', '-q'],
         env=['docker-machine', 'env'],
         status=['docker-machine', 'status'],
-        inspect=['docker-machine', 'inspect']
+        inspect=['docker-machine', 'inspect'],
+        regenerate_certs=['docker-machine', 'regenerate-certs']
     )
 
     docker_commands = dict(
@@ -359,28 +360,37 @@ class DockerManager(DockerConfigManager):
         self._set_docker_machine_env()
         cb()
 
-    def _set_docker_machine_env(self):
-        output = self.command('env', self.docker_machine,
-                              args=('--shell', 'cmd'))
+    def _set_docker_machine_env(self, retried=False):
+        try:
+            output = self.command('env', self.docker_machine,
+                                  args=('--shell', 'cmd'))
+        except subprocess.CalledProcessError:
+            if not retried:
+                self.command('regenerate_certs', self.docker_machine)
+                return self._set_docker_machine_env(retried=True)
+            raise
+
         if output:
-
-            lines = output.split('\n')
-            for line in lines:
-                if not line:
-                    continue
-
-                cmd, params = line.split(' ', 1)
-                if cmd.lower() == 'set':
-                    var, val = params.split('=', 1)
-                    self._set_env_variable(var, val)
-
-                    if var == 'DOCKER_CERT_PATH':
-                        split = val.replace('"', '').split(os.path.sep)
-                        self._config_dir = os.path.sep.join(split[:-1])
-
+            self._set_env_from_output(output)
             logger.info('DockerMachine: env updated')
         else:
             logger.warn('DockerMachine: env update failed')
+
+    def _set_env_from_output(self, output):
+        for line in output.split('\n'):
+            if not line:
+                continue
+
+            cmd, params = line.split(' ', 1)
+            if cmd.lower() != 'set':
+                continue
+
+            var, val = params.split('=', 1)
+            self._set_env_variable(var, val)
+
+            if var == 'DOCKER_CERT_PATH':
+                split = val.replace('"', '').split(os.path.sep)
+                self._config_dir = os.path.sep.join(split[:-1])
 
     @staticmethod
     def _set_env_variable(name, value):

@@ -1,8 +1,8 @@
 import json
 import os
-import types
 import unittest
 from contextlib import contextmanager
+from subprocess import CalledProcessError
 
 import mock
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
@@ -156,6 +156,8 @@ class MockDockerManager(DockerManager):
             return '1.0.0'
         elif key == 'help':
             return '[help contents]'
+        elif key == 'regenerate_certs':
+            return 'certs'
         elif key not in self.docker_machine_commands:
             raise KeyError(key)
 
@@ -522,9 +524,25 @@ class TestDockerManager(unittest.TestCase):
         dmm = MockDockerManager()
         environ = dict()
 
+        def raise_process_error(*args, **kwargs):
+            raise CalledProcessError(-1, "test_command")
+
+        def raise_on_env(key, *args, **kwargs):
+            if key == 'env':
+                raise_process_error()
+            return key
+
         with mock.patch.dict('os.environ', environ):
             dmm._set_docker_machine_env()
             assert dmm._config_dir == 'tmp'
+
+            with mock.patch.object(dmm, 'command', side_effect=raise_process_error):
+                with self.assertRaises(CalledProcessError):
+                    dmm._set_docker_machine_env()
+
+            with mock.patch.object(dmm, 'command', side_effect=raise_on_env):
+                with self.assertRaises(CalledProcessError):
+                    dmm._set_docker_machine_env()
 
 
 class TestHypervisor(LogTestCase):
