@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import sys
 from multiprocessing import freeze_support
 
@@ -44,6 +43,11 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         print ("GOLEM version: {}".format(APP_VERSION))
         return 0
 
+    # Workarounds for pyinstaller executable
+    sys.modules['win32com.gen_py.os'] = None
+    sys.modules['win32com.gen_py.pywintypes'] = None
+    sys.modules['win32com.gen_py.pythoncom'] = None
+
     config = dict(datadir=datadir, transaction_system=payments)
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -54,16 +58,14 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         start_crossbar_worker(m)
     # Qt GUI
     elif qt:
+        delete_reactor()
         from gui.startgui import start_gui, check_rpc_address
-        # Workaround for pyinstaller executable
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-
         address = '{}:{}'.format(rpc_address.address, rpc_address.port)
         start_gui(check_rpc_address(ctx=None, param=None,
                                     address=address))
     # Golem
     elif gui:
+        delete_reactor()
         from gui.startapp import start_app
         start_app(rendering=True, **config)
     # Golem headless
@@ -78,6 +80,11 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         node.connect_with_peers(peer)
         node.add_tasks(task)
         node.run(use_rpc=True)
+
+
+def delete_reactor():
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
 
 
 def start_crossbar_worker(module):

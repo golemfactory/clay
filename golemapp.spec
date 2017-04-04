@@ -2,6 +2,8 @@
 import glob
 import os
 
+import sys
+
 block_cipher = None
 
 
@@ -33,13 +35,18 @@ def tree(directory):
             traverse(glob_dir(directory))]
 
 
+hidden_imports = [
+    'OpenEXR', 'sha3', 'scrypt',
+    'requests', 'web3', 'rlp', 'pylru',
+    'Imath'
+]
+
+if sys.platform == 'win32':
+    hidden_imports += ['vboxapi']
+
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
-             hiddenimports=[
-                'OpenEXR', 'sha3', 'scrypt',
-                'requests', 'web3', 'rlp', 'pylru',
-                'Imath'
-             ],
+             hiddenimports=hidden_imports,
              pathex=[],
              binaries=[],
              datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark'),
