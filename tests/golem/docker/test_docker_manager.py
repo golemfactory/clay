@@ -146,6 +146,8 @@ class MockDockerManager(DockerManager):
         elif key == 'env':
             return '\n'.join([
                 'SET GOLEM_TEST=1',
+                '',
+                'INVALID DOCKER=2',
                 'SET DOCKER_CERT_PATH="{}"'.format(os.path.join('tmp', 'golem'))
             ])
         elif key == 'list':
