@@ -2,11 +2,25 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.wamp import ApplicationRunner
+from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.internet.defer import inlineCallbacks, Deferred
 
 logger = logging.getLogger('golem.rpc')
+
+
+setProtocolOptions = WampWebSocketClientFactory.setProtocolOptions
+
+
+def set_protocol_options(instance, **options):
+    options['autoPingInterval'] = 5.
+    options['autoPingTimeout'] = 15.
+    options['openHandshakeTimeout'] = 30.
+    setProtocolOptions(instance, **options)
+
+# monkey-patch setProtocolOptions and provide custom values
+WampWebSocketClientFactory.setProtocolOptions = set_protocol_options
 
 
 class RPCAddress(object):
@@ -73,14 +87,14 @@ class Session(ApplicationSession):
         yield self.register_methods(self.methods)
         yield self.register_events(self.events)
         self.connected = True
-        self.ready.called = False
-        self.ready.callback(details)
+        if not self.ready.called:
+            self.ready.callback(details)
 
-    @inlineCallbacks
     def onLeave(self, details):
         self.connected = False
         if not self.ready.called:
             self.ready.errback(details or u"Unknown error occurred")
+        super(Session, self).onLeave(details)
 
     @inlineCallbacks
     def register_methods(self, methods):
@@ -103,11 +117,11 @@ class Session(ApplicationSession):
                 yield self.subs[event_name].unsubscibe()
                 self.subs.pop(event_name, None)
             else:
-                logger.error("RPC: Not subscribed to: {}".format(event_name))
+                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: Session error: {}".format(err))
+        logger.error(u"RPC: Session error: {}".format(err))
 
 
 class Client(object):
@@ -137,7 +151,7 @@ class Client(object):
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: call error: {}".format(err))
+        logger.error(u"RPC: call error: {}".format(err))
         raise err
 
 
