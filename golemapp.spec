@@ -42,6 +42,13 @@ hidden_imports = [
 ]
 
 if sys.platform == 'win32':
+    try:
+        import vboxapi
+    except ImportError:
+        print 'Error importing VirtualBox API. You can install it with:'
+        print 'python "%VBOX_MSI_INSTALL_PATH%\\sdk\\install\\vboxapisetup.py" install'
+        sys.exit(1)
+
     hidden_imports += ['vboxapi']
 
 a = Analysis(['golemapp.py'],
