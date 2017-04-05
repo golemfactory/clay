@@ -31,6 +31,8 @@ NEWEST_VERSION="0.1.0"
 PACKAGE="golem-linux.tar.gz"
 GOLEM_DIR=$HOME'/golem/'
 
+# PARAMS
+LOCALPACKAGE=$1
 
 # @brief print error message
 # @param error message
@@ -137,16 +139,31 @@ function install_dependencies()
         [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
+    info_msg "Done installing Golem dependencies"
+}
+
+function download_package() {
+    if [[ -f "$LOCALPACKAGE" ]]; then
+        info_msg "Local package provided, skipping downloading..."
+        cp "$LOCALPACKAGE" "/tmp/$PACKAGE"
+    else
+        info_msg "Downloading package from $HOST$PACKAGE"
+        wget -qO- "$HOST$PACKAGE" > /tmp/$PACKAGE
+    fi
+    if [[ ! -f /tmp/$PACKAGE ]]; then
+        error_msg "Error unpacking package"
+        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+        return 1
+    fi
 }
 
 # @brief Download and install golem
 # @return 1 if error occurred, 0 otherwise
 function install_golem()
 {
-    wget -qO- $HOST$PACKAGE > /tmp/$PACKAGE
-    if [[ ! -f /tmp/$PACKAGE ]]; then
-        error_msg "Cannot download package"
-        error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
+    download_package
+    result=$?
+    if [[ $result -eq 1 ]]; then
         return 1
     fi
     tar -zxvf /tmp/$PACKAGE
