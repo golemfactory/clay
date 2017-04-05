@@ -4,6 +4,7 @@ from ethereum import slogging
 from rlp.sedes import big_endian_int, binary, List, CountableList
 from golem.docker.image import DockerImage
 from golem.task.taskbase import TaskHeader
+from golem.network.p2p.node import Node
 
 log = slogging.get_logger('golem.protocol')
 
@@ -90,13 +91,13 @@ class GolemProtocol(BaseProtocol):
         """
         cmd_id = 1
 
-        structure = rlp.sedes.CountableList(SerializedTaskHeader)
+        structure = rlp.sedes.CountableList(Node)
 
         def create(self, proto, task_headers):
             self.sent = True
             t = []
             for th in task_headers:
-                t.append(SerializedTaskHeader(th))
+                t.append(th.task_owner)
             return t
 
         @classmethod
@@ -104,6 +105,6 @@ class GolemProtocol(BaseProtocol):
             ll = rlp.decode_lazy(rlp_data)
             theaders = []
             for th in ll:
-                theaders.append(SerializedTaskHeader.create(th))
+                theaders.append(Node.deserialize(th))
 
             return theaders

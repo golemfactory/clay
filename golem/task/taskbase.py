@@ -1,6 +1,7 @@
 import abc
 import logging
 import time
+import rlp
 from copy import deepcopy
 
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
@@ -11,7 +12,7 @@ from golem.network.p2p.node import Node
 logger = logging.getLogger("golem.task")
 
 
-class TaskHeader(object):
+class TaskHeader(rlp.Serializable):
     """ Task header describe general information about task as an request and is propagated in the
         network as an offer for computing nodes
     """
