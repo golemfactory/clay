@@ -15,14 +15,12 @@ declare -r HOST="https://golem.network/"
 declare -r docker_checksum='7c05297d59f526693c069748d5378373'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
-declare -r ipfs_url='https://dist.ipfs.io/go-ipfs/v0.4.6/'
-declare -r ipfs_package='go-ipfs_v0.4.6_linux-amd64.tar.gz'
 declare -r hyperg='https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.1.2/hyperg_0.1.2_linux-amd64.tar.bz2'
 
 # Questions
 declare -i INSTALL_DOCKER=0
 declare -i INSTALL_GETH=0
-declare -i INSTALL_IPFS=0
+# declare -i INSTALL_IPFS=0 # to restore IPFS revert this commit
 declare -i reinstall=0
 
 # PACKAGE VERSION
@@ -70,7 +68,7 @@ function ask_user()
     done
 }
 
-# @brief check if dependencies (pip, Docker, IPFS and Ethereum) are installed and set proper 'global' variables
+# @brief check if dependencies (pip, Docker, and Ethereum) are installed and set proper 'global' variables
 function check_dependencies()
 {
     # Check if docker deamon exists
@@ -83,13 +81,6 @@ function check_dependencies()
     if [[ -z "$( dpkg -l | grep geth )" ]]; then
         ask_user "Geth not found. Do you want to install it? (y/n)"
         INSTALL_GETH=$?
-    fi
-
-    # check if ipfs is installed
-    ipfs version &>/dev/null
-    if [[ $? -ne 0 ]]; then
-        ask_user "IPFS not found. Do you want to install it? (y/n)"
-        INSTALL_IPFS=$?
     fi
 }
 
@@ -106,15 +97,6 @@ function install_dependencies()
         add-apt-repository -y ppa:ethereum/ethereum
         apt-get update
         apt-get install -y ethereum
-    fi
-
-    if [[ $INSTALL_IPFS -eq 1 ]]; then
-        info_msg "INSTALLING IPFS"
-        wget $ipfs_url$ipfs_package
-        tar -zxvf $ipfs_package
-        mv ./go-ipfs/ipfs /usr/local/bin/ipfs
-        rm -f $ipfs_package
-        rm -rf ./go-ipfs
     fi
 
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
