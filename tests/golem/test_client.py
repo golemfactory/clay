@@ -285,6 +285,39 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         assert c.task_server.task_manager.add_new_task.called
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
+    @patch('golem.client.async_run')
+    def test_enqueue_new_task(self, async_run, *_):
+        c = self.client
+
+        result = (None, None, None)
+
+        deferred = Deferred()
+        deferred.result = result
+        deferred.called = True
+
+        async_run.return_value = deferred
+
+        c.transaction_system.get_balance = Mock()
+        c.transaction_system.get_balance.return_value = result
+
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
+
+        result = (None, 1, None)
+        deferred.result = result
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
+
+        result = (1, 1, None)
+        deferred.result = result
+        balance = wait_for(c.get_balance())
+        assert balance == ("1", "1", "None")
+
+        c.transaction_system = None
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_misc(self, _):
         c = self.client
         c.enqueue_new_task = Mock()
