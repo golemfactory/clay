@@ -27,7 +27,7 @@ declare -i reinstall=0
 
 # PACKAGE VERSION
 CURRENT_VERSION="0.1.0"
-NEWEST_VERSION="0.1.0"
+PACKAGE_VERSION="0.1.0"
 PACKAGE="golem-linux.tar.gz"
 GOLEM_DIR=$HOME'/golem/'
 
@@ -169,11 +169,11 @@ function install_golem()
     tar -zxvf /tmp/$PACKAGE
     if [[ -f $GOLEM_DIR/golemapp ]]; then
         CURRENT_VERSION=$( $GOLEM_DIR/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        NEWEST_VERSION=$( dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-    fi
-    if [[ ! "$CURRENT_VERSION" < "$NEWEST_VERSION" ]]; then
-        ask_user "Newest version already installed. Do you want to reinstall Golem? (y/n)"
-        [[ $? -eq 0 ]] && return 0
+        PACKAGE_VERSION=$( dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        if [[ ! "$CURRENT_VERSION" < "$PACKAGE_VERSION" ]]; then
+            ask_user "Newer version already installed. Do you want to reinstall Golem? (y/n)"
+            [[ $? -eq 0 ]] && return 0
+        fi
     fi
     info_msg "Installing Golem into $GOLEM_DIR"
     [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
