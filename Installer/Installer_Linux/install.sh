@@ -158,7 +158,8 @@ function install_golem()
         ask_user "Newest version already installed. Do you want to reinstall Golem? (y/n)"
         [[ $? -eq 0 ]] && return 0
     fi
-    [[ ! -d $GOLEM_DIR ]] && mkdir -p $GOLEM_DIR
+    info_msg "Installing Golem into $GOLEM_DIR"
+    [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
     mv dist/* $GOLEM_DIR
     rm -f /tmp/$PACKAGE &>/dev/null
     rm -rf dist &>/dev/null
