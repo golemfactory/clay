@@ -157,12 +157,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         except Exception as err:
             logger.error("Couldn't add known peer {}:{} : {}".format(ip_address, port, err))
 
-    def set_task_server(self, task_server):
-        """ Set task server
-        :param TaskServer task_server: task server instance
-        """
-        self.task_server = task_server
-
     def set_metadata_manager(self, metadata_manager):
         self.metadata_manager = metadata_manager
 

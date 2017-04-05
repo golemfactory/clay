@@ -6,7 +6,7 @@ import time
 from threading import Thread, Lock
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("golem.task.taskthread")
 
 
 class TaskThread(Thread):

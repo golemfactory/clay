@@ -15,6 +15,8 @@ from golem.network.transport import message
 from golem.network.transport.session import MiddlemanSafeSession
 from golem.network.transport.tcpnetwork import MidAndFilesProtocol, EncryptFileProducer, DecryptFileConsumer, \
     EncryptDataProducer, DecryptDataConsumer, SocketAddress
+from golem.model import db
+from golem.model import Payment
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
@@ -69,15 +71,10 @@ class TaskSession(MiddlemanSafeSession):
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
         self.asking_node_key_id = None  # key of a peer that communicates with us through middleman session
-
         self.msgs_to_send = []  # messages waiting to be send (because connection hasn't been verified yet)
-
         # self.last_resource_msg = None  # last message about resource
-
         self.result_owner = None  # information about user that should be rewarded (or punished) for the result
-
         self.err_msg = None  # Keep track of errors
-
         self.__set_msg_interpretations()
 
     ########################
@@ -90,7 +87,6 @@ class TaskSession(MiddlemanSafeSession):
         :param Message msg: Message to interpret and react to.
         :return None:
         """
-        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
         self.task_server.set_last_message("<-", time.localtime(), msg, self.address, self.port)
         MiddlemanSafeSession.interpret(self, msg)
 
@@ -246,6 +242,12 @@ class TaskSession(MiddlemanSafeSession):
         logger.debug('inform_worker_about_payment(%r)', payment)
         transaction_id = payment.details.get('tx', None)
         self.send(message.MessageSubtaskPayment(subtask_id=payment.subtask, reward=payment.value/denoms.ether, transaction_id=transaction_id))
+
+    @log_error()
+    def request_payment(self, expected_income):
+        logger.debug('request_payment(%r)', expected_income)
+        self.send(message.MessageSubtaskPaymentRequest(subtask_id=expected_income.subtask))
+
 
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)
@@ -598,7 +600,12 @@ class TaskSession(MiddlemanSafeSession):
         self.task_server.reward_for_subtask_paid(subtask_id=msg.subtask_id, reward=msg.reward, transaction_id=msg.transaction_id)
 
     def _react_to_subtask_payment_request(self, msg):
-        payment = Payment.get(Payment.subtask == msg.subtask_id)
+        try:
+            with db.atomic():
+                payment = Payment.get(Payment.subtask == msg.subtask_id)
+        except Payment.DoesNotExist:
+            logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
+            return
         self.inform_worker_about_payment(payment)
 
     def send(self, msg, send_unverified=False):

@@ -104,6 +104,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.add_task_header(task_header)
         ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
@@ -119,8 +120,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(wtr.owner_key_id, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.add_to_waiting_payments.assert_called_with(
-            "xyz", "key", 1)
+        ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
+            sender_node_id="key",
+            task_id="xyz",
+            subtask_id="xyzxyz",
+            value=1,
+        )
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
@@ -128,14 +133,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         prev_call_count = trust.PAYMENT.increase.call_count
         with self.assertLogs(logger, level="WARNING"):
-            ts.reward_for_subtask_paid("aa2bb2cc")
+            ts.reward_for_subtask_paid(subtask_id="aa2bb2cc", reward=1, transaction_id=None)
         self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
-        ts.reward_for_subtask_paid("xxyyzz")
+        ts.reward_for_subtask_paid(subtask_id="xxyyzz", reward=1, transaction_id=None)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")

@@ -50,7 +50,12 @@ class TestClient(TestWithDatabase):
     def test_payment_func(self):
         c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
                    use_docker_machine_manager=False, use_monitor=False)
-        c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
+        c.transaction_system.incomes_keeper.expect(
+            subtask_id="test_subtask_id",
+            task_id="xyz",
+            sender_node_id="ABC",
+            value=10,
+        )
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
         self.assertEqual(incomes[0]["node"], "ABC")

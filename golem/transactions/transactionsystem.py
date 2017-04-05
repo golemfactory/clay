@@ -48,9 +48,6 @@ class TransactionSystem(object):
         """
         return self.incomes_keeper.get_list_of_all_incomes()
 
-    def add_to_waiting_payments(self, task_id, node_id, value):
-        return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value=value)
-
     def check_payments(self):
         # TODO Some code from taskkeeper
         # now = datetime.datetime.now()
@@ -61,4 +58,5 @@ class TransactionSystem(object):
         #         del self.completed[subtask_id]
         # return after_deadline
 
+        self.incomes_keeper.run_once()
         return []

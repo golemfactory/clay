@@ -1738,7 +1738,7 @@ class MessageSubtaskPaymentRequest(MessageRedefined):
         """
 
         self.subtask_id = subtask_id
-        super(MessageSubtaskPayment, self).__init__(**kwargs)
+        super(MessageSubtaskPaymentRequest, self).__init__(**kwargs)
 
 
 RESOURCE_MSG_BASE = 3000
