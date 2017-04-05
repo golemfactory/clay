@@ -13,7 +13,7 @@ from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
@@ -63,8 +63,10 @@ class TaskManager(TaskEventListener):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
-                                                         resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        # resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
+        #                                                  resource_dir_method=self.dir_manager.get_task_temporary_dir)
+        resource_manager = HyperdriveResourceManager(self.dir_manager,
+                                                     resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]

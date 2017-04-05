@@ -61,7 +61,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             with open(out_dir_file, 'w') as f:
                 f.write("Dir file contents")
 
-            rm.add_resources(files, task_id)
+            rm.add_files(files, task_id)
 
             secret = result_manager.gen_secret()
             mock_node = MockNode(node_name)
@@ -120,6 +120,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         path, multihash = data
 
         assert os.path.exists(path)
+        assert multihash
 
         def success(*args, **kwargs):
             pass
@@ -132,8 +133,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                resource_dir_method=dir_manager.get_task_temporary_dir)
 
         new_manager = EncryptedResultPackageManager(resource_manager)
-        new_manager.pull_package(multihash,
-                                 self.task_id, self.task_id,
+        new_manager.pull_package(multihash, self.task_id, self.task_id,
                                  secret,
                                  success=success,
                                  error=error,

@@ -1,10 +1,12 @@
 from codecs import open
-from os import path, walk
+from os import listdir, path, walk
 from sys import platform
 
-from gui.view.generateui import generate_ui_files
 from setuptools import find_packages, Command
 from setuptools.command.test import test
+
+from golem.core.common import get_golem_path
+from gui.view.generateui import generate_ui_files
 
 
 class PyTest(test):
@@ -117,21 +119,59 @@ def generate_ui():
             """.format(err)
 
 
-def get_golem_version(increase):
-    from ConfigParser import ConfigParser
-    from golem.core.common import get_golem_path
-    from os.path import join
-    config = ConfigParser()
-    config_path = join(get_golem_path(), '.version.ini')
-    config.read(config_path)
-    version = config.get('version', 'version')
-    if platform.startswith('linux') and increase:    # upgrade version only when building on Linux and building wheel
-        v = version.split('.')
-        version = "{}.{}.{}".format(v[0], v[1], int(v[2]) + 1)
-        v = "[version]\nversion = {}".format(version)
-        with open(config_path, 'wb') as f:
-            f.write(v)
-    return version
+def update_variables():
+    import re
+    file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
+    with open(file_, 'rb') as f_:
+        variables = f_.read()
+    v = get_version().split('.')
+    version = "{}.{}".format(v[0], v[1])
+    variables = re.sub(r"APP_VERSION = \".*\"", "APP_VERSION = \"{}\"".format(version), variables)
+    with open(file_, 'wb') as f_:
+        f_.write(variables)
+
+
+def move_wheel():
+    from shutil import move
+    path_ = path.join(get_golem_path(), 'dist')
+    files_ = [f for f in listdir(path_) if path.isfile(path.join(path_, f))]
+    files_.sort()
+    source = path.join(path_, files_[-1])
+    dst = path.join(path_, file_name())
+    move(source, dst)
+
+
+def get_version():
+    from git import Repo
+    return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
+
+
+def file_name():
+    """
+    Get wheel name
+    :return: Name for wheel
+    """
+    from git import Repo
+    repo = Repo(get_golem_path())
+    tag = repo.tags[-2]  # get latest tag
+    tag_id = tag.commit.hexsha  # get commit id from tag
+    commit_id = repo.head.commit.hexsha  # get last commit id
+    if platform.startswith('linux'):
+        from platform import architecture
+        if architecture()[0].startswith('64'):
+            plat = "linux_x86_64"
+        else:
+            plat = "linux_i386"
+    elif platform.startswith('win'):
+        plat = "win32"
+    elif platform.startswith('darwin'):
+        plat = "macosx_10_12_x86_64"
+    else:
+        raise SystemError("Incorrect platform: {}".format(platform))
+    if commit_id != tag_id:  # devel package
+        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name, commit_id[:4], commit_id[-4:], plat)
+    else:  # release package
+        return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
 
 
 def get_files():

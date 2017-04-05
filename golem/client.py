@@ -27,6 +27,7 @@ from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -37,7 +38,7 @@ from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -129,6 +130,7 @@ class Client(object):
         self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
+        self.daemon_manager = None
 
         self.rpc_publisher = None
 
@@ -170,8 +172,12 @@ class Client(object):
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
+
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
+
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
@@ -181,7 +187,7 @@ class Client(object):
 
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
         log.info("Starting p2p server ...")
@@ -226,8 +232,12 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
+        if self.daemon_manager:
+            self.daemon_manager.stop()
         dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()
@@ -542,8 +552,8 @@ class Client(object):
         if state:
             return DictSerializer.dump(state)
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.resource_server.download_resources(resources, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)

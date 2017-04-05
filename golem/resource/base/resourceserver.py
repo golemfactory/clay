@@ -1,5 +1,6 @@
 import copy
 import logging
+from collections import namedtuple
 from threading import Lock
 
 from enum import Enum
@@ -16,11 +17,19 @@ class TransferStatus(Enum):
     failed = 4
 
 
+class PendingResource(object):
+
+    def __init__(self, resource, task_id, client_options, status):
+        self.resource = resource
+        self.task_id = task_id
+        self.client_options = client_options
+        self.status = status
+
+
 class BaseResourceServer(object):
 
-    lock = Lock()
-
     def __init__(self, resource_manager, dir_manager, keys_auth, client):
+        self._lock = Lock()
 
         self.client = client
         self.keys_auth = keys_auth
@@ -29,10 +38,7 @@ class BaseResourceServer(object):
         self.resource_manager = resource_manager
 
         self.resource_dir = self.dir_manager.res
-
-        self.resources_to_get = []
-        self.waiting_resources = {}
-        self.waiting_tasks_to_compute = {}
+        self.pending_resources = {}
 
     def change_resource_dir(self, config_desc):
         if self.dir_manager.root_path == config_desc.root_path:
@@ -52,7 +58,7 @@ class BaseResourceServer(object):
         self.client.get_resource_peers()
 
     def sync_network(self):
-        self.get_resources()
+        self._download_resources()
 
     def add_task(self, files, task_id, client_options=None):
         result = self.resource_manager.add_task(files, task_id,
@@ -67,100 +73,64 @@ class BaseResourceServer(object):
     def remove_task(self, task_id, client_options=None):
         self.resource_manager.remove_task(task_id, client_options=client_options)
 
-    def add_files_to_get(self, files, task_id, client_options=None):
-        num = 0
-        collected = False
+    def download_resources(self, resources, task_id, client_options=None):
+        with self._lock:
+            for resource in resources:
+                self._add_pending_resource(resource, task_id, client_options)
 
-        with self.lock:
-            for filename, multihash in files:
-                exists = self.resource_manager.storage.get_path_and_hash(filename, task_id,
-                                                                         multihash=multihash)
-                if not exists:
-                    self._add_resource_to_get(filename, multihash, task_id, client_options)
-                    num += 1
-
-            if num > 0:
-                self.waiting_tasks_to_compute[task_id] = num
-            else:
-                collected = True
+            collected = not self.pending_resources.get(task_id)
 
         if collected:
             self.client.task_resource_collected(task_id, unpack_delta=False)
 
-    def _add_resource_to_get(self, filename, multihash, task_id, client_options):
-        resource = [filename, multihash, task_id, client_options, TransferStatus.idle]
+    def _add_pending_resource(self, resource, task_id, client_options):
+        if task_id not in self.pending_resources:
+            self.pending_resources[task_id] = []
 
-        if filename not in self.waiting_resources:
-            self.waiting_resources[filename] = []
+        self.pending_resources[task_id].append(PendingResource(
+            resource, task_id, client_options, TransferStatus.idle
+        ))
 
-        if task_id not in self.waiting_resources[filename]:
-            self.waiting_resources[filename].append(task_id)
+    def _remove_pending_resource(self, resource, task_id):
+        with self._lock:
+            pending_resources = self.pending_resources.get(task_id, [])
 
-        self.resources_to_get.append(resource)
-
-    def get_resources(self, async=True):
-        resources = copy.copy(self.resources_to_get)
-
-        for resource in resources:
-            if resource[-1] in [TransferStatus.idle, TransferStatus.failed]:
-                resource[-1] = TransferStatus.transferring
-                self.pull_resource(resource, async=async)
-
-    def pull_resource(self, resource, async=True):
-
-        filename = resource[0]
-        multihash = resource[1]
-        task_id = resource[2]
-        client_options = resource[3]
-
-        logger.debug("Resource server: pull resource: {} ({})"
-                     .format(filename, multihash))
-
-        self.resource_manager.pull_resource(filename,
-                                            multihash,
-                                            task_id,
-                                            self.resource_downloaded,
-                                            self.resource_download_error,
-                                            async=async,
-                                            client_options=client_options)
-
-    def resource_downloaded(self, filename, multihash, task_id, *args):
-        if not filename or not multihash:
-            self.resource_download_error(Exception("Invalid resource: {} ({})"
-                                                   .format(filename, multihash)),
-                                         filename, multihash, task_id)
-            return
-
-        collected = self.remove_resource_to_get(filename, task_id)
-        if collected:
-            self.client.task_resource_collected(collected,
-                                                unpack_delta=False)
-
-    def resource_download_error(self, exc, filename, multihash, task_id, *args):
-        for entry in self.resources_to_get:
-            if task_id == entry[2]:
-                self.remove_resource_to_get(filename, task_id)
-        self.client.task_resource_failure(task_id, exc)
-
-    def remove_resource_to_get(self, filename, task_id):
-        collected = None
-
-        with self.lock:
-            for waiting_task_id in self.waiting_resources.get(filename, []):
-                self.waiting_tasks_to_compute[waiting_task_id] -= 1
-
-                if self.waiting_tasks_to_compute[waiting_task_id] <= 0:
-                    collected = waiting_task_id
-                    del self.waiting_tasks_to_compute[waiting_task_id]
-
-            self.waiting_resources.pop(filename, None)
-
-            for i, entry in enumerate(self.resources_to_get):
-                if task_id == entry[2] and filename == entry[0]:
-                    del self.resources_to_get[i]
+            for i, pending_resource in enumerate(pending_resources):
+                if pending_resource.resource == resource:
+                    pending_resources.pop(i)
                     break
 
-        return collected
+        if not pending_resources:
+            self.pending_resources.pop(task_id, None)
+            return task_id
+
+    def _download_resources(self, async=True):
+        pending = dict(self.pending_resources)
+
+        for task_id, entries in pending.iteritems():
+            for entry in list(entries):
+                if entry.status in [TransferStatus.idle, TransferStatus.failed]:
+                    entry.status = TransferStatus.transferring
+                    self.resource_manager.pull_resource(entry.resource, entry.task_id,
+                                                        client_options=entry.client_options,
+                                                        success=self._download_success,
+                                                        error=self._download_error,
+                                                        async=async)
+
+    def _download_success(self, resource, task_id):
+        if resource:
+
+            collected = self._remove_pending_resource(resource, task_id)
+            if collected:
+                self.client.task_resource_collected(collected,
+                                                    unpack_delta=False)
+        else:
+            logger.error("Empty resource downloaded for task {}"
+                         .format(task_id))
+
+    def _download_error(self, error, resource, task_id):
+        self._remove_pending_resource(resource, task_id)
+        self.client.task_resource_failure(task_id, error)
 
     def get_key_id(self):
         return self.keys_auth.get_key_id()

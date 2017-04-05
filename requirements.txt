@@ -24,7 +24,7 @@ cffi>=1.9.1
 web3==3.7.2
 ethereum==1.6.0
 ethereum-abi-utils==0.4.0
-autobahn>=0.16.1
+autobahn<0.18
 cbor2
 multihash
 base58
@@ -34,7 +34,7 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.12
-crossbar==16.10.1
+crossbar==17.2.1
 jsonpickle
 pydispatcher
 Crypto
@@ -43,3 +43,4 @@ packaging
 pyreadline
 pytest>=3.0.5
 qt5reactor
+GitPython>=2.1.0

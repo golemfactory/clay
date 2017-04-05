@@ -503,10 +503,9 @@ class BasicProtocol(SessionProtocol):
         if mess:
             for m in mess:
                 self.session.interpret(m)
-        # Drop the connection if no messages were deserialized
         elif data:
-            logger.error("Deserialization of messages failed")
-            # self.session.dropped()
+            logger.info("Deserialization of messages from {}:{} failed, maybe it's still "
+                        "too short?".format(self.session.address, self.session.port))
 
     def _data_to_messages(self):
         return Message.deserialize(self.db)

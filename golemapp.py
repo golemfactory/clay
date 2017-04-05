@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-
+import sys
 from multiprocessing import freeze_support
 
 import click
-import sys
 
 from golem.node import OptNode
 
@@ -24,6 +23,7 @@ from golem.node import OptNode
               help="Request task from file")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
+@click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
@@ -36,8 +36,17 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, m):
+def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
     freeze_support()
+    if version:
+        from golem.core.variables import APP_VERSION
+        print ("GOLEM version: {}".format(APP_VERSION))
+        return 0
+
+    # Workarounds for pyinstaller executable
+    sys.modules['win32com.gen_py.os'] = None
+    sys.modules['win32com.gen_py.pywintypes'] = None
+    sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
     if rpc_address:
@@ -49,16 +58,14 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, m):
         start_crossbar_worker(m)
     # Qt GUI
     elif qt:
+        delete_reactor()
         from gui.startgui import start_gui, check_rpc_address
-        # Workaround for pyinstaller executable
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-
         address = '{}:{}'.format(rpc_address.address, rpc_address.port)
         start_gui(check_rpc_address(ctx=None, param=None,
                                     address=address))
     # Golem
     elif gui:
+        delete_reactor()
         from gui.startapp import start_app
         start_app(rendering=True, **config)
     # Golem headless
@@ -73,6 +80,11 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, m):
         node.connect_with_peers(peer)
         node.add_tasks(task)
         node.run(use_rpc=True)
+
+
+def delete_reactor():
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
 
 
 def start_crossbar_worker(module):

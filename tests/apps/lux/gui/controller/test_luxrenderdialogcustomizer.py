@@ -84,3 +84,12 @@ class TestLuxRenderDialogCustomizer(TestDirFixture, LogTestCase):
         lux_customizer._change_options()
         assert lux_customizer.options.halttime == 0
         assert lux_customizer.options.haltspp == 25
+
+        lux_customizer.options.haltspp = 0
+        lux_customizer._change_halts_values()
+        assert lux_customizer.gui.ui.stopByTimeRadioButton.isChecked()
+        assert not lux_customizer.gui.ui.stopBySppRadioButton.isChecked()
+        lux_customizer.options.haltspp = 24
+        lux_customizer._change_halts_values()
+        assert not lux_customizer.gui.ui.stopByTimeRadioButton.isChecked()
+        assert lux_customizer.gui.ui.stopBySppRadioButton.isChecked()

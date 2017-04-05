@@ -2,11 +2,10 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 hiddenimports = collect_submodules('golem') + \
                 collect_submodules('gui') + \
-                collect_submodules('apps') + ['Cryptodome', 'xml']
+                collect_submodules('apps') + ['Cryptodome', 'xml', 'scrypt']
 
 datas = collect_data_files('gui') + [
     ('loggingconfig.py', '.'),
-    ('.version.ini', '.'),
     ('gui/view/*', 'gui/view'),
     ('apps/*.ini', 'apps'),
     ('apps/core/benchmark/minilight/cornellbox.ml.txt', 'apps/core/benchmark/minilight'),

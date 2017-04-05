@@ -1,21 +1,20 @@
-import os
 import sys
 import time
 from Queue import Queue
 from threading import Thread
 
+from mock import Mock, patch, ANY
+from twisted.internet.defer import Deferred
+
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_golem_path
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment
 from golem.rpc.mapping import aliases
 from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from gui.startapp import load_environments, start_client
-from mock import Mock, patch, ANY
-from twisted.internet.defer import Deferred
+from gui.startapp import load_environments, start_client, stop_reactor, start_app
 
 
 def router_start(fail_on_start):
@@ -208,6 +207,22 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_gui_failure(self, *_):
         self._start_gui(session_fails=True,
                         expected_result=u"Session error")
+
+    @patch('twisted.internet.reactor')
+    def test_stop_reactor(self, reactor):
+        reactor.running = False
+        stop_reactor()
+        assert not reactor.stop.called
+
+        reactor.running = True
+        stop_reactor()
+        assert reactor.stop.called
+
+    @patch('gui.startapp.start_client')
+    def test_start_app(self, _start_client):
+
+        start_app(datadir=self.tempdir)
+        _start_client.assert_called_with(True, self.tempdir, False)
 
     def test_start_gui_subprocess(self):
 

@@ -1,5 +1,4 @@
 import logging
-import time
 
 import ipaddress
 
@@ -29,7 +28,6 @@ class IPFSDaemonManager(IPFSClientHandler):
         self.addresses = []
         self.meta_addresses = []
         self.bootstrap_nodes = set()
-        self.last_backoff_clear_ts = time.time()
 
         if connect_to_bootstrap_nodes:
             for node in self.config.bootstrap_nodes:
@@ -161,7 +159,7 @@ class IPFSDaemonManager(IPFSClientHandler):
         return []
 
     def _node_action(self, url, method, command, success, error, obj_id=None, async=True):
-        def closure():
+        def closure(*_):
             self._handle_retries(method, command, url,
                                  obj_id=obj_id,
                                  raise_exc=True)
