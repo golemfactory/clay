@@ -53,7 +53,12 @@ class HyperdriveDaemonManager(object):
         if self._daemon_running():
             return
 
-        process = subprocess.Popen(self._command())
+        try:
+            process = subprocess.Popen(self._command())
+        except OSError as e:
+            logger.critical('Can\'t run hyperdrive executable %r. Make sure path is correct and check if it starts correctly.', ' '.join(self._command()))
+            import sys
+            sys.exit(1)
         while not self._daemon_running():
             time.sleep(0.1)
 

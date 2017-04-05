@@ -164,7 +164,13 @@ class Client(object):
     def start(self):
         if self.use_monitor:
             self.init_monitor()
-        self.start_network()
+        try:
+            self.start_network()
+        except SystemExit:
+            raise
+        except:
+            log.critical('Can\'t start network. Giving up.', exc_info=True)
+            sys.exit(1)
         self.do_work_task.start(0.1, False)
 
     def start_network(self):
@@ -756,7 +762,6 @@ class Client(object):
                     self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
 
     def __make_node_state_snapshot(self, is_running=True):
-
         peers_num = len(self.p2pservice.peers)
         last_network_messages = self.p2pservice.get_last_messages()
 
