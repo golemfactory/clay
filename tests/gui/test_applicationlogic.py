@@ -434,7 +434,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
         logic.test_task_computation_success([], 10000, msg="Warning message")
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
-        assert msg_box.exec_.called
+        logic.customizer.show_warning_window.assert_called_with("Warning message")
 
         rts.definition = BlenderBenchmark().task_definition
         rts.definition.output_file = 1342
