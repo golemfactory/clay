@@ -48,7 +48,7 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
     
 ; Add HyperG to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG\hyperg.exe"; Check: NeedsAddPath('{pf}\HyperG\hyperg.exe')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('{pf}\HyperG')
 
 ; @todo do we need any more languages? It can be confusing
 [Languages]
