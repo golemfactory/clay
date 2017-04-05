@@ -307,7 +307,9 @@ class PaymentProcessor(Service):
         self._waiting_for_faucet = True
 
         try:
-            if self.synchronized() and self.get_ether_from_faucet():
+            if self.synchronized() and \
+                    self.get_ether_from_faucet() and \
+                    self.get_gnt_from_faucet():
                 self.monitor_progress()
                 self.sendout()
         finally:

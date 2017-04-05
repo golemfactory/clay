@@ -1,59 +1,51 @@
 import logging
-from threading import Thread
-from time import sleep
+
+from golem.resource.client import AsyncRequest, async_run
+from twisted.internet.task import LoopingCall
 
 log = logging.getLogger("golem")
 
 
 class Service(object):
-    """ A prototype of Golem service -- an long running thread that performs
+    """ A prototype of Golem service -- an long running "thread" that performs
         some tasks in background and responds to request from users and other
-        services.
+        serices.
 
         The public interface is just start() and stop(). Internally it controls
         its state and decides when it must be waken up to perform pending tasks.
+
+        This implementation uses LoopingCall from Twisted framework.
     """
 
-    def __init__(self, interval=1, permissive=True):
-        """
-        :param interval: Interval to run the service method with
-        :param permissive: Ignore errors in service method
-        """
+    def __init__(self, interval=1):
         self.__interval = interval
-        self._permissive = permissive
-        self._running = False
-        self._thread = Thread(target=self._loop)
-        self._thread.daemon = True
+        self._loopingCall = LoopingCall(self._run_async)
 
     @property
     def running(self):
         """ Informs if the service has been started. It is controlled by start()
             and stop() methods, do not change it directly.
         """
-        return self._running
+        return self._loopingCall.running
 
     def start(self):
         if self.running:
             raise RuntimeError("service already started")
-        self._running = True
-        self._thread.start()
+        deferred = self._loopingCall.start(self.__interval)
+        deferred.addErrback(self._exceptionHandler)
 
     def stop(self):
         if not self.running:
             raise RuntimeError("service not started")
-        self._running = False
+        self._loopingCall.stop()
 
-    def _loop(self):
-        while self._running:
+    def _exceptionHandler(self, failure):
+        log.exception("Service Error: " + failure.getTraceback())
+        return None  # Stop processing the failure.
 
-            try:
-                self._run()
-            except Exception as e:
-                log.exception("Service error ({})".format(e))
-                if not self._permissive:
-                    raise
-
-            sleep(self.__interval)
+    def _run_async(self):
+        return async_run(AsyncRequest(self._run),
+                         error=self._exceptionHandler)
 
     def _run(self):
         """ Implement this in the derived class."""

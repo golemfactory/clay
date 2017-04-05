@@ -4,6 +4,7 @@ import time
 import unittest
 import requests
 from os import urandom
+
 from mock import patch, Mock
 
 from twisted.internet.task import Clock
@@ -25,24 +26,16 @@ from golem.testutils import DatabaseFixture
 SYNC_TEST_INTERVAL = 0.01
 
 
+def wait_for(condition, timeout, step=0.1):
+    for _ in xrange(int(timeout / step)):
+        if condition():
+            return True
+        time.sleep(step)
+    return False
+
+
 def check_deadline(deadline, expected):
     return expected <= deadline <= expected + 1
-
-
-def async_run(request, success=None, error=None):
-    from twisted.internet.defer import Deferred
-    deferred = Deferred()
-
-    if success:
-        deferred.addCallback(success)
-    if error:
-        deferred.addErrback(error)
-
-    try:
-        result = request.method(*request.args, **request.kwargs)
-        deferred.callback(result)
-    except Exception as e:
-        deferred.errback(e)
 
 
 class PaymentStatusTest(unittest.TestCase):
@@ -467,22 +460,19 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.check_synchronized()
         self.pp.stop()
 
-    @patch('golem.ethereum.paymentprocessor.async_run',
-           side_effect=async_run)
     def test_gnt_faucet(self, *_):
         self.pp._PaymentProcessor__faucet = True
-        self.pp.start()
+        self.pp._run()
         assert self.pp.eth_balance() > 0
         assert self.pp.gnt_balance() == 0
         self.check_synchronized()
         self.state.mine()
         self.clock.advance(60)
+        self.pp._run()
         assert self.pp.gnt_balance(True) == 1000 * denoms.ether
 
-    @patch('golem.ethereum.paymentprocessor.async_run',
-           side_effect=async_run)
     def test_single_payment(self, *_):
-        self.pp.start()
+        self.pp._run()
         self.gnt.create(sender=self.privkey)
         self.state.mine()
         self.check_synchronized()
@@ -501,7 +491,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         # Sendout.
         self.pp.deadline = int(time.time())
-        self.clock.advance(600)
+        self.pp._run()
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_available() == b - value
         assert self.pp._gnt_reserved() == 0
@@ -510,12 +500,9 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.gnt.balanceOf(tester.a1) == self.pp._gnt_available()
 
         # Confirm.
-        self.clock.advance(100)
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_reserved() == 0
 
-    @patch('golem.ethereum.paymentprocessor.async_run',
-           side_effect=async_run)
     def test_get_ether(self, *_):
         def exception(*_):
             raise Exception
@@ -530,14 +517,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.pp.synchronized = lambda *_: True
         self.pp.sendout = Mock()
 
-        self.pp.get_ether_from_faucet = exception
         self.pp.get_gnt_from_faucet = failure
-
-        self.pp._run()
-        assert not self.pp._waiting_for_faucet
-        assert not self.pp.monitor_progress.called
-        assert not self.pp.sendout.called
-
         self.pp.get_ether_from_faucet = failure
 
         self.pp._run()
