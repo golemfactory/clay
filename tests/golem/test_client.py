@@ -3,8 +3,6 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from twisted.internet.defer import Deferred
-
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
@@ -20,14 +18,15 @@ from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
-from mock import Mock, MagicMock, patch
-
 from golem.tools.testwithreactor import TestWithReactor
+from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
 
 
 class TestCreateClient(TestDirFixture):
 
-    def test_config_override_valid(self):
+    @patch('twisted.internet.reactor', create=True)
+    def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
         c = Client(datadir=self.path, node_address='1.0.0.0',
                    transaction_system=False, connect_to_known_hosts=False,
@@ -36,7 +35,8 @@ class TestCreateClient(TestDirFixture):
         self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
-    def test_config_override_invalid(self):
+    @patch('twisted.internet.reactor', create=True)
+    def test_config_override_invalid(self, *_):
         """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
@@ -50,13 +50,15 @@ class TestCreateClient(TestDirFixture):
 
 class TestClient(TestWithDatabase, TestWithReactor):
 
-    def setUp(self):
-        TestWithReactor.setUp(self)
-        TestWithDatabase.setUp(self)
+    @classmethod
+    def setUpClass(cls):
+        TestWithReactor.setUpClass()
+        TestWithDatabase.setUpClass()
 
-    def tearDown(self):
-        TestWithDatabase.tearDown(self)
-        TestWithReactor.tearDown(self)
+    @classmethod
+    def tearDownClass(cls):
+        TestWithDatabase.tearDownClass()
+        TestWithReactor.tearDownClass()
 
     def test_payment_func(self):
         c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
@@ -216,7 +218,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.quit()
 
 
-class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
@@ -265,7 +267,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         task = Mock()
         task.header.task_id = str(uuid.uuid4())
-
 
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, resource_types["hashes"])
