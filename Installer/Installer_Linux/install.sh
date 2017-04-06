@@ -177,7 +177,7 @@ function main()
 {
     # Make sure only root can run our script
     if [[ $EUID -ne 0 ]]; then
-        ask_user "This script need sudo access. Do you wan to continue? (y/n)"
+        ask_user "This script need sudo access. Do you want to continue? (y/n)"
         [[ $? -eq 1 ]] && exec sudo bash "$0" || return 1
     fi
     check_dependencies
