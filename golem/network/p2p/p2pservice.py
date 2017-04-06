@@ -25,6 +25,8 @@ RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try s
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 HISTORY_LEN = 5  # How many entries from challenge history should we remember
+TASK_INTERVAL = 10
+PEERS_INTERVAL = 30
 
 SEEDS = [('188.165.227.180', 40102), ('188.165.227.180', 40104), ('94.23.196.166', 40102), ('94.23.196.166', 40104)]
 
@@ -176,13 +178,14 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if self.task_server:
             self.__send_message_get_tasks()
 
-        self.__sync_free_peers()
-        self.__remove_old_peers()
-        # self.__refresh_old_peers()
-        self.__sync_peer_keeper()
-        self._sync_pending()
+        if time.time() - self.last_peers_request > PEERS_INTERVAL:
+            self.last_peers_request = time.time()
+            self.__sync_free_peers()
+            self.__sync_peer_keeper()
+            self.__send_get_peers()
 
-        self.__send_get_peers()
+        self.__remove_old_peers()
+        self._sync_pending()
         if len(self.peers) == 0:
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
@@ -803,13 +806,11 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     #############################
 
     def __send_get_peers(self):
-        if time.time() - self.last_peers_request > 2:
-            self.last_peers_request = time.time()
-            for p in self.peers.values():
-                p.send_get_peers()
+        for p in self.peers.values():
+            p.send_get_peers()
 
     def __send_message_get_tasks(self):
-        if time.time() - self.last_tasks_request > 2:
+        if time.time() - self.last_tasks_request > TASK_INTERVAL:
             self.last_tasks_request = time.time()
             for p in self.peers.values():
                 p.send_get_tasks()
