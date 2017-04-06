@@ -175,10 +175,10 @@ function install_golem()
 # @brief Main function
 function main()
 {
-    # Make sure user calls this script using sudo
+    # Make sure only root can run our script
     if [[ $EUID -ne 0 ]]; then
-        error_msg "This script needs to be called with sudo. E.g. sudo ./install.sh"
-        return 1
+        ask_user "This script need sudo access. Do you wan to continue? (y/n)"
+        [[ $? -eq 1 ]] && exec sudo bash "$0" || return 1
     fi
     check_dependencies
     install_dependencies
