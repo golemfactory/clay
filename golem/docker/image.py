@@ -1,18 +1,25 @@
 import logging
-
+import rlp
+from golem.core.simpleserializer import CBORSedes
 from docker import errors
-
 from client import local_client
 
 log = logging.getLogger(__name__)
 
 
-class DockerImage(object):
+class DockerImage(rlp.Serializable):
+    fields = [
+        ('id', CBORSedes),
+        ('repository', rlp.sedes.binary),
+        ('tag', rlp.sedes.binary)
+    ]
 
-    def __init__(self, repository=None, image_id=None, tag=None):
-        self.repository = repository
-        self.id = image_id
-        self.tag = tag if tag else "latest"
+    def __init__(self, repository=None, id=None, tag=None):
+
+        tag = tag if tag else "latest"
+
+        rlp.Serializable.__init__(self, repository, id, tag)
+
         self.name = "{}:{}".format(self.repository, self.tag)
 
     def cmp_name_and_tag(self, docker_image):

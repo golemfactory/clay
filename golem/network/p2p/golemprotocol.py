@@ -91,13 +91,13 @@ class GolemProtocol(BaseProtocol):
         """
         cmd_id = 1
 
-        structure = rlp.sedes.CountableList(Node)
+        structure = rlp.sedes.CountableList(TaskHeader)
 
         def create(self, proto, task_headers):
             self.sent = True
             t = []
             for th in task_headers:
-                t.append(th.task_owner)
+                t.append(th)
             return t
 
         @classmethod
@@ -105,6 +105,6 @@ class GolemProtocol(BaseProtocol):
             ll = rlp.decode_lazy(rlp_data)
             theaders = []
             for th in ll:
-                theaders.append(Node.deserialize(th))
+                theaders.append(TaskHeader.deserialize(th))
 
             return theaders
