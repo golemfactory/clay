@@ -69,3 +69,6 @@ class TransactionSystem(object):
         # return after_deadline
 
         return []
+
+    def sync(self):
+        pass
