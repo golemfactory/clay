@@ -60,7 +60,7 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.5.0'
-    MAX_GETH_VERSION = '1.5.999'
+    MAX_GETH_VERSION = '1.6.999'
     testnet = True
 
     def __init__(self):
