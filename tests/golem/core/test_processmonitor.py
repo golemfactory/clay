@@ -1,7 +1,10 @@
+import os
 import subprocess
 import time
 from multiprocessing import Process
 
+
+import subprocess
 import psutil
 from mock import Mock, patch
 
@@ -45,6 +48,10 @@ def wait_for_processes(timeout=10, *processes):
         time.sleep(0.5)
 
 
+def sleep_1sec():
+    time.sleep(1)
+
+
 def run_exit():
     return
 
@@ -52,7 +59,6 @@ def run_exit():
 class TestProcessMonitor(LogTestCase):
 
     def test_monitor(self):
-
         mp = MockProcess()
         p1 = Process(target=run_exit)
         p2 = Process(target=mp.run)
@@ -61,6 +67,7 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
+        pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
         wait_for_processes(10, p1, p2)
@@ -78,6 +85,7 @@ class TestProcessMonitor(LogTestCase):
         p2.start()
 
         pm = ProcessMonitor(p1, p2)
+        pm.add_callbacks(pm.kill_processes, pm.exit)
         pm.start()
 
         wait_for_processes(10, p1, p2)
@@ -103,16 +111,85 @@ class TestProcessMonitor(LogTestCase):
         def callback():
             logger.warning("Shutting down...")
 
-        pm.add_shutdown_callback(callback=callback)
+        pm.add_callbacks(callback)
         pm.start()
-
-        with self.assertLogs(logger, level="WARNING"):
-            pm.exit()
+        pm.exit()
 
         wait_for_processes(10, p1, p2)
 
         self.assertFalse(pm.is_process_alive(p1))
         self.assertFalse(pm.is_process_alive(p2))
+
+    def test_add_remove_callbacks(self):
+        pm = ProcessMonitor()
+
+        pm.add_callbacks(pm.exit)
+        pm.remove_callbacks(pm.exit)
+
+        assert not pm._callbacks
+
+    def test_add_child_process(self):
+        mp1, mp2 = MockProcess(), MockProcess(timeout=1)
+
+        p1 = Process(target=mp1.run)
+        p2 = Process(target=mp2.run)
+
+        pm = ProcessMonitor(p1)
+        pm.add_child_processes(p2)
+
+        assert len(pm._child_processes) == 2
+
+    def test_lifecycle_popen(self):
+
+        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        assert ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor._pid(process)
+        assert ProcessMonitor.is_supported(process)
+
+        process.communicate()
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor.exit_code(process) is not None
+
+    def test_lifecycle_multiprocessing(self):
+
+        process = Process(target=sleep_1sec)
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor.is_supported(process)
+
+        process.start()
+        assert ProcessMonitor.is_process_alive(process)
+        process.join()
+
+        assert not ProcessMonitor.is_process_alive(process)
+        assert ProcessMonitor.exit_code(process) is not None
+
+    def test_lifecycle_none(self):
+
+        process = None
+
+        assert not ProcessMonitor.is_process_alive(process)
+        assert not ProcessMonitor.is_supported(process)
+        assert not ProcessMonitor._pid(process)
+        assert ProcessMonitor.exit_code(process) is None
+
+    def test_kill_process_popen(self):
+
+        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        assert ProcessMonitor.is_process_alive(process)
+        ProcessMonitor.kill_process(process)
+        assert not ProcessMonitor.is_process_alive(process)
+
+    def test_kill_process_multiprocessing(self):
+
+        process = Process(target=sleep_1sec)
+        process.start()
+
+        assert ProcessMonitor.is_process_alive(process)
+        ProcessMonitor.kill_process(process)
+        assert not ProcessMonitor.is_process_alive(process)
+
+        process = Process(target=sleep_1sec)
+        ProcessMonitor.kill_process(process)
 
     def test_exit_code(self):
 
@@ -123,7 +200,7 @@ class TestProcessMonitor(LogTestCase):
         process_psutil.poll = Mock()
         process_subprocess.poll = Mock()
         process_multiprocessing._popen = Mock()
-        process_multiprocessing._parent_pid = Mock()
+        process_multiprocessing._parent_pid = os.getpid()
         process_multiprocessing._name = "test"
         process_multiprocessing._daemonic = False
 
@@ -132,9 +209,8 @@ class TestProcessMonitor(LogTestCase):
 
         assert ProcessMonitor.is_process_alive(process_psutil)
         assert ProcessMonitor.is_process_alive(process_subprocess)
-        with patch('multiprocessing.Process.exitcode') as exitcode:
-            exitcode.__get__ = Mock(return_value=None)
-            assert ProcessMonitor.is_process_alive(process_multiprocessing)
+        with patch('multiprocessing.Process.is_alive', side_effect=lambda: False):
+            assert not ProcessMonitor.is_process_alive(process_multiprocessing)
 
         assert ProcessMonitor.exit_code(None) is None
         assert ProcessMonitor.exit_code(process_psutil) is None

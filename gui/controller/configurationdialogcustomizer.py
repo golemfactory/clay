@@ -3,6 +3,7 @@ from __future__ import division
 import logging
 import multiprocessing
 from PyQt5 import QtCore
+from PyQt5.QtCore import Qt
 
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtGui import QPalette
@@ -60,7 +61,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.computingTrustSlider.valueChanged.connect(self.__computing_trust_slider_changed)
         self.gui.ui.requestingTrustLineEdit.textEdited.connect(self.__requesting_trust_edited)
         self.gui.ui.computingTrustLineEdit.textEdited.connect(self.__computing_trust_edited)
-        self.gui.ui.ethAccountLineEdit.textChanged.connect(self.__check_eth_account)
 
         self.gui.ui.showAdvanceButton.clicked.connect(self.__show_advance_clicked)
 
@@ -173,7 +173,6 @@ class ConfigurationDialogCustomizer(Customizer):
 
     def __load_payment_config(self, config_desc):
         self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
-        self.__check_eth_account()
         min_price = config_desc.min_price / denoms.ether
         max_price = config_desc.max_price / denoms.ether
         self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
@@ -196,30 +195,39 @@ class ConfigurationDialogCustomizer(Customizer):
         self.logic.get_res_dirs().addCallback(change)
 
     def __remove_from_computing(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all computed files?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all computed files?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_computed_files()
             self.__load_resource_config()
         else:
             pass
 
     def __remove_from_distributed(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all distributed resources?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all distributed resources?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_distributed_files()
             self.__load_resource_config()
         else:
             pass
 
     def __remove_from_received(self):
-        reply = QMessageBox.question(self.gui.window, 'Golem Message',
-                                     "Are you sure you want to remove all received task results?",
-                                     QMessageBox.Yes | QMessageBox.No, defaultButton=QMessageBox.No)
-        if reply == QMessageBox.Yes:
+        msg_box = QMessageBox(QMessageBox.Question, 'Golem Message',
+                              "Are you sure you want to remove all received task results?",
+                              QMessageBox.Yes | QMessageBox.No, self.gui.window)
+        msg_box.setDefaultButton(QMessageBox.No)
+        msg_box.setWindowModality(Qt.WindowModal)
+
+        if msg_box.exec_() == QMessageBox.Yes:
             self.logic.remove_received_files()
             self.__load_resource_config()
         else:
@@ -251,7 +259,6 @@ class ConfigurationDialogCustomizer(Customizer):
             self.gui.ui.requestingTrustSlider.setValue(trust)
         except ValueError:
             return
-        
 
     def __change_config(self):
         cfg_desc = ClientConfigDescriptor()
@@ -263,8 +270,6 @@ class ConfigurationDialogCustomizer(Customizer):
         self.__recount_performance()
         self.load_data()
         self.docker_config_changed = False
-        
-
 
     def __read_basic_config(self, cfg_desc):
         cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
@@ -343,7 +348,6 @@ class ConfigurationDialogCustomizer(Customizer):
             cfg_desc.max_price = int(max_price * denoms.ether)
         except ValueError as err:
             logger.warning("Wrong max price value: {}".format(err))
-        self.__check_eth_account()
 
     def __set_account_error(self):
         palette = QPalette()
@@ -363,7 +367,7 @@ class ConfigurationDialogCustomizer(Customizer):
             self.__set_account_ok()
         else:
             self.__set_account_error()
-            logger.warning("Wrong ethereum address: {}".format(text))
+            logger.info("Wrong ethereum address in gui: %r", text)
 
     def __show_advance_clicked(self):
         self.gui.ui.advanceSettingsWidget.setVisible(not self.gui.ui.advanceSettingsWidget.isVisible())

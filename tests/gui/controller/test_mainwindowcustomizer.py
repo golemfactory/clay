@@ -2,7 +2,7 @@ import os
 
 from PyQt5.QtCore import QObject
 from ethereum.utils import denoms
-from mock import patch, MagicMock
+from mock import patch, MagicMock, ANY, Mock
 from PIL import Image
 from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
@@ -164,15 +164,52 @@ class TestMainWindowCustomizer(TestGui):
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[0]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(2)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[1]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
         customizer.gui.ui.previewsSlider.setValue(3)
         customizer.show_task_result("abc")
         expected_file = td.task_state.outputs[2]
         mock_messagebox.assert_called_with(mock_messagebox.Critical, "Error",
-                                           expected_file + u" is not a file")
+                                           expected_file + u" is not a file",
+                                           ANY, ANY)
 
+    @patch("gui.controller.mainwindowcustomizer.QMessageBox")
+    def test_load_task(self, mock_messagebox):
+
+        mock_messagebox.return_value = mock_messagebox
+        customizer = MainWindowCustomizer(self.gui.get_main_window(), MagicMock())
+        customizer._load_new_task_from_definition = Mock()
+        task_path = os.path.join(self.path, "file.gt")
+
+        f = Mock()
+        f.read.return_value = '[{"key": "value"}]'
+
+        with patch('__builtin__.open') as mock_open:
+            mock_open.return_value = f
+            customizer._load_task(task_path)
+
+            assert mock_open.called
+            assert f.close.called
+            assert not mock_messagebox.exec_.called
+            assert customizer._load_new_task_from_definition.called
+
+        def _raise(*_):
+            raise Exception
+
+        f.read = _raise
+        customizer._load_new_task_from_definition.called = False
+
+        with patch('__builtin__.open') as mock_open:
+            mock_open.return_value = f
+            customizer._load_task(task_path)
+
+            assert mock_open.called
+            assert f.close.called
+            assert mock_messagebox.exec_.called
+            assert not customizer._load_new_task_from_definition.called

@@ -86,15 +86,6 @@ class ResourcesManager:
         logger.info("Getting resource for delta dir: {} header:{} FINISHED".format(dir_name, resource_header))
         return task_res_header
 
-    def prepare_resource_delta(self, task_id, resource_header):
-
-        dir_name = self.get_resource_dir(task_id)
-
-        if os.path.exists(dir_name):
-            return prepare_delta_zip(dir_name, resource_header, self.get_temporary_dir(task_id))
-        else:
-            return ""
-
     def update_resource(self, task_id, resource):
 
         dir_name = self.get_resource_dir(task_id)

@@ -52,30 +52,34 @@ class TestIPFSResourceManager(TestDirFixture):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         resources = rm.storage.get_resources(self.task_id)
+        assert resources
 
-        result = rm.pin_resource(resources[0][1])
-        self.assertTrue(result)
+        result = rm.pin_resource(resources[0].hash)
+        assert result
 
     def test_unpin(self):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         resources = rm.storage.get_resources(self.task_id)
+        assert resources
 
-        rm.pin_resource(resources[0][1])
-        rm.unpin_resource(resources[0][1])
+        rm.pin_resource(resources[0].hash)
+        rm.unpin_resource(resources[0].hash)
 
     def test_pull(self):
         rm = IPFSResourceManager(self.dir_manager)
         rm.storage.clear_cache()
 
-        rm.add_resources(self.target_resources, self.task_id)
+        rm.add_files(self.target_resources, self.task_id)
         rls = rm.storage.get_resources(self.task_id)
+        assert rls
+
         rl = rls[0]
-        multihash = rl[1]
+        multihash = rl.hash
 
         # working, downloaded
         status = [True, False]
@@ -95,8 +99,7 @@ class TestIPFSResourceManager(TestDirFixture):
                 time.sleep(0.25)
             self.assertTrue(status[1])
 
-        rm.pull_resource('other_resource',
-                         multihash,
+        rm.pull_resource(('other_resource', multihash),
                          self.task_id,
                          success, error,
                          async=async)
@@ -105,8 +108,7 @@ class TestIPFSResourceManager(TestDirFixture):
         status[0] = True
         status[1] = False
 
-        rm.pull_resource('other_resource',
-                         multihash,
+        rm.pull_resource(('other_resource', multihash),
                          self.task_id,
                          success, error,
                          async=async)

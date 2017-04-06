@@ -28,6 +28,7 @@ from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -36,8 +37,9 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -175,6 +177,7 @@ class Client(BaseApp):
         self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
+        self.daemon_manager = None
 
         self.rpc_publisher = None
 
@@ -208,9 +211,14 @@ class Client(BaseApp):
     def start(self):
         if self.use_monitor:
             self.init_monitor()
-        self.start_network()
-
         BaseApp.start(self)
+        try:
+            self.start_network()
+        except SystemExit:
+            raise
+        except:
+            log.critical('Can\'t start network. Giving up.', exc_info=True)
+            sys.exit(1)
         self.do_work_task.start(0.1, False)
 
     def start_network(self):
@@ -218,6 +226,7 @@ class Client(BaseApp):
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
+
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
 
@@ -230,6 +239,9 @@ class Client(BaseApp):
             service.register_with_app(self)
             assert hasattr(self.services, service.name)
 
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
+
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6,
                                       use_docker_machine_manager=self.use_docker_machine_manager)
@@ -238,7 +250,7 @@ class Client(BaseApp):
 
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
         log.info("Starting p2p server ...")
@@ -283,8 +295,12 @@ class Client(BaseApp):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
+        if self.daemon_manager:
+            self.daemon_manager.stop()
         dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()
@@ -322,6 +338,17 @@ class Client(BaseApp):
         #self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
+        if self.task_tester is None:
+            request = AsyncRequest(self._run_test_task, t_dict)
+            async_run(request)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
+
+    def _run_test_task(self, t_dict):
+
         def on_success(*args, **kwargs):
             self.task_tester = None
             if self.rpc_publisher:
@@ -332,18 +359,11 @@ class Client(BaseApp):
             if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        if self.task_tester is None:
-            t = DictSerializer.load(t_dict)
-            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-            self.task_tester.run()
-
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
-            return True
-
+        t = DictSerializer.load(t_dict)
+        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        self.task_tester.run()
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
-        return False
+            self.rpc_publisher.publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
@@ -606,8 +626,8 @@ class Client(BaseApp):
         if state:
             return DictSerializer.dump(state)
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.resource_server.download_resources(resources, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -817,13 +837,8 @@ class Client(BaseApp):
                     self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
 
     def __make_node_state_snapshot(self, is_running=True):
-
         peers_num = 0 #len(self.p2pservice.peers)
         last_network_messages = '' #self.p2pservice.get_last_messages()
-
-        if self.task_server:
-            tasks_num = len(self.task_server.task_keeper.task_headers)
-            remote_tasks_progresses = self.task_server.task_computer.get_progresses()
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
             self.last_node_state_snapshot = NodeStateSnapshot(is_running,

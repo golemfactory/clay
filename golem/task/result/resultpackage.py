@@ -85,19 +85,15 @@ class EncryptingPackager(Packager):
     def create(self, output_path, disk_files=None, cbor_files=None, **kwargs):
 
         output_dir = os.path.dirname(output_path)
-        tmp_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".enc")
-        out_file_path = super(EncryptingPackager, self).create(output_path,
+        pkg_file_path = os.path.join(output_dir, str(uuid.uuid4()) + ".pkg")
+        out_file_path = super(EncryptingPackager, self).create(pkg_file_path,
                                                                disk_files=disk_files,
                                                                cbor_files=cbor_files)
 
         self.encryptor_class.encrypt(out_file_path,
-                                     tmp_file_path,
+                                     output_path,
                                      self.key_or_secret)
-
-        os.remove(out_file_path)
-        os.rename(tmp_file_path, out_file_path)
-
-        return out_file_path
+        return output_path
 
     def extract(self, input_path, output_dir=None, **kwargs):
 
@@ -150,8 +146,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
                node=None, task_result=None, **kwargs):
 
         disk_files, cbor_files = self.__collect_files(task_result,
-                                                        disk_files=disk_files,
-                                                        cbor_files=cbor_files)
+                                                      disk_files=disk_files,
+                                                      cbor_files=cbor_files)
 
         descriptor = TaskResultDescriptor(node, task_result)
         cbor_files.append((self.descriptor_file_name, descriptor))

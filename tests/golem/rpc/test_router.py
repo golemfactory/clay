@@ -47,7 +47,7 @@ class MockService(object):
         self.n_hello_received += 1
 
 
-TIMEOUT = 20
+TIMEOUT = 40
 
 
 class TestRouter(TestDirFixtureWithReactor):
@@ -78,19 +78,26 @@ class TestRouter(TestDirFixtureWithReactor):
         super(TestRouter, self).setUp()
         self.state = TestRouter.State(self.reactor_thread.reactor)
 
-    def _test_init(self):
-        from os.path import join
-        with self.assertRaises(IOError):
-            CrossbarRouter(datadir=join(self.path, 'definitely_not_exists'))
-        router = CrossbarRouter(datadir=self.path)
+    def test_init(self):
+        from os.path import join, exists
+
+        crossbar_dir = join(self.path, 'definitely_not_exists')
+        router = CrossbarRouter(datadir=crossbar_dir)
+        assert exists(crossbar_dir)
         self.assertIsInstance(router, CrossbarRouter, "Something went really wrong...")
-        self.assertEqual(router.working_dir == join(self.path, 'crossbar'))
-        router = CrossbarRouter(crossbar_dir='/home/', datadir=self.path)
-        self.assertEqual(router.working_dir == '/home/crossbar')
-        router = CrossbarRouter(crossbar_dir='/home/')
-        self.assertEqual(router.working_dir == '/home/')
+        self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
+
+        router = CrossbarRouter(datadir=self.path, crossbar_dir='crozzbar')
+        self.assertEqual(router.working_dir, join(self.path, 'crozzbar'))
         self.assertIsNone(router.node)
         self.assertIsNone(router.pubkey)
+
+        tmp_file = join(self.path, 'tmp_file')
+        with open(tmp_file, 'w') as f:
+            f.write('tmp data')
+
+        with self.assertRaises(IOError):
+            CrossbarRouter(crossbar_dir=tmp_file)
 
     def _start_router(self):
         self.state.router = CrossbarRouter(datadir=self.path)

@@ -12,7 +12,7 @@ from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
-P2P_PROTOCOL_ID = 11
+P2P_PROTOCOL_ID = 12
 
 
 class PeerSessionInfo(object):
@@ -142,7 +142,8 @@ class PeerSession(BasicSafeSession):
         try:
             msg = self.p2p_service.decrypt(data)
         except ECIESDecryptionError as err:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted? {}".format(err))
+            logger.info("Failed to decrypt message from {}:{}, "
+                        "maybe it's not encrypted? {}".format(self.address, self.port, err))
             msg = data
 
         return msg
@@ -174,7 +175,7 @@ class PeerSession(BasicSafeSession):
 
     def send_remove_task(self, task_id):
         """  Send remove task  message
-         :param uuid task_id: task to be removed
+         :param str task_id: task to be removed
         """
         self.send(MessageRemoveTask(task_id))
 
@@ -274,13 +275,13 @@ class PeerSession(BasicSafeSession):
         difficulty = msg.difficulty
 
         if not self.verify(msg):
-            logger.error("Wrong signature for Hello msg")
+            logger.warning("Wrong signature for Hello msg from {}:{}".format(self.address, self.port))
             self.disconnect(PeerSession.DCRUnverified)
             return
 
         if msg.proto_id != P2P_PROTOCOL_ID:
-            logger.error("Protocol version mismatch {} vs {} (local)"
-                         .format(msg.proto_id, P2P_PROTOCOL_ID))
+            logger.info("Protocol version mismatch {} vs {} (local) for node {}:{}"
+                        .format(msg.proto_id, P2P_PROTOCOL_ID, self.address, self.port))
             self.disconnect(PeerSession.DCRProtocolVersion)
             return
 
