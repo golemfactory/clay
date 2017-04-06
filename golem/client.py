@@ -171,7 +171,7 @@ class Client(object):
         except:
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
-        self.do_work_task.start(0.1, False)
+        self.do_work_task.start(1, False)
 
     def start_network(self):
         log.info("Starting network ...")
