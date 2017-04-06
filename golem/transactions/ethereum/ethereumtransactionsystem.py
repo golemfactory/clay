@@ -1,6 +1,6 @@
 import logging
 
-import time
+from time import sleep
 from ethereum import keys
 
 from golem.ethereum import Client
@@ -80,4 +80,4 @@ class EthereumTransactionSystem(TransactionSystem):
                 log.error("IPC error: {}".format(e))
                 syncing = False
             else:
-                time.sleep(0.5)
+                sleep(0.5)

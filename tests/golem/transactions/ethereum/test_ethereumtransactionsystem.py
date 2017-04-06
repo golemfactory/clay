@@ -28,8 +28,10 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
 
-    @patch('time.sleep')
-    def test_sync(self, sleep):
+    @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
+    @patch('golem.ethereum.paymentmonitor.PaymentMonitor.start')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
+    def test_sync(self, sleep, *_):
 
         switch_value = [True]
 
