@@ -839,6 +839,10 @@ class Client(BaseApp):
     def __make_node_state_snapshot(self, is_running=True):
         peers_num = 0 #len(self.p2pservice.peers)
         last_network_messages = '' #self.p2pservice.get_last_messages()
+
+        if self.task_server:
+            tasks_num = len(self.task_server.task_keeper.task_headers)
+            remote_tasks_progresses = self.task_server.task_computer.get_progresses()
             local_tasks_progresses = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
             self.last_node_state_snapshot = NodeStateSnapshot(is_running,
