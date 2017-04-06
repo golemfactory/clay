@@ -93,7 +93,7 @@ class Session(ApplicationSession):
     def onLeave(self, details):
         self.connected = False
         if not self.ready.called:
-            self.ready.errback(details or u"Unknown error occurred")
+            self.ready.errback(details or "Unknown error occurred")
         super(Session, self).onLeave(details)
 
     @inlineCallbacks
@@ -117,11 +117,11 @@ class Session(ApplicationSession):
                 yield self.subs[event_name].unsubscibe()
                 self.subs.pop(event_name, None)
             else:
-                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
+                logger.error("RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error(u"RPC: Session error: {}".format(err))
+        logger.error("RPC: Session error: {}".format(err))
 
 
 class Client(object):
@@ -145,13 +145,13 @@ class Client(object):
             deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
-            deferred.errback(ProtocolError(u"RPC: session is not yet established"))
+            deferred.errback(ProtocolError("RPC: session is not yet established"))
 
         return deferred
 
     @staticmethod
     def _on_error(err):
-        logger.error(u"RPC: call error: {}".format(err))
+        logger.error("RPC: call error: {}".format(err))
         raise err
 
 
@@ -164,7 +164,7 @@ class Publisher(object):
         if self.session.connected:
             self.session.publish(event_alias, *args, **kwargs)
         else:
-            logger.warn(u"RPC: Cannot publish '{}', session is not yet established"
+            logger.warn("RPC: Cannot publish '{}', session is not yet established"
                         .format(event_alias))
 
 
