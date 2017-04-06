@@ -9,15 +9,15 @@ log = logging.getLogger(__name__)
 
 class DockerImage(rlp.Serializable):
     fields = [
-        ('id', CBORSedes),
         ('repository', rlp.sedes.binary),
+        ('id', CBORSedes),
         ('tag', rlp.sedes.binary)
     ]
 
-    def __init__(self, repository=None, id=None, tag=None):
+    def __init__(self, repository=None, image_id=None, tag=None):
 
         tag = tag if tag else "latest"
-
+        id = image_id
         rlp.Serializable.__init__(self, repository, id, tag)
 
         self.name = "{}:{}".format(self.repository, self.tag)
