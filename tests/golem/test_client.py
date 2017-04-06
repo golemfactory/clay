@@ -50,6 +50,7 @@ class TestClient(TestWithDatabase):
     def test_payment_func(self):
         c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
                    use_docker_machine_manager=False, use_monitor=False)
+
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
         self.assertEqual(len(incomes), 1)
@@ -76,6 +77,14 @@ class TestClient(TestWithDatabase):
         self.assertEqual(incomes[0]['value'], 30 * denoms.ether)
         self.assertEqual(incomes[0]['payer'], "0x00003")
 
+        c.quit()
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.EthereumTransactionSystem.sync')
+    def test_sync(self, *_):
+        c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                   use_docker_machine_manager=False, use_monitor=False)
+        c.sync()
+        self.assertTrue(c.transaction_system.sync.called)
         c.quit()
 
     def test_remove_resources(self):
@@ -212,6 +221,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                         use_docker_machine_manager=False,
                         use_monitor=False)
 
+        client.sync = Mock()
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
         client.task_server = Mock()
@@ -250,7 +260,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         task = Mock()
         task.header.task_id = str(uuid.uuid4())
-
 
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, resource_types["hashes"])
