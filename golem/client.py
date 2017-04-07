@@ -211,7 +211,6 @@ class Client(BaseApp):
     def start(self):
         if self.use_monitor:
             self.init_monitor()
-        BaseApp.start(self)
         try:
             self.start_network()
         except SystemExit:
@@ -220,6 +219,7 @@ class Client(BaseApp):
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
         self.do_work_task.start(0.1, False)
+        BaseApp.start(self)
 
     def start_network(self):
         log.info("Starting network ...")
