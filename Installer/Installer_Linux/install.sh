@@ -6,16 +6,17 @@
 #date           :20170113
 #version        :0.1
 #usage          :sh install.sh
-#notes          :Only for Ubuntu, Debian and Mint
+#notes          :Only for Ubuntu and Mint
 #==============================================================================
 
 # CONSTANTS
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r HOST="https://golem.network/"
-declare -r docker_checksum='7c05297d59f526693c069748d5378373'
+declare -r docker_checksum='82e964b9a14d294268e4571f542b1508'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg='https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.1.2/hyperg_0.1.2_linux-amd64.tar.bz2'
+declare -r HOME='/home/'$SUDO_USER
 
 # Questions
 declare -i INSTALL_DOCKER=0
@@ -105,7 +106,10 @@ function install_dependencies()
         wget -qO- http://get.docker.com > /tmp/$docker_script
         if [[ "$( md5sum /tmp/$docker_script | awk '{print $1}' )" == "$docker_checksum" ]]; then
             bash /tmp/$docker_script
-            usermod -aG docker $SUDO_USER
+            if [[ $? -ne 0 ]]; then
+                warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
+                sleep 5s
+            fi
         else
             warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
