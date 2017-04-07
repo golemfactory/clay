@@ -110,6 +110,7 @@ function install_dependencies()
                 warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
                 sleep 5s
             fi
+            usermod -aG docker $SUDO_USER
         else
             warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
