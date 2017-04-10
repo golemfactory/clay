@@ -224,8 +224,8 @@ class TaskHeaderKeeper(object):
 
     def check_version_compatibility(self, remote):
         """ For local a1.b1.c1 and remote a2.b2.c2, check if "a1.b1" == "a2.b2" and c1 >= c2
-        :param remote: 
-        :return: 
+        :param remote: remote version string
+        :return: whether the local version is compatible with remote version
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
