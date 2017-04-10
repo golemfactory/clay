@@ -161,6 +161,12 @@ class Client(object):
         if self.rpc_publisher:
             self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
 
+    def sync(self):
+        if self.use_transaction_system():
+            log.info('Waiting for block synchronization...')
+            self.transaction_system.sync()
+            log.info('Block synchronization complete')
+
     def start(self):
         if self.use_monitor:
             self.init_monitor()

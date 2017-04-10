@@ -1,6 +1,6 @@
 import logging
-from os import path
 
+from time import sleep
 from ethereum import keys
 
 from golem.ethereum import Client
@@ -70,3 +70,14 @@ class EthereumTransactionSystem(TransactionSystem):
                  'value': payment.value,
                  'block_number': payment.extra['block_number']
                  } for payment in self.__monitor.get_incoming_payments()]
+
+    def sync(self):
+        syncing = True
+        while syncing:
+            try:
+                syncing = self.__eth_node.is_syncing()
+            except Exception as e:
+                log.error("IPC error: {}".format(e))
+                syncing = False
+            else:
+                sleep(0.5)
