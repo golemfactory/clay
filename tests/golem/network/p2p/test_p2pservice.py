@@ -186,6 +186,7 @@ class TestP2PService(DatabaseFixture):
             'conn_trials': 0
         }
 
+        service.last_peers_request = time.time() - 60
         service.sync_network()
 
         assert not service.free_peers
