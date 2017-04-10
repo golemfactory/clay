@@ -52,6 +52,36 @@ class TestTaskHeaderKeeper(LogTestCase):
         with self.assertLogs(logger=logger, level=1):
             self.assertFalse(tk.is_supported(task))
 
+    def test_check_version_compatibility(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
+        tk.app_version = '0.4.5'
+
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('1.5')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha+build.2004.01.01')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha')
+
+        assert not tk.check_version_compatibility('1.5.0')
+        assert not tk.check_version_compatibility('1.4.0')
+        assert not tk.check_version_compatibility('0.5.0')
+        assert not tk.check_version_compatibility('0.4.6')
+        assert not tk.check_version_compatibility('0.3.0')
+
+        assert tk.check_version_compatibility('0.4.5')
+        assert tk.check_version_compatibility('0.4.1')
+        assert tk.check_version_compatibility('0.4.0')
+        assert tk.check_version_compatibility('0.4.0-alpha')
+        assert tk.check_version_compatibility('0.4.0-alpha+build')
+        assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
+
     def test_change_config(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
         e = Environment()
