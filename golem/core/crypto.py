@@ -253,7 +253,7 @@ def _decode_sig(sig):
     return ord(sig[64]) + 27, bitcoin.decode(sig[0:32], 256), bitcoin.decode(sig[32:64], 256)
 
 
-from _libsecp256k1 import lib
+from secp256k1 import lib
 ctx = lib.secp256k1_context_create(ALL_FLAGS)
 
 
