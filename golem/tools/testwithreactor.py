@@ -109,7 +109,7 @@ class TestWithReactor(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if cls.reactor_thread:
+        if cls.reactor_thread and cls.reactor_thread.isAlive():
             cls.reactor_thread.stop()
             uninstall_reactor()
 
