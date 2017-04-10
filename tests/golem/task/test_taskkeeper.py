@@ -8,6 +8,7 @@ from mock import Mock
 from mock import patch
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
+from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
@@ -34,6 +35,8 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.environments_manager.add_environment(e)
         self.assertFalse(tk.is_supported(task))
         task["max_price"] = 10.0
+        self.assertFalse(tk.is_supported(task))
+        task["min_version"] = APP_VERSION
         self.assertTrue(tk.is_supported(task))
         task["max_price"] = 10.5
         self.assertTrue(tk.is_supported(task))
@@ -44,7 +47,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertTrue(tk.is_supported(task))
-        task["min_version"] = 120
+        task["min_version"] = "120"
         self.assertFalse(tk.is_supported(task))
         task["min_version"] = tk.app_version
         self.assertTrue(tk.is_supported(task))
@@ -241,7 +244,8 @@ def get_dict_task_header():
         "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
-        "max_price": 10
+        "max_price": 10,
+        "min_version": APP_VERSION
     }
 
 
