@@ -30,7 +30,6 @@ from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
-from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
