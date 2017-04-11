@@ -262,6 +262,8 @@ class BlenderRenderTask(FrameRenderingTask):
         preview_y = expected_offsets[parts + 1]
         if self.res_y != 0 and preview_y != 0:
             self.scale_factor = preview_y / self.res_y
+        preview_x = int(round(self.res_x * self.scale_factor))
+
 
         if self.use_frames:
             self.preview_file_path = []
@@ -270,13 +272,13 @@ class BlenderRenderTask(FrameRenderingTask):
                 preview_path = os.path.join(self.tmp_dir, "current_task_preview{}".format(i))
                 self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
-                                                            int(round(self.res_x * self.scale_factor)),
+                                                            preview_x,
                                                             preview_y, 
                                                             expected_offsets))
         else:
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
             self.preview_updater = PreviewUpdater(self.preview_file_path, 
-                                                  int(round(self.res_x * self.scale_factor)), 
+                                                  preview_x,
                                                   preview_y, 
                                                   expected_offsets)
 
@@ -453,7 +455,8 @@ class BlenderRenderTask(FrameRenderingTask):
         num = self.frames.index(frame_num)
         if final:
             img = load_as_pil(new_chunk_file_path)
-            scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))),
+            scaled = img.resize((int(round(self.res_x * self.scale_factor)),
+                                 int(round(self.res_y * self.scale_factor))),
                                 resample=Image.BILINEAR)
             scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
             scaled.save(self._get_preview_task_file_path(num), PREVIEW_EXT)

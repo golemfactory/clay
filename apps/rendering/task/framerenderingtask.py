@@ -158,18 +158,22 @@ class FrameRenderingTask(RenderingTask):
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
             RenderingTask._mark_task_area(self, subtask, img_task, color)
-        elif self.__full_frames():
-            for i in range(0, int(round(self.res_x * self.scale_factor))):
-                for j in range(0, int(round(self.res_y * self.scale_factor))):
-                    img_task.putpixel((i, j), color)
+            return
+
+        lower_x = 0
+        upper_x = int(round(self.res_x * self.scale_factor))
+        if self.__full_frames():
+            upper_y = 0
+            lower_y = int(round(self.res_y * self.scale_factor))
         else:
             parts = int(self.total_tasks / len(self.frames))
             part_height = self.res_y / parts * self.scale_factor
-            upper = int(math.ceil(part_height) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(part_height) * ((subtask['start_task'] - 1) % parts + 1))
-            for i in range(0, int(round(self.res_x * self.scale_factor))):
-                for j in range(upper, lower):
-                    img_task.putpixel((i, j), color)
+            upper_y = int(math.ceil(part_height) * ((subtask['start_task'] - 1) % parts))
+            lower_y = int(math.floor(part_height) * ((subtask['start_task'] - 1) % parts + 1))
+
+        for i in range(lower_x, upper_x):
+            for j in range(upper_y, lower_y):
+                img_task.putpixel((i, j), color)
 
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
