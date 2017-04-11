@@ -155,10 +155,10 @@ def du(path):
     :return str: directory size in human readable format (eg. 1 Mb) or "-1" if an error occurs.
     """
     try:
-        size, _ = subprocess.check_output(['du', '-sh', '"{}"'.format(path)]).split()
+        size, _ = subprocess.check_output(['du', '-sh', path], stderr=subprocess.STDOUT).split()
         unit = dict(K='kB', B='B').get(size[-1], size[-1] + 'B')
         return "{} {}".format(size[:-1], unit)
-    except (OSError, subprocess.CalledProcessError):
+    except (ValueError, OSError, subprocess.CalledProcessError):
         try:
             size = int(get_dir_size(path))
         except OSError as err:
