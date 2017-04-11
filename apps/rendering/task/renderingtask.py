@@ -1,3 +1,4 @@
+from __future__ import division
 from copy import deepcopy
 import logging
 import math
@@ -97,10 +98,10 @@ class RenderingTask(CoreTask):
         preview_x = 300
         preview_y = 200
         if self.res_x != 0 and self.res_y != 0:
-            if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
-                self.scale_factor = float(preview_x) / float(self.res_x)
+            if self.res_x / self.res_y > preview_x / preview_y:
+                self.scale_factor = preview_x / self.res_x
             else:
-                self.scale_factor = float(preview_y) / float(self.res_y)
+                self.scale_factor = preview_y / self.res_y
             self.scale_factor = min(1.0, self.scale_factor)
         else:
             self.scale_factor = 1.0
@@ -178,10 +179,12 @@ class RenderingTask(CoreTask):
         self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
-        upper = max(0, int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['start_task'] - 1))))
-        lower = min(int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['end_task']))), int(round(self.res_y * self.scale_factor)))
-        for i in range(0, int(round(self.res_x * self.scale_factor))):
-            for j in range(int(round(upper)), int(round(lower))):
+        x = int(round(self.res_x * self.scale_factor))
+        y = int(round(self.res_y * self.scale_factor))
+        upper = max(0, int(math.floor(y / self.total_tasks * (subtask['start_task'] - 1))))
+        lower = min(int(math.floor(y / self.total_tasks * (subtask['end_task']))), y)
+        for i in range(0, x):
+            for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):

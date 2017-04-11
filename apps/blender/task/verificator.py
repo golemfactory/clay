@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 import random
 
@@ -21,19 +22,19 @@ class BlenderVerificator(FrameRenderingVerificator):
         super(BlenderVerificator, self).set_verification_options(verification_options)
         if self.advanced_verification:
             box_x = min(verification_options.box_size[0], self.res_x)
-            box_y = min(verification_options.box_size[1], self.res_y / self.total_tasks)
+            box_y = min(verification_options.box_size[1], int(self.res_y / self.total_tasks))
             self.box_size = (box_x, box_y)
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data, _ = super(BlenderVerificator, self).change_scope(subtask_id, start_box,
                                                                      tr_file, subtask_info)
-        min_x = start_box[0] / float(self.res_x)
-        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / float(self.res_x)
-        shift_y = (extra_data['start_task'] - 1) * (self.res_y / float(extra_data['total_tasks']))
+        min_x = start_box[0] / self.res_x
+        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / self.res_x
+        shift_y = (extra_data['start_task'] - 1) * (self.res_y / extra_data['total_tasks'])
         start_y = start_box[1] + shift_y
-        max_y = float(self.res_y - start_y) / self.res_y
+        max_y = (self.res_y - start_y) / self.res_y
         shift_y = start_y + self.verification_options.box_size[1] + 1
-        min_y = max(float(self.res_y - shift_y) / self.res_y, 0.0)
+        min_y = max((self.res_y - shift_y) / self.res_y, 0.0)
         min_y = max(min_y, 0)
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
@@ -64,18 +65,18 @@ class BlenderVerificator(FrameRenderingVerificator):
         elif len(self.frames) >= self.total_tasks:
             res_y = self.res_y
         else:
-            parts = self.total_tasks / len(self.frames)
-            res_y = int(math.floor(float(self.res_y) / float(parts)))
+            parts = int(self.total_tasks / len(self.frames))
+            res_y = int(math.floor(self.res_y / parts))
         return self.res_x, res_y
 
     def _get_part_size_from_subtask_number(self, subtask_number):
 
         if self.res_y % self.total_tasks == 0:
-            res_y = self.res_y / self.total_tasks
+            res_y = int(self.res_y / self.total_tasks)
         else:
             # in this case task will be divided into not equal parts: floor or ceil of (res_y/total_tasks)
             # ceiling will be height of subtasks with smaller num
-            ceiling_height = int(math.ceil(float(self.res_y) / float(self.total_tasks)))
+            ceiling_height = int(math.ceil(self.res_y / self.total_tasks))
             ceiling_subtasks = self.total_tasks - (ceiling_height * self.total_tasks - self.res_y)
             if subtask_number > ceiling_subtasks:
                 res_y = ceiling_height - 1

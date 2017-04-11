@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import os
 import random
@@ -68,7 +69,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         if res_x == 0 or res_y == 0:
             return []
 
-        if float(res_x) / res_y > preview_x / preview_y:
+        if res_x / res_y > preview_x / preview_y:
             scale_factor = preview_x / res_x
         else:
             scale_factor = preview_y / res_y
@@ -326,12 +327,13 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
-        scaled = img.resize((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+        scaled = img.resize((int(round(self.scale_factor * self.res_x)),
+                             int(round(self.scale_factor * self.res_y))),
                             resample=Image.BILINEAR)
         img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.num_add))
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / self.num_add)
         img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
@@ -341,7 +343,8 @@ class LuxTask(RenderingTask):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
-            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.num_add))
+            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file),
+                                     1.0 / self.num_add)
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
