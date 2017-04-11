@@ -6,7 +6,7 @@ import random
 import uuid
 
 from golem.core.keysauth import get_random, get_random_float
-from golem.core.fileshelper import find_file_with_ext
+from golem.core.fileshelper import ensure_dir_exists, find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
@@ -98,8 +98,7 @@ class RenderingVerificator(CoreVerificator):
         extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
         extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
-        if not os.path.isdir(extra_data['tmp_path']):
-            os.mkdir(extra_data['tmp_path'])
+        ensure_dir_exists(extra_data['tmp_path'])
         return extra_data, start_box
 
     def _run_task(self, extra_data, task):

@@ -149,6 +149,11 @@ def inner_dir_path(path, directory):
     return os.path.join(current_dir, directory, filename)
 
 
+def ensure_dir_exists(directory):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+
+
 def du(path):
     """ Imitates bash "du -h <path>" command behaviour. Returns the estimated size of this directory
     :param str path: path to directory which size should be measured
