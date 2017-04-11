@@ -247,19 +247,17 @@ class FrameRenderingTask(RenderingTask):
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, "BMP")
 
+    def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
+        if subtask_dir_list[num] is None:
+            subtask_dir_list[num] = "{}{}".format(os.path.join(self.tmp_dir, name_dir), num)
+        return subtask_dir_list[num]
+
     def _get_preview_task_file_path(self, num):
-        if self.preview_task_file_path[num] is None:
-            self.preview_task_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir,
-                                                                          "current_task_preview"),
-                                                             num)
-        return self.preview_task_file_path[num]
+        return self._get_subtask_file_path(self.preview_task_file_path, "current_task_preview",
+                                           num)
 
     def _get_preview_file_path(self, num):
-        if self.preview_file_path[num] is None:
-            self.preview_file_path[num] = "{}{}".format(os.path.join(self.tmp_dir,
-                                                                     "current_preview"), num)
-
-        return self.preview_file_path[num]
+        return self._get_subtask_file_path(self.preview_file_path, "current_preview", num)
 
     def _get_output_name(self, frame_num):
         return get_frame_name(self.outfilebasename, self.output_format, frame_num)
