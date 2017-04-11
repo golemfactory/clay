@@ -3,7 +3,8 @@ import os
 import time
 
 from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message, MessageHello
+from golem.network.transport.message import (Message, MessageHello, MessageReportComputedTask,
+                                             MessageTask, MessageWantToComputeTask)
 from mock import Mock, patch
 
 
@@ -176,3 +177,14 @@ class TestMessages(unittest.TestCase):
             m.decrypt_and_deserialize("not a db")
         with self.assertRaises(TypeError):
             m.deserialize("not a db")
+
+    def test_message_init(self):
+        msg = MessageTask("taskX")
+        assert msg.TYPE == MessageTask.TYPE
+        assert msg.task == "taskX"
+        dr = msg.dict_repr()
+        assert dr["TASK"] == "taskX"
+        msg2 = MessageTask(dict_repr=dr)
+        assert msg2.TYPE == MessageTask.TYPE
+        assert msg2.task == "taskX"
+

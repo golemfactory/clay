@@ -2,11 +2,17 @@ import logging
 import time
 
 from golem.core.crypto import ECIESDecryptionError
-from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageGetPeers,\
-    MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
-    MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
-    MessageInformAboutNatTraverseFailure, MessageChallengeSolution
+from golem.network.transport.message import (MessageChallengeSolution, MessageDegree,
+                                             MessageFindNode, MessageGetPeers,
+                                             MessageGetResourcePeers, MessageGetTasks,
+                                             MessageGossip, MessageHello,
+                                             MessageInformAboutNatTraverseFailure, MessageLocRank,
+                                             MessageNatHole, MessageNatTraverseFailure,
+                                             MessagePeers, MessagePing, MessagePong,
+                                             MessageRandVal, MessageRemoveTask,
+                                             MessageResourcePeers, MessageSetTaskSession,
+                                             MessageStopGossip, MessageTask, MessageTasks,
+                                             MessageWantToStartTaskSession)
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -250,6 +256,9 @@ class PeerSession(BasicSafeSession):
         """
         self.send(MessageNatTraverseFailure(conn_id))
 
+    def send_task(self, task):
+        self.send(MessageTask(task))
+
     def _react_to_ping(self, msg):
         self._send_pong()
 
@@ -344,6 +353,10 @@ class PeerSession(BasicSafeSession):
         for t in msg.tasks_array:
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(PeerSession.DCRBadProtocol)
+
+    def _react_to_task(self, msg):
+        if not self.p2p_service.add_task_header(msg.task):
+            self.disconnect(PeerSession.DCRBadProtocol)
 
     def _react_to_remove_task(self, msg):
         self.p2p_service.remove_task_header(msg.task_id)
@@ -460,6 +473,7 @@ class PeerSession(BasicSafeSession):
             MessagePeers.TYPE: self._react_to_peers,
             MessageGetTasks.TYPE: self._react_to_get_tasks,
             MessageTasks.TYPE: self._react_to_tasks,
+            MessageTask.TYPE: self._react_to_task,
             MessageRemoveTask.TYPE: self._react_to_remove_task,
             MessageFindNode.TYPE: self._react_to_find_node,
             MessageRandVal.TYPE: self._react_to_rand_val,

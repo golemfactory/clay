@@ -822,6 +822,7 @@ class TaskServer(PendingConnectionsServer):
     #############################
     @staticmethod
     def __get_task_manager_root(datadir):
+        print datadir
         return os.path.join(datadir, "res")
 
     def _set_conn_established(self):
