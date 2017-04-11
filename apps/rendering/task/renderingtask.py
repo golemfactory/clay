@@ -30,6 +30,15 @@ class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
 
+    @classmethod
+    def _get_task_collector_path(cls):
+        if is_windows():
+            task_collector_name = "taskcollector.exe"
+        else:
+            task_collector_name = "taskcollector"
+        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
+                                             "taskcollector", "Release", task_collector_name))
+
     ################
     # Task methods #
     ################
@@ -185,15 +194,6 @@ class RenderingTask(CoreTask):
                "{}".format(output_file_name)] + files
 
         exec_cmd(cmd)
-
-    @staticmethod
-    def _get_task_collector_path():
-        if is_windows():
-            task_collector_name = "taskcollector.exe"
-        else:
-            task_collector_name = "taskcollector"
-        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
-                                             "taskcollector", "Release", task_collector_name))
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
         ctd = ComputeTaskDef()
