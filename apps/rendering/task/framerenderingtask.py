@@ -1,7 +1,6 @@
 import os
 import logging
 import math
-import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
@@ -9,7 +8,7 @@ from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
 from apps.rendering.task.verificator import FrameRenderingVerificator
@@ -95,8 +94,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
-        img_repr = load_img(new_chunk_file_path)
-        img = img_repr.to_pil()
+        img = load_as_pil(new_chunk_file_path)
 
         if not final:
             img = self._paste_new_chunk(img, self._get_preview_file_path(num), part,

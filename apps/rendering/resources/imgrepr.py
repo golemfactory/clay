@@ -131,6 +131,11 @@ class EXRImgRepr(ImgRepr):
 
 
 def load_img(file_):
+    """
+    Load image from file path and return ImgRepr
+    :param str file_: path to the file  
+    :return ImgRepr | None: Return ImgRepr for special file type or None if there was an error 
+    """
     try:
         _, ext = os.path.splitext(file_)
         if ext.upper() != ".EXR":
@@ -142,6 +147,17 @@ def load_img(file_):
     except Exception as err:
         logger.warning("Can't verify img file {}:{}".format(file_, err))
         return None
+
+
+def load_as_pil(file_):
+    """ Load image from file path and retun PIL Image representation
+     :param str file_: path to the file 
+     :return Image.Image | None: return PIL Image represantion or NOne if there was an error
+    """
+
+    img = load_img(file_)
+    if img:
+        return img.to_pil()
 
 
 def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, cmp_start_box):

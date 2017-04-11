@@ -9,8 +9,8 @@ from golem.tools.assertlogs import LogTestCase
 
 from apps.rendering.resources.imgrepr import (advance_verify_img, blend, compare_exr_imgs,
                                               compare_imgs, compare_pil_imgs, count_mse,
-                                              count_psnr, EXRImgRepr, ImgRepr, load_img, logger,
-                                              PILImgRepr, verify_img)
+                                              count_psnr, EXRImgRepr, ImgRepr, load_as_pil,
+                                              load_img, logger, PILImgRepr, verify_img)
 
 
 class TImgRepr(ImgRepr):
@@ -486,3 +486,12 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path2, (0, 0))
         assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), img_path, (0, 0))
         assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), exr_path, (0, 0))
+
+    def test_load_as_pil(self):
+        img_path = self.temp_file_name("path1.png")
+        make_test_img(img_path)
+        img = load_as_pil(img_path)
+        assert isinstance(img, Image.Image)
+        exr_path = _get_test_exr()
+        img = load_as_pil(exr_path)
+        assert isinstance(img, Image.Image)

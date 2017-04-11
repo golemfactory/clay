@@ -15,7 +15,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
 
@@ -132,8 +132,7 @@ class RenderingTask(CoreTask):
         return self.preview_file_path
 
     def _update_preview(self, new_chunk_file_path, num_start):
-        img_repr = load_img(new_chunk_file_path)
-        img = img_repr.to_pil()
+        img = load_as_pil(new_chunk_file_path)
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
