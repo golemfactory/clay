@@ -8,7 +8,7 @@ from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline, get_golem_path
-from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource.dirmanager import get_test_task_path, find_task_script, get_tmp_path
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
@@ -261,11 +261,11 @@ class LuxTask(RenderingTask):
         super(LuxTask, self).accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         for tr_file in result_files:
-            if tr_file.upper().endswith(".FLM"):
+            if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
                 self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
                 self.num_tasks_received += 1
-            elif not tr_file.upper().endswith('.LOG'):
+            elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file
                 self._update_preview(tr_file, num_start)
 
@@ -301,7 +301,7 @@ class LuxTask(RenderingTask):
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
-        if new_chunk_file_path.upper().endswith(".EXR"):
+        if has_ext(new_chunk_file_path, ".exr"):
             self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)

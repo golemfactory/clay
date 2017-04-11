@@ -7,6 +7,7 @@ from collections import OrderedDict
 
 from PIL import Image, ImageChops
 
+from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
@@ -411,7 +412,7 @@ class BlenderRenderTask(FrameRenderingTask):
             return
 
         for filename in results["data"]:
-            if not filename.lower().endswith(".log"):
+            if not has_ext(filename, ".log"):
                 return
 
             with open(filename, "r") as f:

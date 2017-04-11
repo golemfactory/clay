@@ -154,6 +154,12 @@ def ensure_dir_exists(directory):
         os.mkdir(directory)
 
 
+def has_ext(filename, ext, case_sensitive=False):
+    if case_sensitive:
+        return filename.endswith(ext)
+    return filename.lower().endswith(ext.lower())
+
+
 def du(path):
     """ Imitates bash "du -h <path>" command behaviour. Returns the estimated size of this directory
     :param str path: path to directory which size should be measured
