@@ -36,12 +36,10 @@ class GolemService(WiredService):
                    'get_tasks' )
 
     def on_receive_get_tasks(self, proto):
-        log.info("GetTasks got")
         l = self.task_server.get_tasks_headers()
         if len(l) > 0:
             proto.send_task_headers(l)
-        else:
-            print "no tasks"
 
     def on_receive_task_headers(self, proto, task_headers):
-        pass
+        for t in task_headers:
+            self.task_server.add_task_header(t.to_dict())

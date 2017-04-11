@@ -105,6 +105,6 @@ class GolemProtocol(BaseProtocol):
             ll = rlp.decode_lazy(rlp_data)
             theaders = []
             for th in ll:
-                theaders.append(TaskHeader.deserialize(th))
+                theaders.append(TaskHeader.deserialize(th, mutable=True))
 
             return theaders
