@@ -99,17 +99,17 @@ class FrameRenderingTask(RenderingTask):
         img = img_repr.to_pil()
 
         if not final:
-            img = self._paste_new_chunk(img, self.preview_file_path[num], part, self.total_tasks / len(self.frames))
+            img = self._paste_new_chunk(img, self._get_preview_file_path(num), part,
+                                        self.total_tasks / len(self.frames))
 
-        if img:
-            img_x, img_y = img.size
-            img = img.resize((int(round(self.scale_factor * img_x)),
-                              int(round(self.scale_factor * img_y))),
-                             resample=Image.BILINEAR)
-            img.save(self._get_preview_file_path(num), "BMP")
-            img.save(self._get_preview_task_file_path(num), "BMP")
+        img_x, img_y = img.size
+        img = img.resize((int(round(self.scale_factor * img_x)),
+                          int(round(self.scale_factor * img_y))),
+                         resample=Image.BILINEAR)
+        img.save(self._get_preview_file_path(num), "BMP")
+        img.save(self._get_preview_task_file_path(num), "BMP")
 
-            img.close()
+        img.close()
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
