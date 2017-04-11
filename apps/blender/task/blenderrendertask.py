@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import math
 import os
@@ -141,7 +142,7 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
             return cls.__get_border(start_task, end_task, total_subtasks, res_x, res_y)
 
         if total_subtasks > frames:
-            parts = total_subtasks / frames
+            parts = int(total_subtasks / frames)
             return cls.__get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1,
                                     parts, res_x, res_y)
 
@@ -163,7 +164,7 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         if res_x == 0 or res_y == 0:
             return border
         offsets = generate_expected_offsets(parts, res_x, res_y)
-        scale_factor = float(offsets[parts + 1]) / res_y
+        scale_factor = offsets[parts + 1] / res_y
 
         upper = offsets[start]
         lower = offsets[end + 1]
@@ -196,10 +197,10 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
         frames = len(definition.options.frames)
         if total_subtasks <= frames:
-            subtask_frames = int(math.ceil(float(frames) / total_subtasks))
-            return int(math.ceil(float(output_num) / subtask_frames))
+            subtask_frames = int(math.ceil(frames / total_subtasks))
+            return int(math.ceil(output_num / subtask_frames))
 
-        parts = total_subtasks / frames
+        parts = int(total_subtasks / frames)
         return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
                                                                res_y, parts)
 
@@ -254,13 +255,13 @@ class BlenderRenderTask(FrameRenderingTask):
         super(BlenderRenderTask, self).initialize(dir_manager)
 
         if self.use_frames:
-            parts = self.total_tasks / len(self.frames)
+            parts = int(self.total_tasks / len(self.frames))
         else:
             parts = self.total_tasks
         expected_offsets = generate_expected_offsets(parts, self.res_x, self.res_y)
         preview_y = expected_offsets[parts + 1]
         if self.res_y != 0 and preview_y != 0:
-            self.scale_factor = float(preview_y) / self.res_y
+            self.scale_factor = preview_y / self.res_y
 
         if self.use_frames:
             self.preview_file_path = []
@@ -304,8 +305,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (1.0 / float(parts))
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (1.0 / float(parts))
+            min_y = (parts - self._count_part(start_task, parts)) * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) * (1.0 / parts)
         else:
             min_y = 0.0
             max_y = 1.0
@@ -397,7 +398,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def _get_min_max_y(self, start_task):
         if self.use_frames:
-            parts = self.total_tasks / len(self.frames)
+            parts = int(self.total_tasks / len(self.frames))
         else:
             parts = self.total_tasks
         return get_min_max_y(start_task, parts, self.res_y)
@@ -492,7 +493,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 for j in range(0, int(math.floor(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
-            parts = self.total_tasks / len(self.frames)
+            parts = int(self.total_tasks / len(self.frames))
             pu = self.preview_updaters[frame_index]
             part = (subtask['start_task'] - 1) % parts + 1
             self.mark_part_on_preview(part, img_task, color, pu)
@@ -559,22 +560,22 @@ def generate_expected_offsets(parts, res_x, res_y):
 
 def get_min_max_y(task_num, parts, res_y):
     if res_y % parts == 0:
-        min_y = (parts - task_num) * (1.0 / float(parts))
-        max_y = (parts - task_num + 1) * (1.0 / float(parts))
+        min_y = (parts - task_num) * (1.0 / parts)
+        max_y = (parts - task_num + 1) * (1.0 / parts)
     else:
-        ceiling_height = int(math.ceil(float(res_y) / float(parts)))
+        ceiling_height = int(math.ceil(res_y / parts))
         ceiling_subtasks = parts - (ceiling_height * parts - res_y)
         if task_num > ceiling_subtasks:
-            min_y = float(parts - task_num) * float(ceiling_height - 1) / float(res_y)
-            max_y = float(parts - task_num + 1) * float(ceiling_height - 1) / float(res_y)
+            min_y = (parts - task_num) * (ceiling_height - 1) / res_y
+            max_y = (parts - task_num + 1) * (ceiling_height - 1) / res_y
         else:
             min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
             min_y += (ceiling_subtasks - task_num) * ceiling_height
-            min_y = float(min_y) / float(res_y)
+            min_y = min_y / res_y
 
             max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
-            max_y = float(max_y) / float(res_y)
+            max_y = max_y / res_y
     return min_y, max_y
 
 
@@ -582,10 +583,10 @@ def __scale_factor(res_x, res_y):
     preview_x = 300
     preview_y = 200
     if res_x != 0 and res_y != 0:
-        if float(res_x) / float(res_y) > float(preview_x) / float(preview_y):
-            scale_factor = float(preview_x) / float(res_x)
+        if res_x / res_y > preview_x / preview_y:
+            scale_factor = preview_x / res_x
         else:
-            scale_factor = float(preview_y) / float(res_y)
+            scale_factor = preview_y / res_y
         scale_factor = min(1.0, scale_factor)
     else:
         scale_factor = 1.0
