@@ -27,6 +27,7 @@ logger = logging.getLogger("apps.lux")
 MERGE_TIMEOUT = 7200
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
+PREVIEW_EXT = "BMP"
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -331,7 +332,7 @@ class LuxTask(RenderingTask):
 
         img_current = self._open_preview()
         img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.num_add))
-        img_current.save(self.preview_file_path, "BMP")
+        img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
@@ -347,7 +348,7 @@ class LuxTask(RenderingTask):
         scaled = ImageOps.fit(img,
                               (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
                               method=Image.BILINEAR)
-        scaled.save(self.preview_file_path, "BMP")
+        scaled.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()

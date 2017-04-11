@@ -18,6 +18,8 @@ from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollect
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
+PREVIEW_EXT = "BMP"
+
 
 logger = logging.getLogger("apps.blender")
 
@@ -452,8 +454,8 @@ class BlenderRenderTask(FrameRenderingTask):
             img = load_as_pil(new_chunk_file_path)
             scaled = img.resize((int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))),
                                 resample=Image.BILINEAR)
-            scaled.save(self._get_preview_file_path(num), "BMP")
-            scaled.save(self._get_preview_task_file_path(num), "BMP")
+            scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
+            scaled.save(self._get_preview_task_file_path(num), PREVIEW_EXT)
 
             scaled.close()
             img.close()
