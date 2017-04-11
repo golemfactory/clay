@@ -167,6 +167,10 @@ class TaskServer(PendingConnectionsServer):
         return [th.to_dict() for th in ths]
 
     def add_task_header(self, th_dict_repr):
+        """ Add new task in dictionary representation to task keeper. Returns pair of bools
+        - first represent information if task header was properly formated and signed. Second
+        argument informs if task header should be passed to other nodes. 
+        """
         try:
             if not self.verify_header_sig(th_dict_repr):
                 raise Exception("Invalid signature")
@@ -182,10 +186,11 @@ class TaskServer(PendingConnectionsServer):
 
             if task_id not in task_ids and key_id != self.node.key and new_sig:
                 self.task_keeper.add_task_header(th_dict_repr)
-            return True
+                return True, True
+            return True, False
         except Exception as err:
             logger.warning("Wrong task header received {}".format(err))
-            return False
+            return False, False
 
     def verify_header_sig(self, th_dict_repr):
         _bin = TaskHeader.dict_to_binary(th_dict_repr)
@@ -821,7 +826,6 @@ class TaskServer(PendingConnectionsServer):
     #############################
     @staticmethod
     def __get_task_manager_root(datadir):
-        print datadir
         return os.path.join(datadir, "res")
 
     def _set_conn_established(self):

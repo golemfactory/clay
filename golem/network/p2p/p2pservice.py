@@ -612,11 +612,14 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :param dict th_dict_repr: new task header dictionary representation
         :return bool: True if a task header was in a right format, False otherwise
         """
-        return self.task_server.add_task_header(th_dict_repr)
+        is_good, should_send_further = self.task_server.add_task_header(th_dict_repr)
+        if is_good and should_send_further:
+            self.send_task(th_dict_repr)
+        return is_good
 
-    def send_task(self, task):
+    def send_task(self, th_dict_repr):
         for p in self.peers.values():
-            p.send_task(task.header.to_dict())
+            p.send_task(th_dict_repr)
 
     def remove_task_header(self, task_id):
         """ Remove header of a task with given id from a list of a known tasks

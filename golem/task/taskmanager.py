@@ -85,7 +85,6 @@ class TaskManager(TaskEventListener):
 
     @inlineCallbacks
     def add_new_task(self, task):
-        print "AD NEW TASK"
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task has been already added")
         if not self.key_id:
@@ -127,7 +126,6 @@ class TaskManager(TaskEventListener):
             self.dump_task(task.header.task_id)
             logger.info("Task {} added".format(task.header.task_id))
             self.notice_task_updated(task.header.task_id)
-        print "AFTER ADD NEW TASK"
 
     def dump_task(self, task_id):
         logger.debug('DUMP TASK')

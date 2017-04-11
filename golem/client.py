@@ -719,10 +719,8 @@ class Client(object):
 
     @inlineCallbacks
     def _add_new_task(self, task):
-        print "CLINET INLINE CALLBACK"
         yield self.task_server.task_manager.add_new_task(task)
-        print "AFTER ADD NEW TASK"
-        self.p2pservice.send_task(task)
+        self.p2pservice.send_task(task.header.to_dict())
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
