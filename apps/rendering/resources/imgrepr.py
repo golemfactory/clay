@@ -236,22 +236,22 @@ PSNR_ACCEPTABLE_MIN = 30
 
 
 def compare_imgs(img1, img2, max_col=255, start1=(0, 0), start2=(0, 0), box=None):
-    mse = count_mse(img1, img2, start1, start2, box)
+    mse = calculate_mse(img1, img2, start1, start2, box)
     logger.debug("MSE = {}".format(mse))
     if mse == 0:
         return True
-    psnr = count_psnr(mse, max_col)
+    psnr = calculate_psnr(mse, max_col)
     logger.debug("PSNR = {}".format(psnr))
     return psnr >= PSNR_ACCEPTABLE_MIN
 
 
-def count_psnr(mse, max_=255):
+def calculate_psnr(mse, max_=255):
     if mse <= 0 or max_ <= 0:
         raise ValueError("MSE & MAX_ must be higher than 0")
     return 20 * math.log10(max_) - 10 * math.log10(mse)
 
 
-def count_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
+def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
     mse = 0
     if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
         raise TypeError("img1 and img2 must be ImgRepr")

@@ -8,8 +8,8 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from apps.rendering.resources.imgrepr import (advance_verify_img, blend, compare_exr_imgs,
-                                              compare_imgs, compare_pil_imgs, count_mse,
-                                              count_psnr, EXRImgRepr, ImgRepr, load_as_pil,
+                                              compare_imgs, compare_pil_imgs, calculate_mse,
+                                              calculate_psnr, EXRImgRepr, ImgRepr, load_as_pil,
                                               load_img, logger, PILImgRepr, verify_img)
 
 
@@ -340,98 +340,98 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         with self.assertLogs(logger, level="INFO"):
             assert not compare_exr_imgs(_get_test_exr(), pil_img_path)
 
-    def test_count_psnr(self):
-        assert count_psnr(10, 10) == 10
-        assert count_psnr(10, 1) == -10
-        assert count_psnr(1, 10) == 20
-        assert int(count_psnr(0.5, 10)) == 23
-        assert count_psnr(100, 20)
+    def test_calculate_psnr(self):
+        assert calculate_psnr(10, 10) == 10
+        assert calculate_psnr(10, 1) == -10
+        assert calculate_psnr(1, 10) == 20
+        assert int(calculate_psnr(0.5, 10)) == 23
+        assert calculate_psnr(100, 20)
         with self.assertRaises(ValueError):
-            count_psnr(0, 10)
-
-        with self.assertRaises(ValueError):
-            count_psnr(10, 0)
+            calculate_psnr(0, 10)
 
         with self.assertRaises(ValueError):
-            count_psnr(-1, 10)
+            calculate_psnr(10, 0)
 
         with self.assertRaises(ValueError):
-            count_psnr(10, -1)
+            calculate_psnr(-1, 10)
 
-        assert round(count_psnr(1514.6), 2) == 16.33
-        assert round(count_psnr(703.4), 2) == 19.66
-        assert round(count_psnr(710.4), 2) == 19.62
-        assert round(count_psnr(396.1), 2) == 22.15
-        assert round(count_psnr(326.0), 2) == 23.00
-        assert round(count_psnr(221.2), 2) == 24.68
-        assert round(count_psnr(164.7), 2) == 25.96
-        assert round(count_psnr(113.8), 2) == 27.57
-        assert round(count_psnr(82.5), 2) == 28.97
-        assert round(count_psnr(78.5), 2) == 29.18
-        assert round(count_psnr(66.1), 2) == 29.93
-        assert round(count_psnr(64.4), 2) == 30.04
-        assert round(count_psnr(57.4437), 2) == 30.54
+        with self.assertRaises(ValueError):
+            calculate_psnr(10, -1)
 
-    def test_count_mse(self):
+        assert round(calculate_psnr(1514.6), 2) == 16.33
+        assert round(calculate_psnr(703.4), 2) == 19.66
+        assert round(calculate_psnr(710.4), 2) == 19.62
+        assert round(calculate_psnr(396.1), 2) == 22.15
+        assert round(calculate_psnr(326.0), 2) == 23.00
+        assert round(calculate_psnr(221.2), 2) == 24.68
+        assert round(calculate_psnr(164.7), 2) == 25.96
+        assert round(calculate_psnr(113.8), 2) == 27.57
+        assert round(calculate_psnr(82.5), 2) == 28.97
+        assert round(calculate_psnr(78.5), 2) == 29.18
+        assert round(calculate_psnr(66.1), 2) == 29.93
+        assert round(calculate_psnr(64.4), 2) == 30.04
+        assert round(calculate_psnr(57.4437), 2) == 30.54
+
+    def test_calculate_mse(self):
 
         # Both arguments are not ImgRepr
         with self.assertRaises(TypeError):
-            count_mse("notanimgrepr1", "notanimgrepr2")
+            calculate_mse("notanimgrepr1", "notanimgrepr2")
 
         img_path = self.temp_file_name("img.png")
         img1 = get_pil_img_repr(img_path)
 
         # Only one argument is ImgRepr
         with self.assertRaises(TypeError):
-            count_mse("notanimgrepr", img1)
+            calculate_mse("notanimgrepr", img1)
 
         with self.assertRaises(TypeError):
-            count_mse(img1, "notanimgrepr")
+            calculate_mse(img1, "notanimgrepr")
 
         # ImgRepr before being image is loaded
         img_before_loaded = PILImgRepr()
         with self.assertRaises(Exception):
-            count_mse(img_before_loaded, img1)
+            calculate_mse(img_before_loaded, img1)
 
         with self.assertRaises(Exception):
-            count_mse(img1, img_before_loaded)
+            calculate_mse(img1, img_before_loaded)
 
         # Proper comparison (same images)
         img2_path = self.temp_file_name("img2.png")
         img2 = get_pil_img_repr(img2_path)
 
-        assert count_mse(img1, img2) == 0
+        assert calculate_mse(img1, img2) == 0
 
         # Wrong box values
         with self.assertRaises(Exception):
-            count_mse(img1, img2, box="Not box")
+            calculate_mse(img1, img2, box="Not box")
 
         with self.assertRaises(ValueError):
-            count_mse(img1, img2, box=(0, 1))
+            calculate_mse(img1, img2, box=(0, 1))
 
         with self.assertRaises(ValueError):
-            count_mse(img1, img2, box=(1, 0))
+            calculate_mse(img1, img2, box=(1, 0))
 
         with self.assertRaises(ValueError):
-            count_mse(img1, img2, box=(0, 0))
+            calculate_mse(img1, img2, box=(0, 0))
 
         # Img2 too small
         img2 = get_pil_img_repr(img2_path, (5, 5))
         with self.assertRaises(Exception):
-            count_mse(img1, img2)
+            calculate_mse(img1, img2)
 
         # Proper execution with smaller img2
-        assert count_mse(img1, img2, box=(5, 5)) == 0
-        assert count_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
+        assert calculate_mse(img1, img2, box=(5, 5)) == 0
+        assert calculate_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
 
         img2 = get_pil_img_repr(img2_path, (10, 10), (253, 0, 0))
-        assert count_mse(img1, img2) == 1
+        assert calculate_mse(img1, img2) == 1
 
         img2 = get_pil_img_repr(img2_path, (10, 10))
         img2.set_pixel((0, 0), (0, 0, 0))
-        assert count_mse(img1, img2) == 216
+        assert calculate_mse(img1, img2) == 216
 
-        assert count_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
+        assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
 
     def test_compare_imgs(self):
         img1_path = self.temp_file_name("img1.png")
