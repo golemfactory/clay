@@ -175,8 +175,8 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """ Get information about new tasks and new peers in the network. Remove excess information
         about peers
         """
-        if self.task_server:
-            self.__send_message_get_tasks()
+        # if self.task_server:
+        #     self.__send_message_get_tasks()
 
         if time.time() - self.last_peers_request > PEERS_INTERVAL:
             self.last_peers_request = time.time()
@@ -613,6 +613,10 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :return bool: True if a task header was in a right format, False otherwise
         """
         return self.task_server.add_task_header(th_dict_repr)
+
+    def send_task(self, task):
+        for p in self.peers.values():
+            p.send_task(task.header.to_dict())
 
     def remove_task_header(self, task_id):
         """ Remove header of a task with given id from a list of a known tasks

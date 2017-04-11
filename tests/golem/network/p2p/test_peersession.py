@@ -3,16 +3,26 @@ import unittest
 from mock import MagicMock, Mock
 
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
+from golem.model import Database
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID, PeerSessionInfo
 from golem.network.transport.message import MessageHello, MessageTask
+from golem.task.taskbase import TaskHeader
 from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
 class TestPeerSession(TestWithKeysAuth, LogTestCase):
+    def setUp(self):
+        super(TestPeerSession, self).setUp()
+        self.database = Database(self.tempdir)
+
+    def tearDown(self):
+        self.database.db.close()
+        super(TestPeerSession, self).tearDown()
+
 
     def test_init(self):
         ps = PeerSession(MagicMock())
@@ -89,11 +99,8 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
 
     def test_react_to_task(self):
-
-        node = Node(node_name='node', key='ffffffff')
-        keys_auth = KeysAuth(self.path)
-        keys_auth.key = node.key
-        keys_auth.key_id = node.key
+        keys_auth = EllipticalKeysAuth(self.path)
+        node = Node(node_name='node', key=keys_auth.get_key_id())
 
         peer_session = PeerSession(MagicMock())
         peer_session.p2p_service = P2PService(node, MagicMock(), keys_auth, False)
@@ -101,9 +108,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         config.min_price = 10
         client = MagicMock()
         client.datadir = self.path
-        peer_session.task_server = TaskServer(node, config, keys_auth, MagicMock())
+        peer_session.p2p_service.task_server = TaskServer(node, config, keys_auth, client,
+                                                          use_docker_machine_manager=False)
         task = MagicMock()
-        assert not peer_session._react_to_task(MessageTask(task=task))
+        peer_session._react_to_task(MessageTask(task=task))
+        task = TaskHeader('node', "ABC", "10.10.10.10", 1023, keys_auth.get_key_id(),
+                          'DEFAULT', node)
+        task.signature = keys_auth.sign(task.to_binary())
+        peer_session._react_to_task(MessageTask(task.to_dict()))
 
     def test_send_task(self):
         pass

@@ -182,7 +182,6 @@ class TaskServer(PendingConnectionsServer):
 
             if task_id not in task_ids and key_id != self.node.key and new_sig:
                 self.task_keeper.add_task_header(th_dict_repr)
-
             return True
         except Exception as err:
             logger.warning("Wrong task header received {}".format(err))
