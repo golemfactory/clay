@@ -1,3 +1,4 @@
+from __future__ import division
 import os
 import logging
 import math
@@ -98,7 +99,7 @@ class FrameRenderingTask(RenderingTask):
 
         if not final:
             img = self._paste_new_chunk(img, self._get_preview_file_path(num), part,
-                                        self.total_tasks / len(self.frames))
+                                        int(self.total_tasks / len(self.frames)))
 
         img_x, img_y = img.size
         img = img.resize((int(round(self.scale_factor * img_x)),
@@ -111,8 +112,10 @@ class FrameRenderingTask(RenderingTask):
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
-            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), int(round(self.res_y * self.scale_factor))))
-            offset = int(math.floor((chunk_num - 1) * float(self.res_y) * self.scale_factor / float(all_chunks_num)))
+            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)),
+                                           int(round(self.res_y * self.scale_factor))))
+            offset = math.floor((chunk_num - 1) * self.res_y * self.scale_factor / all_chunks_num)
+            offset = int(offset)
             img_offset.paste(img_chunk, (0, offset))
         except Exception as err:
             logger.error("Can't generate preview {}".format(err))
@@ -160,22 +163,23 @@ class FrameRenderingTask(RenderingTask):
                 for j in range(0, int(round(self.res_y * self.scale_factor))):
                     img_task.putpixel((i, j), color)
         else:
-            parts = self.total_tasks / len(self.frames)
-            upper = int(math.ceil(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts))
-            lower = int(math.floor(self.res_y / parts * self.scale_factor) * ((subtask['start_task'] - 1) % parts + 1))
+            parts = int(self.total_tasks / len(self.frames))
+            part_height = self.res_y / parts * self.scale_factor
+            upper = int(math.ceil(part_height) * ((subtask['start_task'] - 1) % parts))
+            lower = int(math.floor(part_height) * ((subtask['start_task'] - 1) % parts + 1))
             for i in range(0, int(round(self.res_x * self.scale_factor))):
                 for j in range(upper, lower):
                     img_task.putpixel((i, j), color)
 
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
-            subtasks_frames = int(math.ceil(float(len(frames)) / float(total_tasks)))
+            subtasks_frames = int(math.ceil(len(frames) / total_tasks))
             start_frame = (start_task - 1) * subtasks_frames
             end_frame = min(start_task * subtasks_frames, len(frames))
             return frames[start_frame:end_frame], 1
         else:
-            parts = total_tasks / len(frames)
-            return [frames[(start_task - 1) / parts]], parts
+            parts = int(total_tasks / len(frames))
+            return [frames[int((start_task - 1) / parts)]], parts
 
     def _put_image_together(self):
         output_file_name = self.output_file
@@ -220,7 +224,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _collect_frame_part(self, num_start, tr_file, parts):
 
-        frame_num = self.frames[(num_start - 1) / parts]
+        frame_num = self.frames[int((num_start - 1) / parts)]
         frame_key = unicode(frame_num)
         part = self._count_part(num_start, parts)
         self.frames_given[frame_key][part] = tr_file
@@ -289,15 +293,17 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         if self.task_definition.options.use_frames:
             num_frames = len(self.task_definition.options.frames)
             if self.task_definition.total_subtasks > num_frames:
-                est = int(math.floor(float(self.task_definition.total_subtasks) / float(num_frames))) * num_frames
+                est = math.floor(self.task_definition.total_subtasks / num_frames) * num_frames
+                est = int(est)
                 if est != self.task_definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. {} subtasks will be used".format(est))
+                    logger.warning("Too many subtasks for this task. %s subtasks will be used",
+                                   est)
                 return est
 
-            est = int(
-                math.ceil(float(num_frames) / float(math.ceil(float(num_frames) / float(self.task_definition.total_subtasks)))))
+            est = num_frames / math.ceil(num_frames / self.task_definition.total_subtasks)
+            est = int(math.ceil(est))
             if est != self.task_definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. {} subtasks will be used.".format(est))
+                logger.warning("Too many subtasks for this task. %s subtasks will be used.", est)
 
             return est
 
