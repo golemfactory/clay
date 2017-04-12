@@ -56,6 +56,7 @@ from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
 import random
 import ethereum.slogging as slogging
 from golem.network.p2p.golemservice import GolemService
+import json
 from logging import StreamHandler
 
 devp2plog = slogging.get_logger('app')
@@ -108,30 +109,12 @@ class Client(BaseApp):
         self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
-        if ('ceb6294a907dd32a4e8a5622903868178cdd788976d9e7338b29735be0c436114a5828063ddddfdeda7e22ac1bf88ba195238590709a83a0ce791b9765f5be26' == encode_hex(self.keys_auth.public_key)):
-            incr = 0
-        else:
-            incr = 1
-
-        config = {
-            'node': {
-                'privkey_hex': encode_hex(self.keys_auth._private_key),
-                'pubkey_hex': encode_hex(self.keys_auth.public_key)
-            },
-            'discovery': {
-                'listen_host': '0.0.0.0',
-                'listen_port': 20170 + incr,
-                'bootstrap_nodes': [
-                    'enode://ceb6294a907dd32a4e8a5622903868178cdd788976d9e7338b29735be0c436114a5828063ddddfdeda7e22ac1bf88ba195238590709a83a0ce791b9765f5be26@127.0.0.1:20170'
-                ]
-            },
-            'p2p': {
-                'listen_host': '0.0.0.0',
-                'listen_port': 20170 + incr,
-                'min_peers': 2,
-                'max_peers': 5
-            }
-        }
+        from golem.p2pconfig import p2pconfig
+        config = p2pconfig
+        config['node'] = {}
+        config['node']['privkey_hex'] = encode_hex(self.keys_auth._private_key)
+        config['node']['pubkey_hex'] = encode_hex(self.keys_auth.public_key)
+        config['node']['id'] = encode_hex(self.keys_auth.public_key)
 
         BaseApp.__init__(self, config)
 
@@ -786,15 +769,10 @@ class Client(BaseApp):
         return new_value
 
     def __do_work(self):
-        #if self.p2pservice:
-            #if self.config_desc.send_pings:
-                #self.p2pservice.ping_peers(self.config_desc.pings_interval)
-
-            #try:
-                #self.p2pservice.sync_network()
-            self.services.golemservice.get_tasks()
-            #except:
-                #log.exception("p2pservice.sync_network failed")
+            try:
+                self.services.golemservice.get_tasks()
+            except:
+                log.exception("golemservice task broadcast failed")
             try:
                 self.task_server.sync_network()
             except:

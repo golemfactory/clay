@@ -46,3 +46,4 @@ qt5reactor
 gevent>=1.1.0
 devp2p==0.9.0
 GitPython>=2.1.0
+rlp==0.5.0
