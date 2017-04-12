@@ -253,10 +253,14 @@ def _decode_sig(sig):
     return ord(sig[64]) + 27, bitcoin.decode(sig[0:32], 256), bitcoin.decode(sig[32:64], 256)
 
 
+from secp256k1 import lib
+ctx = lib.secp256k1_context_create(ALL_FLAGS)
+
+
 def ecdsa_verify(pubkey, signature, message):
     assert len(signature) == 65
     assert len(pubkey) == 64
-    pk = PublicKey('\04' + pubkey, raw=True)
+    pk = PublicKey('\04' + pubkey, raw=True, ctx=ctx)
     return pk.ecdsa_verify(
         message,
         pk.ecdsa_recoverable_convert(
@@ -270,19 +274,18 @@ verify = ecdsa_verify
 
 def ecdsa_sign(msghash, privkey):
     assert len(msghash) == 32
-    pk = PrivateKey(privkey, raw=True)
+    pk = PrivateKey(privkey, raw=True, ctx=ctx)
     signature = pk.ecdsa_recoverable_serialize(
         pk.ecdsa_sign_recoverable(
             msghash, raw=True))
     new = signature[0] + chr(signature[1])
     return new
-
 sign = ecdsa_sign
 
 
 def ecdsa_recover(message, signature):
     assert len(signature) == 65
-    pk = PublicKey(flags=ALL_FLAGS)
+    pk = PublicKey(flags=ALL_FLAGS, ctx=ctx)
     pk.public_key = pk.ecdsa_recover(
         message,
         pk.ecdsa_recoverable_deserialize(

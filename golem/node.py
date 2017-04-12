@@ -36,6 +36,7 @@ class Node(object):
 
     def initialize(self):
         self.load_environments(self.default_environments)
+        self.client.sync()
         self.client.start()
 
     def load_environments(self, environments):

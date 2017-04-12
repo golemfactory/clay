@@ -1,0 +1,10 @@
+# This file is used in windows packaging procedure: https://github.com/golemfactory/golem/wiki/Installation-Packaging-Win
+vboxapi
+pyinstaller
+https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-win32.whl
+https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-win32.whl
+https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.whl
+https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl
+https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl
+https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl
+-r requirements.txt

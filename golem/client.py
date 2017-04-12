@@ -12,6 +12,7 @@ from os import path, makedirs
 from threading import Lock
 
 from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -190,6 +191,12 @@ class Client(BaseApp):
         if self.rpc_publisher:
             self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
 
+    def sync(self):
+        if self.use_transaction_system():
+            log.info('Waiting for block synchronization...')
+            self.transaction_system.sync()
+            log.info('Block synchronization complete')
+
     def start(self):
         if self.use_monitor:
             self.init_monitor()
@@ -200,7 +207,7 @@ class Client(BaseApp):
         except:
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
-        self.do_work_task.start(0.1, False)
+        self.do_work_task.start(1, False)
         BaseApp.start(self)
 
     def start_network(self):
@@ -513,25 +520,30 @@ class Client(BaseApp):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = self.transaction_system.get_balance()
+            req = AsyncRequest(self.transaction_system.get_balance)
+            b, ab, d = yield async_run(req)
             if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+                returnValue((str(b), str(ab), str(d)))
+        returnValue((None, None, None))
 
     def get_payments_list(self):
         if self.use_transaction_system():
             return self.transaction_system.get_payments_list()
         return ()
 
+    @inlineCallbacks
     def get_incomes_list(self):
         if self.transaction_system:
-            return self.transaction_system.get_incoming_payments()
+            req = AsyncRequest(self.transaction_system.get_incoming_payments)
+            result = yield async_run(req)
+            returnValue(result)
         # FIXME use method that connect payment with expected payments
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
-        return ()
+        returnValue(())
 
     def get_task_cost(self, task_id):
         """
@@ -899,5 +911,9 @@ class Client(BaseApp):
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method
-        self.__datadir_lock.close()  # Closing file unlocks it.
+        # solves locking issues on OS X
+        try:
+            filelock.unlock(self.__datadir_lock)
+        except Exception:
+            pass
+        self.__datadir_lock.close()
