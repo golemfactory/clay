@@ -32,6 +32,7 @@ from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.peersession import PeerMonitor
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking
@@ -52,13 +53,9 @@ from devp2p.app import BaseApp
 from devp2p.discovery import NodeDiscovery
 from devp2p.peermanager import PeerManager
 from devp2p.service import BaseService
-from devp2p import crypto
-from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
-import random
+from ethereum.utils import encode_hex
 import ethereum.slogging as slogging
 from golem.network.p2p.golemservice import GolemService
-import json
-from logging import StreamHandler
 
 devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
@@ -216,12 +213,6 @@ class Client(BaseApp):
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
-        # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
-        # self.ipfs_manager.store_client_info()
-
-        #self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
-        #                             connect_to_known_hosts=self.connect_to_known_hosts)
-
         for service in Client.services:
             assert issubclass(service, BaseService)
             assert service.name not in self.services
@@ -241,28 +232,22 @@ class Client(BaseApp):
 
         self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
-
-        log.info("Starting p2p server ...")
-        #self.p2pservice.start_accepting()
         time.sleep(1.0)
 
         log.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
 
-        #self.p2pservice.set_resource_server(self.resource_server)
-        #self.p2pservice.set_metadata_manager(self)
-
         log.info("Starting task server ...")
         self.task_server.start_accepting()
 
-        #self.p2pservice.set_task_server(self.task_server)
-        #self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
-        #self.p2pservice.connect_to_network()
+        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
 
-        #if self.monitor:
-        #    self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
-        #    self.monitor.on_login()
+        self.peermonitor = PeerMonitor(self.services.peermanager)
+
+        if self.monitor:
+            self.diag_service.register(self.peermonitor, self.monitor.on_peer_snapshot)
+            self.monitor.on_login()
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
