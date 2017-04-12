@@ -2,12 +2,7 @@ import ntpath
 import unittest
 from os import makedirs, path, remove
 
-<<<<<<< HEAD
 from mock import Mock, patch
-=======
-import mock
-from mock import Mock
->>>>>>> develop
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState
 from apps.core.task.coretask import logger as core_logger
@@ -217,8 +212,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert args[4] == '"{}"'.format(output_file_name)
             assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
 
-        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
-             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
+             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
             self.task._put_collected_files_together(output_file_name, files, arg)
 
@@ -226,8 +221,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert_command_line(exec_cmd)
             assert args[0].endswith('.exe')
 
-        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
-             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+        with patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
+             patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
 
             self.task._put_collected_files_together(output_file_name, files, arg)
 

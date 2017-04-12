@@ -11,6 +11,7 @@ from PIL import Image, ImageChops
 from golem.core.common import get_golem_path, timeout_to_deadline
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.fileshelper import format_cmd_line_path
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -194,8 +195,7 @@ class RenderingTask(CoreTask):
                "{}".format(arg),
                "{}".format(self.res_x),
                "{}".format(self.res_y),
-               '"{}"'.format(output_file_name)] + ['"{}"'.format(f) for f in files]
-
+               format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):

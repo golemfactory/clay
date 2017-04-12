@@ -178,3 +178,10 @@ def du(path):
             return "-1"
     human_readable_size, idx = dir_size_to_display(size)
     return "{} {}".format(human_readable_size, translate_resource_index(idx))
+
+
+def format_cmd_line_path(path):
+    if is_windows():
+        return "{}".format(path)
+    else:
+        return '"{}"'.format(path)
