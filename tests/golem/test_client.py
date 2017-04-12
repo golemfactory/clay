@@ -61,8 +61,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         TestWithReactor.tearDownClass()
 
     def test_payment_func(self):
-        c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                   use_docker_machine_manager=False, use_monitor=False)
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                       use_docker_machine_manager=False, use_monitor=False)
 
         c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
         incomes = c.transaction_system.get_incomes_list()
@@ -98,8 +99,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.EthereumTransactionSystem.sync')
     def test_sync(self, *_):
-        c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                   use_docker_machine_manager=False, use_monitor=False)
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                       use_docker_machine_manager=False, use_monitor=False)
         c.sync()
         self.assertTrue(c.transaction_system.sync.called)
         c.quit()
@@ -232,11 +234,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        client = Client(datadir=self.path,
-                        transaction_system=True,
-                        connect_to_known_hosts=False,
-                        use_docker_machine_manager=False,
-                        use_monitor=False)
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            client = Client(datadir=self.path,
+                            transaction_system=True,
+                            connect_to_known_hosts=False,
+                            use_docker_machine_manager=False,
+                            use_monitor=False)
 
         client.sync = Mock()
         client.p2pservice = Mock()

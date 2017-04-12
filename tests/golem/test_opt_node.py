@@ -63,9 +63,11 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
     @ci_skip
+    @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
     @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
-    def test_node_address_passed_to_client(self, mock_reactor, mock_client):
+    def test_node_address_passed_to_client(self, mock_reactor, mock_client,
+                                           save_static_nodes):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
