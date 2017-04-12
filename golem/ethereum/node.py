@@ -151,13 +151,12 @@ class NodeProcess(object):
     def save_static_nodes(self, testnet=False):
         datadir = get_default_geth_path(testnet=testnet)
 
-        # if not using Named Pipes, remove "geth.ipc" from the returned path
-        if not is_windows():
-            datadir = os.path.dirname(datadir)
         if not os.path.exists(datadir):
             os.makedirs(datadir)
 
         static_nodes_path = os.path.join(datadir, "static-nodes.json")
+
+        log.debug("Saving boot nodes to {}".format(static_nodes_path))
         with open(static_nodes_path, 'w') as static_nodes_file:
             static_nodes_file.write(json.dumps(self.BOOT_NODES))
 
@@ -193,4 +192,5 @@ def get_default_geth_path(testnet=False):
             "testnet" if testnet else ""
         ))
     else:
+        # if not using Named Pipes, remove "geth.ipc" from the returned path
         return os.path.dirname(get_default_ipc_path(testnet))
