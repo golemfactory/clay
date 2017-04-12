@@ -11,6 +11,7 @@ from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
+import sys
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
@@ -148,7 +149,7 @@ class NodeProcess(object):
             log.info("Node terminated in {:.2f} s".format(duration))
 
     def save_static_nodes(self, testnet=False):
-        datadir = get_default_ipc_path(testnet=testnet)
+        datadir = get_default_geth_path(testnet=testnet)
 
         # if not using Named Pipes, remove "geth.ipc" from the returned path
         if not is_windows():
@@ -180,3 +181,16 @@ def identify_chain(testnet):
 def is_geth_listening(testnet):
     web3 = Web3(IPCProvider(testnet=testnet))
     return web3.isConnected()
+
+
+def get_default_geth_path(testnet=False):
+    if sys.platform == 'win32':
+        return os.path.expanduser(os.path.join(
+            "~",
+            "AppData",
+            "Roaming",
+            "Ethereum",
+            "testnet" if testnet else ""
+        ))
+    else:
+        return os.path.dirname(get_default_ipc_path(testnet))

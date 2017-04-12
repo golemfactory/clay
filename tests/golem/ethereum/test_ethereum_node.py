@@ -4,9 +4,10 @@ import unittest
 from os import urandom
 
 import requests
+import sys
 from mock import patch, Mock
 
-from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening
+from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening, get_default_geth_path
 from golem.testutils import TempDirFixture
 
 
@@ -88,8 +89,8 @@ class EthereumNodeTest(TempDirFixture):
 
     @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
                      "geth is already running; skipping starting and stopping tests")
-    @patch('web3.Web3.isConnected', return_value=True)
     @patch('subprocess.Popen', return_value=MockPopen())
+    @patch('web3.Web3.isConnected', return_value=True)
     @patch('golem.ethereum.node.is_geth_listening', return_value=False)
     def test_save_static_nodes(self, *_):
         data_dir_win = os.path.join(self.tempdir, '.ethereum')
@@ -98,7 +99,7 @@ class EthereumNodeTest(TempDirFixture):
         nodes_file = Mock()
         nodes_file.return_value = nodes_file
 
-        with patch('golem.ethereum.node.get_default_ipc_path',
+        with patch('golem.ethereum.node.get_default_geth_path',
                    return_value=data_dir_win), \
             patch('golem.ethereum.node.is_windows',
                   return_value=True):
@@ -112,7 +113,7 @@ class EthereumNodeTest(TempDirFixture):
             assert os.path.exists(nodes_path)
             assert json.loads(open(nodes_path).read()) == NodeProcess.BOOT_NODES
 
-        with patch('golem.ethereum.node.get_default_ipc_path',
+        with patch('golem.ethereum.node.get_default_geth_path',
                    return_value=data_dir), \
             patch('golem.ethereum.node.is_windows',
                   return_value=False):
@@ -126,3 +127,27 @@ class EthereumNodeTest(TempDirFixture):
             assert os.path.exists(geth_dir)
             assert os.path.exists(nodes_path)
             assert json.loads(open(nodes_path).read()) == NodeProcess.BOOT_NODES
+
+
+class TestDefaultGethPath(unittest.TestCase):
+
+    def test_get_default_geth_path(self):
+        with patch.object(sys, 'platform', 'darwin'):
+            assert get_default_geth_path()
+            assert get_default_geth_path(True)
+
+        with patch.object(sys, 'platform', 'linux'):
+            assert get_default_geth_path()
+            assert get_default_geth_path(True)
+
+        with patch.object(sys, 'platform', 'win32'):
+            assert get_default_geth_path()
+            assert get_default_geth_path(True)
+
+        with patch.object(sys, 'platform', 'freebsd'):
+            with self.assertRaises(ValueError):
+                assert get_default_geth_path()
+            with self.assertRaises(ValueError):
+                assert get_default_geth_path(True)
+
+
