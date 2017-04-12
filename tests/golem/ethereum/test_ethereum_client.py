@@ -1,11 +1,12 @@
 import logging
+import unittest
 
-from ethereum.utils import zpad
 from ethereum.transactions import Transaction
+from ethereum.utils import zpad
+from mock import patch
 
 from golem.ethereum import Client
-import unittest
-from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening
+from golem.ethereum.node import NodeProcess, is_geth_listening
 from golem.testutils import TempDirFixture
 
 
@@ -15,7 +16,9 @@ class EthereumClientTest(TempDirFixture):
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
         self.manage_client = not is_geth_listening(NodeProcess.testnet)
-        self.client = Client()
+
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            self.client = Client()
 
     def tearDown(self):
         if self.manage_client:
