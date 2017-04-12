@@ -36,7 +36,7 @@ class DockerConfigManager(object):
             process = psutil.Process()
             self.cpu_cores = process.cpu_affinity()
         except Exception as exc:
-            logger.error("Couldn't read CPU affinity: {}".format(exc))
+            logger.debug("Couldn't read CPU affinity: {}".format(exc))
             self.cpu_cores = [0]
 
     def build_config(self, config_desc):

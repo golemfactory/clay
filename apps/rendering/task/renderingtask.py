@@ -194,7 +194,7 @@ class RenderingTask(CoreTask):
                "{}".format(arg),
                "{}".format(self.res_x),
                "{}".format(self.res_y),
-               "{}".format(output_file_name)] + files
+               '"{}"'.format(output_file_name)] + ['"{}"'.format(f) for f in files]
 
         exec_cmd(cmd)
 

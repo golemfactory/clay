@@ -859,5 +859,9 @@ class Client(object):
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method
-        self.__datadir_lock.close()  # Closing file unlocks it.
+        # solves locking issues on OS X
+        try:
+            filelock.unlock(self.__datadir_lock)
+        except Exception:
+            pass
+        self.__datadir_lock.close()
