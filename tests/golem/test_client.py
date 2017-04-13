@@ -47,42 +47,6 @@ class TestCreateClient(TestDirFixture):
 
 class TestClient(TestWithDatabase):
 
-    def test_payment_func(self):
-        c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                   use_docker_machine_manager=False, use_monitor=False)
-        c.transaction_system.incomes_keeper.expect(
-            subtask_id="test_subtask_id",
-            task_id="xyz",
-            sender_node_id="ABC",
-            value=10,
-        )
-        incomes = c.transaction_system.get_incomes_list()
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]["node"], "ABC")
-        self.assertEqual(incomes[0]["expected_value"], 10.0)
-        self.assertEqual(incomes[0]["task"], "xyz")
-        self.assertEqual(incomes[0]["value"], 0.0)
-
-        c.transaction_system.pay_for_task("xyz", [])
-        c.check_payments()
-        c.transaction_system.check_payments = Mock()
-        c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
-        c.check_payments()
-
-        self.assertEqual(c.get_incomes_list(), [])
-        payment = IncomingPayment("0x00003", 30 * denoms.ether)
-        payment.extra = {'block_number': 311,
-                         'block_hash': "hash1",
-                         'tx_hash': "hash2"}
-        c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
-        incomes = c.get_incomes_list()
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]['block_number'], 311)
-        self.assertEqual(incomes[0]['value'], 30 * denoms.ether)
-        self.assertEqual(incomes[0]['payer'], "0x00003")
-
-        c.quit()
-
     def test_remove_resources(self):
         c = Client(datadir=self.path, transaction_system=False,
                    connect_to_known_hosts=False, use_docker_machine_manager=False,

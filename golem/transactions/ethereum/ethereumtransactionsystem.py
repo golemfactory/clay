@@ -39,7 +39,8 @@ class EthereumTransactionSystem(TransactionSystem):
             self.__proc.stop()
         if self.__monitor.running:
             self.__monitor.stop()
-        self.__eth_node.node.stop()
+        if self.__eth_node.node is not None:
+            self.__eth_node.node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)

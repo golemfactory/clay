@@ -242,13 +242,12 @@ class TaskSession(MiddlemanSafeSession):
     def inform_worker_about_payment(self, payment):
         logger.debug('inform_worker_about_payment(%r)', payment)
         transaction_id = payment.details.get('tx', None)
-        self.send(message.MessageSubtaskPayment(subtask_id=payment.subtask, reward=payment.value/denoms.ether, transaction_id=transaction_id))
+        self.send(message.MessageSubtaskPayment(subtask_id=payment.subtask, reward=payment.value / denoms.ether, transaction_id=transaction_id))
 
     @log_error()
     def request_payment(self, expected_income):
         logger.debug('request_payment(%r)', expected_income)
         self.send(message.MessageSubtaskPaymentRequest(subtask_id=expected_income.subtask))
-
 
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)
@@ -265,8 +264,7 @@ class TaskSession(MiddlemanSafeSession):
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(message.MessageWantToComputeTask(node_name, task_id, performance_index, price,
-                                           max_resource_size, max_memory_size, num_cores))
+        self.send(message.MessageWantToComputeTask(node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores))
 
     def request_resource(self, task_id, resource_header):
         """ Ask for a resources for a given task. Task owner should compare given resource header with
@@ -296,9 +294,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(message.MessageReportComputedTask(task_result.subtask_id, task_result.result_type, task_result.computing_time,
-                                            node_name, address, port, self.task_server.get_key_id(), node_info,
-                                            eth_account, extra_data))
+        self.send(message.MessageReportComputedTask(task_result.subtask_id, task_result.result_type, task_result.computing_time, node_name, address, port, self.task_server.get_key_id(), node_info, eth_account, extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -676,10 +672,7 @@ class TaskSession(MiddlemanSafeSession):
             return
         delta_header, parts_list = res
 
-        self.send(message.MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_node_name(),
-                                    self.task_server.node, self.task_server.get_resource_addr(),
-                                    self.task_server.get_resource_port())
-                  )
+        self.send(message.MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_node_name(), self.task_server.node, self.task_server.get_resource_addr(), self.task_server.get_resource_port()))
 
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
