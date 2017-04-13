@@ -108,13 +108,13 @@ class Client(BaseApp):
         self.config_approver = ConfigApprover(self.config_desc)
 
         from golem.p2pconfig import p2pconfig
-        config = p2pconfig
-        config['node'] = {}
-        config['node']['privkey_hex'] = encode_hex(self.keys_auth._private_key)
-        config['node']['pubkey_hex'] = encode_hex(self.keys_auth.public_key)
-        config['node']['id'] = encode_hex(self.keys_auth.public_key)
+        configp2p = p2pconfig
+        configp2p['node'] = {}
+        configp2p['node']['privkey_hex'] = encode_hex(self.keys_auth._private_key)
+        configp2p['node']['pubkey_hex'] = encode_hex(self.keys_auth.public_key)
+        configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
 
-        BaseApp.__init__(self, config)
+        BaseApp.__init__(self, configp2p)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
