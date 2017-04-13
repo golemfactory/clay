@@ -44,3 +44,4 @@ pyreadline
 pytest>=3.0.5
 qt5reactor
 GitPython>=2.1.0
+semantic_version

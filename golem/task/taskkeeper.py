@@ -6,6 +6,8 @@ import pickle
 import random
 import time
 
+from semantic_version import Version
+
 from golem.core.common import HandleKeyError, get_timestamp_utc
 from golem.core.variables import APP_VERSION
 
@@ -208,11 +210,9 @@ class TaskHeaderKeeper(object):
         :return bool: False if node's version is lower than minimum version for this task, False otherwise.
         """
         min_v = th_dict_repr.get("min_version")
-        if not min_v:
-            return True
+
         try:
-            supported = float(self.app_version) >= float(min_v)
-            return supported
+            return self.check_version_compatibility(min_v)
         except ValueError:
             logger.error(
                 "Wrong app version - app version {}, required version {}".format(
@@ -221,6 +221,17 @@ class TaskHeaderKeeper(object):
                 )
             )
             return False
+
+    def check_version_compatibility(self, remote):
+        """ For local a1.b1.c1 and remote a2.b2.c2, check if "a1.b1" == "a2.b2" and c1 >= c2
+        :param remote: remote version string
+        :return: whether the local version is compatible with remote version
+        """
+        remote = Version(remote)
+        local = Version(self.app_version, partial=True)
+        local_patch = local.patch
+        local.patch = None
+        return local == remote and local_patch >= remote.patch
 
     def get_all_tasks(self):
         """ Return all known tasks

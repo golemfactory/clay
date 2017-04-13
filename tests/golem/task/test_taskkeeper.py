@@ -8,6 +8,7 @@ from mock import Mock
 from mock import patch
 
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
+from golem.core.variables import APP_VERSION
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
@@ -34,6 +35,8 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.environments_manager.add_environment(e)
         self.assertFalse(tk.is_supported(task))
         task["max_price"] = 10.0
+        self.assertFalse(tk.is_supported(task))
+        task["min_version"] = APP_VERSION
         self.assertTrue(tk.is_supported(task))
         task["max_price"] = 10.5
         self.assertTrue(tk.is_supported(task))
@@ -44,13 +47,43 @@ class TestTaskHeaderKeeper(LogTestCase):
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertTrue(tk.is_supported(task))
-        task["min_version"] = 120
+        task["min_version"] = "120"
         self.assertFalse(tk.is_supported(task))
         task["min_version"] = tk.app_version
         self.assertTrue(tk.is_supported(task))
         task["min_version"] = "abc"
         with self.assertLogs(logger=logger, level=1):
             self.assertFalse(tk.is_supported(task))
+
+    def test_check_version_compatibility(self):
+        tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
+        tk.app_version = '0.4.5'
+
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('1.5')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha+build.2004.01.01')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha')
+        with self.assertRaises(ValueError):
+            tk.check_version_compatibility('0.4-alpha')
+
+        assert not tk.check_version_compatibility('1.5.0')
+        assert not tk.check_version_compatibility('1.4.0')
+        assert not tk.check_version_compatibility('0.5.0')
+        assert not tk.check_version_compatibility('0.4.6')
+        assert not tk.check_version_compatibility('0.3.0')
+
+        assert tk.check_version_compatibility('0.4.5')
+        assert tk.check_version_compatibility('0.4.1')
+        assert tk.check_version_compatibility('0.4.0')
+        assert tk.check_version_compatibility('0.4.0-alpha')
+        assert tk.check_version_compatibility('0.4.0-alpha+build')
+        assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
 
     def test_change_config(self):
         tk = TaskHeaderKeeper(EnvironmentsManager(), 10.0)
@@ -211,7 +244,8 @@ def get_dict_task_header():
         "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
-        "max_price": 10
+        "max_price": 10,
+        "min_version": APP_VERSION
     }
 
 
