@@ -185,7 +185,7 @@ class TaskServer(PendingConnectionsServer):
 
             return True
         except Exception as err:
-            logger.error("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received {}".format(err))
             return False
 
     def verify_header_sig(self, th_dict_repr):

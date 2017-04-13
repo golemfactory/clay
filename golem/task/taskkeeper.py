@@ -279,7 +279,7 @@ class TaskHeaderKeeper(object):
 
             return True
         except (KeyError, TypeError) as err:
-            logger.error("Wrong task header received {}".format(err))
+            logger.warning("Wrong task header received {}".format(err))
             return False
 
     def remove_task_header(self, task_id):
