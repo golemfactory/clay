@@ -13,6 +13,7 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.threads import wait_for
+from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -36,7 +37,8 @@ def get_example_task_header():
         "max_price": 20,
         "resource_size": 2 * 1024,
         "estimated_memory": 3 * 1024,
-        "signature": None
+        "signature": None,
+        "min_version": APP_VERSION
     }
 
 

@@ -4,6 +4,7 @@ import rlp
 from ethereum.utils import zpad
 from web3 import Web3, IPCProvider
 
+from golem.core.common import get_timestamp_utc
 from .node import NodeProcess
 
 log = logging.getLogger('golem.ethereum')
@@ -44,7 +45,17 @@ class Client(object):
         """
         :return: Returns either False if the node is not syncing, True otherwise
         """
-        return bool(self.web3.eth.syncing)
+        syncing = self.web3.eth.syncing
+        if syncing:
+            return syncing['currentBlock'] < syncing['highestBlock']
+
+        # node may not have started syncing yet
+        last_block = self.web3.eth.getBlock('latest')
+        if isinstance(last_block, dict):
+            timestamp = int(last_block['timestamp'])
+        else:
+            timestamp = last_block.timestamp
+        return get_timestamp_utc() - timestamp > 120
 
     def get_transaction_count(self, address):
         """

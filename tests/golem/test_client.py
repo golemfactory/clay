@@ -3,11 +3,10 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
-from twisted.internet.defer import Deferred
-
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
+from golem.core.threads import wait_for
 from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -19,12 +18,15 @@ from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.tools.testwithreactor import TestWithReactor
 from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
 
 
 class TestCreateClient(TestDirFixture):
 
-    def test_config_override_valid(self):
+    @patch('twisted.internet.reactor', create=True)
+    def test_config_override_valid(self, *_):
         self.assertTrue(hasattr(ClientConfigDescriptor(), "node_address"))
         c = Client(datadir=self.path, node_address='1.0.0.0',
                    transaction_system=False, connect_to_known_hosts=False,
@@ -33,7 +35,8 @@ class TestCreateClient(TestDirFixture):
         self.assertEqual(c.config_desc.node_address, '1.0.0.0')
         c.quit()
 
-    def test_config_override_invalid(self):
+    @patch('twisted.internet.reactor', create=True)
+    def test_config_override_invalid(self, *_):
         """Test that Client() does not allow to override properties
         that are not in ClientConfigDescriptor.
         """
@@ -45,7 +48,26 @@ class TestCreateClient(TestDirFixture):
                    use_monitor=False)
 
 
-class TestClient(TestWithDatabase):
+class TestClient(TestWithDatabase, TestWithReactor):
+
+    @classmethod
+    def setUpClass(cls):
+        TestWithReactor.setUpClass()
+        TestWithDatabase.setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        TestWithDatabase.tearDownClass()
+        TestWithReactor.tearDownClass()
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.EthereumTransactionSystem.sync')
+    def test_sync(self, *_):
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                       use_docker_machine_manager=False, use_monitor=False)
+        c.sync()
+        self.assertTrue(c.transaction_system.sync.called)
+        c.quit()
 
     def test_remove_resources(self):
         c = Client(datadir=self.path, transaction_system=False,
@@ -170,17 +192,19 @@ class TestClient(TestWithDatabase):
         c.quit()
 
 
-class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        client = Client(datadir=self.path,
-                        transaction_system=True,
-                        connect_to_known_hosts=False,
-                        use_docker_machine_manager=False,
-                        use_monitor=False)
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            client = Client(datadir=self.path,
+                            transaction_system=True,
+                            connect_to_known_hosts=False,
+                            use_docker_machine_manager=False,
+                            use_monitor=False)
 
+        client.sync = Mock()
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
         client.task_server = Mock()
@@ -220,7 +244,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task = Mock()
         task.header.task_id = str(uuid.uuid4())
 
-
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, resource_types["hashes"])
         c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
@@ -236,6 +259,39 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    @patch('golem.client.async_run')
+    def test_enqueue_new_task(self, async_run, *_):
+        c = self.client
+
+        result = (None, None, None)
+
+        deferred = Deferred()
+        deferred.result = result
+        deferred.called = True
+
+        async_run.return_value = deferred
+
+        c.transaction_system.get_balance = Mock()
+        c.transaction_system.get_balance.return_value = result
+
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
+
+        result = (None, 1, None)
+        deferred.result = result
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
+
+        result = (1, 1, None)
+        deferred.result = result
+        balance = wait_for(c.get_balance())
+        assert balance == ("1", "1", "None")
+
+        c.transaction_system = None
+        balance = wait_for(c.get_balance())
+        assert balance == (None, None, None)
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_misc(self, _):

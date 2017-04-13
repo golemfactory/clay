@@ -1,13 +1,14 @@
 from ethereum import keys
 from mock import patch
 
+from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
 PRIV_KEY = '\7' * 32
 
 
-class TestEthereumTransactionSystem(TestWithDatabase):
+class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
     def test_init(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
@@ -20,6 +21,37 @@ class TestEthereumTransactionSystem(TestWithDatabase):
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None)
+
+    @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
+    @patch('golem.ethereum.paymentmonitor.PaymentMonitor.start')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
+    def test_sync(self, sleep, *_):
+
+        switch_value = [True]
+
+        def switch(*_):
+            switch_value[0] = not switch_value[0]
+            return not switch_value[0]
+
+        def error(*_):
+            raise Exception
+
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+
+        sleep.call_count = 0
+        with patch('golem.ethereum.Client.is_syncing', side_effect=lambda: False):
+            e.sync()
+            assert sleep.call_count == 1
+
+        sleep.call_count = 0
+        with patch('golem.ethereum.Client.is_syncing', side_effect=switch):
+            e.sync()
+            assert sleep.call_count == 2
+
+        sleep.call_count = 0
+        with patch('golem.ethereum.Client.is_syncing', side_effect=error):
+            e.sync()
+            assert sleep.call_count == 0
 
     def test_stop(self):
 

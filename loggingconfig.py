@@ -30,7 +30,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'WARNING',
+            'level': 'INFO',
             'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
@@ -58,6 +58,10 @@ LOGGING = {
         },
         'golem.network': {'propagate': True},
         'golem.network.transport': {'propagate': True},
+        'golem.client': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'apps': {
             'level': 'DEBUG',
             'propagate': True,

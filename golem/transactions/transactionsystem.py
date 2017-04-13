@@ -60,3 +60,6 @@ class TransactionSystem(object):
 
         self.incomes_keeper.run_once()
         return []
+
+    def sync(self):
+        pass

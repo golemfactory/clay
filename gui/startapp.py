@@ -73,6 +73,8 @@ def start_client(start_ranking, datadir=None,
     docker_manager.check_environment()
     environments = load_environments()
 
+    client.sync()
+
     for env in environments:
         client.environments_manager.add_environment(env)
     client.environments_manager.load_config(client.datadir)

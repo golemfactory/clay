@@ -1,6 +1,7 @@
 import unittest
 from os import makedirs, path, remove
 
+import mock
 from mock import Mock
 
 from apps.core.task.coretaskstate import TaskDefinition
@@ -116,6 +117,37 @@ class TestRenderingTask(TestDirFixture):
         assert preview.mode == "RGBA"
         assert preview.size == (267, 200)
         preview.close()
+
+    def test_put_collected_files_together(self):
+
+        output_file_name = "out.exr"
+        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
+        arg = 'EXR'
+
+        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: True), \
+             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+
+            self.task._put_collected_files_together(output_file_name, files, arg)
+
+            assert exec_cmd.call_args[0][0][0].endswith('.exe')
+            exec_cmd.assert_called_with([mock.ANY, arg,
+                                         str(self.task.res_x), str(self.task.res_y),
+                                         output_file_name] + files)
+
+        with mock.patch('apps.rendering.task.renderingtask.is_windows', side_effect=lambda: False), \
+             mock.patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
+
+            self.task._put_collected_files_together(output_file_name, files, arg)
+
+            args = exec_cmd.call_args[0][0]
+            assert args[0].startswith('"') and args[0].endswith('"')
+            assert args[1] == arg
+            assert args[2] == str(self.task.res_x)
+            assert args[3] == str(self.task.res_y)
+            assert args[4] == '"{}"'.format(output_file_name)
+            assert all([af == '"{}"'.format(f) for af, f in zip(args[5:], files)])
+            assert not args[0].endswith('.exe"')
+            assert not args[0].endswith('.exe')
 
 
 class TestGetTaskBorder(unittest.TestCase):
