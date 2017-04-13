@@ -181,14 +181,17 @@ class RenderingTask(CoreTask):
                 img_task.putpixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):
+        path = os.path.join(get_golem_path(), "apps", "rendering", "resources", "taskcollector", "Release")
+
         if is_windows():
-            task_collector_path = os.path.normpath(
-                os.path.join(get_golem_path(), "apps", "rendering", "resources", "taskcollector", "Release", "taskcollector.exe"))
+            task_collector_path = os.path.normpath(os.path.join(path, "taskcollector.exe"))
+            cmd = [task_collector_path, arg, "{}".format(self.res_x), "{}".format(self.res_y),
+                   output_file_name] + files
         else:
-            task_collector_path = os.path.normpath(
-                os.path.join(get_golem_path(), "apps", "rendering", "resources", "taskcollector", "Release",
-                             "taskcollector"))
-        cmd = ["{}".format(task_collector_path), "{}".format(arg), "{}".format(self.res_x), "{}".format(self.res_y), "{}".format(output_file_name)] + files
+            task_collector_path = os.path.normpath(os.path.join(path, "taskcollector"))
+            cmd = ['"{}"'.format(task_collector_path), "{}".format(arg), "{}".format(self.res_x), "{}".format(self.res_y),
+                   '"{}"'.format(output_file_name)] + ['"{}"'.format(f) for f in files]
+
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):

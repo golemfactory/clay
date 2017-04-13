@@ -44,6 +44,7 @@ pyreadline
 pytest>=3.0.5
 qt5reactor
 gevent>=1.1.0
-devp2p==0.9.0
+devp2p==0.9.1
 GitPython>=2.1.0
 rlp==0.5.0
+semantic_version
