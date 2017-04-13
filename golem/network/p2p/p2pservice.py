@@ -729,7 +729,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         self.gossip_keeper.add_gossip(gossip)
 
-    def pop_gossip(self):
+    def pop_gossips(self):
         """ Return all gathered gossips and clear gossip buffer
         :return list: list of all gossips
         """
