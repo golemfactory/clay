@@ -14,10 +14,11 @@ between both roles).
 
 ## Installing and testing
 
-For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem),
-for Linux download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh) make it executable `chmod +x install.sh` and run,
-and for MS Windows follow the installation instruction from
+For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
+For Linux download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh), make it executable `chmod +x install.sh` and run `./install.sh`.
+For MS Windows follow the installation instruction from
 [here](https://github.com/golemfactory/golem/wiki/Installation).
+
 Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
 [Golem for macOS](https://github.com/golemfactory/homebrew-golem)
