@@ -2,6 +2,7 @@ from codecs import open
 from os import listdir, path, walk
 from sys import platform
 
+import semantic_version
 from setuptools import find_packages, Command
 from setuptools.command.test import test
 
@@ -142,7 +143,23 @@ def move_wheel():
 
 def get_version():
     from git import Repo
-    return Repo(get_golem_path()).tags[-2].name     # -2 because of 'brass0.3' tag
+    tags = Repo(get_golem_path()).tags
+    versions = []
+
+    for tag in tags:
+        if not tag.is_valid:
+            continue
+        try:
+            semantic_version.Version(tag.name)
+            versions.append(tag.name)
+        except Exception as exc:
+            print "Tag {} is not a valid release version: {}".format(
+                tag, exc)
+
+    if not versions:
+        raise EnvironmentError("No git version tag found "
+                               "in the repository")
+    return sorted(versions)[-1]
 
 
 def file_name():
