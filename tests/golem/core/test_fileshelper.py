@@ -7,8 +7,8 @@ import re
 import shutil
 
 from golem.core.common import get_golem_path, is_windows
-from golem.core.fileshelper import get_dir_size, common_dir, outer_dir_path, inner_dir_path, du, \
-                                   find_file_with_ext, copy_file_tree
+from golem.core.fileshelper import (common_dir, copy_file_tree, du, find_file_with_ext,
+                                    get_dir_size, has_ext, inner_dir_path, outer_dir_path)
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -317,3 +317,24 @@ class TestFindAndCopy(TestDirFixture):
         from filecmp import dircmp
         dcmp = dircmp(self.test_dir2, copy_path, ignore=[os.path.basename(self.test_file_5)])
         self.assertEqual(dcmp.left_list, dcmp.right_list)
+
+
+class TestHasExt(TestDirFixture):
+    def test_has_ext(self):
+        file_names = ["file.ext", "file.dde", "file.abc", "file.ABC", "file.Abc", "file.DDE",
+                       "file.XYZ", "file.abC"]
+        files = [self.temp_file_name(f) for f in file_names]
+        for f in files:
+            with open(f, 'w'):
+                pass
+        assert has_ext(file_names[0], ".ext")
+        assert has_ext(file_names[0], ".EXT")
+        assert not has_ext(file_names[0], ".EXT", True)
+        assert has_ext(file_names[0], ".ext", True)
+        assert not has_ext(file_names[0], ".exr")
+
+        assert len(filter(lambda x: has_ext(x, ".abc"), file_names)) == 4
+        assert len(filter(lambda x: has_ext(x, ".abc", True), file_names)) == 1
+
+        assert has_ext(file_names[6], ".xyz")
+        assert not has_ext(file_names[6], ".xyz", True)
