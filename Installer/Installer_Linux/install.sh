@@ -11,7 +11,7 @@
 
 # CONSTANTS
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r HOST="https://golem.network/"
+declare -r golem_package="https://github.com/golemfactory/golem/releases/download/0.5.0/golem-linux_x64-0.5.0.tar.gz"
 declare -r docker_checksum='82e964b9a14d294268e4571f542b1508'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
@@ -134,8 +134,8 @@ function download_package() {
         info_msg "Local package provided, skipping downloading..."
         cp "$LOCALPACKAGE" "/tmp/$PACKAGE"
     else
-        info_msg "Downloading package from $HOST$PACKAGE"
-        wget -qO- "$HOST$PACKAGE" > /tmp/$PACKAGE
+        info_msg "Downloading package from $golem_package"
+        wget -qO- "$golem_package" > /tmp/$PACKAGE
     fi
     if [[ ! -f /tmp/$PACKAGE ]]; then
         error_msg "Error unpacking package"
