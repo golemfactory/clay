@@ -1,0 +1,79 @@
+              Crossbar.io Management API Copyright License
+                      Version 1, 3 October 2015
+
+Copyright (c) Crossbar.io Technologies GmbH <http://crossbario.com/>
+
+Everyone is permitted to copy and distribute verbatim copies of this
+license document, but changing it is not allowed.
+
+
+                              Preamble
+
+As recent court decisions in the Oracle vs. Google case have shown, APIs
+are copyrighted under US law. Open source licenses do not deal
+explicitly with the copyright in APIs.
+
+In order to give you certainty about your rights regarding the APIs
+implemented by the code in this project and how they may affect your
+rights in the code itself, we add this explicit API copyright license
+regarding the APIs implemented in Crossbar.io.
+
+Nothing in this license is intended to take away rights which the
+open source license to the Program grants you.
+
+The following does not apply to the WAMP meta API as Crossbar.io
+implements it.
+
+                            Definitions
+
+Crossbar.io Technologies (We/Us) - Crossbar.io Technologies GmbH, Germany
+
+Program - The Crossbar.io WAMP router and any associated code contained
+    in its repository.
+
+API - An interaction surface for external code with the Program, as
+    intended by the contributors to the Program. An API is defined
+    through and described in the Program documentation. A Program may
+    implement more than one API.
+
+User (You) - Any user who has receive the Program in accordance with
+    the conditions of the Program's open source license, and is using
+    the Program in accordance with the provisions of said license.
+
+
+                           License Terms
+
+The following terms apply to the Program's APIs as far as We hold the
+copyright in these APIs.
+
+We grant You a license to use the Program's API as part of your usage
+of the Program.
+
+In addition to usage of the unmodified program, Your usage may include
+modifying the Program in ways which
+
+* do not change the APIs,
+* correct errors in the implemention of the APIs in the Program, where
+  an error is a deviation from the API definition and documentation, or
+* remove those parts of the Program implementing the APIs.
+
+Licensed usage does not include modifying the program
+
+* in ways which change the APIs, or
+* to extend the APIs.
+
+Extending an API includes implementing roles for API calls which the
+implemented API does not support, e.g. implementing the caller role for
+an API call where only an endpoint for this call is implemented.
+
+
+                             API Identification
+
+The Crossbar.io APIs include all procedures, events and errors which employ
+URIs having "crossbar." as a prefix.
+
+To help in identifying the copyrighted APIs within Crossbar.io, we include a
+listing of such URIs in the file "management_api.md" in the "legal" folder of
+this repository. The listing in this file does not constitute a definition
+of the API, and may omit some URIs, be outdated or otherwise in conflict with
+the actual currently implemented API.
