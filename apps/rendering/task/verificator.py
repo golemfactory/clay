@@ -126,7 +126,7 @@ class RenderingVerificator(CoreVerificator):
         ctd.extra_data = extra_data
         return ctd
 
-    def __box_rendered(self, results):
+    def __box_rendered(self, results, exc_time):
         logger.info("Box for advanced verification created")
 
     def __box_render_error(self, error):

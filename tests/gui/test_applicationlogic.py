@@ -430,9 +430,9 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
             u"Consider increasing max memory usage"
         logic.test_task_computation_error(None)
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. "
-        logic.test_task_computation_success([], 10000)
+        logic.test_task_computation_success([], 10000, 1021)
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
-        logic.test_task_computation_success([], 10000, msg="Warning message")
+        logic.test_task_computation_success([], 10000, 1021, msg="Warning message")
         logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
         logic.customizer.show_warning_window.assert_called_with("Warning message")
 

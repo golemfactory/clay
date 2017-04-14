@@ -3,7 +3,7 @@ import golem.task.taskbase
 from golem.testutils import TempDirFixture
 import mock
 import time
-import unittest
+
 
 class BenchmarkRunnerTest(TempDirFixture):
     def setUp(self):
@@ -13,7 +13,7 @@ class BenchmarkRunnerTest(TempDirFixture):
             task=golem.task.taskbase.Task(None, None),
             root_path=self.tempdir,
             success_callback=lambda: self._success(),
-            error_callback=lambda: self._error(),
+            error_callback=lambda *args: self._error(args),
             benchmark=self.benchmark,
         )
 
@@ -21,7 +21,7 @@ class BenchmarkRunnerTest(TempDirFixture):
         """Instance success_callback."""
         pass
 
-    def _error(self):
+    def _error(self, *args):
         """Instance error_callback."""
         pass
 
@@ -34,13 +34,13 @@ class BenchmarkRunnerTest(TempDirFixture):
 
     def test_tt_cases(self):
         """run() with different tt values."""
-        with mock.patch.multiple(self.instance, start=mock.DEFAULT, tt=None) as values:
+        with mock.patch.multiple(self.instance, run=mock.DEFAULT, tt=None) as values:
             self.instance.run()
-            values['start'].assert_called_once_with()
+            values['run'].assert_called_once_with()
 
-        with mock.patch.multiple(self.instance, start=mock.DEFAULT, tt=mock.DEFAULT) as values:
+        with mock.patch.multiple(self.instance, tt=mock.DEFAULT) as values:
             self.instance.run()
-            values['start'].assert_called_once_with()
+            # values['run'].assert_called_once_with()
             values['tt'].join.assert_called_once_with()
 
     def test_task_computed_immidiately(self):
