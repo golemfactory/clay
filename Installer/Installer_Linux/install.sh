@@ -168,7 +168,7 @@ function install_golem()
     fi
     info_msg "Installing Golem into $GOLEM_DIR"
     [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
-    mv dist/* $GOLEM_DIR
+    cp -R dist/* $GOLEM_DIR
     rm -f /tmp/$PACKAGE &>/dev/null
     rm -rf dist &>/dev/null
     [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
