@@ -3,19 +3,33 @@
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
 #email          :contact@golemnetwork.com
-#date           :20170113
-#version        :0.1
+#date           :20170418
+#version        :0.2
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
+function release_url()
+{
+    json=$(curl -Ls -H 'Accept: application/json' $1)
+    echo ${json} | python -c '\
+        import sys, json;                          \
+        j = json.load(sys.stdin);                  \
+        k = "browser_download_url";                \
+        print([asset[k] for entry in j             \
+                   if "assets" in entry            \
+               for asset in entry["assets"]        \
+                   if asset[k].find("linux") != -1 \
+              ][0])'
+}
+
 # CONSTANTS
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_package="https://github.com/golemfactory/golem/releases/download/0.5.0/golem-linux_x64-0.5.0.tar.gz"
+declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
 declare -r docker_checksum='82e964b9a14d294268e4571f542b1508'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
-declare -r hyperg='https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.1.2/hyperg_0.1.2_linux-amd64.tar.bz2'
+declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
 declare -r HOME='/home/'$SUDO_USER
 
 # Questions
@@ -123,6 +137,7 @@ function install_dependencies()
         wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
         mv hyperg $HOME/
+        sudo chown -R ${SUDO_USER} ${HOME}/hyperg
         [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
@@ -153,10 +168,17 @@ function install_golem()
     if [[ $result -eq 1 ]]; then
         return 1
     fi
+
     tar -zxvf /tmp/$PACKAGE
+    PACKAGE_DIR=$(find . -maxdepth 1 -name "golem-*" -type d -print | head -n1)
+    if [[ ! -d $PACKAGE_DIR ]]; then
+        error_msg "Error extracting package"
+        return 1
+    fi
+
     if [[ -f $GOLEM_DIR/golemapp ]]; then
-        CURRENT_VERSION=$( $GOLEM_DIR/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        PACKAGE_VERSION=$( dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
@@ -166,11 +188,13 @@ function install_golem()
             [[ $? -eq 0 ]] && return 0
         fi
     fi
+
     info_msg "Installing Golem into $GOLEM_DIR"
     [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
-    cp -R dist/* $GOLEM_DIR
-    rm -f /tmp/$PACKAGE &>/dev/null
-    rm -rf dist &>/dev/null
+    cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
+    sudo chown -R ${SUDO_USER} ${GOLEM_DIR}
+    rm -f /tmp/${PACKAGE} &>/dev/null
+    rm -rf ${PACKAGE_DIR} &>/dev/null
     [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
     [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
     return 0
@@ -182,7 +206,7 @@ function main()
 {
     # Make sure only root can run our script
     if [[ $EUID -ne 0 ]]; then
-        ask_user "This script need sudo access. Do you want to continue? (y/n)"
+        ask_user "This script requires sudo permissions. Do you want to continue? (y/n)"
         [[ $? -eq 1 ]] && exec sudo bash "$0" || return 1
     fi
     check_dependencies
