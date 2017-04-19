@@ -24,13 +24,16 @@ function release_url()
 }
 
 # CONSTANTS
+if [[ $EUID -eq 0 ]]; then
+    declare -r SUDO_USER=$(whoami)
+fi
+declare -r HOME=$(realpath ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
-declare -r docker_checksum='82e964b9a14d294268e4571f542b1508'
+declare -r docker_checksum='1f4ffc2c1884b3e499de90f614ac05a7'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
-declare -r HOME='/home/'$SUDO_USER
 
 # Questions
 declare -i INSTALL_DOCKER=0
@@ -117,7 +120,7 @@ function install_dependencies()
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
         # @todo any easy way? This will add PPA, update & install via apt
-        wget -qO- http://get.docker.com > /tmp/$docker_script
+        wget -qO- https://get.docker.com > /tmp/$docker_script
         if [[ "$( md5sum /tmp/$docker_script | awk '{print $1}' )" == "$docker_checksum" ]]; then
             bash /tmp/$docker_script
             if [[ $? -ne 0 ]]; then
@@ -137,7 +140,6 @@ function install_dependencies()
         wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
         mv hyperg $HOME/
-        sudo chown -R ${SUDO_USER} ${HOME}/hyperg
         [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
@@ -192,7 +194,6 @@ function install_golem()
     info_msg "Installing Golem into $GOLEM_DIR"
     [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
     cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
-    sudo chown -R ${SUDO_USER} ${GOLEM_DIR}
     rm -f /tmp/${PACKAGE} &>/dev/null
     rm -rf ${PACKAGE_DIR} &>/dev/null
     [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
