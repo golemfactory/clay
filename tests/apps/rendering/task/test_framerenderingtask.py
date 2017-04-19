@@ -75,6 +75,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img = Image.new("RGB", (800, 600), "#0000ff")
         img.save(img_file)
         task.accept_results("SUBTASK1", [img_file])
+        assert task.num_tasks_received == 1
         assert task.collected_file_names[3] == img_file
         preview_img = Image.open(task.preview_file_path)
         assert preview_img.getpixel((100, 100)) == (0, 0, 255)
@@ -107,6 +108,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.accept_results("SUBTASK1", [img_file, img_file2])
         assert task.frames_given["4"][0] == img_file
         assert task.frames_given["5"][0] == img_file2
+        assert task.num_tasks_received == 1
 
     def test_get_output_names(self):
         frame_task = self._get_frame_task(True)
