@@ -24,9 +24,6 @@ function release_url()
 }
 
 # CONSTANTS
-if [[ $EUID -eq 0 ]]; then
-    declare -r SUDO_USER=$(whoami)
-fi
 declare -r HOME=$(realpath ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
@@ -106,15 +103,21 @@ function check_dependencies()
 function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
-    apt-get update
-    apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
+    sudo id > /dev/null
+    if [[ $? -ne 0 ]]; then
+        error_msg "Dependency installation requires sudo privileges"
+        exit 1
+    fi
+
+    sudo apt-get update
+    sudo apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
-        apt-get install -y software-properties-common
-        add-apt-repository -y ppa:ethereum/ethereum
-        apt-get update
-        apt-get install -y ethereum
+        sudo apt-get install -y software-properties-common
+        sudo add-apt-repository -y ppa:ethereum/ethereum
+        sudo apt-get update
+        sudo apt-get install -y ethereum
     fi
 
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
@@ -127,7 +130,9 @@ function install_dependencies()
                 warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
                 sleep 5s
             fi
-            usermod -aG docker $SUDO_USER
+            if [[ $UID -ne 0 ]]; then
+                sudo usermod -aG docker ${USER}
+            fi
         else
             warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
@@ -157,7 +162,7 @@ function download_package() {
     if [[ ! -f /tmp/$PACKAGE ]]; then
         error_msg "Error unpacking package"
         error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
-        return 1
+        exit 1
     fi
 }
 
@@ -192,7 +197,7 @@ function install_golem()
     fi
 
     info_msg "Installing Golem into $GOLEM_DIR"
-    [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
+    [[ ! -d $GOLEM_DIR ]] && mkdir -p $GOLEM_DIR
     cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
     rm -f /tmp/${PACKAGE} &>/dev/null
     rm -rf ${PACKAGE_DIR} &>/dev/null
@@ -205,11 +210,6 @@ function install_golem()
 # @brief Main function
 function main()
 {
-    # Make sure only root can run our script
-    if [[ $EUID -ne 0 ]]; then
-        ask_user "This script requires sudo permissions. Do you want to continue? (y/n)"
-        [[ $? -eq 1 ]] && exec sudo bash "$0" || return 1
-    fi
     check_dependencies
     install_dependencies
     install_golem
@@ -217,7 +217,7 @@ function main()
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
         info_msg "You need to restart your PC to finish installation"
     fi
-    if [[ $result -eq 1 ]]; then
+    if [[ $result -ne 0 ]]; then
         error_msg "Installation failed"
     fi
     return $result
