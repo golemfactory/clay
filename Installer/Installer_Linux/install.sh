@@ -11,7 +11,7 @@
 
 function release_url()
 {
-    json=$(curl -Ls -H 'Accept: application/json' $1)
+    json=$(wget -qO- --header='Accept: application/json' $1)
     echo ${json} | python -c '\
         import sys, json;                          \
         j = json.load(sys.stdin);                  \
@@ -24,7 +24,7 @@ function release_url()
 }
 
 # CONSTANTS
-declare -r HOME=$(realpath ~)
+declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
 declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
 declare -r docker_checksum='1f4ffc2c1884b3e499de90f614ac05a7'
