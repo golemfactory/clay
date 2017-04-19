@@ -3,20 +3,34 @@
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
 #email          :contact@golemnetwork.com
-#date           :20170113
-#version        :0.1
+#date           :20170418
+#version        :0.2
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
+function release_url()
+{
+    json=$(curl -Ls -H 'Accept: application/json' $1)
+    echo ${json} | python -c '\
+        import sys, json;                          \
+        j = json.load(sys.stdin);                  \
+        k = "browser_download_url";                \
+        print([asset[k] for entry in j             \
+                   if "assets" in entry            \
+               for asset in entry["assets"]        \
+                   if asset[k].find("linux") != -1 \
+              ][0])'
+}
+
 # CONSTANTS
+declare -r HOME=$(realpath ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_package="https://github.com/golemfactory/golem/releases/download/0.5.0/golem-linux_x64-0.5.0.tar.gz"
-declare -r docker_checksum='82e964b9a14d294268e4571f542b1508'
+declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
+declare -r docker_checksum='1f4ffc2c1884b3e499de90f614ac05a7'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
-declare -r hyperg='https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v0.1.2/hyperg_0.1.2_linux-amd64.tar.bz2'
-declare -r HOME='/home/'$SUDO_USER
+declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
 
 # Questions
 declare -i INSTALL_DOCKER=0
@@ -89,28 +103,36 @@ function check_dependencies()
 function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
-    apt-get update
-    apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
+    sudo id > /dev/null
+    if [[ $? -ne 0 ]]; then
+        error_msg "Dependency installation requires sudo privileges"
+        exit 1
+    fi
+
+    sudo apt-get update
+    sudo apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
-        apt-get install -y software-properties-common
-        add-apt-repository -y ppa:ethereum/ethereum
-        apt-get update
-        apt-get install -y ethereum
+        sudo apt-get install -y software-properties-common
+        sudo add-apt-repository -y ppa:ethereum/ethereum
+        sudo apt-get update
+        sudo apt-get install -y ethereum
     fi
 
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
         # @todo any easy way? This will add PPA, update & install via apt
-        wget -qO- http://get.docker.com > /tmp/$docker_script
+        wget -qO- https://get.docker.com > /tmp/$docker_script
         if [[ "$( md5sum /tmp/$docker_script | awk '{print $1}' )" == "$docker_checksum" ]]; then
             bash /tmp/$docker_script
             if [[ $? -ne 0 ]]; then
                 warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
                 sleep 5s
             fi
-            usermod -aG docker $SUDO_USER
+            if [[ $UID -ne 0 ]]; then
+                sudo usermod -aG docker ${USER}
+            fi
         else
             warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
@@ -140,7 +162,7 @@ function download_package() {
     if [[ ! -f /tmp/$PACKAGE ]]; then
         error_msg "Error unpacking package"
         error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
-        return 1
+        exit 1
     fi
 }
 
@@ -153,10 +175,17 @@ function install_golem()
     if [[ $result -eq 1 ]]; then
         return 1
     fi
+
     tar -zxvf /tmp/$PACKAGE
+    PACKAGE_DIR=$(find . -maxdepth 1 -name "golem-*" -type d -print | head -n1)
+    if [[ ! -d $PACKAGE_DIR ]]; then
+        error_msg "Error extracting package"
+        return 1
+    fi
+
     if [[ -f $GOLEM_DIR/golemapp ]]; then
-        CURRENT_VERSION=$( $GOLEM_DIR/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        PACKAGE_VERSION=$( dist/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
             ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
@@ -166,11 +195,12 @@ function install_golem()
             [[ $? -eq 0 ]] && return 0
         fi
     fi
+
     info_msg "Installing Golem into $GOLEM_DIR"
-    [[ ! -d $GOLEM_DIR ]] && sudo -u $SUDO_USER mkdir -p $GOLEM_DIR
-    cp -R dist/* $GOLEM_DIR
-    rm -f /tmp/$PACKAGE &>/dev/null
-    rm -rf dist &>/dev/null
+    [[ ! -d $GOLEM_DIR ]] && mkdir -p $GOLEM_DIR
+    cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
+    rm -f /tmp/${PACKAGE} &>/dev/null
+    rm -rf ${PACKAGE_DIR} &>/dev/null
     [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
     [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
     return 0
@@ -180,11 +210,6 @@ function install_golem()
 # @brief Main function
 function main()
 {
-    # Make sure only root can run our script
-    if [[ $EUID -ne 0 ]]; then
-        ask_user "This script need sudo access. Do you want to continue? (y/n)"
-        [[ $? -eq 1 ]] && exec sudo bash "$0" || return 1
-    fi
     check_dependencies
     install_dependencies
     install_golem
@@ -192,7 +217,7 @@ function main()
     if [[ $INSTALL_DOCKER -eq 1 ]]; then
         info_msg "You need to restart your PC to finish installation"
     fi
-    if [[ $result -eq 1 ]]; then
+    if [[ $result -ne 0 ]]; then
         error_msg "Installation failed"
     fi
     return $result
