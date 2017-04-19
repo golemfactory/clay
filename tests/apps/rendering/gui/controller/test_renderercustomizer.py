@@ -105,7 +105,6 @@ class TestRendererCustomizer(TestGui):
         file_dialog_mock.getSaveFileName.return_value = "result file name", 0
         controller._choose_output_file_button_clicked()
         controller.gui.ui.outputFileLineEdit.setText.assert_called_with("result file name")
-        controller.logic.task_settings_changed.assert_called_with()
 
 
 class TestFrameRendererCustomizer(TestGui):
