@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import os
 import random
@@ -7,7 +8,7 @@ from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline, get_golem_path
-from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource.dirmanager import get_test_task_path, find_task_script, get_tmp_path
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
@@ -27,6 +28,7 @@ logger = logging.getLogger("apps.lux")
 MERGE_TIMEOUT = 7200
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
+PREVIEW_EXT = "BMP"
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -67,7 +69,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         if res_x == 0 or res_y == 0:
             return []
 
-        if float(res_x) / res_y > preview_x / preview_y:
+        if res_x / res_y > preview_x / preview_y:
             scale_factor = preview_x / res_x
         else:
             scale_factor = preview_y / res_y
@@ -259,11 +261,11 @@ class LuxTask(RenderingTask):
         super(LuxTask, self).accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         for tr_file in result_files:
-            if tr_file.upper().endswith(".FLM"):
+            if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
                 self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
                 self.num_tasks_received += 1
-            elif not tr_file.upper().endswith('.LOG'):
+            elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file
                 self._update_preview(tr_file, num_start)
 
@@ -299,7 +301,7 @@ class LuxTask(RenderingTask):
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
-        if new_chunk_file_path.endswith(".exr"):
+        if has_ext(new_chunk_file_path, ".exr"):
             self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
@@ -325,13 +327,14 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
-        scaled = img.resize((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+        scaled = img.resize((int(round(self.scale_factor * self.res_x)),
+                             int(round(self.scale_factor * self.res_y))),
                             resample=Image.BILINEAR)
         img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.num_add))
-        img_current.save(self.preview_file_path, "BMP")
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / self.num_add)
+        img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
@@ -340,14 +343,15 @@ class LuxTask(RenderingTask):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
-            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.num_add))
+            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file),
+                                     1.0 / self.num_add)
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
         scaled = ImageOps.fit(img,
                               (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
                               method=Image.BILINEAR)
-        scaled.save(self.preview_file_path, "BMP")
+        scaled.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
