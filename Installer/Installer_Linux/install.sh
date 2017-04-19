@@ -11,7 +11,7 @@
 
 function release_url()
 {
-    json=$(curl -Ls -H 'Accept: application/json' $1)
+    json=$(wget -qO- --header='Accept: application/json' $1)
     echo ${json} | python -c '\
         import sys, json;                          \
         j = json.load(sys.stdin);                  \
