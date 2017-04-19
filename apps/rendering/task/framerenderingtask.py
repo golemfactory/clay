@@ -84,10 +84,10 @@ class FrameRenderingTask(RenderingTask):
             else:
                 self._collect_frame_part(num_start, result_file, parts)
 
-            self.num_tasks_received += num_end - num_start + 1
+        self.num_tasks_received += num_end - num_start + 1
 
-            if self.num_tasks_received == self.total_tasks and not self.use_frames:
-                self._put_image_together()
+        if self.num_tasks_received == self.total_tasks and not self.use_frames:
+            self._put_image_together()
 
     #########################
     # Specific task methods #
