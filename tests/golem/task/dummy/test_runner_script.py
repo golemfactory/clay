@@ -1,3 +1,5 @@
+import time
+
 import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -16,10 +18,10 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     def test_runner_dispatch_requesting(
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
-        args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7"]
+        args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7", 0]
         runner.dispatch(args)
         self.assertTrue(mock_run_requesting_node.called)
-        self.assertEqual(mock_run_requesting_node.call_args[0], (self.path, 7))
+        self.assertEqual(mock_run_requesting_node.call_args[0], (self.path, 7, 0))
         self.assertFalse(mock_run_computing_node.called)
         self.assertFalse(mock_run_simulation.called)
 
@@ -70,11 +72,9 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
-    @mock.patch("golem.client.Client.enqueue_new_task")
     @mock.patch("runner.reactor")
-    def test_run_requesting_node(self, mock_reactor, enqueue_new_task):
-        client = runner.run_requesting_node(self.path, 3)
-        self.assertTrue(enqueue_new_task.called)
+    def test_run_requesting_node(self, mock_reactor):
+        client = runner.run_requesting_node(self.path, 3, 0)
         client.quit()
 
     @mock.patch("runner.reactor")

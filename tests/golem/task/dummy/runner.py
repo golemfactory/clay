@@ -57,7 +57,7 @@ def create_client(datadir):
                   estimated_blender_performance=1000.0)
 
 
-def run_requesting_node(datadir, num_subtasks=3):
+def run_requesting_node(datadir, num_subtasks=3, wait_for=1):
     client = None
 
     def shutdown():
@@ -74,19 +74,28 @@ def run_requesting_node(datadir, num_subtasks=3):
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
-    params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-    task = DummyTask(client.get_node_name(), params, num_subtasks)
-    task.initialize(DirManager(datadir))
-    client.enqueue_new_task(task)
+    task = None
+
+    def create_task():
+        params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
+        task = DummyTask(client.get_node_name(), params, num_subtasks)
+        task.initialize(DirManager(datadir))
+        client.enqueue_new_task(task)
+        return task
 
     port = client.p2pservice.cur_port
     requestor_addr = "{}:{}".format(client.node.prv_addr, port)
     report("Listening on {}".format(requestor_addr))
 
     def report_status():
+        report("REPORT STATUS CALLED")
+        task = None
         while True:
             time.sleep(1)
-            if task.finished_computation():
+            if not task:
+                if len(client.p2pservice.peers) >= wait_for:
+                    task = create_task()
+            elif task.finished_computation():
                 report("Task finished")
                 shutdown()
                 return
@@ -165,7 +174,8 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     # Start the requesting node in a separate process
     reqdir = path.join(datadir, REQUESTING_NODE_KIND)
     requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks)],
+        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks),
+         str(num_computing_nodes)],
         bufsize=1,  # line buffered
         env=env,
         stdout=subprocess.PIPE)
@@ -248,11 +258,15 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
 
 def dispatch(args):
-    if len(args) == 4 and args[1] == REQUESTING_NODE_KIND:
+    if len(args) in [4, 5] and args[1] == REQUESTING_NODE_KIND:
         # I'm a requesting node,
         # second arg is the data dir,
-        # third arg is the number of subtasks.
-        run_requesting_node(args[2], int(args[3]))
+        # third arg is the number of subtasks,
+        # fourth arg is the number of providers that are needed
+        if len(args) == 4:
+            run_requesting_node(args[2], int(args[3]))
+        else:
+            run_requesting_node(args[2], int(args[3]), int(args[4]))
     elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node,
         # second arg is the data dir,
