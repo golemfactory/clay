@@ -134,7 +134,7 @@ class Client(BaseApp):
 
         self.nodes_manager_client = None
 
-        self.do_work_task = task.LoopingCall(self.__do_work)
+        self.do_work_task = None
 
         self.cfg = config
         self.send_snapshot = False
@@ -204,6 +204,7 @@ class Client(BaseApp):
         except:
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
+        self.do_work_task = task.LoopingCall(self.__do_work)
         self.do_work_task.start(1, False)
         BaseApp.start(self)
 
