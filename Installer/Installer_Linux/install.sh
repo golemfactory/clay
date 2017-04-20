@@ -145,7 +145,7 @@ function install_dependencies()
         wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
         mv hyperg $HOME/
-        [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
+        [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
     info_msg "Done installing Golem dependencies"
@@ -201,8 +201,8 @@ function install_golem()
     cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
     rm -f /tmp/${PACKAGE} &>/dev/null
     rm -rf ${PACKAGE_DIR} &>/dev/null
-    [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
-    [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
+    [[ ! -f /usr/local/bin/golemapp ]] && sudo ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
+    [[ ! -f /usr/local/bin/golemcli ]] && sudo ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
     return 0
 }
 
