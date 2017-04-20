@@ -1,3 +1,4 @@
+from __future__ import division
 from copy import deepcopy
 import logging
 import math
@@ -10,12 +11,13 @@ from PIL import Image, ImageChops
 from golem.core.common import get_golem_path, timeout_to_deadline
 
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.fileshelper import format_cmd_line_path
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.renderingtaskcollector import exr_to_pil
+from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
 
@@ -29,6 +31,15 @@ logger = logging.getLogger("apps.rendering")
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
+
+    @classmethod
+    def _get_task_collector_path(cls):
+        if is_windows():
+            task_collector_name = "taskcollector.exe"
+        else:
+            task_collector_name = "taskcollector"
+        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
+                                             "taskcollector", "Release", task_collector_name))
 
     ################
     # Task methods #
@@ -46,7 +57,7 @@ class RenderingTask(CoreTask):
             with open(main_program_file, "r") as src_file:
                 src_code = src_file.read()
         except IOError as err:
-            logger.error("Wrong main program file: {}".format(err))
+            logger.warning("Wrong main program file: {}".format(err))
             src_code = ""
         self.main_program_file = main_program_file
 
@@ -88,10 +99,10 @@ class RenderingTask(CoreTask):
         preview_x = 300
         preview_y = 200
         if self.res_x != 0 and self.res_y != 0:
-            if float(self.res_x) / float(self.res_y) > float(preview_x) / float(preview_y):
-                self.scale_factor = float(preview_x) / float(self.res_x)
+            if self.res_x / self.res_y > preview_x / preview_y:
+                self.scale_factor = preview_x / self.res_x
             else:
-                self.scale_factor = float(preview_y) / float(self.res_y)
+                self.scale_factor = preview_y / self.res_y
             self.scale_factor = min(1.0, self.scale_factor)
         else:
             self.scale_factor = 1.0
@@ -114,9 +125,8 @@ class RenderingTask(CoreTask):
 
     @CoreTask.handle_key_error
     def restart_subtask(self, subtask_id):
-        if subtask_id in self.subtasks_given:
-            if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
-                self._remove_from_preview(subtask_id)
+        if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
+            self._remove_from_preview(subtask_id)
         CoreTask.restart_subtask(self, subtask_id)
 
     def update_task_state(self, task_state):
@@ -133,11 +143,7 @@ class RenderingTask(CoreTask):
         return self.preview_file_path
 
     def _update_preview(self, new_chunk_file_path, num_start):
-
-        if new_chunk_file_path.upper().endswith(".EXR"):
-            img = exr_to_pil(new_chunk_file_path)
-        else:
-            img = Image.open(new_chunk_file_path)
+        img = load_as_pil(new_chunk_file_path)
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
@@ -174,24 +180,22 @@ class RenderingTask(CoreTask):
         self.preview_task_file_path = preview_task_file_path
 
     def _mark_task_area(self, subtask, img_task, color):
-        upper = max(0, int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['start_task'] - 1))))
-        lower = min(int(math.floor(self.scale_factor * self.res_y / self.total_tasks * (subtask['end_task']))), int(round(self.res_y * self.scale_factor)))
-        for i in range(0, int(round(self.res_x * self.scale_factor))):
-            for j in range(int(round(upper)), int(round(lower))):
+        x = int(round(self.res_x * self.scale_factor))
+        y = int(round(self.res_y * self.scale_factor))
+        upper = max(0, int(math.floor(y / self.total_tasks * (subtask['start_task'] - 1))))
+        lower = min(int(math.floor(y / self.total_tasks * (subtask['end_task']))), y)
+        for i in range(0, x):
+            for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):
-        path = os.path.join(get_golem_path(), "apps", "rendering", "resources", "taskcollector", "Release")
+        task_collector_path = self._get_task_collector_path()
 
-        if is_windows():
-            task_collector_path = os.path.normpath(os.path.join(path, "taskcollector.exe"))
-            cmd = [task_collector_path, arg, "{}".format(self.res_x), "{}".format(self.res_y),
-                   output_file_name] + files
-        else:
-            task_collector_path = os.path.normpath(os.path.join(path, "taskcollector"))
-            cmd = ['"{}"'.format(task_collector_path), "{}".format(arg), "{}".format(self.res_x), "{}".format(self.res_y),
-                   '"{}"'.format(output_file_name)] + ['"{}"'.format(f) for f in files]
-
+        cmd = ["{}".format(task_collector_path),
+               "{}".format(arg),
+               "{}".format(self.res_x),
+               "{}".format(self.res_y),
+               format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
         exec_cmd(cmd)
 
     def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
@@ -284,13 +288,15 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
 
-    def _calculate_total(self, defaults, definition):
-        if definition.optimize_total:
+    def _calculate_total(self, defaults):
+        if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        if defaults.min_subtasks <= definition.total_subtasks <= defaults.max_subtasks:
-            return definition.total_subtasks
+        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
+            return self.task_definition.total_subtasks
         else:
+            logger.warning("Cannot set total subtasks to {}. Changing to {}".format(
+                self.task_definition.total_subtasks, defaults.default_subtasks))
             return defaults.default_subtasks
 
     def _set_verification_options(self, new_task):
@@ -300,7 +306,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         # super() when ready
         kwargs['node_name'] = self.node_name
         kwargs['task_definition'] = self.task_definition
-        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS(), self.task_definition)
+        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
         kwargs['root_path'] = self.root_path
         return kwargs
 

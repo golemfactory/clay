@@ -516,13 +516,17 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     def test_task_computation_success(self, results, est_mem, msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        if msg is not None:
-            self.customizer.show_warning_window(u"{}".format(msg))
-        msg = u"Task tested successfully"
-        self.progress_dialog_customizer.show_message(msg)
-        self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
+
+        if msg is not None:
+            self.progress_dialog.close()
+            self.customizer.show_warning_window(u"{}".format(msg))
+        else:
+            msg = u"Task tested successfully"
+            self.progress_dialog_customizer.show_message(msg)
+
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)

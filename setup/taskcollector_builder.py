@@ -1,5 +1,5 @@
 from os.path import abspath, dirname, isfile, join
-from subprocess import check_call, call
+from subprocess import check_call, Popen, PIPE
 from sys import platform
 
 
@@ -21,13 +21,24 @@ class TaskCollectorBuilder:
         elif platform.startswith('linux') or platform.startswith("darwin"):
             return self.__build_on_unix()
         else:
-            return "Unsupported platform: {}".format(platform)
+            return \
+                """
+                ***************************************************************
+                Cannot build TaskCollector
+                Unsupported platform: {}
+                ***************************************************************
+                """.format(platform)
 
     def __build_on_windows(self):
         """ Check if taskcollector exists """
         # @todo check how to call cl.exe from cmd and try to build
         if not isfile("{}.exe".format(self.build_path)):
-            return "{}.exe does not exist".format(self.build_path)
+            return \
+                """
+                ***************************************************************
+                {}.exe not found!
+                ***************************************************************
+                """.format(self.build_path)
         return None
 
     def __build_on_unix(self):
@@ -41,9 +52,16 @@ class TaskCollectorBuilder:
         print "Try to build TaskCollector"
         try:
             check_call(['make', '--version'])
-            call(['make', '-C', self.task_collector_path])
+            p = Popen(['make', '-C', self.task_collector_path], stdout=PIPE, stderr=PIPE)
+            _, error_msg = p.communicate()
         except OSError as ex:
             return ex.message
         if not isfile(self.build_path):
-            return 'Build failed'
+            return \
+                """
+                ***************************************************************
+                Building TaskCollector failed
+                {}
+                ***************************************************************
+                """.format(error_msg)
         return None

@@ -3,7 +3,6 @@ import os
 
 from enum import Enum
 
-from apps.core.task.coretaskstate import AdvanceVerificationOptions
 from golem.core.common import HandleKeyError
 
 logger = logging.getLogger("apps.core")

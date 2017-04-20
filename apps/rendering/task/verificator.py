@@ -1,3 +1,4 @@
+from __future__ import division
 from copy import copy
 import logging
 import math
@@ -6,7 +7,7 @@ import random
 import uuid
 
 from golem.core.keysauth import get_random, get_random_float
-from golem.core.fileshelper import find_file_with_ext
+from golem.core.fileshelper import ensure_dir_exists, find_file_with_ext
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
@@ -85,7 +86,7 @@ class RenderingVerificator(CoreVerificator):
             logger.error("Wrong total tasks number ({}) for subtask number {}".format(
                 self.total_tasks, num_task))
             return 0, 0, 0, 0
-        img_height = int(math.floor(float(self.res_y) / float(self.total_tasks)))
+        img_height = int(math.floor(self.res_y / self.total_tasks))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info, task):
@@ -97,12 +98,8 @@ class RenderingVerificator(CoreVerificator):
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        try:
-            extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
-            if not os.path.isdir(extra_data['tmp_path']):
-                os.mkdir(extra_data['tmp_path'])
-        except Exception:
-            logger.exception("Error during scope changing in advanced verification")
+        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
+        ensure_dir_exists(extra_data['tmp_path'])
         return extra_data, start_box
 
     def _run_task(self, extra_data, task):
@@ -174,7 +171,7 @@ class FrameRenderingVerificator(RenderingVerificator):
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']
             num_task = self._count_part(start_task, parts)
-            img_height = int(math.floor(float(self.res_y) / float(parts)))
+            img_height = int(math.floor(self.res_y / parts))
             part_min_x = 1
             part_max_x = self.res_x - 1
             part_min_y = (num_task - 1) * img_height + 1
