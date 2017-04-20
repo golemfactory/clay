@@ -24,7 +24,7 @@ cffi>=1.9.1
 web3==3.7.2
 ethereum==1.6.0
 ethereum-abi-utils==0.4.0
-autobahn==0.18.2
+autobahn==0.18.1
 cbor2
 multihash
 base58
