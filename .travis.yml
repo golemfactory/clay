@@ -32,6 +32,6 @@ before_install:
   - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
   - sudo pip install -r requirements.txt
 
-  - sudo python setup.py develop
+  - sudo -E python setup.py develop
 
 script: python -m pytest tests
