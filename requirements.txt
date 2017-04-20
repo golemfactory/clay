@@ -11,7 +11,7 @@ netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1
 Pillow==3.0.0
-psutil>=4.3.1
+psutil==5.2.1
 pycodestyle
 pyelliptic==1.5.7
 pysha3>=1.0.2
@@ -24,7 +24,7 @@ cffi>=1.9.1
 web3==3.7.2
 ethereum==1.6.0
 ethereum-abi-utils==0.4.0
-autobahn
+autobahn==0.18.2
 cbor2
 multihash
 base58
@@ -34,7 +34,7 @@ certifi
 weakreflist
 tabulate
 PyYAML>=3.12
-crossbar
+crossbar==17.3.1
 jsonpickle
 pydispatcher
 Crypto
