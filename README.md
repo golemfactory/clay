@@ -16,7 +16,7 @@ between both roles).
 
 For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
 For Linux download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh), make it executable `chmod +x install.sh` and run `./install.sh`.
-For MS Windows download the installer from [here](https://github.com/golemfactory/golem/releases/). When downloaded, just run `setup.exe`.
+For MS Windows download the installer from [here](https://github.com/golemfactory/golem/releases/); when downloaded, just run `setup.exe`.
 
 Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
