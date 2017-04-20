@@ -1,4 +1,4 @@
-setuptools>=30.2.0
+setuptools==34.3.3
 appdirs>=1.4
 click>=4.0
 docker-py==1.7.2
