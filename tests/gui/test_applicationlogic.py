@@ -559,10 +559,10 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         logic.progress_dialog.close()
         self.assertFalse(rpc_publisher.success)
 
-        prev_call_count = logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count
+        ctr = logic.customizer.new_task_dialog_customizer
+        prev_call_count = ctr.task_settings_changed.call_count
         logic.task_settings_changed()
-        self.assertGreater(logic.customizer.new_task_dialog_customizer.task_settings_changed.call_count,
-                           prev_call_count)
+        self.assertGreater(ctr.task_settings_changed.call_count,prev_call_count)
 
         logic.tasks["xyz"] = ts
         logic.clone_task("xyz")

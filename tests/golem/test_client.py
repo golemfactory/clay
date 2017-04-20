@@ -191,6 +191,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.db = None
         c.quit()
 
+    def test_collect_gossip(self):
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False,
+                   use_monitor=False)
+        c.start_network()
+        c.collect_gossip()
+        c.quit()
+
 
 class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 

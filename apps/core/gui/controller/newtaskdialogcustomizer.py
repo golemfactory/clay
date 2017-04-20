@@ -78,16 +78,6 @@ class NewTaskDialogCustomizer(Customizer):
             self.__test_task_button_clicked)
         self.gui.ui.resetToDefaultButton.clicked.connect(
             self.__reset_to_defaults)
-        self.__connect_with_task_settings_changed([
-            self.gui.ui.fullTaskTimeoutSecSpinBox.valueChanged,
-            self.gui.ui.fullTaskTimeoutMinSpinBox.valueChanged,
-            self.gui.ui.fullTaskTimeoutHourSpinBox.valueChanged,
-            self.gui.ui.verificationSizeXSpinBox.valueChanged,
-            self.gui.ui.verificationSizeYSpinBox.valueChanged,
-            self.gui.ui.verificationForAllRadioButton.toggled,
-            self.gui.ui.verificationForFirstRadioButton.toggled,
-            self.gui.ui.probabilityLineEdit.textChanged
-        ])
 
     def _setup_payment_connections(self):
         self.gui.ui.taskMaxPriceLineEdit.textChanged.connect(
@@ -182,7 +172,6 @@ class NewTaskDialogCustomizer(Customizer):
 
     def set_options(self, options):
         self.logic.options = options
-        self.task_settings_changed()
 
     def task_settings_changed(self):
         self._change_finish_state(False)
@@ -331,7 +320,6 @@ class NewTaskDialogCustomizer(Customizer):
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
         self._set_new_pessimistic_cost()
-        self.task_settings_changed()
 
     def _open_options(self):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
@@ -362,7 +350,6 @@ class NewTaskDialogCustomizer(Customizer):
                 self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
-        self.task_settings_changed()
 
     def _advance_settings_button_clicked(self):
         self.gui.ui.advanceNewTaskWidget.setVisible(not self.gui.ui.advanceNewTaskWidget.isVisible())
@@ -434,12 +421,6 @@ class NewTaskDialogCustomizer(Customizer):
     def __advanced_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
         set_verification_widgets_state(self.gui, state)
-        self.task_settings_changed()
 
     def __verification_random_changed(self):
         verification_random_changed(self.gui)
-        self.task_settings_changed()
-
-    def __connect_with_task_settings_changed(self, list_gui_el):
-        for gui_el in list_gui_el:
-            gui_el.connect(self.task_settings_changed)

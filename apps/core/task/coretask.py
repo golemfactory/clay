@@ -1,3 +1,4 @@
+from __future__ import division
 import copy
 import logging
 import os
@@ -121,7 +122,7 @@ class CoreTask(Task):
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
-        return self.header.docker_images is not None
+        return hasattr(self.header, 'docker_images') and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager):
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
@@ -195,7 +196,7 @@ class CoreTask(Task):
     def get_progress(self):
         if self.total_tasks == 0:
             return 0.0
-        return float(self.num_tasks_received) / self.total_tasks
+        return self.num_tasks_received / self.total_tasks
 
     def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
 
