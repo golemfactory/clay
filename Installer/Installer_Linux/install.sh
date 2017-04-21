@@ -9,6 +9,19 @@
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
+# configure dependencies for headless servers:
+while getopts ":q" opt; do
+  case $opt in
+    q)
+      DEPS="openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool libffi-dev"
+      ;;
+    \?)
+      DEPS="openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev"
+      ;;
+  esac
+done
+
+
 function release_url()
 {
     json=$(wget -qO- --header='Accept: application/json' $1)
@@ -93,9 +106,35 @@ function check_dependencies()
     fi
 
     # check if geth is installed
-    if [[ -z "$( dpkg -l | grep geth )" ]]; then
+    if [[ -z "$( whereis geth | cut -d ":" -f2 )" ]]; then
         ask_user "Geth not found. Do you want to install it? (y/n)"
-        INSTALL_GETH=$?
+
+	# Detect Debian.
+	# TODO: find a way to install geth properly from repositories.
+	# Example: If Debian, correct the repos URL:
+
+	#if [ `lsb_release -d | awk '{print $2}'` == Debian ]; then 
+	#     DEBIAN_RELEASE=`lsb_release -d | awk '{print $5}' | tr -d '(',')'`
+	#     sed -i 's/$DEBIAN_RELEASE/vivid/g' /etc/apt/sources.list.d/ethereum-ethereum-$DEBIAN_RELEASE.list
+	#fi	
+
+	if [ `lsb_release -d | awk '{print $2}'` == Debian ]; then
+
+	  # Running Debian. Install sudo geth from binary:
+	  echo "Installing geth binary in /usr/bin"
+	  declare BINARYVERSION="geth-linux-amd64-1.6.0-facc47cb"
+	  wget https://gethstore.blob.core.windows.net/builds/$BINARYVERSION.tar.gz
+	  tar -zxvf $BINARYVERSION.tar.gz
+	  mv $BINARYVERSION/geth /usr/bin
+	  rm -fr $BINARYVERSION $BINARYVERSION.tar.gz
+          apt-get install -y sudo
+	  INSTALL_GETH=0
+	
+	else
+
+          INSTALL_GETH=$?
+	
+	fi
     fi
 }
 
@@ -105,12 +144,13 @@ function install_dependencies()
     info_msg "INSTALLING GOLEM DEPENDENCIES"
     sudo id > /dev/null
     if [[ $? -ne 0 ]]; then
-        error_msg "Dependency installation requires sudo privileges"
-        exit 1
+        error_msg "Dependency installation requires sudo:"
+	apt-get -y install sudo
+#        exit 1
     fi
 
     sudo apt-get update
-    sudo apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
+    sudo apt-get install -y $DEPS
     if [[ $INSTALL_GETH -eq 1 ]]; then
         info_msg "INSTALLING GETH"
         # @todo any easy way? Without adding repository or building from source?
@@ -145,7 +185,7 @@ function install_dependencies()
         wget -qO- $hyperg > /tmp/hyperg.tar.bz2
         tar -vxjf /tmp/hyperg.tar.bz2
         mv hyperg $HOME/
-        [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
+        [[ ! -f /usr/local/bin/hyperg ]] && ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f /tmp/hyperg.tar.bz2 &>/dev/null
     fi
     info_msg "Done installing Golem dependencies"
@@ -201,8 +241,8 @@ function install_golem()
     cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
     rm -f /tmp/${PACKAGE} &>/dev/null
     rm -rf ${PACKAGE_DIR} &>/dev/null
-    [[ ! -f /usr/local/bin/golemapp ]] && sudo ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
-    [[ ! -f /usr/local/bin/golemcli ]] && sudo ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
+    [[ ! -f /usr/local/bin/golemapp ]] && ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
+    [[ ! -f /usr/local/bin/golemcli ]] && ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
     return 0
 }
 
