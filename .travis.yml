@@ -11,7 +11,6 @@ branches:
 cache:
   directories:
     - /usr/local/Cellar
-    - $HOME/venv
     - $HOME/Library/Caches/Homebrew
     - $HOME/Library/Caches/pip
 
