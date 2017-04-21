@@ -20,7 +20,7 @@ before_install:
   - brew install qt@5.7 ethereum/ethereum/ethereum ipfs openexr freeimage
 
   - ipfs init
-  - brew run ipfs daemon
+  - brew services run ipfs daemon
 
   - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
   - cd golem-hyperdrive && npm install --save && cd ..
