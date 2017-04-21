@@ -1,24 +1,19 @@
 import runner
 import unittest
 
-from golem.tools.ci import in_travis
-
 
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
-    @unittest.skipIf(in_travis(), "Travis CI")
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=420)
         self.assertIsNone(error_msg)
 
-    @unittest.skipIf(in_travis(), "Travis CI")
     def test_dummy_task_computation_timeout(self, *mocks):
         error_msg = runner.run_simulation(timeout=5)
         self.assertEqual(error_msg, "Computation timed out")
 
-    @unittest.skipIf(in_travis(), "Travis CI")
     def test_dummy_task_computation_subprocess_error(self, *mocks):
         # Make the first computing node fail after approx. 5 secs
         error_msg = runner.run_simulation(
