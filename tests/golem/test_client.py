@@ -92,7 +92,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         self.assertEqual(len(incomes), 1)
         self.assertEqual(incomes[0]['block_number'], 311)
-        self.assertEqual(incomes[0]['value'], 30 * denoms.ether)
+        self.assertEqual(incomes[0]['value'], str(30 * denoms.ether))
         self.assertEqual(incomes[0]['payer'], "0x00003")
 
         c.quit()

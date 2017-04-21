@@ -40,7 +40,7 @@ def incomes(sort):
         entry = [
             income["payer"].encode('hex'),
             __status(income),
-            __value(income["value"]),
+            __value(float(income["value"])),
             str(income["block_number"])
         ]
         values.append(entry)
@@ -58,9 +58,9 @@ def payments(sort):
 
     for payment in result:
 
-        payment_value = payment["value"]
+        payment_value = float(payment["value"])
         payment_fee = payment["fee"]
-        payment_fee = u"{:.1f}%".format(float(payment_fee * 100) / payment_value) if payment_fee else u""
+        payment_fee = u"{:.1f}%".format(float(payment_fee) * 100 / payment_value) if payment_fee else u""
 
         entry = [
             payment["subtask"],

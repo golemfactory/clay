@@ -242,7 +242,7 @@ class TestPayments(unittest.TestCase):
 
         incomes_list = [
             {
-                'value': float('{}'.format(i)),
+                'value': '{}'.format(i),
                 'payer': 'node_{}'.format(i),
                 'status': 'PaymentStatus.waiting',
                 'block_number': 'deadbeef0{}'.format(i)
@@ -252,7 +252,7 @@ class TestPayments(unittest.TestCase):
         payments_list = [
             {
                 'fee': '{}'.format(i),
-                'value': float('0.{}'.format(i)),
+                'value': '0.{}'.format(i),
                 'subtask': 'subtask_{}'.format(i),
                 'payee': 'node_{}'.format(i),
                 'status': 'PaymentStatus.waiting',
