@@ -8,6 +8,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import wait_for
 from golem.ethereum.paymentmonitor import IncomingPayment
+from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
@@ -94,6 +95,33 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertEqual(incomes[0]['block_number'], 311)
         self.assertEqual(incomes[0]['value'], str(30 * denoms.ether))
         self.assertEqual(incomes[0]['payer'], "0x00003")
+
+    def test_get_payments(self):
+        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
+            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
+                       use_docker_machine_manager=False, use_monitor=False)
+
+        payments = [
+            Payment(subtask=uuid.uuid4(),
+                    status=PaymentStatus.awaiting,
+                    payee=uuid.uuid4(),
+                    value=2 * 10 ** 18)
+            for _ in xrange(2)
+        ]
+
+        db = Mock()
+        db.get_newest_payment.return_value = payments
+
+        c.transaction_system.payments_keeper.db = db
+        received_payments = c.get_payments_list()
+
+        self.assertEqual(len(received_payments), len(payments))
+
+        for i in xrange(len(payments)):
+            self.assertEqual(received_payments[i]['subtask'], payments[i].subtask)
+            self.assertEqual(received_payments[i]['status'], payments[i].status.value)
+            self.assertEqual(received_payments[i]['payee'], payments[i].payee)
+            self.assertEqual(received_payments[i]['value'], str(payments[i].value))
 
         c.quit()
 
