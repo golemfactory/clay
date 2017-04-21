@@ -27,7 +27,7 @@ before_install:
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
   - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
   - sudo -HE pip install -r requirements.txt
-  - sudo -HE install -r requirements-test.txt
+  - sudo -HE pip install -r requirements-test.txt
   - sudo -HE python setup.py develop
 
 script: python -m pytest tests
