@@ -17,23 +17,17 @@ cache:
 
 before_install:
   - brew update
-  - brew install qt@5.7 ethereum/ethereum/ethereum ipfs openexr freeimage
-
-  - ipfs init
-  - brew services run ipfs daemon
+  - brew install qt@5.7 ethereum/ethereum/ethereum openexr freeimage
 
   - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
   - cd golem-hyperdrive && npm install --save && cd ..
   - node golem-hyperdrive/src/main.js &
 
-  - sudo -H pip install --upgrade pip setuptools virtualenv
-  - sudo -H pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
-  - sudo -H pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
-  - virtualenv $HOME/venv
-  - sudo ln -s /usr/local/lib/python2.7/site-packages/PyQt5 $HOME/venv/lib/python2.7/site-packages/PyQt5
-  - sudo ln -s /usr/local/lib/python2.7/site-packages/sip.so $HOME/venv/lib/python2.7/site-packages/sip.so
-  - $HOME/venv/bin/pip install -r requirements.txt
-  - $HOME/venv/bin/pip install -r requirements-test.txt
-  - $HOME/venv/bin/python setup.py develop
+  - sudo -HE pip install --upgrade pip setuptools virtualenv
+  - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
+  - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
+  - sudo -HE pip install -r requirements.txt
+  - sudo -HE install -r requirements-test.txt
+  - sudo -HE python setup.py develop
 
-script: $HOME/venv/bin/python -m pytest tests
+script: python -m pytest tests
