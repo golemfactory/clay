@@ -32,6 +32,6 @@ before_install:
   - $HOME/venv/bin/pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
   - $HOME/venv/bin/pip install -r requirements.txt
   - $HOME/venv/bin/pip install -r requirements-test.txt
-  - $HOME/venv/bin/python setup.py develop
+  - source $HOME/venv/bin/activate && python setup.py develop
 
 script: $HOME/venv/bin/python -m pytest tests
