@@ -99,14 +99,14 @@ class Session(ApplicationSession):
     @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
-            deferred = self.register(method, rpc_name)
+            deferred = self.register(method, unicode(rpc_name))
             deferred.addErrback(self._on_error)
             yield deferred
 
     @inlineCallbacks
     def register_events(self, events):
         for method, rpc_name in events:
-            deferred = self.subscribe(method, rpc_name)
+            deferred = self.subscribe(method, unicode(rpc_name))
             deferred.addErrback(self._on_error)
             self.subs[rpc_name] = yield deferred
 
@@ -135,13 +135,13 @@ class Client(object):
             setattr(self, method_name, self._make_call(method_alias))
 
     def _make_call(self, method_alias):
-        return lambda *a, **kw: self._call(method_alias, *a, **kw)
+        return lambda *a, **kw: self._call(unicode(method_alias), *a, **kw)
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.connected:
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
-            deferred = self._session.call(method_alias, *args, **kwargs)
+            deferred = self._session.call(unicode(method_alias), *args, **kwargs)
             deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
@@ -162,7 +162,7 @@ class Publisher(object):
 
     def publish(self, event_alias, *args, **kwargs):
         if self.session.connected:
-            self.session.publish(event_alias, *args, **kwargs)
+            self.session.publish(unicode(event_alias), *args, **kwargs)
         else:
             logger.warn("RPC: Cannot publish '{}', session is not yet established"
                         .format(event_alias))
