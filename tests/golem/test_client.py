@@ -96,6 +96,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertEqual(incomes[0]['value'], str(30 * denoms.ether))
         self.assertEqual(incomes[0]['payer'], "0x00003")
 
+        c.quit()
+
     def test_get_payments(self):
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
             c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
