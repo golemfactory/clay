@@ -39,11 +39,13 @@ class EthereumTransactionSystem(TransactionSystem):
             self.__proc.stop()
         if self.__monitor.running:
             self.__monitor.stop()
-        self.__eth_node.node.stop()
+        if self.__eth_node.node is not None:
+            self.__eth_node.node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
         self.__proc.add(payment)
+        return payment
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
@@ -56,13 +58,6 @@ class EthereumTransactionSystem(TransactionSystem):
         av_gnt = self.__proc._gnt_available()
         eth = self.__proc.eth_balance()
         return gnt, av_gnt, eth
-
-    def pay_for_task(self, task_id, payments):
-        """ Pay for task using Ethereum connector
-        :param task_id: pay for task with given id
-        :param dict payments: all payments group by ethereum address
-        """
-        pass
 
     def get_incoming_payments(self):
         return [{'status': payment.status.value,

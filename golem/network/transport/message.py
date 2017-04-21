@@ -179,6 +179,24 @@ class Message(object):
         return "{}".format(self.__class__)
 
 
+class MessageRedefined(Message):
+    """New style Message."""
+
+    def __init__(self, **kwargs):
+        self.load_dict_repr(kwargs.pop('dict_repr', None))
+        super(MessageRedefined, self).__init__(**kwargs)
+
+    def load_dict_repr(self, dict_repr):
+        if dict_repr is None:
+            return
+        for attr_name in self.MAPPING:
+            k = self.MAPPING[attr_name]
+            setattr(self, attr_name, dict_repr[k])
+
+    def dict_repr(self):
+        return dict((self.MAPPING[attr_name], getattr(self, attr_name)) for attr_name in self.MAPPING)
+
+
 ##################
 # Basic Messages #
 ##################
@@ -1187,7 +1205,6 @@ class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    NODE_ID_STR = u"NODE_ID"
     REWARD_STR = u"REWARD"
 
     def __init__(self, subtask_id=0, reward=0, sig="", timestamp=None, dict_repr=None):
@@ -1673,6 +1690,57 @@ class MessageCannotComputeTask(Message):
         return {self.REASON_STR: self.reason,
                 self.SUBTASK_ID_STR: self.subtask_id}
 
+
+class MessageSubtaskPayment(MessageRedefined):
+    TYPE = TASK_MSG_BASE + 27
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+        'reward': 'REWARD_STR',
+        'transaction_id': 'TRANSACTION_ID',
+    }
+
+    def __init__(self, subtask_id=None, reward=None, transaction_id=None, **kwargs):
+        """Informs about payment for a subtask.
+        It succeeds MessageSubtaskResultAccepted but could
+        be sent after a delay. It is also sent in response to
+        MessageSubtaskPaymentRequest. If transaction_id is None it
+        should be interpreted as PAYMENT PENDING status.
+
+        :param str subtask_id: accepted subtask id
+        :param float reward: payment for computations
+        :param str transaction_id: eth transaction id
+        :param dict dict_repr: dictionary representation of a message
+
+        Additional params are described in Message().
+        """
+
+        self.subtask_id = subtask_id
+        self.reward = reward
+        self.transaction_id = transaction_id
+        super(MessageSubtaskPayment, self).__init__(**kwargs)
+
+
+class MessageSubtaskPaymentRequest(MessageRedefined):
+    TYPE = TASK_MSG_BASE + 28
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+    }
+
+    def __init__(self, subtask_id=None, **kwargs):
+        """Requests information about payment for a subtask.
+
+        :param str subtask_id: accepted subtask id
+        :param dict dict_repr: dictionary representation of a message
+
+        Additional params are described in Message().
+        """
+
+        self.subtask_id = subtask_id
+        super(MessageSubtaskPaymentRequest, self).__init__(**kwargs)
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1909,6 +1977,9 @@ def init_messages():
     MessageDeltaParts()
     MessageResourceFormat()
     MessageAcceptResourceFormat()
+
+    Message.registered_message_types[MessageSubtaskPayment.TYPE] = MessageSubtaskPayment
+    Message.registered_message_types[MessageSubtaskPaymentRequest.TYPE] = MessageSubtaskPaymentRequest
 
     # Resource messages
     MessageGetResource()

@@ -16,7 +16,8 @@ from golem.core.threads import wait_for
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
+from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.taskserver import TASK_CONN_TYPES
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -105,6 +106,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.add_task_header(task_header)
         ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
@@ -120,8 +122,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(wtr.owner_key_id, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.add_to_waiting_payments.assert_called_with(
-            "xyz", "key", 1)
+        ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
+            sender_node_id="key",
+            task_id="xyz",
+            subtask_id="xyzxyz",
+            value=1,
+        )
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
@@ -129,14 +135,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         prev_call_count = trust.PAYMENT.increase.call_count
         with self.assertLogs(logger, level="WARNING"):
-            ts.reward_for_subtask_paid("aa2bb2cc")
+            ts.reward_for_subtask_paid(subtask_id="aa2bb2cc", reward=1, transaction_id=None)
         self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
-        ts.reward_for_subtask_paid("xxyyzz")
+        ts.reward_for_subtask_paid(subtask_id="xxyyzz", reward=1, transaction_id=None)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
@@ -156,7 +162,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session = Mock()
         session.address = "10.10.10.10"
         session.port = 1020
-        ts.conn_established_for_type[TaskConnTypes.TaskRequest](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
                                                                 1, 2)
         self.assertEqual(session.task_id, "xyz")
         self.assertEqual(session.key_id, "key")
@@ -280,7 +286,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session.address = '127.0.0.1'
         session.port = 65535
 
-        ts.conn_established_for_type[TaskConnTypes.TaskFailure](
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
         self.assertEqual(ts.task_sessions[subtask_id], session)
@@ -394,12 +400,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertFalse(ts._add_pending_request.called)
 
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
                                                    ANY, ANY, ANY, ANY)
 
         node.nat_type = None
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.Middleman,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
                                                    ANY, ANY, ANY, ANY)
 
     def test_remove_task_session(self):

@@ -56,6 +56,8 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'golem.network': {'propagate': True},
+        'golem.network.transport': {'propagate': True},
         'golem.client': {
             'level': 'INFO',
             'propagate': True,

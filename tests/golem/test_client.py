@@ -60,43 +60,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         TestWithDatabase.tearDownClass()
         TestWithReactor.tearDownClass()
 
-    def test_payment_func(self):
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                       use_docker_machine_manager=False, use_monitor=False)
-
-        c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
-        incomes = c.transaction_system.get_incomes_list()
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]["node"], "ABC")
-        self.assertEqual(incomes[0]["expected_value"], 10.0)
-        self.assertEqual(incomes[0]["task"], "xyz")
-        self.assertEqual(incomes[0]["value"], 0.0)
-
-        c.transaction_system.pay_for_task("xyz", [])
-        c.check_payments()
-        c.transaction_system.check_payments = Mock()
-        c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
-        c.check_payments()
-
-        incomes = wait_for(c.get_incomes_list())
-
-        self.assertEqual(incomes, [])
-        payment = IncomingPayment("0x00003", 30 * denoms.ether)
-        payment.extra = {'block_number': 311,
-                         'block_hash': "hash1",
-                         'tx_hash': "hash2"}
-        c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
-
-        incomes = wait_for(c.get_incomes_list())
-
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]['block_number'], 311)
-        self.assertEqual(incomes[0]['value'], 30 * denoms.ether)
-        self.assertEqual(incomes[0]['payer'], "0x00003")
-
-        c.quit()
-
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.EthereumTransactionSystem.sync')
     def test_sync(self, *_):
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):

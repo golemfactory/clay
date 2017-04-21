@@ -271,8 +271,8 @@ class PaymentProcessor(Service):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
-                        dispatcher.send(signal='golem.monitor', event='payment',
-                                        addr=p.payee.encode('hex'), value=p.value)
+                        dispatcher.send(signal='golem.monitor', event='payment', addr=p.payee.encode('hex'), value=p.value)
+                        dispatcher.send(signal='golem.paymentprocessor', event='payment.confirmed', payment=p)
                         log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
                                                                         fee / denoms.ether))
                 confirmed.append(h)

@@ -1,6 +1,6 @@
 from __future__ import division
 
-import jsonpickle as json
+import jsonpickle
 import logging
 import os
 
@@ -374,7 +374,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 file_path += "."
             file_path += "gt"
         with open(file_path, "wb") as f:
-            data = json.dumps(task_state)
+            data = jsonpickle.dumps(task_state)
             f.write(data)
 
     @staticmethod
