@@ -35,6 +35,7 @@ weakreflist
 tabulate
 PyYAML>=3.12
 crossbar==17.3.1
+txaio==2.6.2
 jsonpickle
 pydispatcher
 Crypto
