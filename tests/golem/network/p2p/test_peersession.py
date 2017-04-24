@@ -2,6 +2,8 @@ import unittest
 
 from mock import MagicMock, Mock
 
+from golem.appconfig import AppConfig
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.model import Database
 from golem.network.p2p.node import Node
@@ -104,8 +106,10 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
 
         peer_session = PeerSession(MagicMock())
         peer_session.p2p_service = P2PService(node, MagicMock(), keys_auth, False)
-        config = MagicMock()
-        config.min_price = 10
+        app_config = AppConfig.load_config(self.path)
+        config = ClientConfigDescriptor()
+        config.init_from_app_config(app_config)
+        config.max_price = 10
         client = MagicMock()
         client.datadir = self.path
         peer_session.p2p_service.task_server = TaskServer(node, config, keys_auth, client,
