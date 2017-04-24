@@ -236,6 +236,8 @@ class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
     VERIFICATOR_CLASS = BlenderVerificator
 
+    TEST_TASK_RESOLUTION = (8, 8)
+
     ################
     # Task methods #
     ################
@@ -373,7 +375,7 @@ class BlenderRenderTask(FrameRenderingTask):
             frames = [1]
 
         script_src = generate_blender_crop_file(
-            resolution=(8, 8),
+            resolution=BlenderRenderTask.TEST_TASK_RESOLUTION,
             borders_x=(0.0, 1.0),
             borders_y=(0.0, 1.0),
             use_compositing=self.compositing
