@@ -118,8 +118,6 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.benchmark.verify_result.assert_called_once_with(result_dict['data'])
         self.assertEquals(self.instance.success_callback.call_count, 0)
 
-
-
         # result dict with data, and successful verification
         result_dict = {
             'data': object(),
@@ -133,3 +131,68 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.instance.task_computed(task_thread)
         self.benchmark.verify_result.assert_called_once_with(result_dict['data'])
         self.instance.success_callback.assert_called_once_with(mock.ANY)
+
+    def test_is_success(self):
+        task_thread = mock.MagicMock()
+        self.instance.start_time = time.time()
+        self.instance.end_time = time.time() + 4
+        self.benchmark.verify_result.return_value = True
+
+        # Task thread result is not a tuple
+        task_thread.result = 5
+        assert not self.instance.is_success(task_thread)
+
+        # Task thread result first arg is None
+        task_thread.result = None, 30
+        assert not self.instance.is_success(task_thread)
+
+        # Task thread result first arg doesn't have data in dictionary
+        task_thread.result = {'abc': 20}, 30
+        assert not self.instance.is_success(task_thread)
+
+        # Is success
+        task_thread.result = {'data': "some data"}, 30
+        assert self.instance.is_success(task_thread)
+
+        # End time not measured
+        self.instance.end_time = None
+        assert not self.instance.is_success(task_thread)
+
+        # Start time not measure
+        self.instance.end_time = time.time()
+        self.instance.start_time = None
+        assert not self.instance.is_success(task_thread)
+
+        # Not verified properly
+        self.instance.start_time = time.time() - 5
+        self.benchmark.verify_result.return_value = False
+        assert not self.instance.is_success(task_thread)
+
+
+class WrongTask(golem.task.taskbase.Task):
+    def query_extra_data(self, perf_index):
+        raise ValueError("Wrong task")
+
+
+class BenchmarkRunnerWrongTaskTest(TempDirFixture):
+
+    def test_run_with_error(self):
+        super(self.__class__, self).setUp()
+        self.err = None
+        self.benchmark = mock.MagicMock()
+        self.instance = benchmarkrunner.BenchmarkRunner(
+            task=WrongTask(None, None),
+            root_path=self.tempdir,
+            success_callback=lambda: self._success(),
+            error_callback=lambda *args: self._error(*args),
+            benchmark=self.benchmark,
+        )
+        self.instance.run()
+        assert self.err == "err_called"
+
+    @classmethod
+    def _success(cls):
+        pass
+
+    def _error(self, *args):
+        self.err = "err_called"
