@@ -854,6 +854,33 @@ class MessageInformAboutNatTraverseFailure(Message):
         }
 
 
+class MessageTask(Message):
+    TYPE = P2P_MESSAGE_BASE + 20
+
+    TASK_STR = u"TASK"
+
+    def __init__(self, task=None, sig="", timestamp=None, dict_repr=None):
+        """
+        Send information about new task that has been added to the network
+        :param task: information about new task that has been added to the newtork
+        :param uuid conn_id: connection id for reference
+        :param str sig: signature
+        :param float timestamp: current timestamp
+        :param dict dict_repr: dictionary representation of a message
+        """
+        Message.__init__(self, sig, timestamp)
+
+        self.task = task
+
+        if dict_repr:
+            self.task = dict_repr[self.TASK_STR]
+
+    def dict_repr(self):
+        return {
+            self.TASK_STR: self.task
+        }
+
+
 TASK_MSG_BASE = 2000
 
 
@@ -1869,6 +1896,7 @@ def init_messages():
     MessageGetTasks()
     MessagePeers()
     MessageTasks()
+    MessageTask()
     MessageRemoveTask()
     MessageFindNode()
     MessageGetResourcePeers()

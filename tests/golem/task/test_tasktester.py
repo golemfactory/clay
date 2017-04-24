@@ -65,7 +65,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
 
         self.message = ""
         
-        def success_callback(res, est_mem, msg):
+        def success_callback(res, est_mem, exc_time, msg):
             self.message = "Success " + msg
 
         self.task.header.node_name = self.node
@@ -80,3 +80,18 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         tt.task_computed(task_thread)
         self.assertTrue("bla" in self.message)
         self.assertTrue("ble" in self.message)
+
+    def test_is_success(self):
+        self.task.query_extra_data_for_test_task = Mock()
+        tt = TaskTester(self.task, self.path, Mock(), Mock())
+        task_thread = Mock()
+
+        # Proper task
+        task_thread.error = None
+        task_thread.result = ({"data": True}, 123)
+        assert tt.is_success(task_thread)
+
+        # Task thead result first arg is not tuple
+        task_thread.result = {"data": True}
+        assert not tt.is_success(task_thread)
+        assert task_thread.error == "Wrong result format"
