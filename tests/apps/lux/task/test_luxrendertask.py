@@ -216,11 +216,11 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("different error" in log for log in l.output)
 
         with self.assertLogs(logger, level="ERROR") as l:
-            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]])})
+            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]])}, 10)
         assert any("No final file generated" in log for log in l.output)
 
         with self.assertLogs(logger, level="ERROR") as l:
-            luxtask._LuxTask__final_flm_ready({"data": self.additional_dir_content([1, [2]])})
+            luxtask._LuxTask__final_flm_ready({"data": self.additional_dir_content([1, [2]])}, 10)
         assert any("No flm file created" in log for log in l.output)
 
         if not is_linux():
@@ -239,7 +239,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
             f.write("not_empty")
         with self.assertLogs(logger, level="WARNING") as l:
             luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]]) +
-                                                       [diff_output]})
+                                                       [diff_output]}, 10)
         assert any("Couldn't rename" in log for log in l.output)
 
         os.chmod(output_file, 0o700)
