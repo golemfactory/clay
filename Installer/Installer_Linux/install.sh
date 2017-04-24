@@ -9,17 +9,8 @@
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
 
-# configure dependencies for headless servers:
-while getopts ":q" opt; do
-  case $opt in
-    q)
-      DEPS="openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool libffi-dev"
-      ;;
-    \?)
-      DEPS="openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev"
-      ;;
-  esac
-done
+# Configure dependencies 
+DEPS="openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev"
 
 
 function release_url()
