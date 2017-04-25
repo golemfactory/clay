@@ -40,7 +40,6 @@ class BenchmarkRunnerTest(TempDirFixture):
 
         with mock.patch.multiple(self.instance, tt=mock.DEFAULT) as values:
             self.instance.run()
-            values['tt'].join.assert_called_once_with()
 
     def test_task_computed_immidiately(self):
         """Special case when start_time and stop_time are identical.

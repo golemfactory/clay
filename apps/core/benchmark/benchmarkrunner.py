@@ -28,11 +28,6 @@ class BenchmarkRunner(LocalComputer):
             raise Exception("No docker container found")
         return super(BenchmarkRunner, self)._get_task_thread(ctd)
 
-    def run(self):
-        super(BenchmarkRunner, self).run()
-        if self.tt:
-            self.tt.join()
-
     def is_success(self, task_thread):
         if not task_thread.result:
             return False

@@ -62,5 +62,7 @@ class TestBenchmarkRunner(TempDirFixture):
 
         self.br = BenchmarkRunner(task, self.path, success, error, benchmark)
         self.br.run()
+        if self.br.tt:
+            self.br.tt.join()
 
         assert result[0]
