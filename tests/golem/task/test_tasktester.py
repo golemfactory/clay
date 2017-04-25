@@ -64,7 +64,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
 
         self.message = ""
 
-        def success_callback(res, est_mem, exc_time, msg):
+        def success_callback(res, est_mem, time_spent, msg):
             self.message = "Success " + msg
 
         self.task.header.node_name = self.node

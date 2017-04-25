@@ -30,10 +30,10 @@ class TaskTester(LocalComputer):
                                     0)
 
     def computation_success(self, task_thread):
-        exc_time = self._get_exc_time()
+        time_spent = self._get_time_spent()
         res, est_mem = task_thread.result
         warnings = self.task.after_test(res, self.tmp_dir)
-        self.success_callback(res, est_mem, exc_time, msg=warnings)
+        self.success_callback(res, est_mem, time_spent, msg=warnings)
 
     def is_success(self, task_thread):
         if task_thread.error or (not task_thread.result):

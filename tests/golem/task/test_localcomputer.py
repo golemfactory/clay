@@ -79,7 +79,7 @@ class TestLocalComputer(TestDirFixture):
         ctd.docker_images = BlenderEnvironment().docker_images
         return ctd
 
-    def _success_callback(self, result, exc_time):
+    def _success_callback(self, result, time_spent):
         self.last_result = result
         self.success_counter += 1
 

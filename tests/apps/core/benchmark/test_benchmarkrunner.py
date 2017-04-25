@@ -40,7 +40,6 @@ class BenchmarkRunnerTest(TempDirFixture):
 
         with mock.patch.multiple(self.instance, tt=mock.DEFAULT) as values:
             self.instance.run()
-            # values['run'].assert_called_once_with()
             values['tt'].join.assert_called_once_with()
 
     def test_task_computed_immidiately(self):
@@ -135,7 +134,7 @@ class BenchmarkRunnerTest(TempDirFixture):
     def test_is_success(self):
         task_thread = mock.MagicMock()
         self.instance.start_time = time.time()
-        self.instance.end_time = time.time() + 4
+        self.instance.end_time = self.instance.start_time + 4
         self.benchmark.verify_result.return_value = True
 
         # Task thread result is not a tuple
@@ -158,13 +157,13 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.instance.end_time = None
         assert not self.instance.is_success(task_thread)
 
-        # Start time not measure
-        self.instance.end_time = time.time()
+        # Start time not measured
+        self.instance.end_time = self.instance.start_time
         self.instance.start_time = None
         assert not self.instance.is_success(task_thread)
 
         # Not verified properly
-        self.instance.start_time = time.time() - 5
+        self.instance.start_time = self.instance.end_time - 5
         self.benchmark.verify_result.return_value = False
         assert not self.instance.is_success(task_thread)
 
@@ -177,22 +176,14 @@ class WrongTask(golem.task.taskbase.Task):
 class BenchmarkRunnerWrongTaskTest(TempDirFixture):
 
     def test_run_with_error(self):
-        super(self.__class__, self).setUp()
-        self.err = None
-        self.benchmark = mock.MagicMock()
-        self.instance = benchmarkrunner.BenchmarkRunner(
+        benchmark = mock.MagicMock()
+        instance = benchmarkrunner.BenchmarkRunner(
             task=WrongTask(None, None),
             root_path=self.tempdir,
-            success_callback=lambda: self._success(),
-            error_callback=lambda *args: self._error(*args),
-            benchmark=self.benchmark,
+            success_callback=mock.Mock(),
+            error_callback=mock.Mock(),
+            benchmark=benchmark,
         )
-        self.instance.run()
-        assert self.err == "err_called"
-
-    @classmethod
-    def _success(cls):
-        pass
-
-    def _error(self, *args):
-        self.err = "err_called"
+        instance.run()
+        instance.success_callback.assert_not_called()
+        instance.error_callback.assert_called_once()

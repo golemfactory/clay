@@ -84,7 +84,7 @@ class LocalComputer(object):
         return not task_thread.error and task_thread.result and task_thread.result.get("data")
 
     def computation_success(self, task_thread):
-        self.success_callback(task_thread.result, self._get_exc_time())
+        self.success_callback(task_thread.result, self._get_time_spent())
 
     def computation_failure(self, task_thread):
         logger_msg = self.comp_failed_warning
@@ -93,7 +93,7 @@ class LocalComputer(object):
         logger.warning(logger_msg)
         self.error_callback(task_thread.error_msg)
 
-    def _get_exc_time(self):
+    def _get_time_spent(self):
         try:
             return self.end_time - self.start_time
         except TypeError:
