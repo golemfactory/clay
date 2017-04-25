@@ -337,7 +337,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     @patch('golem.client.async_run')
-    def test_enqueue_new_task(self, async_run, *_):
+    def test_get_balance(self, async_run, *_):
         c = self.client
 
         result = (None, None, None)
