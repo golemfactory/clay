@@ -256,8 +256,12 @@ class PeerSession(BasicSafeSession):
         """
         self.send(MessageNatTraverseFailure(conn_id))
 
-    def send_task(self, task):
-        self.send(MessageTask(task))
+    def send_task(self, th_dict_repr):
+        """
+        Send dictionary representing task header to other peer
+        :param dict th_dict_repr: task header dictionary representation 
+        """
+        self.send(MessageTask(th_dict_repr))
 
     def _react_to_ping(self, msg):
         self._send_pong()

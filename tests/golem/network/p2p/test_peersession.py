@@ -25,7 +25,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         self.database.db.close()
         super(TestPeerSession, self).tearDown()
 
-
     def test_init(self):
         ps = PeerSession(MagicMock())
         self.assertIsInstance(ps, PeerSession)
@@ -121,9 +120,6 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         task.signature = keys_auth.sign(task.to_binary())
         peer_session._react_to_task(MessageTask(task.to_dict()))
 
-    def test_send_task(self):
-        pass
-
     def test_disconnect(self):
         conn = MagicMock()
         peer_session = PeerSession(conn)
@@ -154,6 +150,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session.dropped()
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called
+
+    def test_send_task(self):
+        task_header = TaskHeader("NodeName1", "TaskId1", "10.10.10.10", 1001, "KEYI", "DEFAULT")
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.verified = True
+        peer_session.send_task(task_header.to_dict())
+        peer_session.conn.send_message.assert_called_once()
 
 
 class TestPeerSessionInfo(unittest.TestCase):
