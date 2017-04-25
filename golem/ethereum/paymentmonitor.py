@@ -1,12 +1,10 @@
 from __future__ import division
 
 from ethereum.utils import denoms, zpad
-from pydispatch import dispatcher
-
-from golem.transactions.service import Service
+from golem.ethereum.paymentprocessor import log
 from golem.model import PaymentStatus
-
-from .paymentprocessor import PaymentProcessor, log
+from golem.transactions.service import Service
+from pydispatch import dispatcher
 
 
 class IncomingPayment(object):

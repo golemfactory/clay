@@ -1,7 +1,6 @@
 import abc
 import logging
 import os
-import uuid
 
 from golem.core.fileencrypt import FileEncryptor
 from golem.resource.client import async_run
@@ -29,8 +28,8 @@ class TaskResultPackageManager(object):
 
 class EncryptedResultPackageManager(TaskResultPackageManager):
 
-    min_secret_len = 12
-    max_secret_len = 24
+    min_secret_len = 16
+    max_secret_len = 32
     package_class = EncryptingTaskResultPackager
 
     def __init__(self, resource_manager):
@@ -43,24 +42,25 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
     def pull_package(self, multihash, task_id, subtask_id, key_or_secret,
                      success, error, async=True, client_options=None, output_dir=None):
 
-        filename = str(uuid.uuid4())
-        path = self.resource_manager.storage.get_path(filename, task_id)
-        output_dir = os.path.join(output_dir or os.path.dirname(path), subtask_id)
+        file_name = task_id + "." + subtask_id
+        file_path = self.resource_manager.storage.get_path(file_name, task_id)
+        output_dir = os.path.join(output_dir or os.path.dirname(file_path), subtask_id)
+
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
         def package_downloaded(*args, **kwargs):
-            request = AsyncRequest(self.extract,
-                                   path,
+            request = AsyncRequest(self.extract, file_path,
                                    output_dir=output_dir,
                                    key_or_secret=key_or_secret)
             async_run(request, package_extracted, error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, multihash, task_id, subtask_id)
-            os.remove(path)
+            os.remove(file_path)
 
-        self.resource_manager.pull_resource(filename,
-                                            multihash,
-                                            task_id,
+        resource = self.resource_manager.wrap_file((file_name, multihash))
+        self.resource_manager.pull_resource(resource, task_id,
                                             client_options=client_options,
                                             success=package_downloaded,
                                             error=error,
@@ -72,26 +72,25 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             raise ValueError("Empty key / secret")
 
         task_id = task_result.task_id
-        out_name = task_id + "." + task_result.subtask_id
-        out_path = self.resource_manager.storage.get_path(out_name, task_id)
+        file_name = task_id + "." + task_result.subtask_id
+        file_path = self.resource_manager.storage.get_path(file_name, task_id)
 
-        if os.path.exists(out_path):
-            os.remove(out_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
         packager = self.package_class(key_or_secret)
-        package = packager.create(out_path,
-                                  node=node,
-                                  task_result=task_result)
+        path = packager.create(file_path,
+                               node=node,
+                               task_result=task_result)
 
-        self.resource_manager.add_resource(package, task_id, client_options=client_options)
-        files = self.resource_manager.storage.get_resources(task_id)
+        self.resource_manager.add_file(path, task_id,
+                                       client_options=client_options)
 
-        for file_obj in files:
-            name = file_obj if isinstance(file_obj, basestring) else file_obj[0]
-            if os.path.basename(name) == out_name:
-                return file_obj
+        for resource in self.resource_manager.get_resources(task_id):
+            if resource.contains_file(file_name):
+                return file_path, resource.hash
 
-        if os.path.exists(package):
+        if os.path.exists(path):
             raise EnvironmentError("Error creating package: 'add' command failed")
         raise Exception("Error creating package: file not found")
 

@@ -1,28 +1,28 @@
 import logging
-import time
 import os
-from pydispatch import dispatcher
-from threading import Lock
+import time
 import uuid
+from threading import Lock
 
-from golem.core.common import deadline_to_timeout
-from golem.core.statskeeper import IntStatsKeeper
-from golem.docker.machine.machine_manager import DockerMachineManager
-from golem.docker.task_thread import DockerTaskThread
-from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
-from golem.resource.resourcesmanager import ResourcesManager
-from golem.resource.dirmanager import DirManager
-from golem.task.taskthread import TaskThread
-from golem.vm.vm import PythonProcVM, PythonTestVM
+from pydispatch import dispatcher
 
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.task.coretaskstate import TaskDesc
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.core.task.coretaskstate import TaskDesc
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.task.taskstate import TaskStatus
+from golem.core.common import deadline_to_timeout
+from golem.core.statskeeper import IntStatsKeeper
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
+from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.resource.dirmanager import DirManager
+from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.taskbase import Task
+from golem.task.taskstate import TaskStatus
+from golem.task.taskthread import TaskThread
+from golem.vm.vm import PythonProcVM, PythonTestVM
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +69,7 @@ class TaskComputer(object):
         self.waiting_for_task_timeout = None
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerMachineManager.install()
+        self.docker_manager = DockerManager.install()
         if use_docker_machine_manager:
             self.docker_manager.check_environment()
 
@@ -315,11 +315,11 @@ class TaskComputer(object):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
-        if not dm.docker_machine_available and run_benchmarks:
+        if not dm.docker_machine and run_benchmarks:
             self.run_benchmarks()
             return
         
-        if dm.docker_machine_available and self.use_docker_machine_manager:
+        if dm.docker_machine and self.use_docker_machine_manager:
 
             self.lock_config(True)
 
@@ -359,8 +359,8 @@ class TaskComputer(object):
         else:
             self.waiting_ttl = ttl
 
-    def reset(self, counting_task=False):
-        self.counting_task = counting_task
+    def reset(self, computing_task=False):
+        self.counting_task = computing_task
         self.use_waiting_ttl = False
         self.task_requested = False
         self.waiting_for_task = None
@@ -391,11 +391,11 @@ class TaskComputer(object):
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, task_timeout):
 
-        self.reset(counting_task=True)
-
         task_id = self.assigned_subtasks[subtask_id].task_id
         working_dir = self.assigned_subtasks[subtask_id].working_directory
         unique_str = str(uuid.uuid4())
+
+        self.reset(computing_task=task_id)
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)

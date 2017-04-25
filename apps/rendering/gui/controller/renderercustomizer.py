@@ -83,10 +83,6 @@ class RendererCustomizer(Customizer):
         self._setup_output_connections()
         self._connect_with_task_settings_changed([
             self.gui.ui.mainSceneFileLineEdit.textChanged,
-            self.gui.ui.outputFormatsComboBox.currentIndexChanged,
-            self.gui.ui.outputFileLineEdit.textChanged,
-            self.gui.ui.outputFormatsComboBox.currentIndexChanged,
-            self.gui.ui.outputFileLineEdit.textChanged,
         ])
         self.gui.ui.outputFormatsComboBox.currentIndexChanged.connect(self._add_ext_to_out_filename)
         self.gui.ui.outputFileLineEdit.editingFinished.connect(self._add_ext_to_out_filename)
@@ -147,16 +143,12 @@ class RendererCustomizer(Customizer):
         if file_name:
             self.save_setting('output_file_path', os.path.dirname(file_name))
             self.gui.ui.outputFileLineEdit.setText(file_name)
-            self.logic.task_settings_changed()
 
     def _res_x_changed(self):
         self.logic.change_verification_option(size_x_max=self.gui.ui.outputResXSpinBox.value())
 
-        self.logic.task_settings_changed()
-
     def _res_y_changed(self):
         self.logic.change_verification_option(size_y_max=self.gui.ui.outputResYSpinBox.value())
-        self.logic.task_settings_changed()
 
 
 class FrameRendererCustomizer(RendererCustomizer):

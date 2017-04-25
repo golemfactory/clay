@@ -41,7 +41,7 @@ class StatsKeeper(object):
             stat, _ = Stats.get_or_create(name=name, defaults={'value': self.default})
             return stat.value
         except Exception:
-            logger.warning(u"Cannot retrieve %r from  database:", name, exc_info=True)
+            logger.warning("Cannot retrieve %r from  database:", name, exc_info=True)
 
     @handle_attribute_error
     def _get_stat(self, name):
@@ -64,11 +64,11 @@ class IntStatsKeeper(StatsKeeper):
                 try:
                     Stats.update(value=u"{}".format(global_val+increment)).where(Stats.name == stat_name).execute()
                 except Exception as err:
-                    logger.error(u"Exception occured while updating stat %r: %r", stat_name, err)
+                    logger.error("Exception occured while updating stat %r: %r", stat_name, err)
 
     def _retrieve_stat(self, name):
         try:
             stat_val = StatsKeeper._retrieve_stat(self, name)
             return int(stat_val)
         except (ValueError, TypeError) as err:
-            logger.warning(u"Wrong stat %r format: %r", name, err)
+            logger.warning("Wrong stat %r format: %r", name, err)

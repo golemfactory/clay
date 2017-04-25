@@ -111,7 +111,7 @@ class ResourceSessionTestCase(unittest.TestCase):
 
         self.instance.full_data_received()
 
-        self.instance.resource_server.resource_downloaded.assert_called_once_with(
+        self.instance.resource_server._download_success.assert_called_once_with(
             file_name,
             self.instance.address,
             self.instance.port)

@@ -1,6 +1,6 @@
 import logging
-from os import path
 
+from time import sleep
 from ethereum import keys
 
 from golem.ethereum import Client
@@ -27,13 +27,19 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__node_address = keys.privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        datadir = path.join(datadir, "ethereum")
-        eth_node = Client()
-        self.__proc = PaymentProcessor(eth_node, node_priv_key, faucet=True)
+        self.__eth_node = Client()
+        self.__proc = PaymentProcessor(self.__eth_node, node_priv_key, faucet=True)
         self.__proc.start()
-        self.__monitor = PaymentMonitor(eth_node, self.__node_address)
+        self.__monitor = PaymentMonitor(self.__eth_node, self.__node_address)
         self.__monitor.start()
         # TODO: We can keep address in PaymentMonitor only
+
+    def stop(self):
+        if self.__proc.running:
+            self.__proc.stop()
+        if self.__monitor.running:
+            self.__monitor.stop()
+        self.__eth_node.node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
@@ -64,3 +70,14 @@ class EthereumTransactionSystem(TransactionSystem):
                  'value': payment.value,
                  'block_number': payment.extra['block_number']
                  } for payment in self.__monitor.get_incoming_payments()]
+
+    def sync(self):
+        syncing = True
+        while syncing:
+            try:
+                syncing = self.__eth_node.is_syncing()
+            except Exception as e:
+                log.error("IPC error: {}".format(e))
+                syncing = False
+            else:
+                sleep(0.5)

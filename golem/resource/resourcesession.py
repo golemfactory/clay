@@ -79,9 +79,11 @@ class ResourceSession(BasicSafeSession):
         try:
             data = self.resource_server.decrypt(data)
         except AssertionError:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+            logger.info("Failed to decrypt message from {}:{}, "
+                        "maybe it's not encrypted?".format(self.address, self.port))
         except Exception as err:
-            logger.error("Failed to decrypt message {}".format(str(err)))
+            logger.info("Failed to decrypt message {} from {}:{}".format(str(err), self.address,
+                                                                         self.port))
             raise
 
         return data
@@ -129,7 +131,7 @@ class ResourceSession(BasicSafeSession):
                 self.resource_server.add_resource_to_send(self.file_name, self.copies)
             self.copies = 0
         else:
-            self.resource_server.resource_downloaded(self.file_name, self.address, self.port)
+            self.resource_server._download_success(self.file_name, self.address, self.port)
             self.dropped()
         self.file_name = None
 

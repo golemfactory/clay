@@ -2,9 +2,10 @@ import os
 import subprocess
 
 from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMessageBox
 
-from golem.core.simpleexccmd import is_windows
+from golem.core.common import is_osx, is_windows
 
 SETTINGS_FILE = "gui_settings.ini"
 
@@ -33,20 +34,20 @@ class Customizer(object):
         if is_windows():
             os.startfile(file_name)
         else:
-            opener = "xdg-open"
+            opener = "open" if is_osx() else "xdg-open"
             subprocess.call([opener, file_name])
 
-    @staticmethod
-    def show_error_window(text):
-        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text))
+    def show_error_window(self, text):
+        ms_box = QMessageBox(QMessageBox.Critical, "Error", u"{}".format(text),
+                             QMessageBox.Ok, self.gui.window)
+        ms_box.setWindowModality(Qt.WindowModal)
         ms_box.exec_()
-        ms_box.show()
 
-    @staticmethod
-    def show_warning_window(text):
-        ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(text))
+    def show_warning_window(self, text):
+        ms_box = QMessageBox(QMessageBox.Warning, "Warning", u"{}".format(text),
+                             QMessageBox.Ok, self.gui.window)
+        ms_box.setWindowModality(Qt.WindowModal)
         ms_box.exec_()
-        ms_box.show()
 
     def save_setting(self, name, value, sync=False):
         settings = self._get_settings()

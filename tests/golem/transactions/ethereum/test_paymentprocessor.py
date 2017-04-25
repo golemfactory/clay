@@ -4,6 +4,7 @@ import time
 import unittest
 import requests
 from os import urandom
+
 from mock import patch, Mock
 
 from twisted.internet.task import Clock
@@ -164,7 +165,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         response = Mock(spec=requests.Response)
         response.status_code = 200
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
-        pp.get_ethers_from_faucet()
+        pp.get_ether_from_faucet()
         assert get.call_count == 1
         self.addr.encode('hex') in get.call_args[0][0]
 
@@ -459,18 +460,19 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.check_synchronized()
         self.pp.stop()
 
-    def test_gnt_faucet(self):
+    def test_gnt_faucet(self, *_):
         self.pp._PaymentProcessor__faucet = True
-        self.pp.start()
+        self.pp._run()
         assert self.pp.eth_balance() > 0
         assert self.pp.gnt_balance() == 0
         self.check_synchronized()
         self.state.mine()
         self.clock.advance(60)
+        self.pp._run()
         assert self.pp.gnt_balance(True) == 1000 * denoms.ether
 
-    def test_single_payment(self):
-        self.pp.start()
+    def test_single_payment(self, *_):
+        self.pp._run()
         self.gnt.create(sender=self.privkey)
         self.state.mine()
         self.check_synchronized()
@@ -489,7 +491,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         # Sendout.
         self.pp.deadline = int(time.time())
-        self.clock.advance(600)
+        self.pp._run()
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_available() == b - value
         assert self.pp._gnt_reserved() == 0
@@ -498,9 +500,44 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         assert self.gnt.balanceOf(tester.a1) == self.pp._gnt_available()
 
         # Confirm.
-        self.clock.advance(100)
         assert self.pp.gnt_balance(True) == b - value
         assert self.pp._gnt_reserved() == 0
+
+    def test_get_ether(self, *_):
+        def exception(*_):
+            raise Exception
+
+        def failure(*_):
+            return False
+
+        def success(*_):
+            return True
+
+        self.pp.monitor_progress = Mock()
+        self.pp.synchronized = lambda *_: True
+        self.pp.sendout = Mock()
+
+        self.pp.get_gnt_from_faucet = failure
+        self.pp.get_ether_from_faucet = failure
+
+        self.pp._run()
+        assert not self.pp._waiting_for_faucet
+        assert not self.pp.monitor_progress.called
+        assert not self.pp.sendout.called
+
+        self.pp.get_ether_from_faucet = success
+
+        self.pp._run()
+        assert not self.pp._waiting_for_faucet
+        assert not self.pp.monitor_progress.called
+        assert not self.pp.sendout.called
+
+        self.pp.get_gnt_from_faucet = success
+
+        self.pp._run()
+        assert not self.pp._waiting_for_faucet
+        assert self.pp.monitor_progress.called
+        assert self.pp.sendout.called
 
     def test_no_gnt_available(self):
         self.pp.start()

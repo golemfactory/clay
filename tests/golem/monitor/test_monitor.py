@@ -35,7 +35,7 @@ class TestSystemMonitor(TestCase):
 
     def test_protocol_versions(self):
         """Test wether correct protocol versions were sent."""
-        from golem.network.p2p.peersession import P2P_PROTOCOL_ID
+        from devp2p.p2p_protocol import P2PProtocol
         from golem.task.tasksession import TASK_PROTOCOL_ID
         monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
 
@@ -50,7 +50,7 @@ class TestSystemMonitor(TestCase):
                     'type': msg_type,
                     'protocol_versions': {
                         'monitor': MONITOR_CONFIG['PROTO_VERSION'],
-                        'p2p': P2P_PROTOCOL_ID,
+                        'p2p': P2PProtocol.version,
                         'task': TASK_PROTOCOL_ID,
                     },
                 }

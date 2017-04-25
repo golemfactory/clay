@@ -24,7 +24,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 12
+TASK_PROTOCOL_ID = 13
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -116,7 +116,8 @@ class TaskSession(MiddlemanSafeSession):
         try:
             data = self.task_server.decrypt(data)
         except AssertionError:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+            logger.info("Failed to decrypt message from {}:{}, "
+                        "maybe it's not encrypted?".format(self.address, self.port))
         except Exception as err:
             logger.warning("Fail to decrypt message {}".format(err))
             self.dropped()
@@ -495,7 +496,7 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
-        resources = resource_manager.storage.join_resources(msg.resources)
+        resources = resource_manager.from_wire(msg.resources)
         client_options = msg.options
 
         self.task_computer.wait_for_resources(self.task_id, resources)
@@ -520,13 +521,13 @@ class TaskSession(MiddlemanSafeSession):
             send_hello = True
 
         if not self.verify(msg):
-            logger.error("Wrong signature for Hello msg")
+            logger.info("Wrong signature for Hello msg")
             self.disconnect(TaskSession.DCRUnverified)
             return
 
         if msg.proto_id != TASK_PROTOCOL_ID:
-            logger.error("Protocol version mismatch {} vs {} (local)"
-                         .format(msg.proto_id, TASK_PROTOCOL_ID))
+            logger.info("Protocol version mismatch {} vs {} (local)"
+                        .format(msg.proto_id, TASK_PROTOCOL_ID))
             self.disconnect(TaskSession.DCRProtocolVersion)
             return
 
@@ -659,8 +660,8 @@ class TaskSession(MiddlemanSafeSession):
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
         client_options = resource_manager.build_client_options(self.task_server.get_key_id())
-        res = resource_manager.storage.get_resources(msg.task_id)
-        res = resource_manager.storage.split_resources(res)
+        res = resource_manager.get_resources(msg.task_id)
+        res = resource_manager.to_wire(res)
         self.send(MessageResourceList(res, options=client_options))
 
     def __send_resource_format(self, use_distributed_resource):
@@ -686,11 +687,13 @@ class TaskSession(MiddlemanSafeSession):
         subtask_id = res.subtask_id
         secret = task_result_manager.gen_secret()
 
-        def success(output):
-            logger.debug("Task session: sending task result hash: {}".format(output))
+        def success(result):
+            result_path, result_hash = result
+            logger.debug("Task session: sending task result hash: {} ({})"
+                         .format(result_path, result_hash))
 
-            file_name, multihash = output
-            self.send(MessageTaskResultHash(subtask_id, multihash, secret, options=client_options))
+            self.send(MessageTaskResultHash(subtask_id, result_hash,
+                                            secret, options=client_options))
 
         def error(exc):
             logger.error("Couldn't create a task result package for subtask {}: {}"

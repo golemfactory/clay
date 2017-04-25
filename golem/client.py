@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import atexit
 import logging
 from pydispatch import dispatcher
@@ -11,6 +12,7 @@ from os import path, makedirs
 from threading import Lock
 
 from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -27,16 +29,18 @@ from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
-from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.peersession import PeerMonitor
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -45,6 +49,15 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 
+from devp2p.app import BaseApp
+from devp2p.discovery import NodeDiscovery
+from devp2p.peermanager import PeerManager
+from devp2p.service import BaseService
+from ethereum.utils import encode_hex
+import ethereum.slogging as slogging
+from golem.network.p2p.golemservice import GolemService
+
+devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
 
 
@@ -59,9 +72,16 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(object):
+class Client(BaseApp):
+    client_name = 'golem'
+    default_config = dict(BaseApp.default_config)
+    services = [NodeDiscovery, PeerManager, GolemService]
+
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
+
+        slogging.configure(u':info')
+        devp2plog.info('starting')
 
         # TODO: Should we init it only once?
         init_messages()
@@ -87,6 +107,15 @@ class Client(object):
         self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
 
+        from golem.p2pconfig import p2pconfig
+        configp2p = p2pconfig
+        configp2p['node'] = {}
+        configp2p['node']['privkey_hex'] = encode_hex(self.keys_auth._private_key)
+        configp2p['node']['pubkey_hex'] = encode_hex(self.keys_auth.public_key)
+        configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
+
+        BaseApp.__init__(self, configp2p)
+
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          key=self.keys_auth.get_key_id(),
@@ -105,7 +134,7 @@ class Client(object):
 
         self.nodes_manager_client = None
 
-        self.do_work_task = task.LoopingCall(self.__do_work)
+        self.do_work_task = None
 
         self.cfg = config
         self.send_snapshot = False
@@ -128,6 +157,7 @@ class Client(object):
         self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
+        self.daemon_manager = None
 
         self.rpc_publisher = None
 
@@ -158,51 +188,66 @@ class Client(object):
         if self.rpc_publisher:
             self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
 
+    def sync(self):
+        if self.use_transaction_system():
+            log.info('Waiting for block synchronization...')
+            self.transaction_system.sync()
+            log.info('Block synchronization complete')
+
     def start(self):
         if self.use_monitor:
             self.init_monitor()
-        self.start_network()
-        self.do_work_task.start(0.1, False)
+        try:
+            self.start_network()
+        except SystemExit:
+            raise
+        except:
+            log.critical('Can\'t start network. Giving up.', exc_info=True)
+            sys.exit(1)
+        self.do_work_task = task.LoopingCall(self.__do_work)
+        self.do_work_task.start(1, False)
+        BaseApp.start(self)
 
     def start_network(self):
         log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
-        # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
-        # self.ipfs_manager.store_client_info()
 
-        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
-                                     connect_to_known_hosts=self.connect_to_known_hosts)
+        for service in Client.services:
+            assert issubclass(service, BaseService)
+            assert service.name not in self.services
+            service.register_with_app(self)
+            assert hasattr(self.services, service.name)
+
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
+
         self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
                                       use_ipv6=self.config_desc.use_ipv6,
                                       use_docker_machine_manager=self.use_docker_machine_manager)
 
+        self.services.golemservice.set_task_server(self.task_server)
+
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
-
-        log.info("Starting p2p server ...")
-        self.p2pservice.start_accepting()
         time.sleep(1.0)
 
         log.info("Starting resource server...")
         self.resource_server.start_accepting()
         time.sleep(1.0)
 
-        self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.set_metadata_manager(self)
-
         log.info("Starting task server ...")
         self.task_server.start_accepting()
 
-        self.p2pservice.set_task_server(self.task_server)
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
-        self.p2pservice.connect_to_network()
+
+        self.peermonitor = PeerMonitor(self.services.peermanager)
 
         if self.monitor:
-            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+            self.diag_service.register(self.peermonitor, self.monitor.on_peer_snapshot)
             self.monitor.on_login()
 
     def init_monitor(self):
@@ -218,15 +263,19 @@ class Client(object):
             socket_address = SocketAddress(socket_address[0], int(socket_address[1]))
 
         log.debug("P2pservice connecting to %s on port %s", socket_address.address, socket_address.port)
-        self.p2pservice.connect(socket_address)
+        #self.p2pservice.connect(socket_address)
 
     def quit(self):
         if self.do_work_task.running:
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
+        if self.daemon_manager:
+            self.daemon_manager.stop()
         dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()
@@ -235,11 +284,11 @@ class Client(object):
     def key_changed(self):
         self.node.key = self.keys_auth.get_key_id()
         self.task_server.key_changed()
-        self.p2pservice.key_changed()
+        #self.p2pservice.key_changed()
 
     def stop_network(self):
         # FIXME: Implement this method properly - send disconnect package, close connections etc.
-        self.p2pservice = None
+        #self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
 
@@ -261,9 +310,20 @@ class Client(object):
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
-        self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
+        #self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
+        if self.task_tester is None:
+            request = AsyncRequest(self._run_test_task, t_dict)
+            async_run(request)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
+
+    def _run_test_task(self, t_dict):
+
         def on_success(*args, **kwargs):
             self.task_tester = None
             if self.rpc_publisher:
@@ -274,18 +334,11 @@ class Client(object):
             if self.rpc_publisher:
                 self.rpc_publisher.publish(Task.evt_task_check_error, *args, **kwargs)
 
-        if self.task_tester is None:
-            t = DictSerializer.load(t_dict)
-            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-            self.task_tester.run()
-
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_check_started, True)
-            return True
-
+        t = DictSerializer.load(t_dict)
+        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        self.task_tester.run()
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
-        return False
+            self.rpc_publisher.publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
@@ -328,26 +381,33 @@ class Client(object):
         return self.config_desc.node_name
 
     def get_neighbours_degree(self):
-        return self.p2pservice.get_peers_degree()
+        #return self.p2pservice.get_peers_degree()
+        pass
 
     def get_suggested_addr(self, key_id):
-        return self.p2pservice.suggested_address.get(key_id)
+        #return self.p2pservice.suggested_address.get(key_id)
+        pass
 
     def get_suggested_conn_reverse(self, key_id):
-        return self.p2pservice.get_suggested_conn_reverse(key_id)
+        #return self.p2pservice.get_suggested_conn_reverse(key_id)
+        pass
 
     def get_resource_peers(self):
-        self.p2pservice.send_get_resource_peers()
+        #self.p2pservice.send_get_resource_peers()
+        pass
 
     def get_peers(self):
-        return self.p2pservice.peers.values()
+        #return self.p2pservice.peers.values()
+        pass
 
     def get_known_peers(self):
-        peers = self.p2pservice.free_peers or []
+        #peers = self.p2pservice.free_peers or []
+        peers = []
         return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
 
     def get_connected_peers(self):
-        peers = self.get_peers() or []
+        peers = self.services.peermanager.peers
+        #peers = self.get_peers() or []
         return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
 
     def get_public_key(self):
@@ -399,7 +459,8 @@ class Client(object):
         return self.datadir
 
     def get_p2p_port(self):
-        return self.p2pservice.cur_port
+        #return self.p2pservice.cur_port
+        pass
 
     def get_task_server_port(self):
         return self.task_server.cur_port
@@ -445,25 +506,38 @@ class Client(object):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = self.transaction_system.get_balance()
+            req = AsyncRequest(self.transaction_system.get_balance)
+            b, ab, d = yield async_run(req)
             if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+                returnValue((str(b), str(ab), str(d)))
+        returnValue((None, None, None))
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            return self.transaction_system.get_payments_list()
+            payments = self.transaction_system.get_payments_list()
+            return map(self._values_to_str, payments)
         return ()
 
+    @inlineCallbacks
     def get_incomes_list(self):
         if self.transaction_system:
-            return self.transaction_system.get_incoming_payments()
+            req = AsyncRequest(self.transaction_system.get_incoming_payments)
+            incomes = yield async_run(req)
+            returnValue(map(self._values_to_str, incomes))
         # FIXME use method that connect payment with expected payments
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
-        return ()
+        returnValue(())
+
+    @staticmethod
+    def _values_to_str(obj):
+        obj["value"] = str(obj["value"])
+        if "fee" in obj and obj["fee"] is not None:
+            obj["fee"] = str(obj["fee"])
+        return obj
 
     def get_task_cost(self, task_id):
         """
@@ -508,10 +582,12 @@ class Client(object):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
-        self.p2pservice.inform_about_task_nat_hole(key_id, rv_key_id, addr, port, ans_conn_id)
+        #self.p2pservice.inform_about_task_nat_hole(key_id, rv_key_id, addr, port, ans_conn_id)
+        pass
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
+        #self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
+        pass
 
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):
@@ -521,7 +597,7 @@ class Client(object):
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        self.p2pservice.change_config(self.config_desc)
+        #self.p2pservice.change_config(self.config_desc)
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
         dispatcher.send(signal='golem.monitor', event='config_update', meta_data=self.__get_nodemetadatamodel())
@@ -537,8 +613,8 @@ class Client(object):
         if state:
             return DictSerializer.dump(state)
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.resource_server.download_resources(resources, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -591,7 +667,8 @@ class Client(object):
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
-        self.p2pservice.remove_task(task_id)
+        #self.p2pservice.remove_task(task_id)
+        pass
 
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
@@ -644,19 +721,24 @@ class Client(object):
         self.environments_manager.change_accept_tasks(env_id, False)
 
     def send_gossip(self, gossip, send_to):
-        return self.p2pservice.send_gossip(gossip, send_to)
+        #return self.p2pservice.send_gossip(gossip, send_to)
+        pass
 
     def send_stop_gossip(self):
-        return self.p2pservice.send_stop_gossip()
+        #return self.p2pservice.send_stop_gossip()
+        pass
 
     def collect_gossip(self):
-        return self.p2pservice.pop_gossips()
+        #return self.p2pservice.pop_gossips()
+        pass
 
     def collect_stopped_peers(self):
-        return self.p2pservice.pop_stop_gossip_form_peers()
+        #return self.p2pservice.pop_stop_gossip_form_peers()
+        pass
 
     def collect_neighbours_loc_ranks(self):
-        return self.p2pservice.pop_neighbours_loc_ranks()
+        #return self.p2pservice.pop_neighbours_loc_ranks()
+        return []
 
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
@@ -692,14 +774,10 @@ class Client(object):
         return new_value
 
     def __do_work(self):
-        if self.p2pservice:
-            if self.config_desc.send_pings:
-                self.p2pservice.ping_peers(self.config_desc.pings_interval)
-
             try:
-                self.p2pservice.sync_network()
+                self.services.golemservice.get_tasks()
             except:
-                log.exception("p2pservice.sync_network failed")
+                log.exception("golemservice task broadcast failed")
             try:
                 self.task_server.sync_network()
             except:
@@ -741,9 +819,8 @@ class Client(object):
                     self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
 
     def __make_node_state_snapshot(self, is_running=True):
-
-        peers_num = len(self.p2pservice.peers)
-        last_network_messages = self.p2pservice.get_last_messages()
+        peers_num = 0 #len(self.p2pservice.peers)
+        last_network_messages = '' #self.p2pservice.get_last_messages()
 
         if self.task_server:
             tasks_num = len(self.task_server.task_keeper.task_headers)
@@ -754,8 +831,8 @@ class Client(object):
                                                               self.config_desc.node_name,
                                                               peers_num,
                                                               tasks_num,
-                                                              self.p2pservice.node.pub_addr,
-                                                              self.p2pservice.node.pub_port,
+                                                              '',#self.p2pservice.node.pub_addr,
+                                                              '',#self.p2pservice.node.pub_port,
                                                               last_network_messages,
                                                               last_task_messages,
                                                               remote_tasks_progresses,
@@ -808,7 +885,7 @@ class Client(object):
         else:
             msg = "Not accepting tasks\n"
 
-        peers = self.p2pservice.get_peers()
+        peers = self.services.peermanager.peers
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
@@ -827,5 +904,9 @@ class Client(object):
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method
-        self.__datadir_lock.close()  # Closing file unlocks it.
+        # solves locking issues on OS X
+        try:
+            filelock.unlock(self.__datadir_lock)
+        except Exception:
+            pass
+        self.__datadir_lock.close()

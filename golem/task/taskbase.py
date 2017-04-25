@@ -1,17 +1,37 @@
 import abc
 import logging
 import time
+import rlp
 from copy import deepcopy
 
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
+from golem.core.simpleserializer import CBORSedes
 
 logger = logging.getLogger("golem.task")
 
 
-class TaskHeader(object):
+class TaskHeader(rlp.Serializable):
+    fields = [
+        ('node_name', CBORSedes),
+        ('task_id', CBORSedes),
+        ('task_owner_address', CBORSedes),
+        ('task_owner_port', CBORSedes),
+        ('task_owner_key_id', CBORSedes),
+        ('environment', CBORSedes),
+        ('task_owner', Node),
+        ('deadline', CBORSedes),
+        ('subtask_timeout', CBORSedes),
+        ('resource_size', CBORSedes),
+        ('estimated_memory', CBORSedes),
+        ('min_version', CBORSedes),
+        ('max_price', CBORSedes),
+        ('docker_images', rlp.sedes.CountableList(DockerImage)),
+        ('signature', CBORSedes)
+    ]
+
     """ Task header describe general information about task as an request and is propagated in the
         network as an offer for computing nodes
     """
@@ -23,24 +43,11 @@ class TaskHeader(object):
         :param docker_images: docker image specification
         """
 
-        self.task_id = task_id
         # TODO Remove task_owner_key_id, task_onwer_address and task_owner_port
-        self.task_owner_key_id = task_owner_key_id
-        self.task_owner_address = task_owner_address
-        self.task_owner_port = task_owner_port
-        self.task_owner = task_owner
         # TODO change last_checking param
-        self.last_checking = time.time()
-        self.deadline = deadline
-        self.subtask_timeout = subtask_timeout
-        self.node_name = node_name
-        self.resource_size = resource_size
-        self.environment = environment
-        self.estimated_memory = estimated_memory
-        self.min_version = min_version
-        self.docker_images = docker_images
-        self.max_price = max_price
-        self.signature = signature
+        rlp.Serializable.__init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id,
+                                  environment, task_owner, deadline, subtask_timeout, resource_size, estimated_memory,
+                                  min_version, max_price, docker_images, signature)
 
     def __repr__(self):
         return '<Header: %r>' % (self.task_id,)

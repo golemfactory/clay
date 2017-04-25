@@ -211,7 +211,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
-        assert task.header.min_version == '0.3'
         assert task.header.docker_images[0].repository == 'golemfactory/blender'
         assert task.header.docker_images[0].tag == '1.3'
         assert task.header.max_price == 10.2

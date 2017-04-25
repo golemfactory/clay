@@ -89,7 +89,7 @@ class MockReactorThread(Thread):
             time.sleep(0.1)
 
     def __reactor_loop(self):
-        timeout = 1 * 10 ** -3
+        timeout = 1 * 10 ** -4
         while self.working:
             try:
                 self.reactor.runUntilCurrent()
@@ -115,7 +115,7 @@ class TestWithReactor(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if cls.reactor_thread:
+        if cls.reactor_thread and cls.reactor_thread.isAlive():
             cls.reactor_thread.stop()
             uninstall_reactor()
 
