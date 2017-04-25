@@ -8,8 +8,8 @@ from golem.network.p2p.node import Node
 
 log = slogging.get_logger('golem.protocol')
 
-class GolemProtocol(BaseProtocol):
 
+class GolemProtocol(BaseProtocol):
     protocol_id = 18317  # just a random number; not sure what to put here
 
     def __init__(self, peer, service):
@@ -49,3 +49,30 @@ class GolemProtocol(BaseProtocol):
                 theaders.append(TaskHeader.deserialize(th, mutable=True))
 
             return theaders
+
+    class want_to_start_task_session(BaseProtocol.command):
+        """
+        Send invitation for connection if requestor is behind NAT
+        """
+
+        cmd_id = 2
+
+        structure = [('node', Node),
+                     ('connection_id', rlp.sedes.binary),
+                     ('super_node', Node)
+                     ]
+
+    class set_task_session(BaseProtocol.command):
+        """
+        Someone else is trying to connect with node to which direct connection is impossible
+        and to which there is no p2p connection. Send this messages to neighboring nodes in order to forward it
+        to reach recipient.
+        """
+
+        cmd_id = 3
+
+        structure = [('key', rlp.sedes.binary),
+                     ('node', Node),
+                     ('conn_id', rlp.sedes.binary),
+                     ('super_node', Node)
+                     ]

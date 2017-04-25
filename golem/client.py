@@ -571,8 +571,7 @@ class Client(BaseApp):
         return bool(self.ranking)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
-        #self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
-        pass
+        self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         #self.p2pservice.inform_about_task_nat_hole(key_id, rv_key_id, addr, port, ans_conn_id)
