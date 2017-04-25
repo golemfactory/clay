@@ -59,8 +59,8 @@ class SmartTableItem(QTableWidgetItem):
 class PaymentTableElem(object):
     def __init__(self, payment_info):
         fee = payment_info["fee"]
-        value = payment_info["value"]
-        fee = "{:.1f}%".format(float(fee * 100) / value) if fee else ""
+        value = float(payment_info["value"])
+        fee = "{:.1f}%".format(float(fee) * 100 / value) if fee else ""
         payment_status = PaymentStatus(payment_info["status"])
 
         subtask = SmartTableItem(payment_info["subtask"])
@@ -77,7 +77,7 @@ class PaymentTableElem(object):
 class IncomeTableElem(object):
     def __init__(self, income_info):
         payment_status = PaymentStatus(income_info["status"])
-        value = income_info["value"]
+        value = float(income_info["value"])
         payer = SmartTableItem(income_info["payer"].encode('hex'))
         status = SmartTableItem(str(payment_status).replace("PaymentStatus.", ""))
         value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))

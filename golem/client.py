@@ -517,19 +517,27 @@ class Client(BaseApp):
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            return self.transaction_system.get_payments_list()
+            payments = self.transaction_system.get_payments_list()
+            return map(self._values_to_str, payments)
         return ()
 
     @inlineCallbacks
     def get_incomes_list(self):
         if self.transaction_system:
             req = AsyncRequest(self.transaction_system.get_incoming_payments)
-            result = yield async_run(req)
-            returnValue(result)
+            incomes = yield async_run(req)
+            returnValue(map(self._values_to_str, incomes))
         # FIXME use method that connect payment with expected payments
         # if self.use_transaction_system():
         #    return self.transaction_system.get_incomes_list()
         returnValue(())
+
+    @staticmethod
+    def _values_to_str(obj):
+        obj["value"] = str(obj["value"])
+        if "fee" in obj and obj["fee"] is not None:
+            obj["fee"] = str(obj["fee"])
+        return obj
 
     def get_task_cost(self, task_id):
         """
