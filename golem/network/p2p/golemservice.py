@@ -26,6 +26,7 @@ class GolemService(WiredService):
         proto.receive_get_tasks_callbacks.append(self.on_receive_get_tasks)
         proto.receive_task_headers_callbacks.append(self.on_receive_task_headers)
         proto.receive_want_to_start_task_session_callbacks.append(self.on_receive_want_to_start_task_session)
+        proto.receive_set_task_session_callbacks.append(self.on_receive_set_task_session)
 
     def on_wire_protocol_stop(self, proto):
         assert isinstance(proto, self.wire_protocol)
@@ -84,7 +85,7 @@ class GolemService(WiredService):
         msg_snd = False
         for peer in peers:
             if encode_hex(peer.remote_pubkey) != node.key:
-                peer.send_set_task_session(key_id, node, conn_id, super_node_info)
+                peer.protocols[GolemProtocol].send_set_task_session(key_id, node, conn_id, super_node_info)
                 msg_snd = True
 
         if msg_snd and node.key == self.node.key:
@@ -103,3 +104,6 @@ class GolemService(WiredService):
 
     def on_receive_want_to_start_task_session(self, proto, node, connection_id, super_node):
         self.task_server.start_task_session(node, super_node, connection_id)
+
+    def on_receive_set_task_session(self, proto, node, connection_id, super_node):
+        self.want_to_start_task_session(node, connection_id, super_node)
