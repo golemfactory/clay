@@ -57,7 +57,7 @@ def create_client(datadir):
                   estimated_blender_performance=1000.0)
 
 
-def run_requesting_node(datadir, num_subtasks=3, wait_for=1):
+def run_requesting_node(datadir, num_subtasks=3, wait_for=1, max_iteration=1000):
     client = None
 
     def shutdown():
@@ -74,8 +74,6 @@ def run_requesting_node(datadir, num_subtasks=3, wait_for=1):
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
-    task = None
-
     def create_task():
         params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
         task = DummyTask(client.get_node_name(), params, num_subtasks)
@@ -90,7 +88,7 @@ def run_requesting_node(datadir, num_subtasks=3, wait_for=1):
     def report_status():
         report("REPORT STATUS CALLED")
         task = None
-        while True:
+        for _ in range(0, max_iteration):
             time.sleep(1)
             if not task:
                 if len(client.p2pservice.peers) >= wait_for:
