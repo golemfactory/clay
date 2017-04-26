@@ -75,6 +75,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("runner.reactor")
     def test_run_requesting_node(self, mock_reactor):
         client = runner.run_requesting_node(self.path, 3, 0)
+        assert client.p2pservice.cur_port > 0
         client.quit()
 
     @mock.patch("runner.reactor")

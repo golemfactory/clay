@@ -9,7 +9,7 @@ from golem.model import Database
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID, PeerSessionInfo
-from golem.network.transport.message import MessageHello, MessageTask
+from golem.network.transport.message import MessageDisconnect, MessageHello, MessageTask
 from golem.task.taskbase import TaskHeader
 from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
@@ -113,12 +113,20 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         client.datadir = self.path
         peer_session.p2p_service.task_server = TaskServer(node, config, keys_auth, client,
                                                           use_docker_machine_manager=False)
+
+        # Wrong task can't verify signature should disconnect
         task = MagicMock()
         peer_session._react_to_task(MessageTask(task=task))
+        args, _ = peer_session.conn.send_message.call_args
+        assert isinstance(args[0], MessageDisconnect)
+        peer_session.conn.send_message.assert_called_once()
+
+        # Properly created task, shouldn't disconnect
         task = TaskHeader('node', "ABC", "10.10.10.10", 1023, keys_auth.get_key_id(),
                           'DEFAULT', node)
         task.signature = keys_auth.sign(task.to_binary())
         peer_session._react_to_task(MessageTask(task.to_dict()))
+        peer_session.conn.send_message.assert_called_once()
 
     def test_disconnect(self):
         conn = MagicMock()
