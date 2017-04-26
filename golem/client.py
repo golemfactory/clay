@@ -389,8 +389,7 @@ class Client(BaseApp):
         pass
 
     def get_suggested_conn_reverse(self, key_id):
-        #return self.p2pservice.get_suggested_conn_reverse(key_id)
-        pass
+        return self.services.golemservice.get_suggested_conn_reverse(key_id)
 
     def get_resource_peers(self):
         #self.p2pservice.send_get_resource_peers()
@@ -579,7 +578,7 @@ class Client(BaseApp):
         return bool(self.ranking)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
-        self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
+        self.services.golemservice.want_to_start_task_session(key_id, node_id, conn_id)
 
     def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
         #self.p2pservice.inform_about_task_nat_hole(key_id, rv_key_id, addr, port, ans_conn_id)
