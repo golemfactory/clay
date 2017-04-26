@@ -330,7 +330,6 @@ class TestP2PService(DatabaseFixture):
         assert p.send_stop_gossip.called
 
         service.sync_network()
-        # assert p.send_get_tasks.called
 
         service.remove_peer(p)
         assert p.key_id not in service.peers
