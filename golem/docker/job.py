@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import posixpath
@@ -46,6 +47,8 @@ class DockerJob(object):
 
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
+
+    running_jobs = []
 
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
@@ -153,6 +156,8 @@ class DockerJob(object):
         self.container_id = self.container["Id"]
         if self.container_id is None:
             raise KeyError("container does not have key: Id")
+
+        self.running_jobs.append(self)
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
@@ -160,6 +165,7 @@ class DockerJob(object):
 
     def _cleanup(self):
         if self.container:
+            self.running_jobs.remove(self)
             client = local_client()
             self._host_dir_chmod(self.work_dir, self.work_dir_mod)
             self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
@@ -260,12 +266,20 @@ class DockerJob(object):
     def kill(self):
         try:
             status = self.get_status()
-        except Exception:
+        except Exception as exc:
             status = None
+            logger.error("Error retrieving status for container {}: {}"
+                         .format(self.container_id, exc))
 
-        if status == self.STATE_RUNNING:
+        if status != self.STATE_RUNNING:
+            return
+
+        try:
             client = local_client()
             client.kill(self.container_id)
+        except Exception as exc:
+            logger.error("Couldn't kill container {}: {}"
+                         .format(self.container_id, exc))
 
     def dump_logs(self, stdout_file=None, stderr_file=None):
         if not self.container:
@@ -294,3 +308,10 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    @staticmethod
+    @atexit.register
+    def kill_jobs():
+        for job in DockerJob.running_jobs:
+            logger.info("Killing job {}".format(job.container_id))
+            job.kill()
