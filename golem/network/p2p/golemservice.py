@@ -2,7 +2,6 @@ from devp2p.service import WiredService
 from golemprotocol import GolemProtocol
 from ethereum import slogging
 from ethereum.utils import encode_hex
-import logging
 log = slogging.get_logger('golem.service')
 
 class GolemService(WiredService):
@@ -93,7 +92,7 @@ class GolemService(WiredService):
 
         # TODO This method should be only sent to supernodes or nodes that are closer to the target node
 
-        if not msg_snd and node.key == self.get_key_id():
+        if not msg_snd and node.key == self.node.key:
             self.task_server.task_connections_helper.cannot_start_task_session(conn_id)
 
     def set_suggested_conn_reverse(self, client_key_id, value=True):
@@ -105,5 +104,5 @@ class GolemService(WiredService):
     def on_receive_want_to_start_task_session(self, proto, node, connection_id, super_node):
         self.task_server.start_task_session(node, super_node, connection_id)
 
-    def on_receive_set_task_session(self, proto, node, connection_id, super_node):
-        self.want_to_start_task_session(node, connection_id, super_node)
+    def on_receive_set_task_session(self, proto, key, node, connection_id, super_node):
+        self.want_to_start_task_session(key, node, connection_id, super_node)

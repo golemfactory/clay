@@ -5,7 +5,7 @@ from rlp.sedes import big_endian_int, binary, List, CountableList
 from golem.docker.image import DockerImage
 from golem.task.taskbase import TaskHeader
 from golem.network.p2p.node import Node
-
+from golem.core.simpleserializer import CBORSedes
 log = slogging.get_logger('golem.protocol')
 
 
@@ -59,7 +59,7 @@ class GolemProtocol(BaseProtocol):
 
         structure = [('node', Node),
                      ('connection_id', rlp.sedes.binary),
-                     ('super_node', Node)
+                     ('super_node', CBORSedes)
                      ]
 
     class set_task_session(BaseProtocol.command):
@@ -73,6 +73,6 @@ class GolemProtocol(BaseProtocol):
 
         structure = [('key', rlp.sedes.binary),
                      ('node', Node),
-                     ('conn_id', rlp.sedes.binary),
-                     ('super_node', Node)
+                     ('connection_id', rlp.sedes.binary),
+                     ('super_node', CBORSedes)
                      ]
