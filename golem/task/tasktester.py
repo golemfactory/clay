@@ -11,9 +11,9 @@ class TaskTester(LocalComputer):
     TESTER_SUCCESS = "Test task computation success!"
 
     def __init__(self, task, root_path, success_callback, error_callback):
-        LocalComputer.__init__(self, task, root_path, success_callback, error_callback,
-                               task.query_extra_data_for_test_task, True, TaskTester.TESTER_WARNING,
-                               TaskTester.TESTER_SUCCESS)
+        super(TaskTester, self).__init__(task, root_path, success_callback, error_callback,
+                                         task.query_extra_data_for_test_task, True,
+                                         TaskTester.TESTER_WARNING, TaskTester.TESTER_SUCCESS)
 
     def _get_task_thread(self, ctd):
         if ctd.docker_images:
@@ -29,16 +29,18 @@ class TaskTester(LocalComputer):
                                     self.tmp_dir,
                                     0)
 
-    def task_computed(self, task_thread):
-        if (not task_thread.error) and task_thread.result:
-            res, est_mem = task_thread.result
-            if res and res.get("data"):
-                warnings = self.task.after_test(res, self.tmp_dir)
-                self.success_callback(res, est_mem, msg=warnings)
-                return
+    def computation_success(self, task_thread):
+        time_spent = self._get_time_spent()
+        res, est_mem = task_thread.result
+        warnings = self.task.after_test(res, self.tmp_dir)
+        self.success_callback(res, est_mem, time_spent, msg=warnings)
 
-        logger_msg = self.comp_failed_warning
-        if task_thread.error_msg:
-            logger_msg += " " + task_thread.error_msg
-        logger.warning(logger_msg)
-        self.error_callback(task_thread.error_msg)
+    def is_success(self, task_thread):
+        if task_thread.error or (not task_thread.result):
+            return False
+        try:
+            res, _ = task_thread.result
+        except (ValueError, TypeError):
+            task_thread.error = "Wrong result format"
+            return False
+        return res and res.get("data")
