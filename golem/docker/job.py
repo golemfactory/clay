@@ -269,7 +269,7 @@ class DockerJob(object):
         except Exception as exc:
             status = None
             logger.error("Error retrieving status for container {}: {}"
-                         .format(self.container, exc))
+                         .format(self.container_id, exc))
 
         if status != self.STATE_RUNNING:
             return
