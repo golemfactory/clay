@@ -275,8 +275,7 @@ class PeerSession(BasicSafeSession):
             return
 
         if msg.proto_id != P2P_PROTOCOL_ID:
-            logger.info("Protocol version mismatch {} vs {} (local) for node {}:{}"
-                        .format(msg.proto_id, P2P_PROTOCOL_ID, self.address, self.port))
+            logger.info("P2P protocol version mismatch %r vs %r (local) for node %r:%r", msg.proto_id, P2P_PROTOCOL_ID, self.address, self.port)
             self.disconnect(PeerSession.DCRProtocolVersion)
             return
 

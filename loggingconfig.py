@@ -60,6 +60,8 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.network': {'propagate': True},
+        'golem.network.transport': {'propagate': True},
         'apps': {
             'level': 'DEBUG',
             'propagate': True,

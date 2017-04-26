@@ -217,7 +217,7 @@ class Client(object):
         log.info("Starting task server ...")
         self.task_server.start_accepting()
 
-        self.p2pservice.set_task_server(self.task_server)
+        self.p2pservice.task_server = self.task_server
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 

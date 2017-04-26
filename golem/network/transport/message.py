@@ -179,6 +179,24 @@ class Message(object):
         return "{}".format(self.__class__)
 
 
+class MessageRedefined(Message):
+    """New style Message."""
+
+    def __init__(self, **kwargs):
+        self.load_dict_repr(kwargs.pop('dict_repr', None))
+        super(MessageRedefined, self).__init__(**kwargs)
+
+    def load_dict_repr(self, dict_repr):
+        if dict_repr is None:
+            return
+        for attr_name in self.MAPPING:
+            k = self.MAPPING[attr_name]
+            setattr(self, attr_name, dict_repr[k])
+
+    def dict_repr(self):
+        return dict((self.MAPPING[attr_name], getattr(self, attr_name)) for attr_name in self.MAPPING)
+
+
 ##################
 # Basic Messages #
 ##################
@@ -1187,7 +1205,6 @@ class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    NODE_ID_STR = u"NODE_ID"
     REWARD_STR = u"REWARD"
 
     def __init__(self, subtask_id=0, reward=0, sig="", timestamp=None, dict_repr=None):
@@ -1672,6 +1689,7 @@ class MessageCannotComputeTask(Message):
     def dict_repr(self):
         return {self.REASON_STR: self.reason,
                 self.SUBTASK_ID_STR: self.subtask_id}
+
 
 RESOURCE_MSG_BASE = 3000
 

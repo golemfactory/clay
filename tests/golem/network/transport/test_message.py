@@ -1,9 +1,10 @@
-import unittest
 import os
 import time
+import unittest
 
 from golem.core.databuffer import DataBuffer
 from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message, MessageHello
+from golem.testutils import PEP8MixIn
 from mock import Mock, patch
 
 
@@ -16,7 +17,9 @@ class FailingMessage(Message):
         raise Exception()
 
 
-class TestMessages(unittest.TestCase):
+class TestMessages(unittest.TestCase, PEP8MixIn):
+    PEP8_FILES = ['golem/network/transport/message.py', ]
+
     def test_message_want_to_compute_task(self):
         m = MessageWantToComputeTask()
         self.assertIsInstance(m, MessageWantToComputeTask)
