@@ -3,6 +3,7 @@ import unittest
 import uuid
 
 from ethereum.utils import denoms
+from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
@@ -23,7 +24,8 @@ from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
 
-class TestCreateClient(TestDirFixture):
+class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/client.py', ]
 
     @patch('twisted.internet.reactor', create=True)
     def test_config_override_valid(self, *_):
@@ -59,31 +61,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def tearDownClass(cls):
         TestWithDatabase.tearDownClass()
         TestWithReactor.tearDownClass()
-
-    def test_payment_func(self):
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                       use_docker_machine_manager=False, use_monitor=False)
-
-        c.transaction_system.add_to_waiting_payments("xyz", "ABC", 10)
-        incomes = c.transaction_system.get_incomes_list()
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]["node"], "ABC")
-        self.assertEqual(incomes[0]["expected_value"], 10.0)
-        self.assertEqual(incomes[0]["task"], "xyz")
-        self.assertEqual(incomes[0]["value"], 0.0)
-
-        c.transaction_system.pay_for_task("xyz", [])
-        c.check_payments()
-        c.transaction_system.check_payments = Mock()
-        c.transaction_system.check_payments.return_value = ["ABC", "DEF"]
-        c.check_payments()
-
-        incomes = wait_for(c.get_incomes_list())
-
-        self.assertEqual(incomes, [])
-
-        c.quit()
 
     def test_get_payments(self):
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):

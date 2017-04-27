@@ -385,27 +385,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         except KeyError as err:
             logger.error("Wrong task representation: {}".format(err))
 
-    def get_listen_params(self, key_id, rand_val):
-        """ Return parameters that are needed for listen function in tuple
-        :param str|None key_id: key id of a node with whom we want to connect
-        :param int rand_val: session random value
-        :return (int, str, str, Node, int, bool) | (int, str, str, Node, int, bool, str, int) : this node listen port,
-        this node id, this node public key, information about this node, random value, information whether
-        other node should solve cryptographic challenge, (optional: cryptographic challenge),
-        (optional: cryptographic challenge difficulty)
-        """
-        if key_id:
-            should_solve_challenge = self.should_solve_challenge
-        else:
-            should_solve_challenge = False
-
-        listen_params = (self.cur_port, self.node_name, self.keys_auth.get_key_id(), self.node, rand_val,
-                         self.metadata_manager.get_metadata(), should_solve_challenge)
-
-        if should_solve_challenge:
-            listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
-        return listen_params
-
     def check_solution(self, solution, challenge, difficulty):
         """
         Check whether solution is valid for given challenge and it's difficulty

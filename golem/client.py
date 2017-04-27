@@ -175,7 +175,7 @@ class Client(object):
             self.start_network()
         except SystemExit:
             raise
-        except:
+        except Exception:
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
         self.do_work_task.start(1, False)
@@ -490,13 +490,7 @@ class Client(object):
 
     @inlineCallbacks
     def get_incomes_list(self):
-        if self.transaction_system:
-            req = AsyncRequest(self.transaction_system.get_incoming_payments)
-            incomes = yield async_run(req)
-            returnValue(map(self._values_to_str, incomes))
-        # FIXME use method that connect payment with expected payments
-        # if self.use_transaction_system():
-        #    return self.transaction_system.get_incomes_list()
+        # Will be implemented in incomes_core
         returnValue(())
 
     @staticmethod
@@ -739,23 +733,23 @@ class Client(object):
 
             try:
                 self.p2pservice.sync_network()
-            except:
+            except Exception:
                 log.exception("p2pservice.sync_network failed")
             try:
                 self.task_server.sync_network()
-            except:
+            except Exception:
                 log.exception("task_server.sync_network failed")
             try:
                 self.resource_server.sync_network()
-            except:
+            except Exception:
                 log.exception("resource_server.sync_network failed")
             try:
                 self.ranking.sync_network()
-            except:
+            except Exception:
                 log.exception("ranking.sync_network failed")
             try:
                 self.check_payments()
-            except:
+            except Exception:
                 log.exception("check_payments failed")
 
             if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
@@ -773,7 +767,7 @@ class Client(object):
                 )
                 # with self.snapshot_lock:
                 #     self.__make_node_state_snapshot()
-                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
+                #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
             if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:

@@ -160,10 +160,6 @@ class ReceivedPayment(BaseModel):
         database = db
         primary_key = CompositeKey('from_node_id', 'task')
 
-    class Meta:
-        database = db
-        primary_key = CompositeKey('sender_node', 'subtask')
-
 ##################
 # RANKING MODELS #
 ##################

@@ -1,7 +1,8 @@
 import logging
 
 
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantsResource, \
+from golem.network.transport import message
+from golem.network.transport.message import MessageRandVal, MessageHasResource, MessageWantsResource, \
     MessagePushResource, MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
@@ -37,13 +38,13 @@ class ResourceSession(BasicSafeSession):
             MessageWantsResource.TYPE: self._react_to_wants_resource,
             MessagePullResource.TYPE: self._react_to_pull_resource,
             MessagePullAnswer.TYPE: self._react_to_pull_answer,
-            MessageHello.TYPE: self._react_to_hello,
+            message.MessageHello.TYPE: self._react_to_hello,
             MessageRandVal.TYPE: self._react_to_rand_val
         })
 
-        self.can_be_not_encrypted.append(MessageHello.TYPE)
-        self.can_be_unsigned.append(MessageHello.TYPE)
-        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE])
+        self.can_be_not_encrypted.append(message.MessageHello.TYPE)
+        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE])
 
     ########################
     # BasicSession methods #
@@ -143,7 +144,7 @@ class ResourceSession(BasicSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.resource_server.get_key_id(), rand_val=self.rand_val),
+        self.send(message.MessageHello(client_key_id=self.resource_server.get_key_id(), rand_val=self.rand_val),
                   send_unverified=True)
 
     #########################

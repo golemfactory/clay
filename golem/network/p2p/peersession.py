@@ -2,7 +2,8 @@ import logging
 import time
 
 from golem.core.crypto import ECIESDecryptionError
-from golem.network.transport.message import MessageHello, MessagePing, MessagePong, MessageGetPeers,\
+from golem.network.transport import message
+from golem.network.transport.message import MessagePing, MessagePong, MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
@@ -64,9 +65,9 @@ class PeerSession(BasicSafeSession):
         self.challenge = None
         self.difficulty = 0
 
-        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
-        self.can_be_unsigned.extend([MessageHello.TYPE])
-        self.can_be_not_encrypted.extend([MessageHello.TYPE])
+        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
+        self.can_be_unsigned.extend([message.MessageHello.TYPE])
+        self.can_be_not_encrypted.extend([message.MessageHello.TYPE])
 
         self.__set_msg_interpretations()
 
@@ -90,13 +91,13 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.set_last_message("<-", self.key_id, time.localtime(), msg, self.address, self.port)
         BasicSafeSession.interpret(self, msg)
 
-    def send(self, message, send_unverified=False):
+    def send(self, msg, send_unverified=False):
         """ Send given message if connection was verified or send_unverified option is set to True.
         :param Message message: message to be sent.
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
         """
-        BasicSafeSession.send(self, message, send_unverified)
-        self.p2p_service.set_last_message("->", self.key_id, time.localtime(), message, self.address, self.port)
+        BasicSafeSession.send(self, msg, send_unverified)
+        self.p2p_service.set_last_message("->", self.key_id, time.localtime(), msg, self.address, self.port)
 
     def sign(self, msg):
         """ Sign given message
@@ -410,12 +411,23 @@ class PeerSession(BasicSafeSession):
         self.send(MessagePong())
 
     def __send_hello(self):
-        listen_params = self.p2p_service.get_listen_params(self.key_id, self.rand_val)
-        self.solve_challenge = listen_params[6]
+        self.solve_challenge = self.key_id and self.p2p_service.should_solve_challenge or False
+        challenge_kwargs = {}
         if self.solve_challenge:
-            self.challenge = listen_params[7]
-            self.difficulty = listen_params[8]
-        self.send(MessageHello(*listen_params, proto_id=P2P_PROTOCOL_ID), send_unverified=True)
+            self.challenge = challenge_kwargs['challenge'] = self.p2p_service._get_challenge(self.key_id)
+            self.difficulty = challenge_kwargs['difficulty'] = self.p2p_service._get_difficulty(self.key_id)
+        msg = message.MessageHello(
+            proto_id=P2P_PROTOCOL_ID,
+            port=self.p2p_service.cur_port,
+            node_name=self.p2p_service.node_name,
+            client_key_id=self.p2p_service.keys_auth.get_key_id(),
+            node_info=self.p2p_service.node,
+            rand_val=self.rand_val,
+            metadata=self.p2p_service.metadata_manager.get_metadata(),
+            solve_challenge=self.solve_challenge,
+            **challenge_kwargs
+        )
+        self.send(msg, send_unverified=True)
 
     def __send_ping(self):
         self.send(MessagePing())
@@ -453,7 +465,7 @@ class PeerSession(BasicSafeSession):
         self._interpretation.update({
             MessagePing.TYPE: self._react_to_ping,
             MessagePong.TYPE: self._react_to_pong,
-            MessageHello.TYPE: self._react_to_hello,
+            message.MessageHello.TYPE: self._react_to_hello,
             MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
             MessageGetPeers.TYPE: self._react_to_get_peers,
             MessagePeers.TYPE: self._react_to_peers,
