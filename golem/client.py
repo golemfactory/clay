@@ -885,7 +885,7 @@ class Client(object):
 
     def update_preset(self, name, preset_dict):
         try:
-            preset = HardwarePreset.get(name=name).to_dict()
+            preset = HardwarePreset.get(name=name)
             preset.apply(preset_dict)
             preset.update()
             return dict(ok=name)
