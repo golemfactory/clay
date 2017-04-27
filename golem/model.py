@@ -259,5 +259,18 @@ class HardwarePreset(BaseModel):
     memory = FloatField(null=False)
     disk = FloatField(null=False)
 
+    def to_dict(self):
+        return dict(
+            name=self.name,
+            cpu_cores=self.cpu_cores,
+            memory=self.memory,
+            disk=self.disk
+        )
+
+    def apply(self, dictionary):
+        self.cpu_cores = dictionary['cpu_cores']
+        self.memory = dictionary['memory']
+        self.disk = dictionary['disk']
+
     class Meta:
         database = db

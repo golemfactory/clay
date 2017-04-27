@@ -1,5 +1,7 @@
 import atexit
 import logging
+
+from peewee import DoesNotExist
 from pydispatch import dispatcher
 import sys
 import time
@@ -25,7 +27,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database, Account
+from golem.model import Database, Account, HardwarePreset
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -862,6 +864,53 @@ class Client(object):
 
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
+
+    def get_presets(self):
+        try:
+            presets = HardwarePreset.select()
+            return [p.to_dict() for p in presets]
+        except Exception as exc:
+            log.debug("Cannot fetch hardware presets: {}"
+                      .format(exc))
+        return []
+
+    def get_preset(self, name):
+        try:
+            preset = HardwarePreset.get(name=name)
+            return dict(ok=preset.to_dict())
+        except DoesNotExist:
+            return dict(error="Preset not found: {}".format(name))
+        except Exception as exc:
+            return dict(error="Preset {} read error: {}".format(name, exc))
+
+    def update_preset(self, name, preset_dict):
+        try:
+            preset = HardwarePreset.get(name=name).to_dict()
+            preset.apply(preset_dict)
+            preset.update()
+            return dict(ok=name)
+        except DoesNotExist:
+            return dict(error="Preset not found: {}".format(name))
+        except Exception as exc:
+            return dict(error="Preset {} update error: {}".format(name, exc))
+
+    def remove_preset(self, name):
+        try:
+            HardwarePreset.delete().where(name=name)
+        except DoesNotExist:
+            return dict(error="Preset not found: {}".format(name))
+        except Exception as exc:
+            return dict(error="Preset {} removal error: {}".format(name, exc))
+
+    def activate_preset(self, name):
+        try:
+            preset = HardwarePreset.get(name=name)
+            # FIXME: change config & propagate
+            return dict(error="Not implemented")
+        except DoesNotExist:
+            return dict(error="Preset not found: {}".format(name))
+        except Exception as exc:
+            return dict(error="Preset {} read error: {}".format(name, exc))
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
