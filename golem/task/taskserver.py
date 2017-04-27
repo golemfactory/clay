@@ -547,12 +547,12 @@ class TaskServer(PendingConnectionsServer):
         def response(session):
             self.__connection_for_task_result_established(session, conn_id, waiting_task_result)
 
-        if key_id in self.response_list:
+        if waiting_task_result.owner_key_id in self.response_list:
             self.response_list[conn_id].append(response)
         else:
             self.response_list[conn_id] = deque([response])
 
-        self.client.want_to_start_task_session(wating_task_result, key_id, self.node, conn_id)
+        self.client.want_to_start_task_session(waiting_task_result.owner_key_id, self.node, conn_id)
 
         pc = self.pending_connections.get(conn_id)
         if pc:

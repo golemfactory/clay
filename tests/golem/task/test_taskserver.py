@@ -521,6 +521,35 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
+    def test_task_result_connection_failure(self):
+        """Tests what happens after connection failure when sending task_result"""
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client, use_docker_machine_manager=False)
+        ts.network = MagicMock()
+        ts.final_conn_failure = Mock()
+        ts.task_computer = Mock()
+
+        # Always fail on listening
+        ts.network.listen = MagicMock(
+            side_effect=lambda listen_info, waiting_task_result:
+                TCPNetwork.__call_failure_callback(
+                    listen_info.failure_callback,
+                    {'waiting_task_result': waiting_task_result}
+                )
+        )
+
+        # Try sending mocked task_result
+        wtr = MagicMock()
+        wtr.owner_key_id = 'owner_key_id'
+        kwargs = {'waiting_task_result': wtr}
+        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id', 'owner_port', wtr.owner_key_id, kwargs)
+        ts._sync_pending()
+        ts.client.want_to_start_task_session.assert_called_once_with(
+            wtr.owner_key_id,
+            ts.node,
+            ANY,  # conn_id
+        )
+
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
