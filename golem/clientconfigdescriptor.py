@@ -14,19 +14,13 @@ class ClientConfigDescriptor(object):
         self.end_port = 0
         self.rpc_address = ""
         self.rpc_port = 0
-        self.manager_address = ""
-        self.manager_port = 0
         self.opt_peer_num = 0
         self.send_pings = 0
         self.pings_interval = 0.0
-        self.add_tasks = 0
-        self.dist_res_num = 0
         self.use_ipv6 = 0
 
         self.seed_host = u""
         self.seed_port = 0
-
-        self.plugin_port = 0
 
         self.getting_peers_interval = 0.0
         self.getting_tasks_interval = 0.0
@@ -45,9 +39,12 @@ class ClientConfigDescriptor(object):
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
         self.max_results_sending_delay = 0.0
+
         self.num_cores = 0
         self.max_resource_size = 0
         self.max_memory_size = 0
+        self.hardware_preset_name = ""
+        self.hardware_caps = dict()
 
         self.use_distributed_resource_management = 1
 
@@ -68,6 +65,9 @@ class ClientConfigDescriptor(object):
         """
         for name in vars(self):
             getter = 'get_' + name
+            if not hasattr(app_config, getter):
+                logger.info("Unknown config parameter: {}".format(name))
+                continue
             setattr(self, name, getattr(app_config, getter)())
 
 

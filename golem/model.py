@@ -22,7 +22,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 4
+    SCHEMA_VERSION = 5
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -42,7 +42,7 @@ class Database:
     @staticmethod
     def create_database():
         tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account,
-                  Stats]
+                  Stats, HardwarePreset]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
@@ -88,6 +88,20 @@ class BigIntegerField(CharField):
 
     def python_value(self, value):
         return int(value, 16)
+
+
+class PercentField(FloatField):
+    """ Database field for floats in <0; 1> range """
+
+    def db_value(self, value):
+        if value:
+            value = float(value)
+        if value and value < 0. or value > 1.:
+            raise TypeError("Invalid value: {}".format(value))
+        return value
+
+    def python_value(self, value):
+        return float(value)
 
 
 class EnumField(IntegerField):
@@ -229,6 +243,21 @@ class Account(BaseModel):
 class Stats(BaseModel):
     name = CharField()
     value = CharField()
+
+    class Meta:
+        database = db
+
+
+###################
+# RESOURCE MODELS #
+###################
+
+class HardwarePreset(BaseModel):
+    name = CharField(null=False, index=True, unique=True)
+
+    cpu_cores = FloatField(null=False)
+    memory = FloatField(null=False)
+    disk = FloatField(null=False)
 
     class Meta:
         database = db

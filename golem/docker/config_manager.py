@@ -1,8 +1,7 @@
 import logging
 from contextlib import contextmanager
 
-import psutil
-
+from golem.core.hardware import AVAILABLE_CPU_CORES
 from golem.docker.task_thread import DockerTaskThread
 
 __all__ = ['DockerConfigManager']
@@ -30,14 +29,7 @@ class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
-        # Note that the number of cores is based on
-        # CPU affinity set for Golem's process
-        try:
-            process = psutil.Process()
-            self.cpu_cores = process.cpu_affinity()
-        except Exception as exc:
-            logger.debug("Couldn't read CPU affinity: {}".format(exc))
-            self.cpu_cores = [0]
+        self.cpu_cores = list(AVAILABLE_CPU_CORES)
 
     def build_config(self, config_desc):
         host_config = dict()
