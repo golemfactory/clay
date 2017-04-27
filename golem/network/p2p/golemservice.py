@@ -32,6 +32,7 @@ class GolemService(WiredService):
         proto.receive_set_task_session_callbacks.append(self.on_receive_set_task_session)
 
     def on_wire_protocol_stop(self, proto):
+        """Is called on peer timeout (via pings) or node closing connection"""
         assert isinstance(proto, self.wire_protocol)
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_stop', proto=proto)
