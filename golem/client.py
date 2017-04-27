@@ -268,6 +268,7 @@ class Client(BaseApp):
         #self.p2pservice.connect(socket_address)
 
     def quit(self):
+        self.stop()
         if self.do_work_task.running:
             self.do_work_task.stop()
         if self.task_server:
