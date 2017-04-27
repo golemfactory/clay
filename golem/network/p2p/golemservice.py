@@ -17,6 +17,10 @@ class GolemService(WiredService):
         self.suggested_conn_reverse = {}
         super(GolemService, self).__init__(client)
 
+    def stop(self):
+        log.info('stopping golemservice')
+        super(GolemService, self).stop()
+
     def on_wire_protocol_start(self, proto):
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_start', proto=proto)
