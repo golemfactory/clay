@@ -266,6 +266,7 @@ class Client(BaseApp):
         #self.p2pservice.connect(socket_address)
 
     def quit(self):
+        # pydevp2p will close connections; peers will detect this via timeouts:
         self.stop()
         if self.do_work_task.running:
             self.do_work_task.stop()
@@ -286,12 +287,6 @@ class Client(BaseApp):
         self.node.key = self.keys_auth.get_key_id()
         self.task_server.key_changed()
         #self.p2pservice.key_changed()
-
-    def stop_network(self):
-        # FIXME: Implement this method properly - send disconnect package, close connections etc.
-        #self.p2pservice = None
-        self.task_server = None
-        self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
