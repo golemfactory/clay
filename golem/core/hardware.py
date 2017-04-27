@@ -38,8 +38,8 @@ class HardwarePresets(object):
 
     DEFAULT_NAME = DEFAULT_HARDWARE_PRESET_NAME
     DEFAULT_VALUES = dict(
-        cpu_cores=0.75,
-        memory=0.75,
+        cpu_cores=1.,
+        memory=1.,
         disk=0.5
     )
 
