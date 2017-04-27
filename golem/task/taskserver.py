@@ -164,7 +164,7 @@ class TaskServer(PendingConnectionsServer):
 
     def get_tasks_headers(self):
         ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths]
+        return ths #[th.to_dict() for th in ths]
 
     def add_task_header(self, th_dict_repr):
         try:

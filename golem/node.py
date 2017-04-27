@@ -56,12 +56,12 @@ class Node(object):
             self.client.enqueue_new_task(golem_task)
 
     def run(self, use_rpc=False):
-        try:
-            if is_windows() and 'twisted.internet.reactor' not in sys.modules:
-                from twisted.internet import iocpreactor
-                iocpreactor.install()
-            from twisted.internet import reactor
+        if 'twisted.internet.reactor' not in sys.modules:
+            from golem.reactor import geventreactor
+            geventreactor.install()
+        from twisted.internet import reactor
 
+        try:
             if use_rpc:
                 config = self.client.config_desc
                 reactor.callWhenRunning(self._start_rpc_server,

@@ -73,7 +73,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from golem.core.common import config_logging
 
         config_logging(datadir=datadir)
-
+        from golem.reactor import geventreactor
+        geventreactor.install()
+        from twisted.internet import reactor
         node = OptNode(node_address=node_address, **config)
         node.initialize()
 

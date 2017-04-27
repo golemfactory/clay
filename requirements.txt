@@ -21,7 +21,7 @@ requests>=2.12.4
 six==1.10.0
 Twisted>=16.5
 cffi>=1.9.1
-web3==3.7.2
+web3>=3.7.2
 ethereum==1.6.0
 ethereum-abi-utils==0.4.0
 autobahn==0.18.1
@@ -44,6 +44,9 @@ packaging
 pyreadline
 pytest>=3.0.5
 qt5reactor
+gevent>=1.1.0
+devp2p==0.9.1
 GitPython>=2.1.0
+rlp==0.5.0
 semantic_version
 pyOpenSSL==16.2.0
