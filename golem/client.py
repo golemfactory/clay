@@ -16,6 +16,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
+from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
@@ -77,9 +78,11 @@ class Client(object):
         self.lock = Lock()
         self.task_tester = None
 
+        # Read and validate configuration
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
         self.config_desc.init_from_app_config(config)
+        
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
                 self.quit()  # quit only closes underlying services (for now)
@@ -87,15 +90,24 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
+
+        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
+
+        # Initialize database
+        self.db = Database(datadir)
+
+        # Hardware configuration
+        HardwarePresets.initialize(datadir)
+        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
+                                      self.config_desc)
+
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
-                         key=self.keys_auth.get_key_id(),
-                         prv_addr=self.config_desc.node_address)
-
-        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
+                         prv_addr=self.config_desc.node_address,
+                         key=self.keys_auth.get_key_id())
 
         self.p2pservice = None
         self.diag_service = None
@@ -113,8 +125,6 @@ class Client(object):
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
-
-        self.db = Database(datadir)
 
         self.ranking = Ranking(self)
 
