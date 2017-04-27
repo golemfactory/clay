@@ -7,7 +7,6 @@ from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.core.threads import wait_for
-from golem.ethereum.paymentmonitor import IncomingPayment
 from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -83,18 +82,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         incomes = wait_for(c.get_incomes_list())
 
         self.assertEqual(incomes, [])
-        payment = IncomingPayment("0x00003", 30 * denoms.ether)
-        payment.extra = {'block_number': 311,
-                         'block_hash': "hash1",
-                         'tx_hash': "hash2"}
-        c.transaction_system._EthereumTransactionSystem__monitor._PaymentMonitor__payments.append(payment)
-
-        incomes = wait_for(c.get_incomes_list())
-
-        self.assertEqual(len(incomes), 1)
-        self.assertEqual(incomes[0]['block_number'], 311)
-        self.assertEqual(incomes[0]['value'], str(30 * denoms.ether))
-        self.assertEqual(incomes[0]['payer'], "0x00003")
 
         c.quit()
 
