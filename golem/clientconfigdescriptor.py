@@ -44,7 +44,6 @@ class ClientConfigDescriptor(object):
         self.max_resource_size = 0
         self.max_memory_size = 0
         self.hardware_preset_name = ""
-        self.hardware_caps = dict()
 
         self.use_distributed_resource_management = 1
 
@@ -66,7 +65,8 @@ class ClientConfigDescriptor(object):
         for name in vars(self):
             getter = 'get_' + name
             if not hasattr(app_config, getter):
-                logger.info("Unknown config parameter: {}".format(name))
+                logger.info("Cannot read unknown config parameter: {}"
+                            .format(name))
                 continue
             setattr(self, name, getattr(app_config, getter)())
 
