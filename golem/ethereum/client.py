@@ -50,7 +50,11 @@ class Client(object):
             return syncing['currentBlock'] < syncing['highestBlock']
 
         # node may not have started syncing yet
-        last_block = self.web3.eth.getBlock('latest')
+        try:
+            last_block = self.web3.eth.getBlock('latest')
+        except Exception as ex:
+            log.debug(ex)
+            return False
         if isinstance(last_block, dict):
             timestamp = int(last_block['timestamp'])
         else:
@@ -78,7 +82,7 @@ class Client(object):
         """
         Returns the balance of the given account at the block specified by block_identifier
         :param account: The address to get the balance of
-        :param block_identifier: If you pass this parameter it will not use the default block
+        :param block: If you pass this parameter it will not use the default block
         set with web3.eth.defaultBlock
         :return: Balance
         """

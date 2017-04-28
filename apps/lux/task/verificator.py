@@ -77,7 +77,7 @@ class LuxRenderVerificator(RenderingVerificator):
             shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
             return True
 
-    def __verify_flm_ready(self, results):
+    def __verify_flm_ready(self, results, time_spent):
         logger.info("Advance verification finished")
         self.verification_error = False
 

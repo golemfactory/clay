@@ -362,7 +362,7 @@ class LuxTask(RenderingTask):
         computer.run()
         computer.tt.join()
 
-    def __final_img_ready(self, results):
+    def __final_img_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
         if img is None:
@@ -388,7 +388,7 @@ class LuxTask(RenderingTask):
         computer.run()
         computer.tt.join()
 
-    def __final_flm_ready(self, results):
+    def __final_flm_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         if flm is None:

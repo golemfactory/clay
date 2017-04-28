@@ -476,7 +476,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
-        self.br.start()
+        self.br.run()
 
     @inlineCallbacks
     def _benchmark_computation_success(self, performance, label, cfg_param):
@@ -514,7 +514,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def disable_environment(self, env_id):
         self.client.disable_environment(env_id)
 
-    def test_task_computation_success(self, results, est_mem, msg=None):
+    def test_task_computation_success(self, results, est_mem, time_spent,  msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
         self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
@@ -524,7 +524,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(msg))
         else:
-            msg = u"Task tested successfully"
+            msg = u"Task tested successfully - time %.2f" % time_spent
             self.progress_dialog_customizer.show_message(msg)
 
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
