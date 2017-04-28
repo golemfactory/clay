@@ -4,7 +4,7 @@ import random
 import operator
 from collections import deque
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
 K = 16  # Bucket size
 CONCURRENCY = 3  # parallel find node lookup

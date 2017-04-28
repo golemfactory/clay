@@ -16,7 +16,8 @@ from golem.core.threads import wait_for
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, WaitingTaskResult, TaskConnTypes, logger
+from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.taskserver import TASK_CONN_TYPES
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -156,7 +157,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session = Mock()
         session.address = "10.10.10.10"
         session.port = 1020
-        ts.conn_established_for_type[TaskConnTypes.TaskRequest](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
                                                                 1, 2)
         self.assertEqual(session.task_id, "xyz")
         self.assertEqual(session.key_id, "key")
@@ -280,7 +281,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         session.address = '127.0.0.1'
         session.port = 65535
 
-        ts.conn_established_for_type[TaskConnTypes.TaskFailure](
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
         self.assertEqual(ts.task_sessions[subtask_id], session)
@@ -394,12 +395,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertFalse(ts._add_pending_request.called)
 
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.NatPunch,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['nat_punch'],
                                                    ANY, ANY, ANY, ANY)
 
         node.nat_type = None
         initiate(key_id, node_info, super_node_info, ans_conn_id)
-        ts._add_pending_request.assert_called_with(TaskConnTypes.Middleman,
+        ts._add_pending_request.assert_called_with(TASK_CONN_TYPES['middleman'],
                                                    ANY, ANY, ANY, ANY)
 
     def test_remove_task_session(self):
@@ -519,6 +520,35 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertTrue(ts.remove_pending_conn.called)
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
+
+    def test_task_result_connection_failure(self):
+        """Tests what happens after connection failure when sending task_result"""
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client, use_docker_machine_manager=False)
+        ts.network = MagicMock()
+        ts.final_conn_failure = Mock()
+        ts.task_computer = Mock()
+
+        # Always fail on listening
+        ts.network.listen = MagicMock(
+            side_effect=lambda listen_info, waiting_task_result:
+                TCPNetwork.__call_failure_callback(
+                    listen_info.failure_callback,
+                    {'waiting_task_result': waiting_task_result}
+                )
+        )
+
+        # Try sending mocked task_result
+        wtr = MagicMock()
+        wtr.owner_key_id = 'owner_key_id'
+        kwargs = {'waiting_task_result': wtr}
+        ts._add_pending_request(TASK_CONN_TYPES['task_result'], 'owner_id', 'owner_port', wtr.owner_key_id, kwargs)
+        ts._sync_pending()
+        ts.client.want_to_start_task_session.assert_called_once_with(
+            wtr.owner_key_id,
+            ts.node,
+            ANY,  # conn_id
+        )
 
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()

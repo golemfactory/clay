@@ -1,6 +1,7 @@
 from ethereum import keys
 from mock import patch
 
+from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
@@ -8,7 +9,9 @@ from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransa
 PRIV_KEY = '\7' * 32
 
 
-class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
+class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
+
     def test_init(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         self.assertIsInstance(e, EthereumTransactionSystem)
@@ -29,7 +32,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
         assert e.get_balance() == (None, None, None)
 
     @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
-    @patch('golem.ethereum.paymentmonitor.PaymentMonitor.start')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
     def test_sync(self, sleep, *_):
 
@@ -70,8 +72,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
 
         with patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
             patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
-            patch(pkg + 'paymentmonitor.PaymentMonitor.start'), \
-            patch(pkg + 'paymentmonitor.PaymentMonitor.stop'), \
             patch(pkg + 'node.NodeProcess.start'), \
             patch(pkg + 'node.NodeProcess.stop'), \
             patch(pkg + 'node.NodeProcess.__init__', init), \
@@ -81,21 +81,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase):
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
             assert e._EthereumTransactionSystem__proc.start.called
-            assert e._EthereumTransactionSystem__monitor.start.called
             assert e._EthereumTransactionSystem__eth_node.node.start.called
 
             e.stop()
 
             assert not e._EthereumTransactionSystem__proc.stop.called
-            assert not e._EthereumTransactionSystem__monitor.stop.called
             assert e._EthereumTransactionSystem__eth_node.node.stop.called
 
             e._EthereumTransactionSystem__eth_node.node.stop.called = False
             e._EthereumTransactionSystem__proc._loopingCall.running = True
-            e._EthereumTransactionSystem__monitor._loopingCall.running = True
 
             e.stop()
 
             assert e._EthereumTransactionSystem__proc.stop.called
-            assert e._EthereumTransactionSystem__monitor.stop.called
             assert e._EthereumTransactionSystem__eth_node.node.stop.called

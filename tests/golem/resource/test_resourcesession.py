@@ -1,10 +1,13 @@
+from golem import testutils
 from golem.network.transport import message
 from golem.resource import resourcesession
 import mock
 import time
 import unittest
 
-class ResourceSessionTestCase(unittest.TestCase):
+class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/resource/resourcesession.py',]
+
     def setUp(self):
         self.connection = mock.MagicMock()
         self.instance = resourcesession.ResourceSession(self.connection)
@@ -166,6 +169,19 @@ class ResourceSessionTestCase(unittest.TestCase):
         self.instance.send.assert_called_once_with(mock.ANY, send_unverified=True)
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
-        self.assertIsInstance(msg, message.MessageHello)
-        self.assertEquals(msg.client_key_id, client_key_id)
-        self.assertEquals(msg.rand_val, self.instance.rand_val)
+
+        expected = {
+            u'CHALLENGE': None,
+            u'CLIENT_KEY_ID': client_key_id,
+            u'CLI_VER': 0,
+            u'DIFFICULTY': 0,
+            u'METADATA': None,
+            u'NODE_INFO': None,
+            u'NODE_NAME': None,
+            u'PORT': 0,
+            u'PROTO_ID': 0,
+            u'RAND_VAL': self.instance.rand_val,
+            u'SOLVE_CHALLENGE': False,
+        }
+
+        self.assertEquals(msg.dict_repr(), expected)
