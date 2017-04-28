@@ -866,7 +866,7 @@ class Client(HardwarePresetsMixin):
 
     def activate_preset(self, name):
         HardwarePresets.update_config(name, self.config_desc)
-        if self.task_server:
+        if hasattr(self, 'task_server') and self.task_server:
             self.task_server.change_config(self.config_desc)
 
     def __lock_datadir(self):
