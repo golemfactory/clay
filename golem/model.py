@@ -90,20 +90,6 @@ class BigIntegerField(CharField):
         return int(value, 16)
 
 
-class PercentField(FloatField):
-    """ Database field for floats in <0; 1> range """
-
-    def db_value(self, value):
-        if value:
-            value = float(value)
-        if value and value < 0. or value > 1.:
-            raise TypeError("Invalid value: {}".format(value))
-        return value
-
-    def python_value(self, value):
-        return float(value)
-
-
 class EnumField(IntegerField):
     """ Database field that maps enum type to integer."""
 
