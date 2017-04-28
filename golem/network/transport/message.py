@@ -432,55 +432,6 @@ class MessagePeers(Message):
     def dict_repr(self):
         return {self.PEERS_STR: self.peers_array}
 
-
-class MessageGetTasks(Message):
-    TYPE = P2P_MESSAGE_BASE + 5
-
-    GET_TASKS_STR = u"GET_TASKS"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """ Create request task message
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if dict_repr.get(self.GET_TASKS_STR) is None:
-                raise IOError("Get tasks message failed")
-
-    def dict_repr(self):
-        return {self.GET_TASKS_STR: True}
-
-
-class MessageTasks(Message):
-    TYPE = P2P_MESSAGE_BASE + 6
-
-    TASKS_STR = u"TASKS"
-
-    def __init__(self, tasks_array=None, sig="", timestamp=None, dict_repr=None):
-        """
-        Create message containing information about tasks
-        :param list tasks_array: list of peers information
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, sig, timestamp)
-
-        if tasks_array is None:
-            tasks_array = []
-
-        self.tasks_array = tasks_array
-
-        if dict_repr:
-            self.tasks_array = dict_repr[self.TASKS_STR]
-
-    def dict_repr(self):
-        return {self.TASKS_STR: self.tasks_array}
-
-
 class MessageRemoveTask(Message):
     TYPE = P2P_MESSAGE_BASE + 7
 
@@ -1893,9 +1844,7 @@ def init_messages():
     MessagePing()
     MessagePong()
     MessageGetPeers()
-    MessageGetTasks()
     MessagePeers()
-    MessageTasks()
     MessageTask()
     MessageRemoveTask()
     MessageFindNode()

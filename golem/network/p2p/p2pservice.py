@@ -818,12 +818,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         for p in self.peers.values():
             p.send_get_peers()
 
-    def __send_message_get_tasks(self):
-        if time.time() - self.last_tasks_request > TASK_INTERVAL:
-            self.last_tasks_request = time.time()
-            for p in self.peers.values():
-                p.send_get_tasks()
-
     def __connection_established(self, session, conn_id=None):
         peer_conn = session.conn.transport.getPeer()
         ip_address = peer_conn.host
