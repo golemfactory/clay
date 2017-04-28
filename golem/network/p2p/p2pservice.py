@@ -618,7 +618,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     def send_task(self, th_dict_repr):
         """
         Send dictionary representing task header to all connected peers
-        :param dict th_dict_repr: task header dictionary representation  
+        :param dict th_dict_repr: task header dictionary representation
         """
         for p in self.peers.values():
             p.send_task(th_dict_repr)
