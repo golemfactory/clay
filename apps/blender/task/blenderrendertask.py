@@ -408,8 +408,17 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks
         return get_min_max_y(start_task, parts, self.res_y)
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         ret = []
+
+        from apps.rendering.resources.timeestimator import estimate_time, estimate_time_for_frames
+        if not self.use_frames:
+            print estimate_time_for_frames(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION,
+                                           (self.res_x, self.res_y), len(self.frames)) / self.total_tasks
+        else:
+            print estimate_time(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION, (
+                self.res_x, self.res_y)) / self.total_tasks
+
         if not results or not results.get("data"):
             return
 

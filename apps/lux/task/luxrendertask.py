@@ -222,7 +222,7 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
         flm = find_file_with_ext(tmp_dir, [".flm"])
