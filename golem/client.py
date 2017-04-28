@@ -1,8 +1,5 @@
 import atexit
 import logging
-
-from peewee import DoesNotExist
-from pydispatch import dispatcher
 import sys
 import time
 import uuid
@@ -12,6 +9,8 @@ from copy import copy
 from os import path, makedirs
 from threading import Lock
 
+from peewee import DoesNotExist
+from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -27,7 +26,8 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database, Account, HardwarePreset
+from golem.config.presets import HardwarePresetsMixin
+from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -37,8 +37,8 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
+from golem.ranking.ranking import Ranking
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
@@ -65,7 +65,7 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(object):
+class Client(HardwarePresetsMixin):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
 
@@ -100,9 +100,8 @@ class Client(object):
         self.db = Database(datadir)
 
         # Hardware configuration
-        HardwarePresets.initialize(datadir)
-        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
-                                      self.config_desc)
+        HardwarePresets.initialize(self.datadir)
+        self.activate_preset(self.config_desc.hardware_preset_name)
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
 
@@ -865,48 +864,12 @@ class Client(object):
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
 
-    def get_presets(self):
-        try:
-            presets = HardwarePreset.select()
-            return [p.to_dict() for p in presets]
-        except Exception as exc:
-            log.debug("Cannot fetch hardware presets: {}"
-                      .format(exc))
-        return []
-
-    def get_preset(self, name):
-        try:
-            preset = HardwarePreset.get(name=name)
-            return dict(ok=preset.to_dict())
-        except DoesNotExist:
-            return dict(error="Preset not found: {}".format(name))
-        except Exception as exc:
-            return dict(error="Preset {} read error: {}".format(name, exc))
-
-    def update_preset(self, name, preset_dict):
-        try:
-            preset = HardwarePreset.get(name=name)
-            preset.apply(preset_dict)
-            preset.update()
-            return dict(ok=name)
-        except DoesNotExist:
-            return dict(error="Preset not found: {}".format(name))
-        except Exception as exc:
-            return dict(error="Preset {} update error: {}".format(name, exc))
-
-    def remove_preset(self, name):
-        try:
-            HardwarePreset.delete().where(name=name)
-        except DoesNotExist:
-            return dict(error="Preset not found: {}".format(name))
-        except Exception as exc:
-            return dict(error="Preset {} removal error: {}".format(name, exc))
-
     def activate_preset(self, name):
         try:
-            preset = HardwarePreset.get(name=name)
-            # FIXME: change config & propagate
-            return dict(error="Not implemented")
+            HardwarePresets.update_config(name, self.config_desc)
+            if self.task_server:
+                self.task_server.change_config(self.config_desc)
+            return dict(ok=name)
         except DoesNotExist:
             return dict(error="Preset not found: {}".format(name))
         except Exception as exc:
