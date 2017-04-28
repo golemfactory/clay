@@ -97,6 +97,9 @@ def run_requesting_node(datadir, num_subtasks=3, wait_for=1, max_iteration=1000)
                 report("Task finished")
                 shutdown()
                 return
+        report("Requestor max_iteration passed")
+        shutdown()
+        return -1
 
     reactor.callInThread(report_status)
     reactor.run()
