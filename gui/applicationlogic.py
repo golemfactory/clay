@@ -3,12 +3,12 @@ from __future__ import division
 import jsonpickle
 import logging
 import os
+import time
 
-from PyQt5.QtCore import Qt
 from ethereum.utils import denoms
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PyQt5.QtWidgets import QTableWidgetItem
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -514,8 +514,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def disable_environment(self, env_id):
         self.client.disable_environment(env_id)
 
-    def test_task_computation_success(self, results, est_mem, time_spent,  msg=None):
-        self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
+    def test_task_computation_success(self, results, est_mem, time_spent, estm_time=None,
+                                      msg=None):
+        self.progress_dialog.stop_progress_bar() # stop progress bar and set it's value to 100
         self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
         self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
@@ -524,7 +525,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(msg))
         else:
-            msg = u"Task tested successfully - time %.2f" % time_spent
+            msg = u"Task tested successfully - time %.2f." % time_spent
+            if estm_time:
+                msg += "\nEstimated task time: %.2f." % estm_time
             self.progress_dialog_customizer.show_message(msg)
 
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab

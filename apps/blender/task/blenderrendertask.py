@@ -17,6 +17,7 @@ from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
+from apps.rendering.resources.timeestimator import estimate_time, estimate_time_for_frames
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
@@ -410,21 +411,22 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def after_test(self, results, tmp_dir, time_spent):
         ret = []
+        return_data = {}
 
-        from apps.rendering.resources.timeestimator import estimate_time, estimate_time_for_frames
         if not self.use_frames:
-            print estimate_time_for_frames(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION,
-                                           (self.res_x, self.res_y), len(self.frames)) / self.total_tasks
+           estm_time = estimate_time_for_frames(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION,
+                                                (self.res_x, self.res_y), len(self.frames))
         else:
-            print estimate_time(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION, (
-                self.res_x, self.res_y)) / self.total_tasks
+            estm_time = estimate_time(time_spent, BlenderRenderTask.TEST_TASK_RESOLUTION,
+                                      (self.res_x, self.res_y))
+        return_data["estm_time"] = estm_time / self.total_tasks
 
         if not results or not results.get("data"):
-            return
+            return return_data
 
         for filename in results["data"]:
             if not has_ext(filename, ".log"):
-                return
+                return return_data
 
             with open(filename, "r") as f:
                 warnings = self.__find_missing_files_warnings(f.read())
@@ -443,7 +445,8 @@ class BlenderRenderTask(FrameRenderingTask):
                     ret.append(u"\n{}\n".format(warning))
 
         if len(ret) > 0:
-            return "".join(ret)
+            return_data["warnings"] = "".join(ret)
+        return return_data
 
     def __find_missing_files_warnings(self, log_content):
         warnings = []
