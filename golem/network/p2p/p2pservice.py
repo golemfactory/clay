@@ -107,7 +107,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):  # noqa
             ip_address = host.ip_address
             port = host.port
 
@@ -835,12 +835,10 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        return id_ not in self.incoming_peers and \
-               not self.__is_connected_peer(id_)
+        return id_ not in self.incoming_peers and not self.__is_connected_peer(id_)
 
     def __is_connected_peer(self, id_):
-        return id_ in self.peers or \
-               long(id_, 16) == self.get_key_id()
+        return id_ in self.peers or long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
         for peer in self.peers.values():
