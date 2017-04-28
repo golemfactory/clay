@@ -83,7 +83,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.remove_task_header("uvw")
         task_header["task_owner_port"] = 0
         task_header["task_id"] = "uvw2"
-        self.assertTrue(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header)[0])
         self.assertIsNotNone(ts.task_keeper.task_headers["uvw2"])
         self.assertIsNone(ts.request_task())
         self.assertIsNone(ts.task_keeper.task_headers.get("uvw2"))

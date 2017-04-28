@@ -1,7 +1,7 @@
+import os
 import time
 import uuid
 
-import mock
 from mock import MagicMock, Mock
 
 from golem import testutils
@@ -13,7 +13,9 @@ from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.task.taskserver import TaskServer
 
 
 class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
@@ -307,7 +309,6 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         assert p.send_stop_gossip.called
 
         self.service.sync_network()
-        assert p.send_get_tasks.called
 
         self.service.remove_peer(p)
         assert p.key_id not in self.service.peers
@@ -351,3 +352,53 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ccd.node_name = "test sending hello on name change"
         self.service.change_config(ccd)
         assert peer.hello_called # positive test
+
+    def _get_task_header(self):
+        return TaskHeader("NodeName1", "TaskId1", "10.10.10.10", 1001, "KEYI", "DEFAULT")
+
+    def test_send_task(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        conn = MagicMock()
+        peer = PeerSession(conn)
+        peer.verified = True
+        service.peers["Key1"] = peer
+        peer2 = PeerSession(conn)
+        peer2.verified = True
+        service.peers["Key2"] = peer2
+        peer3 = PeerSession(conn)
+        service.peers["Key3"] = peer3
+        assert len(service.peers) == 3
+        task_header = self._get_task_header()
+        service.send_task(task_header.to_dict())
+        assert conn.send_message.call_count == 2
+
+    def test_add_task_header(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        service = P2PService(Mock(), ClientConfigDescriptor(), keys_auth,
+                             connect_to_known_hosts=False)
+        conn = MagicMock()
+        peer = PeerSession(conn)
+        peer.verified = True
+        service.peers["Key1"] = peer
+        peer2 = PeerSession(conn)
+        peer2.verified = True
+        service.peers["Key2"] = peer2
+        task_header = self._get_task_header()
+        node = Node()
+        client = Mock()
+        client.datadir = self.path
+        service.task_server = TaskServer(node, ClientConfigDescriptor(), keys_auth, client,
+                                         use_docker_machine_manager=False)
+        service.add_task_header(task_header.to_dict())
+        conn.assert_not_called()
+
+        keys_auth_2 = EllipticalKeysAuth(os.path.join(self.path, "diff_key"))
+        task_header.task_owner_key_id = keys_auth_2.get_key_id()
+        task_header.task_id = "new task id"
+        task_header.task_owner = Node()
+        task_header.signature = keys_auth_2.sign(task_header.to_binary())
+
+        service.add_task_header(task_header.to_dict())
+        assert conn.send_message.call_count == 2

@@ -2,16 +2,28 @@ import unittest
 
 from mock import MagicMock, Mock
 
+from golem.appconfig import AppConfig
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
+from golem.model import Database
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSession, logger, P2P_PROTOCOL_ID, PeerSessionInfo
-from golem.network.transport.message import MessageHello
+from golem.network.transport.message import MessageDisconnect, MessageHello, MessageTask
+from golem.task.taskbase import TaskHeader
+from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
 class TestPeerSession(TestWithKeysAuth, LogTestCase):
+    def setUp(self):
+        super(TestPeerSession, self).setUp()
+        self.database = Database(self.tempdir)
+
+    def tearDown(self):
+        self.database.db.close()
+        super(TestPeerSession, self).tearDown()
 
     def test_init(self):
         ps = PeerSession(MagicMock())
@@ -87,6 +99,35 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session._react_to_hello(msg)
         peer_session.disconnect.assert_called_with(PeerSession.DCRDuplicatePeers)
 
+    def test_react_to_task(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        node = Node(node_name='node', key=keys_auth.get_key_id())
+
+        peer_session = PeerSession(MagicMock())
+        peer_session.p2p_service = P2PService(node, MagicMock(), keys_auth, False)
+        app_config = AppConfig.load_config(self.path)
+        config = ClientConfigDescriptor()
+        config.init_from_app_config(app_config)
+        config.max_price = 10
+        client = MagicMock()
+        client.datadir = self.path
+        peer_session.p2p_service.task_server = TaskServer(node, config, keys_auth, client,
+                                                          use_docker_machine_manager=False)
+
+        # Wrong task can't verify signature should disconnect
+        task = MagicMock()
+        peer_session._react_to_task(MessageTask(task=task))
+        args, _ = peer_session.conn.send_message.call_args
+        assert isinstance(args[0], MessageDisconnect)
+        peer_session.conn.send_message.assert_called_once()
+
+        # Properly created task, shouldn't disconnect
+        task = TaskHeader('node', "ABC", "10.10.10.10", 1023, keys_auth.get_key_id(),
+                          'DEFAULT', node)
+        task.signature = keys_auth.sign(task.to_binary())
+        peer_session._react_to_task(MessageTask(task.to_dict()))
+        peer_session.conn.send_message.assert_called_once()
+
     def test_disconnect(self):
         conn = MagicMock()
         peer_session = PeerSession(conn)
@@ -117,6 +158,14 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase):
         peer_session.dropped()
         assert peer_session.p2p_service.remove_peer.called
         assert not peer_session.p2p_service.remove_pending_conn.called
+
+    def test_send_task(self):
+        task_header = TaskHeader("NodeName1", "TaskId1", "10.10.10.10", 1001, "KEYI", "DEFAULT")
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.verified = True
+        peer_session.send_task(task_header.to_dict())
+        peer_session.conn.send_message.assert_called_once()
 
 
 class TestPeerSessionInfo(unittest.TestCase):

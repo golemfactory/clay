@@ -272,7 +272,7 @@ class Client(object):
         files = task.get_resources(None, resource_types["hashes"])
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
         deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
-        deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
+        deferred.addCallback(lambda _: self._add_new_task(task))
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -716,6 +716,11 @@ class Client(object):
     def config_changed(self):
         if self.rpc_publisher:
             self.rpc_publisher.publish(Environment.evt_opts_changed)
+
+    @inlineCallbacks
+    def _add_new_task(self, task):
+        yield self.task_server.task_manager.add_new_task(task)
+        self.p2pservice.send_task(task.header.to_dict())
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
