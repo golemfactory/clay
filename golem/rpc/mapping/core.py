@@ -11,6 +11,7 @@ CORE_METHOD_MAP = dict(
 
     get_presets=            Environment.presets,
     get_preset=             Environment.preset,
+    create_preset=          Environment.preset_create,
     update_preset=          Environment.preset_update,
     remove_preset=          Environment.preset_delete,
     activate_preset=        Environment.preset_activate,

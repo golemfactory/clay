@@ -7,6 +7,7 @@ class Environment(object):
 
     presets                 = 'env.hw.presets'
     preset                  = 'env.hw.preset'
+    preset_create           = 'env.hw.preset.create'
     preset_activate         = 'env.hw.preset.activate'
     preset_update           = 'env.hw.preset.update'
     preset_delete           = 'env.hw.preset.delete'
