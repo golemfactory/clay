@@ -865,15 +865,9 @@ class Client(HardwarePresetsMixin):
         return msg
 
     def activate_preset(self, name):
-        try:
-            HardwarePresets.update_config(name, self.config_desc)
-            if self.task_server:
-                self.task_server.change_config(self.config_desc)
-            return dict(ok=name)
-        except DoesNotExist:
-            return dict(error="Preset not found: {}".format(name))
-        except Exception as exc:
-            return dict(error="Preset {} read error: {}".format(name, exc))
+        HardwarePresets.update_config(name, self.config_desc)
+        if self.task_server:
+            self.task_server.change_config(self.config_desc)
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
