@@ -3,7 +3,6 @@ from __future__ import division
 import jsonpickle
 import logging
 import os
-import time
 
 from ethereum.utils import denoms
 from PyQt5 import QtCore
@@ -26,6 +25,7 @@ from golem.task.taskstate import TaskState
 from golem.task.taskstate import TaskStatus
 
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
+from gui.controller.timehelper import count_time
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
@@ -33,6 +33,11 @@ logger = logging.getLogger("app")
 
 
 task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
+
+
+def human_friendly_time(seconds):
+    h, m, s = count_time(seconds)
+    return "%d:%02d:%02d" % (h, m, s)
 
 
 class GuiApplicationLogic(QtCore.QObject, AppLogic):
@@ -525,9 +530,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(msg))
         else:
-            msg = u"Task tested successfully - time %.2f." % time_spent
+            msg = u"Task tested successfully - time %s" % human_friendly_time(time_spent)
             if estm_time:
-                msg += "\nEstimated task time: %.2f." % estm_time
+                msg += "\nSuggested task timeout: %s." % human_friendly_time(estm_time)
             self.progress_dialog_customizer.show_message(msg)
 
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
