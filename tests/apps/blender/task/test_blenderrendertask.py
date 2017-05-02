@@ -174,6 +174,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         
         outlog = self.temp_file_name("out.log")
         errlog = self.temp_file_name("err.log")
+        notalog = self.temp_file_name("notalog.png")
         
         fd_out = open(outlog, 'w')
         fd_out.close()
@@ -181,7 +182,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         fd_err = open(errlog, 'w')
         fd_err.close()
         
-        results = {"data": {outlog, errlog}}
+        results = {"data": {notalog, outlog, errlog}}
         warnings = self.bt.after_test(results, None)
         
         self.assertEqual(warnings, None)
@@ -195,7 +196,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             fd_err.write("Warning: path 'example/directory/to/another/file3.png' "
                          "not found\nexample/to/file4.png")
         
-        results = {"data": {outlog, errlog}}
+        results = {"data": {notalog, outlog, errlog}}
         warnings = self.bt.after_test(results, None)
         
         self.assertTrue("f1.png" in warnings)
