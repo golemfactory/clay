@@ -12,7 +12,7 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
-from apps.rendering.resources.imgcompare import verify_img
+from apps.rendering.resources.imgcompare import check_size
 from apps.rendering.resources.imgrepr import advance_verify_img
 
 
@@ -57,13 +57,13 @@ class RenderingVerificator(CoreVerificator):
                     return False
                 else:
                     self.verified_clients.append(subtask_info['node_id'])
-            if not self._verify_img(tr_file, res_x, res_y):
+            if not self._check_size(tr_file, res_x, res_y):
                 return False
 
         return True
 
-    def _verify_img(self, file_, res_x, res_y):
-        return verify_img(file_, res_x, res_y)
+    def _check_size(self, file_, res_x, res_y):
+        return check_size(file_, res_x, res_y)
 
     def _get_part_size(self, subtask_info):
         return self.res_x, self.res_y

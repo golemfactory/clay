@@ -1,7 +1,7 @@
 from apps.rendering.resources.imgrepr import load_img
 
 
-def verify_img(file_, res_x, res_y):
+def check_size(file_, res_x, res_y):
     # allow +/-1 difference in y size - workaround for blender inproperly rounding floats
     img = load_img(file_)
     if img is None:
