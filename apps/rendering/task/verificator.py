@@ -37,10 +37,10 @@ class RenderingVerificator(CoreVerificator):
         if len(tr_files) == 0:
             return False
 
-        res_x, res_y = self._get_part_size(subtask_id, subtask_info)
+        res_x, res_y = self._get_part_size(subtask_info)
 
         adv_test_file = self._choose_adv_ver_file(tr_files, subtask_info)
-        x0, y0, x1, y1 = self._get_part_img_size(subtask_id, adv_test_file, subtask_info)
+        x0, y0, x1, y1 = self._get_part_img_size(subtask_info)
 
         for tr_file in tr_files:
             if adv_test_file is not None and tr_file in adv_test_file:
@@ -63,7 +63,7 @@ class RenderingVerificator(CoreVerificator):
     def _verify_img(self, file_, res_x, res_y):
         return verify_img(file_, res_x, res_y)
 
-    def _get_part_size(self, subtask_id, subtask_info):
+    def _get_part_size(self, subtask_info):
         return self.res_x, self.res_y
 
     def _get_box_start(self, x0, y0, x1, y1):
@@ -80,7 +80,7 @@ class RenderingVerificator(CoreVerificator):
                 adv_test_file = random.choice(tr_files)
         return adv_test_file
 
-    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
+    def _get_part_img_size(self, subtask_info):
         num_task = subtask_info['start_task']  # verification method reacts to key error
         if self.total_tasks == 0 or num_task > self.total_tasks:
             logger.error("Wrong total tasks number ({}) for subtask number {}".format(
@@ -162,11 +162,9 @@ class FrameRenderingVerificator(RenderingVerificator):
         else:
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
-    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
+    def _get_part_img_size(self, subtask_info):
         if not self.use_frames or self.__full_frames():
-            return super(FrameRenderingVerificator, self)._get_part_img_size(subtask_id,
-                                                                             adv_test_file,
-                                                                             subtask_info)
+            return super(FrameRenderingVerificator, self)._get_part_img_size(subtask_info)
         else:
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']
