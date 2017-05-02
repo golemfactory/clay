@@ -52,10 +52,12 @@ class TTask(Task):
         ctd.short_description = ""
         return ctd
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         self.test_finished = True
         self.results = results
         self.tmp_dir = tmp_dir
+        self.time_spent = time_spent
+        return {'estm_time': time_spent}
 
     def get_output_names(self):
         return ["output1", "output2", "output3"]
@@ -373,9 +375,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    @patch('gui.applicationlogic.QMessageBox')
-    def test_messages(self, msg_box):
-        msg_box.return_value = msg_box
+    def test_messages(self):
         logic = self.logic
         self.logic.datadir = self.path
         logic.customizer = MainWindowCustomizer(self.app.main_window, logic)

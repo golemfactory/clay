@@ -169,8 +169,13 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.initialize(dm)
 
     def test_after_test(self):
-        self.assertEqual(self.bt.after_test({}, None), None)
-        self.assertEqual(self.bt.after_test({"notData":[]}, None), None)
+        after_test_data = self.bt.after_test({}, None, 20)
+        assert after_test_data.get("estm_time") is not None
+        assert after_test_data.get("warnings") is None
+
+        after_test_data = self.bt.after_test({"notData": []}, None, 20)
+        assert after_test_data.get("estm_time") is not None
+        assert after_test_data.get("warnings") is None
         
         outlog = self.temp_file_name("out.log")
         errlog = self.temp_file_name("err.log")
@@ -182,9 +187,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         fd_err.close()
         
         results = {"data": {outlog, errlog}}
-        warnings = self.bt.after_test(results, None)
-        
-        self.assertEqual(warnings, None)
+        after_test_data = self.bt.after_test(results, None, 20)
+        assert after_test_data.get("estm_time") is not None
+        assert after_test_data.get("warnings") is None
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Warning: path 'example/directory/to/file/f1.png' "
@@ -196,13 +201,16 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                          "not found\nexample/to/file4.png")
         
         results = {"data": {outlog, errlog}}
-        warnings = self.bt.after_test(results, None)
+        after_test_data = self.bt.after_test(results, None, 20)
+        assert after_test_data.get("estm_time") is not None
+        warnings = after_test_data.get("warnings")
+        assert warnings is not None
         
-        self.assertTrue("f1.png" in warnings)
-        self.assertTrue("file2.png" in warnings)
-        self.assertTrue("file3.png" in warnings)
-        self.assertEquals(warnings.count("file2.png"), 1)
-        self.assertFalse("file4.png" in warnings)
+        assert "f1.png" in warnings
+        assert "file2.png" in warnings
+        assert "file3.png" in warnings
+        assert warnings.count("file2.png") == 1
+        assert "file4.png" not in warnings
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
@@ -210,8 +218,11 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         with open(errlog, 'w') as fd_err:
             fd_err.write("Error: But not important at all")
 
-        warnings = self.bt.after_test(results, None)
-        self.assertTrue("COMPLETELY UNKNOWN ENGINE" in warnings)
+        after_test_data = self.bt.after_test(results, None, 20)
+        assert after_test_data.get("estm_time") is not None
+        warnings = after_test_data.get("warnings")
+        assert warnings is not None
+        assert "COMPLETELY UNKNOWN ENGINE" in warnings
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True

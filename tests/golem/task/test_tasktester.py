@@ -40,7 +40,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        self.task.after_test = lambda res, tmp_dir: None
+        self.task.after_test = lambda res, tmp_dir, est_time: {}
         self.task.query_extra_data_for_test_task = Mock()
 
         tt = TaskTester(self.task, self.path, Mock(), Mock())
@@ -64,13 +64,13 @@ class TestTaskTester(TestDirFixture, LogTestCase):
 
         self.message = ""
 
-        def success_callback(res, est_mem, time_spent, msg):
+        def success_callback(res, est_mem, time_spent, msg, estm_time):
             self.message = "Success " + msg
 
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        self.task.after_test = lambda res, tmp_dir: "bla ble"
+        self.task.after_test = lambda res, tmp_dir, test_time: {"warnings": "bla ble"}
         self.task.query_extra_data_for_test_task = Mock()
 
         tt = TaskTester(self.task, self.path, success_callback, None)

@@ -77,7 +77,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
         
-        self.assertEqual(task.after_test(None, None), None)
+        after_test_result = task.after_test(None, None, None)
+        assert after_test_result.get("estm_time") is None
+        assert after_test_result.get("warnings") is None
 
         assert len(task.listeners) == 0
 
