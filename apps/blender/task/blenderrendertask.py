@@ -413,7 +413,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         for filename in results["data"]:
             if not has_ext(filename, ".log"):
-                return
+                continue
 
             with open(filename, "r") as f:
                 warnings = self.__find_missing_files_warnings(f.read())
