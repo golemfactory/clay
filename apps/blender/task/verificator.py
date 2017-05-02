@@ -6,6 +6,7 @@ from golem.core.common import timeout_to_deadline
 
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.resources.imgcompare import verify_img
 
 
 class BlenderVerificator(FrameRenderingVerificator):
@@ -83,3 +84,6 @@ class BlenderVerificator(FrameRenderingVerificator):
             else:
                 res_y = ceiling_height
         return res_y
+
+    def _verify_img(self, file_, res_x, res_y):
+        return verify_img(file_, res_x, res_y)

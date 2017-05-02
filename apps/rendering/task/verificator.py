@@ -12,7 +12,9 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
-from apps.rendering.resources.imgrepr import verify_img, advance_verify_img
+from apps.rendering.resources.imgcompare import verify_img
+from apps.rendering.resources.imgrepr import advance_verify_img
+
 
 logger = logging.getLogger("apps.rendering")
 

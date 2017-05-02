@@ -10,7 +10,7 @@ from golem.tools.assertlogs import LogTestCase
 from apps.rendering.resources.imgrepr import (advance_verify_img, blend, compare_exr_imgs,
                                               compare_imgs, compare_pil_imgs, calculate_mse,
                                               calculate_psnr, EXRImgRepr, ImgRepr, load_as_pil,
-                                              load_img, logger, PILImgRepr, verify_img)
+                                              load_img, logger, PILImgRepr)
 
 
 class TImgRepr(ImgRepr):
@@ -217,17 +217,6 @@ class TestExrImgRepr(TempDirFixture):
 
 
 class TestImgFunctions(TempDirFixture, LogTestCase):
-    def test_verify_img(self):
-        file1 = self.temp_file_name('img.png')
-        for y in range(100, 200):
-            x = 100
-            sample_img = Image.new("RGB", (x, y))
-            sample_img.save(file1)
-            self.assertTrue(os.path.isfile(file1))
-            self.assertTrue(verify_img(file1, x, y))
-            self.assertTrue(verify_img(file1, x, y + 1))
-            self.assertTrue(verify_img(file1, x, y - 1))
-            self.assertFalse(verify_img(file1, x + 1, y))
 
     def test_load_img(self):
         exr_img = load_img(_get_test_exr())
