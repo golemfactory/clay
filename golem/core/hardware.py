@@ -1,6 +1,5 @@
 import multiprocessing
 
-import math
 import psutil
 from psutil import virtual_memory
 
@@ -38,7 +37,7 @@ class HardwarePresets(object):
 
     DEFAULT_NAME = DEFAULT_HARDWARE_PRESET_NAME
     default_values = dict(
-        cpu_cores=AVAILABLE_CPU_CORES,
+        cpu_cores=len(AVAILABLE_CPU_CORES),
         memory=AVAILABLE_MEMORY,
         disk=MIN_DISK_SPACE
     )
@@ -92,7 +91,7 @@ class HardwarePresets(object):
 
     @classmethod
     def cpu_cores(cls, core_num):
-        return min(max(core_num, MIN_CPU_CORES), AVAILABLE_CPU_CORES)
+        return min(max(core_num, MIN_CPU_CORES), len(AVAILABLE_CPU_CORES))
 
     @classmethod
     def memory(cls, mem_size):
