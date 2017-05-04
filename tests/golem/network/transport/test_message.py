@@ -214,6 +214,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 message.MessageGetPeers,
                 message.MessageGetTasks,
                 message.MessageGetResourcePeers,
+                message.MessageStopGossip,
                 ):
             msg = message_class()
             expected = {}
@@ -224,6 +225,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 (message.MessagePeers, 'PEERS'),
                 (message.MessageTasks, 'TASKS'),
                 (message.MessageResourcePeers, 'RESOURCE_PEERS'),
+                (message.MessageGossip, 'GOSSIP'),
                 ):
             msg = message_class()
             expected = {

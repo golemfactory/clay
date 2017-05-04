@@ -414,46 +414,25 @@ class MessageDegree(Message):
 class MessageGossip(Message):
     TYPE = P2P_MESSAGE_BASE + 11
 
-    GOSSIP_STR = u"GOSSIP"
+    MAPPING = {
+        'gossip': u"GOSSIP",
+    }
 
-    def __init__(self, gossip=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, gossip=None, **kwargs):
         """
         Create gossip message
         :param list gossip: gossip to be send
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
+        if gossip is None:
+            gossip = []
         self.gossip = gossip
-
-        if dict_repr:
-            self.gossip = dict_repr[self.GOSSIP_STR]
-
-    def dict_repr(self):
-        return {self.GOSSIP_STR: self.gossip}
+        super(MessageGossip, self).__init__(**kwargs)
 
 
 class MessageStopGossip(Message):
+    """Create stop gossip message"""
     TYPE = P2P_MESSAGE_BASE + 12
-
-    STOP_GOSSIP_STR = u"STOP_GOSSIP"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """ Create stop gossip message
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if dict_repr.get(self.STOP_GOSSIP_STR) is None:
-                raise IOError("Stop gossip message failed")
-
-    def dict_repr(self):
-        return {self.STOP_GOSSIP_STR: True}
+    MAPPING = {}
 
 
 class MessageLocRank(Message):
