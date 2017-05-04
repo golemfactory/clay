@@ -12,7 +12,9 @@ from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.resources.blenderloganalyser import find_wrong_renderer_warning
+from apps.blender.resources.blenderloganalyser import (find_missing_files,
+                                                       find_wrong_renderer_warning,
+                                                       format_missing_files_warning)
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
@@ -417,16 +419,9 @@ class BlenderRenderTask(FrameRenderingTask):
                 continue
 
             with open(filename, "r") as f:
-                warnings = self.__find_missing_files_warnings(f.read())
-                for w in warnings:
-                    w = u"    {}\n".format(w)
-                    if len(ret) == 0:
-                        ret.append(u"Additional data is missing:\n")
-
-                    if w not in ret:
-                        ret.append(w)
-                if warnings:
-                    ret.append(u"\nMake sure you added all required files to resources.")
+                missing_files = find_missing_files(f.read())
+                if missing_files:
+                    ret.append(format_missing_files_warning(missing_files))
                 f.seek(0)
                 warning = find_wrong_renderer_warning(f.read())
                 if warning:
@@ -434,14 +429,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if len(ret) > 0:
             return "".join(ret)
-
-    def __find_missing_files_warnings(self, log_content):
-        warnings = []
-        for l in log_content.splitlines():
-            if l.lower().startswith("warning: path ") and l.lower().endswith(" not found"):
-                # extract filename from warning message
-                warnings.append(os.path.basename(l[14:-11]))
-        return warnings
 
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)
