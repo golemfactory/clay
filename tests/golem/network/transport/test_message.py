@@ -199,14 +199,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         }
         self.assertEquals(expected, msg.dict_repr())
 
-    def test_message_disconnect(self):
-        reason = random.randint(-10**10, 10**10)
-        msg = message.MessageDisconnect(reason=reason)
-        expected = {
-            'DISCONNECT_REASON': reason,
-        }
-        self.assertEquals(expected, msg.dict_repr())
-
     def test_message_challenge_solution(self):
         solution = u'O gajach świętych, z których i drew zwalonych wichrem uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), że świętymi były i zwierzęta chroniące się w nich, tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro zważymy, że dla Litwina gaje takie były rzeczywiście nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż samo donosi w starożytności Strabon o Henetach: były u nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły się zwierzęta i jelenie z wilkami się kupiły; gdy się ludzie zbliżali i dotykali ich, nie uciekały; skoro gonione od psów tu się schroniły, ustawała pogoń”. I bardzo trzeźwi mitografowie uznawali w tych gajach heneckich tylko symbole, „pojęcia o kraju bogów i o czasach rajskich”; przykład litewski poucza zaś dostatecznie, że podanie to, jak tyle innych, które najmylniej symbolicznie tłumaczą, należy rozumieć dosłownie, o prawdziwych gajach i zwierzętach, nie o jakimś raju i towarzyszach Adama; przesada w podaniu naturalnie razić nie może. Badania mitologiczne byłyby już od dawna o wiele głębiej dotarły, gdyby mania symbolizowania wszelkich szczegółów, i dziś jeszcze nie wykorzeniona, nie odwracała ich na manowce.\n-- Aleksander Brückner "Starożytna Litwa"'
         msg = message.MessageChallengeSolution(solution=solution)
@@ -236,6 +228,18 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             msg = message_class()
             expected = {
                 key: [],
+            }
+            self.assertEquals(expected, msg.dict_repr())
+
+    def test_int_messages(self):
+        for message_class, param_name, key in (
+                    (message.MessageDisconnect, 'reason', 'DISCONNECT_REASON'),
+                    (message.MessageDegree, 'degree', 'DEGREE'),
+                ):
+            value = random.randint(-10**10, 10**10)
+            msg = message_class(**{param_name: value})
+            expected = {
+                key: value,
             }
             self.assertEquals(expected, msg.dict_repr())
 

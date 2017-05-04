@@ -398,25 +398,17 @@ class MessageResourcePeers(Message):
 class MessageDegree(Message):
     TYPE = P2P_MESSAGE_BASE + 10
 
-    DEGREE_STR = u"DEGREE"
+    MAPPING = {
+        'degree': u"DEGREE",
+    }
 
-    def __init__(self, degree=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, degree=None, **kwargs):
         """
         Create message with information about node degree
         :param int degree: node degree in golem network
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.degree = degree
-
-        if dict_repr:
-            self.degree = dict_repr[self.DEGREE_STR]
-
-    def dict_repr(self):
-        return {self.DEGREE_STR: self.degree}
+        super(MessageDegree, self).__init__(**kwargs)
 
 
 class MessageGossip(Message):

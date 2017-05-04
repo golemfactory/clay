@@ -5,7 +5,7 @@ from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
     \
-    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
+    MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
@@ -183,7 +183,7 @@ class PeerSession(BasicSafeSession):
         """ Send degree message
          :param int degree: degree of this node
         """
-        self.send(MessageDegree(degree))
+        self.send(message.MessageDegree(degree=degree))
 
     def send_gossip(self, gossip):
         """ Send message with gossip
@@ -474,7 +474,7 @@ class PeerSession(BasicSafeSession):
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            MessageDegree.TYPE: self._react_to_degree,
+            message.MessageDegree.TYPE: self._react_to_degree,
             MessageGossip.TYPE: self._react_to_gossip,
             MessageLocRank.TYPE: self._react_to_loc_rank,
             MessageStopGossip.TYPE: self._react_to_stop_gossip,
