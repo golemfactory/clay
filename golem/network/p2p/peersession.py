@@ -3,9 +3,6 @@ import time
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
-from golem.network.transport.message import \
-    MessageNatHole, MessageNatTraverseFailure, \
-    MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -231,7 +228,7 @@ class PeerSession(BasicSafeSession):
         :param int port: port of the nat hole
         :param uuid conn_id: connection id for reference
         """
-        self.send(MessageNatHole(key_id, address, port, conn_id))
+        self.send(message.MessageNatHole(key_id=key_id, address=address, port=port, conn_id=conn_id))
 
     def send_inform_about_nat_traverse_failure(self, key_id, conn_id):
         """
@@ -239,7 +236,7 @@ class PeerSession(BasicSafeSession):
         :param key_id: key of the node that should be inform about failure
         :param uuid conn_id: connection id for reference
         """
-        self.send(MessageInformAboutNatTraverseFailure(key_id, conn_id))
+        self.send(message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id))
 
     def send_nat_traverse_failure(self, conn_id):
         """
@@ -247,7 +244,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :return:
         """
-        self.send(MessageNatTraverseFailure(conn_id))
+        self.send(message.MessageNatTraverseFailure(conn_id=conn_id))
 
     def _react_to_ping(self, msg):
         self._send_pong()
@@ -459,9 +456,9 @@ class PeerSession(BasicSafeSession):
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
             message.MessageSetTaskSession.TYPE: self._react_to_set_task_session,
-            MessageNatHole.TYPE: self._react_to_nat_hole,
-            MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
-            MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure
+            message.MessageNatHole.TYPE: self._react_to_nat_hole,
+            message.MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
+            message.MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure
         })
 
     def __set_resource_msg_interpretations(self):

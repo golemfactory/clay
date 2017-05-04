@@ -249,6 +249,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         for message_class, param_name, key in (
                 (message.MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
                 (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
+                (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
                 ):
             value = 'test-{}'.format(uuid.uuid4())
             msg = message_class(**{param_name: value})
@@ -290,5 +291,29 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'NODE_INFO': node_info,
             'CONN_ID': conn_id,
             'SUPER_NODE_INFO': super_node_info,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_nat_hole(self):
+        key_id = 'test-ki-{}'.format(uuid.uuid4())
+        conn_id = 'test-ci-{}'.format(uuid.uuid4())
+        address = '8.8.8.8'
+        port = random.randint(0, 2**16) + 1
+        msg = message.MessageNatHole(key_id=key_id, conn_id=conn_id, address=address, port=port)
+        expected = {
+            'KEY_ID': key_id,
+            'ADDR': address,
+            'CONN_ID': conn_id,
+            'PORT': port,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_inform_about_nat_traverse_failure(self):
+        key_id = 'test-ki-{}'.format(uuid.uuid4())
+        conn_id = 'test-ci-{}'.format(uuid.uuid4())
+        msg = message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id)
+        expected = {
+            'KEY_ID': key_id,
+            'CONN_ID': conn_id,
         }
         self.assertEquals(expected, msg.dict_repr())

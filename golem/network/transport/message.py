@@ -520,100 +520,61 @@ class MessageSetTaskSession(Message):
 class MessageNatHole(Message):
     TYPE = P2P_MESSAGE_BASE + 17
 
-    KEY_ID_STR = u"KEY_ID"
-    ADDR_STR = u"ADDR"
-    PORT_STR = u"PORT"
-    CONN_ID_STR = u"CONN_ID"
+    MAPPING = {
+        'key_id': u"KEY_ID",
+        'address': u"ADDR",
+        'port': u"PORT",
+        'conn_id': u"CONN_ID",
+    }
 
-    def __init__(self, key_id=None, addr=None, port=None, conn_id=None, sig="", timestamp=None,
-                 dict_repr=None):
+    def __init__(self, key_id=None, address=None, port=None, conn_id=None, **kwargs):
         """
         Create message with information about nat hole
         :param key_id: key of the node behind nat hole
         :param str addr: address of the nat hole
         :param int port: port of the nat hole
         :param uuid conn_id: connection id for reference
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.key_id = key_id
-        self.addr = addr
+        self.address = address
         self.port = port
         self.conn_id = conn_id
-
-        if dict_repr:
-            self.key_id = dict_repr[self.KEY_ID_STR]
-            self.addr = dict_repr[self.ADDR_STR]
-            self.port = dict_repr[self.PORT_STR]
-            self.conn_id = dict_repr[self.CONN_ID_STR]
-
-    def dict_repr(self):
-        return {
-            self.KEY_ID_STR: self.key_id,
-            self.ADDR_STR: self.addr,
-            self.PORT_STR: self.port,
-            self.CONN_ID_STR: self.conn_id
-        }
+        super(MessageNatHole, self).__init__(**kwargs)
 
 
 class MessageNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 18
 
-    CONN_ID_STR = u"CONN_ID"
+    MAPPING = {
+        'conn_id': u"CONN_ID",
+    }
 
-    def __init__(self, conn_id=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, conn_id=None, **kwargs):
         """
         Create message with information about unsuccessful nat traverse
         :param uuid conn_id: connection id for reference
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.conn_id = conn_id
-
-        if dict_repr:
-            self.conn_id = dict_repr[self.CONN_ID_STR]
-
-    def dict_repr(self):
-        return {
-            self.CONN_ID_STR: self.conn_id
-        }
+        super(MessageNatTraverseFailure, self).__init__(**kwargs)
 
 
 class MessageInformAboutNatTraverseFailure(Message):
     TYPE = P2P_MESSAGE_BASE + 19
 
-    KEY_ID_STR = u"KEY_ID"
-    CONN_ID_STR = u"CONN_ID"
+    MAPPING = {
+        'key_id': u"KEY_ID",
+        'conn_id': u"CONN_ID",
+    }
 
-    def __init__(self, key_id=None, conn_id=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, key_id=None, conn_id=None, **kwargs):
         """
         Create request to inform node with key_id about unsuccessful nat traverse.
         :param key_id: key of the node that should be inform about failure
         :param uuid conn_id: connection id for reference
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.key_id = key_id
         self.conn_id = conn_id
-
-        if dict_repr:
-            self.key_id = dict_repr[self.KEY_ID_STR]
-            self.conn_id = dict_repr[self.CONN_ID_STR]
-
-    def dict_repr(self):
-        return {
-            self.KEY_ID_STR: self.key_id,
-            self.CONN_ID_STR: self.conn_id
-        }
+        super(MessageInformAboutNatTraverseFailure, self).__init__(**kwargs)
 
 
 TASK_MSG_BASE = 2000
