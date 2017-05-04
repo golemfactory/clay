@@ -322,3 +322,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'CONN_ID': conn_id,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_get_resource(self):
+        task_id = 'test-ti-{}'.format(uuid.uuid4())
+        resource_header = 'test-rh-{}'.format(uuid.uuid4())
+        msg = message.MessageGetResource(task_id=task_id, resource_header=resource_header)
+        expected = {
+            'SUB_TASK_ID': task_id,
+            'RESOURCE_HEADER': resource_header,
+        }
+        self.assertEquals(expected, msg.dict_repr())

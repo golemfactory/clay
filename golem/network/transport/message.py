@@ -730,63 +730,20 @@ class MessageTaskResultHash(Message):
 class MessageGetResource(Message):
     TYPE = TASK_MSG_BASE + 8
 
-    TASK_ID_STR = u"SUB_TASK_ID"
-    RESOURCE_HEADER_STR = u"RESOURCE_HEADER"
+    MAPPING = {
+        'task_id': u"SUB_TASK_ID",
+        'resource_header': u"RESOURCE_HEADER",
+    }
 
-    def __init__(self, task_id="", resource_header=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, task_id="", resource_header=None, **kwargs):
         """
         Send request for resource to given task
         :param uuid task_id: given task id
         :param ResourceHeader resource_header: description of resources that current node has
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.task_id = task_id
         self.resource_header = resource_header
-
-        if dict_repr:
-            self.task_id = dict_repr[self.TASK_ID_STR]
-            self.resource_header = dict_repr[self.RESOURCE_HEADER_STR]
-
-    def dict_repr(self):
-        return {self.TASK_ID_STR: self.task_id,
-                self.RESOURCE_HEADER_STR: self.resource_header
-                }
-
-
-# Old method of sending resource. Don't use if it isn't necessary.
-class MessageResource(Message):
-    TYPE = TASK_MSG_BASE + 9
-
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    RESOURCE_STR = u"RESOURCE"
-
-    def __init__(self, subtask_id=0, resource=None, sig="", timestamp=None, dict_repr=None):
-        """
-        Create message with resource
-        :param str subtask_id: attached resource is needed for this subtask computation
-        :param resource: resource in binary for
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        warnings.warn("Old method of sending resource. Don't use if it isn't necessary.", DeprecationWarning)
-        Message.__init__(self, sig, timestamp)
-
-        self.subtask_id = subtask_id
-        self.resource = resource
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-            self.resource = dict_repr[self.RESOURCE_STR]
-
-    def dict_repr(self):
-        return {self.SUB_TASK_ID_STR: self.subtask_id,
-                self.RESOURCE_STR: self.resource
-                }
+        super(MessageGetResource, self).__init__(**kwargs)
 
 
 class MessageSubtaskResultAccepted(Message):
@@ -1518,7 +1475,6 @@ def init_messages():
 
     # Resource messages
     MessageGetResource()
-    MessageResource()
     MessagePushResource()
     MessageHasResource()
     MessageWantsResource()
