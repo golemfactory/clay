@@ -21,9 +21,9 @@ class TestBlenderVerificator(TestCase):
         bv.res_x = 800
         bv.res_y = 600
         bv.total_tasks = 20
-        assert bv._get_part_size("Subtask1", {"start_task": 3}) == (800, 30)
+        assert bv._get_part_size({"start_task": 3}) == (800, 30)
         bv.use_frames = True
         bv.frames = range(40)
-        assert bv._get_part_size("subtask1", {"start_task": 3}) == (800, 600)
+        assert bv._get_part_size({"start_task": 3}) == (800, 600)
         bv.frames = range(10)
-        assert bv._get_part_size("subtask1", {"start_task": 3}) == (800, 300)
+        assert bv._get_part_size({"start_task": 3}) == (800, 300)

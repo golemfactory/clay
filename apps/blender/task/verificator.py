@@ -54,11 +54,11 @@ class BlenderVerificator(FrameRenderingVerificator):
         ctd.deadline = timeout_to_deadline(self.verification_timeout)
         return ctd
 
-    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
-        x, y = self._get_part_size(subtask_id, subtask_info)
+    def _get_part_img_size(self, subtask_info):
+        x, y = self._get_part_size(subtask_info)
         return 0, 0, x, y
 
-    def _get_part_size(self, subtask_id, subtask_info):
+    def _get_part_size(self, subtask_info):
         start_task = subtask_info['start_task']
         if not self.use_frames:
             res_y = self._get_part_size_from_subtask_number(start_task)
