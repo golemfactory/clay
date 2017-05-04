@@ -8,7 +8,7 @@ from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
-P2P_PROTOCOL_ID = 12
+P2P_PROTOCOL_ID = 13
 
 
 class PeerSessionInfo(object):
