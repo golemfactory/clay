@@ -294,7 +294,7 @@ class TaskSession(MiddlemanSafeSession):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
-        self.send(message.MessageTaskFailure(subtask_id, err_msg))
+        self.send(message.MessageTaskFailure(subtask_id=subtask_id, err=err_msg))
 
     def send_result_rejected(self, subtask_id):
         """ Inform that result don't pass verification
@@ -317,7 +317,7 @@ class TaskSession(MiddlemanSafeSession):
         """ Inform that this session was started as an answer for a request to start task session
         :param uuid conn_id: connection id for reference
         """
-        self.send(message.MessageStartSessionResponse(conn_id))
+        self.send(message.MessageStartSessionResponse(conn_id=conn_id))
 
     # TODO Maybe dest_node is not necessary?
     def send_middleman(self, asking_node, dest_node, ask_conn_id):
@@ -327,7 +327,7 @@ class TaskSession(MiddlemanSafeSession):
         :param ask_conn_id: connection id that asking node gave for reference
         """
         self.asking_node_key_id = asking_node.key
-        self.send(message.MessageMiddleman(asking_node, dest_node, ask_conn_id))
+        self.send(message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id))
 
     def send_join_middleman_conn(self, key_id, conn_id, dest_node_key_id):
         """ Ask node communicate with other through middleman connection (this node is the middleman and connection
@@ -336,7 +336,7 @@ class TaskSession(MiddlemanSafeSession):
         :param conn_id: connection id for reference
         :param dest_node_key_id: public key of the other node of the middleman connection
         """
-        self.send(message.MessageJoinMiddlemanConn(key_id, conn_id, dest_node_key_id))
+        self.send(message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node_key_id))
 
     def send_nat_punch(self, asking_node, dest_node, ask_conn_id):
         """ Ask node to inform other node about nat hole that this node will prepare with this connection
@@ -346,7 +346,7 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         self.asking_node_key_id = asking_node.key
-        self.send(message.MessageNatPunch(asking_node, dest_node, ask_conn_id))
+        self.send(message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id))
 
     #########################
     # Reactions to messages #
@@ -380,7 +380,7 @@ class TaskSession(MiddlemanSafeSession):
             self.task_server.add_task_session(msg.compute_task_def.subtask_id, self)
             self.task_computer.task_given(msg.compute_task_def)
         else:
-            self.send(message.MessageCannotComputeTask(msg.compute_task_def.subtask_id, self.err_msg))
+            self.send(message.MessageCannotComputeTask(subtask_id=msg.compute_task_def.subtask_id, reason=self.err_msg))
             self.task_computer.session_closed()
             self.dropped()
 
@@ -460,19 +460,11 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        # self.__send_resource_format(self.task_server.config_desc.use_distributed_resource_management)
-        self.__send_resource_list(msg)
-
-    def _react_to_accept_resource_format(self, msg):
-        if self.last_resource_msg is not None:
-            if self.task_server.config_desc.use_distributed_resource_management:
-                self.__send_resource_list(self.last_resource_msg)
-            else:
-                self.__send_delta_resource(self.last_resource_msg)
-            self.last_resource_msg = None
-        else:
-            logger.error("Unexpected MessageAcceptResource message")
-            self.dropped()
+        resource_manager = self.task_server.client.resource_server.resource_manager
+        client_options = resource_manager.build_client_options(self.task_server.get_key_id())
+        res = resource_manager.get_resources(msg.task_id)
+        res = resource_manager.to_wire(res)
+        self.send(message.MessageResourceList(resources=res, options=client_options))
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -499,16 +491,6 @@ class TaskSession(MiddlemanSafeSession):
         self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
-
-    def _react_to_resource_format(self, msg):
-        if not msg.use_distributed_resource:
-            tmp_file = os.path.join(self.task_computer.resource_manager.get_temporary_dir(self.task_id),
-                                    "res" + self.task_id)
-            output_dir = self.task_computer.resource_manager.get_resource_dir(self.task_id)
-            extra_data = {"task_id": self.task_id, "data_type": 'resource', 'output_dir': output_dir}
-            self.conn.consumer = DecryptFileConsumer([tmp_file], output_dir, self, extra_data)
-            self.conn.stream_mode = True
-        self.__send_accept_resource_format()
 
     def _react_to_hello(self, msg):
         send_hello = False
@@ -571,7 +553,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_nat_punch(self, msg):
         self.task_server.organize_nat_punch(self.address, self.port, self.key_id, msg.asking_node, msg.dest_node,
                                             msg.ask_conn_id)
-        self.send(message.MessageWaitForNatTraverse(self.port))
+        self.send(message.MessageWaitForNatTraverse(port=self.port))
         self.dropped()
 
     def _react_to_wait_for_nat_traverse(self, msg):
@@ -656,19 +638,6 @@ class TaskSession(MiddlemanSafeSession):
             address=self.task_server.get_resource_addr(),
             port=self.task_server.get_resource_port()))
 
-    def __send_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager
-        client_options = resource_manager.build_client_options(self.task_server.get_key_id())
-        res = resource_manager.get_resources(msg.task_id)
-        res = resource_manager.to_wire(res)
-        self.send(message.MessageResourceList(res, options=client_options))
-
-    def __send_resource_format(self, use_distributed_resource):
-        self.send(message.MessageResourceFormat(use_distributed_resource))
-
-    def __send_accept_resource_format(self):
-        self.send(message.MessageAcceptResourceFormat())
-
     def __send_data_results(self, res):
         result = CBORSerializer.dumps(res.result)
         extra_data = {"subtask_id": res.subtask_id, "data_type": "result"}
@@ -700,7 +669,7 @@ class TaskSession(MiddlemanSafeSession):
             if isinstance(exc, EnvironmentError):
                 self.task_server.retry_sending_task_result(subtask_id)
             else:
-                self.send(message.MessageTaskFailure(subtask_id, '{}'.format(exc)))
+                self.send_task_failure(subtask_id, '{}'.format(exc))
                 self.task_server.task_result_sent(subtask_id)
 
             self.dropped()
@@ -737,13 +706,11 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageGetTaskResult.TYPE: self._react_to_get_task_result,
             message.MessageTaskResultHash.TYPE: self._react_to_task_result_hash,
             message.MessageGetResource.TYPE: self._react_to_get_resource,
-            message.MessageAcceptResourceFormat.TYPE: self._react_to_accept_resource_format,
             message.MessageResourceList.TYPE: self._react_to_resource_list,
             message.MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,
             message.MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,
             message.MessageTaskFailure.TYPE: self._react_to_task_failure,
             message.MessageDeltaParts.TYPE: self._react_to_delta_parts,
-            message.MessageResourceFormat.TYPE: self._react_to_resource_format,
             message.MessageHello.TYPE: self._react_to_hello,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             message.MessageStartSessionResponse.TYPE: self._react_to_start_session_response,

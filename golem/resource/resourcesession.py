@@ -3,7 +3,7 @@ import logging
 
 from golem.network.transport import message
 from golem.network.transport.message import MessageHasResource, MessageWantsResource, \
-    MessagePushResource, MessagePullResource, MessagePullAnswer
+    MessagePushResource, MessagePullResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
@@ -37,7 +37,7 @@ class ResourceSession(BasicSafeSession):
             MessageHasResource.TYPE: self._react_to_has_resource,
             MessageWantsResource.TYPE: self._react_to_wants_resource,
             MessagePullResource.TYPE: self._react_to_pull_resource,
-            MessagePullAnswer.TYPE: self._react_to_pull_answer,
+            message.MessagePullAnswer.TYPE: self._react_to_pull_answer,
             message.MessageHello.TYPE: self._react_to_hello,
             message.MessageRandVal.TYPE: self._react_to_rand_val
         })
@@ -178,7 +178,7 @@ class ResourceSession(BasicSafeSession):
         has_resource = self.resource_server.get_resource_entry(msg.resource)
         if not has_resource:
             self.resource_server.get_peers()
-        self.send(MessagePullAnswer(msg.resource, has_resource))
+        self.send(message.MessagePullAnswer(resource=msg.resource, has_resource=has_resource))
 
     def _react_to_pull_answer(self, msg):
         self.resource_server.pull_answer(msg.resource, msg.has_resource, self)

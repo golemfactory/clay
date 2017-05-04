@@ -219,6 +219,14 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 message.MessageGetTasks,
                 message.MessageGetResourcePeers,
                 message.MessageStopGossip,
+                message.MessageBeingMiddlemanAccepted,
+                message.MessageMiddlemanAccepted,
+                message.MessageMiddlemanReady,
+                message.MessageNatPunchFailure,
+                message.MessageWaitingForResults,
+                message.MessageHasResource,
+                message.MessageWantsResource,
+                message.MessagePullResource,
                 ):
             msg = message_class()
             expected = {}
@@ -241,6 +249,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         for message_class, param_name, key in (
                     (message.MessageDisconnect, 'reason', 'DISCONNECT_REASON'),
                     (message.MessageDegree, 'degree', 'DEGREE'),
+                    (message.MessageWaitForNatTraverse, 'port', 'PORT'),
                 ):
             value = random.randint(-10**10, 10**10)
             msg = message_class(**{param_name: value})
@@ -255,6 +264,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
                 (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
                 (message.MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
+                (message.MessageStartSessionResponse, 'conn_id', 'CONN_ID'),
                 ):
             value = 'test-{}'.format(uuid.uuid4())
             msg = message_class(**{param_name: value})
@@ -357,5 +367,92 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'ADDR': address,
             'PORT': port,
             'node info': node_info,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_task_failure(self):
+        subtask_id = 'test-si-{}'.format(uuid.uuid4())
+        err = u'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
+
+        msg = message.MessageTaskFailure(subtask_id=subtask_id, err=err)
+        expected = {
+            'SUBTASK_ID': subtask_id,
+            'ERR': err,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_middleman(self):
+        asking_node = 'test-an-{}'.format(uuid.uuid4())
+        dest_node = 'test-dn-{}'.format(uuid.uuid4())
+        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
+        msg = message.MessageMiddleman(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
+        expected = {
+            'ASKING_NODE': asking_node,
+            'DEST_NODE': dest_node,
+            'ASK_CONN_ID': ask_conn_id,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_join_middleman_conn(self):
+        key_id = 'test-ki-{}'.format(uuid.uuid4())
+        dest_node = 'test-dn-{}'.format(uuid.uuid4())
+        conn_id = 'test-ci-{}'.format(uuid.uuid4())
+        msg = message.MessageJoinMiddlemanConn(key_id=key_id, conn_id=conn_id, dest_node_key_id=dest_node)
+        expected = {
+            'CONN_ID': conn_id,
+            'KEY_ID': key_id,
+            'DEST_NODE_KEY_ID': dest_node,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_nat_punch(self):
+        asking_node = 'test-an-{}'.format(uuid.uuid4())
+        dest_node = 'test-dn-{}'.format(uuid.uuid4())
+        ask_conn_id = 'test-aci-{}'.format(uuid.uuid4())
+        msg = message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id)
+        expected = {
+            'ASKING_NODE': asking_node,
+            'DEST_NODE': dest_node,
+            'ASK_CONN_ID': ask_conn_id,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_cannot_compute_task(self):
+        subtask_id = 'test-si-{}'.format(uuid.uuid4())
+        reason = u"Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
+        msg = message.MessageCannotComputeTask(subtask_id=subtask_id, reason=reason)
+        expected = {
+            'REASON': reason,
+            'SUBTASK_ID': subtask_id,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_push(self):
+        resource = 'test-r-{}'.format(uuid.uuid4())
+        copies = random.randint(-10**10, 10**10)
+        msg = message.MessagePushResource(resource=resource, copies=copies)
+        expected = {
+            'resource': resource,
+            'copies': copies,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_pull_answer(self):
+        resource = 'test-r-{}'.format(uuid.uuid4())
+        for has_resource in (True, False):
+            msg = message.MessagePullAnswer(resource=resource, has_resource=has_resource)
+            expected = {
+                'resource': resource,
+                'has resource': has_resource,
+            }
+            self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_resource_list(self):
+        resources = 'test-rs-{}'.format(uuid.uuid4())
+        options = 'test-clientoptions-{}'.format(uuid.uuid4())
+        msg = message.MessageResourceList(resources=resources, options=options)
+        expected = {
+            'resources': resources,
+            'options': options,
         }
         self.assertEquals(expected, msg.dict_repr())
