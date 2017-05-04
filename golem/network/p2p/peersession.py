@@ -446,7 +446,7 @@ class PeerSession(BasicSafeSession):
             message.MessagePing.TYPE: self._react_to_ping,
             message.MessagePong.TYPE: self._react_to_pong,
             message.MessageHello.TYPE: self._react_to_hello,
-            MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
+            message.MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
             message.MessageGetPeers.TYPE: self._react_to_get_peers,
             message.MessagePeers.TYPE: self._react_to_peers,
             message.MessageGetTasks.TYPE: self._react_to_get_tasks,

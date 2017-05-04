@@ -18,11 +18,7 @@ class Message(object):
     registered_message_types = {}  # Message types that are allowed to be sent in the network """
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """ Create new message. If this message type hasn't been registered yet, add this class to registered message
-        collection. """
-        if self.TYPE not in Message.registered_message_types:
-            Message.registered_message_types[self.TYPE] = self.__class__
-
+        """ Create new message"""
         self.sig = sig  # signature (short data representation signed with private key)
         if timestamp is None:
             timestamp = time.time()
@@ -986,7 +982,20 @@ class MessageCannotComputeTask(Message):
 RESOURCE_MSG_BASE = 3000
 
 
-class MessagePushResource(Message):
+class AbstractResource(Message):
+    MAPPING = {
+        'resource': u'resource',
+    }
+
+    def __init__(self, resource, **kwargs):
+        """
+        :param str resource: resource name
+        """
+        self.resource = resource
+        super(AbstractResource, self).__init__(**kwargs)
+
+
+class MessagePushResource(AbstractResource):
     TYPE = RESOURCE_MSG_BASE + 1
 
     MAPPING = {
@@ -994,33 +1003,28 @@ class MessagePushResource(Message):
         'copies': u"copies",
     }
 
-    def __init__(self, resource=None, copies=0, **kwargs):
+    def __init__(self, copies=0, **kwargs):
         """
         Create message with information that expected number of copies of given resource should be pushed to the network
-        :param str resource: resource name
         :param int copies: number of copies
         """
-        self.resource = resource
         self.copies = copies
         super(MessagePushResource, self).__init__(**kwargs)
 
 
-class MessageHasResource(Message):
+class MessageHasResource(AbstractResource):
     """Create message with information about having given resource"""
     TYPE = RESOURCE_MSG_BASE + 2
-    MAPPING = {}
 
 
-class MessageWantsResource(Message):
+class MessageWantsResource(AbstractResource):
     """Send information that node wants to receive given resource"""
     TYPE = RESOURCE_MSG_BASE + 3
-    MAPPING = {}
 
 
-class MessagePullResource(Message):
+class MessagePullResource(AbstractResource):
     """Create message with information that given resource is needed"""
     TYPE = RESOURCE_MSG_BASE + 4
-    MAPPING = {}
 
 
 class MessagePullAnswer(Message):
@@ -1062,64 +1066,70 @@ class MessageResourceList(Message):
 
 def init_messages():
     """Add supported messages to register messages list"""
-    # Basic messages
-    MessageHello()
-    MessageRandVal()
-    MessageDisconnect()
-    MessageChallengeSolution()
+    if Message.registered_message_types:
+        return
+    for message_class in \
+            (
+            # Basic messages
+            MessageHello,
+            MessageRandVal,
+            MessageDisconnect,
+            MessageChallengeSolution,
 
-    # P2P messages
-    MessagePing()
-    MessagePong()
-    MessageGetPeers()
-    MessageGetTasks()
-    MessagePeers()
-    MessageTasks()
-    MessageRemoveTask()
-    MessageFindNode()
-    MessageGetResourcePeers()
-    MessageResourcePeers()
-    MessageWantToStartTaskSession()
-    MessageSetTaskSession()
-    MessageNatHole()
-    MessageNatTraverseFailure()
-    MessageInformAboutNatTraverseFailure()
-    # Ranking messages
-    MessageDegree()
-    MessageGossip()
-    MessageStopGossip()
-    MessageLocRank()
+            # P2P messages
+            MessagePing,
+            MessagePong,
+            MessageGetPeers,
+            MessageGetTasks,
+            MessagePeers,
+            MessageTasks,
+            MessageRemoveTask,
+            MessageFindNode,
+            MessageGetResourcePeers,
+            MessageResourcePeers,
+            MessageWantToStartTaskSession,
+            MessageSetTaskSession,
+            MessageNatHole,
+            MessageNatTraverseFailure,
+            MessageInformAboutNatTraverseFailure,
+            # Ranking messages
+            MessageDegree,
+            MessageGossip,
+            MessageStopGossip,
+            MessageLocRank,
 
-    # Task messages
-    MessageCannotAssignTask()
-    MessageCannotComputeTask()
-    MessageTaskToCompute()
-    MessageWantToComputeTask()
-    MessageReportComputedTask()
-    MessageTaskResult()
-    MessageTaskResultHash()
-    MessageTaskFailure()
-    MessageGetTaskResult()
-    MessageStartSessionResponse()
-    MessageMiddleman()
-    MessageJoinMiddlemanConn()
-    MessageBeingMiddlemanAccepted()
-    MessageMiddlemanAccepted()
-    MessageMiddlemanReady()
-    MessageNatPunch()
-    MessageWaitForNatTraverse()
-    MessageNatPunchFailure()
-    MessageWaitingForResults()
-    MessageSubtaskResultAccepted()
-    MessageSubtaskResultRejected()
-    MessageDeltaParts()
+            # Task messages
+            MessageCannotAssignTask,
+            MessageCannotComputeTask,
+            MessageTaskToCompute,
+            MessageWantToComputeTask,
+            MessageReportComputedTask,
+            MessageTaskResultHash,
+            MessageTaskFailure,
+            MessageGetTaskResult,
+            MessageStartSessionResponse,
+            MessageMiddleman,
+            MessageJoinMiddlemanConn,
+            MessageBeingMiddlemanAccepted,
+            MessageMiddlemanAccepted,
+            MessageMiddlemanReady,
+            MessageNatPunch,
+            MessageWaitForNatTraverse,
+            MessageNatPunchFailure,
+            MessageWaitingForResults,
+            MessageSubtaskResultAccepted,
+            MessageSubtaskResultRejected,
+            MessageDeltaParts,
 
-    # Resource messages
-    MessageGetResource()
-    MessagePushResource()
-    MessageHasResource()
-    MessageWantsResource()
-    MessagePullResource()
-    MessagePullAnswer()
-    MessageSendResource()
-    MessageResourceList()
+            # Resource messages
+            MessageGetResource,
+            MessagePushResource,
+            MessageHasResource,
+            MessageWantsResource,
+            MessagePullResource,
+            MessagePullAnswer,
+            MessageResourceList,
+            ):
+        if message_class.TYPE in Message.registered_message_types:
+            raise RuntimeError("Duplicated message {}.TYPE: {}".format(message_class.__name__, message_class.TYPE))
+        Message.registered_message_types[message_class.TYPE] = message_class

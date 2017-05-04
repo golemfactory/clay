@@ -27,7 +27,11 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def setUp(self):
         random.seed()
+        message.init_messages()
         super(TestMessages, self).setUp()
+
+    def tearDown(self):
+        message.Message.registered_message_types = {}
 
     def test_message_want_to_compute_task(self):
         node_id = 'test-ni-{}'.format(uuid.uuid4())
@@ -224,9 +228,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 message.MessageMiddlemanReady,
                 message.MessageNatPunchFailure,
                 message.MessageWaitingForResults,
-                message.MessageHasResource,
-                message.MessageWantsResource,
-                message.MessagePullResource,
                 ):
             msg = message_class()
             expected = {}
@@ -265,6 +266,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
                 (message.MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
                 (message.MessageStartSessionResponse, 'conn_id', 'CONN_ID'),
+                (message.MessageHasResource, 'resource', 'resource'),
+                (message.MessageWantsResource, 'resource', 'resource'),
+                (message.MessagePullResource, 'resource', 'resource'),
                 ):
             value = 'test-{}'.format(uuid.uuid4())
             msg = message_class(**{param_name: value})
