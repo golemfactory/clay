@@ -84,7 +84,7 @@ class Client(HardwarePresetsMixin):
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
         self.config_desc.init_from_app_config(config)
-        
+
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
                 self.quit()  # quit only closes underlying services (for now)
