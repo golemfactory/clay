@@ -245,13 +245,17 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             }
             self.assertEquals(expected, msg.dict_repr())
 
-    def test_message_remove_task(self):
-        task_id = 'test-{}'.format(uuid.uuid4())
-        msg = message.MessageRemoveTask(task_id=task_id)
-        expected = {
-            'REMOVE_TASK': task_id,
-        }
-        self.assertEquals(expected, msg.dict_repr())
+    def test_uuid_messages(self):
+        for message_class, param_name, key in (
+                (message.MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
+                (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
+                ):
+            value = 'test-{}'.format(uuid.uuid4())
+            msg = message_class(**{param_name: value})
+            expected = {
+                key: value,
+            }
+            self.assertEquals(expected, msg.dict_repr())
 
     def test_message_loc_rank(self):
         node_id = 'test-{}'.format(uuid.uuid4())

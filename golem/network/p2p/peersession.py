@@ -4,7 +4,6 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
@@ -205,7 +204,7 @@ class PeerSession(BasicSafeSession):
     def send_find_node(self, key_num):
         """ Send find node message
         :param long key_num: key of a node to be find """
-        self.send(MessageFindNode(key_num))
+        self.send(message.MessageFindNode(node_key_id=key_num))
 
     def send_want_to_start_task_session(self, node_info, conn_id, super_node_info):
         """ Send request for starting task session with given node
@@ -456,7 +455,7 @@ class PeerSession(BasicSafeSession):
             message.MessageGetTasks.TYPE: self._react_to_get_tasks,
             message.MessageTasks.TYPE: self._react_to_tasks,
             message.MessageRemoveTask.TYPE: self._react_to_remove_task,
-            MessageFindNode.TYPE: self._react_to_find_node,
+            message.MessageFindNode.TYPE: self._react_to_find_node,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
             MessageSetTaskSession.TYPE: self._react_to_set_task_session,

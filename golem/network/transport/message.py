@@ -457,25 +457,17 @@ class MessageLocRank(Message):
 class MessageFindNode(Message):
     TYPE = P2P_MESSAGE_BASE + 14
 
-    NODE_KEY_ID_STR = u"NODE_KEY_ID"
+    MAPPING = {
+        'node_key_id': u"NODE_KEY_ID",
+    }
 
-    def __init__(self, node_key_id='', sig="", timestamp=None, dict_repr=None):
+    def __init__(self, node_key_id='', **kwargs):
         """
         Create find node message
         :param str node_key_id: key of a node to be find
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.node_key_id = node_key_id
-
-        if dict_repr:
-            self.node_key_id = dict_repr[self.NODE_KEY_ID_STR]
-
-    def dict_repr(self):
-        return {self.NODE_KEY_ID_STR: self.node_key_id}
+        super(MessageFindNode, self).__init__(**kwargs)
 
 
 class MessageWantToStartTaskSession(Message):
