@@ -219,7 +219,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == MessageSubtaskResultRejected
+        assert isinstance(ts.msgs_to_send[0], MessageSubtaskResultRejected)
         assert conn.close.called
 
         extra_data.update(dict(

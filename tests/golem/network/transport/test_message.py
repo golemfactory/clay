@@ -332,3 +332,30 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'RESOURCE_HEADER': resource_header,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_delta_parts(self):
+        task_id = 'test-ti-{}'.format(uuid.uuid4())
+        delta_header = 'test-dh-{}'.format(uuid.uuid4())
+        parts = ['test-p{}-{}'.format(x, uuid.uuid4()) for x in range(10)]
+        node_name = 'test-nn-{}'.format(uuid.uuid4())
+        node_info = 'test-ni-{}'.format(uuid.uuid4())
+        address = '8.8.8.8'
+        port = random.randint(0, 2**16) + 1
+        msg = message.MessageDeltaParts(
+            task_id=task_id,
+            delta_header=delta_header,
+            parts=parts,
+            node_name=node_name,
+            node_info=node_info,
+            address=address,
+            port=port)
+        expected = {
+            'TASK_ID': task_id,
+            'DELTA_HEADER': delta_header,
+            'PARTS': parts,
+            'NODE_NAME': node_name,
+            'ADDR': address,
+            'PORT': port,
+            'node info': node_info,
+        }
+        self.assertEquals(expected, msg.dict_repr())

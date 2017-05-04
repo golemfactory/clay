@@ -230,11 +230,11 @@ class TaskSession(MiddlemanSafeSession):
             return
 
         self.task_server.accept_result(subtask_id, self.result_owner)
-        self.send(message.MessageSubtaskResultAccepted(subtask_id))
+        self.send(message.MessageSubtaskResultAccepted(subtask_id=subtask_id))
 
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)
-        self.send(message.MessageSubtaskResultRejected(subtask_id))
+        self.send_result_rejected(subtask_id)
 
     def request_task(self, node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores):
         """ Inform that node wants to compute given task
@@ -300,7 +300,7 @@ class TaskSession(MiddlemanSafeSession):
         """ Inform that result don't pass verification
         :param str subtask_id: subtask that has wrong result
         """
-        self.send(message.MessageSubtaskResultRejected(subtask_id))
+        self.send(message.MessageSubtaskResultRejected(subtask_id=subtask_id))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -444,7 +444,7 @@ class TaskSession(MiddlemanSafeSession):
         def on_error(exc, *args, **kwargs):
             logger.error("Task result error: {} ({})"
                          .format(subtask_id, exc or "unspecified"))
-            self.send(message.MessageSubtaskResultRejected(subtask_id))
+            self.send_result_rejected(subtask_id)
             self.task_server.reject_result(subtask_id, self.result_owner)
             self.task_manager.task_computation_failure(subtask_id,
                                                        'Error downloading task result')
@@ -474,9 +474,6 @@ class TaskSession(MiddlemanSafeSession):
             logger.error("Unexpected MessageAcceptResource message")
             self.dropped()
 
-    def _react_to_resource(self, msg):
-        self.task_computer.resource_given(msg.subtask_id)
-
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
         self.dropped()
@@ -492,7 +489,7 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_delta_parts(self, msg):
         self.task_computer.wait_for_resources(self.task_id, msg.delta_header)
         self.task_server.pull_resources(self.task_id, msg.parts)
-        self.task_server.add_resource_peer(msg.node_name, msg.addr, msg.port, self.key_id, msg.node_info)
+        self.task_server.add_resource_peer(msg.node_name, msg.address, msg.port, self.key_id, msg.node_info)
 
     def _react_to_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
@@ -650,7 +647,14 @@ class TaskSession(MiddlemanSafeSession):
             return
         delta_header, parts_list = res
 
-        self.send(message.MessageDeltaParts(self.task_id, delta_header, parts_list, self.task_server.get_node_name(), self.task_server.node, self.task_server.get_resource_addr(), self.task_server.get_resource_port()))
+        self.send(message.MessageDeltaParts(
+            task_id=self.task_id,
+            delta_header=delta_header,
+            parts=parts_list,
+            node_name=self.task_server.get_node_name(),
+            node_info=self.task_server.node,
+            address=self.task_server.get_resource_addr(),
+            port=self.task_server.get_resource_port()))
 
     def __send_resource_list(self, msg):
         resource_manager = self.task_server.client.resource_server.resource_manager
@@ -734,7 +738,6 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageTaskResultHash.TYPE: self._react_to_task_result_hash,
             message.MessageGetResource.TYPE: self._react_to_get_resource,
             message.MessageAcceptResourceFormat.TYPE: self._react_to_accept_resource_format,
-            message.MessageResource.TYPE: self._react_to_resource,
             message.MessageResourceList.TYPE: self._react_to_resource_list,
             message.MessageSubtaskResultAccepted.TYPE: self._react_to_subtask_result_accepted,
             message.MessageSubtaskResultRejected.TYPE: self._react_to_subtask_result_rejected,

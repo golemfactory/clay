@@ -531,7 +531,7 @@ class MessageNatHole(Message):
         """
         Create message with information about nat hole
         :param key_id: key of the node behind nat hole
-        :param str addr: address of the nat hole
+        :param str address: address of the nat hole
         :param int port: port of the nat hole
         :param uuid conn_id: connection id for reference
         """
@@ -749,74 +749,53 @@ class MessageGetResource(Message):
 class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    REWARD_STR = u"REWARD"
+    MAPPING = {
+        'subtask_id': u"SUB_TASK_ID",
+        'reward': u"REWARD",
+    }
 
-    def __init__(self, subtask_id=0, reward=0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id=0, reward=0, **kwargs):
         """
         Create message with information that subtask result was accepted
         :param str subtask_id: accepted subtask id
         :param float reward: payment for computations
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.subtask_id = subtask_id
         self.reward = reward
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-            self.reward = dict_repr[self.REWARD_STR]
-
-    def dict_repr(self):
-        return {
-            self.SUB_TASK_ID_STR: self.subtask_id,
-            self.REWARD_STR: self.reward
-        }
+        super(MessageSubtaskResultAccepted, self).__init__(**kwargs)
 
 
 class MessageSubtaskResultRejected(Message):
     TYPE = TASK_MSG_BASE + 11
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
+    MAPPING = {
+        'subtask_id': u"SUB_TASK_ID",
+    }
 
-    def __init__(self, subtask_id=0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id=0, **kwargs):
         """
         Create message with information that subtask result was rejected
         :param str subtask_id: id of rejected subtask
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.subtask_id = subtask_id
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-
-    def dict_repr(self):
-        return {
-            self.SUB_TASK_ID_STR: self.subtask_id
-        }
+        super(MessageSubtaskResultRejected, self).__init__(**kwargs)
 
 
 class MessageDeltaParts(Message):
     TYPE = TASK_MSG_BASE + 12
 
-    TASK_ID_STR = u"TASK_ID"
-    DELTA_HEADER_STR = u"DELTA_HEADER"
-    PARTS_STR = u"PARTS"
-    NODE_NAME_STR = u"NODE_NAME"
-    ADDR_STR = u"ADDR"
-    PORT_STR = u"PORT"
-    NODE_INFO_STR = u"node info"
+    MAPPING = {
+        'task_id': u"TASK_ID",
+        'delta_header': u"DELTA_HEADER",
+        'parts': u"PARTS",
+        'node_name': u"NODE_NAME",
+        'address': u"ADDR",
+        'port': u"PORT",
+        'node_info': u"node info",
+    }
 
     def __init__(self, task_id=0, delta_header=None, parts=None, node_name='',
-                 node_info=None, addr='', port='', sig="", timestamp=None,
-                 dict_repr=None):
+                 node_info=None, address='', port='', **kwargs):
         """
         Create message with resource description in form of "delta parts".
         :param task_id: resources are for task with this id
@@ -824,41 +803,17 @@ class MessageDeltaParts(Message):
         :param list parts: list of all files that are needed to create resources
         :param str node_name: resource owner name
         :param Node node_info: information about resource owner
-        :param addr: resource owner address
+        :param address: resource owner address
         :param port: resource owner port
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.task_id = task_id
         self.delta_header = delta_header
         self.parts = parts
         self.node_name = node_name
-        self.addr = addr
+        self.address = address
         self.port = port
         self.node_info = node_info
-
-        if dict_repr:
-            self.task_id = dict_repr[self.TASK_ID_STR]
-            self.delta_header = dict_repr[self.DELTA_HEADER_STR]
-            self.parts = dict_repr[self.PARTS_STR]
-            self.node_name = dict_repr[self.NODE_NAME_STR]
-            self.addr = dict_repr[self.ADDR_STR]
-            self.port = dict_repr[self.PORT_STR]
-            self.node_info = dict_repr[self.NODE_INFO_STR]
-
-    def dict_repr(self):
-        return {
-            self.TASK_ID_STR: self.task_id,
-            self.DELTA_HEADER_STR: self.delta_header,
-            self.PARTS_STR: self.parts,
-            self.NODE_NAME_STR: self.node_name,
-            self.ADDR_STR: self.addr,
-            self.PORT_STR: self.port,
-            self.NODE_INFO_STR: self.node_info
-        }
+        super(MessageDeltaParts, self).__init__(**kwargs)
 
 
 class MessageResourceFormat(Message):
