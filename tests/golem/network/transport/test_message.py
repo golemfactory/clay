@@ -1,17 +1,19 @@
 import os
+import random
 import time
 import unittest
 
 from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import MessageWantToComputeTask, MessageReportComputedTask, Message, MessageHello
+from golem.network.transport import message
 from golem.testutils import PEP8MixIn
-from mock import Mock, patch
+import mock
 
 
-class FailingMessage(Message):
+class FailingMessage(message.Message):
     TYPE = -1
+
     def __init__(self, *args, **kwargs):
-        Message.__init__(self, *args, **kwargs)
+        message.Message.__init__(self, *args, **kwargs)
 
     def dict_repr(self):
         raise Exception()
@@ -20,10 +22,14 @@ class FailingMessage(Message):
 class TestMessages(unittest.TestCase, PEP8MixIn):
     PEP8_FILES = ['golem/network/transport/message.py', ]
 
+    def setUp(self):
+        random.seed()
+        super(TestMessages, self).setUp()
+
     def test_message_want_to_compute_task(self):
-        m = MessageWantToComputeTask()
-        self.assertIsInstance(m, MessageWantToComputeTask)
-        m = MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3)
+        m = message.MessageWantToComputeTask()
+        self.assertIsInstance(m, message.MessageWantToComputeTask)
+        m = message.MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3)
         self.assertEqual(m.node_name, "ABC")
         self.assertEqual(m.task_id, "xyz")
         self.assertEqual(m.perf_index, 1000)
@@ -31,9 +37,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.max_memory_size, 5)
         self.assertEqual(m.price, 20)
         self.assertEqual(m.num_cores, 3)
-        self.assertEqual(m.TYPE, MessageWantToComputeTask.TYPE)
+        self.assertEqual(m.TYPE, message.MessageWantToComputeTask.TYPE)
         dict_repr = m.dict_repr()
-        m2 = MessageWantToComputeTask(dict_repr=dict_repr)
+        m2 = message.MessageWantToComputeTask(dict_repr=dict_repr)
         self.assertEqual(m2.task_id, m.task_id)
         self.assertEqual(m2.node_name, m.node_name)
         self.assertEqual(m2.perf_index, m.perf_index)
@@ -44,9 +50,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.TYPE, m2.TYPE)
 
     def test_message_report_computed_task(self):
-        m = MessageReportComputedTask()
-        self.assertIsInstance(m, MessageReportComputedTask)
-        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
+        m = message.MessageReportComputedTask()
+        self.assertIsInstance(m, message.MessageReportComputedTask)
+        m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         self.assertEqual(m.subtask_id, "xxyyzz")
         self.assertEqual(m.result_type, 0)
         self.assertEqual(m.extra_data, {})
@@ -57,9 +63,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.key_id, "KEY_ID")
         self.assertEqual(m.eth_account, "ETH")
         self.assertEqual(m.node_info, "NODE")
-        self.assertEqual(m.TYPE, MessageReportComputedTask.TYPE)
+        self.assertEqual(m.TYPE, message.MessageReportComputedTask.TYPE)
         dict_repr = m.dict_repr()
-        m2 = MessageReportComputedTask(dict_repr=dict_repr)
+        m2 = message.MessageReportComputedTask(dict_repr=dict_repr)
         self.assertEqual(m.subtask_id, m2.subtask_id)
         self.assertEqual(m.result_type, m2.result_type)
         self.assertEqual(m.extra_data, m2.extra_data)
@@ -73,12 +79,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEqual(m.TYPE, m2.TYPE)
 
     def test_message_hash(self):
-        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
-                                      extra_data=MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3))
+        m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH",
+                                              extra_data=message.MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3))
         assert m.get_short_hash()
 
     def test_serialization(self):
-        m = MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
+        m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         assert m.serialize()
 
         m = FailingMessage()
@@ -89,44 +95,46 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         except:
             pass
         assert not serialized
-        assert not Message.deserialize_message(None)
+        assert not message.Message.deserialize_message(None)
 
     def test_unicode(self):
         source = unicode("test string")
-        result = Message._unicode(source)
+        result = message.Message._unicode(source)
         assert result is source
 
         source = "\xd0\xd1\xd2\xd3"
-        result = Message._unicode(source)
+        result = message.Message._unicode(source)
         assert result is source
 
         source = "test string"
-        result = Message._unicode(source)
+        result = message.Message._unicode(source)
         assert type(result) is unicode
         assert result is not source
         assert result == source
 
         source = None
-        result = Message._unicode(source)
+        result = message.Message._unicode(source)
         assert result is None
 
     def test_timestamp_and_timezones(self):
         epoch_t = 1475238345.0
+
         def set_tz(tz):
             os.environ['TZ'] = tz
             try:
                 time.tzset()
             except AttributeError:
                 raise unittest.SkipTest("tzset required")
+
         set_tz('Europe/Warsaw')
         warsaw_time = time.localtime(epoch_t)
-        m = MessageHello(timestamp=epoch_t)
+        m = message.MessageHello(timestamp=epoch_t)
         db = DataBuffer()
         m.serialize_to_buffer(db)
         set_tz('US/Eastern')
-        server = Mock()
+        server = mock.Mock()
         server.decrypt = lambda x: x
-        msgs = Message.decrypt_and_deserialize(db, server)
+        msgs = message.Message.decrypt_and_deserialize(db, server)
         assert len(msgs) == 1
         newyork_time = time.localtime(msgs[0].timestamp)
         assert warsaw_time != newyork_time
@@ -134,21 +142,21 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_decrypt_and_deserialize(self):
         db = DataBuffer()
-        server = Mock()
+        server = mock.Mock()
         n_messages = 10
 
         def serialize_messages(_b):
-            for m in [MessageHello() for _ in xrange(0, n_messages)]:
+            for m in [message.MessageHello() for _ in xrange(0, n_messages)]:
                 m.serialize_to_buffer(_b)
 
         serialize_messages(db)
         server.decrypt = lambda x: x
-        assert len(Message.decrypt_and_deserialize(db, server)) == n_messages
+        assert len(message.Message.decrypt_and_deserialize(db, server)) == n_messages
 
         patch_method = 'golem.network.transport.message.Message.deserialize_message'
-        with patch(patch_method, side_effect=lambda x: None):
+        with mock.patch(patch_method, side_effect=lambda x: None):
             serialize_messages(db)
-            assert len(Message.decrypt_and_deserialize(db, server)) == 0
+            assert len(message.Message.decrypt_and_deserialize(db, server)) == 0
 
         def raise_assertion(*_):
             raise AssertionError()
@@ -159,7 +167,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         server.decrypt = raise_assertion
         serialize_messages(db)
 
-        result = Message.decrypt_and_deserialize(db, server)
+        result = message.Message.decrypt_and_deserialize(db, server)
 
         assert len(result) == n_messages
         assert all(not m.encrypted for m in result)
@@ -167,15 +175,23 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         server.decrypt = raise_error
         serialize_messages(db)
 
-        result = Message.decrypt_and_deserialize(db, server)
+        result = message.Message.decrypt_and_deserialize(db, server)
 
         assert len(result) == 0
 
     def test_message_errors(self):
-        m = MessageReportComputedTask()
+        m = message.MessageReportComputedTask()
         with self.assertRaises(TypeError):
             m.serialize_to_buffer("not a db")
         with self.assertRaises(TypeError):
             m.decrypt_and_deserialize("not a db")
         with self.assertRaises(TypeError):
             m.deserialize("not a db")
+
+    def test_message_randval(self):
+        rand_val = random.random()
+        msg = message.MessageRandVal(rand_val=rand_val)
+        expected = {
+            'RAND_VAL': rand_val,
+        }
+        self.assertEquals(expected, msg.dict_repr())

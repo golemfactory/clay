@@ -522,7 +522,7 @@ class TaskSession(MiddlemanSafeSession):
 
         if send_hello:
             self.send_hello()
-        self.send(message.MessageRandVal(msg.rand_val), send_unverified=True)
+        self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.rand_val:

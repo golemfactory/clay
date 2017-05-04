@@ -246,25 +246,17 @@ class MessageHello(Message):
 class MessageRandVal(Message):
     TYPE = 1
 
-    RAND_VAL_STR = u"RAND_VAL"
+    MAPPING = {
+        'rand_val': u"RAND_VAL",
+    }
 
-    def __init__(self, rand_val=0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, rand_val=0, **kwargs):
         """
         Create a message with signed random value.
         :param float rand_val: random value received from other side
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.rand_val = rand_val
-
-        if dict_repr:
-            self.rand_val = dict_repr[self.RAND_VAL_STR]
-
-    def dict_repr(self):
-        return {self.RAND_VAL_STR: self.rand_val}
+        super(MessageRandVal, self).__init__(**kwargs)
 
 
 class MessageDisconnect(Message):

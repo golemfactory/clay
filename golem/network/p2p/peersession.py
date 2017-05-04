@@ -5,7 +5,7 @@ from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import MessagePing, MessagePong, MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
+    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure, MessageChallengeSolution
 from golem.network.transport.session import BasicSafeSession
@@ -65,7 +65,7 @@ class PeerSession(BasicSafeSession):
         self.challenge = None
         self.difficulty = 0
 
-        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
+        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
         self.can_be_unsigned.extend([message.MessageHello.TYPE])
         self.can_be_not_encrypted.extend([message.MessageHello.TYPE])
 
@@ -318,7 +318,7 @@ class PeerSession(BasicSafeSession):
             if solve_challenge:
                 self._solve_challenge(challenge, difficulty)
             else:
-                self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+                self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
             self.__send_hello()
 
         # print "Add peer to client uid:{} address:{} port:{}".format(self.node_name, self.address, self.port)
@@ -473,7 +473,7 @@ class PeerSession(BasicSafeSession):
             MessageTasks.TYPE: self._react_to_tasks,
             MessageRemoveTask.TYPE: self._react_to_remove_task,
             MessageFindNode.TYPE: self._react_to_find_node,
-            MessageRandVal.TYPE: self._react_to_rand_val,
+            message.MessageRandVal.TYPE: self._react_to_rand_val,
             MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
             MessageSetTaskSession.TYPE: self._react_to_set_task_session,
             MessageNatHole.TYPE: self._react_to_nat_hole,

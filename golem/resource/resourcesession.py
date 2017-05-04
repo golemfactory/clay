@@ -2,8 +2,8 @@ import logging
 
 
 from golem.network.transport import message
-from golem.network.transport.message import MessageRandVal, MessageHasResource, MessageWantsResource, \
-    MessagePushResource, MessagePullResource, MessagePullAnswer, MessageSendResource
+from golem.network.transport.message import MessageHasResource, MessageWantsResource, \
+    MessagePushResource, MessagePullResource, MessagePullAnswer
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
 
@@ -39,12 +39,12 @@ class ResourceSession(BasicSafeSession):
             MessagePullResource.TYPE: self._react_to_pull_resource,
             MessagePullAnswer.TYPE: self._react_to_pull_answer,
             message.MessageHello.TYPE: self._react_to_hello,
-            MessageRandVal.TYPE: self._react_to_rand_val
+            message.MessageRandVal.TYPE: self._react_to_rand_val
         })
 
         self.can_be_not_encrypted.append(message.MessageHello.TYPE)
         self.can_be_unsigned.append(message.MessageHello.TYPE)
-        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE])
+        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE])
 
     ########################
     # BasicSession methods #
@@ -195,7 +195,7 @@ class ResourceSession(BasicSafeSession):
             self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+        self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:
