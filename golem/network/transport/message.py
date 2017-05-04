@@ -583,16 +583,17 @@ TASK_MSG_BASE = 2000
 class MessageWantToComputeTask(Message):
     TYPE = TASK_MSG_BASE + 1
 
-    NODE_NAME_STR = u"NODE_NAME"
-    TASK_ID_STR = u"TASK_ID"
-    PERF_INDEX_STR = u"PERF_INDEX"
-    MAX_RES_STR = u"MAX_RES"
-    MAX_MEM_STR = u"MAX_MEM"
-    NUM_CORES_STR = u"NUM_CORES"
-    PRICE_STR = u"PRICE"
+    MAPPING = {
+        'node_name': u"NODE_NAME",
+        'task_id': u"TASK_ID",
+        'perf_index': u"PERF_INDEX",
+        'max_resource_size': u"MAX_RES",
+        'max_memory_size': u"MAX_MEM",
+        'num_cores': u"NUM_CORES",
+        'price': u"PRICE",
+    }
 
-    def __init__(self, node_name=0, task_id=0, perf_index=0, price=0, max_resource_size=0, max_memory_size=0,
-                 num_cores=0, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, node_name=0, task_id=0, perf_index=0, price=0, max_resource_size=0, max_memory_size=0, num_cores=0, **kwargs):
         """
         Create message with information that node wants to compute given task
         :param str node_name: id of that node
@@ -601,12 +602,7 @@ class MessageWantToComputeTask(Message):
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
         :param int num_cores: how many cpu cores this node can offer
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.node_name = node_name
         self.task_id = task_id
         self.perf_index = perf_index
@@ -614,97 +610,63 @@ class MessageWantToComputeTask(Message):
         self.max_memory_size = max_memory_size
         self.num_cores = num_cores
         self.price = price
-
-        if dict_repr:
-            self.node_name = dict_repr[self.NODE_NAME_STR]
-            self.task_id = dict_repr[self.TASK_ID_STR]
-            self.perf_index = dict_repr[self.PERF_INDEX_STR]
-            self.max_resource_size = dict_repr[self.MAX_RES_STR]
-            self.max_memory_size = dict_repr[self.MAX_MEM_STR]
-            self.num_cores = dict_repr[self.NUM_CORES_STR]
-            self.price = dict_repr[self.PRICE_STR]
-
-    def dict_repr(self):
-        return {self.NODE_NAME_STR: self.node_name,
-                self.TASK_ID_STR: self.task_id,
-                self.PERF_INDEX_STR: self.perf_index,
-                self.MAX_RES_STR: self.max_resource_size,
-                self.MAX_MEM_STR: self.max_memory_size,
-                self.NUM_CORES_STR: self.num_cores,
-                self.PRICE_STR: self.price}
+        super(MessageWantToComputeTask, self).__init__(**kwargs)
 
 
 class MessageTaskToCompute(Message):
     TYPE = TASK_MSG_BASE + 2
 
-    COMPUTE_TASK_DEF_STR = u"COMPUTE_TASK_DEF"
+    MAPPING = {
+        'compute_task_def': u"COMPUTE_TASK_DEF",
+    }
 
-    def __init__(self, ctd=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, compute_task_def=None, **kwargs):
         """
         Create message with information about subtask to compute
-        :param ComputeTaskDef ctd: definition of a subtask that should be computed
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
+        :param ComputeTaskDef compute_task_def: definition of a subtask that should be computed
         """
-        Message.__init__(self, sig, timestamp)
-
-        self.ctd = ctd
-
-        if dict_repr:
-            self.ctd = dict_repr[self.COMPUTE_TASK_DEF_STR]
-
-    def dict_repr(self):
-        return {self.COMPUTE_TASK_DEF_STR: self.ctd}
+        self.compute_task_def = compute_task_def
+        super(MessageTaskToCompute, self).__init__(**kwargs)
 
 
 class MessageCannotAssignTask(Message):
     TYPE = TASK_MSG_BASE + 3
 
-    REASON_STR = u"REASON"
-    TASK_ID_STR = u"TASK_ID"
+    MAPPING = {
+        'reason': u"REASON",
+        'task_id': u"TASK_ID",
+    }
 
-    def __init__(self, task_id=0, reason="", sig="", timestamp=None, dict_repr=None):
+    def __init__(self, task_id=0, reason="", **kwargs):
         """
         Create message with information that node can't get task to compute
         :param task_id: task that cannot be assigned
         :param str reason: reason why task cannot be assigned to asking node
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.task_id = task_id
         self.reason = reason
-
-        if dict_repr:
-            self.task_id = dict_repr[self.TASK_ID_STR]
-            self.reason = dict_repr[self.REASON_STR]
-
-    def dict_repr(self):
-        return {self.TASK_ID_STR: self.task_id,
-                self.REASON_STR: self.reason}
+        super(MessageCannotAssignTask, self).__init__(**kwargs)
 
 
 class MessageReportComputedTask(Message):
     # FIXME this message should be simpler
     TYPE = TASK_MSG_BASE + 4
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    RESULT_TYPE_STR = u"RESULT_TYPE"
-    COMPUTATION_TIME_STR = u"COMPUTATION_TIME"
-    NODE_NAME_STR = u"NODE_NAME"
-    ADDR_STR = u"ADDR"
-    NODE_INFO_STR = u"NODE_INFO"
-    PORT_STR = u"PORT"
-    KEY_ID_STR = u"KEY_ID"
-    EXTRA_DATA_STR = u"EXTRA_DATA"
-    ETH_ACCOUNT_STR = u"ETH_ACCOUNT"
+    MAPPING = {
+        'subtask_id': u"SUB_TASK_ID",
+        'result_type': u"RESULT_TYPE",
+        'computation_time': u"COMPUTATION_TIME",
+        'node_name': u"NODE_NAME",
+        'address': u"ADDR",
+        'node_info': u"NODE_INFO",
+        'port': u"PORT",
+        'key_id': u"KEY_ID",
+        'extra_data': u"EXTRA_DATA",
+        'eth_account': u"ETH_ACCOUNT",
+    }
 
     def __init__(self, subtask_id=0, result_type=None, computation_time='', node_name='', address='',
-                 port='', key_id='', node_info=None, eth_account='', extra_data=None,
-                 sig="", timestamp=None, dict_repr=None):
+                 port='', key_id='', node_info=None, eth_account='', extra_data=None, **kwargs):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
@@ -717,12 +679,7 @@ class MessageReportComputedTask(Message):
         :param Node node_info: information about this node
         :param str eth_account: ethereum address (bytes20) of task result owner
         :param extra_data: additional information, eg. list of files
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.subtask_id = subtask_id
         self.result_type = result_type
         self.extra_data = extra_data
@@ -733,115 +690,41 @@ class MessageReportComputedTask(Message):
         self.key_id = key_id
         self.eth_account = eth_account
         self.node_info = node_info
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-            self.result_type = dict_repr[self.RESULT_TYPE_STR]
-            self.computation_time = dict_repr[self.COMPUTATION_TIME_STR]
-            self.node_name = dict_repr[self.NODE_NAME_STR]
-            self.address = dict_repr[self.ADDR_STR]
-            self.port = dict_repr[self.PORT_STR]
-            self.key_id = dict_repr[self.KEY_ID_STR]
-            self.eth_account = dict_repr[self.ETH_ACCOUNT_STR]
-            self.extra_data = dict_repr[self.EXTRA_DATA_STR]
-            self.node_info = dict_repr[self.NODE_INFO_STR]
-
-    def dict_repr(self):
-        return {self.SUB_TASK_ID_STR: self.subtask_id,
-                self.RESULT_TYPE_STR: self.result_type,
-                self.COMPUTATION_TIME_STR: self.computation_time,
-                self.NODE_NAME_STR: self.node_name,
-                self.ADDR_STR: self.address,
-                self.PORT_STR: self.port,
-                self.KEY_ID_STR: self.key_id,
-                self.ETH_ACCOUNT_STR: self.eth_account,
-                self.EXTRA_DATA_STR: self.extra_data,
-                self.NODE_INFO_STR: self.node_info}
+        super(MessageReportComputedTask, self).__init__(**kwargs)
 
 
 class MessageGetTaskResult(Message):
     TYPE = TASK_MSG_BASE + 5
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
+    MAPPING = {
+        'subtask_id': u"SUB_TASK_ID",
+    }
 
-    def __init__(self, subtask_id="", sig="", timestamp=None, dict_repr=None):
+    def __init__(self, subtask_id="", **kwargs):
         """
         Create request for task result
         :param str subtask_id: finished subtask id
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.subtask_id = subtask_id
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-
-    def dict_repr(self):
-        return {self.SUB_TASK_ID_STR: self.subtask_id}
-
-
-# It's an old form of sending task result (don't use if it isn't necessary)
-class MessageTaskResult(Message):
-    TYPE = TASK_MSG_BASE + 6
-
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    RESULT_STR = u"RESULT"
-
-    def __init__(self, subtask_id=0, result=None, sig="", timestamp=None, dict_repr=None):
-        """
-        Create message with task results
-        :param str subtask_id: id of finished subtask
-        :param result: task result in binary form
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        warnings.warn("It's an old form of sending task result (don't use if it isn't necessary)", DeprecationWarning)
-        Message.__init__(self, sig, timestamp)
-
-        self.subtask_id = subtask_id
-        self.result = result
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-            self.result = dict_repr[self.RESULT_STR]
-
-    def dict_repr(self):
-        return {self.SUB_TASK_ID_STR: self.subtask_id,
-                self.RESULT_STR: self.result}
+        super(MessageGetTaskResult, self).__init__(**kwargs)
 
 
 class MessageTaskResultHash(Message):
     TYPE = TASK_MSG_BASE + 7
 
-    SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    MULTIHASH_STR = u"MULTIHASH"
-    SECRET_STR = u"SECRET"
-    OPTIONS_STR = u"OPTIONS"
+    MAPPING = {
+        'subtask_id': u"SUB_TASK_ID",
+        'multihash': u"MULTIHASH",
+        'secret': u"SECRET",
+        'options': u"OPTIONS",
+    }
 
-    def __init__(self, subtask_id=0, multihash="", secret="", options=None, sig="", timestamp=None, dict_repr=None):
-
-        Message.__init__(self, sig, timestamp)
-
+    def __init__(self, subtask_id=0, multihash="", secret="", options=None, **kwargs):
         self.subtask_id = subtask_id
         self.multihash = multihash
         self.secret = secret
         self.options = options
-
-        if dict_repr:
-            self.subtask_id = dict_repr[self.SUB_TASK_ID_STR]
-            self.multihash = dict_repr[self.MULTIHASH_STR]
-            self.secret = dict_repr[self.SECRET_STR]
-            self.options = dict_repr[self.OPTIONS_STR]
-
-    def dict_repr(self):
-        return {self.SUB_TASK_ID_STR: self.subtask_id,
-                self.MULTIHASH_STR: self.multihash,
-                self.SECRET_STR: self.secret,
-                self.OPTIONS_STR: self.options}
+        super(MessageTaskResultHash, self).__init__(**kwargs)
 
 
 class MessageGetResource(Message):

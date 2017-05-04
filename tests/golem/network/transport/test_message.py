@@ -30,27 +30,31 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         super(TestMessages, self).setUp()
 
     def test_message_want_to_compute_task(self):
-        m = message.MessageWantToComputeTask()
-        self.assertIsInstance(m, message.MessageWantToComputeTask)
-        m = message.MessageWantToComputeTask("ABC", "xyz", 1000, 20, 4, 5, 3)
-        self.assertEqual(m.node_name, "ABC")
-        self.assertEqual(m.task_id, "xyz")
-        self.assertEqual(m.perf_index, 1000)
-        self.assertEqual(m.max_resource_size, 4)
-        self.assertEqual(m.max_memory_size, 5)
-        self.assertEqual(m.price, 20)
-        self.assertEqual(m.num_cores, 3)
-        self.assertEqual(m.TYPE, message.MessageWantToComputeTask.TYPE)
-        dict_repr = m.dict_repr()
-        m2 = message.MessageWantToComputeTask(dict_repr=dict_repr)
-        self.assertEqual(m2.task_id, m.task_id)
-        self.assertEqual(m2.node_name, m.node_name)
-        self.assertEqual(m2.perf_index, m.perf_index)
-        self.assertEqual(m2.max_resource_size, m.max_resource_size)
-        self.assertEqual(m2.max_memory_size, m.max_memory_size)
-        self.assertEqual(m2.price, m.price)
-        self.assertEqual(m2.num_cores, m.num_cores)
-        self.assertEqual(m.TYPE, m2.TYPE)
+        node_id = 'test-ni-{}'.format(uuid.uuid4())
+        task_id = 'test-ti-{}'.format(uuid.uuid4())
+        perf_index = random.random() * 1000
+        price = random.random() * 1000
+        max_resource_size = random.randint(1, 2**10)
+        max_memory_size = random.randint(1, 2**10)
+        num_cores = random.randint(1, 2**5)
+        msg = message.MessageWantToComputeTask(
+            node_name=node_id,
+            task_id=task_id,
+            perf_index=perf_index,
+            price=price,
+            max_resource_size=max_resource_size,
+            max_memory_size=max_memory_size,
+            num_cores=num_cores)
+        expected = {
+            'NODE_NAME': node_id,
+            'TASK_ID': task_id,
+            'PERF_INDEX': perf_index,
+            'MAX_RES': max_resource_size,
+            'MAX_MEM': max_memory_size,
+            'NUM_CORES': num_cores,
+            'PRICE': price,
+        }
+        self.assertEquals(expected, msg.dict_repr())
 
     def test_message_report_computed_task(self):
         m = message.MessageReportComputedTask()
@@ -250,6 +254,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 (message.MessageRemoveTask, 'task_id', 'REMOVE_TASK'),
                 (message.MessageFindNode, 'node_key_id', 'NODE_KEY_ID'),
                 (message.MessageNatTraverseFailure, 'conn_id', 'CONN_ID'),
+                (message.MessageGetTaskResult, 'subtask_id', 'SUB_TASK_ID'),
                 ):
             value = 'test-{}'.format(uuid.uuid4())
             msg = message_class(**{param_name: value})

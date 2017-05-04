@@ -247,7 +247,7 @@ class TaskSession(MiddlemanSafeSession):
         :param int num_cores: how many cpu cores this node can offer
         :return:
         """
-        self.send(message.MessageWantToComputeTask(node_name, task_id, performance_index, price, max_resource_size, max_memory_size, num_cores))
+        self.send(message.MessageWantToComputeTask(node_name=node_name, task_id=task_id, perf_index=performance_index, price=price, max_resource_size=max_resource_size, max_memory_size=max_memory_size, num_cores=num_cores))
 
     def request_resource(self, task_id, resource_header):
         """ Ask for a resources for a given task. Task owner should compare given resource header with
@@ -277,7 +277,17 @@ class TaskSession(MiddlemanSafeSession):
             return
         node_name = self.task_server.get_node_name()
 
-        self.send(message.MessageReportComputedTask(task_result.subtask_id, task_result.result_type, task_result.computing_time, node_name, address, port, self.task_server.get_key_id(), node_info, eth_account, extra_data))
+        self.send(message.MessageReportComputedTask(
+            subtask_id=task_result.subtask_id,
+            result_type=task_result.result_type,
+            computation_time=task_result.computing_time,
+            node_name=node_name,
+            address=address,
+            port=port,
+            key_id=self.task_server.get_key_id(),
+            node_info=node_info,
+            eth_account=eth_account,
+            extra_data=extra_data))
 
     def send_task_failure(self, subtask_id, err_msg):
         """ Inform task owner that an error occurred during task computation
@@ -353,24 +363,24 @@ class TaskSession(MiddlemanSafeSession):
             ctd, wrong_task, wait = None, False, False
 
         if wrong_task:
-            self.send(message.MessageCannotAssignTask(msg.task_id, "Not my task  {}".format(msg.task_id)))
+            self.send(message.MessageCannotAssignTask(task_id=msg.task_id, reason="Not my task  {}".format(msg.task_id)))
             self.dropped()
         elif ctd:
-            self.send(message.MessageTaskToCompute(ctd))
+            self.send(message.MessageTaskToCompute(compute_task_def=ctd))
         elif wait:
             self.send(message.MessageWaitingForResults())
         else:
-            self.send(message.MessageCannotAssignTask(msg.task_id, "No more subtasks in {}".format(msg.task_id)))
+            self.send(message.MessageCannotAssignTask(task_id=msg.task_id, reason="No more subtasks in {}".format(msg.task_id)))
             self.dropped()
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
-        if self._check_ctd_params(msg.ctd) and self._set_env_params(msg.ctd) and \
-                self.task_manager.comp_task_keeper.receive_subtask(msg.ctd):
-            self.task_server.add_task_session(msg.ctd.subtask_id, self)
-            self.task_computer.task_given(msg.ctd)
+        if self._check_ctd_params(msg.compute_task_def) and self._set_env_params(msg.compute_task_def) and \
+                self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):
+            self.task_server.add_task_session(msg.compute_task_def.subtask_id, self)
+            self.task_computer.task_given(msg.compute_task_def)
         else:
-            self.send(message.MessageCannotComputeTask(msg.ctd.subtask_id, self.err_msg))
+            self.send(message.MessageCannotComputeTask(msg.compute_task_def.subtask_id, self.err_msg))
             self.task_computer.session_closed()
             self.dropped()
 
@@ -396,7 +406,7 @@ class TaskSession(MiddlemanSafeSession):
             self.task_server.receive_subtask_computation_time(msg.subtask_id, msg.computation_time)
             self.result_owner = EthAccountInfo(msg.key_id, msg.port, msg.address, msg.node_name, msg.node_info,
                                                msg.eth_account)
-            self.send(message.MessageGetTaskResult(msg.subtask_id))
+            self.send(message.MessageGetTaskResult(subtask_id=msg.subtask_id))
         else:
             self.dropped()
 
@@ -677,7 +687,7 @@ class TaskSession(MiddlemanSafeSession):
             logger.debug("Task session: sending task result hash: {} ({})"
                          .format(result_path, result_hash))
 
-            self.send(message.MessageTaskResultHash(subtask_id, result_hash, secret, options=client_options))
+            self.send(message.MessageTaskResultHash(subtask_id=subtask_id, multihash=result_hash, secret=secret, options=client_options))
 
         def error(exc):
             logger.error("Couldn't create a task result package for subtask {}: {}"
