@@ -3,7 +3,7 @@ import time
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
-from golem.network.transport.message import MessageGetPeers,\
+from golem.network.transport.message import \
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
@@ -163,7 +163,7 @@ class PeerSession(BasicSafeSession):
 
     def send_get_peers(self):
         """  Send get peers message """
-        self.send(MessageGetPeers())
+        self.send(message.MessageGetPeers())
 
     def send_get_tasks(self):
         """  Send get tasks message """
@@ -467,7 +467,7 @@ class PeerSession(BasicSafeSession):
             message.MessagePong.TYPE: self._react_to_pong,
             message.MessageHello.TYPE: self._react_to_hello,
             MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
-            MessageGetPeers.TYPE: self._react_to_get_peers,
+            message.MessageGetPeers.TYPE: self._react_to_get_peers,
             MessagePeers.TYPE: self._react_to_peers,
             MessageGetTasks.TYPE: self._react_to_get_tasks,
             MessageTasks.TYPE: self._react_to_tasks,

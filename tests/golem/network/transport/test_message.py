@@ -214,10 +214,8 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         }
         self.assertEquals(expected, msg.dict_repr())
 
-    def test_message_ping_pong(self):
-        for message_class, key in ( (message.MessagePing, 'PING'), (message.MessagePong, 'PONG') ):
+    def test_no_payload_messages(self):
+        for message_class in (message.MessagePing, message.MessagePong, message.MessageGetPeers):
             msg = message_class()
-            expected = {
-                key: True,
-            }
+            expected = {}
             self.assertEquals(expected, msg.dict_repr())

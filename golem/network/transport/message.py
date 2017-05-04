@@ -300,54 +300,17 @@ P2P_MESSAGE_BASE = 1000
 
 class MessagePing(Message):
     TYPE = P2P_MESSAGE_BASE + 1
-
-    MAPPING = {
-        'ping': u"PING",
-    }
-
-    def __init__(self, **kwargs):
-        """
-        Create ping message
-        """
-        self.ping = True
-        super(MessagePing, self).__init__(**kwargs)
+    MAPPING = {}
 
 
 class MessagePong(Message):
     TYPE = P2P_MESSAGE_BASE + 2
-
-    MAPPING = {
-        'pong': u"PONG",
-    }
-
-    def __init__(self, **kwargs):
-        """
-        Create pong message
-        """
-        self.pong = True
-        super(MessagePong, self).__init__(**kwargs)
+    MAPPING = {}
 
 
 class MessageGetPeers(Message):
     TYPE = P2P_MESSAGE_BASE + 3
-
-    GET_PEERS_STR = u"GET_PEERS"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """
-        Create request peers message
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if dict_repr.get(self.GET_PEERS_STR) is None:
-                raise IOError("Get peers message failed")
-
-    def dict_repr(self):
-        return {self.GET_PEERS_STR: True}
+    MAPPING = {}
 
 
 class MessagePeers(Message):
