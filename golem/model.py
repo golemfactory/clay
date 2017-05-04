@@ -241,9 +241,9 @@ class Stats(BaseModel):
 class HardwarePreset(BaseModel):
     name = CharField(null=False, index=True, unique=True)
 
-    cpu_cores = FloatField(null=False)
-    memory = FloatField(null=False)
-    disk = FloatField(null=False)
+    cpu_cores = IntegerField(null=False)
+    memory = BigIntegerField(null=False)
+    disk = BigIntegerField(null=False)
 
     def to_dict(self):
         return dict(

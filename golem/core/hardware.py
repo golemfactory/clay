@@ -37,24 +37,26 @@ AVAILABLE_MEMORY = memory_available()
 class HardwarePresets(object):
 
     DEFAULT_NAME = DEFAULT_HARDWARE_PRESET_NAME
-    DEFAULT_VALUES = dict(
-        cpu_cores=1.,
-        memory=1.,
-        disk=0.5
+    default_values = dict(
+        cpu_cores=AVAILABLE_CPU_CORES,
+        memory=AVAILABLE_MEMORY,
+        disk=MIN_DISK_SPACE
     )
 
     CUSTOM_NAME = "custom"
-    CUSTOM_VALUES = dict(DEFAULT_VALUES)
+    CUSTOM_VALUES = dict(default_values)
 
     working_dir = None
 
     @classmethod
     def initialize(cls, working_dir):
+        cls.working_dir = working_dir
+        cls.default_values['disk'] = free_partition_space(cls.working_dir)
+
         HardwarePreset.get_or_create(name=cls.DEFAULT_NAME,
-                                     defaults=cls.DEFAULT_VALUES)
+                                     defaults=cls.default_values)
         HardwarePreset.get_or_create(name=cls.CUSTOM_NAME,
                                      defaults=cls.CUSTOM_VALUES)
-        cls.working_dir = working_dir
 
     @classmethod
     def update_config(cls, preset_or_name, config):
@@ -62,6 +64,16 @@ class HardwarePresets(object):
         setattr(config, 'num_cores', values['cpu_cores'])
         setattr(config, 'max_memory_size', values['memory'])
         setattr(config, 'max_resource_size', values['disk'])
+
+    @classmethod
+    def caps(cls):
+        cls._assert_initialized()
+        available = free_partition_space(cls.working_dir)
+        return dict(
+            cpu_cores=AVAILABLE_CPU_CORES,
+            memory=AVAILABLE_MEMORY,
+            disk=available
+        )
 
     @classmethod
     def values(cls, preset_or_name):
@@ -79,31 +91,20 @@ class HardwarePresets(object):
         )
 
     @classmethod
-    def cpu_cores(cls, fraction):
-        fraction = cls.fraction(fraction)
-        cores_len = len(AVAILABLE_CPU_CORES)
-        requested = round(fraction * cores_len)
-        return max(requested, MIN_CPU_CORES)
+    def cpu_cores(cls, core_num):
+        return min(max(core_num, MIN_CPU_CORES), AVAILABLE_CPU_CORES)
 
     @classmethod
-    def memory(cls, fraction):
-        fraction = cls.fraction(fraction)
-        requested = round(fraction * AVAILABLE_MEMORY)
-        return max(requested, MIN_MEMORY_SIZE)
+    def memory(cls, mem_size):
+        return min(max(mem_size, MIN_MEMORY_SIZE), AVAILABLE_MEMORY)
 
     @classmethod
-    def disk(cls, fraction):
-        if not cls.working_dir:
-            raise EnvironmentError("Class not properly initialized")
-
-        fraction = cls.fraction(fraction)
+    def disk(cls, disk_space):
+        cls._assert_initialized()
         available = free_partition_space(cls.working_dir)
-        requested = math.floor(fraction * available / 1024)
-
-        return int(max(requested, MIN_DISK_SPACE))
+        return min(max(disk_space, MIN_DISK_SPACE), available)
 
     @classmethod
-    def fraction(cls, fraction):
-        if not fraction:
-            return 0.
-        return max(0., min(1., fraction))
+    def _assert_initialized(cls):
+        if not cls.working_dir:
+            raise EnvironmentError("Class not initialized")
