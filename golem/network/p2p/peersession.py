@@ -7,7 +7,7 @@ from golem.network.transport.message import MessagePing, MessagePong, MessageGet
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
-    MessageInformAboutNatTraverseFailure, MessageChallengeSolution
+    MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -65,7 +65,7 @@ class PeerSession(BasicSafeSession):
         self.challenge = None
         self.difficulty = 0
 
-        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
+        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE, message.MessageChallengeSolution.TYPE])
         self.can_be_unsigned.extend([message.MessageHello.TYPE])
         self.can_be_not_encrypted.extend([message.MessageHello.TYPE])
 
@@ -325,7 +325,7 @@ class PeerSession(BasicSafeSession):
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
-        self.send(MessageChallengeSolution(solution), send_unverified=True)
+        self.send(message.MessageChallengeSolution(solution=solution), send_unverified=True)
 
     def _react_to_get_peers(self, msg):
         self.__send_peers()

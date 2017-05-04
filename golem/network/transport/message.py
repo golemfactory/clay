@@ -262,49 +262,33 @@ class MessageRandVal(Message):
 class MessageDisconnect(Message):
     TYPE = 2
 
-    DISCONNECT_REASON_STR = u"DISCONNECT_REASON"
+    MAPPING = {
+        'reason': u"DISCONNECT_REASON",
+    }
 
-    def __init__(self, reason=-1, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, reason=-1, **kwargs):
         """
         Create a disconnect message
         :param int reason: disconnection reason
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.reason = reason
-
-        if dict_repr:
-            self.reason = dict_repr[self.DISCONNECT_REASON_STR]
-
-    def dict_repr(self):
-        return {self.DISCONNECT_REASON_STR: self.reason}
+        super(MessageDisconnect, self).__init__(**kwargs)
 
 
 class MessageChallengeSolution(Message):
     TYPE = 3
 
-    SOLUTION_STR = u"SOLUTION"
+    MAPPING = {
+        'solution': u"SOLUTION",
+    }
 
-    def __init__(self, solution="", sig="", timestamp=None, dict_repr=None):
+    def __init__(self, solution="", **kwargs):
         """
         Create a message with signed cryptographic challenge solution
         :param str solution: challenge solution
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.solution = solution
-
-        if dict_repr:
-            self.solution = dict_repr[self.SOLUTION_STR]
-
-    def dict_repr(self):
-        return {self.SOLUTION_STR: self.solution}
+        super(MessageChallengeSolution, self).__init__(**kwargs)
 
 
 ################
