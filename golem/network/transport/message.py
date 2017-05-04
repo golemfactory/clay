@@ -301,45 +301,31 @@ P2P_MESSAGE_BASE = 1000
 class MessagePing(Message):
     TYPE = P2P_MESSAGE_BASE + 1
 
-    PING_STR = u"PING"
+    MAPPING = {
+        'ping': u"PING",
+    }
 
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, **kwargs):
         """
         Create ping message
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if not dict_repr.get(self.PING_STR):
-                raise IOError("Ping message failed")
-
-    def dict_repr(self):
-        return {self.PING_STR: True}
+        self.ping = True
+        super(MessagePing, self).__init__(**kwargs)
 
 
 class MessagePong(Message):
     TYPE = P2P_MESSAGE_BASE + 2
 
-    PONG_STR = u"PONG"
+    MAPPING = {
+        'pong': u"PONG",
+    }
 
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, **kwargs):
         """
         Create pong message
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if dict_repr.get(self.PONG_STR) is None:
-                raise IOError("Pong message failed")
-
-    def dict_repr(self):
-        return {self.PONG_STR: True}
+        self.pong = True
+        super(MessagePong, self).__init__(**kwargs)
 
 
 class MessageGetPeers(Message):

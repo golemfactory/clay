@@ -3,7 +3,7 @@ import time
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
-from golem.network.transport.message import MessagePing, MessagePong, MessageGetPeers,\
+from golem.network.transport.message import MessageGetPeers,\
     MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
@@ -408,7 +408,7 @@ class PeerSession(BasicSafeSession):
         super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
-        self.send(MessagePong())
+        self.send(message.MessagePong())
 
     def __send_hello(self):
         self.solve_challenge = self.key_id and self.p2p_service.should_solve_challenge or False
@@ -430,7 +430,7 @@ class PeerSession(BasicSafeSession):
         self.send(msg, send_unverified=True)
 
     def __send_ping(self):
-        self.send(MessagePing())
+        self.send(message.MessagePing())
 
     def __send_peers(self):
         peers_info = []
@@ -463,8 +463,8 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            MessagePing.TYPE: self._react_to_ping,
-            MessagePong.TYPE: self._react_to_pong,
+            message.MessagePing.TYPE: self._react_to_ping,
+            message.MessagePong.TYPE: self._react_to_pong,
             message.MessageHello.TYPE: self._react_to_hello,
             MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
             MessageGetPeers.TYPE: self._react_to_get_peers,

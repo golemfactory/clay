@@ -213,3 +213,11 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'SOLUTION': solution,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_ping_pong(self):
+        for message_class, key in ( (message.MessagePing, 'PING'), (message.MessagePong, 'PONG') ):
+            msg = message_class()
+            expected = {
+                key: True,
+            }
+            self.assertEquals(expected, msg.dict_repr())
