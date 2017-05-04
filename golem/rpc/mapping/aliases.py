@@ -134,7 +134,7 @@ class UI(object):
 
     quit                    = 'ui.quit'
 
-    evt_lock_config         = 'evt.ui.config.widget.lock'
+    evt_lock_config         = 'evt.ui.widget.config.lock'
 
 
 class Applications(object):
