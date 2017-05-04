@@ -216,24 +216,28 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEquals(expected, msg.dict_repr())
 
     def test_no_payload_messages(self):
-        for message_class in (message.MessagePing, message.MessagePong, message.MessageGetPeers, message.MessageGetTasks):
+        for message_class in (
+                message.MessagePing,
+                message.MessagePong,
+                message.MessageGetPeers,
+                message.MessageGetTasks,
+                message.MessageGetResourcePeers,
+                ):
             msg = message_class()
             expected = {}
             self.assertEquals(expected, msg.dict_repr())
 
-    def test_message_peers(self):
-        msg = message.MessagePeers()
-        expected = {
-            'PEERS': [],
-        }
-        self.assertEquals(expected, msg.dict_repr())
-
-    def test_message_tasks(self):
-        msg = message.MessageTasks()
-        expected = {
-            'TASKS': [],
-        }
-        self.assertEquals(expected, msg.dict_repr())
+    def test_list_messages(self):
+        for message_class, key in (
+                (message.MessagePeers, 'PEERS'),
+                (message.MessageTasks, 'TASKS'),
+                (message.MessageResourcePeers, 'RESOURCE_PEERS'),
+                ):
+            msg = message_class()
+            expected = {
+                key: [],
+            }
+            self.assertEquals(expected, msg.dict_repr())
 
     def test_message_remove_task(self):
         task_id = 'test-{}'.format(uuid.uuid4())

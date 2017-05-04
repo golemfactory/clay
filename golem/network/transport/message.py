@@ -372,52 +372,27 @@ class MessageRemoveTask(Message):
 
 
 class MessageGetResourcePeers(Message):
+    """Request for resource peers"""
     TYPE = P2P_MESSAGE_BASE + 8
-
-    WANT_RESOURCE_PEERS_STR = u"WANT_RESOURCE_PEERS"
-
-    def __init__(self, sig="", timestamp=None, dict_repr=None):
-        """
-        Create request for resource peers
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
-        """
-        Message.__init__(self, sig, timestamp)
-
-        if dict_repr:
-            if dict_repr.get(self.WANT_RESOURCE_PEERS_STR) is None:
-                raise IOError("Get resource peers message failed")
-
-    def dict_repr(self):
-        return {self.WANT_RESOURCE_PEERS_STR: True}
+    MAPPING = {}
 
 
 class MessageResourcePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 9
 
-    RESOURCE_PEERS_STR = u"RESOURCE_PEERS"
+    MAPPING = {
+        'resource_peers': u"RESOURCE_PEERS",
+    }
 
-    def __init__(self, resource_peers=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, resource_peers=None, **kwargs):
         """
         Create message containing information about resource peers
         :param list resource_peers: list of peers information
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         if resource_peers is None:
             resource_peers = []
-
         self.resource_peers = resource_peers
-
-        if dict_repr:
-            self.resource_peers = dict_repr[self.RESOURCE_PEERS_STR]
-
-    def dict_repr(self):
-        return {self.RESOURCE_PEERS_STR: self.resource_peers}
+        super(MessageResourcePeers, self).__init__(**kwargs)
 
 
 class MessageDegree(Message):

@@ -4,7 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessageGetResourcePeers, MessageResourcePeers, \
+    \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
@@ -177,7 +177,7 @@ class PeerSession(BasicSafeSession):
 
     def send_get_resource_peers(self):
         """ Send get resource peers message """
-        self.send(MessageGetResourcePeers())
+        self.send(message.MessageGetResourcePeers())
 
     def send_degree(self, degree):
         """ Send degree message
@@ -348,7 +348,8 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.remove_task_header(msg.task_id)
 
     def _react_to_get_resource_peers(self, msg):
-        self.__send_resource_peers()
+        resource_peers = self.p2p_service.get_resource_peers()
+        self.send(message.MessageResourcePeers(resource_peers=resource_peers))
 
     def _react_to_resource_peers(self, msg):
         self.p2p_service.set_resource_peers(msg.resource_peers)
@@ -434,10 +435,6 @@ class PeerSession(BasicSafeSession):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
         self.send(message.MessagePeers(nodes_info))
 
-    def __send_resource_peers(self):
-        resource_peers = self.p2p_service.get_resource_peers()
-        self.send(MessageResourcePeers(resource_peers))
-
     def __set_verified_conn(self):
         self.verified = True
         self.p2p_service.verified_conn(self.conn_id)
@@ -471,8 +468,8 @@ class PeerSession(BasicSafeSession):
 
     def __set_resource_msg_interpretations(self):
         self._interpretation.update({
-            MessageGetResourcePeers.TYPE: self._react_to_get_resource_peers,
-            MessageResourcePeers.TYPE: self._react_to_resource_peers,
+            message.MessageGetResourcePeers.TYPE: self._react_to_get_resource_peers,
+            message.MessageResourcePeers.TYPE: self._react_to_resource_peers,
         })
 
     def __set_ranking_msg_interpretations(self):
