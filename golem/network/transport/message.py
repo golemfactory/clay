@@ -10,6 +10,8 @@ from golem.core.simpleserializer import CBORSerializer
 logger = logging.getLogger('golem.network.transport.message')
 
 
+# TODO: Separate class logic from payload by implementing dict interface.
+#       All message payload should be stored as dict not as instance attributes.
 class Message(object):
     """ Communication message that is sent in all networks """
 
