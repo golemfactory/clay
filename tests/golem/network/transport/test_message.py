@@ -215,7 +215,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertEquals(expected, msg.dict_repr())
 
     def test_no_payload_messages(self):
-        for message_class in (message.MessagePing, message.MessagePong, message.MessageGetPeers):
+        for message_class in (message.MessagePing, message.MessagePong, message.MessageGetPeers, message.MessageGetTasks):
             msg = message_class()
             expected = {}
             self.assertEquals(expected, msg.dict_repr())
@@ -224,5 +224,12 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         msg = message.MessagePeers()
         expected = {
             'PEERS': [],
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_tasks(self):
+        msg = message.MessageTasks()
+        expected = {
+            'TASKS': [],
         }
         self.assertEquals(expected, msg.dict_repr())

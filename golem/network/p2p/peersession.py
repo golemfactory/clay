@@ -4,7 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
+    MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
@@ -167,7 +167,7 @@ class PeerSession(BasicSafeSession):
 
     def send_get_tasks(self):
         """  Send get tasks message """
-        self.send(MessageGetTasks())
+        self.send(message.MessageGetTasks())
 
     def send_remove_task(self, task_id):
         """  Send remove task  message
@@ -337,7 +337,7 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.__send_tasks(tasks)
+        self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks_array:
@@ -434,9 +434,6 @@ class PeerSession(BasicSafeSession):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
         self.send(message.MessagePeers(nodes_info))
 
-    def __send_tasks(self, tasks):
-        self.send(MessageTasks(tasks))
-
     def __send_resource_peers(self):
         resource_peers = self.p2p_service.get_resource_peers()
         self.send(MessageResourcePeers(resource_peers))
@@ -460,8 +457,8 @@ class PeerSession(BasicSafeSession):
             MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
             message.MessageGetPeers.TYPE: self._react_to_get_peers,
             message.MessagePeers.TYPE: self._react_to_peers,
-            MessageGetTasks.TYPE: self._react_to_get_tasks,
-            MessageTasks.TYPE: self._react_to_tasks,
+            message.MessageGetTasks.TYPE: self._react_to_get_tasks,
+            message.MessageTasks.TYPE: self._react_to_tasks,
             MessageRemoveTask.TYPE: self._react_to_remove_task,
             MessageFindNode.TYPE: self._react_to_find_node,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
