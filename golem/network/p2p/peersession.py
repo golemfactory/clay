@@ -4,7 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
+    MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
@@ -290,8 +290,7 @@ class PeerSession(BasicSafeSession):
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
-            nodes_info = self.p2p_service.find_node(self.p2p_service.get_key_id())
-            self.send(MessagePeers(nodes_info))
+            self._send_peers(node_key_id=self.p2p_service.get_key_id())
             self.disconnect(PeerSession.DCRTooManyPeers)
 
             self.p2p_service.try_to_add_peer({"address": self.address,
@@ -328,7 +327,7 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessageChallengeSolution(solution=solution), send_unverified=True)
 
     def _react_to_get_peers(self, msg):
-        self.__send_peers()
+        self._send_peers()
 
     def _react_to_peers(self, msg):
         peers_info = msg.peers_array
@@ -367,8 +366,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.safe_neighbour_loc_rank(self.key_id, msg.node_id, msg.loc_rank)
 
     def _react_to_find_node(self, msg):
-        nodes_info = self.p2p_service.find_node(msg.node_key_id)
-        self.send(MessagePeers(nodes_info))
+        self._send_peers(node_key_id=msg.node_key_id)
 
     def _react_to_rand_val(self, msg):
         # if self.solve_challenge:
@@ -432,16 +430,9 @@ class PeerSession(BasicSafeSession):
     def __send_ping(self):
         self.send(message.MessagePing())
 
-    def __send_peers(self):
-        peers_info = []
-        for p in self.p2p_service.peers.values():
-            peers_info.append({
-                "address": p.address,
-                "port": p.listen_port,
-                "node_name": p.node_name,
-                "node": p.node_info
-            })
-        self.send(MessagePeers(peers_info))
+    def _send_peers(self, node_key_id=None):
+        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
+        self.send(message.MessagePeers(nodes_info))
 
     def __send_tasks(self, tasks):
         self.send(MessageTasks(tasks))
@@ -468,7 +459,7 @@ class PeerSession(BasicSafeSession):
             message.MessageHello.TYPE: self._react_to_hello,
             MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
             message.MessageGetPeers.TYPE: self._react_to_get_peers,
-            MessagePeers.TYPE: self._react_to_peers,
+            message.MessagePeers.TYPE: self._react_to_peers,
             MessageGetTasks.TYPE: self._react_to_get_tasks,
             MessageTasks.TYPE: self._react_to_tasks,
             MessageRemoveTask.TYPE: self._react_to_remove_task,

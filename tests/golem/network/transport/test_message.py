@@ -219,3 +219,10 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             msg = message_class()
             expected = {}
             self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_peers(self):
+        msg = message.MessagePeers()
+        expected = {
+            'PEERS': [],
+        }
+        self.assertEquals(expected, msg.dict_repr())

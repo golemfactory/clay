@@ -316,28 +316,20 @@ class MessageGetPeers(Message):
 class MessagePeers(Message):
     TYPE = P2P_MESSAGE_BASE + 4
 
-    PEERS_STR = u"PEERS"
+    MAPPING = {
+        'peers_array': u"PEERS",
+    }
 
-    def __init__(self, peers_array=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, peers_array=None, **kwargs):
         """
         Create message containing information about peers
         :param list peers_array: list of peers information
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         if peers_array is None:
             peers_array = []
 
         self.peers_array = peers_array
-
-        if dict_repr:
-            self.peers_array = dict_repr[self.PEERS_STR]
-
-    def dict_repr(self):
-        return {self.PEERS_STR: self.peers_array}
+        super(MessagePeers, self).__init__(**kwargs)
 
 
 class MessageGetTasks(Message):
