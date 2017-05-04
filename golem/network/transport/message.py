@@ -473,80 +473,48 @@ class MessageFindNode(Message):
 class MessageWantToStartTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 15
 
-    NODE_INFO_STR = u"NODE_INFO"
-    CONN_ID_STR = u"CONN_ID"
-    SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
+    MAPPING = {
+        'node_info': u"NODE_INFO",
+        'conn_id': u"CONN_ID",
+        'super_node_info': u"SUPER_NODE_INFO",
+    }
 
-    def __init__(self, node_info=None, conn_id=None, super_node_info=None, sig="", timestamp=None,
-                 dict_repr=None):
+    def __init__(self, node_info=None, conn_id=None, super_node_info=None, **kwargs):
         """
         Create request for starting task session with given node
         :param Node node_info: information about this node
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.node_info = node_info
         self.conn_id = conn_id
         self.super_node_info = super_node_info
-
-        if dict_repr:
-            self.node_info = dict_repr[self.NODE_INFO_STR]
-            self.conn_id = dict_repr[self.CONN_ID_STR]
-            self.super_node_info = dict_repr[self.SUPER_NODE_INFO_STR]
-
-    def dict_repr(self):
-        return {
-            self.NODE_INFO_STR: self.node_info,
-            self.CONN_ID_STR: self.conn_id,
-            self.SUPER_NODE_INFO_STR: self.super_node_info
-        }
+        super(MessageWantToStartTaskSession, self).__init__(**kwargs)
 
 
 class MessageSetTaskSession(Message):
     TYPE = P2P_MESSAGE_BASE + 16
 
-    KEY_ID_STR = u"KEY_ID"
-    NODE_INFO_STR = u"NODE_INFO"
-    CONN_ID_STR = u"CONN_ID"
-    SUPER_NODE_INFO_STR = u"SUPER_NODE_INFO"
+    MAPPING = {
+        'key_id': u"KEY_ID",
+        'node_info': u"NODE_INFO",
+        'conn_id': u"CONN_ID",
+        'super_node_info': u"SUPER_NODE_INFO",
+    }
 
-    def __init__(self, key_id=None, node_info=None, conn_id=None, super_node_info=None, sig="", timestamp=None,
-                 dict_repr=None):
+    def __init__(self, key_id=None, node_info=None, conn_id=None, super_node_info=None, **kwargs):
         """
         Create message with information that node from node_info want to start task session with key_id node
         :param key_id: target node key
         :param Node node_info: information about requestor
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.key_id = key_id
         self.node_info = node_info
         self.conn_id = conn_id
         self.super_node_info = super_node_info
-
-        if dict_repr:
-            self.key_id = dict_repr[self.KEY_ID_STR]
-            self.node_info = dict_repr[self.NODE_INFO_STR]
-            self.conn_id = dict_repr[self.CONN_ID_STR]
-            self.super_node_info = dict_repr[self.SUPER_NODE_INFO_STR]
-
-    def dict_repr(self):
-        return {
-            self.KEY_ID_STR: self.key_id,
-            self.NODE_INFO_STR: self.node_info,
-            self.CONN_ID_STR: self.conn_id,
-            self.SUPER_NODE_INFO_STR: self.super_node_info
-        }
+        super(MessageSetTaskSession, self).__init__(**kwargs)
 
 
 class MessageNatHole(Message):

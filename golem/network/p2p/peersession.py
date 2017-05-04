@@ -4,7 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
+    MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
@@ -212,7 +212,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
-        self.send(MessageWantToStartTaskSession(node_info, conn_id, super_node_info))
+        self.send(message.MessageWantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info))
 
     def send_set_task_session(self, key_id, node_info, conn_id, super_node_info):
         """ Send information that node from node_info want to start task session with key_id node
@@ -221,7 +221,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
-        self.send(MessageSetTaskSession(key_id, node_info, conn_id, super_node_info))
+        self.send(message.MessageSetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info))
 
     def send_task_nat_hole(self, key_id, address, port, conn_id):
         """
@@ -457,8 +457,8 @@ class PeerSession(BasicSafeSession):
             message.MessageRemoveTask.TYPE: self._react_to_remove_task,
             message.MessageFindNode.TYPE: self._react_to_find_node,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
-            MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
-            MessageSetTaskSession.TYPE: self._react_to_set_task_session,
+            message.MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
+            message.MessageSetTaskSession.TYPE: self._react_to_set_task_session,
             MessageNatHole.TYPE: self._react_to_nat_hole,
             MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
             MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure

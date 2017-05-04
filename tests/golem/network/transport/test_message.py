@@ -266,3 +266,29 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'NODE_ID': node_id,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_want_to_start_task_session(self):
+        node_info = 'test-ni-{}'.format(uuid.uuid4())
+        conn_id = 'test-ci-{}'.format(uuid.uuid4())
+        super_node_info = 'test-sni-{}'.format(uuid.uuid4())
+        msg = message.MessageWantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
+        expected = {
+            'NODE_INFO': node_info,
+            'CONN_ID': conn_id,
+            'SUPER_NODE_INFO': super_node_info,
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_set_task_session(self):
+        key_id = 'test-ki-{}'.format(uuid.uuid4())
+        node_info = 'test-ni-{}'.format(uuid.uuid4())
+        conn_id = 'test-ci-{}'.format(uuid.uuid4())
+        super_node_info = 'test-sni-{}'.format(uuid.uuid4())
+        msg = message.MessageSetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info)
+        expected = {
+            'KEY_ID': key_id,
+            'NODE_INFO': node_info,
+            'CONN_ID': conn_id,
+            'SUPER_NODE_INFO': super_node_info,
+        }
+        self.assertEquals(expected, msg.dict_repr())
