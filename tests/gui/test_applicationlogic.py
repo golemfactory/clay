@@ -470,6 +470,43 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         with self.assertRaises(RuntimeError):
             logic.register_new_test_task_type(task_type)
 
+    def test_test_task_status(self):
+
+        def reset():
+            self.logic.test_task_started = Mock()
+            self.logic.test_task_computation_success = Mock()
+            self.logic.test_task_computation_error = Mock()
+
+        args = ['first', 'second']
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.started, *args)
+        self.logic.test_task_started.assert_called_with(*args)
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.success, *args)
+        self.logic.test_task_computation_success.assert_called_with(*args)
+        assert not self.logic.test_task_started.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.started, *args)
+        self.logic.test_task_started.assert_called_with(*args)
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status("test")
+        assert not self.logic.test_task_started.called
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
 
 class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
