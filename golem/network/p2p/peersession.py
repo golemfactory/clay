@@ -4,8 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    \
-    MessageLocRank, MessageFindNode, \
+    MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
 from golem.network.transport.session import BasicSafeSession
@@ -201,7 +200,7 @@ class PeerSession(BasicSafeSession):
         :param LocalRank loc_rank: opinion bout node
         :return:
         """
-        self.send(MessageLocRank(node_id, loc_rank))
+        self.send(message.MessageLocRank(node_id=node_id, loc_rank=loc_rank))
 
     def send_find_node(self, key_num):
         """ Send find node message
@@ -476,6 +475,6 @@ class PeerSession(BasicSafeSession):
         self._interpretation.update({
             message.MessageDegree.TYPE: self._react_to_degree,
             message.MessageGossip.TYPE: self._react_to_gossip,
-            MessageLocRank.TYPE: self._react_to_loc_rank,
+            message.MessageLocRank.TYPE: self._react_to_loc_rank,
             message.MessageStopGossip.TYPE: self._react_to_stop_gossip,
         })

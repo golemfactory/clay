@@ -252,3 +252,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'REMOVE_TASK': task_id,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_loc_rank(self):
+        node_id = 'test-{}'.format(uuid.uuid4())
+        loc_rank = random.randint(-10**10, 10**10)
+        msg = message.MessageLocRank(node_id=node_id, loc_rank=loc_rank)
+        expected = {
+            'LOC_RANK': loc_rank,
+            'NODE_ID': node_id,
+        }
+        self.assertEquals(expected, msg.dict_repr())

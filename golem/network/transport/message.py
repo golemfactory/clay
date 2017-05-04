@@ -438,30 +438,20 @@ class MessageStopGossip(Message):
 class MessageLocRank(Message):
     TYPE = P2P_MESSAGE_BASE + 13
 
-    NODE_ID_STR = u"NODE_ID"
-    LOC_RANK_STR = u"LOC_RANK"
+    MAPPING = {
+        'node_id': u"NODE_ID",
+        'loc_rank': u"LOC_RANK",
+    }
 
-    def __init__(self, node_id='', loc_rank='', sig="", timestamp=None, dict_repr=None):
+    def __init__(self, node_id='', loc_rank='', **kwargs):
         """
         Create message with local opinion about given node
         :param uuid node_id: message contain opinion about node with this id
         :param LocalRank loc_rank: opinion about node
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.node_id = node_id
         self.loc_rank = loc_rank
-
-        if dict_repr:
-            self.node_id = dict_repr[self.NODE_ID_STR]
-            self.loc_rank = dict_repr[self.LOC_RANK_STR]
-
-    def dict_repr(self):
-        return {self.NODE_ID_STR: self.node_id,
-                self.LOC_RANK_STR: self.loc_rank}
+        super(MessageLocRank, self).__init__(**kwargs)
 
 
 class MessageFindNode(Message):
