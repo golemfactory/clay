@@ -4,6 +4,7 @@ import os
 import random
 import time
 import unittest
+import uuid
 
 from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
@@ -231,5 +232,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         msg = message.MessageTasks()
         expected = {
             'TASKS': [],
+        }
+        self.assertEquals(expected, msg.dict_repr())
+
+    def test_message_remove_task(self):
+        task_id = 'test-{}'.format(uuid.uuid4())
+        msg = message.MessageRemoveTask(task_id=task_id)
+        expected = {
+            'REMOVE_TASK': task_id,
         }
         self.assertEquals(expected, msg.dict_repr())

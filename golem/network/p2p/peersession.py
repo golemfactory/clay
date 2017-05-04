@@ -4,7 +4,7 @@ import time
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.message import \
-    MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
+    MessageGetResourcePeers, MessageResourcePeers, \
     MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, \
     MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
     MessageInformAboutNatTraverseFailure
@@ -173,7 +173,7 @@ class PeerSession(BasicSafeSession):
         """  Send remove task  message
          :param str task_id: task to be removed
         """
-        self.send(MessageRemoveTask(task_id))
+        self.send(message.MessageRemoveTask(task_id=task_id))
 
     def send_get_resource_peers(self):
         """ Send get resource peers message """
@@ -459,7 +459,7 @@ class PeerSession(BasicSafeSession):
             message.MessagePeers.TYPE: self._react_to_peers,
             message.MessageGetTasks.TYPE: self._react_to_get_tasks,
             message.MessageTasks.TYPE: self._react_to_tasks,
-            MessageRemoveTask.TYPE: self._react_to_remove_task,
+            message.MessageRemoveTask.TYPE: self._react_to_remove_task,
             MessageFindNode.TYPE: self._react_to_find_node,
             message.MessageRandVal.TYPE: self._react_to_rand_val,
             MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,

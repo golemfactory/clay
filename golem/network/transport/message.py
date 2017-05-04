@@ -358,25 +358,17 @@ class MessageTasks(Message):
 class MessageRemoveTask(Message):
     TYPE = P2P_MESSAGE_BASE + 7
 
-    REMOVE_TASK_STR = u"REMOVE_TASK"
+    MAPPING = {
+        'task_id': u"REMOVE_TASK",
+    }
 
-    def __init__(self, task_id=None, sig="", timestamp=None, dict_repr=None):
+    def __init__(self, task_id=None, **kwargs):
         """
         Create message with request to remove given task
         :param str task_id: task to be removed
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        Message.__init__(self, sig, timestamp)
-
         self.task_id = task_id
-
-        if dict_repr:
-            self.task_id = dict_repr[self.REMOVE_TASK_STR]
-
-    def dict_repr(self):
-        return {self.REMOVE_TASK_STR: self.task_id}
+        super(MessageRemoveTask, self).__init__(**kwargs)
 
 
 class MessageGetResourcePeers(Message):
