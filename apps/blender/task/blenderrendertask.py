@@ -12,6 +12,7 @@ from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.resources.blenderloganalyser import find_wrong_renderer_warning
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
@@ -427,7 +428,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 if warnings:
                     ret.append(u"\nMake sure you added all required files to resources.")
                 f.seek(0)
-                warning = self.__find_wrong_renderer_warning(f.read())
+                warning = find_wrong_renderer_warning(f.read())
                 if warning:
                     ret.append(u"\n{}\n".format(warning))
 
@@ -441,13 +442,6 @@ class BlenderRenderTask(FrameRenderingTask):
                 # extract filename from warning message
                 warnings.append(os.path.basename(l[14:-11]))
         return warnings
-
-    def __find_wrong_renderer_warning(self, log_content):
-        text = "error: engine"
-        for l in log_content.splitlines():
-            if l.lower().startswith(text):
-                return l[len(text):]
-        return ""
 
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)
