@@ -1,29 +1,33 @@
 from __future__ import division
 
 import atexit
+import json
 import logging
+import os
 import re
-import requests
 import subprocess
 import time
 from datetime import datetime
 from distutils.version import StrictVersion
 
+import requests
+import sys
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
+from web3 import Web3, IPCProvider
+from web3.providers.ipc import get_default_ipc_path
 
+from golem.core.common import is_windows
 from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
-from golem.utils import find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
 
-from web3 import Web3, IPCProvider
 
 def ropsten_faucet_donate(addr):
     addr = normalize_address(addr)
-    URL_TEMPLATE = "http://faucet.ropsten.be:3001/donate/{}"
+    URL_TEMPLATE = "http://188.165.227.180:3000/donate/{}"
     request = URL_TEMPLATE.format(addr.encode('hex'))
     response = requests.get(request)
     if response.status_code != 200:
@@ -60,7 +64,13 @@ class Faucet(object):
 
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.5.0'
-    MAX_GETH_VERSION = '1.5.999'
+    MAX_GETH_VERSION = '1.6.999'
+    BOOT_NODES = [
+        "enode://c8109b20aaac3cf8a793c1d1de505ca8b0a7e112734ef62f169bb4f2408af10ba31efce9fdb2b5b16499111a04a6204c331ffb8a131e6d19c79481884d162e3e@188.165.227.180:30333",
+        "enode://20c9ad97c081d63397d7b685a412227a40e23c8bdc6688c6f37e97cfbc22d2b4d1db1510d8f61e6a8866ad7f0e17c02b14182d37ea7c3c8b9c2683aeb6b733a1@52.169.14.227:30303",
+        "enode://6ce05930c72abc632c58e2e4324f7c7ea478cec0ed4fa2528982cf34483094e9cbc9216e7aa349691242576d552a2a56aaeae426c5303ded677ce455ba1acd9d@13.84.180.240:30303"
+    ]
+
     testnet = True
 
     def __init__(self):
@@ -75,8 +85,8 @@ class NodeProcess(object):
             raise OSError("Incompatible Ethereum client 'geth' version: {}".format(ver))
         log.info("geth version {}".format(ver))
 
-        self.__ps = None # child process
-        self.system_geth = False # some external geth, not a child process
+        self.__ps = None  # child process
+        self.system_geth = False  # some external geth, not a child process
 
     def is_running(self):
         return self.__ps is not None or self.system_geth
@@ -100,6 +110,8 @@ class NodeProcess(object):
                 log.error("Looking for {}; geth is running {}".format(the_chain, running_chain))
                 msg = "Ethereum client runs wrong chain: {}".format(running_chain)
                 raise OSError(msg)
+        elif self.testnet:
+            self.save_static_nodes(testnet=True)
 
         log.info("Will attempt to start new Ethereum node")
 
@@ -107,6 +119,7 @@ class NodeProcess(object):
             self.__prog,
             '--light',
             '--testnet',
+            '--bootnodes', ','.join(self.BOOT_NODES),
             '--verbosity', '3',
         ]
 
@@ -135,6 +148,19 @@ class NodeProcess(object):
             duration = time.clock() - start_time
             log.info("Node terminated in {:.2f} s".format(duration))
 
+    def save_static_nodes(self, testnet=False):
+        datadir = get_default_geth_path(testnet=testnet)
+
+        if not os.path.exists(datadir):
+            os.makedirs(datadir)
+
+        static_nodes_path = os.path.join(datadir, "static-nodes.json")
+
+        log.debug("Saving boot nodes to {}".format(static_nodes_path))
+        with open(static_nodes_path, 'w') as static_nodes_file:
+            static_nodes_file.write(json.dumps(self.BOOT_NODES))
+
+
 def identify_chain(testnet):
     """
     Check if chain which external Ethereum node is running
@@ -150,6 +176,21 @@ def identify_chain(testnet):
         return "mainnet"
     return None
 
+
 def is_geth_listening(testnet):
     web3 = Web3(IPCProvider(testnet=testnet))
     return web3.isConnected()
+
+
+def get_default_geth_path(testnet=False):
+    if sys.platform == 'win32':
+        return os.path.expanduser(os.path.join(
+            "~",
+            "AppData",
+            "Roaming",
+            "Ethereum",
+            "testnet" if testnet else ""
+        ))
+    else:
+        # if not using Named Pipes, remove "geth.ipc" from the returned path
+        return os.path.dirname(get_default_ipc_path(testnet))

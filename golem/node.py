@@ -8,6 +8,7 @@ import jsonpickle as json
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
+from golem.core.common import is_windows
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
@@ -35,6 +36,7 @@ class Node(object):
 
     def initialize(self):
         self.load_environments(self.default_environments)
+        self.client.sync()
         self.client.start()
 
     def load_environments(self, environments):
@@ -55,9 +57,11 @@ class Node(object):
 
     def run(self, use_rpc=False):
         try:
-            # Import reactor locally because it also installs it and GUI
-            # requires Qt reactor version.
+            if is_windows() and 'twisted.internet.reactor' not in sys.modules:
+                from twisted.internet import iocpreactor
+                iocpreactor.install()
             from twisted.internet import reactor
+
             if use_rpc:
                 config = self.client.config_desc
                 reactor.callWhenRunning(self._start_rpc_server,

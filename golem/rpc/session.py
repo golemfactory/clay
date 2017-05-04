@@ -2,11 +2,25 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.wamp import ApplicationRunner
+from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError
 from autobahn.wamp import types
 from twisted.internet.defer import inlineCallbacks, Deferred
 
 logger = logging.getLogger('golem.rpc')
+
+
+setProtocolOptions = WampWebSocketClientFactory.setProtocolOptions
+
+
+def set_protocol_options(instance, **options):
+    options['autoPingInterval'] = 5.
+    options['autoPingTimeout'] = 15.
+    options['openHandshakeTimeout'] = 30.
+    setProtocolOptions(instance, **options)
+
+# monkey-patch setProtocolOptions and provide custom values
+WampWebSocketClientFactory.setProtocolOptions = set_protocol_options
 
 
 class RPCAddress(object):
@@ -73,26 +87,26 @@ class Session(ApplicationSession):
         yield self.register_methods(self.methods)
         yield self.register_events(self.events)
         self.connected = True
-        self.ready.called = False
-        self.ready.callback(details)
+        if not self.ready.called:
+            self.ready.callback(details)
 
-    @inlineCallbacks
     def onLeave(self, details):
         self.connected = False
         if not self.ready.called:
-            self.ready.errback(details or u"Unknown error occurred")
+            self.ready.errback(details or "Unknown error occurred")
+        super(Session, self).onLeave(details)
 
     @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
-            deferred = self.register(method, rpc_name)
+            deferred = self.register(method, unicode(rpc_name))
             deferred.addErrback(self._on_error)
             yield deferred
 
     @inlineCallbacks
     def register_events(self, events):
         for method, rpc_name in events:
-            deferred = self.subscribe(method, rpc_name)
+            deferred = self.subscribe(method, unicode(rpc_name))
             deferred.addErrback(self._on_error)
             self.subs[rpc_name] = yield deferred
 
@@ -103,11 +117,11 @@ class Session(ApplicationSession):
                 yield self.subs[event_name].unsubscibe()
                 self.subs.pop(event_name, None)
             else:
-                logger.error(u"RPC: Not subscribed to: {}".format(event_name))
+                logger.error("RPC: Not subscribed to: {}".format(event_name))
 
     @staticmethod
     def _on_error(err):
-        logger.error(u"RPC: Session error: {}".format(err))
+        logger.error("RPC: Session error: {}".format(err))
 
 
 class Client(object):
@@ -121,18 +135,24 @@ class Client(object):
             setattr(self, method_name, self._make_call(method_alias))
 
     def _make_call(self, method_alias):
-        return lambda *a, **kw: self._call(method_alias, *a, **kw)
+        return lambda *a, **kw: self._call(unicode(method_alias), *a, **kw)
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.connected:
             # if 'options' not in kwargs or not kwargs.get('options'):
             #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
-            deferred = self._session.call(method_alias, *args, **kwargs)
+            deferred = self._session.call(unicode(method_alias), *args, **kwargs)
+            deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
-            deferred.errback(ProtocolError(u"RPC: session is not yet established"))
+            deferred.errback(ProtocolError("RPC: session is not yet established"))
 
         return deferred
+
+    @staticmethod
+    def _on_error(err):
+        logger.error("RPC: call error: {}".format(err))
+        raise err
 
 
 class Publisher(object):
@@ -142,9 +162,9 @@ class Publisher(object):
 
     def publish(self, event_alias, *args, **kwargs):
         if self.session.connected:
-            self.session.publish(event_alias, *args, **kwargs)
+            self.session.publish(unicode(event_alias), *args, **kwargs)
         else:
-            logger.warn(u"RPC: Cannot publish '{}', session is not yet established"
+            logger.warn("RPC: Cannot publish '{}', session is not yet established"
                         .format(event_alias))
 
 

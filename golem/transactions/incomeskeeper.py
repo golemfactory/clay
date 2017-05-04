@@ -112,7 +112,7 @@ class IncomesDatabase(object):
 
 
 class IncomesKeeper(object):
-    """ Keeps information about payments received from other nodes
+    """Keeps information about payments received from other nodes
     """
 
     def __init__(self):

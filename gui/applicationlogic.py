@@ -1,9 +1,10 @@
 from __future__ import division
 
-import jsonpickle as json
+import jsonpickle
 import logging
 import os
 
+from PyQt5.QtCore import Qt
 from ethereum.utils import denoms
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
@@ -142,7 +143,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.ui.statusTextBrowser.setText(client_status)
 
     def update_peers_view(self):
-        self.client.get_connected_peers().addCallback(self._update_peers_view)
+        self.client.get_connected_peers().addCallbacks(
+            self._update_peers_view, self._rpc_error
+        )
 
     def _update_peers_view(self, peers):
         table = self.customizer.gui.ui.connectedPeersTable
@@ -163,9 +166,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 
     def update_payments_view(self):
-        deferred = self.client.get_balance()
-        deferred.addCallback(self._update_payments_view)
-        deferred.addErrback(self._rpc_error)
+        self.client.get_balance().addCallbacks(
+            self._update_payments_view, self._rpc_error
+        )
 
     def _update_payments_view(self, result_tuple):
         if any(b is None for b in result_tuple):
@@ -371,7 +374,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 file_path += "."
             file_path += "gt"
         with open(file_path, "wb") as f:
-            data = json.dumps(task_state)
+            data = jsonpickle.dumps(task_state)
             f.write(data)
 
     @staticmethod
@@ -473,7 +476,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.gui.setEnabled('recount', False)        # disable all 'recount' buttons
         self.progress_dialog.show()
 
-        self.br.start()
+        self.br.run()
 
     @inlineCallbacks
     def _benchmark_computation_success(self, performance, label, cfg_param):
@@ -511,17 +514,19 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def disable_environment(self, env_id):
         self.client.disable_environment(env_id)
 
-    def test_task_computation_success(self, results, est_mem, msg=None):
+    def test_task_computation_success(self, results, est_mem, time_spent,  msg=None):
         self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        if msg is not None:
-            ms_box = QMessageBox(QMessageBox.NoIcon, "Warning", u"{}".format(msg))
-            ms_box.exec_()
-            ms_box.show()
-        msg = u"Task tested successfully"
-        self.progress_dialog_customizer.show_message(msg)
-        self.progress_dialog_customizer.enable_ok_button(True)    # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
         self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)# disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
+
+        if msg is not None:
+            self.progress_dialog.close()
+            self.customizer.show_warning_window(u"{}".format(msg))
+        else:
+            msg = u"Task tested successfully - time %.2f" % time_spent
+            self.progress_dialog_customizer.show_message(msg)
+
         self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
         if self.customizer.new_task_dialog_customizer:
             self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)

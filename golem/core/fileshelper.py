@@ -149,14 +149,27 @@ def inner_dir_path(path, directory):
     return os.path.join(current_dir, directory, filename)
 
 
+def ensure_dir_exists(directory):
+    if not os.path.isdir(directory):
+        os.mkdir(directory)
+
+
+def has_ext(filename, ext, case_sensitive=False):
+    if case_sensitive:
+        return filename.endswith(ext)
+    return filename.lower().endswith(ext.lower())
+
+
 def du(path):
     """ Imitates bash "du -h <path>" command behaviour. Returns the estimated size of this directory
     :param str path: path to directory which size should be measured
     :return str: directory size in human readable format (eg. 1 Mb) or "-1" if an error occurs.
     """
     try:
-        size = int(subprocess.check_output(['du', '-sb', path]).split()[0])
-    except (OSError, subprocess.CalledProcessError):
+        size, _ = subprocess.check_output(['du', '-sh', path]).split()
+        unit = dict(K='kB', B='B').get(size[-1], size[-1] + 'B')
+        return "{} {}".format(float(size[:-1]), unit)
+    except (ValueError, OSError, subprocess.CalledProcessError):
         try:
             size = int(get_dir_size(path))
         except OSError as err:
@@ -165,3 +178,10 @@ def du(path):
             return "-1"
     human_readable_size, idx = dir_size_to_display(size)
     return "{} {}".format(human_readable_size, translate_resource_index(idx))
+
+
+def format_cmd_line_path(path):
+    if is_windows():
+        return "{}".format(path)
+    else:
+        return '"{}"'.format(path)

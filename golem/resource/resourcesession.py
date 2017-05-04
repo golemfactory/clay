@@ -1,7 +1,8 @@
 import logging
 
 
-from golem.network.transport.message import MessageHello, MessageRandVal, MessageHasResource, MessageWantsResource, \
+from golem.network.transport import message
+from golem.network.transport.message import MessageRandVal, MessageHasResource, MessageWantsResource, \
     MessagePushResource, MessagePullResource, MessagePullAnswer, MessageSendResource
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import FilesProtocol, EncryptFileProducer, DecryptFileConsumer
@@ -37,13 +38,13 @@ class ResourceSession(BasicSafeSession):
             MessageWantsResource.TYPE: self._react_to_wants_resource,
             MessagePullResource.TYPE: self._react_to_pull_resource,
             MessagePullAnswer.TYPE: self._react_to_pull_answer,
-            MessageHello.TYPE: self._react_to_hello,
+            message.MessageHello.TYPE: self._react_to_hello,
             MessageRandVal.TYPE: self._react_to_rand_val
         })
 
-        self.can_be_not_encrypted.append(MessageHello.TYPE)
-        self.can_be_unsigned.append(MessageHello.TYPE)
-        self.can_be_unverified.extend([MessageHello.TYPE, MessageRandVal.TYPE])
+        self.can_be_not_encrypted.append(message.MessageHello.TYPE)
+        self.can_be_unsigned.append(message.MessageHello.TYPE)
+        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE])
 
     ########################
     # BasicSession methods #
@@ -79,9 +80,11 @@ class ResourceSession(BasicSafeSession):
         try:
             data = self.resource_server.decrypt(data)
         except AssertionError:
-            logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+            logger.info("Failed to decrypt message from {}:{}, "
+                        "maybe it's not encrypted?".format(self.address, self.port))
         except Exception as err:
-            logger.error("Failed to decrypt message {}".format(str(err)))
+            logger.info("Failed to decrypt message {} from {}:{}".format(str(err), self.address,
+                                                                         self.port))
             raise
 
         return data
@@ -129,7 +132,7 @@ class ResourceSession(BasicSafeSession):
                 self.resource_server.add_resource_to_send(self.file_name, self.copies)
             self.copies = 0
         else:
-            self.resource_server.resource_downloaded(self.file_name, self.address, self.port)
+            self.resource_server._download_success(self.file_name, self.address, self.port)
             self.dropped()
         self.file_name = None
 
@@ -141,7 +144,7 @@ class ResourceSession(BasicSafeSession):
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
-        self.send(MessageHello(client_key_id=self.resource_server.get_key_id(), rand_val=self.rand_val),
+        self.send(message.MessageHello(client_key_id=self.resource_server.get_key_id(), rand_val=self.rand_val),
                   send_unverified=True)
 
     #########################

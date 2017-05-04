@@ -44,6 +44,7 @@ class TaskHeader(object):
 
     def __repr__(self):
         return '<Header: %r>' % (self.task_id,)
+
     def to_binary(self):
         return self.dict_to_binary(self.to_dict())
 

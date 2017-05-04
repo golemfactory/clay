@@ -14,13 +14,19 @@ between both roles).
 
 ## Installing and testing
 
-Follow the installation instruction from
-[here](https://github.com/golemfactory/golem/wiki/Installation).
+For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
+For Linux download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh), make it executable `chmod +x install.sh` and run `./install.sh`.
+For MS Windows download the installer from [here](https://github.com/golemfactory/golem/releases/); when downloaded, just run `setup.exe`.
+
 Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
 
-[Golem windows package](https://www.dropbox.com/s/5t6c3qwarddmymc/golem-win32.zip?dl=0)
+[Golem for macOS](https://github.com/golemfactory/homebrew-golem)
 
-[Golem Linux package](https://www.dropbox.com/s/2nn5lg7x0c3q23z/golem-linux.zip?dl=0)
+[Golem Linux script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh)
+
+[Golem MS Windows installer](https://github.com/golemfactory/golem/releases/)
+
+All released packages are located [here](https://github.com/golemfactory/golem/releases), however, we strongly encourage you to use prepared installers.
 
 ## Warning
 
@@ -46,8 +52,8 @@ Golem communicates with external technologies some of them may be downloaded and
 * [SQLite3](https://sqlite.org/index.html)
 
 Benchmarks:
-* General: [Minilight] (http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
-* Blender: [scene-Helicopter] (https://www.blender.org/download/demo-files/)
+* General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
+* Blender: [scene-Helicopter](https://www.blender.org/download/demo-files/)
 * LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche
 
 Icons:

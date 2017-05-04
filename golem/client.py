@@ -1,6 +1,5 @@
 import atexit
 import logging
-from pydispatch import dispatcher
 import sys
 import time
 import uuid
@@ -10,7 +9,9 @@ from copy import copy
 from os import path, makedirs
 from threading import Lock
 
+from pydispatch import dispatcher
 from twisted.internet import task
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -27,16 +28,18 @@ from golem.model import Database, Account
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
+from golem.ranking.ranking import Ranking
 from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.swift.resourcemanager import OpenStackSwiftResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -129,6 +132,7 @@ class Client(object):
         self.use_docker_machine_manager = use_docker_machine_manager
         self.connect_to_known_hosts = connect_to_known_hosts
         self.environments_manager = EnvironmentsManager()
+        self.daemon_manager = None
 
         self.rpc_publisher = None
 
@@ -158,19 +162,35 @@ class Client(object):
             return
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
+    def sync(self):
+        if self.use_transaction_system():
+            log.info('Waiting for block synchronization...')
+            self.transaction_system.sync()
+            log.info('Block synchronization complete')
+
     def start(self):
         if self.use_monitor:
             self.init_monitor()
-        self.start_network()
-        self.do_work_task.start(0.1, False)
+        try:
+            self.start_network()
+        except SystemExit:
+            raise
+        except Exception:
+            log.critical('Can\'t start network. Giving up.', exc_info=True)
+            sys.exit(1)
+        self.do_work_task.start(1, False)
 
     def start_network(self):
         log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
+
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
+
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager.start()
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
@@ -180,7 +200,7 @@ class Client(object):
 
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(OpenStackSwiftResourceManager(dir_manager),
+        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
         log.info("Starting p2p server ...")
@@ -197,7 +217,7 @@ class Client(object):
         log.info("Starting task server ...")
         self.task_server.start_accepting()
 
-        self.p2pservice.set_task_server(self.task_server)
+        self.p2pservice.task_server = self.task_server
         self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
         self.p2pservice.connect_to_network()
 
@@ -225,8 +245,12 @@ class Client(object):
             self.do_work_task.stop()
         if self.task_server:
             self.task_server.quit()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
+        if self.daemon_manager:
+            self.daemon_manager.stop()
         dispatcher.send(signal='golem.monitor', event='shutdown')
         if self.db:
             self.db.close()
@@ -264,6 +288,17 @@ class Client(object):
         self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
 
     def run_test_task(self, t_dict):
+        if self.task_tester is None:
+            request = AsyncRequest(self._run_test_task, t_dict)
+            async_run(request)
+            return True
+
+        if self.rpc_publisher:
+            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+        return False
+
+    def _run_test_task(self, t_dict):
+
         def on_success(*args, **kwargs):
             self.task_tester = None
             self._publish(Task.evt_task_check_success, *args, **kwargs)
@@ -272,16 +307,10 @@ class Client(object):
             self.task_tester = None
             self._publish(Task.evt_task_check_error, *args, **kwargs)
 
-        if self.task_tester is None:
-            t = DictSerializer.load(t_dict)
-            self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
-            self.task_tester.run()
-
-            self._publish(Task.evt_task_check_started, True)
-            return True
-
-        self._publish(Task.evt_task_check_error, u"Another test is running")
-        return False
+        t = DictSerializer.load(t_dict)
+        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        self.task_tester.run()
+        self._publish(Task.evt_task_check_started, True)
 
     def abort_test_task(self):
         with self.lock:
@@ -441,25 +470,32 @@ class Client(object):
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
 
+    @inlineCallbacks
     def get_balance(self):
         if self.use_transaction_system():
-            b, ab, d = self.transaction_system.get_balance()
+            req = AsyncRequest(self.transaction_system.get_balance)
+            b, ab, d = yield async_run(req)
             if b is not None:
-                return str(b), str(ab), str(d)
-        return None, None, None
+                returnValue((str(b), str(ab), str(d)))
+        returnValue((None, None, None))
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            return self.transaction_system.get_payments_list()
+            payments = self.transaction_system.get_payments_list()
+            return map(self._values_to_str, payments)
         return ()
 
+    @inlineCallbacks
     def get_incomes_list(self):
-        if self.transaction_system:
-            return self.transaction_system.get_incoming_payments()
-        # FIXME use method that connect payment with expected payments
-        # if self.use_transaction_system():
-        #    return self.transaction_system.get_incomes_list()
-        return ()
+        # Will be implemented in incomes_core
+        returnValue(())
+
+    @staticmethod
+    def _values_to_str(obj):
+        obj["value"] = str(obj["value"])
+        if "fee" in obj and obj["fee"] is not None:
+            obj["fee"] = str(obj["fee"])
+        return obj
 
     def get_task_cost(self, task_id):
         """
@@ -533,8 +569,8 @@ class Client(object):
         if state:
             return DictSerializer.dump(state)
 
-    def pull_resources(self, task_id, list_files, client_options=None):
-        self.resource_server.add_files_to_get(list_files, task_id, client_options=client_options)
+    def pull_resources(self, task_id, resources, client_options=None):
+        self.resource_server.download_resources(resources, task_id, client_options=client_options)
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
@@ -701,23 +737,23 @@ class Client(object):
 
             try:
                 self.p2pservice.sync_network()
-            except:
+            except Exception:
                 log.exception("p2pservice.sync_network failed")
             try:
                 self.task_server.sync_network()
-            except:
+            except Exception:
                 log.exception("task_server.sync_network failed")
             try:
                 self.resource_server.sync_network()
-            except:
+            except Exception:
                 log.exception("resource_server.sync_network failed")
             try:
                 self.ranking.sync_network()
-            except:
+            except Exception:
                 log.exception("ranking.sync_network failed")
             try:
                 self.check_payments()
-            except:
+            except Exception:
                 log.exception("check_payments failed")
 
             if now - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
@@ -735,7 +771,7 @@ class Client(object):
                 )
                 # with self.snapshot_lock:
                 #     self.__make_node_state_snapshot()
-                    # self.manager_server.sendStateMessage(self.last_node_state_snapshot)
+                #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
                 self.last_nss_time = time.time()
 
             if now - self.last_net_check_time >= self.config_desc.network_check_interval:
@@ -753,7 +789,6 @@ class Client(object):
                 self._publish(Payments.evt_balance, balance)
 
     def __make_node_state_snapshot(self, is_running=True):
-
         peers_num = len(self.p2pservice.peers)
         last_network_messages = self.p2pservice.get_last_messages()
 
@@ -839,5 +874,9 @@ class Client(object):
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # FIXME: Client should have close() method
-        self.__datadir_lock.close()  # Closing file unlocks it.
+        # solves locking issues on OS X
+        try:
+            filelock.unlock(self.__datadir_lock)
+        except Exception:
+            pass
+        self.__datadir_lock.close()

@@ -11,6 +11,7 @@ class TestTransactionSystem(TestWithDatabase):
     def test_init(self):
         e = TransactionSystem()
         self.assertIsInstance(e, TransactionSystem)
+        e.sync()  # nop
 
     def test_add_payment_info(self):
         e = TransactionSystem()

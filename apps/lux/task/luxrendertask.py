@@ -1,3 +1,4 @@
+from __future__ import division
 import logging
 import os
 import random
@@ -7,7 +8,7 @@ from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline, get_golem_path
-from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource.dirmanager import get_test_task_path, find_task_script, get_tmp_path
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
@@ -27,6 +28,7 @@ logger = logging.getLogger("apps.lux")
 MERGE_TIMEOUT = 7200
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
+PREVIEW_EXT = "BMP"
 
 
 class LuxRenderDefaults(RendererDefaults):
@@ -61,27 +63,22 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         :param int output_num: number of final output files
         :return list: list of pixels that belong to a subtask border
         """
-        preview_x = 300
-        preview_y = 200
+        preview_x = 300.0
+        preview_y = 200.0
         res_x, res_y = definition.resolution
-        if res_x != 0 and res_y != 0:
-            if float(res_x) / float(res_y) > float(preview_x) / float(
-                    preview_y):
-                scale_factor = float(preview_x) / float(res_x)
-            else:
-                scale_factor = float(preview_y) / float(res_y)
-            scale_factor = min(1.0, scale_factor)
+        if res_x == 0 or res_y == 0:
+            return []
+
+        if res_x / res_y > preview_x / preview_y:
+            scale_factor = preview_x / res_x
         else:
-            scale_factor = 1.0
-        border = []
+            scale_factor = preview_y / res_y
+        scale_factor = min(1.0, scale_factor)
+
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        for i in range(0, y):
-            border.append((0, i))
-            border.append((x - 1, i))
-        for i in range(0, x):
-            border.append((i, 0))
-            border.append((i, y - 1))
+        border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
+        border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
         return border
 
     @classmethod
@@ -264,27 +261,29 @@ class LuxTask(RenderingTask):
         super(LuxTask, self).accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         for tr_file in result_files:
-            if tr_file.upper().endswith(".FLM"):
+            if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
                 self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
                 self.num_tasks_received += 1
-            elif not tr_file.upper().endswith('.LOG'):
+            elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.num_tasks_received == self.total_tasks:
-                if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
-                    self.__generate_final_flm_advanced_verification()
-                else:
-                    self.__generate_final_flm()
+            if self.verificator.advanced_verification and os.path.isfile(self.__get_test_flm()):
+                self.__generate_final_flm_advanced_verification()
+            else:
+                self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
-        with open(find_task_script(APP_DIR, "docker_luxmerge.py")) as f:
-            src_code = f.read()
-        if src_code is None:
+        script_file = find_task_script(APP_DIR, "docker_luxmerge.py")
+
+        if script_file is None:
             logger.error("Cannot find merger script")
             return
+
+        with open(script_file) as f:
+            src_code = f.read()
 
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
@@ -302,11 +301,11 @@ class LuxTask(RenderingTask):
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
         self.num_add += 1
-        if new_chunk_file_path.endswith(".exr"):
+        if has_ext(new_chunk_file_path, ".exr"):
             self._update_preview_from_exr(new_chunk_file_path)
         else:
             self.__update_preview_from_pil_file(new_chunk_file_path)
-    
+
     def _update_task_preview(self):
         pass
 
@@ -328,13 +327,14 @@ class LuxTask(RenderingTask):
 
     def __update_preview_from_pil_file(self, new_chunk_file_path):
         img = Image.open(new_chunk_file_path)
-        scaled = img.resize((int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
+        scaled = img.resize((int(round(self.scale_factor * self.res_x)),
+                             int(round(self.scale_factor * self.res_y))),
                             resample=Image.BILINEAR)
         img.close()
 
         img_current = self._open_preview()
-        img_current = ImageChops.blend(img_current, scaled, 1.0 / float(self.num_add))
-        img_current.save(self.preview_file_path, "BMP")
+        img_current = ImageChops.blend(img_current, scaled, 1.0 / self.num_add)
+        img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
@@ -343,14 +343,15 @@ class LuxTask(RenderingTask):
         if self.preview_exr is None:
             self.preview_exr = load_img(new_chunk_file)
         else:
-            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file), 1.0 / float(self.num_add))
+            self.preview_exr = blend(self.preview_exr, load_img(new_chunk_file),
+                                     1.0 / self.num_add)
 
         img_current = self._open_preview()
         img = self.preview_exr.to_pil()
         scaled = ImageOps.fit(img,
                               (int(round(self.scale_factor * self.res_x)), int(round(self.scale_factor * self.res_y))),
                               method=Image.BILINEAR)
-        scaled.save(self.preview_file_path, "BMP")
+        scaled.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
         scaled.close()
         img_current.close()
@@ -361,7 +362,7 @@ class LuxTask(RenderingTask):
         computer.run()
         computer.tt.join()
 
-    def __final_img_ready(self, results):
+    def __final_img_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
         img = find_file_with_ext(commonprefix, ["." + self.output_format])
         if img is None:
@@ -387,7 +388,7 @@ class LuxTask(RenderingTask):
         computer.run()
         computer.tt.join()
 
-    def __final_flm_ready(self, results):
+    def __final_flm_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
         if flm is None:
@@ -410,10 +411,8 @@ class LuxTask(RenderingTask):
         logger.debug("Copying " + test_result_flm + " to " + new_flm)
         self.__generate_final_file(new_flm)
 
-    def __get_test_flm(self, dir_=None):
-        if dir_ is None:
-            dir_ = self.tmp_dir
-        return os.path.join(dir_, "test_result.flm")
+    def __get_test_flm(self):
+        return os.path.join(self.tmp_dir, "test_result.flm")
 
 
 class LuxRenderTaskBuilder(RenderingTaskBuilder):

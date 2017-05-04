@@ -25,7 +25,3 @@ class BlenderRenderDialogCustomizer(FrameRendererCustomizer):
     def _change_options(self):
         super(BlenderRenderDialogCustomizer, self)._change_options()
         self.options.compositing = self.gui.ui.compositingCheckBox.isChecked()
-
-    def _setup_connections(self):
-        super(BlenderRenderDialogCustomizer, self)._setup_connections()
-        self._connect_with_task_settings_changed([self.gui.ui.compositingCheckBox.stateChanged])

@@ -3,7 +3,7 @@ import golem.task.taskbase
 from golem.testutils import TempDirFixture
 import mock
 import time
-import unittest
+
 
 class BenchmarkRunnerTest(TempDirFixture):
     def setUp(self):
@@ -13,7 +13,7 @@ class BenchmarkRunnerTest(TempDirFixture):
             task=golem.task.taskbase.Task(None, None),
             root_path=self.tempdir,
             success_callback=lambda: self._success(),
-            error_callback=lambda: self._error(),
+            error_callback=lambda *args: self._error(args),
             benchmark=self.benchmark,
         )
 
@@ -21,7 +21,7 @@ class BenchmarkRunnerTest(TempDirFixture):
         """Instance success_callback."""
         pass
 
-    def _error(self):
+    def _error(self, *args):
         """Instance error_callback."""
         pass
 
@@ -34,14 +34,12 @@ class BenchmarkRunnerTest(TempDirFixture):
 
     def test_tt_cases(self):
         """run() with different tt values."""
-        with mock.patch.multiple(self.instance, start=mock.DEFAULT, tt=None) as values:
+        with mock.patch.multiple(self.instance, run=mock.DEFAULT, tt=None) as values:
             self.instance.run()
-            values['start'].assert_called_once_with()
+            values['run'].assert_called_once_with()
 
-        with mock.patch.multiple(self.instance, start=mock.DEFAULT, tt=mock.DEFAULT) as values:
+        with mock.patch.multiple(self.instance, tt=mock.DEFAULT) as values:
             self.instance.run()
-            values['start'].assert_called_once_with()
-            values['tt'].join.assert_called_once_with()
 
     def test_task_computed_immidiately(self):
         """Special case when start_time and stop_time are identical.
@@ -118,8 +116,6 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.benchmark.verify_result.assert_called_once_with(result_dict['data'])
         self.assertEquals(self.instance.success_callback.call_count, 0)
 
-
-
         # result dict with data, and successful verification
         result_dict = {
             'data': object(),
@@ -133,3 +129,60 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.instance.task_computed(task_thread)
         self.benchmark.verify_result.assert_called_once_with(result_dict['data'])
         self.instance.success_callback.assert_called_once_with(mock.ANY)
+
+    def test_is_success(self):
+        task_thread = mock.MagicMock()
+        self.instance.start_time = time.time()
+        self.instance.end_time = self.instance.start_time + 4
+        self.benchmark.verify_result.return_value = True
+
+        # Task thread result is not a tuple
+        task_thread.result = 5
+        assert not self.instance.is_success(task_thread)
+
+        # Task thread result first arg is None
+        task_thread.result = None, 30
+        assert not self.instance.is_success(task_thread)
+
+        # Task thread result first arg doesn't have data in dictionary
+        task_thread.result = {'abc': 20}, 30
+        assert not self.instance.is_success(task_thread)
+
+        # Is success
+        task_thread.result = {'data': "some data"}, 30
+        assert self.instance.is_success(task_thread)
+
+        # End time not measured
+        self.instance.end_time = None
+        assert not self.instance.is_success(task_thread)
+
+        # Start time not measured
+        self.instance.end_time = self.instance.start_time
+        self.instance.start_time = None
+        assert not self.instance.is_success(task_thread)
+
+        # Not verified properly
+        self.instance.start_time = self.instance.end_time - 5
+        self.benchmark.verify_result.return_value = False
+        assert not self.instance.is_success(task_thread)
+
+
+class WrongTask(golem.task.taskbase.Task):
+    def query_extra_data(self, perf_index):
+        raise ValueError("Wrong task")
+
+
+class BenchmarkRunnerWrongTaskTest(TempDirFixture):
+
+    def test_run_with_error(self):
+        benchmark = mock.MagicMock()
+        instance = benchmarkrunner.BenchmarkRunner(
+            task=WrongTask(None, None),
+            root_path=self.tempdir,
+            success_callback=mock.Mock(),
+            error_callback=mock.Mock(),
+            benchmark=benchmark,
+        )
+        instance.run()
+        instance.success_callback.assert_not_called()
+        instance.error_callback.assert_called_once()

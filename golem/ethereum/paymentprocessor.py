@@ -1,17 +1,16 @@
 from __future__ import division
 
 import logging
-from pydispatch import dispatcher
 import sys
 import time
 
 from ethereum import abi, keys, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from pydispatch import dispatcher
 
-from golem.transactions.service import Service
 from golem.model import Payment, PaymentStatus
-
+from golem.transactions.service import Service
 from .contracts import TestGNT
 from .node import ropsten_faucet_donate
 
@@ -76,6 +75,7 @@ class PaymentProcessor(Service):
         self.__temp_sync = False
         self.__faucet = faucet
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
+        self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         super(PaymentProcessor, self).__init__(13)
 
@@ -280,7 +280,7 @@ class PaymentProcessor(Service):
             # Delete in progress entry.
             del self.__inprogress[h]
 
-    def get_ethers_from_faucet(self):
+    def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) == 0:
             addr = keys.privtoaddr(self.__privkey)
             ropsten_faucet_donate(addr)
@@ -301,7 +301,16 @@ class PaymentProcessor(Service):
         return True
 
     def _run(self):
-        if (self.synchronized() and
-                self.get_ethers_from_faucet() and self.get_gnt_from_faucet()):
-            self.monitor_progress()
-            self.sendout()
+        if self._waiting_for_faucet:
+            return
+
+        self._waiting_for_faucet = True
+
+        try:
+            if self.synchronized() and \
+                    self.get_ether_from_faucet() and \
+                    self.get_gnt_from_faucet():
+                self.monitor_progress()
+                self.sendout()
+        finally:
+            self._waiting_for_faucet = False

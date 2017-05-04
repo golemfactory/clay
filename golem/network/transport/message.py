@@ -1,4 +1,3 @@
-import abc
 import collections
 import logging
 import time
@@ -8,7 +7,7 @@ from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.network.transport.message')
 
 
 class Message(object):
@@ -16,7 +15,7 @@ class Message(object):
 
     registered_message_types = {}  # Message types that are allowed to be sent in the network """
 
-    def __init__(self, sig="", timestamp=None):
+    def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message. If this message type hasn't been registered yet, add this class to registered message
         collection. """
         if self.TYPE not in Message.registered_message_types:
@@ -27,6 +26,8 @@ class Message(object):
             timestamp = time.time()
         self.timestamp = timestamp
         self.encrypted = False  # inform if message was encrypted
+
+        self.load_dict_repr(dict_repr)
 
     def get_short_hash(self):
         """ Return short message representation for signature
@@ -99,16 +100,16 @@ class Message(object):
             try:
                 msg = server.decrypt(msg)
             except AssertionError:
-                logger.warning("Failed to decrypt message, maybe it's not encrypted?")
+                logger.info("Failed to decrypt message, maybe it's not encrypted?")
                 encrypted = False
             except Exception as err:
-                logger.error("Failed to decrypt message {}".format(str(err)))
+                logger.info("Failed to decrypt message {}".format(str(err)))
                 continue
 
             m = cls.deserialize_message(msg)
 
             if m is None:
-                logger.error("Failed to deserialize message {}".format(msg))
+                logger.info("Failed to deserialize message {}".format(msg))
                 continue
 
             m.encrypted = encrypted
@@ -165,18 +166,27 @@ class Message(object):
 
         return None
 
-    @abc.abstractmethod
-    def dict_repr(self):
-        """
-        Returns dictionary/list representation of  any subclass message
-        """
-        return
-
     def __str__(self):
         return "{}".format(self.__class__)
 
     def __repr__(self):
         return "{}".format(self.__class__)
+
+    def load_dict_repr(self, dict_repr):
+        if dict_repr is None:
+            return
+        try:
+            mapping = self.MAPPING
+        except AttributeError:
+            logger.debug('MAPPING not set in %r', self.__class__)
+            return
+        for attr_name in mapping:
+            k = mapping[attr_name]
+            setattr(self, attr_name, dict_repr[k])
+
+    def dict_repr(self):
+        """Returns dictionary/list representation of  any subclass message"""
+        return dict((self.MAPPING[attr_name], getattr(self, attr_name)) for attr_name in self.MAPPING)
 
 
 ##################
@@ -187,21 +197,23 @@ class Message(object):
 class MessageHello(Message):
     TYPE = 0
 
-    PROTO_ID_STR = u"PROTO_ID"
-    CLI_VER_STR = u"CLI_VER"
-    PORT_STR = u"PORT"
-    NODE_NAME_STR = u"NODE_NAME"
-    CLIENT_KEY_ID_STR = u"CLIENT_KEY_ID"
-    RAND_VAL_STR = u"RAND_VAL"
-    NODE_INFO_STR = u"NODE_INFO"
-    SOLVE_CHALLENGE_STR = u"SOLVE_CHALLENGE"
-    CHALLENGE_STR = u"CHALLENGE"
-    DIFFICULTY_STR = u"DIFFICULTY"
-    METADATA_STR = u"METADATA"
+    MAPPING = {
+        'proto_id': u"PROTO_ID",
+        'client_ver': u"CLI_VER",
+        'port': u"PORT",
+        'node_name': u"NODE_NAME",
+        'client_key_id': u"CLIENT_KEY_ID",
+        'rand_val': u"RAND_VAL",
+        'node_info': u"NODE_INFO",
+        'solve_challenge': u"SOLVE_CHALLENGE",
+        'challenge': u"CHALLENGE",
+        'difficulty': u"DIFFICULTY",
+        'metadata': u"METADATA",
+    }
 
     def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
                  rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0,
-                 client_ver=0, sig="", timestamp=None, dict_repr=None):
+                 client_ver=0, **kwargs):
         """
         Create new introduction message
         :param int port: listening port
@@ -215,11 +227,7 @@ class MessageHello(Message):
         :param int difficulty: difficulty of a challenge
         :param int proto_id: protocol id
         :param str client_ver: application version
-        :param str sig: signature
-        :param float timestamp: current timestamp
-        :param dict dict_repr: dictionary representation of a message
         """
-        super(MessageHello, self).__init__(sig, timestamp)
 
         self.proto_id = proto_id
         self.client_ver = client_ver
@@ -232,33 +240,7 @@ class MessageHello(Message):
         self.challenge = challenge
         self.difficulty = difficulty
         self.metadata = metadata
-
-        if dict_repr:
-            self.proto_id = dict_repr[self.PROTO_ID_STR]
-            self.client_ver = dict_repr[self.CLI_VER_STR]
-            self.port = dict_repr[self.PORT_STR]
-            self.node_name = dict_repr[self.NODE_NAME_STR]
-            self.client_key_id = dict_repr[self.CLIENT_KEY_ID_STR]
-            self.rand_val = dict_repr[self.RAND_VAL_STR]
-            self.node_info = dict_repr[self.NODE_INFO_STR]
-            self.challenge = dict_repr[self.CHALLENGE_STR]
-            self.solve_challenge = dict_repr[self.SOLVE_CHALLENGE_STR]
-            self.difficulty = dict_repr[self.DIFFICULTY_STR]
-            self.metadata = dict_repr[self.METADATA_STR]
-
-    def dict_repr(self):
-        return {self.PROTO_ID_STR: self.proto_id,
-                self.CLI_VER_STR: self.client_ver,
-                self.PORT_STR: self.port,
-                self.NODE_NAME_STR: self.node_name,
-                self.CLIENT_KEY_ID_STR: self.client_key_id,
-                self.RAND_VAL_STR: self.rand_val,
-                self.NODE_INFO_STR: self.node_info,
-                self.SOLVE_CHALLENGE_STR: self.solve_challenge,
-                self.CHALLENGE_STR: self.challenge,
-                self.DIFFICULTY_STR: self.difficulty,
-                self.METADATA_STR: self.metadata
-                }
+        super(MessageHello, self).__init__(**kwargs)
 
 
 class MessageRandVal(Message):
@@ -1187,7 +1169,6 @@ class MessageSubtaskResultAccepted(Message):
     TYPE = TASK_MSG_BASE + 10
 
     SUB_TASK_ID_STR = u"SUB_TASK_ID"
-    NODE_ID_STR = u"NODE_ID"
     REWARD_STR = u"REWARD"
 
     def __init__(self, subtask_id=0, reward=0, sig="", timestamp=None, dict_repr=None):
@@ -1672,6 +1653,7 @@ class MessageCannotComputeTask(Message):
     def dict_repr(self):
         return {self.REASON_STR: self.reason,
                 self.SUBTASK_ID_STR: self.subtask_id}
+
 
 RESOURCE_MSG_BASE = 3000
 

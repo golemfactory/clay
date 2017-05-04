@@ -1,4 +1,6 @@
 machine:
+  node:
+    version: 6.9.5
   services:
     - docker
   post:
@@ -10,15 +12,20 @@ checkout:
 
 dependencies:
   pre:
+    - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
-    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth
+    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5
+    - wget http://golem.network/FreeImage.zip && unzip FreeImage.zip && cd FreeImage && make && sudo make install && make clean && cd .. && cd apps/rendering/resources/taskcollector && make && cd ../../../../..
     - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.15-py2-none-any.whl
     - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.2.1-py2-none-any.whl
     - if [ ! -e /usr/local/bin/ipfs ]; then wget https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.5_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
+    - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1; cd golem-hyperdrive; npm install --save; cd -
     - /usr/local/bin/ipfs config --json Bootstrap "[]"
     - /usr/local/bin/ipfs config --json SupernodeRouting.Servers "[]"
     - /usr/local/bin/ipfs config --json Addresses.Swarm '["/ip6/::/tcp/4001", "/ip6/::/udp/4002/utp", "/ip4/0.0.0.0/udp/4002/utp"]'
     - /usr/local/bin/ipfs daemon:
+        background: true
+    - node golem-hyperdrive/src/main.js:
         background: true
 
 test:

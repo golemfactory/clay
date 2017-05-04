@@ -10,6 +10,7 @@ from time import sleep
 
 from mock import MagicMock
 
+from golem.core.common import get_golem_path
 from golem.core.common import is_windows, is_osx
 
 from golem.core.simpleenv import get_local_datadir
@@ -134,5 +135,10 @@ class PEP8MixIn(object):
     def test_conformance(self):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(ignore=['E501'])
-        result = style.check_files(self.PEP8_FILES)
+
+        # PyCharm needs absolute paths
+        base_path = Path(get_golem_path())
+        absolute_files = [str(base_path / path) for path in self.PEP8_FILES]
+
+        result = style.check_files(absolute_files)
         self.assertEqual(result.total_errors, 0, "Found code style errors (and warnings).")

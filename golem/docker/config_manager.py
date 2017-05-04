@@ -36,7 +36,7 @@ class DockerConfigManager(object):
             process = psutil.Process()
             self.cpu_cores = process.cpu_affinity()
         except Exception as exc:
-            logger.error("Couldn't read CPU affinity: {}".format(exc))
+            logger.debug("Couldn't read CPU affinity: {}".format(exc))
             self.cpu_cores = [0]
 
     def build_config(self, config_desc):
@@ -58,9 +58,10 @@ class DockerConfigManager(object):
 
     @classmethod
     def install(cls, *args, **kwargs):
-        docker_manager = cls(*args, **kwargs)
-        DockerTaskThread.docker_manager = docker_manager
-        return docker_manager
+        if not DockerTaskThread.docker_manager:
+            docker_manager = cls(*args, **kwargs)
+            DockerTaskThread.docker_manager = docker_manager
+        return DockerTaskThread.docker_manager
 
     @contextmanager
     def _try(self):

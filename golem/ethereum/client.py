@@ -4,6 +4,7 @@ import rlp
 from ethereum.utils import zpad
 from web3 import Web3, IPCProvider
 
+from golem.core.common import get_timestamp_utc
 from .node import NodeProcess
 
 log = logging.getLogger('golem.ethereum')
@@ -44,7 +45,21 @@ class Client(object):
         """
         :return: Returns either False if the node is not syncing, True otherwise
         """
-        return bool(self.web3.eth.syncing)
+        syncing = self.web3.eth.syncing
+        if syncing:
+            return syncing['currentBlock'] < syncing['highestBlock']
+
+        # node may not have started syncing yet
+        try:
+            last_block = self.web3.eth.getBlock('latest')
+        except Exception as ex:
+            log.debug(ex)
+            return False
+        if isinstance(last_block, dict):
+            timestamp = int(last_block['timestamp'])
+        else:
+            timestamp = last_block.timestamp
+        return get_timestamp_utc() - timestamp > 120
 
     def get_transaction_count(self, address):
         """
@@ -67,7 +82,7 @@ class Client(object):
         """
         Returns the balance of the given account at the block specified by block_identifier
         :param account: The address to get the balance of
-        :param block_identifier: If you pass this parameter it will not use the default block
+        :param block: If you pass this parameter it will not use the default block
         set with web3.eth.defaultBlock
         :return: Balance
         """

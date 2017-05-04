@@ -1,14 +1,10 @@
 #!/usr/bin/env python
-
+import sys
 from multiprocessing import freeze_support
 
 import click
-import sys
 
-from golem.core.common import config_logging
 from golem.node import OptNode
-
-from gui.startapp import start_app
 
 
 @click.command()
@@ -25,10 +21,14 @@ from gui.startapp import start_app
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=OptNode.parse_task_file,
               help="Request task from file")
-@click.option('--multiprocessing-fork', nargs=1, default=None)
+@click.option('--qt', is_flag=True, default=False,
+              help="Spawn Qt GUI only")
+@click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
-@click.option('-u', is_flag=True, default=False)
 @click.option('-m', nargs=1, default=None)
+@click.option('-u', is_flag=True, default=False, expose_value=False)
+# Multiprocessing option (ignored)
+@click.option('--multiprocessing-fork', nargs=1, expose_value=False)
 # Crossbar arguments (package only)
 @click.option('--cbdir', expose_value=False)
 @click.option('--worker', expose_value=False)
@@ -36,8 +36,17 @@ from gui.startapp import start_app
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, multiprocessing_fork, u, m):
+def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
     freeze_support()
+    if version:
+        from golem.core.variables import APP_VERSION
+        print ("GOLEM version: {}".format(APP_VERSION))
+        return 0
+
+    # Workarounds for pyinstaller executable
+    sys.modules['win32com.gen_py.os'] = None
+    sys.modules['win32com.gen_py.pywintypes'] = None
+    sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
     if rpc_address:
@@ -46,11 +55,23 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
 
     # Crossbar
     if m == 'crossbar.worker.process':
-        start_crossbar_worker(u, m)
-    # GUI or headless mode
+        start_crossbar_worker(m)
+    # Qt GUI
+    elif qt:
+        delete_reactor()
+        from gui.startgui import start_gui, check_rpc_address
+        address = '{}:{}'.format(rpc_address.address, rpc_address.port)
+        start_gui(check_rpc_address(ctx=None, param=None,
+                                    address=address))
+    # Golem
     elif gui:
+        delete_reactor()
+        from gui.startapp import start_app
         start_app(rendering=True, **config)
+    # Golem headless
     else:
+        from golem.core.common import config_logging
+
         config_logging(datadir=datadir)
 
         node = OptNode(node_address=node_address, **config)
@@ -61,12 +82,17 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, multipr
         node.run(use_rpc=True)
 
 
-def start_crossbar_worker(unbuffered, module):
+def delete_reactor():
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
+
+
+def start_crossbar_worker(module):
     idx = sys.argv.index('-m')
     sys.argv.pop(idx)
     sys.argv.pop(idx)
 
-    if unbuffered:
+    if '-u' in sys.argv:
         # ignore; unbuffered mode causes issues on Windows
         sys.argv.remove('-u')
 

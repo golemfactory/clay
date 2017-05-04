@@ -25,8 +25,10 @@ RECONNECT_WITH_SEED_THRESHOLD = 30  # After how many seconds from the last try s
 SOLVE_CHALLENGE = True  # Should nodes that connects with us solve hashcash challenge?
 BASE_DIFFICULTY = 5  # What should be a challenge difficulty?
 HISTORY_LEN = 5  # How many entries from challenge history should we remember
+TASK_INTERVAL = 10
+PEERS_INTERVAL = 30
 
-SEEDS = [('52.37.205.43', 40102), ('52.40.149.71', 40102), ('52.40.149.24', 40102), ('94.23.17.170', 40102)]
+SEEDS = [('188.165.227.180', 40102), ('188.165.227.180', 40104), ('94.23.196.166', 40102), ('94.23.196.166', 40104)]
 
 
 class P2PService(PendingConnectionsServer, DiagnosticsProvider):
@@ -105,7 +107,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):  # noqa
             ip_address = host.ip_address
             port = host.port
 
@@ -157,12 +159,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         except Exception as err:
             logger.error("Couldn't add known peer {}:{} : {}".format(ip_address, port, err))
 
-    def set_task_server(self, task_server):
-        """ Set task server
-        :param TaskServer task_server: task server instance
-        """
-        self.task_server = task_server
-
     def set_metadata_manager(self, metadata_manager):
         self.metadata_manager = metadata_manager
 
@@ -176,13 +172,14 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if self.task_server:
             self.__send_message_get_tasks()
 
-        self.__sync_free_peers()
-        self.__remove_old_peers()
-        # self.__refresh_old_peers()
-        self.__sync_peer_keeper()
-        self._sync_pending()
+        if time.time() - self.last_peers_request > PEERS_INTERVAL:
+            self.last_peers_request = time.time()
+            self.__sync_free_peers()
+            self.__sync_peer_keeper()
+            self.__send_get_peers()
 
-        self.__send_get_peers()
+        self.__remove_old_peers()
+        self._sync_pending()
         if len(self.peers) == 0:
             if time.time() - self.last_time_tried_connect_with_seed > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
@@ -387,27 +384,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
                 th_dict_repr["port"] = self.peers[id_].port
         except KeyError as err:
             logger.error("Wrong task representation: {}".format(err))
-
-    def get_listen_params(self, key_id, rand_val):
-        """ Return parameters that are needed for listen function in tuple
-        :param str|None key_id: key id of a node with whom we want to connect
-        :param int rand_val: session random value
-        :return (int, str, str, Node, int, bool) | (int, str, str, Node, int, bool, str, int) : this node listen port,
-        this node id, this node public key, information about this node, random value, information whether
-        other node should solve cryptographic challenge, (optional: cryptographic challenge),
-        (optional: cryptographic challenge difficulty)
-        """
-        if key_id:
-            should_solve_challenge = self.should_solve_challenge
-        else:
-            should_solve_challenge = False
-
-        listen_params = (self.cur_port, self.node_name, self.keys_auth.get_key_id(), self.node, rand_val,
-                         self.metadata_manager.get_metadata(), should_solve_challenge)
-
-        if should_solve_challenge:
-            listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
-        return listen_params
 
     def check_solution(self, solution, challenge, difficulty):
         """
@@ -726,7 +702,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         """
         self.gossip_keeper.add_gossip(gossip)
 
-    def pop_gossip(self):
+    def pop_gossips(self):
         """ Return all gathered gossips and clear gossip buffer
         :return list: list of all gossips
         """
@@ -803,13 +779,11 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
     #############################
 
     def __send_get_peers(self):
-        if time.time() - self.last_peers_request > 2:
-            self.last_peers_request = time.time()
-            for p in self.peers.values():
-                p.send_get_peers()
+        for p in self.peers.values():
+            p.send_get_peers()
 
     def __send_message_get_tasks(self):
-        if time.time() - self.last_tasks_request > 2:
+        if time.time() - self.last_tasks_request > TASK_INTERVAL:
             self.last_tasks_request = time.time()
             for p in self.peers.values():
                 p.send_get_tasks()
@@ -834,12 +808,10 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        return id_ not in self.incoming_peers and \
-               not self.__is_connected_peer(id_)
+        return id_ not in self.incoming_peers and not self.__is_connected_peer(id_)
 
     def __is_connected_peer(self, id_):
-        return id_ in self.peers or \
-               long(id_, 16) == self.get_key_id()
+        return id_ in self.peers or long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
         for peer in self.peers.values():

@@ -22,9 +22,6 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
     def _setup_connections(self):
         super(LuxRenderDialogCustomizer, self)._setup_connections()
         self.gui.ui.stopBySppRadioButton.toggled.connect(self._change_halts_state)
-        self._connect_with_task_settings_changed([self.gui.ui.stopBySppRadioButton.toggled,
-                                                  self.gui.ui.haltTimeLineEdit.textChanged,
-                                                  self.gui.ui.haltSppLineEdit.textChanged])
 
     def _change_halts_values(self):
         set_haltspp = self.options.haltspp > 0

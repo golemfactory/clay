@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 
-from golem.core.fileshelper import find_file_with_ext, common_dir
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import SubtaskVerificationState
@@ -27,7 +27,7 @@ class LuxRenderVerificator(RenderingVerificator):
 
         for tr_file in tr_files:
             tr_file = os.path.normpath(tr_file)
-            if tr_file.upper().endswith('.FLM'):
+            if has_ext(tr_file, '.FLM'):
                 if self.advanced_verification:
                     if not os.path.isfile(self.test_flm):
                         logger.warning("Advanced verification set, but couldn't find test result!")
@@ -77,7 +77,7 @@ class LuxRenderVerificator(RenderingVerificator):
             shutil.copy(flm, os.path.join(self.tmp_dir, "test_result.flm"))
             return True
 
-    def __verify_flm_ready(self, results):
+    def __verify_flm_ready(self, results, time_spent):
         logger.info("Advance verification finished")
         self.verification_error = False
 
