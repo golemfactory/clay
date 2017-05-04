@@ -5,6 +5,7 @@ class Environment(object):
     opt                     = 'env.opt'
     opt_update              = 'env.opt.update'
 
+    hardware_caps           = 'env.hw.caps'
     presets                 = 'env.hw.presets'
     preset                  = 'env.hw.preset'
     preset_create           = 'env.hw.preset.create'

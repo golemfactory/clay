@@ -1,12 +1,15 @@
 import logging
-from peewee import DoesNotExist
 
+from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
 
 log = logging.getLogger("golem.config")
 
 
 class HardwarePresetsMixin(object):
+
+    def get_hardware_caps(self):
+        return HardwarePresets.caps()
 
     def get_presets(self):
         presets = HardwarePreset.select()

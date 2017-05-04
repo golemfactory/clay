@@ -9,6 +9,7 @@ CORE_METHOD_MAP = dict(
     get_description=        Environment.opt_description,
     change_description=     Environment.opt_description_update,
 
+    get_hardware_caps=      Environment.hardware_caps,
     get_presets=            Environment.presets,
     get_preset=             Environment.preset,
     create_preset=          Environment.preset_create,
