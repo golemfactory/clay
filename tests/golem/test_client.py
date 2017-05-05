@@ -1,8 +1,11 @@
-import os
+import time
 import unittest
 import uuid
 
-from ethereum.utils import denoms
+import os
+from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
+
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -12,6 +15,7 @@ from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
+from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
@@ -20,8 +24,6 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
-from mock import Mock, MagicMock, patch
-from twisted.internet.defer import Deferred
 
 
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
@@ -230,6 +232,125 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.collect_gossip()
         c.quit()
 
+    @patch('golem.client.log')
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_do_work(self, _, log):
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False,
+                   use_monitor=False)
+
+        c.sync = Mock()
+        c.p2pservice = Mock()
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+
+        # Test if method exits if p2pservice is not present
+        c.p2pservice = None
+        c.config_desc.send_pings = False
+        c._Client__do_work()
+
+        assert not log.exception.called
+        assert not c.check_payments.called
+
+        # Test calls with p2pservice
+        c.p2pservice = Mock()
+        c._Client__do_work()
+
+        assert not c.p2pservice.ping_peers.called
+        assert not log.exception.called
+        assert c.p2pservice.sync_network.called
+        assert c.task_server.sync_network.called
+        assert c.resource_server.sync_network.called
+        assert c.ranking.sync_network.called
+        assert c.check_payments.called
+
+        # Enable pings
+        c.config_desc.send_pings = True
+
+        # Make throw exceptions
+        def raise_exc():
+            raise Exception('Test exception')
+
+        c.p2pservice.sync_network = raise_exc
+        c.task_server.sync_network = raise_exc
+        c.resource_server.sync_network = raise_exc
+        c.ranking.sync_network = raise_exc
+        c.check_payments = raise_exc
+
+        c._Client__do_work()
+
+        assert c.p2pservice.ping_peers.called
+        assert log.exception.call_count == 5
+
+    @patch('golem.client.log')
+    @patch('golem.client.dispatcher.send')
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_publish_events(self, _, send, log):
+        c = Client(datadir=self.path, transaction_system=False,
+                   connect_to_known_hosts=False, use_docker_machine_manager=False,
+                   use_monitor=False)
+
+        def get_balance(*_):
+            d = Deferred()
+            d.callback((1, 2, 3))
+            return d
+
+        c.task_server = Mock()
+        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
+        c.task_server.task_computer.stats = dict()
+
+        c.get_balance = get_balance
+        c.get_task_count = lambda *_: 0
+        c.get_supported_task_count = lambda *_: 0
+        c.connection_status = lambda *_: 'test'
+
+        c.config_desc.node_snapshot_interval = 1
+        c.config_desc.network_check_interval = 1
+
+        c._publish = Mock()
+
+        past_time = time.time() - 10 ** 10
+        future_time = time.time() + 10 ** 10
+
+        c.last_nss_time = future_time
+        c.last_net_check_time = future_time
+        c.last_balance_time = future_time
+
+        c._Client__publish_events()
+
+        assert not send.called
+        assert not log.debug.called
+        assert not c._publish.called
+
+        c.last_nss_time = past_time
+        c.last_net_check_time = past_time
+        c.last_balance_time = past_time
+
+        c._Client__publish_events()
+
+        assert not log.debug.called
+        assert send.call_count == 2
+        assert c._publish.call_count == 2
+
+        def raise_exc(*_):
+            raise Exception('Test exception')
+
+        c.get_balance = raise_exc
+        c._publish = Mock()
+        send.call_count = 0
+
+        c.last_nss_time = past_time
+        c.last_net_check_time = past_time
+        c.last_balance_time = past_time
+
+        c._Client__publish_events()
+
+        assert log.debug.called
+        assert send.call_count == 2
+        assert c._publish.call_count == 1
+
 
 class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
@@ -301,7 +422,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     @patch('golem.client.async_run')
-    def test_enqueue_new_task(self, async_run, *_):
+    def test_get_balance(self, async_run, *_):
         c = self.client
 
         result = (None, None, None)
@@ -331,6 +452,18 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         c.transaction_system = None
         balance = wait_for(c.get_balance())
         assert balance == (None, None, None)
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_config_changed(self, _):
+        c = self.client
+
+        c._publish = Mock()
+        c.lock_config(True)
+        c._publish.assert_called_with(UI.evt_lock_config, True)
+
+        c._publish = Mock()
+        c.config_changed()
+        c._publish.assert_called_with(Environment.evt_opts_changed)
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_misc(self, _):
