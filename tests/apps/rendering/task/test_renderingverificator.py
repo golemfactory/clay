@@ -30,7 +30,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv = RenderingVerificator()
         rv.res_x = 800
         rv.res_y = 600
-        assert rv._get_part_size("Subtask1", dict()) == (800, 600)
+        assert rv._get_part_size(dict()) == (800, 600)
 
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
@@ -97,19 +97,19 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv.res_x = 800
         rv.res_y = 600
         rv.total_tasks = 30
-        assert rv._get_part_img_size("Subtask1", None, {"start_task": 3}) == (0, 40, 800, 60)
+        assert rv._get_part_img_size({"start_task": 3}) == (0, 40, 800, 60)
 
         rv.total_tasks = 0
         with self.assertLogs(logger, level="WARNING"):
-            assert rv._get_part_img_size("Subtask1", None, {"start_task": 3}) == (0, 0, 0, 0)
+            assert rv._get_part_img_size({"start_task": 3}) == (0, 0, 0, 0)
 
         rv.total_tasks = 30
         with self.assertLogs(logger, level="WARNING"):
-            assert rv._get_part_img_size("Subtask1", None, {"start_task": 34}) == (0, 0, 0, 0)
+            assert rv._get_part_img_size({"start_task": 34}) == (0, 0, 0, 0)
 
         rv.total_tasks = 11
         rv.res_y = 211
-        assert rv._get_part_img_size("Subtask1", None, {"start_task": 5}) == (0, 76, 800, 95)
+        assert rv._get_part_img_size({"start_task": 5}) == (0, 76, 800, 95)
 
     def test_choose_adv_ver_file(self):
         rv = RenderingVerificator()
@@ -184,7 +184,7 @@ class TestFrameRenderingVerificator(TempDirFixture):
         frv.total_tasks = 20
         frv.frames = [5, 6, 7, 8, 9]
         subtask_info = {'start_task': 1, 'parts': 4}
-        assert frv._get_part_img_size("sub1", None, subtask_info) == (1, 1, 599, 199)
+        assert frv._get_part_img_size(subtask_info) == (1, 1, 599, 199)
         frv.use_frames = False
-        assert frv._get_part_img_size("sub1", None, subtask_info) == (0, 0, 600, 40)
+        assert frv._get_part_img_size(subtask_info) == (0, 0, 600, 40)
 

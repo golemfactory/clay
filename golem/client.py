@@ -44,6 +44,7 @@ from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
@@ -299,23 +300,26 @@ class Client(object):
             return True
 
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_check_error, u"Another test is running")
+            self.rpc_publisher.publish(Task.evt_task_test_status, TaskTestStatus.error,
+                                       u"Another test is running")
         return False
 
     def _run_test_task(self, t_dict):
 
         def on_success(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_check_success, *args, **kwargs)
+            self._publish(Task.evt_task_test_status,
+                          TaskTestStatus.success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
             self.task_tester = None
-            self._publish(Task.evt_task_check_error, *args, **kwargs)
+            self._publish(Task.evt_task_test_status,
+                          TaskTestStatus.error, *args, **kwargs)
 
         t = DictSerializer.load(t_dict)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
-        self._publish(Task.evt_task_check_started, True)
+        self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
 
     def abort_test_task(self):
         with self.lock:
