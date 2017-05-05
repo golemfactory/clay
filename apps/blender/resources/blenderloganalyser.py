@@ -1,4 +1,5 @@
 import os
+import re
 
 
 def find_wrong_renderer_warning(log_content):
@@ -24,3 +25,9 @@ def format_missing_files_warning(missing_files):
     ret = u"Additional data is missing:\n" + "".join(missing_files)
     ret += u"\nTry to add missing files to resources before you start rendering."
     return ret
+
+
+def find_rendering_time(log_content):
+    time_ = re.search("(^ Time: )((\d)*):((\d|\.)*)", log_content, re.MULTILINE | re.IGNORECASE)
+    time_ = int(time_.group(2)) * 60 + float(time_.group(3))
+    return time_
