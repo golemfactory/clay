@@ -67,3 +67,9 @@ class SubtaskStatus(object):
     finished = "Finished"
     failure = "Failure"
     restarted = "Restart"
+
+
+class TaskTestStatus(object):
+    started = 'Started'
+    success = 'Success'
+    error = 'Error'

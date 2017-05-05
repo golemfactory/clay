@@ -17,7 +17,7 @@ from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
-from golem.task.taskstate import TaskStatus
+from golem.task.taskstate import TaskStatus, TaskTestStatus
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -156,16 +156,14 @@ class MockRPCSession(object):
 
 class MockRPCPublisher(object):
 
-    def __init__(self, success_aliases, error_aliases):
-        self.success_aliases = success_aliases
-        self.error_aliases = error_aliases
+    def __init__(self):
         self.success = None
 
     def publish(self, alias, *args, **kwargs):
 
-        if alias in self.success_aliases:
+        if args and args[0] == TaskTestStatus.success:
             self.success = True
-        elif alias in self.error_aliases:
+        elif args and args[0] == TaskTestStatus.error:
             self.success = False
 
     def reset(self):
@@ -472,6 +470,43 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         with self.assertRaises(RuntimeError):
             logic.register_new_test_task_type(task_type)
 
+    def test_test_task_status(self):
+
+        def reset():
+            self.logic.test_task_started = Mock()
+            self.logic.test_task_computation_success = Mock()
+            self.logic.test_task_computation_error = Mock()
+
+        args = ['first', 'second']
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.started, *args)
+        self.logic.test_task_started.assert_called_with(*args)
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.success, *args)
+        self.logic.test_task_computation_success.assert_called_with(*args)
+        assert not self.logic.test_task_started.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status(TaskTestStatus.started, *args)
+        self.logic.test_task_started.assert_called_with(*args)
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
+        reset()
+
+        self.logic.test_task_status("test")
+        assert not self.logic.test_task_started.called
+        assert not self.logic.test_task_computation_success.called
+        assert not self.logic.test_task_computation_error.called
+
 
 class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
@@ -497,8 +532,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
         rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
-        rpc_publisher = MockRPCPublisher(success_aliases=[rpc.mapping.aliases.Task.evt_task_check_success],
-                                         error_aliases=[rpc.mapping.aliases.Task.evt_task_check_error])
+        rpc_publisher = MockRPCPublisher()
 
         logic.root_path = self.path
         logic.client = rpc_client
