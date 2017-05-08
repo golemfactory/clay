@@ -9,7 +9,7 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField)
+                    DateTimeField, TextField, CompositeKey, BooleanField, SmallIntegerField)
 
 
 log = logging.getLogger('golem.db')
@@ -249,13 +249,13 @@ class Stats(BaseModel):
 class HardwarePreset(BaseModel):
     name = CharField(null=False, index=True, unique=True)
 
-    cpu_cores = IntegerField(null=False)
-    memory = BigIntegerField(null=False)
-    disk = BigIntegerField(null=False)
+    cpu_cores = SmallIntegerField(null=False)
+    memory = IntegerField(null=False)
+    disk = IntegerField(null=False)
 
     def to_dict(self):
         return dict(
-            name=self.name,
+            name=unicode(self.name),
             cpu_cores=self.cpu_cores,
             memory=self.memory,
             disk=self.disk
