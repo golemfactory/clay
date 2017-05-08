@@ -1,6 +1,5 @@
 import atexit
 import logging
-from pydispatch import dispatcher
 import sys
 import time
 import uuid
@@ -10,10 +9,11 @@ from copy import copy
 from os import path, makedirs
 from threading import Lock
 
+from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from golem.appconfig import AppConfig
+from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
@@ -34,13 +34,13 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.ranking.ranking import Ranking
 from golem.ranking.helper.trust import Trust
+from golem.ranking.ranking import Ranking
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.rpc.mapping.aliases import Task, Network, Environment, UI
+from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
 from golem.task.taskserver import TaskServer
@@ -104,12 +104,14 @@ class Client(object):
         self.task_server = None
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
+        self.last_balance_time = time.time()
 
         self.last_node_state_snapshot = None
 
         self.nodes_manager_client = None
 
         self.do_work_task = task.LoopingCall(self.__do_work)
+        self.publish_task = task.LoopingCall(self.__publish_events)
 
         self.cfg = config
         self.send_snapshot = False
@@ -160,8 +162,7 @@ class Client(object):
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
             return
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_status, kwargs['task_id'])
+        self._publish(Task.evt_task_status, kwargs['task_id'])
 
     def sync(self):
         if self.use_transaction_system():
@@ -179,7 +180,9 @@ class Client(object):
         except Exception:
             log.critical('Can\'t start network. Giving up.', exc_info=True)
             sys.exit(1)
+
         self.do_work_task.start(1, False)
+        self.publish_task.start(1, True)
 
     def start_network(self):
         log.info("Starting network ...")
@@ -244,6 +247,8 @@ class Client(object):
     def quit(self):
         if self.do_work_task.running:
             self.do_work_task.stop()
+        if self.publish_task.running:
+            self.publish_task.stop()
         if self.task_server:
             self.task_server.quit()
         if self.transaction_system:
@@ -303,22 +308,18 @@ class Client(object):
 
         def on_success(*args, **kwargs):
             self.task_tester = None
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_test_status,
-                                           TaskTestStatus.success, *args, **kwargs)
+            self._publish(Task.evt_task_test_status,
+                          TaskTestStatus.success, *args, **kwargs)
 
         def on_error(*args, **kwargs):
             self.task_tester = None
-            if self.rpc_publisher:
-                self.rpc_publisher.publish(Task.evt_task_test_status,
-                                           TaskTestStatus.error, *args, **kwargs)
+            self._publish(Task.evt_task_test_status,
+                          TaskTestStatus.error, *args, **kwargs)
 
         t = DictSerializer.load(t_dict)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_test_status,
-                                       TaskTestStatus.started, True)
+        self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
 
     def abort_test_task(self):
         with self.lock:
@@ -708,13 +709,15 @@ class Client(object):
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
 
-    def lock_config(self, on=True):
+    def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
-            self.rpc_publisher.publish(UI.evt_lock_config, on)
+            self.rpc_publisher.publish(event_name, *args, **kwargs)
+
+    def lock_config(self, on=True):
+        self._publish(UI.evt_lock_config, on)
 
     def config_changed(self):
-        if self.rpc_publisher:
-            self.rpc_publisher.publish(Environment.evt_opts_changed)
+        self._publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
@@ -732,53 +735,70 @@ class Client(object):
         return new_value
 
     def __do_work(self):
-        if self.p2pservice:
-            if self.config_desc.send_pings:
-                self.p2pservice.ping_peers(self.config_desc.pings_interval)
+        if not self.p2pservice:
+            return
 
-            try:
-                self.p2pservice.sync_network()
-            except Exception:
-                log.exception("p2pservice.sync_network failed")
-            try:
-                self.task_server.sync_network()
-            except Exception:
-                log.exception("task_server.sync_network failed")
-            try:
-                self.resource_server.sync_network()
-            except Exception:
-                log.exception("resource_server.sync_network failed")
-            try:
-                self.ranking.sync_network()
-            except Exception:
-                log.exception("ranking.sync_network failed")
-            try:
-                self.check_payments()
-            except Exception:
-                log.exception("check_payments failed")
+        if self.config_desc.send_pings:
+            self.p2pservice.ping_peers(self.config_desc.pings_interval)
 
-            if time.time() - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
-                dispatcher.send(
-                    signal='golem.monitor',
-                    event='stats_snapshot',
-                    known_tasks=self.get_task_count(),
-                    supported_tasks=self.get_supported_task_count(),
-                    stats=self.task_server.task_computer.stats,
-                )
-                dispatcher.send(
-                    signal='golem.monitor',
-                    event='task_computer_snapshot',
-                    task_computer=self.task_server.task_computer,
-                )
-                # with self.snapshot_lock:
-                #     self.__make_node_state_snapshot()
-                #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
-                self.last_nss_time = time.time()
+        try:
+            self.p2pservice.sync_network()
+        except Exception:
+            log.exception("p2pservice.sync_network failed")
+        try:
+            self.task_server.sync_network()
+        except Exception:
+            log.exception("task_server.sync_network failed")
+        try:
+            self.resource_server.sync_network()
+        except Exception:
+            log.exception("resource_server.sync_network failed")
+        try:
+            self.ranking.sync_network()
+        except Exception:
+            log.exception("ranking.sync_network failed")
+        try:
+            self.check_payments()
+        except Exception:
+            log.exception("check_payments failed")
 
-            if time.time() - self.last_net_check_time >= self.config_desc.network_check_interval:
-                self.last_net_check_time = time.time()
-                if self.rpc_publisher:
-                    self.rpc_publisher.publish(Network.evt_connection, self.connection_status())
+    @inlineCallbacks
+    def __publish_events(self):
+        now = time.time()
+
+        if now - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
+            dispatcher.send(
+                signal='golem.monitor',
+                event='stats_snapshot',
+                known_tasks=self.get_task_count(),
+                supported_tasks=self.get_supported_task_count(),
+                stats=self.task_server.task_computer.stats,
+            )
+            dispatcher.send(
+                signal='golem.monitor',
+                event='task_computer_snapshot',
+                task_computer=self.task_server.task_computer,
+            )
+            # with self.snapshot_lock:
+            #     self.__make_node_state_snapshot()
+            #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
+            self.last_nss_time = time.time()
+
+        if now - self.last_net_check_time >= self.config_desc.network_check_interval:
+            self.last_net_check_time = time.time()
+            self._publish(Network.evt_connection, self.connection_status())
+
+        if now - self.last_balance_time >= PUBLISH_BALANCE_INTERVAL:
+            try:
+                gnt, av_gnt, eth = yield self.get_balance()
+            except Exception as exc:
+                log.debug('Error retrieving balance: {}'.format(exc))
+            else:
+                self._publish(Payments.evt_balance, dict(
+                    GNT=gnt,
+                    GNT_available=av_gnt,
+                    ETH=eth
+                ))
 
     def __make_node_state_snapshot(self, is_running=True):
         peers_num = len(self.p2pservice.peers)

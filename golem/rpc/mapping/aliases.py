@@ -122,6 +122,7 @@ class Payments(object):
     incomes                 = 'pay.incomes'
     income                  = 'pay.income'
 
+    evt_balance             = 'evt.pay.balance'
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 

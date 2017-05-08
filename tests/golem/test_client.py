@@ -1,8 +1,11 @@
-import os
+import time
 import unittest
 import uuid
 
-from ethereum.utils import denoms
+import os
+from mock import Mock, MagicMock, patch
+from twisted.internet.defer import Deferred
+
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -12,6 +15,7 @@ from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
+from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
@@ -20,8 +24,6 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
-from mock import Mock, MagicMock, patch
-from twisted.internet.defer import Deferred
 
 
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
@@ -50,6 +52,7 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
                    use_monitor=False)
 
 
+@patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase, TestWithReactor):
 
     @classmethod
@@ -62,10 +65,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
         TestWithDatabase.tearDownClass()
         TestWithReactor.tearDownClass()
 
-    def test_get_payments(self):
+    def tearDown(self):
+        if hasattr(self, 'client'):
+            self.client.quit()
+
+    def test_get_payments(self, *_):
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                       use_docker_machine_manager=False, use_monitor=False)
+            self.client = Client(datadir=self.path, transaction_system=True,
+                                 connect_to_known_hosts=False,
+                                 use_docker_machine_manager=False, use_monitor=False)
 
         payments = [
             Payment(subtask=uuid.uuid4(),
@@ -78,8 +86,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         db = Mock()
         db.get_newest_payment.return_value = payments
 
-        c.transaction_system.payments_keeper.db = db
-        received_payments = c.get_payments_list()
+        self.client.transaction_system.payments_keeper.db = db
+        received_payments = self.client.get_payments_list()
 
         self.assertEqual(len(received_payments), len(payments))
 
@@ -89,21 +97,20 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.assertEqual(received_payments[i]['payee'], payments[i].payee)
             self.assertEqual(received_payments[i]['value'], str(payments[i].value))
 
-        c.quit()
-
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.EthereumTransactionSystem.sync')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+           'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            c = Client(datadir=self.path, transaction_system=True, connect_to_known_hosts=False,
-                       use_docker_machine_manager=False, use_monitor=False)
-        c.sync()
-        self.assertTrue(c.transaction_system.sync.called)
-        c.quit()
+            self.client = Client(datadir=self.path, transaction_system=True,
+                                 connect_to_known_hosts=False,
+                                 use_docker_machine_manager=False, use_monitor=False)
+        self.client.sync()
+        self.assertTrue(self.client.transaction_system.sync.called)
 
-    def test_remove_resources(self):
-        c = Client(datadir=self.path, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False,
-                   use_monitor=False)
+    def test_remove_resources(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
 
         def unique_dir():
             d = os.path.join(self.path, str(uuid.uuid4()))
@@ -111,6 +118,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 os.makedirs(d)
             return d
 
+        c = self.client
         c.task_server = Mock()
         c.task_server.get_task_computer_root.return_value = unique_dir()
         c.task_server.task_manager.get_task_manager_root.return_value = unique_dir()
@@ -135,61 +143,65 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.additional_dir_content([3], d)
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
-        c.quit()
 
-    def test_datadir_lock(self):
+    def test_datadir_lock(self, *_):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
         datadir = os.path.join(self.path, "non-existing-dir")
-        c = Client(datadir=datadir, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False, use_monitor=False)
-        self.assertEqual(c.config_desc.node_address, '')
+        self.client = Client(datadir=datadir, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False, use_monitor=False)
+
+        self.assertEqual(self.client.config_desc.node_address, '')
         with self.assertRaises(IOError):
             Client(datadir=datadir)
-        c.quit()
 
-    def test_metadata(self):
-        c = Client(datadir=self.path, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False, use_monitor=False)
-        meta = c.get_metadata()
+    def test_metadata(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False, use_monitor=False)
+
+        meta = self.client.get_metadata()
         self.assertIsNotNone(meta)
         self.assertEqual(meta, dict())
-        c.quit()
 
-    def test_description(self):
-        c = Client(datadir=self.path, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False,
-                   use_monitor=False)
-        self.assertEqual(c.get_description(), "")
+    def test_description(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        self.assertEqual(self.client.get_description(), "")
         desc = u"ADVANCE DESCRIPTION\n\tSOME TEXT"
-        c.change_description(desc)
-        self.assertEqual(c.get_description(), desc)
-        c.quit()
+        self.client.change_description(desc)
+        self.assertEqual(self.client.get_description(), desc)
 
-    # FIXME: IPFS metadata disabled
-    # def test_interpret_metadata(self):
-    #     from golem.network.ipfs.daemon_manager import IPFSDaemonManager
-    #     c = Client(datadir=self.path, transaction_system=False,
-    #                connect_to_known_hosts=False, use_docker_machine_manager=False)
-    #     c.p2pservice = P2PService(MagicMock(), c.config_desc, c.keys_auth)
-    #     c.ipfs_manager = IPFSDaemonManager()
-    #     meta = c.get_metadata()
-    #     assert meta and meta['ipfs']
-    #
-    #     ip_1 = '127.0.0.1'
-    #     port_1 = 40102
-    #
-    #     node = MagicMock()
-    #     node.prv_addr = ip_1
-    #     node.prv_port = port_1
-    #
-    #     c.interpret_metadata(meta, ip_1, port_1, node)
-    #     c.quit()
+    @unittest.skip('IPFS metadata is currently disabled')
+    def test_interpret_metadata(self, *_):
+        from golem.network.ipfs.daemon_manager import IPFSDaemonManager
+        from golem.network.p2p.p2pservice import P2PService
 
-    def test_get_status(self):
-        c = Client(datadir=self.path, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False,
-                   use_monitor=False)
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False)
+
+        self.client.p2pservice = P2PService(MagicMock(), self.client.config_desc, self.client.keys_auth)
+        self.client.ipfs_manager = IPFSDaemonManager()
+        meta = self.client.get_metadata()
+        assert meta and meta['ipfs']
+
+        ip = '127.0.0.1'
+        port = 40102
+
+        node = MagicMock()
+        node.prv_addr = ip
+        node.prv_port = port
+
+        self.client.interpret_metadata(meta, ip, port, node)
+
+    def test_get_status(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+        c = self.client
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
         c.p2pservice = MagicMock()
@@ -215,22 +227,140 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.task_server.task_computer.get_progresses.return_value = {}
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
-        c.quit()
 
-    def test_quit(self):
-        c = Client(datadir=self.path)
-        c.db = None
-        c.quit()
+    def test_quit(self, *_):
+        self.client = Client(datadir=self.path)
+        self.client.db = None
+        self.client.quit()
 
-    def test_collect_gossip(self):
-        c = Client(datadir=self.path, transaction_system=False,
-                   connect_to_known_hosts=False, use_docker_machine_manager=False,
-                   use_monitor=False)
-        c.start_network()
-        c.collect_gossip()
-        c.quit()
+    def test_collect_gossip(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+        self.client.start_network()
+        self.client.collect_gossip()
+
+    @patch('golem.client.log')
+    def test_do_work(self, log, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        c = self.client
+        c.sync = Mock()
+        c.p2pservice = Mock()
+        c.task_server = Mock()
+        c.resource_server = Mock()
+        c.ranking = Mock()
+        c.check_payments = Mock()
+
+        # Test if method exits if p2pservice is not present
+        c.p2pservice = None
+        c.config_desc.send_pings = False
+        c._Client__do_work()
+
+        assert not log.exception.called
+        assert not c.check_payments.called
+
+        # Test calls with p2pservice
+        c.p2pservice = Mock()
+        c._Client__do_work()
+
+        assert not c.p2pservice.ping_peers.called
+        assert not log.exception.called
+        assert c.p2pservice.sync_network.called
+        assert c.task_server.sync_network.called
+        assert c.resource_server.sync_network.called
+        assert c.ranking.sync_network.called
+        assert c.check_payments.called
+
+        # Enable pings
+        c.config_desc.send_pings = True
+
+        # Make methods throw exceptions
+        def raise_exc():
+            raise Exception('Test exception')
+
+        c.p2pservice.sync_network = raise_exc
+        c.task_server.sync_network = raise_exc
+        c.resource_server.sync_network = raise_exc
+        c.ranking.sync_network = raise_exc
+        c.check_payments = raise_exc
+
+        c._Client__do_work()
+
+        assert c.p2pservice.ping_peers.called
+        assert log.exception.call_count == 5
+
+    @patch('golem.client.log')
+    @patch('golem.client.dispatcher.send')
+    def test_publish_events(self, send, log, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+        c = self.client
+
+        def get_balance(*_):
+            d = Deferred()
+            d.callback((1, 2, 3))
+            return d
+
+        c.task_server = Mock()
+        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
+        c.task_server.task_computer.stats = dict()
+
+        c.get_balance = get_balance
+        c.get_task_count = lambda *_: 0
+        c.get_supported_task_count = lambda *_: 0
+        c.connection_status = lambda *_: 'test'
+
+        c.config_desc.node_snapshot_interval = 1
+        c.config_desc.network_check_interval = 1
+
+        c._publish = Mock()
+
+        past_time = time.time() - 10 ** 10
+        future_time = time.time() + 10 ** 10
+
+        c.last_nss_time = future_time
+        c.last_net_check_time = future_time
+        c.last_balance_time = future_time
+
+        c._Client__publish_events()
+
+        assert not send.called
+        assert not log.debug.called
+        assert not c._publish.called
+
+        c.last_nss_time = past_time
+        c.last_net_check_time = past_time
+        c.last_balance_time = past_time
+
+        c._Client__publish_events()
+
+        assert not log.debug.called
+        assert send.call_count == 2
+        assert c._publish.call_count == 2
+
+        def raise_exc(*_):
+            raise Exception('Test exception')
+
+        c.get_balance = raise_exc
+        c._publish = Mock()
+        send.call_count = 0
+
+        c.last_nss_time = past_time
+        c.last_net_check_time = past_time
+        c.last_balance_time = past_time
+
+        c._Client__publish_events()
+
+        assert log.debug.called
+        assert send.call_count == 2
+        assert c._publish.call_count == 1
 
 
+@patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
     def setUp(self):
@@ -254,14 +384,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
     def tearDown(self):
         self.client.quit()
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_node(self, _):
+    def test_get_node(self, *_):
         c = self.client
         self.assertIsInstance(c.get_node(), dict)
         self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_dir_manager(self, _):
+    def test_get_dir_manager(self, *_):
         c = self.client
         self.assertIsInstance(c.get_dir_manager(), Mock)
 
@@ -273,8 +401,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
         self.assertIsInstance(c.get_dir_manager(), DirManager)
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_enqueue_new_task(self, _):
+    def test_enqueue_new_task(self, *_):
         c = self.client
         c.resource_server = Mock()
         c.keys_auth = Mock()
@@ -299,9 +426,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
     @patch('golem.client.async_run')
-    def test_enqueue_new_task(self, async_run, *_):
+    def test_get_balance(self, async_run, *_):
         c = self.client
 
         result = (None, None, None)
@@ -332,8 +458,18 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         balance = wait_for(c.get_balance())
         assert balance == (None, None, None)
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_misc(self, _):
+    def test_config_changed(self, *_):
+        c = self.client
+
+        c._publish = Mock()
+        c.lock_config(True)
+        c._publish.assert_called_with(UI.evt_lock_config, True)
+
+        c._publish = Mock()
+        c.config_changed()
+        c._publish.assert_called_with(Environment.evt_opts_changed)
+
+    def test_misc(self, *_):
         c = self.client
         c.enqueue_new_task = Mock()
 
@@ -394,7 +530,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         # public key
         self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
 
-    def test_unreachable_flag(self):
+    def test_unreachable_flag(self, *_):
         from pydispatch import dispatcher
         import random
         random.seed()
