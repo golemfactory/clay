@@ -13,7 +13,7 @@ from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from golem.appconfig import AppConfig
+from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.core.fileshelper import du
 from golem.core.keysauth import EllipticalKeysAuth
@@ -788,7 +788,7 @@ class Client(object):
             self.last_net_check_time = time.time()
             self._publish(Network.evt_connection, self.connection_status())
 
-        if now - self.last_balance_time >= 3:
+        if now - self.last_balance_time >= PUBLISH_BALANCE_INTERVAL:
             try:
                 gnt, av_gnt, eth = yield self.get_balance()
             except Exception as exc:
