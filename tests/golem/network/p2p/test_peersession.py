@@ -1,7 +1,9 @@
+import mock
+from mock import MagicMock, Mock
+import random
 import unittest
 
-from mock import MagicMock, Mock
-
+from golem import testutils
 from golem.core.keysauth import EllipticalKeysAuth, KeysAuth
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
@@ -11,11 +13,38 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
-class TestPeerSession(TestWithKeysAuth, LogTestCase):
+class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
+    PEP8_FILES = ['golem/network/p2p/peersession.py',]
 
-    def test_init(self):
-        ps = PeerSession(MagicMock())
-        self.assertIsInstance(ps, PeerSession)
+    def setUp(self):
+        super(TestPeerSession, self).setUp()
+        random.seed()
+        self.peer_session = PeerSession(MagicMock())
+
+    @mock.patch('golem.network.transport.session.BasicSession.send')
+    def test_hello(self, send_mock):
+        self.maxDiff = None
+        self.peer_session.conn.server.node = node = 'node info'
+        self.peer_session.conn.server.node_name = node_name = 'node name'
+        self.peer_session.conn.server.keys_auth.get_key_id.return_value = key_id = 'client_key_id'
+        self.peer_session.conn.server.metadata_manager.get_metadata.return_value = metadata = 'metadata'
+        self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
+        self.peer_session.hello()
+        send_mock.assert_called_once_with(mock.ANY, mock.ANY)
+        expected = {
+            u'CHALLENGE': None,
+            u'CLIENT_KEY_ID': key_id,
+            u'CLI_VER': 0,
+            u'DIFFICULTY': 0,
+            u'METADATA': metadata,
+            u'NODE_INFO': node,
+            u'NODE_NAME': node_name,
+            u'PORT': port,
+            u'PROTO_ID': P2P_PROTOCOL_ID,
+            u'RAND_VAL': self.peer_session.rand_val,
+            u'SOLVE_CHALLENGE': False,
+        }
+        self.assertEquals(send_mock.call_args[0][1].dict_repr(), expected)
 
     def test_encrypt_decrypt(self):
         ps = PeerSession(MagicMock())

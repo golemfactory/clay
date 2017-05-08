@@ -10,7 +10,7 @@ from server import Server
 from tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, TCPConnectInfo
 from golem.core.variables import LISTEN_WAIT_TIME, LISTENING_REFRESH_TIME, LISTEN_PORT_TTL
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.network.transport.tcpserver')
 
 
 class TCPServer(Server):
@@ -133,6 +133,7 @@ class PendingConnectionsServer(TCPServer):
             logger.debug("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+        logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
         sockets = [sock for sock in
                    self.get_socket_addresses(task_owner, port, key_id) if
                    self._is_address_accessible(sock)]

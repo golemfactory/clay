@@ -6,6 +6,7 @@ from golem.core.common import timeout_to_deadline
 
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.resources.imgcompare import check_size
 
 
 class BlenderVerificator(FrameRenderingVerificator):
@@ -54,11 +55,11 @@ class BlenderVerificator(FrameRenderingVerificator):
         ctd.deadline = timeout_to_deadline(self.verification_timeout)
         return ctd
 
-    def _get_part_img_size(self, subtask_id, adv_test_file, subtask_info):
-        x, y = self._get_part_size(subtask_id, subtask_info)
+    def _get_part_img_size(self, subtask_info):
+        x, y = self._get_part_size(subtask_info)
         return 0, 0, x, y
 
-    def _get_part_size(self, subtask_id, subtask_info):
+    def _get_part_size(self, subtask_info):
         start_task = subtask_info['start_task']
         if not self.use_frames:
             res_y = self._get_part_size_from_subtask_number(start_task)
@@ -83,3 +84,6 @@ class BlenderVerificator(FrameRenderingVerificator):
             else:
                 res_y = ceiling_height
         return res_y
+
+    def _check_size(self, file_, res_x, res_y):
+        return check_size(file_, res_x, res_y)

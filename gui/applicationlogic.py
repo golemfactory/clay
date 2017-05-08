@@ -1,6 +1,6 @@
 from __future__ import division
 
-import jsonpickle as json
+import jsonpickle
 import logging
 import os
 
@@ -22,7 +22,7 @@ from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskTestStatus
 from golem.task.taskstate import TaskStatus
 
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
@@ -374,7 +374,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 file_path += "."
             file_path += "gt"
         with open(file_path, "wb") as f:
-            data = json.dumps(task_state)
+            data = jsonpickle.dumps(task_state)
             f.write(data)
 
     @staticmethod
@@ -447,6 +447,16 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")
         self.progress_dialog_customizer.enable_abort_button(success)
+
+    def test_task_status(self, status, *args, **kwargs):
+        if status == TaskTestStatus.started:
+            self.test_task_started(*args, **kwargs)
+        elif status == TaskTestStatus.success:
+            self.test_task_computation_success(*args, **kwargs)
+        elif status == TaskTestStatus.error:
+            self.test_task_computation_error(*args, **kwargs)
+        else:
+            logger.error('Invalid task status received: {}'.format(status))
 
     def abort_test_task(self):
         self.client.abort_test_task()

@@ -5,7 +5,6 @@ from ethereum import keys
 
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.ethereum.paymentmonitor import PaymentMonitor
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -30,20 +29,17 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__eth_node = Client()
         self.__proc = PaymentProcessor(self.__eth_node, node_priv_key, faucet=True)
         self.__proc.start()
-        self.__monitor = PaymentMonitor(self.__eth_node, self.__node_address)
-        self.__monitor.start()
-        # TODO: We can keep address in PaymentMonitor only
 
     def stop(self):
         if self.__proc.running:
             self.__proc.stop()
-        if self.__monitor.running:
-            self.__monitor.stop()
-        self.__eth_node.node.stop()
+        if self.__eth_node.node is not None:
+            self.__eth_node.node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(*args, **kwargs)
         self.__proc.add(payment)
+        return payment
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
@@ -63,13 +59,6 @@ class EthereumTransactionSystem(TransactionSystem):
         :param dict payments: all payments group by ethereum address
         """
         pass
-
-    def get_incoming_payments(self):
-        return [{'status': payment.status.value,
-                 'payer': payment.payer,
-                 'value': payment.value,
-                 'block_number': payment.extra['block_number']
-                 } for payment in self.__monitor.get_incoming_payments()]
 
     def sync(self):
         syncing = True

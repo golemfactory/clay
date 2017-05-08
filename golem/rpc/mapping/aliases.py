@@ -92,10 +92,7 @@ class Task(object):
 
     evt_task_status         = 'evt.comp.task.status'
     evt_subtask_status      = 'evt.comp.subtask.status'
-
-    evt_task_check_started  = 'evt.comp.task.check.started'
-    evt_task_check_success  = 'evt.comp.task.check.success'
-    evt_task_check_error    = 'evt.comp.task.check.error'
+    evt_task_test_status    = 'evt.comp.task.test.status'
 
 
 class Resources(object):
@@ -133,6 +130,7 @@ class Payments(object):
     incomes                 = 'pay.incomes'
     income                  = 'pay.income'
 
+    evt_balance             = 'evt.pay.balance'
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 

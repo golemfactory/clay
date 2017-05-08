@@ -107,7 +107,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         if not self.connect_to_known_hosts:
             return
 
-        for host in KnownHosts.select().where(KnownHosts.is_seed == False):
+        for host in KnownHosts.select().where(KnownHosts.is_seed == False):  # noqa
             ip_address = host.ip_address
             port = host.port
 
@@ -158,12 +158,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
 
         except Exception as err:
             logger.error("Couldn't add known peer {}:{} : {}".format(ip_address, port, err))
-
-    def set_task_server(self, task_server):
-        """ Set task server
-        :param TaskServer task_server: task server instance
-        """
-        self.task_server = task_server
 
     def set_metadata_manager(self, metadata_manager):
         self.metadata_manager = metadata_manager
@@ -390,27 +384,6 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
                 th_dict_repr["port"] = self.peers[id_].port
         except KeyError as err:
             logger.error("Wrong task representation: {}".format(err))
-
-    def get_listen_params(self, key_id, rand_val):
-        """ Return parameters that are needed for listen function in tuple
-        :param str|None key_id: key id of a node with whom we want to connect
-        :param int rand_val: session random value
-        :return (int, str, str, Node, int, bool) | (int, str, str, Node, int, bool, str, int) : this node listen port,
-        this node id, this node public key, information about this node, random value, information whether
-        other node should solve cryptographic challenge, (optional: cryptographic challenge),
-        (optional: cryptographic challenge difficulty)
-        """
-        if key_id:
-            should_solve_challenge = self.should_solve_challenge
-        else:
-            should_solve_challenge = False
-
-        listen_params = (self.cur_port, self.node_name, self.keys_auth.get_key_id(), self.node, rand_val,
-                         self.metadata_manager.get_metadata(), should_solve_challenge)
-
-        if should_solve_challenge:
-            listen_params += (self._get_challenge(key_id), self._get_difficulty(key_id))
-        return listen_params
 
     def check_solution(self, solution, challenge, difficulty):
         """
@@ -835,12 +808,10 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         logger.info("Can't connect to peer {}.".format(conn_id))
 
     def __is_new_peer(self, id_):
-        return id_ not in self.incoming_peers and \
-               not self.__is_connected_peer(id_)
+        return id_ not in self.incoming_peers and not self.__is_connected_peer(id_)
 
     def __is_connected_peer(self, id_):
-        return id_ in self.peers or \
-               long(id_, 16) == self.get_key_id()
+        return id_ in self.peers or long(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
         for peer in self.peers.values():
