@@ -3,7 +3,6 @@ import re
 
 
 def find_wrong_renderer_warning(log_content):
-    text = "error: engine"
     engine_error = re.search("(^Error: engine)(.*)", log_content, re.IGNORECASE | re.MULTILINE)
     if engine_error:
         return engine_error.group(2)
