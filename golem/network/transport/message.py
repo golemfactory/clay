@@ -153,7 +153,7 @@ class Message(object):
             msg_repr = None
 
         logger.debug('msg_repr: %r', msg_repr)
-        if not isinstance(msg_repr, list) and len(msg_repr) >= 4:
+        if not (isinstance(msg_repr, list) and len(msg_repr) >= 4):
             logger.info('Invalid message representation: %r', msg_repr)
             return
 
