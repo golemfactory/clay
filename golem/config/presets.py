@@ -35,7 +35,7 @@ class HardwarePresetsMixin(object):
 
         preset = HardwarePreset.get(name=name)
         preset.apply(preset_dict)
-        preset.update()
+        preset.save()
         return preset
 
     @classmethod
@@ -45,7 +45,7 @@ class HardwarePresetsMixin(object):
 
         preset, _ = HardwarePreset.get_or_create(name=name)
         preset.apply(preset_dict)
-        preset.update()
+        preset.save()
         return preset
 
     @staticmethod
