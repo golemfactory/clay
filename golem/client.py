@@ -101,7 +101,8 @@ class Client(HardwarePresetsMixin):
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
-        self.activate_hw_preset(self.config_desc.hardware_preset_name)
+        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
+                                      self.config_desc)
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
 
@@ -573,6 +574,7 @@ class Client(HardwarePresetsMixin):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
+        self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
         dispatcher.send(signal='golem.monitor', event='config_update', meta_data=self.__get_nodemetadatamodel())
@@ -882,10 +884,10 @@ class Client(HardwarePresetsMixin):
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
 
-    def activate_hw_preset(self, name):
+    def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
-            self.task_server.change_config(self.config_desc)
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
