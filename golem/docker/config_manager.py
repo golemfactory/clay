@@ -1,7 +1,7 @@
 import logging
 from contextlib import contextmanager
 
-from golem.core.hardware import AVAILABLE_CPU_CORES
+from golem.core.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
 __all__ = ['DockerConfigManager']
@@ -29,7 +29,6 @@ class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
-        self.cpu_cores = list(AVAILABLE_CPU_CORES)
 
     def build_config(self, config_desc):
         host_config = dict()
@@ -39,8 +38,9 @@ class DockerConfigManager(object):
             max_memory_size = config_desc.max_memory_size
 
             with self._try():
-                max_cpus = min(len(self.cpu_cores), int(num_cores) or 1)
-                cpu_set = [str(c) for c in self.cpu_cores[:max_cpus]]
+                cpu_cores = cpu_cores_available()
+                max_cpus = min(len(cpu_cores), max(int(num_cores), 1))
+                cpu_set = [str(c) for c in cpu_cores[:max_cpus]]
                 host_config['cpuset'] = ','.join(cpu_set)
 
             with self._try():
