@@ -16,6 +16,7 @@ MIN_MEMORY_SIZE = 1000 * 1024
 MIN_CPU_CORES = 1
 
 DEFAULT_HARDWARE_PRESET_NAME = "default"
+CUSTOM_HARDWARE_PRESET_NAME = "custom"
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -134,7 +135,7 @@ class AppConfig:
                                  accept_tasks=ACCEPT_TASKS,
                                  send_pings=SEND_PINGS,
                                  # hardware
-                                 hardware_preset_name=DEFAULT_HARDWARE_PRESET_NAME,
+                                 hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
                                  # price and trust
                                  min_price=MIN_PRICE,
                                  max_price=MAX_PRICE,

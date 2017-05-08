@@ -3,7 +3,8 @@ import multiprocessing
 import psutil
 from psutil import virtual_memory
 
-from golem.appconfig import logger, MIN_MEMORY_SIZE, MIN_DISK_SPACE, MIN_CPU_CORES, DEFAULT_HARDWARE_PRESET_NAME
+from golem.appconfig import logger, MIN_MEMORY_SIZE, MIN_DISK_SPACE, MIN_CPU_CORES, DEFAULT_HARDWARE_PRESET_NAME, \
+    CUSTOM_HARDWARE_PRESET_NAME
 from golem.core.fileshelper import free_partition_space
 from golem.model import HardwarePreset
 
@@ -42,7 +43,7 @@ class HardwarePresets(object):
         disk=MIN_DISK_SPACE
     )
 
-    CUSTOM_NAME = "custom"
+    CUSTOM_NAME = CUSTOM_HARDWARE_PRESET_NAME
     CUSTOM_VALUES = dict(default_values)
 
     working_dir = None
