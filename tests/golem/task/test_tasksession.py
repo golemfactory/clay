@@ -12,6 +12,7 @@ from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
+from golem.network.transport import message
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
@@ -33,6 +34,11 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        message.init_messages()
+
+    def tearDown(self):
+        super(TestTaskSession, self).tearDown()
+        message.Message.registered_message_types = {}
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):

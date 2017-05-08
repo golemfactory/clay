@@ -152,17 +152,21 @@ class Message(object):
             logger.error("Error deserializing message: {}".format(exc))
             msg_repr = None
 
-        if isinstance(msg_repr, list) and len(msg_repr) >= 4:
+        logger.debug('msg_repr: %r', msg_repr)
+        if not isinstance(msg_repr, list) and len(msg_repr) >= 4:
+            logger.info('Invalid message representation: %r', msg_repr)
+            return
 
-            msg_type = msg_repr[0]
-            msg_sig = msg_repr[1]
-            msg_timestamp = msg_repr[2]
-            d_repr = msg_repr[3]
+        msg_type = msg_repr[0]
+        msg_sig = msg_repr[1]
+        msg_timestamp = msg_repr[2]
+        d_repr = msg_repr[3]
 
-            if msg_type in cls.registered_message_types:
-                return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
+        if msg_type not in cls.registered_message_types:
+            logger.info('Unrecognized message type: %r', msg_type)
+            return
 
-        return None
+        return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
 
     def __str__(self):
         return "{}".format(self.__class__)
@@ -987,7 +991,7 @@ class AbstractResource(Message):
         'resource': u'resource',
     }
 
-    def __init__(self, resource, **kwargs):
+    def __init__(self, resource=None, **kwargs):
         """
         :param str resource: resource name
         """
