@@ -101,7 +101,7 @@ class Client(HardwarePresetsMixin):
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
-        self.activate_preset(self.config_desc.hardware_preset_name)
+        self.activate_hw_preset(self.config_desc.hardware_preset_name)
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
 
@@ -882,7 +882,7 @@ class Client(HardwarePresetsMixin):
         msg += "Active peers in network: {}\n".format(len(peers))
         return msg
 
-    def activate_preset(self, name):
+    def activate_hw_preset(self, name):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
             self.task_server.change_config(self.config_desc)
