@@ -16,11 +16,11 @@ def cpu_cores_available():
     """
     try:
         affinity = psutil.Process().cpu_affinity()
-        return affinity[1:] or affinity
+        return affinity[:-1] or affinity
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: {}".format(e))
         num_cores = multiprocessing.cpu_count()
-        return range(1, num_cores) or [0]
+        return range(0, num_cores - 1) or [0]
 
 
 def memory_available():
@@ -30,16 +30,12 @@ def memory_available():
     return max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
 
 
-AVAILABLE_CPU_CORES = cpu_cores_available()
-AVAILABLE_MEMORY = memory_available()
-
-
 class HardwarePresets(object):
 
     DEFAULT_NAME = DEFAULT_HARDWARE_PRESET_NAME
     default_values = dict(
-        cpu_cores=len(AVAILABLE_CPU_CORES),
-        memory=AVAILABLE_MEMORY,
+        cpu_cores=len(cpu_cores_available()),
+        memory=memory_available(),
         disk=MIN_DISK_SPACE
     )
 
@@ -66,20 +62,28 @@ class HardwarePresets(object):
         setattr(config, 'max_resource_size', values['disk'])
 
     @classmethod
+    def from_config(cls, config):
+        return HardwarePreset(
+            name=config.hardware_preset_name,
+            cpu_cores=config.num_cores,
+            memory=config.max_memory_size,
+            disk=config.max_resource_size
+        )
+
+    @classmethod
     def caps(cls):
         cls._assert_initialized()
-        available = free_partition_space(cls.working_dir)
         return dict(
-            cpu_cores=AVAILABLE_CPU_CORES,
-            memory=AVAILABLE_MEMORY,
-            disk=available
+            cpu_cores=len(cpu_cores_available()),
+            memory=memory_available(),
+            disk=free_partition_space(cls.working_dir)
         )
 
     @classmethod
     def values(cls, preset_or_name):
         preset_or_name = preset_or_name or DEFAULT_HARDWARE_PRESET_NAME
 
-        if isinstance(preset_or_name, str):
+        if isinstance(preset_or_name, basestring):
             preset = HardwarePreset.get(name=preset_or_name)
         else:
             preset = preset_or_name
@@ -92,17 +96,19 @@ class HardwarePresets(object):
 
     @classmethod
     def cpu_cores(cls, core_num):
-        return min(max(core_num, MIN_CPU_CORES), len(AVAILABLE_CPU_CORES))
+        available = len(cpu_cores_available())
+        return max(min(core_num, available), MIN_CPU_CORES)
 
     @classmethod
     def memory(cls, mem_size):
-        return min(max(mem_size, MIN_MEMORY_SIZE), AVAILABLE_MEMORY)
+        available = memory_available()
+        return max(min(mem_size, available), MIN_MEMORY_SIZE)
 
     @classmethod
     def disk(cls, disk_space):
         cls._assert_initialized()
         available = free_partition_space(cls.working_dir)
-        return min(max(disk_space, MIN_DISK_SPACE), available)
+        return max(min(disk_space, available), MIN_DISK_SPACE)
 
     @classmethod
     def _assert_initialized(cls):
