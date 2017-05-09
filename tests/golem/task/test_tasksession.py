@@ -111,16 +111,14 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts2.key_id = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
         ts2.can_be_unsigned.append(mt.TYPE)
-        ts2.task_server.get_computing_trust.return_value = 0.1
-        ts2.task_server.config_desc.computing_trust = 0.2
+        ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
         ts2.task_manager.get_next_subtask.return_value = ("CTD", False, False)
         ts2.interpret(mt)
-        ts2.task_server.get_computing_trust.assert_called_with("DEF")
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageCannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
-        ts2.task_server.get_computing_trust.return_value = 0.8
+        ts2.task_server.should_accept_provider.return_value = True
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageTaskToCompute)

@@ -8,6 +8,7 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPConnectInfo, SocketAddress, MidAndFilesProtocol
 from golem.network.transport.tcpserver import PendingConnectionsServer, PenConnStatus
 from golem.ranking.helper.trust import Trust
+from golem.task.deny import get_deny_list
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from taskcomputer import TaskComputer
@@ -56,6 +57,7 @@ class TaskServer(PendingConnectionsServer):
         self.forwarded_session_request_timeout = config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
         self.response_list = {}
+        self.deny_list = get_deny_list(datadir=client.datadir)
 
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
@@ -447,6 +449,13 @@ class TaskServer(PendingConnectionsServer):
 
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
+
+    def should_accept_provider(self, node_id):
+        if node_id in self.deny_list:
+            return False
+        trust = self.get_computing_trust(node_id)
+        logger.debug("Computing trust level: {}".format(trust))
+        return trust >= self.config_desc.computing_trust
 
     def _sync_forwarded_session_requests(self):
         now = time.time()

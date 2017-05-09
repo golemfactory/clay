@@ -557,6 +557,24 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.estimated_blender_performance = 2000.0
         return ccd
 
+    def test_should_accept_provider(self):
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+        self.client.get_computing_trust = Mock(return_value=0.4)
+        ts.config_desc.computing_trust = 0.2
+        assert ts.should_accept_provider("ABC")
+        ts.config_desc.computing_trust = 0.4
+        assert ts.should_accept_provider("ABC")
+        ts.config_desc.computing_trust = 0.5
+        assert not ts.should_accept_provider("ABC")
+
+        ts.config_desc.computing_trust = 0.2
+        assert ts.should_accept_provider("ABC")
+
+        ts.deny_list.append("ABC")
+        assert not ts.should_accept_provider("ABC")
+
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
