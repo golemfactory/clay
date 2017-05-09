@@ -28,6 +28,7 @@ class Network(object):
 
     ident                   = 'net.ident'
     ident_key               = 'net.ident.key'
+    ident_name              = 'net.ident.name'
     status                  = 'net.status'
 
     peers_known             = 'net.peers.known'

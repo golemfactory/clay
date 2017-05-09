@@ -359,7 +359,8 @@ class Client(object):
         return DictSerializer.dump(self.node)
 
     def get_node_name(self):
-        return self.config_desc.node_name
+        name = self.config_desc.node_name
+        return unicode(name) if name else u''
 
     def get_neighbours_degree(self):
         return self.p2pservice.get_peers_degree()
@@ -432,7 +433,7 @@ class Client(object):
         self.change_config(cfg_desc, run_benchmarks)
 
     def get_datadir(self):
-        return self.datadir
+        return unicode(self.datadir)
 
     def get_p2p_port(self):
         return self.p2pservice.cur_port
