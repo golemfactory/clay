@@ -25,8 +25,8 @@ class HardwarePresetsMixin(object):
     @staticmethod
     def create_hw_preset(preset_dict):
         preset = HardwarePreset(**preset_dict)
-        preset.update()
-        return preset
+        preset.save()
+        return preset.to_dict()
 
     @classmethod
     def update_hw_preset(cls, preset):
@@ -36,23 +36,35 @@ class HardwarePresetsMixin(object):
         preset = HardwarePreset.get(name=name)
         preset.apply(preset_dict)
         preset.save()
-        return preset
+        return preset.to_dict()
 
     @classmethod
     def upsert_hw_preset(cls, preset):
         preset_dict = cls.__preset_to_dict(preset)
         name = cls.__sanitize_preset_name(preset_dict['name'])
 
-        preset, _ = HardwarePreset.get_or_create(name=name)
-        preset.apply(preset_dict)
-        preset.save()
-        return preset
+        defaults = dict(preset_dict)
+        defaults.pop('name')
+
+        preset, created = HardwarePreset.get_or_create(name=name,
+                                                       defaults=defaults)
+        if not created:
+            preset.apply(preset_dict)
+            preset.save()
+
+        return preset.to_dict()
 
     @staticmethod
     def remove_hw_preset(name):
         if name in [CUSTOM_HARDWARE_PRESET_NAME, DEFAULT_HARDWARE_PRESET_NAME]:
             raise ValueError('Cannot remove preset with name: ' + name)
-        HardwarePreset.delete().where(name=name)
+
+        deleted = HardwarePreset \
+            .delete() \
+            .where(HardwarePreset.name == name) \
+            .execute()
+
+        return bool(deleted)
 
     def activate_hw_preset(self, name, run_benchmarks=False):
         raise NotImplementedError

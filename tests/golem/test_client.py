@@ -359,6 +359,24 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert send.call_count == 2
         assert c._publish.call_count == 1
 
+    def test_activate_hw_preset(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        config = self.client.config_desc
+        config.hardware_preset_name = 'non-existing'
+        config.num_cores = 0
+        config.max_memory_size = 0
+        config.max_resource_size = 0
+
+        self.client.activate_hw_preset('custom')
+
+        assert config.hardware_preset_name == 'custom'
+        assert config.num_cores > 0
+        assert config.max_memory_size > 0
+        assert config.max_resource_size > 0
+
 
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
