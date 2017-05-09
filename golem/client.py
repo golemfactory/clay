@@ -406,10 +406,12 @@ class Client(object):
         return self.keys_auth.get_difficulty()
 
     def get_client_id(self):
-        return self.keys_auth.get_key_id()
+        key_id = self.keys_auth.get_key_id()
+        return unicode(key_id) if key_id else None
 
     def get_node_key(self):
-        return self.node.key
+        key = self.node.key
+        return unicode(key) if key else None
 
     def get_settings(self):
         return DictSerializer.dump(self.config_desc)
@@ -456,13 +458,13 @@ class Client(object):
         return self.task_server.task_manager.get_dict_subtask(subtask_id)
 
     def get_task_stats(self):
-        return dict(
-            in_network=self.get_task_count(),
-            supported=self.get_supported_task_count(),
-            subtasks_computed=self.get_computed_task_count(),
-            subtasks_with_errors=self.get_error_task_count(),
-            subtasks_with_timeout=self.get_timeout_task_count()
-        )
+        return {
+            u'in_network': self.get_task_count(),
+            u'supported': self.get_supported_task_count(),
+            u'subtasks_computed': self.get_computed_task_count(),
+            u'subtasks_with_errors': self.get_error_task_count(),
+            u'subtasks_with_timeout': self.get_timeout_task_count()
+        }
 
     def get_supported_task_count(self):
         return len(self.task_server.task_keeper.supported_tasks)
@@ -477,7 +479,8 @@ class Client(object):
         return self.task_server.task_computer.stats.get_stats('tasks_with_errors')
 
     def get_payment_address(self):
-        return self.transaction_system.get_payment_address()
+        address = self.transaction_system.get_payment_address()
+        return unicode(address) if address else None
 
     @inlineCallbacks
     def get_balance(self):
@@ -638,10 +641,14 @@ class Client(object):
         self.task_server.remove_task_header(task_id)
 
     def get_known_tasks(self):
-        return self.task_server.task_keeper.task_headers
+        headers = {}
+        for key, header in self.task_server.task_keeper.task_headers.iteritems():
+            headers[unicode(key)] = DictSerializer.dump(header)
+        return headers
 
     def get_environments(self):
-        return self.environments_manager.get_environments()
+        envs = self.environments_manager.get_environments() or []
+        return [DictSerializer.dump(env) for env in envs]
 
     def get_environments_perf(self):
         envs = copy(self.environments_manager.get_environments())
