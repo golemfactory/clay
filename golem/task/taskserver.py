@@ -91,14 +91,12 @@ class TaskServer(PendingConnectionsServer):
         if theader is None:
             return None
         try:
-            trust = self.client.get_requesting_trust(theader.task_owner_key_id)
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
                 performance = env.get_performance(self.config_desc)
             else:
                 performance = 0.0
-            logger.debug("Requesting trust level: {}".format(trust))
-            if trust >= self.config_desc.requesting_trust:
+            if self.should_accept_requestor(theader.task_owner_key_id):
                 self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
                 args = {
                     'node_name': self.config_desc.node_name,
@@ -116,7 +114,6 @@ class TaskServer(PendingConnectionsServer):
         except Exception as err:
             logger.warning("Cannot send request for task: {}".format(err))
             self.task_keeper.remove_task_header(theader.task_id)
-        return None
 
     def request_resource(self, subtask_id, resource_header, address, port, key_id, task_owner):
         if subtask_id in self.task_sessions:
@@ -456,6 +453,13 @@ class TaskServer(PendingConnectionsServer):
         trust = self.get_computing_trust(node_id)
         logger.debug("Computing trust level: {}".format(trust))
         return trust >= self.config_desc.computing_trust
+
+    def should_accept_requestor(self, node_id):
+        if node_id in self.deny_list:
+            return False
+        trust = self.client.get_requesting_trust(node_id)
+        logger.debug("Requesting trust level: {}".format(trust))
+        return trust >= self.config_desc.requesting_trust
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
