@@ -254,12 +254,12 @@ class HardwarePreset(BaseModel):
     disk = IntegerField(null=False)
 
     def to_dict(self):
-        return dict(
-            name=unicode(self.name),
-            cpu_cores=self.cpu_cores,
-            memory=self.memory,
-            disk=self.disk
-        )
+        return {
+            u'name': unicode(self.name),
+            u'cpu_cores': self.cpu_cores,
+            u'memory': self.memory,
+            u'disk': self.disk
+        }
 
     def apply(self, dictionary):
         self.cpu_cores = dictionary['cpu_cores']
