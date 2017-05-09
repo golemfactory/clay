@@ -56,7 +56,8 @@ class HardwarePresets(object):
 
     @classmethod
     def update_config(cls, preset_or_name, config):
-        values = cls.values(preset_or_name)
+        name, values = cls.values(preset_or_name)
+        setattr(config, 'hardware_preset_name', name)
         setattr(config, 'num_cores', values['cpu_cores'])
         setattr(config, 'max_memory_size', values['memory'])
         setattr(config, 'max_resource_size', values['disk'])
@@ -88,7 +89,7 @@ class HardwarePresets(object):
         else:
             preset = preset_or_name
 
-        return dict(
+        return preset.name, dict(
             cpu_cores=cls.cpu_cores(preset.cpu_cores),
             memory=cls.memory(preset.memory),
             disk=cls.disk(preset.disk)
