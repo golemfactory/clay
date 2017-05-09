@@ -83,14 +83,16 @@ class EXRImgRepr(ImgRepr):
         self.file_path = file_
 
     def get_size(self):
-        return self.dw.max.x - self.dw.min.x + 1, self.dw.max.y - self.dw.min.y + 1
+        return self.dw.max.x - self.dw.min.x + 1, \
+               self.dw.max.y - self.dw.min.y + 1
 
     def get_pixel(self, (i, j)):
         return [c.getpixel((i, j)) for c in self.rgb]
 
     def set_pixel(self, (i, j), color):
         for c in range(0, len(self.rgb)):
-            self.rgb[c].putpixel((i, j), max(min(self.max, color[c]), self.min))
+            self.rgb[c].putpixel((i, j), max(min(self.max, color[c]),
+                                             self.min))
 
     def get_rgbf_extrema(self):
         extrema = [im.getextrema() for im in self.rgb]
@@ -133,7 +135,8 @@ def load_img(file_):
     """
     Load image from file path and return ImgRepr
     :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None if there was an error 
+    :return ImgRepr | None: Return ImgRepr for special file type or None 
+    if there was an error 
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -151,7 +154,8 @@ def load_img(file_):
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
      :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or NOne if there was an error
+     :return Image.Image | None: return PIL Image represantion or None 
+     if there was an error
     """
 
     img = load_img(file_)
@@ -175,12 +179,3 @@ def blend(img1, img2, alpha):
             img.set_pixel((x, y), p)
 
     return img
-
-
-
-
-
-
-
-
-

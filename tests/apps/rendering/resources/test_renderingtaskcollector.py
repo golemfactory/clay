@@ -6,7 +6,8 @@ from golem.tools.testdirfixture import TestDirFixture
 
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgcompare import compare_pil_imgs, advance_verify_img
+from apps.rendering.resources.imgcompare import (advance_verify_img,
+                                                 compare_pil_imgs)
 from apps.rendering.resources.imgrepr import load_img
 
 

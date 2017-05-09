@@ -1,7 +1,8 @@
 import logging
 import math
 
-from apps.rendering.resources.imgrepr import EXRImgRepr, ImgRepr, load_img, PILImgRepr
+from apps.rendering.resources.imgrepr import (EXRImgRepr, ImgRepr, load_img,
+                                              PILImgRepr)
 
 logger = logging.getLogger("apps.rendering")
 
@@ -34,7 +35,9 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
         for j in range(0, res_y):
             [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
             [r2, g2, b2] = img2.get_pixel((start2[0] + i, start2[1] + j))
-            mse += (r1 - r2) * (r1 - r2) + (g1 - g2) * (g1 - g2) + (b1 - b2) * (b1 - b2)
+            mse += (r1 - r2) * (r1 - r2) + \
+                   (g1 - g2) * (g1 - g2) + \
+                   (b1 - b2) * (b1 - b2)
 
     if res_x <= 0 or res_y <= 0:
         raise ValueError("Image or box resolution must be greater than 0")
@@ -42,7 +45,8 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
     return mse
 
 
-def compare_imgs(img1, img2, max_col=255, start1=(0, 0), start2=(0, 0), box=None):
+def compare_imgs(img1, img2, max_col=255, start1=(0, 0),
+                 start2=(0, 0), box=None):
     mse = calculate_mse(img1, img2, start1, start2, box)
     logger.debug("MSE = {}".format(mse))
     if mse == 0:
@@ -60,7 +64,8 @@ def compare_pil_imgs(file1, file2):
         img2.load_from_file(file2)
         return compare_imgs(img1, img2)
     except Exception as err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
+        logger.info("Can't compare images {}, {}: {}".format(file1, file2,
+                                                             err))
         return False
 
 
@@ -72,11 +77,13 @@ def compare_exr_imgs(file1, file2):
         img2.load_from_file(file2)
         return compare_imgs(img1, img2, 1)
     except Exception as err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
+        logger.info("Can't compare images {}, {}: {}".format(file1, file2,
+                                                             err))
         return False
 
 
-def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, cmp_start_box):
+def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
+                       cmp_start_box):
     try:
         img = load_img(file_)
         cmp_img = load_img(compare_file)
@@ -84,14 +91,24 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, c
             return False
         if img.get_size() != (res_x, res_y):
             return False
-        if box_size[0] <= 0 or box_size[1] <= 0 or box_size[0] > res_x or box_size[1] > res_y:
-            logger.error("Wrong box size for advanced verification {}".format(box_size))
+
+        def _box_too_small(box):
+            return box[0] <= 0 or box[1] <= 0
+
+        def _box_too_big(box):
+            return box[0] > res_x or box[1] > res_y
+
+        if _box_too_small(box_size) or _box_too_big(box_size):
+            logger.error("Wrong box size for advanced verification " \
+                         "{}".format(box_size))
 
         if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
-            return compare_imgs(img, cmp_img, start1=start_box, start2=cmp_start_box, box=box_size)
+            return compare_imgs(img, cmp_img, start1=start_box,
+                                start2=cmp_start_box, box=box_size)
         else:
-            return compare_imgs(img, cmp_img, max_col=1, start1=start_box, start2=cmp_start_box,
-                                box=box_size)
+            return compare_imgs(img, cmp_img, max_col=1, start1=start_box,
+                                start2=cmp_start_box, box=box_size)
     except Exception:
-        logger.exception("Cannot verify images {} and {}".format(file_, compare_file))
+        logger.exception("Cannot verify images {} and {}".format(file_,
+                                                                 compare_file))
         return False

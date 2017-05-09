@@ -3,15 +3,19 @@ import os
 from PIL import Image
 
 
-from apps.rendering.resources.imgcompare import (advance_verify_img, check_size, compare_exr_imgs,
-                                                 compare_imgs, compare_pil_imgs, calculate_mse,
+from apps.rendering.resources.imgcompare import (advance_verify_img,
+                                                 check_size, compare_exr_imgs,
+                                                 compare_imgs,
+                                                 compare_pil_imgs,
+                                                 calculate_mse,
                                                  calculate_psnr, logger)
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
-from imghelper import get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img
+from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
+                       make_test_img)
 
 
 class TestCompareImgFunctions(TempDirFixture, LogTestCase):
@@ -188,22 +192,35 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         img_path = self.temp_file_name("path1.png")
         make_test_img(img_path)
 
-        assert not advance_verify_img("not an image", 10, 10, (0, 0), (2, 2), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), "not an image", (0, 0))
+        assert not advance_verify_img("not an image", 10, 10, (0, 0), (2, 2),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2),
+                                      "not an image", (0, 0))
 
-        assert advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), img_path, (0, 0))
+        assert advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), img_path,
+                                  (0, 0))
 
-        assert not advance_verify_img(img_path, 10, 9, (0, 0), (2, 2), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 9, 10, (0, 0), (2, 2), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (0, 2), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 0), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (11, 10), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (10, 11), img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 9, (0, 0), (2, 2),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 9, 10, (0, 0), (2, 2),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (0, 2),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 0),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (11, 10),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (10, 11),
+                                      img_path, (0, 0))
 
         exr_path = get_test_exr()
 
-        assert advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path, (0, 0))
+        assert advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path,
+                                  (0, 0))
         exr_path2 = get_test_exr(alt=True)
-        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), exr_path2, (0, 0))
-        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2), img_path, (0, 0))
-        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2), exr_path, (0, 0))
+        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2),
+                                      exr_path2, (0, 0))
+        assert not advance_verify_img(exr_path, 10, 10, (0, 0), (2, 2),
+                                      img_path, (0, 0))
+        assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2),
+                                      exr_path, (0, 0))
