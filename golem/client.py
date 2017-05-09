@@ -416,12 +416,12 @@ class Client(object):
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
-            raise Exception("Unknown setting: {}".format(key))
+            raise Exception(u"Unknown setting: {}".format(key))
         return getattr(self.config_desc, key)
 
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
-            raise Exception("Unknown setting: {}".format(key))
+            raise Exception(u"Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
 
@@ -485,7 +485,7 @@ class Client(object):
             req = AsyncRequest(self.transaction_system.get_balance)
             b, ab, d = yield async_run(req)
             if b is not None:
-                returnValue((str(b), str(ab), str(d)))
+                returnValue((unicode(b), unicode(ab), unicode(d)))
         returnValue((None, None, None))
 
     def get_payments_list(self):
@@ -501,9 +501,9 @@ class Client(object):
 
     @staticmethod
     def _values_to_str(obj):
-        obj["value"] = str(obj["value"])
+        obj["value"] = unicode(obj["value"])
         if "fee" in obj and obj["fee"] is not None:
-            obj["fee"] = str(obj["fee"])
+            obj["fee"] = unicode(obj["fee"])
         return obj
 
     def get_task_cost(self, task_id):
@@ -535,7 +535,7 @@ class Client(object):
             account, _ = Account.get_or_create(node_id=self.get_client_id())
             return account.description
         except Exception as e:
-            return "An error has occured {}".format(e)
+            return u"An error has occurred {}".format(e)
 
     def change_description(self, description):
         self.get_description()
@@ -585,12 +585,12 @@ class Client(object):
         self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
 
     def get_res_dirs(self):
-        return {"computing": self.get_computed_files_dir(),
-                "received": self.get_received_files_dir(),
-                "distributed": self.get_distributed_files_dir()}
+        return {u"computing": self.get_computed_files_dir(),
+                u"received": self.get_received_files_dir(),
+                u"distributed": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
-        return {name: du(d) for name, d in self.get_res_dirs().iteritems()}
+        return {unicode(name): du(d) for name, d in self.get_res_dirs().iteritems()}
 
     def get_res_dir(self, dir_type):
         if dir_type == DirectoryType.COMPUTED:
@@ -602,13 +602,13 @@ class Client(object):
         raise Exception(u"Unknown dir type: {}".format(dir_type))
 
     def get_computed_files_dir(self):
-        return self.task_server.get_task_computer_root()
+        return unicode(self.task_server.get_task_computer_root())
 
     def get_received_files_dir(self):
-        return self.task_server.task_manager.get_task_manager_root()
+        return unicode(self.task_server.task_manager.get_task_manager_root())
 
     def get_distributed_files_dir(self):
-        return self.resource_server.get_distributed_resource_root()
+        return unicode(self.resource_server.get_distributed_resource_root())
 
     def clear_dir(self, dir_type):
         if dir_type == DirectoryType.COMPUTED:
@@ -795,9 +795,9 @@ class Client(object):
                 log.debug('Error retrieving balance: {}'.format(exc))
             else:
                 self._publish(Payments.evt_balance, dict(
-                    GNT=gnt,
-                    GNT_available=av_gnt,
-                    ETH=eth
+                    GNT=unicode(gnt),
+                    GNT_available=unicode(av_gnt),
+                    ETH=unicode(eth)
                 ))
 
     def __make_node_state_snapshot(self, is_running=True):
@@ -834,7 +834,7 @@ class Client(object):
         elif not self.get_connected_peers():
             msg = u"Not connected to Golem Network. Check seed parameters."
             if hasattr(self, 'unreachable_flag'):
-                msg += (" Port unreachable.")
+                msg += u" Port unreachable."
             return msg
         return u"Connected"
 
@@ -859,17 +859,17 @@ class Client(object):
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
-            msg = "Computing {} subtask(s):".format(len(progress))
+            msg = u"Computing {} subtask(s):".format(len(progress))
             for k, v in progress.iteritems():
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
+                msg = u"{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
         elif self.config_desc.accept_tasks:
-            msg = "Waiting for tasks...\n"
+            msg = u"Waiting for tasks...\n"
         else:
-            msg = "Not accepting tasks\n"
+            msg = u"Not accepting tasks\n"
 
         peers = self.p2pservice.get_peers()
 
-        msg += "Active peers in network: {}\n".format(len(peers))
+        msg += u"Active peers in network: {}\n".format(len(peers))
         return msg
 
     def __lock_datadir(self):
