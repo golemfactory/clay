@@ -263,6 +263,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
         logic.config_changed()
 
+    @ci_skip
     def test_get_environments(self):
         from apps.appsmanager import AppsManager
         from golem.environments.environment import Environment
