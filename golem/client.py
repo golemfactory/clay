@@ -594,7 +594,8 @@ class Client(object):
                 u"distributed": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
-        return {unicode(name): du(d) for name, d in self.get_res_dirs().iteritems()}
+        return {unicode(name): unicode(du(d))
+                for name, d in self.get_res_dirs().iteritems()}
 
     def get_res_dir(self, dir_type):
         if dir_type == DirectoryType.COMPUTED:
@@ -648,7 +649,7 @@ class Client(object):
         return headers
 
     def get_environments(self):
-        envs = self.environments_manager.get_environments() or []
+        envs = self.environments_manager.get_environments()
         return [DictSerializer.dump(env) for env in envs]
 
     def get_environments_perf(self):
