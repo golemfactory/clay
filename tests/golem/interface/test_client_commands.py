@@ -395,6 +395,7 @@ class TestTasks(TempDirFixture):
         client = Mock()
         client.__getattribute__ = assert_client_method
 
+        client.get_datadir.return_value = self.path
         client.get_dir_manager.return_value = DirManager(self.path)
         client.get_node_name.return_value = 'test_node'
 
