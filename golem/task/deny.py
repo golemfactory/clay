@@ -1,6 +1,6 @@
 import os
 
-DENY_LIST_NAME = "deny.ini"
+DENY_LIST_NAME = "deny.txt"
 
 
 def get_deny_list(datadir, list_name=DENY_LIST_NAME):
