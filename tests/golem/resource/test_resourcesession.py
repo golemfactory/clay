@@ -94,7 +94,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         super_send_mock.reset_mock()
 
         # connection verified
-        msg = message.MessageRandVal(self.instance.rand_val, "")
+        msg = message.MessageRandVal(rand_val=self.instance.rand_val)
         msg.encrypted = True
         self.instance.interpret(msg)
         self.assertTrue(self.instance.verified)

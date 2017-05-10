@@ -34,7 +34,6 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
-from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -68,9 +67,6 @@ class ClientTaskComputerEventListener(object):
 class Client(HardwarePresetsMixin):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
-
-        # TODO: Should we init it only once?
-        init_messages()
 
         if not datadir:
             datadir = get_local_datadir('default')
