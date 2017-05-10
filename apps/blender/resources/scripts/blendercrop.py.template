@@ -12,7 +12,7 @@ class EngineWarning(bpy.types.Operator):
                                " not supported by Golem")
         return {"FINISHED"}
 
-class ShowInformations(bpy.types.Operator):
+class ShowInformation(bpy.types.Operator):
     bl_idname = "wm.scene_information"
     bl_label = "Inform user about scene settings"
 
@@ -39,7 +39,7 @@ engine = bpy.context.scene.render.engine
 if engine not in ("BLENDER_RENDER", "CYCLES"):
     bpy.ops.wm.engine_warning()
 
-bpy.utils.register_class(ShowInformations)
+bpy.utils.register_class(ShowInformation)
 bpy.ops.wm.scene_information()
 
 
