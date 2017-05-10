@@ -1,33 +1,65 @@
 from __future__ import absolute_import
+
 import logging
 from os import path
 
 from ethereum.utils import denoms
-from psutil import virtual_memory
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.simpleenv import SimpleEnv
 
+logger = logging.getLogger(__name__)
+
+MIN_DISK_SPACE = 1000 * 1024
+MIN_MEMORY_SIZE = 1000 * 1024
+MIN_CPU_CORES = 1
+
+DEFAULT_HARDWARE_PRESET_NAME = u"default"
+CUSTOM_HARDWARE_PRESET_NAME = u"custom"
+
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
-MANAGER_PORT = 20301
-MANAGER_ADDRESS = "127.0.0.1"
-ESTIMATED_DEFAULT = 2220.0
+
 START_PORT = 40102
 END_PORT = 60102
 RPC_ADDRESS = "localhost"
 RPC_PORT = 61000
 OPTIMAL_PEER_NUM = 10
-MIN_MEMORY_SIZE = 1000 * 1024
-MAX_RESOURCE_SIZE = 2 * 1024 * 1024
-MAX_MEMORY_SIZE = max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE)
-NUM_CORES = 1
-DISTRIBUTED_RES_NUM = 2
 
-logger = logging.getLogger(__name__)
+ESTIMATED_DEFAULT = 2220.0
+
+USE_IP6 = 0
+ACCEPT_TASKS = 1
+SEND_PINGS = 1
+
+PINGS_INTERVALS = 120
+GETTING_PEERS_INTERVAL = 4.0
+GETTING_TASKS_INTERVAL = 4.0
+TASK_REQUEST_INTERVAL = 5.0
+PUBLISH_BALANCE_INTERVAL = 3.0
+NODE_SNAPSHOT_INTERVAL = 10.0
+NETWORK_CHECK_INTERVAL = 10.0
+MAX_SENDING_DELAY = 360
+
+P2P_SESSION_TIMEOUT = 240
+TASK_SESSION_TIMEOUT = 900
+RESOURCE_SESSION_TIMEOUT = 600
+USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
+WAITING_FOR_TASK_TIMEOUT = 720  # 36000
+WAITING_FOR_TASK_SESSION_TIMEOUT = 20
+FORWARDED_SESSION_REQUEST_TIMEOUT = 30
+
+# Default max price per hour -- 5.0 GNT ~ 0.05 USD
+MAX_PRICE = int(5.0 * denoms.ether)
+# Default min price per hour of computation to accept
+MIN_PRICE = MAX_PRICE // 10
+
+REQUESTING_TRUST = -1.0
+COMPUTING_TRUST = -1.0
 
 
+# FIXME: deprecated
 class CommonConfig:
 
     def __init__(self, section="Common", **kwargs):
@@ -40,38 +72,6 @@ class CommonConfig:
 
     def section(self):
         return self._section
-
-
-SEND_PINGS = 1
-PINGS_INTERVALS = 120
-GETTING_PEERS_INTERVAL = 4.0
-GETTING_TASKS_INTERVAL = 4.0
-TASK_REQUEST_INTERVAL = 5.0
-PUBLISH_BALANCE_INTERVAL = 3.0
-USE_WAITING_FOR_TASK_TIMEOUT = 0  # defunct
-WAITING_FOR_TASK_TIMEOUT = 720  # 36000
-WAITING_FOR_TASK_SESSION_TIMEOUT = 20
-FORWARDED_SESSION_REQUEST_TIMEOUT = 30
-NODE_SNAPSHOT_INTERVAL = 10.0
-NETWORK_CHECK_INTERVAL = 10.0
-ADD_TASKS = 0
-MAX_SENDING_DELAY = 360
-USE_DISTRIBUTED_RESOURCE_MANAGEMENT = 1
-REQUESTING_TRUST = -1.0
-COMPUTING_TRUST = -1.0
-P2P_SESSION_TIMEOUT = 240
-TASK_SESSION_TIMEOUT = 900
-RESOURCE_SESSION_TIMEOUT = 600
-PLUGIN_PORT = 1111
-ETH_ACCOUNT_NAME = ""
-USE_IP6 = 0
-ACCEPT_TASKS = 1
-
-# Default max price per hour -- 5.0 GNT ~ 0.05 USD
-MAX_PRICE = int(5.0 * denoms.ether)
-
-# Default min price per hour of computation to accept
-MIN_PRICE = MAX_PRICE // 10
 
 
 class NodeConfig:
@@ -110,10 +110,6 @@ class AppConfig:
     __loaded_configs = set()
 
     @classmethod
-    def manager_port(cls):
-        return MANAGER_PORT
-
-    @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
         # FIXME: This check is only for transition to separated datadirs.
@@ -122,70 +118,58 @@ class AppConfig:
             raise RuntimeError("Config has been loaded: {}".format(cfg_file))
         cls.__loaded_configs.add(cfg_file)
 
-        common_config = CommonConfig(manager_address=MANAGER_ADDRESS,
-                                     manager_port=MANAGER_PORT,
-                                     start_port=START_PORT,
-                                     end_port=END_PORT,
-                                     opt_peer_num=OPTIMAL_PEER_NUM,
-                                     dist_res_num=DISTRIBUTED_RES_NUM)
-
-        node_config = NodeConfig(node_address="",
+        node_config = NodeConfig(node_name="",
+                                 node_address="",
+                                 public_address="",
+                                 eth_account="",
+                                 use_ipv6=USE_IP6,
+                                 start_port=START_PORT,
+                                 end_port=END_PORT,
                                  rpc_address=RPC_ADDRESS,
                                  rpc_port=RPC_PORT,
+                                 # peers
                                  seed_host="",
                                  seed_port=START_PORT,
-                                 num_cores=NUM_CORES,
-                                 max_resource_size=MAX_RESOURCE_SIZE,
-                                 max_memory_size=MAX_MEMORY_SIZE,
+                                 opt_peer_num=OPTIMAL_PEER_NUM,
+                                 # flags
+                                 accept_tasks=ACCEPT_TASKS,
                                  send_pings=SEND_PINGS,
+                                 # hardware
+                                 hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
+                                 # price and trust
+                                 min_price=MIN_PRICE,
+                                 max_price=MAX_PRICE,
+                                 requesting_trust=REQUESTING_TRUST,
+                                 computing_trust=COMPUTING_TRUST,
+                                 # benchmarks
+                                 estimated_lux_performance="0",
+                                 estimated_blender_performance="0",
+                                 # intervals
                                  pings_interval=PINGS_INTERVALS,
                                  getting_peers_interval=GETTING_PEERS_INTERVAL,
                                  getting_tasks_interval=GETTING_TASKS_INTERVAL,
                                  task_request_interval=TASK_REQUEST_INTERVAL,
-                                 use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
-                                 waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
-                                 waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
-                                 forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
                                  node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
                                  network_check_interval=NETWORK_CHECK_INTERVAL,
-                                 add_tasks=ADD_TASKS,
                                  max_results_sending_delay=MAX_SENDING_DELAY,
-                                 requesting_trust=REQUESTING_TRUST,
-                                 computing_trust=COMPUTING_TRUST,
-                                 use_distributed_resource_management=USE_DISTRIBUTED_RESOURCE_MANAGEMENT,
+                                 # timeouts
                                  p2p_session_timeout=P2P_SESSION_TIMEOUT,
                                  task_session_timeout=TASK_SESSION_TIMEOUT,
                                  resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
-                                 plugin_port=PLUGIN_PORT,
-                                 eth_account=ETH_ACCOUNT_NAME,
-                                 min_price=MIN_PRICE,
-                                 max_price=MAX_PRICE,
-                                 use_ipv6=USE_IP6,
-                                 accept_tasks=ACCEPT_TASKS,
-                                 node_name="",
-                                 public_address="",
-                                 estimated_lux_performance="0",
-                                 estimated_blender_performance="0",
-                                 )
+                                 use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
+                                 waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
+                                 waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
+                                 forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT)
 
-        cfg = SimpleConfig(common_config, node_config, cfg_file, keep_old=False)
+        cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)
 
     def __init__(self, cfg, config_file):
         self.config_file = config_file
         self._cfg = cfg
-        for prop in self._cfg.get_common_config().prop_names:
-            setattr(self, "get_{}".format(prop), self.get_common_property(prop))
-            setattr(self, "set_{}".format(prop), self.set_common_property(prop))
         for prop in self._cfg.get_node_config().prop_names:
             setattr(self, "get_{}".format(prop), self.get_node_property(prop))
             setattr(self, "set_{}".format(prop), self.set_node_property(prop))
-
-    def get_common_property(self, prop):
-        return getattr(self._cfg.get_common_config(), "get_{}".format(prop))
-
-    def set_common_property(self, prop):
-        return getattr(self._cfg.get_common_config(), "set_{}".format(prop))
 
     def get_node_property(self, prop):
         return getattr(self._cfg.get_node_config(), "get_{}".format(prop))
@@ -198,7 +182,14 @@ class AppConfig:
             raise TypeError("Incorrect config descriptor type: {}. Should be ClientConfigDescriptor".format(type(cfg_desc)))
 
         for var, val in vars(cfg_desc).iteritems():
-            set_func = getattr(self, "set_{}".format(var))
+            setter = "set_{}".format(var)
+            if not hasattr(self, setter):
+                logger.info("Cannot set unknown config property: {} = {}"
+                            .format(var, val))
+                continue
+
+            set_func = getattr(self, setter)
             set_func(val)
-        SimpleConfig(self._cfg.get_common_config(), self._cfg.get_node_config(),
+
+        SimpleConfig(self._cfg.get_node_config(),
                      self.config_file, refresh=True)
