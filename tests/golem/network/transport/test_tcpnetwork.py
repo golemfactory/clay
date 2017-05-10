@@ -9,7 +9,7 @@ from mock import MagicMock
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
-from golem.network.transport.message import MessageDisconnect
+from golem.network.transport import message
 from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
                                                 EncryptFileProducer, DecryptFileConsumer,
                                                 EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
@@ -191,7 +191,7 @@ class TestBasicProtocol(LogTestCase):
             self.assertIsNone(protocol.dataReceived(data))
         protocol.db.clear_buffer()
 
-        m = MessageDisconnect()
+        m = message.MessageDisconnect()
         data = m.serialize()
         packed_data = struct.pack("!L", len(data)) + data
         protocol.dataReceived(packed_data)

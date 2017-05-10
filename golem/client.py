@@ -6,16 +6,18 @@ import uuid
 from Queue import Queue
 from collections import Iterable
 from copy import copy
-from os import path, makedirs
 from threading import Lock
 
+from os import path, makedirs
 from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.config.presets import HardwarePresetsMixin
 from golem.core.fileshelper import du
+from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.core.simpleserializer import DictSerializer
@@ -32,7 +34,6 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
-from golem.network.transport.message import init_messages
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -63,12 +64,9 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(object):
+class Client(HardwarePresetsMixin):
     def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
                  use_docker_machine_manager=True, use_monitor=True, **config_overrides):
-
-        # TODO: Should we init it only once?
-        init_messages()
 
         if not datadir:
             datadir = get_local_datadir('default')
@@ -78,9 +76,11 @@ class Client(object):
         self.lock = Lock()
         self.task_tester = None
 
+        # Read and validate configuration
         config = AppConfig.load_config(datadir)
         self.config_desc = ClientConfigDescriptor()
         self.config_desc.init_from_app_config(config)
+
         for key, val in config_overrides.iteritems():
             if not hasattr(self.config_desc, key):
                 self.quit()  # quit only closes underlying services (for now)
@@ -88,15 +88,24 @@ class Client(object):
                     "Can't override nonexistent config entry '{}'".format(key))
             setattr(self.config_desc, key, val)
 
-        self.keys_auth = EllipticalKeysAuth(self.datadir)
         self.config_approver = ConfigApprover(self.config_desc)
+
+        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
+
+        # Initialize database
+        self.db = Database(datadir)
+
+        # Hardware configuration
+        HardwarePresets.initialize(self.datadir)
+        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
+                                      self.config_desc)
+
+        self.keys_auth = EllipticalKeysAuth(self.datadir)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
-                         key=self.keys_auth.get_key_id(),
-                         prv_addr=self.config_desc.node_address)
-
-        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
+                         prv_addr=self.config_desc.node_address,
+                         key=self.keys_auth.get_key_id())
 
         self.p2pservice = None
         self.diag_service = None
@@ -116,8 +125,6 @@ class Client(object):
         self.cfg = config
         self.send_snapshot = False
         self.snapshot_lock = Lock()
-
-        self.db = Database(datadir)
 
         self.ranking = Ranking(self)
 
@@ -570,6 +577,7 @@ class Client(object):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
+        self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
         if self.task_server:
             self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
         dispatcher.send(signal='golem.monitor', event='config_update', meta_data=self.__get_nodemetadatamodel())
@@ -883,6 +891,11 @@ class Client(object):
 
         msg += u"Active peers in network: {}\n".format(len(peers))
         return msg
+
+    def activate_hw_preset(self, name, run_benchmarks=False):
+        HardwarePresets.update_config(name, self.config_desc)
+        if hasattr(self, 'task_server') and self.task_server:
+            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):

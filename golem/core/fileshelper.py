@@ -1,3 +1,4 @@
+import ctypes
 import os
 import shutil
 
@@ -158,6 +159,23 @@ def has_ext(filename, ext, case_sensitive=False):
     if case_sensitive:
         return filename.endswith(ext)
     return filename.lower().endswith(ext.lower())
+
+
+def free_partition_space(directory):
+    """
+    Returns free partition space. The partition is determined by the given directory.
+    :param directory: Directory to determine partition by
+    :return: Free space in kB
+    """
+    if is_windows():
+        free_bytes = ctypes.c_ulonglong(0)
+        ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(directory),
+                                                   None, None,
+                                                   ctypes.pointer(free_bytes))
+        return free_bytes.value / 1024
+    else:
+        statvfs = os.statvfs(directory)
+        return statvfs.f_bavail * statvfs.f_frsize / 1024
 
 
 def du(path):

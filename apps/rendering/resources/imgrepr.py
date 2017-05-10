@@ -1,7 +1,6 @@
 import os
 import abc
 import logging
-import math
 from copy import deepcopy
 import OpenEXR
 import Imath
@@ -84,14 +83,16 @@ class EXRImgRepr(ImgRepr):
         self.file_path = file_
 
     def get_size(self):
-        return self.dw.max.x - self.dw.min.x + 1, self.dw.max.y - self.dw.min.y + 1
+        return self.dw.max.x - self.dw.min.x + 1, \
+               self.dw.max.y - self.dw.min.y + 1
 
     def get_pixel(self, (i, j)):
         return [c.getpixel((i, j)) for c in self.rgb]
 
     def set_pixel(self, (i, j), color):
         for c in range(0, len(self.rgb)):
-            self.rgb[c].putpixel((i, j), max(min(self.max, color[c]), self.min))
+            self.rgb[c].putpixel((i, j), max(min(self.max, color[c]),
+                                             self.min))
 
     def get_rgbf_extrema(self):
         extrema = [im.getextrema() for im in self.rgb]
@@ -134,7 +135,8 @@ def load_img(file_):
     """
     Load image from file path and return ImgRepr
     :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None if there was an error 
+    :return ImgRepr | None: Return ImgRepr for special file type or None 
+    if there was an error 
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -152,57 +154,13 @@ def load_img(file_):
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
      :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or NOne if there was an error
+     :return Image.Image | None: return PIL Image represantion or None 
+     if there was an error
     """
 
     img = load_img(file_)
     if img:
         return img.to_pil()
-
-
-def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file, cmp_start_box):
-    try:
-        img = load_img(file_)
-        cmp_img = load_img(compare_file)
-        if img is None or cmp_img is None:
-            return False
-        if img.get_size() != (res_x, res_y):
-            return False
-        if box_size[0] <= 0 or box_size[1] <= 0 or box_size[0] > res_x or box_size[1] > res_y:
-            logger.error("Wrong box size for advanced verification {}".format(box_size))
-
-        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
-            return compare_imgs(img, cmp_img, start1=start_box, start2=cmp_start_box, box=box_size)
-        else:
-            return compare_imgs(img, cmp_img, max_col=1, start1=start_box, start2=cmp_start_box,
-                                box=box_size)
-    except Exception:
-        logger.exception("Cannot verify images {} and {}".format(file_, compare_file))
-        return False
-
-
-def compare_pil_imgs(file1, file2):
-    try:
-        img1 = PILImgRepr()
-        img1.load_from_file(file1)
-        img2 = PILImgRepr()
-        img2.load_from_file(file2)
-        return compare_imgs(img1, img2)
-    except Exception as err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
-        return False
-
-
-def compare_exr_imgs(file1, file2):
-    try:
-        img1 = EXRImgRepr()
-        img1.load_from_file(file1)
-        img2 = EXRImgRepr()
-        img2.load_from_file(file2)
-        return compare_imgs(img1, img2, 1)
-    except Exception as err:
-        logger.info("Can't compare images {}, {}: {}".format(file1, file2, err))
-        return False
 
 
 def blend(img1, img2, alpha):
@@ -221,43 +179,3 @@ def blend(img1, img2, alpha):
             img.set_pixel((x, y), p)
 
     return img
-
-
-PSNR_ACCEPTABLE_MIN = 30
-
-
-def compare_imgs(img1, img2, max_col=255, start1=(0, 0), start2=(0, 0), box=None):
-    mse = calculate_mse(img1, img2, start1, start2, box)
-    logger.debug("MSE = {}".format(mse))
-    if mse == 0:
-        return True
-    psnr = calculate_psnr(mse, max_col)
-    logger.debug("PSNR = {}".format(psnr))
-    return psnr >= PSNR_ACCEPTABLE_MIN
-
-
-def calculate_psnr(mse, max_=255):
-    if mse <= 0 or max_ <= 0:
-        raise ValueError("MSE & MAX_ must be higher than 0")
-    return 20 * math.log10(max_) - 10 * math.log10(mse)
-
-
-def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
-    mse = 0
-    if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
-        raise TypeError("img1 and img2 must be ImgRepr")
-
-    if box is None:
-        (res_x, res_y) = img1.get_size()
-    else:
-        (res_x, res_y) = box
-    for i in range(0, res_x):
-        for j in range(0, res_y):
-            [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
-            [r2, g2, b2] = img2.get_pixel((start2[0] + i, start2[1] + j))
-            mse += (r1 - r2) * (r1 - r2) + (g1 - g2) * (g1 - g2) + (b1 - b2) * (b1 - b2)
-
-    if res_x <= 0 or res_y <= 0:
-        raise ValueError("Image or box resolution must be greater than 0")
-    mse /= res_x * res_y * 3
-    return mse

@@ -5,7 +5,7 @@ import unittest
 from contextlib import contextmanager
 
 from golem.core.databuffer import DataBuffer
-from golem.network.transport.message import Message, MessageHello, init_messages
+from golem.network.transport.message import Message, MessageHello
 from golem.network.transport.network import ProtocolFactory, SessionFactory, SessionProtocol
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
@@ -345,7 +345,6 @@ class TestProtocols(unittest.TestCase):
 
 class TestBasicProtocol(unittest.TestCase):
     def test_send_and_receive_message(self):
-        init_messages()
         p = BasicProtocol()
         p.transport = Transport()
         session_factory = SessionFactory(ASession)

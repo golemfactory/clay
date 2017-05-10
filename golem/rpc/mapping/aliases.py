@@ -5,6 +5,14 @@ class Environment(object):
     opt                     = 'env.opt'
     opt_update              = 'env.opt.update'
 
+    hardware_caps           = 'env.hw.caps'
+    presets                 = 'env.hw.presets'
+    preset                  = 'env.hw.preset'
+    preset_create           = 'env.hw.preset.create'
+    preset_activate         = 'env.hw.preset.activate'
+    preset_update           = 'env.hw.preset.update'
+    preset_delete           = 'env.hw.preset.delete'
+
     # FIXME: description is saved in DB, not config file
     opt_description         = 'env.opt.description'
     opt_description_update  = 'env.opt.description.update'
