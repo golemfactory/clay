@@ -3,12 +3,15 @@ import os
 DENY_LIST_NAME = "deny.txt"
 
 
-def get_deny_list(datadir, list_name=DENY_LIST_NAME):
+def get_deny_set(datadir, list_name=DENY_LIST_NAME):
+    deny_set = set()
+
     list_path = os.path.join(datadir, list_name)
     if not os.path.isfile(list_path):
-        return []
+        return deny_set
 
     with open(list_path) as f:
-        lines = f.readlines()
+        for line in f:
+            deny_set.add(line.strip())
 
-    return [line.strip() for line in lines]
+    return deny_set

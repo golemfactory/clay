@@ -573,7 +573,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.config_desc.computing_trust = 0.2
         assert ts.should_accept_provider("ABC")
 
-        ts.deny_list.append("ABC")
+        ts.deny_set.add("ABC")
         assert not ts.should_accept_provider("ABC")
 
     def test_should_accept_requestor(self):
@@ -591,7 +591,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.config_desc.requesting_trust = 0.2
         assert ts.should_accept_requestor("ABC")
 
-        ts.deny_list.append("ABC")
+        ts.deny_set.add("ABC")
         assert not ts.should_accept_requestor("ABC")
 
 
