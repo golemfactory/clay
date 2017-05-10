@@ -1,8 +1,8 @@
+import os
 import time
 import unittest
 import uuid
 
-import os
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
@@ -15,6 +15,7 @@ from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
+from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
@@ -23,7 +24,6 @@ from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.tools.testwithreactor import TestWithReactor
 
 
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
@@ -53,27 +53,17 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
 
 
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase, TestWithReactor):
-
-    @classmethod
-    def setUpClass(cls):
-        TestWithReactor.setUpClass()
-        TestWithDatabase.setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        TestWithDatabase.tearDownClass()
-        TestWithReactor.tearDownClass()
+@patch('golem.ethereum.node.NodeProcess.save_static_nodes')
+class TestClient(TestWithDatabase):
 
     def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
 
     def test_get_payments(self, *_):
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            self.client = Client(datadir=self.path, transaction_system=True,
-                                 connect_to_known_hosts=False,
-                                 use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(datadir=self.path, transaction_system=True,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False, use_monitor=False)
 
         payments = [
             Payment(subtask=uuid.uuid4(),
@@ -97,13 +87,21 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.assertEqual(received_payments[i]['payee'], payments[i].payee)
             self.assertEqual(received_payments[i]['value'], str(payments[i].value))
 
+    def test_payment_address(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=True,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False, use_monitor=False)
+
+        payment_address = self.client.get_payment_address()
+        self.assertIsInstance(payment_address, unicode)
+        self.assertTrue(len(payment_address) > 0)
+
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
            'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            self.client = Client(datadir=self.path, transaction_system=True,
-                                 connect_to_known_hosts=False,
-                                 use_docker_machine_manager=False, use_monitor=False)
+        self.client = Client(datadir=self.path, transaction_system=True,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False, use_monitor=False)
         self.client.sync()
         self.assertTrue(self.client.transaction_system.sync.called)
 
@@ -379,14 +377,14 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
 
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
+class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
         with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
             client = Client(datadir=self.path,
-                            transaction_system=True,
+                            transaction_system=False,
                             connect_to_known_hosts=False,
                             use_docker_machine_manager=False,
                             use_monitor=False)
@@ -402,22 +400,57 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
     def tearDown(self):
         self.client.quit()
 
-    def test_get_node(self, *_):
+    def test_node(self, *_):
         c = self.client
         self.assertIsInstance(c.get_node(), dict)
         self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
-    def test_get_dir_manager(self, *_):
+        self.assertIsInstance(c.get_node_key(), unicode)
+        self.assertIsNotNone(c.get_node_key())
+
+        c.node.key = None
+
+        self.assertNotIsInstance(c.get_node_key(), unicode)
+        self.assertIsNone(c.get_node_key())
+
+        self.assertIsInstance(c.get_public_key(), bytes)
+        self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
+
+    def test_directories(self, *_):
         c = self.client
+
+        self.assertIsInstance(c.get_datadir(), unicode)
         self.assertIsInstance(c.get_dir_manager(), Mock)
 
         c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.client = self.client
         c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.task_manager.root_path = self.path
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
         c.task_server.task_computer.current_computations = []
 
+        c.resource_server = ResourceServer.__new__(ResourceServer)
+        c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
+
         self.assertIsInstance(c.get_dir_manager(), DirManager)
+
+        res_dirs = c.get_res_dirs()
+
+        self.assertIsInstance(res_dirs, dict)
+        self.assertTrue(len(res_dirs) == 3)
+
+        for key, value in res_dirs.iteritems():
+            self.assertIsInstance(key, unicode)
+            self.assertIsInstance(value, unicode)
+            self.assertTrue(self.path in value)
+
+        res_dir_sizes = c.get_res_dirs_sizes()
+
+        for key, value in res_dir_sizes.iteritems():
+            self.assertIsInstance(key, unicode)
+            self.assertIsInstance(value, unicode)
+            self.assertTrue(key in res_dirs)
 
     def test_enqueue_new_task(self, *_):
         c = self.client
@@ -456,7 +489,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
         async_run.return_value = deferred
 
-        c.transaction_system.get_balance = Mock()
+        c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
         balance = wait_for(c.get_balance())
@@ -470,7 +503,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         result = (1, 1, None)
         deferred.result = result
         balance = wait_for(c.get_balance())
-        assert balance == ("1", "1", "None")
+        assert balance == (u"1", u"1", u"None")
+        assert all(isinstance(entry, unicode) for entry in balance)
 
         c.transaction_system = None
         balance = wait_for(c.get_balance())
@@ -487,29 +521,49 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
         c.config_changed()
         c._publish.assert_called_with(Environment.evt_opts_changed)
 
-    def test_misc(self, *_):
+    def test_settings(self, *_):
         c = self.client
-        c.enqueue_new_task = Mock()
 
-        # settings
         new_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), new_node_name)
+
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
+
         settings = c.get_settings()
         settings['node_name'] = newer_node_name
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
-        # configure rpc
-        rpc_session = Mock()
+        # invalid settings
+        with self.assertRaises(KeyError):
+            c.get_setting(str(uuid.uuid4()))
+
+        with self.assertRaises(KeyError):
+            c.update_setting(str(uuid.uuid4()), 'value')
+
+    def test_publisher(self, *_):
+        from golem.rpc.session import Publisher
+
+        c = self.client
         self.assertIsNone(c.rpc_publisher)
+
+        rpc_session = Mock()
+
         c.configure_rpc(rpc_session)
+        self.assertIsInstance(c.rpc_publisher, Publisher)
         self.assertIs(c.rpc_publisher.session, rpc_session)
+
+        c.config_changed()
+        rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
+
+    def test_create_task(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock()
 
         # try to create task with error
         task_dict = {"some data": "with no sense"}
@@ -517,12 +571,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
             c.create_task(task_dict)
         self.assertFalse(c.enqueue_new_task.called)
 
-        # create task rpc
-        t = Task(TaskHeader("node_name", "task_id", "10.10.10.10", 123, "owner_id", "DEFAULT"),
-                 "print('hello')")
-        task_dict = DictSerializer.dump(t)
-        c.create_task(task_dict)
+        # create a task
+        t = Task(TaskHeader("node_name", "task_id",
+                            "10.10.10.10", 123,
+                            "owner_id", "DEFAULT"),
+                 src_code="print('hello')")
+
+        c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
+
+    def test_connection_status(self, *_):
+        c = self.client
 
         # status without peers
         self.assertTrue(c.connection_status().startswith(u"Not connected"))
@@ -541,12 +600,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase, TestWithReactor):
 
         # status with peers
         self.assertTrue(c.connection_status().startswith(u"Connected"))
+
         # status without ports
         c.p2pservice.cur_port = 0
         self.assertTrue(c.connection_status().startswith(u"Application not listening"))
-
-        # public key
-        self.assertEqual(c.get_public_key(), c.keys_auth.public_key)
 
     def test_unreachable_flag(self, *_):
         from pydispatch import dispatcher

@@ -75,13 +75,24 @@ class ConfigApprover(object):
     """ Change specific config description option from strings to the right format. Doesn't change
      them if they're in a wrong format (they're saved as strings then). """
 
+    dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
+                       'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
+                       'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
+    to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num', 'waiting_for_task_timeout', 'p2p_session_timeout',
+                  'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
+                  'min_price', 'max_price']
+    to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
+                    'getting_peers_interval', 'getting_tasks_interval', 'computing_trust', 'requesting_trust']
+
+    numeric_opt = to_int_opt + to_float_opt
+
     def __init__(self, config_desc):
         """ Create config approver class that keeps old config descriptor
         :param ClientConfigDescriptor config_desc: old config descriptor that may be modified in the future
         """
         self.config_desc = config_desc
         self._actions = {}
-        self._opts_to_change = []
+        self._opts_to_change = self.dont_change_opt + self.numeric_opt
         self._init_actions()
 
     def change_config(self, new_config_desc):
@@ -98,20 +109,11 @@ class ConfigApprover(object):
         return self.config_desc
 
     def _init_actions(self):
-        dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
-                           'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
-                           'use_ipv6', 'eth_account', 'accept_tasks', 'node_name']
-        to_int_opt = ['seed_port', 'num_cores', 'opt_peer_num', 'waiting_for_task_timeout', 'p2p_session_timeout',
-                      'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
-                      'min_price', 'max_price']
-        to_float_opt = ['estimated_performance', 'estimated_lux_performance', 'estimated_blender_performance',
-                        'getting_peers_interval', 'getting_tasks_interval', 'computing_trust', 'requesting_trust']
-        self._opts_to_change = dont_change_opt + to_int_opt + to_float_opt
-        for opt in dont_change_opt:
+        for opt in self.dont_change_opt:
             self._actions[opt] = ConfigApprover._empty_action
-        for opt in to_int_opt:
+        for opt in self.to_int_opt:
             self._actions[opt] = ConfigApprover._to_int
-        for opt in to_float_opt:
+        for opt in self.to_float_opt:
             self._actions[opt] = ConfigApprover._to_float
 
     @staticmethod
@@ -127,11 +129,10 @@ class ConfigApprover(object):
         :return: value change to int or unchanged value if it's not possible
         """
         try:
-            new_val = int(val)
+            return int(val)
         except ValueError:
             logger.warning("{} value '{}' is not a number".format(name, val))
-            return val
-        return new_val
+        return val
 
     @staticmethod
     def _to_float(val, name):
@@ -141,8 +142,7 @@ class ConfigApprover(object):
         :return: value change to float or unchanged value if it's not possible
         """
         try:
-            new_val = float(val)
+            return float(val)
         except ValueError:
             logger.warning("{} value '{}' is not a number".format(name, val))
-            return val
-        return new_val
+        return val
