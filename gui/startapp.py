@@ -5,7 +5,7 @@ import sys
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging, is_windows
+from golem.core.common import config_logging
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -56,12 +56,6 @@ def start_client(start_ranking, datadir=None,
     install_unhandled_error_logger()
 
     if not reactor:
-        if is_windows():
-            from twisted.internet import iocpreactor
-            iocpreactor.install()
-        else:
-            from golem.reactor import geventreactor
-            geventreactor.install()
         from twisted.internet import reactor
 
     process_monitor = None
