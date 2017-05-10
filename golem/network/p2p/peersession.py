@@ -295,7 +295,14 @@ class PeerSession(BasicSafeSession):
         :param int port: port of the nat hole
         :param uuid conn_id: connection id for reference
         """
-        self.send(message.MessageNatHole(key_id=key_id, address=address, port=port, conn_id=conn_id))
+        self.send(
+            message.MessageNatHole(
+                key_id=key_id,
+                address=address,
+                port=port,
+                conn_id=conn_id
+            )
+        )
 
     def send_inform_about_nat_traverse_failure(self, key_id, conn_id):
         """
@@ -348,7 +355,8 @@ class PeerSession(BasicSafeSession):
 
         if msg.proto_id != P2P_PROTOCOL_ID:
             logger.info(
-                "P2P protocol version mismatch %r vs %r (local) for node %r:%r",
+                "P2P protocol version mismatch %r vs %r (local)"
+                " for node %r:%r",
                 msg.proto_id,
                 P2P_PROTOCOL_ID,
                 self.address,

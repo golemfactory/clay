@@ -812,7 +812,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                                           that has passed this information
         :param conn_id: connection id
         """
-        self.task_server.start_task_session(node_info, super_node_info, conn_id)
+        self.task_server.start_task_session(
+            node_info,
+            super_node_info,
+            conn_id
+        )
 
     #############################
     # RANKING FUNCTIONS         #

@@ -226,7 +226,12 @@ class ResourceSession(BasicSafeSession):
         has_resource = self.resource_server.get_resource_entry(msg.resource)
         if not has_resource:
             self.resource_server.get_peers()
-        self.send(message.MessagePullAnswer(resource=msg.resource, has_resource=has_resource))
+        self.send(
+            message.MessagePullAnswer(
+                resource=msg.resource,
+                has_resource=has_resource
+            )
+        )
 
     def _react_to_pull_answer(self, msg):
         self.resource_server.pull_answer(msg.resource, msg.has_resource, self)
@@ -243,7 +248,10 @@ class ResourceSession(BasicSafeSession):
             self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
+        self.send(
+            message.MessageRandVal(rand_val=msg.rand_val),
+            send_unverified=True
+        )
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:

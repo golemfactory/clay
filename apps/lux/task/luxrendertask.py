@@ -299,7 +299,12 @@ class LuxTask(renderingtask.RenderingTask):
                       "scene_dir": scene_dir,
                       "num_threads": 4}
 
-        return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
+        return self._new_compute_task_def(
+            "FINALTASK",
+            extra_data,
+            scene_dir,
+            0
+        )
 
     def query_extra_data_for_final_flm(self):
         files = [
@@ -329,7 +334,10 @@ class LuxTask(renderingtask.RenderingTask):
                 self.__generate_final_flm()
 
     def __get_merge_ctd(self, files):
-        script_file = dirmanager.find_task_script(APP_DIR, "docker_luxmerge.py")
+        script_file = dirmanager.find_task_script(
+            APP_DIR,
+            "docker_luxmerge.py"
+        )
 
         if script_file is None:
             logger.error("Cannot find merger script")

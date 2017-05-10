@@ -310,7 +310,12 @@ class TaskSession(MiddlemanSafeSession):
                                                that current node has
         :return:
         """
-        self.send(message.MessageGetResource(task_id=task_id, resource_header=resource_header))
+        self.send(
+            message.MessageGetResource(
+                task_id=task_id,
+                resource_header=resource_header
+            )
+        )
 
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all)
@@ -360,7 +365,12 @@ class TaskSession(MiddlemanSafeSession):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
-        self.send(message.MessageTaskFailure(subtask_id=subtask_id, err=err_msg))
+        self.send(
+            message.MessageTaskFailure(
+                subtask_id=subtask_id,
+                err=err_msg
+            )
+        )
 
     def send_result_rejected(self, subtask_id):
         """ Inform that result don't pass verification
@@ -432,7 +442,13 @@ class TaskSession(MiddlemanSafeSession):
         :return:
         """
         self.asking_node_key_id = asking_node.key
-        self.send(message.MessageNatPunch(asking_node=asking_node, dest_node=dest_node, ask_conn_id=ask_conn_id))
+        self.send(
+            message.MessageNatPunch(
+                asking_node=asking_node,
+                dest_node=dest_node,
+                ask_conn_id=ask_conn_id
+            )
+        )
 
     #########################
     # Reactions to messages #
@@ -597,11 +613,18 @@ class TaskSession(MiddlemanSafeSession):
 
     def _react_to_get_resource(self, msg):
         # self.last_resource_msg = msg
-        resource_manager = self.task_server.client.resource_server.resource_manager
-        client_options = resource_manager.build_client_options(self.task_server.get_key_id())
+        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        client_options = resource_manager.build_client_options(
+            self.task_server.get_key_id()
+        )
         res = resource_manager.get_resources(msg.task_id)
         res = resource_manager.to_wire(res)
-        self.send(message.MessageResourceList(resources=res, options=client_options))
+        self.send(
+            message.MessageResourceList(
+                resources=res,
+                options=client_options
+            )
+        )
 
     def _react_to_subtask_result_accepted(self, msg):
         self.task_server.subtask_accepted(msg.subtask_id, msg.reward)
@@ -658,7 +681,10 @@ class TaskSession(MiddlemanSafeSession):
 
         if send_hello:
             self.send_hello()
-        self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
+        self.send(
+            message.MessageRandVal(rand_val=msg.rand_val),
+            send_unverified=True
+        )
 
     def _react_to_rand_val(self, msg):
         if self.rand_val == msg.rand_val:
