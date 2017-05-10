@@ -514,7 +514,7 @@ class P2PService(PendingConnectionsServer, DiagnosticsProvider):
         :return list: list of information about closest neighbours
         """
         if node_key_id is None:
-            neighbours = self.peers.values
+            neighbours = self.peers.values()
         else:
             neighbours = self.peer_keeper.neighbours(node_key_id)
         peer_infos = []

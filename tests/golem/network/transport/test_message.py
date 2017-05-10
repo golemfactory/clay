@@ -27,11 +27,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def setUp(self):
         random.seed()
-        message.init_messages()
         super(TestMessages, self).setUp()
-
-    def tearDown(self):
-        message.Message.registered_message_types = {}
 
     def test_message_want_to_compute_task(self):
         node_id = 'test-ni-{}'.format(uuid.uuid4())

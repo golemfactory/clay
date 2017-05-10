@@ -19,6 +19,8 @@ class Message(object):
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message"""
+        if not self.registered_message_types:
+            init_messages()
         self.sig = sig  # signature (short data representation signed with private key)
         if timestamp is None:
             timestamp = time.time()

@@ -34,11 +34,6 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
-        message.init_messages()
-
-    def tearDown(self):
-        super(TestTaskSession, self).tearDown()
-        message.Message.registered_message_types = {}
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
