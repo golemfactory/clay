@@ -120,7 +120,8 @@ class TestNode(TestWithDatabase):
 
     @ci_skip
     @patch('golemapp.OptNode')
-    def test_many_peers(self, mock_node):
+    @patch('golem.core.common.config_logging')
+    def test_many_peers(self, config_logging, mock_node):
         addr1 = '10.30.10.216:40111'
         addr2 = '10.30.10.214:3333'
         runner = CliRunner()
