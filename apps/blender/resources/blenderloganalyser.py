@@ -31,7 +31,7 @@ def format_missing_files_warning(missing_files):
 
 
 def find_rendering_time(log_content):
-    time_ = re.search("(^ Time: )(\d+):(\d+\.\d+)", log_content,
+    time_ = re.search("(^\s*Time:\s*)(\d+):(\d+\.\d+)", log_content,
                       re.MULTILINE | re.IGNORECASE)
     if time_:
         time_ = int(time_.group(2)) * 60 + float(time_.group(3))
