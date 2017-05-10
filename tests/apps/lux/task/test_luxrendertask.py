@@ -13,8 +13,13 @@ from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
 from apps.core.task.coretask import AcceptClientVerdict, TaskTypeInfo
-from apps.lux.task.luxrendertask import (logger, LuxRenderDefaults, LuxRenderOptions,
-                                         LuxRenderTaskBuilder, LuxRenderTaskTypeInfo)
+from apps.lux.task.luxrendertask import (
+    logger,
+    LuxRenderDefaults,
+    LuxRenderOptions,
+    LuxRenderTaskBuilder,
+    LuxRenderTaskTypeInfo
+)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 
@@ -27,6 +32,7 @@ class TestLuxRenderDefaults(unittest.TestCase):
 class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/luxrendertask.py',
+        'tests/apps/lux/task/test_luxrendertask.py',
     ]
 
     def get_test_lux_task(self):
@@ -47,7 +53,9 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def test_query_extra_data(self):
         luxtask = self.get_test_lux_task()
         luxtask._get_scene_file_rel_path = Mock()
-        luxtask._get_scene_file_rel_path.return_value = os.path.join(self.path, 'scene')
+        luxtask._get_scene_file_rel_path.return_value = os.path.join(
+            self.path, 'scene'
+        )
         luxtask.main_program_file = os.path.join(self.path, 'program.py')
 
         luxtask._accept_client = Mock()
@@ -120,12 +128,21 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         img2.save(image_2)
         img3 = Image.new("RGB", (luxtask.res_x, luxtask.res_y), color="#0000ff")
         img3.save(image_3)
-        luxtask.subtasks_given["SUBTASK1"] = {"status": 'Finished', 'preview_file': image_1}
-        luxtask.subtasks_given["SUBTASK2"] = {"status": 'Finished', 'preview_file': image_2}
+        luxtask.subtasks_given["SUBTASK1"] = {
+            "status": 'Finished',
+            'preview_file': image_1
+        }
+        luxtask.subtasks_given["SUBTASK2"] = {
+            "status": 'Finished',
+            'preview_file': image_2
+        }
         luxtask._remove_from_preview("SUBTASK1")
         preview_img = Image.open(luxtask.preview_file_path)
         assert preview_img.getpixel((100, 100)) == (0, 255, 0)
-        luxtask.subtasks_given["SUBTASK3"] = {"status": 'Finished', 'preview_file': image_3}
+        luxtask.subtasks_given["SUBTASK3"] = {
+            "status": 'Finished',
+            'preview_file': image_3,
+        }
         luxtask._remove_from_preview("SUBTASK1")
         preview_img = Image.open(luxtask.preview_file_path)
         assert preview_img.getpixel((100, 100)) == (0, 127, 127)
@@ -146,7 +163,10 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         img.close()
         flm_file = os.path.join(self.path, "result.flm")
         open(flm_file, 'w').close()
-        luxtask.subtasks_given["SUBTASK1"] = {"start_task": 1, "node_id": "NODE_1"}
+        luxtask.subtasks_given["SUBTASK1"] = {
+            "start_task": 1,
+            "node_id": "NODE_1",
+        }
         log_file = self.temp_file_name("stdout.log")
 
         luxtask._accept_client("NODE_1")
@@ -169,13 +189,16 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask = self.get_test_lux_task()
         luxtask.res_x, luxtask.res_y = 1262, 860
         luxtask._update_preview_from_exr(str(p))
-        pickled = pickle.dumps(luxtask)
+        pickle.dumps(luxtask)
 
     def test_query_extra_data_for_test_task(self):
         # make sure that test task path is creatd
         luxtask = self.get_test_lux_task()
         luxtask._get_scene_file_rel_path = Mock()
-        luxtask._get_scene_file_rel_path.return_value = os.path.join(self.path, 'scene')
+        luxtask._get_scene_file_rel_path.return_value = os.path.join(
+            self.path,
+            'scene'
+        )
         assert not os.path.exists(get_test_task_path(luxtask.root_path))
         luxtask.query_extra_data_for_test_task()
         assert os.path.exists(get_test_task_path(luxtask.root_path))
@@ -184,7 +207,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask = self.get_test_lux_task()
         luxtask._update_task_preview()
 
-    @patch("apps.lux.task.luxrendertask.find_task_script")
+    @patch("golem.resource.dirmanager.find_task_script")
     def test_get_merge_ctd_error(self, find_task_script_mock):
         # If Lux cannot find merge script, an error log should be returned
         find_task_script_mock.return_value = None
@@ -195,7 +218,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("Cannot find merger script" in log for log in l.output)
 
     def test_update_preview_with_exr(self):
-        p = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
+        p = Path(__file__).parent.parent.parent /\
+            "rendering" / "resources" / "testfile.EXR"
         luxtask = self.get_test_lux_task()
         luxtask.res_x, luxtask.res_y = 10, 10
         luxtask._update_preview(str(p), 1)
@@ -216,11 +240,17 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("different error" in log for log in l.output)
 
         with self.assertLogs(logger, level="ERROR") as l:
-            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]])}, 10)
+            luxtask._LuxTask__final_img_ready(
+                {"data": self.additional_dir_content([1, [2]])},
+                10
+            )
         assert any("No final file generated" in log for log in l.output)
 
         with self.assertLogs(logger, level="ERROR") as l:
-            luxtask._LuxTask__final_flm_ready({"data": self.additional_dir_content([1, [2]])}, 10)
+            luxtask._LuxTask__final_flm_ready(
+                {"data": self.additional_dir_content([1, [2]])},
+                10
+            )
         assert any("No flm file created" in log for log in l.output)
 
         if not is_linux():
@@ -232,14 +262,21 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         os.chmod(output_file, 0o400)
 
-        assert os.path.isfile(os.path.join(self.path, "inside", "outputfile.png"))
+        assert os.path.isfile(
+            os.path.join(self.path, "inside", "outputfile.png")
+        )
         diff_output = self.temp_file_name("diff_output.png")
 
         with open(self.temp_file_name("diff_output.png"), 'w') as f:
             f.write("not_empty")
         with self.assertLogs(logger, level="WARNING") as l:
-            luxtask._LuxTask__final_img_ready({"data": self.additional_dir_content([1, [2]]) +
-                                                       [diff_output]}, 10)
+            luxtask._LuxTask__final_img_ready(
+                {
+                    "data": self.additional_dir_content([1, [2]])
+                    + [diff_output]
+                },
+                10
+            )
         assert any("Couldn't rename" in log for log in l.output)
 
         os.chmod(output_file, 0o700)

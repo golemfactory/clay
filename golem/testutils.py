@@ -146,7 +146,7 @@ class TestGui(TempDirFixture):
 class PEP8MixIn(object):
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-        style = pycodestyle.StyleGuide(ignore=[])
+        style = pycodestyle.StyleGuide(ignore=[], max_line_length=80)
 
         # PyCharm needs absolute paths
         base_path = Path(get_golem_path())

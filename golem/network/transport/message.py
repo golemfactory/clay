@@ -10,7 +10,8 @@ logger = logging.getLogger('golem.network.transport.message')
 
 
 # TODO: Separate class logic from payload by implementing dict interface.
-#       All message payload should be stored as dict not as instance attributes.
+#       All message payload should be stored as dict not as instance
+#       attributes.
 class Message(object):
     """ Communication message that is sent in all networks """
 
@@ -886,7 +887,8 @@ class MessageDeltaParts(Message):
         :param TaskResourceHeader delta_header: resource header containing
                                                 only parts that computing
                                                 node doesn't have
-        :param list parts: list of all files that are needed to create resources
+        :param list parts: list of all files that are needed to create
+                           resources
         :param str node_name: resource owner name
         :param Node node_info: information about resource owner
         :param address: resource owner address
