@@ -2,10 +2,6 @@ import logging
 
 
 from golem.network.transport import message
-from golem.network.transport.message import MessageRandVal,\
-    MessageHasResource, MessageWantsResource, \
-    MessagePushResource, MessagePullResource, \
-    MessagePullAnswer
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport import tcpnetwork
 
@@ -40,19 +36,22 @@ class ResourceSession(BasicSafeSession):
         # set_msg_interpretations
 
         self._interpretation.update({
-            MessagePushResource.TYPE: self._react_to_push_resource,
-            MessageHasResource.TYPE: self._react_to_has_resource,
-            MessageWantsResource.TYPE: self._react_to_wants_resource,
-            MessagePullResource.TYPE: self._react_to_pull_resource,
-            MessagePullAnswer.TYPE: self._react_to_pull_answer,
+            message.MessagePushResource.TYPE: self._react_to_push_resource,
+            message.MessageHasResource.TYPE: self._react_to_has_resource,
+            message.MessageWantsResource.TYPE: self._react_to_wants_resource,
+            message.MessagePullResource.TYPE: self._react_to_pull_resource,
+            message.MessagePullAnswer.TYPE: self._react_to_pull_answer,
             message.MessageHello.TYPE: self._react_to_hello,
-            MessageRandVal.TYPE: self._react_to_rand_val
+            message.MessageRandVal.TYPE: self._react_to_rand_val
         })
 
         self.can_be_not_encrypted.append(message.MessageHello.TYPE)
         self.can_be_unsigned.append(message.MessageHello.TYPE)
         self.can_be_unverified.extend(
-            [message.MessageHello.TYPE, MessageRandVal.TYPE]
+            [
+                message.MessageHello.TYPE,
+                message.MessageRandVal.TYPE
+            ]
         )
 
     ########################
@@ -156,7 +155,7 @@ class ResourceSession(BasicSafeSession):
                                      may be needed
         """
         if self.confirmation:
-            self.send(MessageHasResource(self.file_name))
+            self.send(message.MessageHasResource(self.file_name))
             self.confirmation = False
             if self.copies > 0:
                 self.resource_server.add_resource_to_send(
@@ -177,7 +176,7 @@ class ResourceSession(BasicSafeSession):
         """ Send information that given resource is needed.
         :param resource: resource name
         """
-        self.send(MessagePullResource(resource))
+        self.send(message.MessagePullResource(resource))
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -196,12 +195,12 @@ class ResourceSession(BasicSafeSession):
     def _react_to_push_resource(self, msg):
         copies = msg.copies - 1
         if self.resource_server.get_resource_entry(msg.resource):
-            self.send(MessageHasResource(msg.resource))
+            self.send(message.MessageHasResource(msg.resource))
             if copies > 0:
                 self.resource_server.get_peers()
                 self.resource_server.add_resource_to_send(msg.resource, copies)
         else:
-            self.send(MessageWantsResource(msg.resource))
+            self.send(message.MessageWantsResource(msg.resource))
             self.file_name = msg.resource
             self.conn.stream_mode = True
             self.conn.consumer = tcpnetwork.DecryptFileConsumer(
@@ -227,7 +226,7 @@ class ResourceSession(BasicSafeSession):
         has_resource = self.resource_server.get_resource_entry(msg.resource)
         if not has_resource:
             self.resource_server.get_peers()
-        self.send(MessagePullAnswer(msg.resource, has_resource))
+        self.send(message.MessagePullAnswer(resource=msg.resource, has_resource=has_resource))
 
     def _react_to_pull_answer(self, msg):
         self.resource_server.pull_answer(msg.resource, msg.has_resource, self)
@@ -244,7 +243,7 @@ class ResourceSession(BasicSafeSession):
             self.disconnect(ResourceSession.DCRUnverified)
             return
 
-        self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+        self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
         if self.rand_val != msg.rand_val:

@@ -593,7 +593,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param node_key_id: public key of a sought node
         :return list: list of information about closest neighbours
         """
-        neighbours = self.peer_keeper.neighbours(node_key_id)
+        if node_key_id is None:
+            neighbours = self.peers.values()
+        else:
+            neighbours = self.peer_keeper.neighbours(node_key_id)
         peer_infos = []
         for peer in neighbours:
             peer_infos.append({"address": peer.prv_addr,

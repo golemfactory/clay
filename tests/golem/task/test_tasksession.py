@@ -12,6 +12,7 @@ from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
+from golem.network.transport import message
 from golem.network.transport.message import (MessageWantToComputeTask, MessageCannotAssignTask, MessageTaskToCompute,
                                              MessageReportComputedTask, MessageHello,
                                              MessageSubtaskResultRejected, MessageSubtaskResultAccepted,
@@ -219,7 +220,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.result_received(extra_data, decrypt=False)
 
         assert ts.msgs_to_send
-        assert ts.msgs_to_send[0].__class__ == MessageSubtaskResultRejected
+        assert isinstance(ts.msgs_to_send[0], MessageSubtaskResultRejected)
         assert conn.close.called
 
         extra_data.update(dict(

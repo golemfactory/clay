@@ -46,12 +46,14 @@ class ConfigEntry(object):
 
     @classmethod
     def create_property(cls, section, key, value, other, prop_name):
-        """ Create new property: config entry with getter and setter method for this property in other object.
-        Append this entry to property list in other object.
+        """Create new property: config entry with getter and setter method
+           for this property in other object. Append this entry to property
+           list in other object.
         :param str section: config entry section name
         :param str key: config entry name
         :param value: config entry value
-        :param other: object instance for which new setter, getter and property entry should be created
+        :param other: object instance for which new setter, getter and
+                      property entry should be created
         :param str prop_name: property name
         :return:
         """
@@ -85,15 +87,15 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, common_config, node_config, cfg_file, refresh=False, keep_old=True):
-        """ Read existing configuration or create new one if it doesn't exist or refresh option is set to True.
-        :param common_config: configuration that is common for all nodes
+    def __init__(self, node_config, cfg_file, refresh=False, keep_old=True):
+        """Read existing configuration or create new one if it doesn't exist
+           or refresh option is set to True.
         :param node_config: node specific configuration
         :param str cfg_file: configuration file name
-        :param bool refresh: *Default: False*  if set to True, than configuration for given node should be written
-        even if it already exists.
+        :param bool refresh: *Default: False*  if set to True, than
+                             configuration for given node should be written
+                             even if it already exists.
         """
-        self._common_config = common_config
         self._node_config = node_config
 
         logger_msg = "Reading config from file {}".format(cfg_file)
@@ -103,7 +105,7 @@ class SimpleConfig(object):
             cfg = ConfigParser.ConfigParser()
             files = cfg.read(cfg_file)
 
-            if len(files) == 1 and self._common_config.section() in cfg.sections():
+            if files:
                 if self._node_config.section() in cfg.sections():
                     if refresh:
                         cfg.remove_section(self._node_config.section())
@@ -122,17 +124,25 @@ class SimpleConfig(object):
                 cfg = self.__create_fresh_config()
 
             if write_config:
-                logger.info("Writing {}'s configuration to {}".format(self.get_node_config().section(), cfg_file))
+                logger.info(
+                    "Writing %r's configuration to %r",
+                    self.get_node_config().section(),
+                    cfg_file
+                )
                 self.__write_config(cfg, cfg_file)
         except Exception as ex:
-            logger.warning("{} ... failed with an exception: {}".format(logger_msg, str(ex)))
-            # no additional try catch because this cannot fail (if it fails then the program shouldn't start anyway)
-            logger.info("Failed to write configuration file. Creating fresh config.")
+            logger.warning(
+                "%r ... failed with an exception: %s",
+                logger_msg,
+                ex
+            )
+            # no additional try catch because this cannot fail (if it
+            # fails then the program shouldn't start anyway)
+            logger.info(
+                "Failed to write configuration file."
+                " Creating fresh config."
+            )
             self.__write_config(self.__create_fresh_config(), cfg_file)
-
-    def get_common_config(self):
-        """ Return common configuration (common for all nodes) """
-        return self._common_config
 
     def get_node_config(self):
         """ Return node specific configuration """
@@ -140,9 +150,7 @@ class SimpleConfig(object):
 
     def __create_fresh_config(self):
         cfg = ConfigParser.ConfigParser()
-        cfg.add_section(self.get_common_config().section())
         cfg.add_section(self.get_node_config().section())
-
         return cfg
 
     def __write_config(self, cfg, cfg_file):
@@ -150,7 +158,10 @@ class SimpleConfig(object):
 
         if os.path.exists(cfg_file):
             backup_file_name = "{}.bak".format(cfg_file)
-            logger.info("Creating backup configuration file {}".format(backup_file_name))
+            logger.info(
+                "Creating backup configuration file %r",
+                backup_file_name
+            )
             shutil.copy(cfg_file, backup_file_name)
         elif not os.path.exists(os.path.dirname(cfg_file)):
             os.makedirs(os.path.dirname(cfg_file))
@@ -167,21 +178,22 @@ class SimpleConfig(object):
         return cfg.set(property_.section(), property_.key(), property_.value())
 
     def __read_options(self, cfg):
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+        for prop in self.get_node_config().properties():
             try:
                 prop.set_value_from_str(self.__read_option(cfg, prop))
             except ConfigParser.NoOptionError:
-                logger.info("Adding new config option: {} ({})".format(prop.key(), prop.value()))
+                logger.info(
+                    "Adding new config option: %r (%r)",
+                    prop.key(),
+                    prop.value()
+                )
 
     def __write_options(self, cfg):
-
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+        for prop in self.get_node_config().properties():
             self.__write_option(cfg, prop)
 
     def __remove_old_options(self, cfg):
-        for opt in cfg.options('Common'):
-            if opt not in [p.key() for p in self.get_common_config().properties()]:
-                cfg.remove_option('Common', opt)
+        props = [p.key() for p in self.get_node_config().properties()]
         for opt in cfg.options('Node'):
-            if opt not in [p.key() for p in self.get_node_config().properties()]:
+            if opt not in props:
                 cfg.remove_option('Node', opt)

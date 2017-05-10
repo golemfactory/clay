@@ -5,7 +5,7 @@ import time
 
 from golem.core.keysauth import get_random_float
 from golem.core.variables import MSG_TTL, FUTURE_TIME_TOLERANCE, UNVERIFIED_CNT
-from golem.network.transport.message import MessageDisconnect, Message
+from golem.network.transport import message
 from network import Session
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class BasicSession(FileSession):
 
         self.last_message_time = time.time()
         self._disconnect_sent = False
-        self._interpretation = {MessageDisconnect.TYPE: self._react_to_disconnect}
+        self._interpretation = {message.MessageDisconnect.TYPE: self._react_to_disconnect}
         # Message interpretation - dictionary where keys are messages' types and values are functions that should
         # be called after receiving specific message
 
@@ -87,8 +87,6 @@ class BasicSession(FileSession):
         :return None:
         """
         self.last_message_time = time.time()
-
-        # print "Receiving from {}:{}: {}".format(self.address, self.port, msg)
 
         if not self._check_msg(msg):
             return
@@ -147,10 +145,10 @@ class BasicSession(FileSession):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
             self._disconnect_sent = True
-            self.send(MessageDisconnect(reason))
+            self.send(message.MessageDisconnect(reason=reason))
 
     def _check_msg(self, msg):
-        if msg is None or not isinstance(msg, Message):
+        if msg is None or not isinstance(msg, message.Message):
             self.disconnect(BasicSession.DCRBadProtocol)
             return False
         return True
@@ -181,9 +179,9 @@ class BasicSafeSession(BasicSession, SafeSession):
         self.unverified_cnt = UNVERIFIED_CNT  # how many unverified messages can be stored before dropping connection
         self.rand_val = get_random_float()  # TODO: change rand val to hashcash
         self.verified = False
-        self.can_be_unverified = [MessageDisconnect.TYPE]  # React to message even if it's self.verified is set to False
-        self.can_be_unsigned = [MessageDisconnect.TYPE]  # React to message even if it's not signed.
-        self.can_be_not_encrypted = [MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
+        self.can_be_unverified = [message.MessageDisconnect.TYPE]  # React to message even if it's self.verified is set to False
+        self.can_be_unsigned = [message.MessageDisconnect.TYPE]  # React to message even if it's not signed.
+        self.can_be_not_encrypted = [message.MessageDisconnect.TYPE]  # React to message even if it's not encrypted.
 
     # Simple session with no encryption and no signing
     def sign(self, msg):
