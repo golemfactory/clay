@@ -1,8 +1,6 @@
 from calendar import timegm
 from datetime import datetime
-import errno
 import os
-from os import path
 from pathlib import Path
 import pytz
 import sys
@@ -87,12 +85,18 @@ class HandleError(object):
 
 class HandleKeyError(HandleError):
     def __init__(self, handle_error):
-        super(HandleKeyError, self).__init__(KeyError, handle_error)
+        super(HandleKeyError, self).__init__(
+            KeyError,
+            handle_error
+        )
 
 
 class HandleAttributeError(HandleError):
     def __init__(self, handle_error):
-        super(HandleAttributeError, self).__init__(AttributeError, handle_error)
+        super(HandleAttributeError, self).__init__(
+            AttributeError,
+            handle_error
+        )
 
 
 def config_logging(suffix='', datadir=None):

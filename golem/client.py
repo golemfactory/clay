@@ -39,7 +39,7 @@ from golem.ranking.ranking import Ranking
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager  # noqa
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
@@ -47,7 +47,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
-from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem  # noqa
 
 log = logging.getLogger("golem.client")
 
@@ -64,8 +64,15 @@ class ClientTaskComputerEventListener(object):
 
 
 class Client(object):
-    def __init__(self, datadir=None, transaction_system=False, connect_to_known_hosts=True,
-                 use_docker_machine_manager=True, use_monitor=True, **config_overrides):
+    def __init__(
+            self,
+            datadir=None,
+            transaction_system=False,
+            connect_to_known_hosts=True,
+            use_docker_machine_manager=True,
+            use_monitor=True,
+            **config_overrides
+            ):
 
         # TODO: Should we init it only once?
         init_messages()
@@ -96,7 +103,11 @@ class Client(object):
                          key=self.keys_auth.get_key_id(),
                          prv_addr=self.config_desc.node_address)
 
-        log.info('Client "%s", datadir: %s', self.config_desc.node_name, datadir)
+        log.info(
+            'Client "%s", datadir: %s',
+            self.config_desc.node_name,
+            datadir
+        )
 
         self.p2pservice = None
         self.diag_service = None
@@ -147,7 +158,10 @@ class Client(object):
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
-        dispatcher.connect(self.taskmanager_listener, signal='golem.taskmanager')
+        dispatcher.connect(
+            self.taskmanager_listener,
+            signal='golem.taskmanager'
+        )
 
         atexit.register(self.quit)
 
@@ -190,22 +204,32 @@ class Client(object):
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
-        # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
-        # self.ipfs_manager.store_client_info()
-
         self.daemon_manager = HyperdriveDaemonManager(self.datadir)
         self.daemon_manager.start()
 
-        self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
-                                     connect_to_known_hosts=self.connect_to_known_hosts)
-        self.task_server = TaskServer(self.node, self.config_desc, self.keys_auth, self,
-                                      use_ipv6=self.config_desc.use_ipv6,
-                                      use_docker_machine_manager=self.use_docker_machine_manager)
+        self.p2pservice = P2PService(
+            self.node,
+            self.config_desc,
+            self.keys_auth,
+            connect_to_known_hosts=self.connect_to_known_hosts
+        )
+        self.task_server = TaskServer(
+            self.node,
+            self.config_desc,
+            self.keys_auth,
+            self,
+            use_ipv6=self.config_desc.use_ipv6,
+            use_docker_machine_manager=self.use_docker_machine_manager
+        )
 
         dir_manager = self.task_server.task_computer.dir_manager
 
-        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
-                                                  dir_manager, self.keys_auth, self)
+        self.resource_server = BaseResourceServer(
+            HyperdriveResourceManager(dir_manager),
+            dir_manager,
+            self.keys_auth,
+            self
+        )
 
         log.info("Starting p2p server ...")
         self.p2pservice.start_accepting()
@@ -222,11 +246,16 @@ class Client(object):
         self.task_server.start_accepting()
 
         self.p2pservice.task_server = self.task_server
-        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
+        self.task_server.task_computer.register_listener(
+            ClientTaskComputerEventListener(self)
+        )
         self.p2pservice.connect_to_network()
 
         if self.monitor:
-            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+            self.diag_service.register(
+                self.p2pservice,
+                self.monitor.on_peer_snapshot
+            )
             self.monitor.on_login()
 
     def init_monitor(self):
@@ -234,14 +263,24 @@ class Client(object):
         self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
-        self.diag_service.register(VMDiagnosticsProvider(), self.monitor.on_vm_snapshot)
+        self.diag_service.register(
+            VMDiagnosticsProvider(),
+            self.monitor.on_vm_snapshot
+        )
         self.diag_service.start_looping_call()
 
     def connect(self, socket_address):
         if isinstance(socket_address, Iterable):
-            socket_address = SocketAddress(socket_address[0], int(socket_address[1]))
+            socket_address = SocketAddress(
+                socket_address[0],
+                int(socket_address[1])
+            )
 
-        log.debug("P2pservice connecting to %s on port %s", socket_address.address, socket_address.port)
+        log.debug(
+            "P2pservice connecting to %s on port %s",
+            socket_address.address,
+            socket_address.port
+        )
         self.p2pservice.connect(socket_address)
 
     def quit(self):
@@ -268,7 +307,8 @@ class Client(object):
         self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Implement this method properly - send disconnect package, close connections etc.
+        # FIXME: Implement this method properly - send disconnect package,
+        # close connections etc.
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
@@ -276,22 +316,36 @@ class Client(object):
     def enqueue_new_task(self, task):
         task_id = task.header.task_id
         files = task.get_resources(None, resource_types["hashes"])
-        client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
-        deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
-        deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
+        client_options = self.resource_server\
+            .resource_manager\
+            .build_client_options(self.keys_auth.key_id)
+        deferred = self.resource_server.add_task(
+            files,
+            task_id,
+            client_options=client_options
+        )
+        deferred.addCallback(
+            lambda _: self.task_server.task_manager.add_new_task(task)
+        )
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(task_id, unpack_delta)
+        self.task_server.task_computer.task_resource_collected(
+            task_id,
+            unpack_delta
+        )
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
-        self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
+        self.p2pservice.set_resource_peer(
+            self.node.prv_addr,
+            self.resource_port
+        )
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
@@ -300,8 +354,11 @@ class Client(object):
             return True
 
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_test_status, TaskTestStatus.error,
-                                       u"Another test is running")
+            self.rpc_publisher.publish(
+                Task.evt_task_test_status,
+                TaskTestStatus.error,
+                u"Another test is running"
+            )
         return False
 
     def _run_test_task(self, t_dict):
@@ -378,11 +435,15 @@ class Client(object):
 
     def get_known_peers(self):
         peers = self.p2pservice.free_peers or []
-        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
+        return [
+            DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
+        ]
 
     def get_connected_peers(self):
         peers = self.get_peers() or []
-        return [DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers]
+        return [
+            DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
+        ]
 
     def get_public_key(self):
         return self.keys_auth.public_key
@@ -471,10 +532,12 @@ class Client(object):
         return self.task_server.task_computer.stats.get_stats('computed_tasks')
 
     def get_timeout_task_count(self):
-        return self.task_server.task_computer.stats.get_stats('tasks_with_timeout')
+        return self.task_server\
+            .task_computer.stats.get_stats('tasks_with_timeout')
 
     def get_error_task_count(self):
-        return self.task_server.task_computer.stats.get_stats('tasks_with_errors')
+        return self.task_server\
+            .task_computer.stats.get_stats('tasks_with_errors')
 
     def get_payment_address(self):
         return self.transaction_system.get_payment_address()
@@ -539,7 +602,8 @@ class Client(object):
 
     def change_description(self, description):
         self.get_description()
-        q = Account.update(description=description).where(Account.node_id == self.get_client_id())
+        q = Account.update(description=description)\
+            .where(Account.node_id == self.get_client_id())
         q.execute()
 
     def use_ranking(self):
@@ -548,11 +612,28 @@ class Client(object):
     def want_to_start_task_session(self, key_id, node_id, conn_id):
         self.p2pservice.want_to_start_task_session(key_id, node_id, conn_id)
 
-    def inform_about_task_nat_hole(self, key_id, rv_key_id, addr, port, ans_conn_id):
-        self.p2pservice.inform_about_task_nat_hole(key_id, rv_key_id, addr, port, ans_conn_id)
+    def inform_about_task_nat_hole(
+            self,
+            key_id,
+            rv_key_id,
+            addr,
+            port,
+            ans_conn_id
+            ):
+        self.p2pservice.inform_about_task_nat_hole(
+            key_id,
+            rv_key_id,
+            addr,
+            port,
+            ans_conn_id
+        )
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        self.p2pservice.inform_about_nat_traverse_failure(key_id, res_key_id, conn_id)
+        self.p2pservice.inform_about_nat_traverse_failure(
+            key_id,
+            res_key_id,
+            conn_id
+        )
 
     # CLIENT CONFIGURATION
     def set_rpc_server(self, rpc_server):
@@ -564,14 +645,25 @@ class Client(object):
         self.cfg.change_config(self.config_desc)
         self.p2pservice.change_config(self.config_desc)
         if self.task_server:
-            self.task_server.change_config(self.config_desc, run_benchmarks=run_benchmarks)
-        dispatcher.send(signal='golem.monitor', event='config_update', meta_data=self.__get_nodemetadatamodel())
+            self.task_server.change_config(
+                self.config_desc,
+                run_benchmarks=run_benchmarks
+            )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='config_update',
+            meta_data=self.__get_nodemetadatamodel()
+        )
 
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
     def change_timeouts(self, task_id, full_task_timeout, subtask_timeout):
-        self.task_server.change_timeouts(task_id, full_task_timeout, subtask_timeout)
+        self.task_server.change_timeouts(
+            task_id,
+            full_task_timeout,
+            subtask_timeout
+        )
 
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
@@ -579,10 +671,20 @@ class Client(object):
             return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, resources, client_options=None):
-        self.resource_server.download_resources(resources, task_id, client_options=client_options)
+        self.resource_server.download_resources(
+            resources,
+            task_id,
+            client_options=client_options
+        )
 
     def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(node_name, addr, port, key_id, node_info)
+        self.resource_server.add_resource_peer(
+            node_name,
+            addr,
+            port,
+            key_id,
+            node_info
+        )
 
     def get_res_dirs(self):
         return {"computing": self.get_computed_files_dir(),
@@ -661,7 +763,10 @@ class Client(object):
             queue.put(msg)
 
         if env_id == BlenderEnvironment.get_id():
-            self.task_server.task_computer.run_blender_benchmark(success, error)
+            self.task_server.task_computer.run_blender_benchmark(
+                success,
+                error
+            )
         elif env_id == LuxRenderEnvironment.get_id():
             self.task_server.task_computer.run_lux_benchmark(success, error)
         else:
@@ -720,10 +825,23 @@ class Client(object):
         self._publish(Environment.evt_opts_changed)
 
     def __get_nodemetadatamodel(self):
-        return NodeMetadataModel(self.get_client_id(), self.session_id, sys.platform,
-                                 APP_VERSION, self.get_description(), self.config_desc)
+        return NodeMetadataModel(
+            self.get_client_id(),
+            self.session_id,
+            sys.platform,
+            APP_VERSION,
+            self.get_description(),
+            self.config_desc
+        )
 
-    def __try_to_change_to_number(self, old_value, new_value, to_int=False, to_float=False, name="Config"):
+    def __try_to_change_to_number(
+        self,
+        old_value,
+        new_value,
+        to_int=False,
+        to_float=False,
+        name="Config"
+    ):
         try:
             if to_int:
                 new_value = int(new_value)
@@ -765,8 +883,9 @@ class Client(object):
     @inlineCallbacks
     def __publish_events(self):
         now = time.time()
+        delta = now - self.last_nss_time
 
-        if now - self.last_nss_time > max(self.config_desc.node_snapshot_interval, 1):
+        if delta > max(self.config_desc.node_snapshot_interval, 1):
             dispatcher.send(
                 signal='golem.monitor',
                 event='stats_snapshot',
@@ -784,7 +903,8 @@ class Client(object):
             #     self.manager_server.sendStateMessage(self.last_node_state_snapshot)
             self.last_nss_time = time.time()
 
-        if now - self.last_net_check_time >= self.config_desc.network_check_interval:
+        delta = now - self.last_net_check_time
+        if delta >= self.config_desc.network_check_interval:
             self.last_net_check_time = time.time()
             self._publish(Network.evt_connection, self.connection_status())
 
@@ -806,24 +926,31 @@ class Client(object):
 
         if self.task_server:
             tasks_num = len(self.task_server.task_keeper.task_headers)
-            remote_tasks_progresses = self.task_server.task_computer.get_progresses()
-            local_tasks_progresses = self.task_server.task_manager.get_progresses()
+            r_tasks_progs = self.task_server.task_computer.get_progresses()
+            l_tasks_progs = self.task_server.task_manager.get_progresses()
             last_task_messages = self.task_server.get_last_messages()
-            self.last_node_state_snapshot = NodeStateSnapshot(is_running,
-                                                              self.config_desc.node_name,
-                                                              peers_num,
-                                                              tasks_num,
-                                                              self.p2pservice.node.pub_addr,
-                                                              self.p2pservice.node.pub_port,
-                                                              last_network_messages,
-                                                              last_task_messages,
-                                                              remote_tasks_progresses,
-                                                              local_tasks_progresses)
+            self.last_node_state_snapshot = NodeStateSnapshot(
+                is_running,
+                self.config_desc.node_name,
+                peers_num,
+                tasks_num,
+                self.p2pservice.node.pub_addr,
+                self.p2pservice.node.pub_port,
+                last_network_messages,
+                last_task_messages,
+                r_tasks_progs,
+                l_tasks_progs
+            )
         else:
-            self.last_node_state_snapshot = NodeStateSnapshot(self.config_desc.node_name, peers_num)
+            self.last_node_state_snapshot = NodeStateSnapshot(
+                self.config_desc.node_name,
+                peers_num
+            )
 
         if self.nodes_manager_client:
-            self.nodes_manager_client.send_client_state_snapshot(self.last_node_state_snapshot)
+            self.nodes_manager_client.send_client_state_snapshot(
+                self.last_node_state_snapshot
+            )
 
     def connection_status(self):
         listen_port = self.get_p2p_port()
