@@ -419,12 +419,16 @@ class Client(object):
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
-            raise Exception(u"Unknown setting: {}".format(key))
-        return getattr(self.config_desc, key)
+            raise KeyError(u"Unknown setting: {}".format(key))
+
+        value = getattr(self.config_desc, key)
+        if key in ConfigApprover.numeric_opt:
+            return unicode(value)
+        return value
 
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
-            raise Exception(u"Unknown setting: {}".format(key))
+            raise KeyError(u"Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
 
@@ -498,10 +502,9 @@ class Client(object):
             return map(self._values_to_str, payments)
         return ()
 
-    @inlineCallbacks
     def get_incomes_list(self):
         # Will be implemented in incomes_core
-        returnValue(())
+        return []
 
     @staticmethod
     def _values_to_str(obj):

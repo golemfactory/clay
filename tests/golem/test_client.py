@@ -522,10 +522,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
         # invalid settings
-        with self.assertRaises(Exception):
+        with self.assertRaises(KeyError):
             c.get_setting(str(uuid.uuid4()))
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(KeyError):
             c.update_setting(str(uuid.uuid4()), 'value')
 
     def test_publisher(self, *_):

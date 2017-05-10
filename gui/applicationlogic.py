@@ -598,7 +598,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         :return:
         """
         max_price = yield self.client.get_setting('max_price')
-        returnValue(max_price)
+        returnValue(int(max_price))
 
     @inlineCallbacks
     def get_cost_for_task_id(self, task_id):
