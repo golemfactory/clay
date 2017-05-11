@@ -56,6 +56,7 @@ class TTask(Task):
         self.test_finished = True
         self.results = results
         self.tmp_dir = tmp_dir
+        return {}
 
     def get_output_names(self):
         return ["output1", "output2", "output3"]
