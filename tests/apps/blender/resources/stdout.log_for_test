@@ -1,0 +1,227 @@
+found bundled python: /opt/blender-2.78a-linux-glibc211-x86_64/2.78/python
+read blend: /golem/resources/fishy_cat.blend
+warning DM_ensure_tessface: could not create tessfaces from 24 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 40 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 32 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 32 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 256 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 24064 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 96 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 23040 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 16384 polygons, dm->type=2
+warning DM_ensure_tessface: could not create tessfaces from 21856 polygons, dm->type=2
+Info: Resolution: 501 x 230
+Info: File format: .png
+Info: Filepath: /tmp/
+Info: Frames: 0-100;1
+Fra:1 Mem:222.79M (0.00M, Peak 225.12M) | Time:00:00.17 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | ENV
+Fra:1 Mem:222.79M (0.00M, Peak 225.12M) | Time:00:00.17 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_reflector
+Fra:1 Mem:222.81M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_sun1
+Fra:1 Mem:222.81M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_sun2
+Fra:1 Mem:222.81M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | camera_filter
+Fra:1 Mem:222.81M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkles_background
+Fra:1 Mem:222.84M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkles_foreground
+Fra:1 Mem:222.84M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade1
+Fra:1 Mem:222.88M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade3
+Fra:1 Mem:222.92M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade2
+Fra:1 Mem:222.96M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkle_particle
+Fra:1 Mem:222.96M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade4
+Fra:1 Mem:222.99M (0.00M, Peak 225.12M) | Time:00:00.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass
+Fra:1 Mem:216.22M (0.00M, Peak 232.18M) | Time:00:00.37 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | DOF
+Fra:1 Mem:216.22M (0.00M, Peak 232.18M) | Time:00:00.37 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | CAM_camera1
+Fra:1 Mem:216.22M (0.00M, Peak 232.18M) | Time:00:00.37 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish
+Fra:1 Mem:220.76M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string2
+Fra:1 Mem:220.78M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string4
+Fra:1 Mem:220.84M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string3
+Fra:1 Mem:220.90M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string1
+Fra:1 Mem:220.97M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_eye
+Fra:1 Mem:220.98M (0.00M, Peak 237.46M) | Time:00:00.44 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat
+Fra:1 Mem:239.65M (0.00M, Peak 858.34M) | Time:00:03.94 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_tongue
+Fra:1 Mem:241.24M (0.00M, Peak 858.34M) | Time:00:03.97 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_eye_tearline
+Fra:1 Mem:247.54M (0.00M, Peak 858.34M) | Time:00:04.11 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_spit
+Fra:1 Mem:249.09M (0.00M, Peak 858.34M) | Time:00:04.14 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_eye
+Fra:1 Mem:253.44M (0.00M, Peak 858.34M) | Time:00:04.18 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cornea_cat
+Fra:1 Mem:255.24M (0.00M, Peak 858.34M) | Time:00:04.19 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Initializing
+Fra:1 Mem:255.24M (0.00M, Peak 858.34M) | Time:00:04.20 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:255.24M (0.00M, Peak 858.34M) | Time:00:04.20 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Waiting for render to start
+Fra:1 Mem:255.24M (0.00M, Peak 858.34M) | Time:00:04.20 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Updating Scene
+Fra:1 Mem:255.24M (0.00M, Peak 858.34M) | Time:00:04.20 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Updating Shaders
+Fra:1 Mem:275.87M (0.00M, Peak 858.34M) | Time:00:04.41 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Background
+Fra:1 Mem:275.87M (0.00M, Peak 858.34M) | Time:00:04.41 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Camera
+Fra:1 Mem:275.87M (0.00M, Peak 858.34M) | Time:00:04.41 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Meshes Flags
+Fra:1 Mem:275.87M (0.00M, Peak 858.34M) | Time:00:04.41 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Objects
+Fra:1 Mem:275.94M (0.00M, Peak 858.34M) | Time:00:04.41 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:278.90M (0.00M, Peak 858.34M) | Time:00:04.46 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:278.90M (0.00M, Peak 858.34M) | Time:00:04.47 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Meshes
+Fra:1 Mem:287.88M (0.00M, Peak 858.34M) | Time:00:04.49 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:335.00M (0.00M, Peak 858.34M) | Time:00:04.50 | Mem:6.78M, Peak:6.78M | Scene_cat, RenderLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:335.00M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH sparkle_particle 1/5 | Building BVH
+Fra:1 Mem:335.00M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade3 3/5 | Building BVH
+Fra:1 Mem:335.00M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade2 4/5 | Building BVH
+Fra:1 Mem:335.04M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Building BVH
+Fra:1 Mem:335.20M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.25M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.23M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.31M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.34M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.33M (0.00M, Peak 858.34M) | Time:00:04.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.30M (0.00M, Peak 858.34M) | Time:00:04.53 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.30M (0.00M, Peak 858.34M) | Time:00:04.53 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.30M (0.00M, Peak 858.34M) | Time:00:04.53 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building
+Fra:1 Mem:335.42M (0.00M, Peak 858.34M) | Time:00:04.53 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:05.01 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 1%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:05.27 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 5%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:05.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 14%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:05.77 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 25%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:06.02 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 36%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:06.28 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 46%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:06.53 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 59%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:06.79 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 73%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:07.04 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 84%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:07.29 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 92%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:07.54 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 96%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 858.34M) | Time:00:07.71 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Packing BVH triangles and strands
+Fra:1 Mem:526.92M (0.00M, Peak 858.34M) | Time:00:07.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Packing BVH nodes
+Fra:1 Mem:664.41M (0.00M, Peak 858.34M) | Time:00:09.34 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:666.65M (0.00M, Peak 858.34M) | Time:00:09.35 | Mem:379.18M, Peak:379.18M | Scene_cat, RenderLayer | Updating Mesh | Computing normals
+Fra:1 Mem:686.87M (0.00M, Peak 858.34M) | Time:00:09.36 | Mem:379.18M, Peak:379.18M | Scene_cat, RenderLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:686.87M (0.00M, Peak 858.34M) | Time:00:09.36 | Mem:399.40M, Peak:399.40M | Scene_cat, RenderLayer | Updating Mesh | Copying Strands to device
+Fra:1 Mem:729.03M (0.00M, Peak 858.34M) | Time:00:09.37 | Mem:443.81M, Peak:443.81M | Scene_cat, RenderLayer | Updating Objects Flags
+Fra:1 Mem:729.03M (0.00M, Peak 858.34M) | Time:00:09.37 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images
+Fra:1 Mem:729.03M (0.00M, Peak 858.34M) | Time:00:09.37 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images | Loading eye_iris.png@0
+Fra:1 Mem:761.03M (0.00M, Peak 858.34M) | Time:00:09.37 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images | Loading fish.png@0
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Camera Volume
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Hair Systems
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Hair settings | Copying Hair settings to device
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Lookup Tables
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:464.12M, Peak:464.12M | Scene_cat, RenderLayer | Updating Lights
+Fra:1 Mem:749.03M (0.00M, Peak 858.34M) | Time:00:09.40 | Mem:464.12M, Peak:464.12M | Scene_cat, RenderLayer | Updating Lights | Computing distribution
+Fra:1 Mem:751.26M (0.00M, Peak 858.34M) | Time:00:09.43 | Mem:466.35M, Peak:466.35M | Scene_cat, RenderLayer | Updating Lights | Importance map
+Fra:1 Mem:751.77M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Particle Systems
+Fra:1 Mem:751.77M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:751.77M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Integrator
+Fra:1 Mem:751.82M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.91M, Peak:468.35M | Scene_cat, RenderLayer | Updating Film
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.91M, Peak:468.35M | Scene_cat, RenderLayer | Updating Lookup Tables
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Updating Baking
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Updating Device | Writing constant memory
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 0/1, Sample 0/30
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.44 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 1/1, Sample 0/30
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.48 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 1/1, Sample 30/30
+Fra:1 Mem:751.83M (0.00M, Peak 858.34M) | Time:00:09.48 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Finished
+Fra:1 Mem:148.90M (0.00M, Peak 858.34M) | Time:00:09.51 | Sce: Scene_cat Ve:0 Fa:0 La:0
+Warning: Path '/Manu/dropbox/library/scripts/blender/set_ray_visibilities_for_selected_objects.py' not found
+Warning: Path '/Manu/dropbox/library/scripts/blender/subsurf_change_level.py' not found
+Warning: Path '/golem/resources/VSE_copy_proxy_path_to_all_strips.py' not found
+Fra:1 Mem:243.06M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | ENV
+Fra:1 Mem:243.06M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_reflector
+Fra:1 Mem:243.08M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_sun1
+Fra:1 Mem:243.08M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | LGT_sun2
+Fra:1 Mem:243.08M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | camera_filter
+Fra:1 Mem:243.08M (0.00M, Peak 858.34M) | Time:00:00.32 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkles_background
+Fra:1 Mem:243.11M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkles_foreground
+Fra:1 Mem:243.11M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade1
+Fra:1 Mem:243.15M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade3
+Fra:1 Mem:243.19M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade2
+Fra:1 Mem:243.23M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | sparkle_particle
+Fra:1 Mem:243.23M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass_blade4
+Fra:1 Mem:243.26M (0.00M, Peak 858.34M) | Time:00:00.33 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | grass
+Fra:1 Mem:236.49M (0.00M, Peak 858.34M) | Time:00:00.68 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | DOF
+Fra:1 Mem:236.49M (0.00M, Peak 858.34M) | Time:00:00.68 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | CAM_camera1
+Fra:1 Mem:236.49M (0.00M, Peak 858.34M) | Time:00:00.68 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish
+Fra:1 Mem:241.03M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string2
+Fra:1 Mem:241.05M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string4
+Fra:1 Mem:241.11M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string3
+Fra:1 Mem:241.17M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_string1
+Fra:1 Mem:241.24M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | fish_eye
+Fra:1 Mem:241.24M (0.00M, Peak 858.34M) | Time:00:00.79 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat
+Fra:1 Mem:259.92M (0.00M, Peak 878.61M) | Time:00:05.23 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_tongue
+Fra:1 Mem:261.51M (0.00M, Peak 878.61M) | Time:00:05.28 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_eye_tearline
+Fra:1 Mem:267.81M (0.00M, Peak 878.61M) | Time:00:05.49 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_spit
+Fra:1 Mem:269.36M (0.00M, Peak 878.61M) | Time:00:05.53 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cat_eye
+Fra:1 Mem:273.71M (0.00M, Peak 878.61M) | Time:00:05.59 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Synchronizing object | cornea_cat
+Fra:1 Mem:275.50M (0.00M, Peak 878.61M) | Time:00:05.60 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Initializing
+Fra:1 Mem:275.50M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:275.50M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Waiting for render to start
+Fra:1 Mem:275.50M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Updating Scene
+Fra:1 Mem:275.50M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.00M, Peak:0.00M | Scene_cat, RenderLayer | Updating Shaders
+Fra:1 Mem:275.87M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Background
+Fra:1 Mem:275.87M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Camera
+Fra:1 Mem:275.87M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Meshes Flags
+Fra:1 Mem:275.87M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Objects
+Fra:1 Mem:275.94M (0.00M, Peak 878.61M) | Time:00:05.62 | Mem:0.12M, Peak:0.12M | Scene_cat, RenderLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:278.90M (0.00M, Peak 878.61M) | Time:00:05.74 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:278.90M (0.00M, Peak 878.61M) | Time:00:05.76 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Meshes
+Fra:1 Mem:287.88M (0.00M, Peak 878.61M) | Time:00:05.78 | Mem:3.08M, Peak:3.08M | Scene_cat, RenderLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:335.00M (0.00M, Peak 878.61M) | Time:00:05.81 | Mem:6.78M, Peak:6.78M | Scene_cat, RenderLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:335.00M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH sparkle_particle 1/5 | Building BVH
+Fra:1 Mem:335.00M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH sparkle_particle 1/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.00M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH sparkle_particle 1/5 | Packing BVH nodes
+Fra:1 Mem:335.00M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade1 2/5 | Building BVH
+Fra:1 Mem:335.16M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade1 2/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.21M (0.00M, Peak 878.61M) | Time:00:05.82 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade1 2/5 | Packing BVH nodes
+Fra:1 Mem:335.23M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Building BVH
+Fra:1 Mem:335.23M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.28M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.25M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.29M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.27M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH triangles and strands
+Fra:1 Mem:335.33M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Mesh BVH grass_blade4 5/5 | Packing BVH nodes
+Fra:1 Mem:335.30M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building
+Fra:1 Mem:335.42M (0.00M, Peak 878.61M) | Time:00:05.83 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:06.45 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 0%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:06.74 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 5%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:07.00 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 8%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:07.25 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 13%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:07.50 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 18%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:07.76 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 25%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:08.01 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 32%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:08.26 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 39%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:08.51 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 46%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:08.76 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 53%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:09.01 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 60%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:09.27 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 67%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:09.52 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 73%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:09.77 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 80%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:10.04 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 88%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:10.30 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Building BVH 98%, duplicates 0%
+Fra:1 Mem:480.77M (0.00M, Peak 878.61M) | Time:00:10.36 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Packing BVH triangles and strands
+Fra:1 Mem:526.92M (0.00M, Peak 878.61M) | Time:00:10.39 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Packing BVH nodes
+Fra:1 Mem:664.41M (0.00M, Peak 878.61M) | Time:00:11.59 | Mem:50.20M, Peak:50.20M | Scene_cat, RenderLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:666.65M (0.00M, Peak 878.61M) | Time:00:11.59 | Mem:379.18M, Peak:379.18M | Scene_cat, RenderLayer | Updating Mesh | Computing normals
+Fra:1 Mem:686.87M (0.00M, Peak 878.61M) | Time:00:11.60 | Mem:379.18M, Peak:379.18M | Scene_cat, RenderLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:686.87M (0.00M, Peak 878.61M) | Time:00:11.60 | Mem:399.40M, Peak:399.40M | Scene_cat, RenderLayer | Updating Mesh | Copying Strands to device
+Fra:1 Mem:729.03M (0.00M, Peak 878.61M) | Time:00:11.62 | Mem:443.81M, Peak:443.81M | Scene_cat, RenderLayer | Updating Objects Flags
+Fra:1 Mem:729.03M (0.00M, Peak 878.61M) | Time:00:11.62 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images
+Fra:1 Mem:729.03M (0.00M, Peak 878.61M) | Time:00:11.62 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images | Loading eye_iris.png@0
+Fra:1 Mem:761.03M (0.00M, Peak 878.61M) | Time:00:11.62 | Mem:443.87M, Peak:443.87M | Scene_cat, RenderLayer | Updating Images | Loading fish.png@0
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Camera Volume
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Hair Systems
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Hair settings | Copying Hair settings to device
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:463.87M, Peak:463.87M | Scene_cat, RenderLayer | Updating Lookup Tables
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:464.12M, Peak:464.12M | Scene_cat, RenderLayer | Updating Lights
+Fra:1 Mem:749.03M (0.00M, Peak 878.61M) | Time:00:11.64 | Mem:464.12M, Peak:464.12M | Scene_cat, RenderLayer | Updating Lights | Computing distribution
+Fra:1 Mem:751.26M (0.00M, Peak 878.61M) | Time:00:11.68 | Mem:466.35M, Peak:466.35M | Scene_cat, RenderLayer | Updating Lights | Importance map
+Fra:1 Mem:751.77M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Particle Systems
+Fra:1 Mem:751.77M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:751.77M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.85M, Peak:468.35M | Scene_cat, RenderLayer | Updating Integrator
+Fra:1 Mem:751.82M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.91M, Peak:468.35M | Scene_cat, RenderLayer | Updating Film
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.91M, Peak:468.35M | Scene_cat, RenderLayer | Updating Lookup Tables
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Updating Baking
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Updating Device | Writing constant memory
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 0/1, Sample 0/30
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.69 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 1/1, Sample 0/30
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.72 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Path Tracing Tile 1/1, Sample 30/30
+Fra:1 Mem:751.83M (0.00M, Peak 878.61M) | Time:00:11.72 | Mem:466.92M, Peak:468.35M | Scene_cat, RenderLayer | Finished
+Fra:1 Mem:148.90M (0.00M, Peak 878.61M) | Time:00:11.76 | Sce: Scene_cat Ve:0 Fa:0 La:0
+Saved: '/golem/output/kitty_10001.png'
+ Time: 00:11.82 (Saving: 00:00.05)
+
+Info: Resolution: 501 x 230
+Info: File format: .png
+Info: Filepath: /tmp/
+Info: Frames: 0-100;1
+Warning: Path '/Manu/dropbox/library/scripts/blender/set_ray_visibilities_for_selected_objects.py' not found
+Warning: Path '/Manu/dropbox/library/scripts/blender/subsurf_change_level.py' not found
+Warning: Path '/golem/resources/VSE_copy_proxy_path_to_all_strips.py' not found
+
+Blender quit
