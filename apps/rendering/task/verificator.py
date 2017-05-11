@@ -26,7 +26,7 @@ class RenderingVerificator(CoreVerificator):
         self.res_y = 0
         self.total_tasks = 0
         self.root_path = ""
-        self.verified_clients = set()
+        self.verified_clients = list()
 
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
         if self._verify_imgs(subtask_id, subtask_info, tr_files, task):
@@ -51,7 +51,7 @@ class RenderingVerificator(CoreVerificator):
                                                   task):
                 return False
             else:
-                self.verified_clients.add(subtask_info['node_id'])
+                self.verified_clients.append(subtask_info['node_id'])
 
         return True
 
@@ -64,6 +64,7 @@ class RenderingVerificator(CoreVerificator):
                                                      subtask_info, task)
         logger.debug('cmp_start_box {}'.format(cmp_start_box))
         res_x, res_y = self._get_part_size(subtask_info)
+
         return advance_verify_img(img_file, res_x, res_y, start_box,
                                   self.verification_options.box_size, cmp_file,
                                   cmp_start_box)
