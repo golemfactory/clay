@@ -756,7 +756,7 @@ class Client(HardwarePresetsMixin):
 
     def get_known_tasks(self):
         headers = {}
-        for key, header in self.task_server.task_keeper.task_headers.iteritems():
+        for key, header in self.task_server.task_keeper.task_headers.iteritems():  # noqa
             headers[unicode(key)] = DictSerializer.dump(header)
         return headers
 

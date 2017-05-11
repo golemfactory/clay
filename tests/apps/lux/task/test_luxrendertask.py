@@ -32,7 +32,6 @@ class TestLuxRenderDefaults(unittest.TestCase):
 class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/luxrendertask.py',
-        'tests/apps/lux/task/test_luxrendertask.py',
     ]
 
     def get_test_lux_task(self):
