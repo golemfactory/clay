@@ -128,7 +128,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv.advanced_verification = True
         rv.verification_options.type = "forFirst"
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
-        rv.verified_clients.add("NodeX")
+        rv.verified_clients.append("NodeX")
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
         rv.verification_options.type = "forAll"
         assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
