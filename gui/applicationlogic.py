@@ -509,7 +509,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def get_environments(self):
         environments = yield self.client.get_environments()
-        returnValue(environments)
+        returnValue([DictSerializer.load(env) for env in environments])
 
     # TODO Move this function to new task dialog
     def change_verification_option(self, size_x_max=None, size_y_max=None):
@@ -598,7 +598,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         :return:
         """
         max_price = yield self.client.get_setting('max_price')
-        returnValue(max_price)
+        returnValue(int(max_price))
 
     @inlineCallbacks
     def get_cost_for_task_id(self, task_id):

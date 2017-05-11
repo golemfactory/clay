@@ -26,6 +26,7 @@ CORE_METHOD_MAP = dict(
 
     get_node=               Network.ident,
     get_node_key=           Network.ident_key,
+    get_node_name=          Network.ident_name,
     get_known_peers=        Network.peers_known,
     get_connected_peers=    Network.peers_connected,
 

@@ -263,6 +263,26 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
         logic.config_changed()
 
+    @ci_skip
+    def test_get_environments(self):
+        from apps.appsmanager import AppsManager
+        from golem.environments.environment import Environment
+
+        logic = GuiApplicationLogic()
+        logic.customizer = Mock()
+        logic.client = self.client
+
+        apps_manager = AppsManager()
+        apps_manager.load_apps()
+
+        for env in apps_manager.get_env_list():
+            self.client.environments_manager.add_environment(env)
+
+        environments = wait_for(logic.get_environments())
+
+        assert len(environments) > 0
+        assert [isinstance(env, Environment) for env in environments]
+
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
         task_state = TaskDesc()

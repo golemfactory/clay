@@ -10,6 +10,7 @@ from apps.core.task.coretaskstate import TaskDesc
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
 from golem.interface.client.logic import AppLogic
+from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
@@ -21,8 +22,8 @@ class CommandAppLogic(AppLogic):
         super(CommandAppLogic, self).__init__()
 
         self.node_name = CommandHelper.wait_for(client.get_node_name())
-        self.dir_manager = CommandHelper.wait_for(client.get_dir_manager())
         self.datadir = datadir
+        self.dir_manager = DirManager(self.datadir)
 
     @staticmethod
     def instantiate(client, datadir):
@@ -158,6 +159,8 @@ class Tasks(object):
                 return CommandResult(error="Test failed: {}".format(test_result))
 
         task_dict = DictSerializer.dump(task)
+        task_def = task_dict['task_definition']
+        task_def['resources'] = list(task_def.get('task_definition', []))
         deferred = Tasks.client.create_task(task_dict)
         return CommandHelper.wait_for(deferred, timeout=1800)
 
