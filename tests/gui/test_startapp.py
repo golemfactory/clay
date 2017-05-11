@@ -63,16 +63,17 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
     def _start_client(self, router_fails=False, session_fails=False, expected_result=None):
 
-        client = None
         queue = Queue()
 
-        with patch('gui.startapp.start_gui'), \
-             patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success")), \
-             patch('golem.client.Client.sync'), \
-             patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err)), \
-             patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails)), \
-             patch('golem.rpc.session.Session.connect', session_connect(session_fails)):
-
+        @patch('gui.startapp.start_gui')
+        @patch('golem.reactor.geventreactor.install')
+        @patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success"))
+        @patch('golem.client.Client.sync')
+        @patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))
+        @patch('golem.rpc.router.CrossbarRouter.start', router_start(router_fails))
+        @patch('golem.rpc.session.Session.connect', session_connect(session_fails))
+        def inner(*mocks):
+            client = None
             try:
                 client = Client(datadir=self.path,
                                 transaction_system=False,
@@ -88,12 +89,13 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
                 message = queue.get(True, 10)
                 assert unicode(message).find(expected_result) != -1
-
             except Exception as exc:
                 self.fail(u"Cannot start client process: {}".format(exc))
             finally:
                 if client:
                     client.quit()
+
+        return inner()
 
     def _start_gui(self, session_fails=False, expected_result=None):
 
@@ -146,7 +148,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 thread.daemon = True
                 thread.start()
 
-                started = time.time()
+                deadline = time.time() + 10
                 while True:
 
                     if logger.error.called:
@@ -157,7 +159,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                         assert unicode(message).find(expected_result) != -1
                         break
 
-                    elif time.time() > started + 10:
+                    elif time.time() > deadline:
                         raise Exception(u"Test timed out")
                     else:
                         time.sleep(0.1)
