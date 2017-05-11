@@ -67,7 +67,6 @@ CORE_METHOD_MAP = dict(
 
     get_status=             Computation.status,
     get_environments=       Computation.environments,
-    get_environments_perf=  Computation.environments_perf,
     enable_environment=     Computation.enable_environment,
     disable_environment=    Computation.disable_environment,
     run_benchmark=          Computation.benchmark_environment,
