@@ -509,7 +509,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def get_environments(self):
         environments = yield self.client.get_environments()
-        returnValue([DictSerializer.load(env) for env in environments])
+        returnValue(environments)
 
     # TODO Move this function to new task dialog
     def change_verification_option(self, size_x_max=None, size_y_max=None):
