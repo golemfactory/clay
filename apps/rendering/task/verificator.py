@@ -40,26 +40,34 @@ class RenderingVerificator(CoreVerificator):
 
         res_x, res_y = self._get_part_size(subtask_info)
 
-        adv_test_file = self._choose_adv_ver_file(tr_files, subtask_info)
-        x0, y0, x1, y1 = self._get_part_img_size(subtask_info)
-
-        for tr_file in tr_files:
-            if adv_test_file is not None and tr_file in adv_test_file:
-                start_box = self._get_box_start(x0, y0, x1, y1)
-                logger.debug('testBox: {}'.format(start_box))
-                cmp_file, cmp_start_box = self._get_cmp_file(tr_file, start_box, subtask_id,
-                                                             subtask_info, task)
-                logger.debug('cmp_start_box {}'.format(cmp_start_box))
-                if not advance_verify_img(tr_file, res_x, res_y, start_box,
-                                          self.verification_options.box_size, cmp_file,
-                                          cmp_start_box):
-                    return False
-                else:
-                    self.verified_clients.append(subtask_info['node_id'])
-            if not self._check_size(tr_file, res_x, res_y):
+        for img in tr_files:
+            if not self._check_size(img, res_x, res_y):
                 return False
 
+        file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
+        if file_for_adv_ver:
+            if not self.make_advance_verification(file_for_adv_ver,
+                                                  subtask_info, subtask_id,
+                                                  task):
+                return False
+            else:
+                self.verified_clients.append(subtask_info['node_id'])
+
         return True
+
+    def make_advance_verification(self, img_file, subtask_info, subtask_id,
+                                  task):
+        start_box = self._get_box_start(*self._get_part_img_size(subtask_info))
+        logger.debug('testBox: {}'.format(start_box))
+        cmp_file, cmp_start_box = self._get_cmp_file(img_file, start_box,
+                                                     subtask_id,
+                                                     subtask_info, task)
+        logger.debug('cmp_start_box {}'.format(cmp_start_box))
+        res_x, res_y = self._get_part_size(subtask_info)
+
+        return advance_verify_img(img_file, res_x, res_y, start_box,
+                                  self.verification_options.box_size, cmp_file,
+                                  cmp_start_box)
 
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)

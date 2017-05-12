@@ -111,7 +111,6 @@ class Computation(object):
 
     status                  = 'comp.status'
     environments            = 'comp.environments'
-    environments_perf       = 'comp.environments.perf'
     enable_environment      = 'comp.environment.enable'
     disable_environment     = 'comp.environment.disable'
     benchmark_environment   = 'comp.environment.benchmark'
