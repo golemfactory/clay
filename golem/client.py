@@ -359,7 +359,8 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.resume_task(task_id)
 
     def delete_task(self, task_id):
-        self.task_server.remove_task_header(task_id)
+        self.remove_task_header(task_id)
+        self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
 
     def get_node(self):
