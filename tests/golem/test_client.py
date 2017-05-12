@@ -510,6 +510,30 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         balance = wait_for(c.get_balance())
         assert balance == (None, None, None)
 
+    def test_run_benchmark(self, *_):
+        from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.lux.luxenvironment import LuxRenderEnvironment
+
+        task_computer = self.client.task_server.task_computer
+        task_computer.run_blender_benchmark.side_effect = lambda cb, eb: cb(True)
+        task_computer.run_lux_benchmark.side_effect = lambda cb, eb: cb(True)
+
+        with self.assertRaises(Exception):
+            wait_for(self.client.run_benchmark(str(uuid.uuid4())))
+
+        wait_for(self.client.run_benchmark(BlenderEnvironment.get_id()))
+
+        assert task_computer.run_blender_benchmark.called
+        assert not task_computer.run_lux_benchmark.called
+
+        task_computer.run_blender_benchmark.called = False
+        task_computer.run_lux_benchmark.called = False
+
+        wait_for(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+
+        assert not task_computer.run_blender_benchmark.called
+        assert task_computer.run_lux_benchmark.called
+
     def test_config_changed(self, *_):
         c = self.client
 
