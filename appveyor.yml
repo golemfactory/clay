@@ -64,7 +64,7 @@ install:
   # golem-hyperdrive
   - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
   - cd golem-hyperdrive && npm install --save && cd ..
-  - ps: $HyperdriveProcess = Start-Process node golem-hyperdrive\src\main.js -PassThru
+  - ps: $HyperdriveProcess = Start-Process node golem-hyperdrive\src\index.js -PassThru
 
   # ipfs
   - if not exist %DIR_IPFS% (

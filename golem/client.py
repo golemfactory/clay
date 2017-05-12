@@ -661,12 +661,14 @@ class Client(HardwarePresetsMixin):
         return headers
 
     def get_environments(self):
-        envs = self.environments_manager.get_environments()
-        return [DictSerializer.dump(env) for env in envs]
-
-    def get_environments_perf(self):
         envs = copy(self.environments_manager.get_environments())
-        return [self._simple_env_repr(env) for env in envs]
+        return [{
+            u'id': unicode(env.get_id()),
+            u'supported': env.supported(),
+            u'accepted': env.is_accepted(),
+            u'performance': env.get_performance(self.config_desc),
+            u'description': unicode(env.short_description)
+        } for env in envs]
 
     def run_benchmark(self, env_id):
         # TODO: move benchmarks to environments
@@ -689,15 +691,6 @@ class Client(HardwarePresetsMixin):
             queue.put("Unknown environment: {}".format(env_id))
 
         return queue.get()
-
-    def _simple_env_repr(self, env):
-        return dict(
-            id=env.get_id(),
-            supported=env.supported(),
-            active=env.is_accepted(),
-            performance=env.get_performance(self.config_desc),
-            description=env.short_description
-        )
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -815,11 +808,11 @@ class Client(HardwarePresetsMixin):
             except Exception as exc:
                 log.debug('Error retrieving balance: {}'.format(exc))
             else:
-                self._publish(Payments.evt_balance, dict(
-                    GNT=unicode(gnt),
-                    GNT_available=unicode(av_gnt),
-                    ETH=unicode(eth)
-                ))
+                self._publish(Payments.evt_balance, {
+                    u'GNT': unicode(gnt),
+                    u'GNT_available': unicode(av_gnt),
+                    u'ETH': unicode(eth)
+                })
 
     def __make_node_state_snapshot(self, is_running=True):
         peers_num = len(self.p2pservice.peers)

@@ -20,7 +20,7 @@ before_install:
 
   - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1
   - cd golem-hyperdrive && npm install --save && cd ..
-  - node golem-hyperdrive/src/main.js &
+  - node golem-hyperdrive/src/index.js &
 
   - sudo -HE pip install --upgrade pip setuptools virtualenv
   - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl

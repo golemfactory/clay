@@ -19,7 +19,7 @@ class Environments(object):
     @command(argument=sort, help="Show environments")
     def show(self, sort):
 
-        deferred = Environments.client.get_environments_perf()
+        deferred = Environments.client.get_environments()
         result = CommandHelper.wait_for(deferred) or []
 
         values = []
@@ -28,7 +28,7 @@ class Environments(object):
             values.append([
                 env['id'],
                 str(env['supported']),
-                str(env['active']),
+                str(env['accepted']),
                 str(env['performance']),
                 env['description']
             ])

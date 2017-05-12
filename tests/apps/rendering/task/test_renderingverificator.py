@@ -35,11 +35,12 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
     @patch("apps.rendering.task.verificator.LocalComputer")
     def test_verify(self, computer_mock):
         rv = RenderingVerificator()
-        # No subtask info
-        assert rv.verify("Subtask1", dict(), ["file1"], Mock()) == SubtaskVerificationState.UNKNOWN
+        # Result us not a file
+        assert rv.verify("Subtask1", dict(), ["file1"], Mock()) == \
+               SubtaskVerificationState.WRONG_ANSWER
 
-        rv.res_x = 800
-        rv.res_y = 600
+        rv.res_x = 80
+        rv.res_y = 60
         rv.total_tasks = 30
         # No data
         assert rv.verify("Subtask1", {"start_task": 3}, [], Mock()) == \
@@ -50,10 +51,11 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
                SubtaskVerificationState.WRONG_ANSWER
 
         img_path = os.path.join(self.path, "img1.png")
-        img = Image.new("RGB", (800, 600))
+        img = Image.new("RGB", (80, 60))
         img.save(img_path)
 
         img_path2 = os.path.join(self.path, "img2.png")
+        img = Image.new("RGB", (80, 60))
         img.save(img_path2)
 
         ver_dir = os.path.join(self.path, "ver_img")
@@ -61,8 +63,9 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         img_path3 = os.path.join(ver_dir, "img3.png")
         img.save(img_path3)
 
-        # Proper simple verification - just check if there's a image with right size in results
-        assert rv.verify("Subtask1", {"start_task": 3}, [img_path, img_path2], Mock()) == \
+        # Proper simple verification - just check if images have proper sizes
+        assert rv.verify("Subtask1", {"start_task": 3},
+                         [img_path, img_path2], Mock()) == \
                SubtaskVerificationState.VERIFIED
 
         # ADVANCE VERIFICATION
@@ -75,22 +78,28 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv.root_path = self.path
 
         # No image files in results
-        computer_mock.return_value.tt.result.get.return_value = self.additional_dir_content([3])
+        computer_mock.return_value.tt.result.get.return_value = \
+            self.additional_dir_content([3])
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
-                         [img_path], Mock()) == SubtaskVerificationState.WRONG_ANSWER
+                         [img_path], Mock()) == \
+               SubtaskVerificationState.WRONG_ANSWER
 
         # Properly verified
         adv_ver_res = [img_path3,  os.path.join(ver_dir, "cos.log")]
         computer_mock.return_value.tt.result.get.return_value = adv_ver_res
-        assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
+        assert rv.verify("Subtask1", {"start_task": 3,
+                                      "output_format": "png",
                                       "node_id": "ONENODE"},
-                         [img_path], Mock()) == SubtaskVerificationState.VERIFIED
+                         [img_path], Mock()) == \
+               SubtaskVerificationState.VERIFIED
 
         if is_linux() and os.geteuid() == 0:
             rv.tmp_dir = "/nonexisting"
-            assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png",
+            assert rv.verify("Subtask1", {"start_task": 3,
+                                          "output_format": "png",
                                           "node_id": "ONENODE"},
-                             [img_path], Mock()) == SubtaskVerificationState.UNKNOWN
+                             [img_path], Mock()) == \
+                   SubtaskVerificationState.UNKNOWN
 
     def test_get_part_img_size(self):
         rv = RenderingVerificator()
