@@ -60,9 +60,6 @@ class TaskServer(PendingConnectionsServer):
         network = TCPNetwork(ProtocolFactory(MidAndFilesProtocol, self, SessionFactory(TaskSession)), use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
 
-    def start_accepting(self):
-        PendingConnectionsServer.start_accepting(self)
-
     def key_changed(self):
         """React to the fact that key id has been changed. Inform task manager about new key """
         self.task_manager.key_id = self.keys_auth.get_key_id()
