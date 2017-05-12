@@ -17,7 +17,7 @@ from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
-from golem.task.taskstate import TaskStatus, TaskTestStatus
+from golem.task.taskstate import TaskStatus, TaskTestStatus, TaskState
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -28,7 +28,7 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import Gui
-from gui.applicationlogic import GuiApplicationLogic, logger
+from gui.applicationlogic import GuiApplicationLogic, logger, task_to_remove_status
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -262,6 +262,54 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
             logic.change_timeouts("invalid", 10, 10)
 
         logic.config_changed()
+
+    def test_task_status_changed(self):
+        task_state = TaskState()
+        task_dict = DictSerializer.dump(task_state)
+
+        logic = GuiApplicationLogic()
+        logic.tasks = dict(
+            task_id=task_state,
+            wrong_task=None
+        )
+
+        def get_logic_task(task_id):
+            deferred = Deferred()
+            task = logic.tasks.get(task_id)
+            deferred.callback(DictSerializer.dump(task))
+            return deferred
+
+        logic.client = Mock()
+        logic.client.query_task_state = Mock()
+        logic.client.query_task_state.side_effect = get_logic_task
+
+        logic.customizer = Mock()
+
+        logic.task_status_changed('wrong_task')
+        assert not logic.customizer.update_tasks.called
+        assert logic.client.query_task_state.called
+
+        logic.client.query_task_state.called = False
+        logic.customizer.current_task_highlighted.definition.task_id = str(uuid.uuid4())
+        logic.task_status_changed(str(uuid.uuid4()))
+        assert not logic.client.query_task_state.called
+        assert not logic.customizer.update_task_additional_info.called
+
+        logic.customizer.current_task_highlighted.definition.task_id = 'task_id'
+        logic.task_status_changed(str(uuid.uuid4()))
+        assert not logic.client.query_task_state.called
+        assert not logic.customizer.update_task_additional_info.called
+
+        logic.task_status_changed('task_id')
+        assert logic.client.query_task_state.called
+        assert logic.customizer.update_task_additional_info.called
+        assert not logic.client.delete_task.called
+
+        task_state.status = task_to_remove_status[0]
+        logic.task_status_changed('task_id')
+        assert logic.client.query_task_state.called
+        assert logic.customizer.update_task_additional_info.called
+        assert logic.client.delete_task.called
 
     @ci_skip
     def test_get_environments(self):
