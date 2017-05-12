@@ -862,8 +862,8 @@ class Client(HardwarePresetsMixin):
         messages = []
 
         if hasattr(self, 'unreachable_flag'):
-            statues = self.unreachable_flag.split('\n')
-            failures = filter(lambda e: e.find('open') == -1, statues)
+            statuses = self.unreachable_flag.split('\n')
+            failures = filter(lambda e: e.find('open') == -1, statuses)
             messages.append(u"Port " + u", ".join(failures) + u".")
 
         if self.get_connected_peers():
