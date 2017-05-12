@@ -52,6 +52,7 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
                    use_monitor=False)
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
 class TestClient(TestWithDatabase):
@@ -376,6 +377,7 @@ class TestClient(TestWithDatabase):
         assert config.max_resource_size > 0
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 

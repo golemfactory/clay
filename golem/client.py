@@ -11,7 +11,7 @@ from threading import Lock
 from os import path, makedirs
 from pydispatch import dispatcher
 from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks, returnValue, gatherResults, Deferred
 
 from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -164,7 +164,7 @@ class Client(HardwarePresetsMixin):
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event != 'unreachable':
             return
-        self.unreachable_flag = True
+        self.unreachable_flag = kwargs.get('description', u'')
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
@@ -192,16 +192,13 @@ class Client(HardwarePresetsMixin):
         self.publish_task.start(1, True)
 
     def start_network(self):
-        log.info("Starting network ...")
+        log.info("Gathering network information ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
         # self.ipfs_manager = IPFSDaemonManager(connect_to_bootstrap_nodes=self.connect_to_known_hosts)
         # self.ipfs_manager.store_client_info()
-
-        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
-        self.daemon_manager.start()
 
         self.p2pservice = P2PService(self.node, self.config_desc, self.keys_auth,
                                      connect_to_known_hosts=self.connect_to_known_hosts)
@@ -211,30 +208,47 @@ class Client(HardwarePresetsMixin):
 
         dir_manager = self.task_server.task_computer.dir_manager
 
+        log.info("Starting resource server ...")
+        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        hyperdrive_ports = self.daemon_manager.start()
+
         self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
                                                   dir_manager, self.keys_auth, self)
 
+        def connect((p2p_port, task_port)):
+            log.info('P2P server is listening on port {}'.format(p2p_port))
+            log.info('Task server is listening on port {}'.format(task_port))
+
+            dispatcher.send(signal='golem.p2p', event='listening',
+                            port=[p2p_port, task_port] + list(hyperdrive_ports))
+
+            self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
+            self.p2pservice.connect_to_network()
+
+            if self.monitor:
+                self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+                self.monitor.on_login()
+
+        def terminate(*exceptions):
+            log.error("Golem cannot listen on ports: {}".format(exceptions))
+            self.quit()
+
+        task_starting = Deferred()
+        p2p_starting = Deferred()
+
+        gatherResults([p2p_starting, task_starting],
+                      consumeErrors=True).addCallbacks(connect, terminate)
+
         log.info("Starting p2p server ...")
-        self.p2pservice.start_accepting()
-        time.sleep(1.0)
-
-        log.info("Starting resource server...")
-        self.resource_server.start_accepting()
-        time.sleep(1.0)
-
+        self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
+        self.p2pservice.start_accepting(listening_established=p2p_starting.callback,
+                                        listening_failure=p2p_starting.errback)
 
         log.info("Starting task server ...")
-        self.task_server.start_accepting()
-
-        self.p2pservice.task_server = self.task_server
-        self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
-        self.p2pservice.connect_to_network()
-
-        if self.monitor:
-            self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
-            self.monitor.on_login()
+        self.task_server.start_accepting(listening_established=task_starting.callback,
+                                         listening_failure=task_starting.errback)
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
@@ -851,12 +865,21 @@ class Client(HardwarePresetsMixin):
 
         if listen_port == 0 or task_server_port == 0:
             return u"Application not listening, check config file."
-        elif not self.get_connected_peers():
-            msg = u"Not connected to Golem Network. Check seed parameters."
-            if hasattr(self, 'unreachable_flag'):
-                msg += u" Port unreachable."
-            return msg
-        return u"Connected"
+
+        messages = []
+
+        if hasattr(self, 'unreachable_flag'):
+            statues = self.unreachable_flag.split('\n')
+            failures = filter(lambda e: e.find('open') == -1, statues)
+            messages.append(u"Port " + u", ".join(failures) + u".")
+
+        if self.get_connected_peers():
+            messages.append(u"Connected")
+        else:
+            messages.append(u"Not connected to Golem Network, "
+                            u"check seed parameters.")
+
+        return u' '.join(messages)
 
     def get_metadata(self):
         metadata = dict()
