@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+import random
 import time
 import uuid
 
@@ -9,6 +11,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts, MAX_STORED_HOSTS
+from golem.network.p2p import peersession
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
 from golem.network.p2p.peersession import PeerSession
@@ -21,8 +24,53 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
     def setUp(self):
         super(TestP2PService, self).setUp()
+        random.seed()
         self.keys_auth = EllipticalKeysAuth(self.path)
         self.service = P2PService(None, ClientConfigDescriptor(), self.keys_auth, connect_to_known_hosts=False)
+
+    def test_find_node(self):
+        node_key_id = uuid.uuid4()
+
+        # find_node() without parameter
+        node_session = peersession.PeerSession(conn=mock.MagicMock())
+        node_session.listen_port = random.randint(1, 2**16-1)
+        node_session.address = random.randint(1, 2**32-1)
+        node_session.node_name = 'approximately 16.8 million addresses'
+        node_session.node_info = None
+        self.service.peers = {
+            node_key_id: peersession.PeerSessionInfo(node_session),
+        }
+        expected = [
+            {
+                'address': node_session.address,
+                'port': node_session.listen_port,
+                'node_name': node_session.node_name,
+                'node': None,
+            },
+        ]
+        self.assertEquals(self.service.find_node(node_key_id=None), expected)
+
+        # find_node() via kademlia neighbours
+        neighbour_node_key_id = uuid.uuid4()
+        neighbour_node = Node(
+            node_name=u'Syndrom wstrząsu toksycznego',
+            key=neighbour_node_key_id,
+            prv_addr=random.randint(1, 2**32-1),
+            prv_port=random.randint(1, 2**16-1)
+        )
+        self.service.peer_keeper.neighbours = mock.MagicMock(return_value=[
+            neighbour_node,
+        ])
+        expected = [
+            {
+                'address': neighbour_node.prv_addr,
+                'port': neighbour_node.prv_port,
+                'id': neighbour_node.key,
+                'node': neighbour_node,
+                'node_name': neighbour_node.node_name,
+            },
+        ]
+        self.assertEquals(self.service.find_node(node_key_id), expected)
 
     def test_add_to_peer_keeper(self):
         node = Node()
