@@ -535,12 +535,38 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QLineEdit" name="presetNameLineEdit">
+                    <property name="toolTip">
+                     <string>Save under this value</string>
+                    </property>
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QPushButton" name="loadPresetButton">
                     <property name="toolTip">
                      <string>Load preset</string>
                     </property>
                     <property name="text">
                      <string>Load preset</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="presetComboBox">
+                    <property name="sizePolicy">
+                     <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+                      <horstretch>0</horstretch>
+                      <verstretch>0</verstretch>
+                     </sizepolicy>
+                    </property>
+                    <property name="toolTip">
+                     <string>Choose preset</string>
                     </property>
                    </widget>
                   </item>
