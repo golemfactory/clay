@@ -9,7 +9,8 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField, SmallIntegerField)
+                    DateTimeField, TextField, CompositeKey, BooleanField,
+                    SmallIntegerField)
 
 
 log = logging.getLogger('golem.db')
@@ -45,11 +46,13 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account,
-                  Stats, HardwarePreset]
+        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment,
+                  ReceivedPayment, KnownHosts, Account, Stats, HardwarePreset,
+                  TaskPreset]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
-            log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
+            log.info("New database version {}, previous {}".format(
+                Database.SCHEMA_VERSION, version))
             db.drop_tables(tables, safe=True)
             Database._set_user_version(Database.SCHEMA_VERSION)
         db.create_tables(tables, safe=True)
@@ -144,7 +147,8 @@ class Payment(BaseModel):
 
     def __repr__(self):
         tx = self.details.get('tx', 'NULL')
-        return "<Payment stid: {!r} v: {.3f} s: {!r} tx: {!s}>" % (self.subtask, self.value / denoms.ether, self.status, tx)
+        return "<Payment stid: {!r} v: {.3f} s: {!r} tx: {!s}>" % \
+               (self.subtask, self.value / denoms.ether, self.status, tx)
 
 
 class ReceivedPayment(BaseModel):
@@ -242,10 +246,6 @@ class Stats(BaseModel):
         database = db
 
 
-###################
-# RESOURCE MODELS #
-###################
-
 class HardwarePreset(BaseModel):
     name = CharField(null=False, index=True, unique=True)
 
@@ -268,3 +268,13 @@ class HardwarePreset(BaseModel):
 
     class Meta:
         database = db
+
+
+class TaskPreset(BaseModel):
+    name = CharField(null=False)
+    task_type = CharField(null=False, index=True)
+    data = CharField(null=False)
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task_id', 'name')

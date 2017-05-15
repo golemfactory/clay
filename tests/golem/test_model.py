@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import Payment, PaymentStatus, ReceivedPayment, LocalRank, GlobalRank, \
-    NeighbourLocRank, NEUTRAL_TRUST, Database
+from golem.model import (Payment, PaymentStatus, ReceivedPayment, LocalRank,
+                         GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
+                         TaskPreset)
 from golem.testutils import DatabaseFixture, TempDirFixture
 
 
@@ -130,3 +131,11 @@ class TestNeighbourRank(DatabaseFixture):
         self.assertGreaterEqual(datetime.now(), r.modified_date)
         self.assertEqual(NEUTRAL_TRUST, r.requesting_trust_value)
         self.assertEqual(NEUTRAL_TRUST, r.computing_trust_value)
+
+
+class TestTaskPreset(DatabaseFixture):
+    def test_default_fields(self):
+        r = TaskPreset.create(name="test_preset", task_id="Task_id", glm_json=
+                              )
+        assert datetime.now() >= r.created_date
+        assert datetime.now() >= r.modified_date

@@ -377,6 +377,13 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             data = jsonpickle.dumps(task_state)
             f.write(data)
 
+    def save_task_preset(self, task_def):
+        logger.error("SAVE TASK PRESET")
+        try:
+            self.client.save_task_preset(jsonpickle.dumps(task_def))
+        except Exception as err:
+            logger.error("EXCEPTION: {}".format(err))
+
     @staticmethod
     def recount_performance(num_cores):
         test_file = os.path.join(get_golem_path(), 'apps', 'core', 'benchmark', 'minilight', 'cornellbox.ml.txt')

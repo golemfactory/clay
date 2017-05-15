@@ -58,8 +58,11 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
-        self.gui.ui.addResourceButton.clicked.connect(self._show_add_resource_dialog)
+        self.gui.ui.addResourceButton.clicked.connect(
+            self._show_add_resource_dialog)
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
+        self.gui.ui.savePresetButton.clicked.connect(
+            self._save_preset_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
@@ -151,6 +154,10 @@ class NewTaskDialogCustomizer(Customizer):
     def _save_task(self, file_path):
         definition = self._query_task_definition()
         self.logic.save_task(definition, file_path)
+
+    def _save_preset_button_clicked(self):
+        definition = self._query_task_definition()
+        self.logic.save_task_preset(definition)
 
     def load_task_definition(self, task_definition):
         if not isinstance(task_definition, TaskDefinition):

@@ -27,7 +27,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import NodeStateSnapshot
-from golem.model import Database, Account
+from golem.model import Database, Account, TaskPreset
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -45,6 +45,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
+from golem.task.taskpreset import save_task_preset
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -725,6 +726,10 @@ class Client(HardwarePresetsMixin):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
+
+    def save_task_preset(self, task_def_data):
+        log.info("Save task preset {}".format(task_def_data))
+        save_task_preset(task_def_data)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
