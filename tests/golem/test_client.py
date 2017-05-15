@@ -604,6 +604,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
 
+    def test_delete_task(self, *_):
+        c = self.client
+        c.remove_task_header = Mock()
+        c.remove_task = Mock()
+        c.task_server = Mock()
+
+        c.delete_task(str(uuid.uuid4()))
+        assert c.remove_task_header.called
+        assert c.remove_task.called
+        assert c.task_server.task_manager.delete_task.called
+
     def test_connection_status(self, *_):
         c = self.client
 
