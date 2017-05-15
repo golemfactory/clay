@@ -515,8 +515,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         from apps.lux.luxenvironment import LuxRenderEnvironment
 
         task_computer = self.client.task_server.task_computer
-        task_computer.run_blender_benchmark.side_effect = lambda cb, eb: cb(True)
-        task_computer.run_lux_benchmark.side_effect = lambda cb, eb: cb(True)
+        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
             wait_for(self.client.run_benchmark(str(uuid.uuid4())))
