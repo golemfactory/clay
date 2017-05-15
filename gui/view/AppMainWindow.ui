@@ -535,6 +535,16 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QPushButton" name="loadPresetButton">
+                    <property name="toolTip">
+                     <string>Load preset</string>
+                    </property>
+                    <property name="text">
+                     <string>Load preset</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QPushButton" name="saveButton">
                     <property name="toolTip">
                      <string>Save this task</string>

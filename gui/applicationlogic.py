@@ -625,6 +625,15 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         cost = yield self.client.get_task_cost(task_id)
         returnValue(cost)
 
+    @inlineCallbacks
+    def load_task_presets(self, task_type):
+        print "LOGIC LOAD PRESET FOR {}".format(task_type)
+        presets = yield self.client.load_task_presets(task_type)
+        returnValue(presets)
+
+    def load_task_preset(self, task_type):
+        return
+
     def set_current_task_type(self, name):
         if name in self.task_types:
             self.current_task_type = self.task_types[name]

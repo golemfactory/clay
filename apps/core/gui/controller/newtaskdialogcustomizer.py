@@ -63,6 +63,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
         self.gui.ui.savePresetButton.clicked.connect(
             self._save_preset_button_clicked)
+        self.gui.ui.loadPresetButton.clicked.connect(
+            self._load_preset_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
@@ -158,6 +160,16 @@ class NewTaskDialogCustomizer(Customizer):
     def _save_preset_button_clicked(self):
         definition = self._query_task_definition()
         self.logic.save_task_preset(definition)
+
+    def _load_preset_button_clicked(self):
+        self.load_presets()
+
+    @inlineCallbacks
+    def load_presets(self):
+        preset = yield self.logic.load_task_presets(
+            self.__get_current_task_type_name())
+        print(preset)
+
 
     def load_task_definition(self, task_definition):
         if not isinstance(task_definition, TaskDefinition):
@@ -420,10 +432,12 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
         self._set_max_price()
 
-    def __get_current_task_type(self):
+    def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
-        task_type = self.gui.ui.taskTypeComboBox.itemText(index)
-        return self.logic.get_task_type(u"{}".format(task_type))
+        return self.gui.ui.taskTypeComboBox.itemText(index)
+
+    def __get_current_task_type(self):
+        return self.logic.get_task_type(self.__get_current_task_type_name())
 
     def __advanced_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()

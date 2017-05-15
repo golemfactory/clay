@@ -277,4 +277,4 @@ class TaskPreset(BaseModel):
 
     class Meta:
         database = db
-        primary_key = CompositeKey('task_id', 'name')
+        primary_key = CompositeKey('task_type', 'name')
