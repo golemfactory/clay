@@ -571,8 +571,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
             if ts.status in task_to_remove_status:
-                self.client.remove_task_header(task_id)
-                self.client.remove_task(task_id)
+                self.client.delete_task(task_id)
         else:
             logger.warning("Unknown task_id {}".format(task_id))
 
