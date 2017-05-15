@@ -6,12 +6,13 @@ import uuid
 from Queue import Queue
 from collections import Iterable
 from copy import copy
+from os import path, makedirs
 from threading import Lock
 
-from os import path, makedirs
 from pydispatch import dispatcher
 from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue, gatherResults, Deferred
+from twisted.internet.defer import inlineCallbacks, returnValue, gatherResults,\
+    Deferred
 
 from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -48,7 +49,8 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
-from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.transactions.ethereum.ethereumtransactionsystem import \
+    EthereumTransactionSystem
 
 log = logging.getLogger("golem.client")
 
@@ -192,7 +194,7 @@ class Client(HardwarePresetsMixin):
         self.publish_task.start(1, True)
 
     def start_network(self):
-        log.info("Gathering network information ...")
+        log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
@@ -212,43 +214,45 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = HyperdriveDaemonManager(self.datadir)
         hyperdrive_ports = self.daemon_manager.start()
 
-        self.resource_server = BaseResourceServer(HyperdriveResourceManager(dir_manager),
-                                                  dir_manager, self.keys_auth, self)
+        resource_manager = HyperdriveResourceManager(dir_manager)
+        self.resource_server = BaseResourceServer(resource_manager, dir_manager,
+                                                  self.keys_auth, self)
 
         def connect((p2p_port, task_port)):
-            log.info('P2P server is listening on port {}'.format(p2p_port))
-            log.info('Task server is listening on port {}'.format(task_port))
+            log.info('P2P server is listening on port %s', p2p_port)
+            log.info('Task server is listening on port %s', task_port)
 
             dispatcher.send(signal='golem.p2p', event='listening',
                             port=[p2p_port, task_port] + list(hyperdrive_ports))
 
-            self.task_server.task_computer.register_listener(ClientTaskComputerEventListener(self))
+            listener = ClientTaskComputerEventListener(self)
+            self.task_server.task_computer.register_listener(listener)
             self.p2pservice.connect_to_network()
 
             if self.monitor:
-                self.diag_service.register(self.p2pservice, self.monitor.on_peer_snapshot)
+                self.diag_service.register(self.p2pservice,
+                                           self.monitor.on_peer_snapshot)
                 self.monitor.on_login()
 
         def terminate(*exceptions):
-            log.error("Golem cannot listen on ports: {}".format(exceptions))
+            log.error("Golem cannot listen on ports: %s", exceptions)
             self.quit()
 
-        task_starting = Deferred()
-        p2p_starting = Deferred()
+        task = Deferred()
+        p2p = Deferred()
 
-        gatherResults([p2p_starting, task_starting],
-                      consumeErrors=True).addCallbacks(connect, terminate)
-
+        gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
+                                                                    terminate)
         log.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.set_metadata_manager(self)
-        self.p2pservice.start_accepting(listening_established=p2p_starting.callback,
-                                        listening_failure=p2p_starting.errback)
+        self.p2pservice.start_accepting(listening_established=p2p.callback,
+                                        listening_failure=p2p.errback)
 
         log.info("Starting task server ...")
-        self.task_server.start_accepting(listening_established=task_starting.callback,
-                                         listening_failure=task_starting.errback)
+        self.task_server.start_accepting(listening_established=task.callback,
+                                         listening_failure=task.errback)
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
