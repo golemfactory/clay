@@ -11,7 +11,7 @@ from threading import Lock
 from os import path, makedirs
 from pydispatch import dispatcher
 from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
 from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
@@ -670,27 +670,27 @@ class Client(HardwarePresetsMixin):
             u'description': unicode(env.short_description)
         } for env in envs]
 
+    @inlineCallbacks
     def run_benchmark(self, env_id):
         # TODO: move benchmarks to environments
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
 
-        queue = Queue()
-
-        def success(performance):
-            queue.put(performance)
-
-        def error(msg):
-            queue.put(msg)
+        deferred = Deferred()
 
         if env_id == BlenderEnvironment.get_id():
-            self.task_server.task_computer.run_blender_benchmark(success, error)
+            self.task_server.task_computer.run_blender_benchmark(
+                deferred.callback, deferred.errback
+            )
         elif env_id == LuxRenderEnvironment.get_id():
-            self.task_server.task_computer.run_lux_benchmark(success, error)
+            self.task_server.task_computer.run_lux_benchmark(
+                deferred.callback, deferred.errback
+            )
         else:
-            queue.put("Unknown environment: {}".format(env_id))
+            raise Exception("Unknown environment: {}".format(env_id))
 
-        return queue.get()
+        result = yield deferred
+        returnValue(result)
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
