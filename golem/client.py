@@ -164,7 +164,7 @@ class Client(HardwarePresetsMixin):
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event != 'unreachable':
             return
-        self.unreachable_flag = kwargs.get('description', u'')
+        self.node.port_status = kwargs.get('description', u'')
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
@@ -861,8 +861,8 @@ class Client(HardwarePresetsMixin):
 
         messages = []
 
-        if hasattr(self, 'unreachable_flag'):
-            statuses = self.unreachable_flag.split('\n')
+        if self.node.port_status:
+            statuses = self.node.port_status.split('\n')
             failures = filter(lambda e: e.find('open') == -1, statuses)
             messages.append(u"Port " + u", ".join(failures) + u".")
 

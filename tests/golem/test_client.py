@@ -607,17 +607,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.p2pservice.cur_port = 0
         self.assertTrue(c.connection_status().startswith(u"Application not listening"))
 
-    def test_unreachable_flag(self, *_):
+    def test_port_status(self, *_):
         from pydispatch import dispatcher
         import random
         random.seed()
 
         port = random.randint(1, 50000)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
-        self.assertTrue(hasattr(self.client, 'unreachable_flag'))
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="no event at all", port=port,
+                        description="port 1234: closed")
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="unreachable", port=port,
+                        description="port 1234: closed")
+        self.assertTrue(self.client.node.port_status)
 
     @staticmethod
     def __new_session():
