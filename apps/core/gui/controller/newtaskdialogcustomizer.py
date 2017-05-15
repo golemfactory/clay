@@ -40,6 +40,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog_customizer = \
             AddResourcesDialogCustomizer(self.add_task_resource_dialog, logic)
 
+        self.presets = dict()
+
     def load_data(self):
         self._set_uid()
         self.gui.ui.advanceNewTaskWidget.hide()
@@ -54,7 +56,8 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_verification_connections()
 
     def _setup_task_type_connections(self):
-        self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(self._task_type_value_changed)
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(
+            self._task_type_value_changed)
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
@@ -159,17 +162,26 @@ class NewTaskDialogCustomizer(Customizer):
 
     def _save_preset_button_clicked(self):
         definition = self._query_task_definition()
-        self.logic.save_task_preset(definition)
+
+        name = u"{}".format(self.gui.ui.presetNameLineEdit.text())
+        if name == "":
+            self.show_error_window("Preset name cannot be empty")
+            return
+        self.logic.save_task_preset(name, definition)
 
     def _load_preset_button_clicked(self):
         self.load_presets()
 
     @inlineCallbacks
     def load_presets(self):
-        preset = yield self.logic.load_task_presets(
+        self.gui.ui.presetComboBox.clear()
+        presets = yield self.logic.load_task_presets(
             self.__get_current_task_type_name())
-        print(preset)
-
+        if not presets:
+            return
+        for preset_name in presets.keys():
+            self.gui.ui.presetComboBox.addItem(preset_name)
+        self.presets = presets
 
     def load_task_definition(self, task_definition):
         if not isinstance(task_definition, TaskDefinition):
@@ -354,6 +366,7 @@ class NewTaskDialogCustomizer(Customizer):
         task = self.logic.get_task_type(task_name)
         self.logic.options = deepcopy(task.options)
         self._update_options("{}".format(name))
+        self.load_presets()
 
     def _get_add_resource_dialog(self):
         return AddTaskResourcesDialog(self.gui.window)

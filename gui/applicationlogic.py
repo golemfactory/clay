@@ -377,12 +377,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             data = jsonpickle.dumps(task_state)
             f.write(data)
 
-    def save_task_preset(self, task_def):
-        logger.error("SAVE TASK PRESET")
+    def save_task_preset(self, task_name, task_def):
         try:
-            self.client.save_task_preset(jsonpickle.dumps(task_def))
-        except Exception as err:
-            logger.error("EXCEPTION: {}".format(err))
+            self.client.save_task_preset(task_name, jsonpickle.dumps(task_def))
+        except Exception:
+            logger.exception("Cannot save task preset")
 
     @staticmethod
     def recount_performance(num_cores):

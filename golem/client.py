@@ -728,9 +728,8 @@ class Client(HardwarePresetsMixin):
             Trust.PAYMENT.decrease(node_id)
 
     @staticmethod
-    def save_task_preset(task_def_data):
-        log.info("Save task preset {}".format(task_def_data))
-        save_task_preset(task_def_data)
+    def save_task_preset(task_name, task_def_data):
+        save_task_preset(task_name, task_def_data)
 
     def load_task_presets(self, task_type):
         log.info("Loading presets for {}".format(task_type))
