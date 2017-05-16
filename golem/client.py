@@ -13,7 +13,8 @@ from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
 
-from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL
+from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL, \
+    PUBLISH_TASKS_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.fileshelper import du
@@ -114,6 +115,7 @@ class Client(HardwarePresetsMixin):
         self.last_nss_time = time.time()
         self.last_net_check_time = time.time()
         self.last_balance_time = time.time()
+        self.last_tasks_time = time.time()
 
         self.last_node_state_snapshot = None
 
@@ -801,6 +803,9 @@ class Client(HardwarePresetsMixin):
         if now - self.last_net_check_time >= self.config_desc.network_check_interval:
             self.last_net_check_time = time.time()
             self._publish(Network.evt_connection, self.connection_status())
+
+        if now - self.last_tasks_time >= PUBLISH_TASKS_INTERVAL:
+            self._publish(Task.evt_task_list, self.get_tasks())
 
         if now - self.last_balance_time >= PUBLISH_BALANCE_INTERVAL:
             try:

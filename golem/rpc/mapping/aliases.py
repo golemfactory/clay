@@ -91,6 +91,7 @@ class Task(object):
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 
+    evt_task_list           = 'evt.comp.task.list'
     evt_task_status         = 'evt.comp.task.status'
     evt_subtask_status      = 'evt.comp.subtask.status'
     evt_task_test_status    = 'evt.comp.task.test.status'
