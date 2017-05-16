@@ -8,15 +8,14 @@ from golem.model import TaskPreset
 logger = logging.getLogger("golem.task")
 
 
-def save_task_preset(preset_name, data):
+def save_task_preset(preset_name, task_type, data):
     try:
-        task_def = jsonpickle.loads(data)
         try:
             TaskPreset.create(name=preset_name,
-                              task_type=task_def.task_type,
+                              task_type=task_type,
                               data=data)
         except IntegrityError:
-            is_same_preset = _is_same_task_preset(task_def.task_type,
+            is_same_preset = _is_same_task_preset(task_type,
                                                   preset_name)
             TaskPreset.update(data=data).where(is_same_preset).execute()
     except Exception:

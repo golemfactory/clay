@@ -377,9 +377,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             data = jsonpickle.dumps(task_state)
             f.write(data)
 
-    def save_task_preset(self, task_name, task_def):
+    def save_task_preset(self, task_name, task_type, data):
         try:
-            self.client.save_task_preset(task_name, jsonpickle.dumps(task_def))
+            print "dump {}".format(data)
+            self.client.save_task_preset(task_name, task_type,
+                                         jsonpickle.dumps(data))
         except Exception:
             logger.exception("Cannot save task preset")
 

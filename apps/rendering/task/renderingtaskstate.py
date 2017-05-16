@@ -40,6 +40,17 @@ class RenderingTaskDefinition(TaskDefinition):
         super(RenderingTaskDefinition, self).add_to_resources()
         self.resources.add(path.normpath(self.main_scene_file))
 
+    def make_preset(self):
+        preset = super(RenderingTaskDefinition, self).make_preset()
+        preset["resolution"] = self.resolution
+        preset["output_format"] = self.output_format
+        return preset
+
+    def load_preset(self, preset):
+        super(RenderingTaskDefinition, self).load_preset(preset)
+        self.resolution = preset["resolution"]
+        self.output_format = preset["output_format"]
+
 
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
     def __init__(self):

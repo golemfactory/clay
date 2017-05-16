@@ -169,13 +169,14 @@ class NewTaskDialogCustomizer(Customizer):
         if name == "":
             self.show_error_window("Preset name cannot be empty")
             return
-        self.logic.save_task_preset(name, definition)
+        self.logic.save_task_preset(name, self.__get_current_task_type_name(),
+                                    definition.make_preset())
 
     def _remove_preset_button_clicked(self):
         try:
             preset_name = self.__get_current_preset_name()
             self.logic.remove_task_preset(self.__get_current_task_type_name(),
-                                      preset_name)
+                                          preset_name)
             self.gui.ui.presetComboBox.removeItem(
                 self.gui.ui.presetComboBox.currentIndex())
             del self.presets[preset_name]
@@ -185,9 +186,11 @@ class NewTaskDialogCustomizer(Customizer):
     def _load_preset_button_clicked(self):
         try:
             preset_name = self.__get_current_preset_name()
-            self.load_task_definition(self.presets[preset_name])
-        except KeyError:
-            logger.error("Cannot load this preset")
+            definition = self._query_task_definition()
+            definition.load_preset(self.presets[preset_name])
+            self.load_task_definition(definition)
+        except (KeyError, TypeError, AttributeError):
+            logger.exception("Cannot load this preset")
 
     @inlineCallbacks
     def load_presets(self):

@@ -102,8 +102,6 @@ class TaskDefinition(object):
         self.verification_options = preset["verification_options"]
 
 
-
-
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
 
