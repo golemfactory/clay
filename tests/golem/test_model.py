@@ -135,7 +135,6 @@ class TestNeighbourRank(DatabaseFixture):
 
 class TestTaskPreset(DatabaseFixture):
     def test_default_fields(self):
-        r = TaskPreset.create(name="test_preset", task_id="Task_id", glm_json=
-                              )
-        assert datetime.now() >= r.created_date
-        assert datetime.now() >= r.modified_date
+        tp = TaskPreset()
+        assert datetime.now() >= tp.created_date
+        assert datetime.now() >= tp.modified_date
