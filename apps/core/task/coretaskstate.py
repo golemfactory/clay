@@ -87,6 +87,23 @@ class TaskDefinition(object):
     def remove_from_resources(self):
         self.options.remove_from_resources(self.resources)
 
+    def make_preset(self):
+        return {
+            "options": self.options,
+            "total_subtasks": self.total_subtasks,
+            "optimize_total": self.optimize_total,
+            "verification_options": self.verification_options
+        }
+
+    def load_preset(self, preset):
+        self.options = preset["options"]
+        self.total_subtasks = preset["total_subtasks"]
+        self.optimize_total = preset["optimize_total"]
+        self.verification_options = preset["verification_options"]
+
+
+
+
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
 
