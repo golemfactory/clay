@@ -571,6 +571,16 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QPushButton" name="deletePresetButton">
+                    <property name="toolTip">
+                     <string>Remove this preset</string>
+                    </property>
+                    <property name="text">
+                     <string>Remove preset</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <widget class="QPushButton" name="saveButton">
                     <property name="toolTip">
                      <string>Save this task</string>

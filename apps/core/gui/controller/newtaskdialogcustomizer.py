@@ -68,6 +68,8 @@ class NewTaskDialogCustomizer(Customizer):
             self._save_preset_button_clicked)
         self.gui.ui.loadPresetButton.clicked.connect(
             self._load_preset_button_clicked)
+        self.gui.ui.deletePresetButton.clicked.connect(
+            self._remove_preset_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
@@ -169,8 +171,23 @@ class NewTaskDialogCustomizer(Customizer):
             return
         self.logic.save_task_preset(name, definition)
 
+    def _remove_preset_button_clicked(self):
+        try:
+            preset_name = self.__get_current_preset_name()
+            self.logic.remove_task_preset(self.__get_current_task_type_name(),
+                                      preset_name)
+            self.gui.ui.presetComboBox.removeItem(
+                self.gui.ui.presetComboBox.currentIndex())
+            del self.presets[preset_name]
+        except KeyError:
+            logger.error("Cannot remove this preset")
+
     def _load_preset_button_clicked(self):
-        self.load_presets()
+        try:
+            preset_name = self.__get_current_preset_name()
+            self.load_task_definition(self.presets[preset_name])
+        except KeyError:
+            logger.error("Cannot load this preset")
 
     @inlineCallbacks
     def load_presets(self):
@@ -448,6 +465,10 @@ class NewTaskDialogCustomizer(Customizer):
     def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
         return self.gui.ui.taskTypeComboBox.itemText(index)
+
+    def __get_current_preset_name(self):
+        index = self.gui.ui.presetComboBox.currentIndex()
+        return self.gui.ui.presetComboBox.itemText(index)
 
     def __get_current_task_type(self):
         return self.logic.get_task_type(self.__get_current_task_type_name())

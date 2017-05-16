@@ -8,15 +8,16 @@ from golem.model import TaskPreset
 logger = logging.getLogger("golem.task")
 
 
-def save_task_preset(task_name, data):
+def save_task_preset(preset_name, data):
     try:
         task_def = jsonpickle.loads(data)
         try:
-            TaskPreset.create(name=task_name,
+            TaskPreset.create(name=preset_name,
                               task_type=task_def.task_type,
                               data=data)
         except IntegrityError:
-            is_same_preset = _is_same_task_preset(task_def.task_type, task_name)
+            is_same_preset = _is_same_task_preset(task_def.task_type,
+                                                  preset_name)
             TaskPreset.update(data=data).where(is_same_preset).execute()
     except Exception:
         logger.exception("Cannot save preset")
@@ -32,11 +33,11 @@ def load_task_presets(task_type):
         except Exception:
             logger.exception("Cannot load task from task_def (removing broken"
                              "preset)")
-            remove_preset(task_preset.task_type, task_preset.name)
+            remove_task_preset(task_preset.task_type, task_preset.name)
     return proper_presets
 
 
-def remove_preset(task_type, name):
+def remove_task_preset(task_type, name):
     try:
         query = TaskPreset.delete().where(_is_same_task_preset(task_type, name))
         query.execute()

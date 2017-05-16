@@ -76,6 +76,7 @@ class Task(object):
     tasks_known_delete      = 'comp.tasks.known.delete'
     tasks_save_preset       = 'comp.tasks.save.preset'
     tasks_load_presets      = 'comp.tasks.load.presets'
+    tasks_remove_preset     = 'comp.tasks.remove.presets'
 
     task                    = 'comp.task'
     task_cost               = 'comp.task.cost'

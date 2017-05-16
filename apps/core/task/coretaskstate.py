@@ -87,7 +87,6 @@ class TaskDefinition(object):
     def remove_from_resources(self):
         self.options.remove_from_resources(self.resources)
 
-
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 
 
