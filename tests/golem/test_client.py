@@ -323,6 +323,7 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = future_time
         c.last_net_check_time = future_time
         c.last_balance_time = future_time
+        c.last_tasks_time = future_time
 
         c._Client__publish_events()
 
@@ -333,12 +334,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert not log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 2
+        assert c._publish.call_count == 3
 
         def raise_exc(*_):
             raise Exception('Test exception')
@@ -350,12 +352,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 1
+        assert c._publish.call_count == 2
 
     def test_activate_hw_preset(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
