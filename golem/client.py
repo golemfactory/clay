@@ -3,12 +3,11 @@ import logging
 import sys
 import time
 import uuid
-from Queue import Queue
 from collections import Iterable
 from copy import copy
+from os import path, makedirs
 from threading import Lock
 
-from os import path, makedirs
 from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue, Deferred
@@ -17,6 +16,7 @@ from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL, \
     PUBLISH_TASKS_INTERVAL
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
+from golem.core.common import to_unicode
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import EllipticalKeysAuth
@@ -49,7 +49,8 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
-from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.transactions.ethereum.ethereumtransactionsystem import \
+    EthereumTransactionSystem
 
 log = logging.getLogger("golem.client")
 
@@ -509,18 +510,18 @@ class Client(HardwarePresetsMixin):
     def get_payments_list(self):
         if self.use_transaction_system():
             payments = self.transaction_system.get_payments_list()
-            return map(self._values_to_str, payments)
+            return map(self._map_payment, payments)
         return ()
 
     def get_incomes_list(self):
         # Will be implemented in incomes_core
         return []
 
-    @staticmethod
-    def _values_to_str(obj):
-        obj["value"] = unicode(obj["value"])
-        if "fee" in obj and obj["fee"] is not None:
-            obj["fee"] = unicode(obj["fee"])
+    @classmethod
+    def _map_payment(cls, obj):
+        obj["payee"] = to_unicode(obj["payee"])
+        obj["value"] = to_unicode(obj["value"])
+        obj["fee"] = to_unicode(obj["fee"])
         return obj
 
     def get_task_cost(self, task_id):

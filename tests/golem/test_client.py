@@ -68,8 +68,10 @@ class TestClient(TestWithDatabase):
         payments = [
             Payment(subtask=uuid.uuid4(),
                     status=PaymentStatus.awaiting,
-                    payee=uuid.uuid4(),
-                    value=2 * 10 ** 18)
+                    payee=str(uuid.uuid4()),
+                    value=2 * 10 ** 18,
+                    created=time.time(),
+                    modified=time.time())
             for _ in xrange(2)
         ]
 
@@ -82,10 +84,14 @@ class TestClient(TestWithDatabase):
         self.assertEqual(len(received_payments), len(payments))
 
         for i in xrange(len(payments)):
-            self.assertEqual(received_payments[i]['subtask'], payments[i].subtask)
-            self.assertEqual(received_payments[i]['status'], payments[i].status.value)
-            self.assertEqual(received_payments[i]['payee'], payments[i].payee)
-            self.assertEqual(received_payments[i]['value'], str(payments[i].value))
+            self.assertEqual(received_payments[i]['subtask'],
+                             payments[i].subtask)
+            self.assertEqual(received_payments[i]['status'],
+                             payments[i].status.value)
+            self.assertEqual(received_payments[i]['payee'],
+                             unicode(payments[i].payee))
+            self.assertEqual(received_payments[i]['value'],
+                             unicode(payments[i].value))
 
     def test_payment_address(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
