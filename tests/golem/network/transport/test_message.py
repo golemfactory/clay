@@ -6,6 +6,7 @@ import time
 import unittest
 import uuid
 
+from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
 from golem.testutils import PEP8MixIn
@@ -106,21 +107,21 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_unicode(self):
         source = unicode("test string")
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is source
 
         source = "\xd0\xd1\xd2\xd3"
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is source
 
         source = "test string"
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert type(result) is unicode
         assert result is not source
         assert result == source
 
         source = None
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is None
 
     def test_timestamp_and_timezones(self):

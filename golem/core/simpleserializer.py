@@ -8,6 +8,7 @@ import cbor2
 import jsonpickle
 import pytz
 
+from golem.core.common import to_unicode
 
 logger = logging.getLogger('golem.core.simpleserializer')
 
@@ -70,10 +71,7 @@ class DictCoder(object):
         if isinstance(obj, dict):
             return cls._to_dict_traverse_dict(obj, typed)
         elif isinstance(obj, basestring):
-            try:
-                return unicode(obj)
-            except UnicodeDecodeError:
-                return obj
+            return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             if isinstance(obj, (set, frozenset)):
                 logger.warning('set/frozenset have known problems with umsgpack: %r', obj)
@@ -97,10 +95,7 @@ class DictCoder(object):
                 return cls.obj_from_dict(obj)
             return cls._from_dict_traverse_dict(obj)
         elif isinstance(obj, basestring):
-            try:
-                return unicode(obj)
-            except UnicodeDecodeError:
-                return obj
+            return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
         return obj

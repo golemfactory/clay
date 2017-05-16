@@ -3,6 +3,7 @@ import logging
 import time
 import warnings
 
+from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
@@ -42,7 +43,7 @@ class Message(object):
         elif hasattr(v, '__dict__'):
             return self._sort_dict(v.__dict__, filter_properties=True)
         elif isinstance(v, basestring):
-            return self._unicode(v)
+            return to_unicode(v)
         elif isinstance(v, collections.Iterable):
             return v.__class__([self._sort_obj(_v) for _v in v])
         return v
@@ -52,17 +53,8 @@ class Message(object):
         for k, v in dictionary.iteritems():
             if filter_properties and (k.startswith('_') or callable(v)):
                 continue
-            result[self._unicode(k)] = self._sort_obj(v)
+            result[to_unicode(k)] = self._sort_obj(v)
         return sorted(result.items())
-
-    @staticmethod
-    def _unicode(value):
-        if value is None:
-            return None
-        try:
-            return unicode(value)
-        except UnicodeDecodeError:
-            return value
 
     def serialize(self):
         """ Return serialized message
