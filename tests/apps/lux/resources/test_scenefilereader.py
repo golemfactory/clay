@@ -51,3 +51,7 @@ class TestScenFileReader(TestCase):
         assert sfr.get_file_format(get_benchmark_scene()) == ".png"
 
         assert sfr.get_file_format("no filename") is None
+
+    def test_get_haltspp(self):
+        assert sfr.get_haltspp(get_benchmark_scene()) == 5
+        assert sfr.get_haltspp("no haltspp") is None
