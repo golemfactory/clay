@@ -12,7 +12,7 @@ from apps.blender.resources.imgcompare import check_size
 class BlenderVerificator(FrameRenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(BlenderVerificator, self).__init__(*args, **kwargs)
-        self.box_size = [8, 8]
+        self.box_size = [1, 1]
         self.compositing = False
         self.output_format = ""
         self.src_code = ""
@@ -25,8 +25,6 @@ class BlenderVerificator(FrameRenderingVerificator):
             box_x = min(verification_options.box_size[0], self.res_x)
             box_y = min(verification_options.box_size[1],
                         int(self.res_y / self.total_tasks))
-            box_x = max(box_x, self.box_size[0])
-            box_y = max(box_y, self.box_size[1])
             self.box_size = (box_x, box_y)
 
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
