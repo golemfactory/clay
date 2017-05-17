@@ -35,10 +35,13 @@ class TestOptions(TestCase):
         opt.remove_from_resources([])
 
 
-class TestTaskDefinition(TestCase, PEP8MixIn):
+class TestCoreTaskStateStyle(TestCase, PEP8MixIn):
     PEP8_FILES = [
         "apps/core/task/coretaskstate.py"
     ]
+
+
+class TestTaskDefinition(TestCase):
 
     def test_preset(self):
         tdf = TaskDefinition()

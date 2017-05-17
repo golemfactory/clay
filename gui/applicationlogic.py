@@ -635,6 +635,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 unpacked_presets[preset_name] = jsonpickle.loads(preset_value)
             except Exception:
                 logger.exception("Cannot unpickle preset")
+                self.client.remove_task_preset(task_type, preset_name)
         returnValue(unpacked_presets)
 
     def remove_task_preset(self, task_type, preset_name):

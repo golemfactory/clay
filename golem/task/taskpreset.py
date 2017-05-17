@@ -24,15 +24,8 @@ def save_task_preset(preset_name, task_type, data):
 
 def load_task_presets(task_type):
     task_presets = TaskPreset.select().where(TaskPreset.task_type == task_type)
-    proper_presets = dict()
-    for task_preset in task_presets:
-        try:
-            jsonpickle.loads(task_preset.data)
-            proper_presets[task_preset.name] = task_preset.data
-        except Exception:
-            logger.exception("Cannot load task from task_def (removing broken"
-                             "preset)")
-            remove_task_preset(task_preset.task_type, task_preset.name)
+    proper_presets = {task_preset.name: task_preset.data
+                      for task_preset in task_presets}
     return proper_presets
 
 
@@ -41,6 +34,7 @@ def remove_task_preset(task_type, name):
         query = TaskPreset.delete().where(_is_same_task_preset(task_type, name))
         query.execute()
     except Exception:
+        print "NO EXCEPTION"
         logger.exception(("Canont remove task preset {}:{}".format(task_type,
                                                                    name)))
 
