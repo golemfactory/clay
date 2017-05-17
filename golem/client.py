@@ -731,11 +731,13 @@ class Client(HardwarePresetsMixin):
     def save_task_preset(preset_name, task_type, data):
         taskpreset.save_task_preset(preset_name, task_type, data)
 
-    def load_task_presets(self, task_type):
+    @staticmethod
+    def load_task_presets(task_type):
         log.info("Loading presets for {}".format(task_type))
         return taskpreset.load_task_presets(task_type)
 
-    def remove_task_preset(self, task_type, preset_name):
+    @staticmethod
+    def remove_task_preset(task_type, preset_name):
         taskpreset.remove_task_preset(task_type, preset_name)
 
     def _publish(self, event_name, *args, **kwargs):
