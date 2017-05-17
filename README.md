@@ -1,6 +1,6 @@
 # Golem
 
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/40ffpq86bl00um02?svg=true)](https://ci.appveyor.com/project/golemfactory/golem)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/ieb6fm74e0f74qm1?svg=true)](https://ci.appveyor.com/project/golemfactory/golem)
 [![CircleCI](https://circleci.com/gh/golemfactory/golem.svg?style=shield)](https://circleci.com/gh/golemfactory/golem)
 [![Codecov](https://codecov.io/gh/golemfactory/golem/badge.svg)](https://codecov.io/gh/golemfactory/golem)
 

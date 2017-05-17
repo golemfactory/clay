@@ -1,4 +1,5 @@
-# This template is rendered by apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
+# This template is rendered by
+# apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
 # written to tempfile and passed as arg to blender.
 import bpy
 
@@ -11,11 +12,35 @@ class EngineWarning(bpy.types.Operator):
                                " not supported by Golem")
         return {"FINISHED"}
 
+class ShowInformation(bpy.types.Operator):
+    bl_idname = "wm.scene_information"
+    bl_label = "Inform user about scene settings"
+
+
+    def execute(self, context):
+        self.report({"INFO"}, "Resolution: " +
+                              str(bpy.context.scene.render.resolution_x) +
+                               " x " +
+                               str(bpy.context.scene.render.resolution_y))
+        self.report({"INFO"}, "File format: " +
+                               str(bpy.context.scene.render.file_extension))
+        self.report({"INFO"}, "Filepath: " +
+                              str(bpy.context.scene.render.filepath))
+        self.report({"INFO"}, "Frames: " +
+                              str(bpy.context.scene.frame_start) + "-" +
+                              str(bpy.context.scene.frame_end) + ";" +
+                              str(bpy.context.scene.frame_step))
+
+        return {"FINISHED"}
+
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
 if engine not in ("BLENDER_RENDER", "CYCLES"):
     bpy.ops.wm.engine_warning()
+
+bpy.utils.register_class(ShowInformation)
+bpy.ops.wm.scene_information()
 
 
 for scene in bpy.data.scenes:

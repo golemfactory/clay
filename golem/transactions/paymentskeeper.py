@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime
 
+from golem.core.common import datetime_to_timestamp
 from golem.model import Payment
 
 logger = logging.getLogger(__name__)
@@ -78,14 +79,15 @@ class PaymentsKeeper(object):
 
     def get_list_of_all_payments(self):
         # This data is used by UI.
-        # TODO: Update the UI to reflect Payment changes.
-        # FIXME: Do not prepare data for UI. UI should do it itself.
-        return [{"subtask": payment.subtask,
-                 "payee": payment.payee,
-                 "value": payment.value,
-                 "status": payment.status.value,
-                 "fee": payment.details.get('fee')} for
-                payment in self.db.get_newest_payment()]
+        return [{
+            "subtask": payment.subtask,
+            "payee": payment.payee,
+            "value": payment.value,
+            "status": payment.status.value,
+            "fee": payment.details.get('fee'),
+            "created": datetime_to_timestamp(payment.created_date),
+            "modified": datetime_to_timestamp(payment.modified_date)
+        } for payment in self.db.get_newest_payment()]
 
     def finished_subtasks(self, payment_info):
         """ Add new information about finished subtask

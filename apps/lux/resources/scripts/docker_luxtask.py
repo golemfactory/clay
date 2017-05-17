@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from multiprocessing import cpu_count
 import os
 import shutil
 import subprocess
@@ -42,7 +43,9 @@ def find_flm(directory):
         return None
 
 
-def format_lux_renderer_cmd(start_task, output_basename, output_format, scene_file, num_cores):
+def format_lux_renderer_cmd(start_task, output_basename, output_format,
+                            scene_file):
+    num_cores = cpu_count()
     flm_file = find_flm(WORK_DIR)
     if flm_file is not None:
         cmd = [
@@ -55,7 +58,8 @@ def format_lux_renderer_cmd(start_task, output_basename, output_format, scene_fi
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-o", "{}/{}{}.{}".format(OUTPUT_DIR, output_basename, start_task, output_format),
+            "-o", "{}/{}{}.{}".format(OUTPUT_DIR, output_basename, start_task,
+                                      output_format),
             "-t", "{}".format(num_cores)
         ]
     print(cmd, file=sys.stderr)
@@ -67,8 +71,8 @@ def exec_cmd(cmd):
     return pc.wait()
 
 
-def run_lux_renderer_task(start_task, outfilebasename, output_format, scene_file_src,
-                          scene_dir, num_cores):
+def run_lux_renderer_task(start_task, outfilebasename, output_format,
+                          scene_file_src, scene_dir):
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=WORK_DIR,
                                      delete=False) as tmp_scene_file:
@@ -83,16 +87,18 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format, scene_file
 
     flm_file = find_flm(RESOURCES_DIR)
     if flm_file:
-        symlink_or_copy(flm_file, os.path.join(WORK_DIR, os.path.basename(flm_file)))
+        symlink_or_copy(flm_file, os.path.join(WORK_DIR,
+                                               os.path.basename(flm_file)))
 
     cmd = format_lux_renderer_cmd(start_task, outfilebasename, output_format,
-                                  tmp_scene_file.name, num_cores)
+                                  tmp_scene_file.name)
 
     exit_code = exec_cmd(cmd)
     if exit_code is not 0:
         sys.exit(exit_code)
     else:
-        outfile = "{}/{}{}.{}".format(OUTPUT_DIR, outfilebasename, start_task, output_format)
+        outfile = "{}/{}{}.{}".format(OUTPUT_DIR, outfilebasename, start_task,
+                                      output_format)
         if not os.path.isfile(outfile):
             flm_file = find_flm(WORK_DIR)
             print(flm_file, file=sys.stdout)
@@ -104,7 +110,8 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format, scene_file
                 shutil.copy(img, outfile)
 
 
-run_lux_renderer_task(params.start_task, params.outfilebasename, params.output_format,
-                      params.scene_file_src, params.scene_dir, params.num_threads)
+run_lux_renderer_task(params.start_task, params.outfilebasename,
+                      params.output_format, params.scene_file_src,
+                      params.scene_dir)
 
 

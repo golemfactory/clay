@@ -9,7 +9,7 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField)
+                    DateTimeField, TextField, CompositeKey, BooleanField, SmallIntegerField)
 
 
 log = logging.getLogger('golem.db')
@@ -26,7 +26,7 @@ db = SqliteDatabase(None, threadlocals=True,
 
 class Database:
     # Database user schema version, bump to recreate the database
-    SCHEMA_VERSION = 4
+    SCHEMA_VERSION = 5
 
     def __init__(self, datadir):
         # TODO: Global database is bad idea. Check peewee for other solutions.
@@ -46,7 +46,7 @@ class Database:
     @staticmethod
     def create_database():
         tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment, ReceivedPayment, KnownHosts, Account,
-                  Stats]
+                  Stats, HardwarePreset]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
@@ -237,6 +237,34 @@ class Account(BaseModel):
 class Stats(BaseModel):
     name = CharField()
     value = CharField()
+
+    class Meta:
+        database = db
+
+
+###################
+# RESOURCE MODELS #
+###################
+
+class HardwarePreset(BaseModel):
+    name = CharField(null=False, index=True, unique=True)
+
+    cpu_cores = SmallIntegerField(null=False)
+    memory = IntegerField(null=False)
+    disk = IntegerField(null=False)
+
+    def to_dict(self):
+        return {
+            u'name': unicode(self.name),
+            u'cpu_cores': self.cpu_cores,
+            u'memory': self.memory,
+            u'disk': self.disk
+        }
+
+    def apply(self, dictionary):
+        self.cpu_cores = dictionary['cpu_cores']
+        self.memory = dictionary['memory']
+        self.disk = dictionary['disk']
 
     class Meta:
         database = db

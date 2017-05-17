@@ -316,8 +316,8 @@ class CoreTask(Task):
 
         return filtered_task_results
 
-    def after_test(self, results, tmp_dir, time_spent):
-        return dict()
+    def after_test(self, results, tmp_dir):
+        return {}
 
     def notify_update_task(self):
         for l in self.listeners:

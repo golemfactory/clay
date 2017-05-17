@@ -25,7 +25,7 @@ dependencies:
     - /usr/local/bin/ipfs config --json Addresses.Swarm '["/ip6/::/tcp/4001", "/ip6/::/udp/4002/utp", "/ip4/0.0.0.0/udp/4002/utp"]'
     - /usr/local/bin/ipfs daemon:
         background: true
-    - node golem-hyperdrive/src/main.js:
+    - node golem-hyperdrive/src/index.js:
         background: true
 
 test:

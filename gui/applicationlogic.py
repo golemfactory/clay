@@ -21,7 +21,7 @@ from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskTestStatus
 from golem.task.taskstate import TaskStatus
 
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
@@ -453,6 +453,16 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.progress_dialog_customizer.show_message("Testing...")
         self.progress_dialog_customizer.enable_abort_button(success)
 
+    def test_task_status(self, status, *args, **kwargs):
+        if status == TaskTestStatus.started:
+            self.test_task_started(*args, **kwargs)
+        elif status == TaskTestStatus.success:
+            self.test_task_computation_success(*args, **kwargs)
+        elif status == TaskTestStatus.error:
+            self.test_task_computation_error(*args, **kwargs)
+        else:
+            logger.error('Invalid task status received: {}'.format(status))
+
     def abort_test_task(self):
         self.client.abort_test_task()
 
@@ -519,25 +529,32 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def disable_environment(self, env_id):
         self.client.disable_environment(env_id)
 
-    def test_task_computation_success(self, results, est_mem, time_spent, estm_time=None,
-                                      msg=None):
-        self.progress_dialog.stop_progress_bar() # stop progress bar and set it's value to 100
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
-        self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
+    def test_task_computation_success(self, results, est_mem, time_spent,
+                                      after_test_data):
+        # stop progress bar and set it's value to 100
+        self.progress_dialog.stop_progress_bar()
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
 
-        if msg is not None:
+        self.progress_dialog_customizer.enable_close(True)
+        # disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)
+
+        if after_test_data.get("warnings") is not None:
             self.progress_dialog.close()
-            self.customizer.show_warning_window(u"{}".format(msg))
+            self.customizer.show_warning_window(u"{}".format(
+                after_test_data["warnings"]
+            ))
         else:
-            msg = u"Task tested successfully - time %s" % human_friendly_time(time_spent)
-            if estm_time:
-                msg += "\nSuggested task timeout: %s." % human_friendly_time(estm_time)
+            msg = u"Task tested successfully - time %s" % human_friendly_time(
+                time_spent)
             self.progress_dialog_customizer.show_message(msg)
 
-        self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
+        # enable everything on 'new task' tab
+        self.customizer.gui.setEnabled('new_task', True)
         if self.customizer.new_task_dialog_customizer:
-            self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
+            self.customizer.new_task_dialog_customizer\
+                .test_task_computation_finished(True, est_mem)
 
     def test_task_computation_error(self, error):
         self.progress_dialog.stop_progress_bar()
@@ -569,8 +586,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             self.tasks[task_id].task_state = ts
             self.customizer.update_tasks(self.tasks)
             if ts.status in task_to_remove_status:
-                self.client.remove_task_header(task_id)
-                self.client.remove_task(task_id)
+                self.client.delete_task(task_id)
         else:
             logger.warning("Unknown task_id {}".format(task_id))
 
@@ -596,7 +612,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         :return:
         """
         max_price = yield self.client.get_setting('max_price')
-        returnValue(max_price)
+        returnValue(int(max_price))
 
     @inlineCallbacks
     def get_cost_for_task_id(self, task_id):

@@ -172,8 +172,6 @@ class LuxTask(RenderingTask):
                                         write_interval, [0, 1, 0, 1], self.output_format)
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
-        num_threads = max(num_cores, 1)
-
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
@@ -182,7 +180,6 @@ class LuxTask(RenderingTask):
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
-                      "num_threads": num_threads
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -215,14 +212,13 @@ class LuxTask(RenderingTask):
             "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
-            "num_threads": 1
         }
 
         hash = "{}".format(random.getrandbits(128))
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
-    def after_test(self, results, tmp_dir, time_spent):
+    def after_test(self, results, tmp_dir):
         NO_ADV_VER_MSG = "Advance verification will be impossible: "
         COULDNT_COPY_MSG = "Couldn't rename and copy .flm file."
         COULDNT_FING_MSG = "Couldn't find flm file."
@@ -234,7 +230,9 @@ class LuxTask(RenderingTask):
             try:
                 shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
-                return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_COPY_MSG + "{}".format(err)
+
+                return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_COPY_MSG
+                return_data["warnings"] += "{}".format(err)
                 logger.warning(return_data["warnings"])
         else:
             return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
@@ -254,8 +252,7 @@ class LuxTask(RenderingTask):
                       "outfilebasename": self.outfilebasename,
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
-                      "scene_dir": scene_dir,
-                      "num_threads": 4}
+                      "scene_dir": scene_dir}
 
         return self._new_compute_task_def("FINALTASK", extra_data, scene_dir, 0)
 
