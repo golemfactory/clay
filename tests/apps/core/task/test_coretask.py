@@ -77,7 +77,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
         
-        self.assertEqual(task.after_test(None, None), None)
+        self.assertEqual(task.after_test(None, None), {})
 
         assert len(task.listeners) == 0
 

@@ -2,18 +2,13 @@ import logging
 
 import ipaddress
 
+from golem.core.common import to_unicode
 from golem.network.ipfs.client import IPFSCommands, IPFSClientHandler, IPFSAddress
 
 __all__ = ['IPFSDaemonManager']
 logger = logging.getLogger(__name__)
 
 MAX_IPFS_ADDRESSES_PER_NODE = 8
-
-
-def to_unicode(source):
-    if not isinstance(source, unicode):
-        return unicode(source)
-    return source
 
 
 class IPFSDaemonManager(IPFSClientHandler):

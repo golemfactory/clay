@@ -12,6 +12,7 @@ from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
+import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
@@ -407,47 +408,20 @@ class BlenderRenderTask(FrameRenderingTask):
         return get_min_max_y(start_task, parts, self.res_y)
 
     def after_test(self, results, tmp_dir):
-        ret = []
+        return_data = dict()
         if not results or not results.get("data"):
-            return
+            return return_data
 
         for filename in results["data"]:
             if not has_ext(filename, ".log"):
                 continue
 
             with open(filename, "r") as f:
-                warnings = self.__find_missing_files_warnings(f.read())
-                for w in warnings:
-                    w = u"    {}\n".format(w)
-                    if len(ret) == 0:
-                        ret.append(u"Additional data is missing:\n")
+                log_content = f.read()
 
-                    if w not in ret:
-                        ret.append(w)
-                if warnings:
-                    ret.append(u"\nMake sure you added all required files to resources.")
-                f.seek(0)
-                warning = self.__find_wrong_renderer_warning(f.read())
-                if warning:
-                    ret.append(u"\n{}\n".format(warning))
+            log_analyser.make_log_analyses(log_content, return_data)
 
-        if len(ret) > 0:
-            return "".join(ret)
-
-    def __find_missing_files_warnings(self, log_content):
-        warnings = []
-        for l in log_content.splitlines():
-            if l.lower().startswith("warning: path ") and l.lower().endswith(" not found"):
-                # extract filename from warning message
-                warnings.append(os.path.basename(l[14:-11]))
-        return warnings
-
-    def __find_wrong_renderer_warning(self, log_content):
-        text = "error: engine"
-        for l in log_content.splitlines():
-            if l.lower().startswith(text):
-                return l[len(text):]
-        return ""
+        return return_data
 
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)

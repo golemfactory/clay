@@ -68,8 +68,10 @@ class TestClient(TestWithDatabase):
         payments = [
             Payment(subtask=uuid.uuid4(),
                     status=PaymentStatus.awaiting,
-                    payee=uuid.uuid4(),
-                    value=2 * 10 ** 18)
+                    payee=str(uuid.uuid4()),
+                    value=2 * 10 ** 18,
+                    created=time.time(),
+                    modified=time.time())
             for _ in xrange(2)
         ]
 
@@ -82,10 +84,14 @@ class TestClient(TestWithDatabase):
         self.assertEqual(len(received_payments), len(payments))
 
         for i in xrange(len(payments)):
-            self.assertEqual(received_payments[i]['subtask'], payments[i].subtask)
-            self.assertEqual(received_payments[i]['status'], payments[i].status.value)
-            self.assertEqual(received_payments[i]['payee'], payments[i].payee)
-            self.assertEqual(received_payments[i]['value'], str(payments[i].value))
+            self.assertEqual(received_payments[i]['subtask'],
+                             payments[i].subtask)
+            self.assertEqual(received_payments[i]['status'],
+                             payments[i].status.value)
+            self.assertEqual(received_payments[i]['payee'],
+                             unicode(payments[i].payee))
+            self.assertEqual(received_payments[i]['value'],
+                             unicode(payments[i].value))
 
     def test_payment_address(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
@@ -323,6 +329,7 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = future_time
         c.last_net_check_time = future_time
         c.last_balance_time = future_time
+        c.last_tasks_time = future_time
 
         c._Client__publish_events()
 
@@ -333,12 +340,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert not log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 2
+        assert c._publish.call_count == 3
 
         def raise_exc(*_):
             raise Exception('Test exception')
@@ -350,12 +358,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 1
+        assert c._publish.call_count == 2
 
     def test_activate_hw_preset(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -510,6 +519,30 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         balance = wait_for(c.get_balance())
         assert balance == (None, None, None)
 
+    def test_run_benchmark(self, *_):
+        from apps.blender.blenderenvironment import BlenderEnvironment
+        from apps.lux.luxenvironment import LuxRenderEnvironment
+
+        task_computer = self.client.task_server.task_computer
+        task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
+
+        with self.assertRaises(Exception):
+            wait_for(self.client.run_benchmark(str(uuid.uuid4())))
+
+        wait_for(self.client.run_benchmark(BlenderEnvironment.get_id()))
+
+        assert task_computer.run_blender_benchmark.called
+        assert not task_computer.run_lux_benchmark.called
+
+        task_computer.run_blender_benchmark.called = False
+        task_computer.run_lux_benchmark.called = False
+
+        wait_for(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+
+        assert not task_computer.run_blender_benchmark.called
+        assert task_computer.run_lux_benchmark.called
+
     def test_config_changed(self, *_):
         c = self.client
 
@@ -579,6 +612,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)
+
+    def test_delete_task(self, *_):
+        c = self.client
+        c.remove_task_header = Mock()
+        c.remove_task = Mock()
+        c.task_server = Mock()
+
+        c.delete_task(str(uuid.uuid4()))
+        assert c.remove_task_header.called
+        assert c.remove_task.called
+        assert c.task_server.task_manager.delete_task.called
 
     def test_connection_status(self, *_):
         c = self.client

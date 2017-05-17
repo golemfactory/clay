@@ -17,7 +17,7 @@ from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
-from golem.task.taskstate import TaskStatus, TaskTestStatus
+from golem.task.taskstate import TaskStatus, TaskTestStatus, TaskState
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -28,7 +28,7 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import Gui
-from gui.applicationlogic import GuiApplicationLogic, logger
+from gui.applicationlogic import GuiApplicationLogic, logger, task_to_remove_status
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -56,6 +56,7 @@ class TTask(Task):
         self.test_finished = True
         self.results = results
         self.tmp_dir = tmp_dir
+        return {}
 
     def get_output_names(self):
         return ["output1", "output2", "output3"]
@@ -263,10 +264,57 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
 
         logic.config_changed()
 
+    def test_task_status_changed(self):
+        task_state = TaskState()
+        task_dict = DictSerializer.dump(task_state)
+
+        logic = GuiApplicationLogic()
+        logic.tasks = dict(
+            task_id=task_state,
+            wrong_task=None
+        )
+
+        def get_logic_task(task_id):
+            deferred = Deferred()
+            task = logic.tasks.get(task_id)
+            deferred.callback(DictSerializer.dump(task))
+            return deferred
+
+        logic.client = Mock()
+        logic.client.query_task_state = Mock()
+        logic.client.query_task_state.side_effect = get_logic_task
+
+        logic.customizer = Mock()
+
+        logic.task_status_changed('wrong_task')
+        assert not logic.customizer.update_tasks.called
+        assert logic.client.query_task_state.called
+
+        logic.client.query_task_state.called = False
+        logic.customizer.current_task_highlighted.definition.task_id = str(uuid.uuid4())
+        logic.task_status_changed(str(uuid.uuid4()))
+        assert not logic.client.query_task_state.called
+        assert not logic.customizer.update_task_additional_info.called
+
+        logic.customizer.current_task_highlighted.definition.task_id = 'task_id'
+        logic.task_status_changed(str(uuid.uuid4()))
+        assert not logic.client.query_task_state.called
+        assert not logic.customizer.update_task_additional_info.called
+
+        logic.task_status_changed('task_id')
+        assert logic.client.query_task_state.called
+        assert logic.customizer.update_task_additional_info.called
+        assert not logic.client.delete_task.called
+
+        task_state.status = task_to_remove_status[0]
+        logic.task_status_changed('task_id')
+        assert logic.client.query_task_state.called
+        assert logic.customizer.update_task_additional_info.called
+        assert logic.client.delete_task.called
+
     @ci_skip
     def test_get_environments(self):
         from apps.appsmanager import AppsManager
-        from golem.environments.environment import Environment
 
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
@@ -281,7 +329,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         environments = wait_for(logic.get_environments())
 
         assert len(environments) > 0
-        assert [isinstance(env, Environment) for env in environments]
+        assert all([bool(env) for env in environments])
+        assert all([isinstance(env, dict) for env in environments])
 
     @staticmethod
     def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
@@ -421,7 +470,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
-        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: Bździągwa")
+        logic.customizer.show_error_window.assert_called_with(
+            u"Main program file does not exist: Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
@@ -429,36 +479,47 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
-        logic.customizer.show_error_window.assert_called_with(u"Cannot open output file: /x/y/Bździągwa")
+        logic.customizer.show_error_window.assert_called_with(
+            u"Cannot open output file: /x/y/Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
-        broken_benchmark.task_definition.output_file = os.path.join(self.path, str(uuid.uuid4()))
+        output_file = os.path.join(self.path, str(uuid.uuid4()))
+        broken_benchmark.task_definition.output_file = output_file
         logic.run_benchmark(broken_benchmark, m, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
-        logic.customizer.show_error_window.assert_called_with(u"Main scene file NOT EXISTING is not properly set")
+        logic.customizer.show_error_window.assert_called_with(
+            u"Main scene file NOT EXISTING is not properly set")
 
         logic.test_task_computation_error(u"Bździągwa")
-        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. Bździągwa"
+        text = logic.progress_dialog_customizer.gui.ui.message.text()
+        assert text == u"Task test computation failure. Bździągwa"
         logic.test_task_computation_error(u"500 server error")
-        logic.progress_dialog_customizer.gui.ui.message.text(), \
-            u"Task test computation failure. [500 server error] There is a chance that you RAM limit is too low. " \
+        text = logic.progress_dialog_customizer.gui.ui.message.text()
+        assert text == u"Task test computation failure. [500 server error] " \
+            u"There is a chance that you RAM limit is too low. " \
             u"Consider increasing max memory usage"
         logic.test_task_computation_error(None)
-        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task test computation failure. "
-        logic.test_task_computation_success([], 10000, 1021)
-        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
-        logic.test_task_computation_success([], 10000, 1021, msg="Warning message")
-        logic.progress_dialog_customizer.gui.ui.message.text(), u"Task task computation success!"
-        logic.customizer.show_warning_window.assert_called_with("Warning message")
+        text = logic.progress_dialog_customizer.gui.ui.message.text()
+        assert text == u"Task test computation failure. "
+        logic.test_task_computation_success([], 10000, 1021, {})
+        text = logic.progress_dialog_customizer.gui.ui.message.text()
+        assert text.startswith(u"Task tested successfully")
+        logic.test_task_computation_success([], 10000, 1021,
+                                            {"warnings": "Warning message"})
+        text = logic.progress_dialog_customizer.gui.ui.message.text()
+        assert text.startswith(u"Task tested successfully")
+        logic.customizer.show_warning_window.assert_called_with(
+            "Warning message")
 
         rts.definition = BlenderBenchmark().task_definition
         rts.definition.output_file = 1342
         self.assertFalse(logic._validate_task_state(rts))
 
-        self.assertEqual(logic._format_stats_message(("STAT1", 2424)), u"Session: STAT1; All time: 2424")
+        self.assertEqual(logic._format_stats_message(("STAT1", 2424)),
+                         u"Session: STAT1; All time: 2424")
         self.assertEqual(logic._format_stats_message(["STAT1"]), u"Error")
         self.assertEqual(logic._format_stats_message(13131), u"Error")
 
@@ -466,7 +527,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         ts.definition.task_type = "Blender"
         ts.definition.main_program_file = "nonexisting"
         self.assertFalse(logic._validate_task_state(ts))
-        logic.customizer.show_error_window.assert_called_with(u"Main program file does not exist: nonexisting")
+        logic.customizer.show_error_window.assert_called_with(
+            u"Main program file does not exist: nonexisting")
 
         with self.assertLogs(logger, level="WARNING"):
             logic.set_current_task_type("unknown task")

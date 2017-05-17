@@ -200,8 +200,6 @@ class LuxTask(renderingtask.RenderingTask):
         )
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
-        num_threads = max(num_cores, 1)
-
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "end_task": end_task,
@@ -210,7 +208,6 @@ class LuxTask(renderingtask.RenderingTask):
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
                       "scene_dir": scene_dir,
-                      "num_threads": num_threads
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -252,7 +249,6 @@ class LuxTask(renderingtask.RenderingTask):
             "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
-            "num_threads": 1
         }
 
         hash = "{}".format(random.getrandbits(128))
@@ -260,20 +256,24 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
+        NO_ADV_VER_MSG = "Advance verification will be impossible: "
+        COULDNT_COPY_MSG = "Couldn't rename and copy .flm file."
+        COULDNT_FING_MSG = "Couldn't find flm file."
         # Search for flm - the result of testing a lux task
         # It's needed for verification of received results
+        return_data = dict()
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is not None:
             try:
                 shutil.copy(flm, self.__get_test_flm())
             except (OSError, IOError) as err:
-                logger.warning(
-                    "Couldn't rename and copy .flm file. %s",
-                    err
-                )
+                return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_COPY_MSG
+                return_data["warnings"] += "{}".format(err)
+                logger.warning(return_data["warnings"])
         else:
-            logger.warning("Couldn't find flm file.")
-        return None
+            return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
+            logger.warning(return_data["warnings"])
+        return return_data
 
     def query_extra_data_for_merge(self):
 
@@ -296,8 +296,7 @@ class LuxTask(renderingtask.RenderingTask):
                       "outfilebasename": self.outfilebasename,
                       "output_format": self.output_format,
                       "scene_file_src": scene_src,
-                      "scene_dir": scene_dir,
-                      "num_threads": 4}
+                      "scene_dir": scene_dir}
 
         return self._new_compute_task_def(
             "FINALTASK",

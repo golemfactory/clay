@@ -595,15 +595,29 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         if node_key_id is None:
             neighbours = self.peers.values()
+
+            def _mapper(peer):
+                return {
+                    'address': peer.address,
+                    'port': peer.listen_port,
+                    'node_name': peer.node_name,
+                    'node': peer.node_info,
+                }
+
         else:
             neighbours = self.peer_keeper.neighbours(node_key_id)
+
+            def _mapper(peer):
+                return {
+                    "address": peer.prv_addr,
+                    "port": peer.prv_port,
+                    "id": peer.key,
+                    "node": peer,
+                    "node_name": peer.node_name,
+                }
         peer_infos = []
         for peer in neighbours:
-            peer_infos.append({"address": peer.prv_addr,
-                               "port": peer.prv_port,
-                               "id": peer.key,
-                               "node": peer,
-                               "node_name": peer.node_name})
+            peer_infos.append(_mapper(peer))
         return peer_infos
 
     # Resource functions

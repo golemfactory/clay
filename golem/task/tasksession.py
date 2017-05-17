@@ -455,20 +455,11 @@ class TaskSession(MiddlemanSafeSession):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        trust = self.task_server.get_computing_trust(self.key_id)
-        logger.debug("Computing trust level: {}".format(trust))
-        if trust >= self.task_server.config_desc.computing_trust:
+        if self.task_server.should_accept_provider(self.key_id):
             ctd, wrong_task, wait = self.task_manager.get_next_subtask(
-                self.key_id,
-                msg.node_name,
-                msg.task_id,
-                msg.perf_index,
-                msg.price,
-                msg.max_resource_size,
-                msg.max_memory_size,
-                msg.num_cores,
-                self.address
-            )
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                msg.num_cores, self.address)
         else:
             ctd, wrong_task, wait = None, False, False
 
