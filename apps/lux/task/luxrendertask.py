@@ -201,7 +201,14 @@ class LuxTask(RenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(self.scene_file_src, self.res_x, self.res_y, 1, 0, 1, [0, 1, 0, 1], self.output_format)
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=0,
+                                        haltspp=1,
+                                        writeinterval=3,
+                                        crop=[0, 1, 0, 1],
+                                        output_format=self.output_format)
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
         extra_data = {
