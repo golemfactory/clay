@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+from multiprocessing import cpu_count
 import os
 import sys
 import subprocess
@@ -25,6 +26,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-P", "{}".format(script_file),
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
         "-F", "{}".format(output_format.upper()),
+        "-t", "{}".format(cpu_count()),
         "-f", "{}".format(frame)
     ]
     return cmd

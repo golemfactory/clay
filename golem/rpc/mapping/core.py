@@ -9,6 +9,14 @@ CORE_METHOD_MAP = dict(
     get_description=        Environment.opt_description,
     change_description=     Environment.opt_description_update,
 
+    get_hw_caps=            Environment.hardware_caps,
+    get_hw_presets=         Environment.presets,
+    get_hw_preset=          Environment.preset,
+    create_hw_preset=       Environment.preset_create,
+    update_hw_preset=       Environment.preset_update,
+    remove_hw_preset=       Environment.preset_delete,
+    activate_hw_preset=     Environment.preset_activate,
+
     use_ranking=            Environment.use_ranking,
     use_transaction_system= Environment.use_transaction_system,
 
@@ -18,6 +26,7 @@ CORE_METHOD_MAP = dict(
 
     get_node=               Network.ident,
     get_node_key=           Network.ident_key,
+    get_node_name=          Network.ident_name,
     get_known_peers=        Network.peers_known,
     get_connected_peers=    Network.peers_connected,
 
@@ -58,7 +67,6 @@ CORE_METHOD_MAP = dict(
 
     get_status=             Computation.status,
     get_environments=       Computation.environments,
-    get_environments_perf=  Computation.environments_perf,
     enable_environment=     Computation.enable_environment,
     disable_environment=    Computation.disable_environment,
     run_benchmark=          Computation.benchmark_environment,

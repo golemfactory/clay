@@ -36,7 +36,7 @@ class EnvironmentsConfig(object):
     @classmethod
     def load_config(cls, environments, datadir):
         cfg_file = path.join(datadir, CONFIG_FILENAME)
-        cfg = SimpleConfig(CommonConfig(), NodeConfig(environments),
+        cfg = SimpleConfig(NodeConfig(environments),
                            cfg_file, refresh=False)
 
         return EnvironmentsConfig(cfg, cfg_file)
@@ -50,8 +50,7 @@ class EnvironmentsConfig(object):
 
     def change_config(self):
         return EnvironmentsConfig(
-            SimpleConfig(self._cfg.get_common_config(),
-                         self._cfg.get_node_config(),
+            SimpleConfig(self._cfg.get_node_config(),
                          self.cfg_file, refresh=True),
             self.cfg_file
         )

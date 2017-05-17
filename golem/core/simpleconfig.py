@@ -85,15 +85,13 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, common_config, node_config, cfg_file, refresh=False, keep_old=True):
+    def __init__(self, node_config, cfg_file, refresh=False, keep_old=True):
         """ Read existing configuration or create new one if it doesn't exist or refresh option is set to True.
-        :param common_config: configuration that is common for all nodes
         :param node_config: node specific configuration
         :param str cfg_file: configuration file name
         :param bool refresh: *Default: False*  if set to True, than configuration for given node should be written
         even if it already exists.
         """
-        self._common_config = common_config
         self._node_config = node_config
 
         logger_msg = "Reading config from file {}".format(cfg_file)
@@ -103,7 +101,7 @@ class SimpleConfig(object):
             cfg = ConfigParser.ConfigParser()
             files = cfg.read(cfg_file)
 
-            if len(files) == 1 and self._common_config.section() in cfg.sections():
+            if files:
                 if self._node_config.section() in cfg.sections():
                     if refresh:
                         cfg.remove_section(self._node_config.section())
@@ -130,19 +128,13 @@ class SimpleConfig(object):
             logger.info("Failed to write configuration file. Creating fresh config.")
             self.__write_config(self.__create_fresh_config(), cfg_file)
 
-    def get_common_config(self):
-        """ Return common configuration (common for all nodes) """
-        return self._common_config
-
     def get_node_config(self):
         """ Return node specific configuration """
         return self._node_config
 
     def __create_fresh_config(self):
         cfg = ConfigParser.ConfigParser()
-        cfg.add_section(self.get_common_config().section())
         cfg.add_section(self.get_node_config().section())
-
         return cfg
 
     def __write_config(self, cfg, cfg_file):
@@ -167,21 +159,17 @@ class SimpleConfig(object):
         return cfg.set(property_.section(), property_.key(), property_.value())
 
     def __read_options(self, cfg):
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+        for prop in self.get_node_config().properties():
             try:
                 prop.set_value_from_str(self.__read_option(cfg, prop))
             except ConfigParser.NoOptionError:
                 logger.info("Adding new config option: {} ({})".format(prop.key(), prop.value()))
 
     def __write_options(self, cfg):
-
-        for prop in self.get_common_config().properties() + self.get_node_config().properties():
+        for prop in self.get_node_config().properties():
             self.__write_option(cfg, prop)
 
     def __remove_old_options(self, cfg):
-        for opt in cfg.options('Common'):
-            if opt not in [p.key() for p in self.get_common_config().properties()]:
-                cfg.remove_option('Common', opt)
         for opt in cfg.options('Node'):
             if opt not in [p.key() for p in self.get_node_config().properties()]:
                 cfg.remove_option('Node', opt)

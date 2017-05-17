@@ -1,12 +1,11 @@
+import logging.config
+import os
+import sys
 from calendar import timegm
 from datetime import datetime
-import errno
-import os
-from os import path
-from pathlib import Path
+
 import pytz
-import sys
-import logging.config
+from pathlib import Path
 
 
 def is_windows():
@@ -33,6 +32,15 @@ def is_linux():
     return sys.platform.startswith('linux')
 
 
+def to_unicode(value):
+    if value is None:
+        return None
+    try:
+        return unicode(value)
+    except UnicodeDecodeError:
+        return value
+
+
 def get_golem_path():
     """
     Return path to main golem directory
@@ -56,7 +64,7 @@ def nt_path_to_posix_path(path):
 
 def get_timestamp_utc():
     now = datetime.now(pytz.utc)
-    return timegm(now.utctimetuple()) + now.microsecond / 1000000.0
+    return datetime_to_timestamp(now)
 
 
 def timeout_to_deadline(timeout):
@@ -69,6 +77,10 @@ def deadline_to_timeout(timestamp):
 
 def timestamp_to_datetime(ts):
     return datetime.fromtimestamp(ts, pytz.utc)
+
+
+def datetime_to_timestamp(then):
+    return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
 
 
 class HandleError(object):

@@ -3,17 +3,12 @@ import time
 
 from golem.core.crypto import ECIESDecryptionError
 from golem.network.transport import message
-from golem.network.transport.message import MessagePing, MessagePong, MessageGetPeers,\
-    MessagePeers, MessageGetTasks, MessageTasks, MessageRemoveTask, MessageGetResourcePeers, MessageResourcePeers, \
-    MessageDegree, MessageGossip, MessageStopGossip, MessageLocRank, MessageFindNode, MessageRandVal, \
-    MessageWantToStartTaskSession, MessageSetTaskSession, MessageNatHole, MessageNatTraverseFailure, \
-    MessageInformAboutNatTraverseFailure, MessageChallengeSolution
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
 logger = logging.getLogger(__name__)
 
-P2P_PROTOCOL_ID = 12
+P2P_PROTOCOL_ID = 13
 
 
 class PeerSessionInfo(object):
@@ -65,7 +60,7 @@ class PeerSession(BasicSafeSession):
         self.challenge = None
         self.difficulty = 0
 
-        self.can_be_unverified.extend([message.MessageHello.TYPE, MessageRandVal.TYPE, MessageChallengeSolution.TYPE])
+        self.can_be_unverified.extend([message.MessageHello.TYPE, message.MessageRandVal.TYPE, message.MessageChallengeSolution.TYPE])
         self.can_be_unsigned.extend([message.MessageHello.TYPE])
         self.can_be_not_encrypted.extend([message.MessageHello.TYPE])
 
@@ -163,37 +158,37 @@ class PeerSession(BasicSafeSession):
 
     def send_get_peers(self):
         """  Send get peers message """
-        self.send(MessageGetPeers())
+        self.send(message.MessageGetPeers())
 
     def send_get_tasks(self):
         """  Send get tasks message """
-        self.send(MessageGetTasks())
+        self.send(message.MessageGetTasks())
 
     def send_remove_task(self, task_id):
         """  Send remove task  message
          :param str task_id: task to be removed
         """
-        self.send(MessageRemoveTask(task_id))
+        self.send(message.MessageRemoveTask(task_id=task_id))
 
     def send_get_resource_peers(self):
         """ Send get resource peers message """
-        self.send(MessageGetResourcePeers())
+        self.send(message.MessageGetResourcePeers())
 
     def send_degree(self, degree):
         """ Send degree message
          :param int degree: degree of this node
         """
-        self.send(MessageDegree(degree))
+        self.send(message.MessageDegree(degree=degree))
 
     def send_gossip(self, gossip):
         """ Send message with gossip
          :param list gossip: gossip to be send
         """
-        self.send(MessageGossip(gossip))
+        self.send(message.MessageGossip(gossip))
 
     def send_stop_gossip(self):
         """ Send stop gossip message """
-        self.send(MessageStopGossip())
+        self.send(message.MessageStopGossip())
 
     def send_loc_rank(self, node_id, loc_rank):
         """ Send local opinion about given node
@@ -201,12 +196,12 @@ class PeerSession(BasicSafeSession):
         :param LocalRank loc_rank: opinion bout node
         :return:
         """
-        self.send(MessageLocRank(node_id, loc_rank))
+        self.send(message.MessageLocRank(node_id=node_id, loc_rank=loc_rank))
 
     def send_find_node(self, key_num):
         """ Send find node message
         :param long key_num: key of a node to be find """
-        self.send(MessageFindNode(key_num))
+        self.send(message.MessageFindNode(node_key_id=key_num))
 
     def send_want_to_start_task_session(self, node_info, conn_id, super_node_info):
         """ Send request for starting task session with given node
@@ -214,7 +209,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
-        self.send(MessageWantToStartTaskSession(node_info, conn_id, super_node_info))
+        self.send(message.MessageWantToStartTaskSession(node_info=node_info, conn_id=conn_id, super_node_info=super_node_info))
 
     def send_set_task_session(self, key_id, node_info, conn_id, super_node_info):
         """ Send information that node from node_info want to start task session with key_id node
@@ -223,7 +218,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :param Node|None super_node_info: information about known supernode
         """
-        self.send(MessageSetTaskSession(key_id, node_info, conn_id, super_node_info))
+        self.send(message.MessageSetTaskSession(key_id=key_id, node_info=node_info, conn_id=conn_id, super_node_info=super_node_info))
 
     def send_task_nat_hole(self, key_id, address, port, conn_id):
         """
@@ -233,7 +228,7 @@ class PeerSession(BasicSafeSession):
         :param int port: port of the nat hole
         :param uuid conn_id: connection id for reference
         """
-        self.send(MessageNatHole(key_id, address, port, conn_id))
+        self.send(message.MessageNatHole(key_id=key_id, address=address, port=port, conn_id=conn_id))
 
     def send_inform_about_nat_traverse_failure(self, key_id, conn_id):
         """
@@ -241,7 +236,7 @@ class PeerSession(BasicSafeSession):
         :param key_id: key of the node that should be inform about failure
         :param uuid conn_id: connection id for reference
         """
-        self.send(MessageInformAboutNatTraverseFailure(key_id, conn_id))
+        self.send(message.MessageInformAboutNatTraverseFailure(key_id=key_id, conn_id=conn_id))
 
     def send_nat_traverse_failure(self, conn_id):
         """
@@ -249,7 +244,7 @@ class PeerSession(BasicSafeSession):
         :param uuid conn_id: connection id for reference
         :return:
         """
-        self.send(MessageNatTraverseFailure(conn_id))
+        self.send(message.MessageNatTraverseFailure(conn_id=conn_id))
 
     def _react_to_ping(self, msg):
         self._send_pong()
@@ -290,8 +285,7 @@ class PeerSession(BasicSafeSession):
             logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
-            nodes_info = self.p2p_service.find_node(self.p2p_service.get_key_id())
-            self.send(MessagePeers(nodes_info))
+            self._send_peers(node_key_id=self.p2p_service.get_key_id())
             self.disconnect(PeerSession.DCRTooManyPeers)
 
             self.p2p_service.try_to_add_peer({"address": self.address,
@@ -318,17 +312,17 @@ class PeerSession(BasicSafeSession):
             if solve_challenge:
                 self._solve_challenge(challenge, difficulty)
             else:
-                self.send(MessageRandVal(msg.rand_val), send_unverified=True)
+                self.send(message.MessageRandVal(rand_val=msg.rand_val), send_unverified=True)
             self.__send_hello()
 
         # print "Add peer to client uid:{} address:{} port:{}".format(self.node_name, self.address, self.port)
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(self.key_id, challenge, difficulty)
-        self.send(MessageChallengeSolution(solution), send_unverified=True)
+        self.send(message.MessageChallengeSolution(solution=solution), send_unverified=True)
 
     def _react_to_get_peers(self, msg):
-        self.__send_peers()
+        self._send_peers()
 
     def _react_to_peers(self, msg):
         peers_info = msg.peers_array
@@ -338,7 +332,7 @@ class PeerSession(BasicSafeSession):
 
     def _react_to_get_tasks(self, msg):
         tasks = self.p2p_service.get_tasks_headers()
-        self.__send_tasks(tasks)
+        self.send(message.MessageTasks(tasks))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks_array:
@@ -349,7 +343,8 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.remove_task_header(msg.task_id)
 
     def _react_to_get_resource_peers(self, msg):
-        self.__send_resource_peers()
+        resource_peers = self.p2p_service.get_resource_peers()
+        self.send(message.MessageResourcePeers(resource_peers=resource_peers))
 
     def _react_to_resource_peers(self, msg):
         self.p2p_service.set_resource_peers(msg.resource_peers)
@@ -367,8 +362,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.safe_neighbour_loc_rank(self.key_id, msg.node_id, msg.loc_rank)
 
     def _react_to_find_node(self, msg):
-        nodes_info = self.p2p_service.find_node(msg.node_key_id)
-        self.send(MessagePeers(nodes_info))
+        self._send_peers(node_key_id=msg.node_key_id)
 
     def _react_to_rand_val(self, msg):
         # if self.solve_challenge:
@@ -408,7 +402,7 @@ class PeerSession(BasicSafeSession):
         super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
-        self.send(MessagePong())
+        self.send(message.MessagePong())
 
     def __send_hello(self):
         self.solve_challenge = self.key_id and self.p2p_service.should_solve_challenge or False
@@ -430,25 +424,11 @@ class PeerSession(BasicSafeSession):
         self.send(msg, send_unverified=True)
 
     def __send_ping(self):
-        self.send(MessagePing())
+        self.send(message.MessagePing())
 
-    def __send_peers(self):
-        peers_info = []
-        for p in self.p2p_service.peers.values():
-            peers_info.append({
-                "address": p.address,
-                "port": p.listen_port,
-                "node_name": p.node_name,
-                "node": p.node_info
-            })
-        self.send(MessagePeers(peers_info))
-
-    def __send_tasks(self, tasks):
-        self.send(MessageTasks(tasks))
-
-    def __send_resource_peers(self):
-        resource_peers = self.p2p_service.get_resource_peers()
-        self.send(MessageResourcePeers(resource_peers))
+    def _send_peers(self, node_key_id=None):
+        nodes_info = self.p2p_service.find_node(node_key_id=node_key_id)
+        self.send(message.MessagePeers(nodes_info))
 
     def __set_verified_conn(self):
         self.verified = True
@@ -463,34 +443,34 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            MessagePing.TYPE: self._react_to_ping,
-            MessagePong.TYPE: self._react_to_pong,
+            message.MessagePing.TYPE: self._react_to_ping,
+            message.MessagePong.TYPE: self._react_to_pong,
             message.MessageHello.TYPE: self._react_to_hello,
-            MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
-            MessageGetPeers.TYPE: self._react_to_get_peers,
-            MessagePeers.TYPE: self._react_to_peers,
-            MessageGetTasks.TYPE: self._react_to_get_tasks,
-            MessageTasks.TYPE: self._react_to_tasks,
-            MessageRemoveTask.TYPE: self._react_to_remove_task,
-            MessageFindNode.TYPE: self._react_to_find_node,
-            MessageRandVal.TYPE: self._react_to_rand_val,
-            MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
-            MessageSetTaskSession.TYPE: self._react_to_set_task_session,
-            MessageNatHole.TYPE: self._react_to_nat_hole,
-            MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
-            MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure
+            message.MessageChallengeSolution.TYPE: self._react_to_challenge_solution,
+            message.MessageGetPeers.TYPE: self._react_to_get_peers,
+            message.MessagePeers.TYPE: self._react_to_peers,
+            message.MessageGetTasks.TYPE: self._react_to_get_tasks,
+            message.MessageTasks.TYPE: self._react_to_tasks,
+            message.MessageRemoveTask.TYPE: self._react_to_remove_task,
+            message.MessageFindNode.TYPE: self._react_to_find_node,
+            message.MessageRandVal.TYPE: self._react_to_rand_val,
+            message.MessageWantToStartTaskSession.TYPE: self._react_to_want_to_start_task_session,
+            message.MessageSetTaskSession.TYPE: self._react_to_set_task_session,
+            message.MessageNatHole.TYPE: self._react_to_nat_hole,
+            message.MessageNatTraverseFailure.TYPE: self._react_to_nat_traverse_failure,
+            message.MessageInformAboutNatTraverseFailure.TYPE: self._react_to_inform_about_nat_traverse_failure
         })
 
     def __set_resource_msg_interpretations(self):
         self._interpretation.update({
-            MessageGetResourcePeers.TYPE: self._react_to_get_resource_peers,
-            MessageResourcePeers.TYPE: self._react_to_resource_peers,
+            message.MessageGetResourcePeers.TYPE: self._react_to_get_resource_peers,
+            message.MessageResourcePeers.TYPE: self._react_to_resource_peers,
         })
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            MessageDegree.TYPE: self._react_to_degree,
-            MessageGossip.TYPE: self._react_to_gossip,
-            MessageLocRank.TYPE: self._react_to_loc_rank,
-            MessageStopGossip.TYPE: self._react_to_stop_gossip,
+            message.MessageDegree.TYPE: self._react_to_degree,
+            message.MessageGossip.TYPE: self._react_to_gossip,
+            message.MessageLocRank.TYPE: self._react_to_loc_rank,
+            message.MessageStopGossip.TYPE: self._react_to_stop_gossip,
         })

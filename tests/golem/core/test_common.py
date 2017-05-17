@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 
 import os
+import unittest
 from unittest import TestCase
 
 from mock import patch, ANY
 
-from golem.core.common import HandleKeyError, HandleAttributeError, config_logging
+from golem.core.common import HandleKeyError, HandleAttributeError, \
+    config_logging, get_timestamp_utc, timestamp_to_datetime, \
+    datetime_to_timestamp, timeout_to_deadline, deadline_to_timeout
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 
@@ -56,3 +59,18 @@ class TestConfigLogging(TempDirFixture, PEP8MixIn):
             config_logging(suffix, datadir=datadir)
             m_dconfig.assert_called_once_with(ANY)
         self.assertTrue(os.path.exists(logsdir))
+
+
+class TestTimestamps(unittest.TestCase):
+
+    def test_datetime_to_timestamp(self):
+        ts = get_timestamp_utc()
+        assert ts
+        dt = timestamp_to_datetime(ts)
+        assert datetime_to_timestamp(dt) == ts
+
+    def test_deadline_to_timeout(self):
+        timeout = 10**10
+        ts = timeout_to_deadline(timeout)
+        new_timeout = deadline_to_timeout(ts)
+        assert 0 < new_timeout <= timeout

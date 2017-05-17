@@ -49,27 +49,27 @@ class SubtaskState(object):
 
 
 class TaskStatus(object):
-    notStarted = "Not started"
-    sending = "Sending"
-    waiting = "Waiting"
-    starting = "Starting"
-    computing = "Computing"
-    finished = "Finished"
-    aborted = "Aborted"
-    timeout = "Timeout"
-    paused = "Paused"
+    notStarted = u"Not started"
+    sending = u"Sending"
+    waiting = u"Waiting"
+    starting = u"Starting"
+    computing = u"Computing"
+    finished = u"Finished"
+    aborted = u"Aborted"
+    timeout = u"Timeout"
+    paused = u"Paused"
 
 
 class SubtaskStatus(object):
-    waiting = "Waiting"
-    starting = "Starting"
-    resent = "Failed - Resent"
-    finished = "Finished"
-    failure = "Failure"
-    restarted = "Restart"
+    waiting = u"Waiting"
+    starting = u"Starting"
+    resent = u"Failed - Resent"
+    finished = u"Finished"
+    failure = u"Failure"
+    restarted = u"Restart"
 
 
 class TaskTestStatus(object):
-    started = 'Started'
-    success = 'Success'
-    error = 'Error'
+    started = u'Started'
+    success = u'Success'
+    error = u'Error'

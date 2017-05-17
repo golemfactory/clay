@@ -5,6 +5,14 @@ class Environment(object):
     opt                     = 'env.opt'
     opt_update              = 'env.opt.update'
 
+    hardware_caps           = 'env.hw.caps'
+    presets                 = 'env.hw.presets'
+    preset                  = 'env.hw.preset'
+    preset_create           = 'env.hw.preset.create'
+    preset_activate         = 'env.hw.preset.activate'
+    preset_update           = 'env.hw.preset.update'
+    preset_delete           = 'env.hw.preset.delete'
+
     # FIXME: description is saved in DB, not config file
     opt_description         = 'env.opt.description'
     opt_description_update  = 'env.opt.description.update'
@@ -28,6 +36,7 @@ class Network(object):
 
     ident                   = 'net.ident'
     ident_key               = 'net.ident.key'
+    ident_name              = 'net.ident.name'
     status                  = 'net.status'
 
     peers_known             = 'net.peers.known'
@@ -82,6 +91,7 @@ class Task(object):
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 
+    evt_task_list           = 'evt.comp.task.list'
     evt_task_status         = 'evt.comp.task.status'
     evt_subtask_status      = 'evt.comp.subtask.status'
     evt_task_test_status    = 'evt.comp.task.test.status'
@@ -102,7 +112,6 @@ class Computation(object):
 
     status                  = 'comp.status'
     environments            = 'comp.environments'
-    environments_perf       = 'comp.environments.perf'
     enable_environment      = 'comp.environment.enable'
     disable_environment     = 'comp.environment.disable'
     benchmark_environment   = 'comp.environment.benchmark'
@@ -122,6 +131,7 @@ class Payments(object):
     incomes                 = 'pay.incomes'
     income                  = 'pay.income'
 
+    evt_balance             = 'evt.pay.balance'
     evt_payment             = 'evt.pay.payment'
     evt_income              = 'evt.pay.income'
 

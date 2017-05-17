@@ -72,6 +72,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_suggested_conn_reverse.return_value = False
+        ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
         n2 = Node()
@@ -556,6 +557,42 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd.estimated_lux_performance = 2000.0
         ccd.estimated_blender_performance = 2000.0
         return ccd
+
+    def test_should_accept_provider(self):
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+        self.client.get_computing_trust = Mock(return_value=0.4)
+        ts.config_desc.computing_trust = 0.2
+        assert ts.should_accept_provider("ABC")
+        ts.config_desc.computing_trust = 0.4
+        assert ts.should_accept_provider("ABC")
+        ts.config_desc.computing_trust = 0.5
+        assert not ts.should_accept_provider("ABC")
+
+        ts.config_desc.computing_trust = 0.2
+        assert ts.should_accept_provider("ABC")
+
+        ts.deny_set.add("ABC")
+        assert not ts.should_accept_provider("ABC")
+
+    def test_should_accept_requestor(self):
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+        self.client.get_requesting_trust = Mock(return_value=0.4)
+        ts.config_desc.rquesting_trust = 0.2
+        assert ts.should_accept_requestor("ABC")
+        ts.config_desc.requesting_trust = 0.4
+        assert ts.should_accept_requestor("ABC")
+        ts.config_desc.requesting_trust = 0.5
+        assert not ts.should_accept_requestor("ABC")
+
+        ts.config_desc.requesting_trust = 0.2
+        assert ts.should_accept_requestor("ABC")
+
+        ts.deny_set.add("ABC")
+        assert not ts.should_accept_requestor("ABC")
 
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):

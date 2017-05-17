@@ -79,14 +79,14 @@ class TestEnvironments(unittest.TestCase):
             {
                 'id': 'env 2',
                 'supported': False,
-                'active': False,
+                'accepted': False,
                 'performance': 2000,
                 'description': 'description 2'
             },
             {
                 'id': 'env 1',
                 'supported': True,
-                'active': True,
+                'accepted': True,
                 'performance': 1000,
                 'description': 'description 1'
             },
@@ -95,7 +95,7 @@ class TestEnvironments(unittest.TestCase):
         client = Mock()
         client.__getattribute__ = assert_client_method
         client.run_benchmark = lambda x: x
-        client.get_environments_perf.return_value = environments
+        client.get_environments.return_value = environments
 
         cls.client = client
 
@@ -127,7 +127,7 @@ class TestEnvironments(unittest.TestCase):
             assert result_2.data
             assert result_1.data != result_2.data
 
-            self.client.get_environments_perf.return_value = None
+            self.client.get_environments.return_value = None
 
             result_3 = Environments().show(sort=None)
             result_4 = Environments().show(sort='name')
@@ -395,6 +395,7 @@ class TestTasks(TempDirFixture):
         client = Mock()
         client.__getattribute__ = assert_client_method
 
+        client.get_datadir.return_value = self.path
         client.get_dir_manager.return_value = DirManager(self.path)
         client.get_node_name.return_value = 'test_node'
 
