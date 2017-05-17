@@ -18,6 +18,7 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
+from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
@@ -236,6 +237,8 @@ class LuxTask(RenderingTask):
         else:
             return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
             logger.warning(return_data["warnings"])
+
+        make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 
     def query_extra_data_for_merge(self):
