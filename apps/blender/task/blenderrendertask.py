@@ -410,7 +410,7 @@ class BlenderRenderTask(FrameRenderingTask):
             parts = self.total_tasks
         return get_min_max_y(start_task, parts, self.res_y)
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         return_data = dict()
         if not results or not results.get("data"):
             return return_data

@@ -40,7 +40,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.task.header.node_name = self.node
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
-        self.task.after_test = lambda res, tmp_dir: {}
+        self.task.after_test = lambda res, tmp_dir, time_spent: {}
 
         self.task.query_extra_data_for_test_task = Mock()
 
@@ -72,7 +72,8 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.task.header.task_id = self.task_name
         self.task.root_path = self.path
 
-        self.task.after_test = lambda res, tmp_dir: {"warnings": "bla ble"}
+        self.task.after_test = lambda res, tmp_dir, time_spent: \
+            {"warnings": "bla ble"}
 
         self.task.query_extra_data_for_test_task = Mock()
 

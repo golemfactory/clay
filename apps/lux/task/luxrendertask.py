@@ -218,7 +218,7 @@ class LuxTask(RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         NO_ADV_VER_MSG = "Advance verification will be impossible: "
         COULDNT_COPY_MSG = "Couldn't rename and copy .flm file."
         COULDNT_FING_MSG = "Couldn't find flm file."

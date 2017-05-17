@@ -169,8 +169,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.initialize(dm)
 
     def test_after_test(self):
-        self.assertEqual(self.bt.after_test({}, None), {})
-        self.assertEqual(self.bt.after_test({"notData": []}, None), {})
+        self.assertEqual(self.bt.after_test({}, None, 10), {})
+        self.assertEqual(self.bt.after_test({"notData": []}, None, 10), {})
         
         outlog = self.temp_file_name("out.log")
         errlog = self.temp_file_name("err.log")
@@ -183,7 +183,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         fd_err.close()
 
         results = {"data": {notalog, outlog, errlog}}
-        after_test_data = self.bt.after_test(results, None)
+        after_test_data = self.bt.after_test(results, None, 10)
         
         self.assertEqual(after_test_data, {})
 
@@ -200,7 +200,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                          "not found\nexample/to/file4.png")
 
         results = {"data": {notalog, outlog, errlog}}
-        after_test_data = self.bt.after_test(results, None)
+        after_test_data = self.bt.after_test(results, None, 10)
         warnings = after_test_data["warnings"]
 
         self.assertTrue("f1.png" in warnings)
@@ -215,7 +215,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         with open(errlog, 'w') as fd_err:
             fd_err.write("Error: But not important at all")
 
-        after_test_data = self.bt.after_test(results, None)
+        after_test_data = self.bt.after_test(results, None, 10)
         warnings = after_test_data["warnings"]
         self.assertTrue("COMPLETELY UNKNOWN ENGINE" in warnings)
 

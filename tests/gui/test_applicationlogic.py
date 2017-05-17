@@ -52,7 +52,7 @@ class TTask(Task):
         ctd.short_description = ""
         return ctd
 
-    def after_test(self, results, tmp_dir):
+    def after_test(self, results, tmp_dir, time_spent):
         self.test_finished = True
         self.results = results
         self.tmp_dir = tmp_dir

@@ -82,13 +82,13 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def __after_test_errors(self, luxtask):
         with self.assertLogs(logger, level="WARNING"):
-            luxtask.after_test({}, self.path)
+            luxtask.after_test({}, self.path, 20)
         open(os.path.join(self.path, "sth.flm"), 'w').close()
-        luxtask.after_test({}, self.path)
+        luxtask.after_test({}, self.path, 20)
         prev_tmp_dir = luxtask.tmp_dir
         luxtask.tmp_dir = "/dev/null/:errors?"
         with self.assertLogs(logger, level="WARNING"):
-            luxtask.after_test({}, self.path)
+            luxtask.after_test({}, self.path, 20)
         luxtask.tmp_dir = prev_tmp_dir
         assert os.path.isfile(os.path.join(luxtask.tmp_dir, "test_result.flm"))
 

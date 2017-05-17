@@ -32,7 +32,7 @@ class TaskTester(LocalComputer):
     def computation_success(self, task_thread):
         time_spent = self._get_time_spent()
         res, est_mem = task_thread.result
-        after_test_data = self.task.after_test(res, self.tmp_dir)
+        after_test_data = self.task.after_test(res, self.tmp_dir, time_spent)
         self.success_callback(res, est_mem, time_spent,
                               after_test_data=after_test_data)
 
