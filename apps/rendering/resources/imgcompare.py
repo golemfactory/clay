@@ -22,19 +22,17 @@ def calculate_psnr(mse, max_=255):
     return 20 * math.log10(max_) - 10 * math.log10(mse)
 
 
-def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
+def calculate_mse(img1, img2):
     mse = 0
     if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
         raise TypeError("img1 and img2 must be ImgRepr")
 
-    if box is None:
-        (res_x, res_y) = img1.get_size()
-    else:
-        (res_x, res_y) = box
+    (res_x, res_y) = img1.get_size()
+
     for i in range(0, res_x):
         for j in range(0, res_y):
-            [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
-            [r2, g2, b2] = img2.get_pixel((start2[0] + i, start2[1] + j))
+            [r1, g1, b1] = img1.get_pixel((i, j))
+            [r2, g2, b2] = img2.get_pixel((i, j))
             mse += (r1 - r2) * (r1 - r2) + \
                    (g1 - g2) * (g1 - g2) + \
                    (b1 - b2) * (b1 - b2)
@@ -45,9 +43,8 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
     return mse
 
 
-def compare_imgs(img1, img2, max_col=255, start1=(0, 0),
-                 start2=(0, 0), box=None):
-    mse = calculate_mse(img1, img2, start1, start2, box)
+def compare_imgs(img1, img2, max_col=255):
+    mse = calculate_mse(img1, img2)
     logger.debug("MSE = {}".format(mse))
     if mse == 0:
         return True
@@ -99,16 +96,27 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
             return box[0] > res_x or box[1] > res_y
 
         if _box_too_small(box_size) or _box_too_big(box_size):
-            logger.error("Wrong box size for advanced verification " \
+            logger.error("Wrong box size for advanced verification "
                          "{}".format(box_size))
+            return
+
+        if box_size != img.get_size():
+            img = crop_to_imgrepr(img, start_box, box_size)
+        if box_size != cmp_img.get_size():
+            cmp_img = crop_to_imgrepr(cmp_img, cmp_start_box, box_size)
 
         if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
-            return compare_imgs(img, cmp_img, start1=start_box,
-                                start2=cmp_start_box, box=box_size)
+            return compare_imgs(img, cmp_img)
         else:
-            return compare_imgs(img, cmp_img, max_col=1, start1=start_box,
-                                start2=cmp_start_box, box=box_size)
+            return compare_imgs(img, cmp_img, max_col=1)
     except Exception:
         logger.exception("Cannot verify images {} and {}".format(file_,
                                                                  compare_file))
         return False
+
+
+def crop_to_imgrepr(img_repr, start_box, box_size):
+    cropped_img = img_repr.crop(start_box, box_size)
+    img_repr = PILImgRepr()
+    img_repr.img = cropped_img
+    return img_repr

@@ -8,17 +8,22 @@ from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  compare_imgs,
                                                  compare_pil_imgs,
                                                  calculate_mse,
-                                                 calculate_psnr, logger)
+                                                 calculate_psnr, logger,
+                                                 crop_to_imgrepr)
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
-from golem.testutils import TempDirFixture
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
 
 
-class TestCompareImgFunctions(TempDirFixture, LogTestCase):
+class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        "apps/rendering/resources/imgcompare.py"
+    ]
+
     def test_check_size(self):
         file1 = self.temp_file_name('img.png')
         for y in [10, 11]:
@@ -127,27 +132,16 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
 
         assert calculate_mse(img1, img2) == 0
 
-        # Wrong box values
-        with self.assertRaises(Exception):
-            calculate_mse(img1, img2, box="Not box")
-
-        with self.assertRaises(ValueError):
-            calculate_mse(img1, img2, box=(0, 1))
-
-        with self.assertRaises(ValueError):
-            calculate_mse(img1, img2, box=(1, 0))
-
-        with self.assertRaises(ValueError):
-            calculate_mse(img1, img2, box=(0, 0))
-
         # Img2 too small
         img2 = get_pil_img_repr(img2_path, (5, 5))
         with self.assertRaises(Exception):
             calculate_mse(img1, img2)
 
-        # Proper execution with smaller img2
-        assert calculate_mse(img1, img2, box=(5, 5)) == 0
-        assert calculate_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
+        img1_crop = crop_to_imgrepr(img1, (0, 0), (5, 5))
+        img2_crop = crop_to_imgrepr(img2, (0, 0), (5, 5))
+        assert calculate_mse(img1_crop, img2_crop) == 0
+        img1_crop = crop_to_imgrepr(img1, (5, 5), (5, 5))
+        assert calculate_mse(img1_crop, img2_crop) == 0
 
         img2 = get_pil_img_repr(img2_path, (10, 10), (253, 0, 0))
         assert calculate_mse(img1, img2) == 1
@@ -156,7 +150,9 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         img2.set_pixel((0, 0), (0, 0, 0))
         assert calculate_mse(img1, img2) == 216
 
-        assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
+        img1_crop = crop_to_imgrepr(img1, (0, 0), (7, 7))
+        img2_crop = crop_to_imgrepr(img2, (2, 2), (7, 7))
+        assert calculate_mse(img1_crop, img2_crop) == 0
 
     def test_compare_imgs(self):
         img1_path = self.temp_file_name("img1.png")
@@ -166,13 +162,9 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         img2 = get_pil_img_repr(img2_path)
 
         assert compare_imgs(img1, img2)
-        assert compare_imgs(img1, img2, start1=(4, 4), box=(5, 5))
 
-        with self.assertRaises(Exception):
-            compare_imgs(img1, img2, box=(0, 0))
-
-        with self.assertRaises(Exception):
-            compare_imgs(img1, img2, start2=(3, 3))
+        img3 = crop_to_imgrepr(img1, (4, 4), (5, 5))
+        assert compare_imgs(img3, img2)
 
         exr_img1 = get_exr_img_repr()
         exr_img2 = get_exr_img_repr(alt=True)
