@@ -15,7 +15,7 @@ class TestSubtaskContextMenuCustomizer(TestCase):
         mock_action.return_value.setEnabled.assert_called_with(False)
         SubtaskContextMenuCustomizer(Mock(), Mock(), "xxyyzz", SubtaskStatus.starting)
         mock_action.return_value.setEnabled.assert_called_with(True)
-        SubtaskContextMenuCustomizer(Mock(), Mock(), "xxyyzz", SubtaskStatus.waiting)
+        SubtaskContextMenuCustomizer(Mock(), Mock(), "xxyyzz", SubtaskStatus.downloading)
         mock_action.return_value.setEnabled.assert_called_with(False)
         SubtaskContextMenuCustomizer(Mock(), Mock(), "xxyyzz", SubtaskStatus.failure)
         mock_action.return_value.setEnabled.assert_called_with(False)

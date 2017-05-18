@@ -305,9 +305,12 @@ class TaskManager(TaskEventListener):
     def computed_task_received(self, subtask_id, result, result_type):
         task_id = self.subtask2task_mapping[subtask_id]
 
-        subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
-        if subtask_status != SubtaskStatus.starting:
-            logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_status = subtask_state.subtask_status
+
+        if not SubtaskStatus.is_computed(subtask_status):
+            logger.warning("Result for subtask {} when subtask state is {}"
+                           .format(subtask_id, subtask_status))
             self.notice_task_updated(task_id)
             return False
 
@@ -341,9 +344,13 @@ class TaskManager(TaskEventListener):
     @handle_subtask_key_error
     def task_computation_failure(self, subtask_id, err):
         task_id = self.subtask2task_mapping[subtask_id]
-        subtask_status = self.tasks_states[task_id].subtask_states[subtask_id].subtask_status
-        if subtask_status != SubtaskStatus.starting:
-            logger.warning("Result for subtask {} when subtask state is {}".format(subtask_id, subtask_status))
+
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_status = subtask_state.subtask_status
+
+        if not SubtaskStatus.is_computed(subtask_status):
+            logger.warning("Result for subtask {} when subtask state is {}"
+                           .format(subtask_id, subtask_status))
             self.notice_task_updated(task_id)
             return False
 
@@ -364,7 +371,12 @@ class TaskManager(TaskEventListener):
             task_id = self.subtask2task_mapping[subtask_id]
             if task_id in self.tasks:
                 task = self.tasks[task_id]
+                states = self.tasks_states[task_id].subtask_states[subtask_id]
+
                 task.result_incoming(subtask_id)
+                states.subtask_status = SubtaskStatus.downloading
+
+                self.notify_update_task(task_id)
             else:
                 logger.error("Unknown task id: {}".format(task_id))
         else:
@@ -386,7 +398,7 @@ class TaskManager(TaskEventListener):
                 self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
             for s in ts.subtask_states.values():
-                if s.subtask_status == SubtaskStatus.starting:
+                if SubtaskStatus.is_computed(s.subtask_status):
                     if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
