@@ -36,6 +36,9 @@ class ImgRepr(object):
     def to_pil(self):
         return
 
+    def crop(self, size, start_box):
+        return
+
 
 class PILImgRepr(ImgRepr):
     def __init__(self):
@@ -62,6 +65,9 @@ class PILImgRepr(ImgRepr):
     def to_pil(self):
         return self.img
 
+    def crop(self, size, start_box):
+        return crop(self.img, size, start_box)
+
 
 class EXRImgRepr(ImgRepr):
     def __init__(self):
@@ -83,8 +89,9 @@ class EXRImgRepr(ImgRepr):
         self.file_path = file_
 
     def get_size(self):
-        return self.dw.max.x - self.dw.min.x + 1, \
-               self.dw.max.y - self.dw.min.y + 1
+        x = self.dw.max.x - self.dw.min.x + 1
+        y = self.dw.max.y - self.dw.min.y + 1
+        return x, y
 
     def get_pixel(self, (i, j)):
         return [c.getpixel((i, j)) for c in self.rgb]
@@ -130,13 +137,16 @@ class EXRImgRepr(ImgRepr):
         e.max = self.max
         return e
 
+    def crop(self, size, start_box):
+        return crop(self.to_pil(), size, start_box)
+
 
 def load_img(file_):
     """
     Load image from file path and return ImgRepr
-    :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None 
-    if there was an error 
+    :param str file_: path to the file
+    :return ImgRepr | None: Return ImgRepr for special file type or None
+    if there was an error
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -153,8 +163,8 @@ def load_img(file_):
 
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
-     :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or None 
+     :param str file_: path to the file
+     :return Image.Image | None: return PIL Image represantion or None
      if there was an error
     """
 
@@ -179,3 +189,9 @@ def blend(img1, img2, alpha):
             img.set_pixel((x, y), p)
 
     return img
+
+
+def crop(img, start_box, size):
+    x0, y0 = start_box
+    x1, y1 = start_box[0] + size[0], start_box[1] + size[1]
+    return img.crop((x0, y0, x1, y1))

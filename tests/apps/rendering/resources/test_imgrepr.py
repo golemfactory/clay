@@ -4,7 +4,7 @@ import unittest
 import Imath
 from PIL import Image
 
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
@@ -35,8 +35,15 @@ class TImgRepr(ImgRepr):
     def to_pil(self):
         super(TImgRepr, self).to_pil()
 
+    def crop(self, start_box, size):
+        super(TImgRepr, self).crop(start_box, size)
 
-class TestImgRepr(unittest.TestCase):
+
+class TestImgRepr(unittest.TestCase, PEP8MixIn):
+
+    PEP8_FILES = [
+        "apps/rendering/resources/imgrepr.py"
+    ]
 
     def test_functions(self):
         t = TImgRepr()
@@ -46,6 +53,7 @@ class TestImgRepr(unittest.TestCase):
         t.copy()
         t.to_pil()
         t.set_pixel((0, 0), (0, 0, 0))
+        t.crop((0, 0), (5, 5))
 
 
 class TestPILImgRepr(TempDirFixture):
@@ -85,6 +93,48 @@ class TestPILImgRepr(TempDirFixture):
         p_copy.set_pixel((5, 3), [200, 210, 220])
         assert p_copy.get_pixel((5, 3)) == [200, 210, 220]
         assert p.get_pixel((5, 3)) == [255, 0, 0]
+
+    def test_crop(self):
+        img_path = self.temp_file_name('img.png')
+        p = get_pil_img_repr(img_path)
+        box_start = (0, 0)
+        size = (5, 5)
+        new_img = p.crop(box_start, size)
+        assert new_img.size == size
+
+        def _save_and_load_crop_img(img_path, img):
+            img.save(img_path)
+            return load_img(img_path)
+
+        img_path2 = self.temp_file_name("crop_img.png")
+        new_img_repr = _save_and_load_crop_img(img_path2, new_img)
+
+        for i in range(5):
+            for j in range(5):
+                assert new_img_repr.get_pixel((i, j)) == p.get_pixel((i, j))
+
+        size = (20, 20)
+        new_img = p.crop(box_start, size)
+        assert new_img.size == size
+        new_img_repr = _save_and_load_crop_img(img_path2, new_img)
+        for i in range(10):
+            for j in range(10):
+                assert new_img_repr.get_pixel((i, j)) == p.get_pixel((i, j))
+        for i in range(10, 20):
+            for j in range(0, 20):
+                assert new_img_repr.get_pixel((i, j)) == [0, 0, 0]
+        for i in range(0, 10):
+            for j in range(10, 20):
+                assert new_img_repr.get_pixel((i, j)) == [0, 0, 0]
+
+        box_start = (3, 3)
+        size = (5, 5)
+        new_img = p.crop(box_start, size)
+        assert new_img.size == size
+        new_img_repr = _save_and_load_crop_img(img_path2, new_img)
+        for i in range(5):
+            for j in range(5):
+                assert new_img_repr.get_pixel((i, j)) == p.get_pixel((i+3, j+3))
 
 
 def almost_equal(v1, v2):
@@ -194,6 +244,19 @@ class TestExrImgRepr(TempDirFixture):
         e = get_exr_img_repr()
         assert e.get_rgbf_extrema() == (3.71875, 0.10687255859375)
 
+    def test_crop(self):
+        e = get_exr_img_repr()
+        box_start = (0, 0)
+        size = (5, 5)
+        new_img = e.crop(box_start, size)
+        assert new_img.size == size
+        size = (20, 20)
+        new_img = e.crop(box_start, size)
+        assert new_img.size == size
+        box_start = (5, 5)
+        size = (5, 5)
+        new_img = e.crop(box_start, size)
+        assert new_img.size == size
 
 class TestImgFunctions(TempDirFixture, LogTestCase):
 
