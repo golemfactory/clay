@@ -63,7 +63,7 @@ class Faucet(object):
 
 
 class NodeProcess(object):
-    MIN_GETH_VERSION = '1.5.0'
+    MIN_GETH_VERSION = '1.6.1'
     MAX_GETH_VERSION = '1.6.999'
     BOOT_NODES = [
         "enode://c8109b20aaac3cf8a793c1d1de505ca8b0a7e112734ef62f169bb4f2408af10ba31efce9fdb2b5b16499111a04a6204c331ffb8a131e6d19c79481884d162e3e@188.165.227.180:30333",
@@ -73,7 +73,8 @@ class NodeProcess(object):
 
     testnet = True
 
-    def __init__(self):
+    def __init__(self, datadir):
+        self.datadir = datadir
         log.info("Find geth node or start our own")
         self.__prog = find_program('geth')
         if not self.__prog:

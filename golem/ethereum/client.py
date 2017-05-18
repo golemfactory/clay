@@ -15,9 +15,9 @@ class Client(object):
 
     node = None
 
-    def __init__(self):
+    def __init__(self, datadir):
         if not Client.node:
-            Client.node = NodeProcess()
+            Client.node = NodeProcess(datadir)
         if not Client.node.is_running():
             Client.node.start()
         self.web3 = Web3(IPCProvider(testnet=Client.node.testnet))

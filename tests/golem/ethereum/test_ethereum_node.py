@@ -7,13 +7,14 @@ import requests
 import sys
 from mock import patch, Mock
 
-from golem.ethereum.node import NodeProcess, ropsten_faucet_donate, is_geth_listening, get_default_geth_path
+from golem.ethereum.node import (NodeProcess, ropsten_faucet_donate,
+                                 is_geth_listening, get_default_geth_path)
 from golem.testutils import TempDirFixture
 
 
 class MockPopen(Mock):
     def communicate(self):
-        return "Version: 1.6.0", Mock()
+        return "Version: 1.6.2", Mock()
 
 
 class RopstenFaucetTest(unittest.TestCase):
@@ -39,7 +40,8 @@ class RopstenFaucetTest(unittest.TestCase):
         addr = urandom(20)
         response = Mock(spec=requests.Response)
         response.status_code = 200
-        response.json.return_value = {'paydate': 1486605259, 'amount': 999999999999999}
+        response.json.return_value = {'paydate': 1486605259,
+                                      'amount': 999999999999999}
         get.return_value = response
         assert ropsten_faucet_donate(addr) is True
         assert get.call_count == 1
@@ -48,10 +50,10 @@ class RopstenFaucetTest(unittest.TestCase):
 
 class EthereumNodeTest(TempDirFixture):
     @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
-                     "geth is already running; skipping starting and stopping tests")
+                     "geth is already running; skipping start/stop tests")
     @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
     def test_ethereum_node(self, *_):
-        np = NodeProcess()
+        np = NodeProcess(self.tempdir)
         assert np.is_running() is False
         np.start()
         assert np.is_running() is True
@@ -62,12 +64,12 @@ class EthereumNodeTest(TempDirFixture):
         assert np.is_running() is False
 
     @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
-                     "geth is already running; skipping starting and stopping tests")
+                     "geth is already running; skipping start/stop tests")
     @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
     def test_ethereum_node_reuse(self, *_):
-        np = NodeProcess()
+        np = NodeProcess(self.tempdir)
         np.start()
-        np1 = NodeProcess()
+        np1 = NodeProcess(self.tempdir)
         np1.start()
         assert np.is_running() is True
         assert np1.is_running() is True
@@ -83,12 +85,12 @@ class EthereumNodeTest(TempDirFixture):
         NodeProcess.MIN_GETH_VERSION = "0.1.0"
         NodeProcess.MAX_GETH_VERSION = "0.2.0"
         with self.assertRaises(OSError):
-            NodeProcess()
+            NodeProcess(self.tempdir)
         NodeProcess.MIN_GETH_VERSION = min
         NodeProcess.MAX_GETH_VERSION = max
 
     @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
-                     "geth is already running; skipping starting and stopping tests")
+                     "geth is already running; skipping start/stop tests")
     @patch('subprocess.Popen', return_value=MockPopen())
     @patch('web3.Web3.isConnected', return_value=True)
     @patch('golem.ethereum.node.is_geth_listening', return_value=False)
@@ -104,7 +106,7 @@ class EthereumNodeTest(TempDirFixture):
             patch('golem.ethereum.node.is_windows',
                   return_value=True):
 
-            np = NodeProcess()
+            np = NodeProcess(self.tempdir)
             np.start()
 
             nodes_path = os.path.join(data_dir_win, 'static-nodes.json')
@@ -118,7 +120,7 @@ class EthereumNodeTest(TempDirFixture):
             patch('golem.ethereum.node.is_windows',
                   return_value=False):
 
-            np = NodeProcess()
+            np = NodeProcess(self.tempdir)
             np.start()
 
             geth_dir = os.path.dirname(data_dir)
@@ -149,5 +151,3 @@ class TestDefaultGethPath(unittest.TestCase):
                 assert get_default_geth_path()
             with self.assertRaises(ValueError):
                 assert get_default_geth_path(True)
-
-
