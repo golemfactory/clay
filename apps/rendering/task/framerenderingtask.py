@@ -138,7 +138,7 @@ class FrameRenderingTask(RenderingTask):
         failed_color = (255, 0, 0)
 
         for sub in self.subtasks_given.values():
-            if sub['status'] == SubtaskStatus.starting:
+            if SubtaskStatus.is_computed(sub['status']):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
 

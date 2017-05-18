@@ -336,7 +336,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         task_mock.subtasks_given[subtask_id] = TaskClient(node_id)
 
         subtask_state = SubtaskState()
-        subtask_state.status = SubtaskStatus.waiting
+        subtask_state.status = SubtaskStatus.downloading
         subtask_state.subtask_id = subtask_id
         subtask_state.computer = Mock()
         subtask_state.computer.node_id = node_id
