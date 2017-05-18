@@ -174,11 +174,9 @@ class Client(HardwarePresetsMixin):
             return
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
+    # TODO: re-enable
     def sync(self):
-        if self.use_transaction_system():
-            log.info('Waiting for block synchronization...')
-            self.transaction_system.sync()
-            log.info('Block synchronization complete')
+        pass
 
     def start(self):
         if self.use_monitor:
