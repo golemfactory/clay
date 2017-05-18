@@ -56,7 +56,7 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
-        'golem.client': {
+        'golem.ethereum': {
             'level': 'INFO',
             'propagate': True,
         },

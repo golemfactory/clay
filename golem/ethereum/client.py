@@ -2,7 +2,6 @@ import logging
 
 import rlp
 from ethereum.utils import zpad
-from web3 import Web3, IPCProvider
 
 from golem.core.common import get_timestamp_utc
 from .node import NodeProcess
@@ -20,7 +19,7 @@ class Client(object):
             Client.node = NodeProcess(datadir)
         if not Client.node.is_running():
             Client.node.start()
-        self.web3 = Web3(IPCProvider(testnet=Client.node.testnet))
+        self.web3 = Client.node.web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20
 

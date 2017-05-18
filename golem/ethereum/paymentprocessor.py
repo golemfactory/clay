@@ -58,7 +58,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = "689ed42Ec0C3b3B799Dc5659725Bf536635F45d1".decode('hex')
+    TESTGNT_ADDR = "7295bB8709EC1C22b758A8119A4214fFEd016323".decode('hex')
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -281,7 +281,7 @@ class PaymentProcessor(Service):
             del self.__inprogress[h]
 
     def get_ether_from_faucet(self):
-        if self.__faucet and self.eth_balance(True) == 0:
+        if self.__faucet and self.eth_balance(True) < 10**15:
             addr = keys.privtoaddr(self.__privkey)
             ropsten_faucet_donate(addr)
             return False

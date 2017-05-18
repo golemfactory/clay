@@ -54,7 +54,6 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-@patch('golem.ethereum.node.NodeProcess.save_static_nodes')
 class TestClient(TestWithDatabase):
 
     def tearDown(self):
@@ -394,12 +393,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            client = Client(datadir=self.path,
-                            transaction_system=False,
-                            connect_to_known_hosts=False,
-                            use_docker_machine_manager=False,
-                            use_monitor=False)
+        client = Client(datadir=self.path,
+                        transaction_system=False,
+                        connect_to_known_hosts=False,
+                        use_docker_machine_manager=False,
+                        use_monitor=False)
 
         client.sync = Mock()
         client.p2pservice = Mock()
