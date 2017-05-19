@@ -1,7 +1,10 @@
-import jsonpickle as json
+#!/usr/bin/env python
+
+import json
 import logging
 import os
 from os import path
+import sys
 
 import click
 import gevent
@@ -41,7 +44,7 @@ def app(ctx, data_dir, name):
         data_dir = path.join(get_local_datadir("ethereum"))
 
     logging.basicConfig(level=logging.DEBUG)
-    geth = Client(data_dir)
+    geth = Client()
     while not geth.get_peer_count():
         print "Waiting for peers..."
         gevent.sleep(1)
@@ -130,19 +133,41 @@ def multi(o, payments):
 def history(o):
     log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
     my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
-    outgoing = o.eth.get_logs(from_block='earliest', topics=[log_id, my_addr])
-    incomming = o.eth.get_logs(from_block='earliest', topics=[log_id, None, my_addr])
+    my_addr = '0x' + zpad('b3d01938429ad68c821f9623c05b556ad500ff8c'.decode('hex'), 32).encode('hex')  # colo de menin
+    my_addr = '0x' + zpad('ba088df72148e6ed972b0b160cb4754840f5bec9'.decode('hex'), 32).encode('hex')  # a luz de tieta
+    def get_logs_step(**kwargs):
+        blocknumber = o.eth.web3.eth.blockNumber
+        step = 2**8
+        result = []
+        while not (result or blocknumber <= 0):
+            if (blocknumber / step) % 2**4 == 0:
+                sys.stdout.write('.')
+            if (blocknumber / step) % 2**10 == 0:
+                sys.stdout.write(str(blocknumber))
+            result = o.eth.get_logs(from_block=max(blocknumber-step, 0), to_block=blocknumber, **kwargs)
+            sys.stdout.flush()
+            blocknumber -= step
+        sys.stdout.write('#\n')
+        return result
+    outgoing = get_logs_step(topics=[log_id, my_addr])
+    incoming = get_logs_step(topics=[log_id, None, my_addr])
 
-    balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
+    import web3.utils.compat.compat_stdlib
+    try:
+        balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
+    except web3.utils.compat.compat_stdlib.Timeout:
+        balance = "<timeout>"
     print "BALANCE", balance
 
-    print "OUTGOING"
-    for p in outgoing:
-        print "[{}] -> {} {}".format(int(p['blockNumber'], 16), p['topics'][2][-40:], int(p['data'], 16))
-
-    print "INCOMING"
-    for p in incomming:
-        print "[{}] -> {} {}".format(p['blockNumber'], p['topics'][1][-40:], p['data'])
+    for label, l in \
+            (
+                ("OUTGOING", outgoing),
+                ("INCOMING", incoming),
+            ):
+        print label
+        for p in l:
+            print "{!r}".format(p)
+            print "[{}] -> {} {}".format(p['blockNumber'], p['topics'][2][-40:], int(p['data'], 16))
 
 
 @app.group()

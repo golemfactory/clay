@@ -37,7 +37,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
-        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random()*1000, )
+        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000, )
         self.task_session.send_hello()
         expected = {
             u'CHALLENGE': None,
@@ -60,7 +60,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         data = "ABC"
 
         ts.key_id = "123"
-        res = ts.encrypt(data)
+        ts.encrypt(data)
         ts.task_server.encrypt.assert_called_with(data, "123")
 
         ts.task_server = None
@@ -306,7 +306,6 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
-
         # No source code in the local environment -> failure
         __reset_mocks()
         ctd = ComputeTaskDef()
@@ -496,7 +495,7 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.task_server.retry_sending_task_result.called
 
     @patch('golem.task.tasksession.async_run', side_effect=executor_error)
-    def test_send_task_result_hash_recoverable_error(self, _):
+    def test_send_task_result_hash_unrecoverable_error(self, _):
 
         ts = self.ts
         ts._react_to_get_task_result(self.msg)

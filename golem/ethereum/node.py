@@ -117,7 +117,8 @@ class NodeProcess(object):
 
         args = [
             self.__prog,
-            '--light',
+            #'--light',
+            '--fast',
             '--testnet',
             '--bootnodes', ','.join(self.BOOT_NODES),
             '--verbosity', '3',

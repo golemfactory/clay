@@ -6,6 +6,8 @@ from ethereum import keys
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.transactionsystem import TransactionSystem
+from golem.transactions.ethereum.ethereumincomeskeeper\
+    import EthereumIncomesKeeper
 
 log = logging.getLogger('golem.pay')
 
@@ -17,7 +19,9 @@ class EthereumTransactionSystem(TransactionSystem):
         """ Create new transaction system instance for node with given id
         :param node_priv_key str: node's private key for Ethereum account (32b)
         """
-        super(EthereumTransactionSystem, self).__init__()
+        super(EthereumTransactionSystem, self).__init__(
+            incomes_keeper_class=EthereumIncomesKeeper
+        )
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
@@ -26,8 +30,13 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__node_address = keys.privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self.__eth_node = Client()
-        self.__proc = PaymentProcessor(self.__eth_node, node_priv_key, faucet=True)
+        self.__eth_node = self.incomes_keeper.eth_node = Client()
+        payment_processor = PaymentProcessor(
+            self.__eth_node,
+            node_priv_key,
+            faucet=True
+        )
+        self.__proc = self.incomes_keeper.processor = payment_processor
         self.__proc.start()
 
     def stop(self):
@@ -53,12 +62,12 @@ class EthereumTransactionSystem(TransactionSystem):
         eth = self.__proc.eth_balance()
         return gnt, av_gnt, eth
 
-    def pay_for_task(self, task_id, payments):
-        """ Pay for task using Ethereum connector
-        :param task_id: pay for task with given id
-        :param dict payments: all payments group by ethereum address
-        """
-        pass
+    def get_incoming_payments(self):
+        return [{'status': payment.status.value,
+                 'payer': payment.payer,
+                 'value': payment.value,
+                 'block_number': payment.extra['block_number']
+                 } for payment in self.__monitor.get_incoming_payments()]
 
     def sync(self):
         syncing = True

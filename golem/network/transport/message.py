@@ -1,7 +1,6 @@
 import collections
 import logging
 import time
-import warnings
 
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
@@ -146,7 +145,6 @@ class Message(object):
             logger.error("Error deserializing message: {}".format(exc))
             msg_repr = None
 
-        logger.debug('msg_repr: %r', msg_repr)
         if not (isinstance(msg_repr, list) and len(msg_repr) >= 4):
             logger.info('Invalid message representation: %r', msg_repr)
             return
@@ -977,6 +975,60 @@ class MessageCannotComputeTask(Message):
         super(MessageCannotComputeTask, self).__init__(**kwargs)
 
 
+class MessageSubtaskPayment(Message):
+    TYPE = TASK_MSG_BASE + 27
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+        'reward': 'REWARD_STR',
+        'transaction_id': 'TRANSACTION_ID',
+        'block_number': 'BLOCK_NUMBER',
+    }
+
+    def __init__(self, subtask_id=None, reward=None, transaction_id=None,
+                 block_number=None, **kwargs):
+        """Informs about payment for a subtask.
+        It succeeds MessageSubtaskResultAccepted but could
+        be sent after a delay. It is also sent in response to
+        MessageSubtaskPaymentRequest. If transaction_id is None it
+        should be interpreted as PAYMENT PENDING status.
+
+        :param str subtask_id: accepted subtask id
+        :param float reward: payment for computations
+        :param str transaction_id: eth transaction id
+        :param int block_number: eth blockNumber
+        :param dict dict_repr: dictionary representation of a message
+
+        Additional params are described in Message().
+        """
+
+        self.subtask_id = subtask_id
+        self.reward = reward
+        self.transaction_id = transaction_id
+        self.block_number = block_number
+        super(MessageSubtaskPayment, self).__init__(**kwargs)
+
+
+class MessageSubtaskPaymentRequest(Message):
+    TYPE = TASK_MSG_BASE + 28
+
+    MAPPING = {
+        'subtask_id': 'SUB_TASK_ID',
+    }
+
+    def __init__(self, subtask_id=None, **kwargs):
+        """Requests information about payment for a subtask.
+
+        :param str subtask_id: accepted subtask id
+        :param dict dict_repr: dictionary representation of a message
+
+        Additional params are described in Message().
+        """
+
+        self.subtask_id = subtask_id
+        super(MessageSubtaskPaymentRequest, self).__init__(**kwargs)
+
+
 RESOURCE_MSG_BASE = 3000
 
 
@@ -1127,6 +1179,9 @@ def init_messages():
             MessagePullResource,
             MessagePullAnswer,
             MessageResourceList,
+
+            MessageSubtaskPayment,
+            MessageSubtaskPaymentRequest,
             ):
         if message_class.TYPE in Message.registered_message_types:
             raise RuntimeError("Duplicated message {}.TYPE: {}".format(message_class.__name__, message_class.TYPE))

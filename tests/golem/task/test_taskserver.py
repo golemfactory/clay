@@ -9,6 +9,8 @@ from mock import Mock, MagicMock, patch, ANY
 
 from stun import FullCone
 
+from golem import model
+from golem import testutils
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -52,7 +54,11 @@ def get_mock_task(task_id, subtask_id):
     return task_mock
 
 
-class TestTaskServer(TestWithKeysAuth, LogTestCase):
+class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
+
+    def setUp(self):
+        for parent in self.__class__.__bases__:
+            parent.setUp(self)
 
     def tearDown(self):
         LogTestCase.tearDown(self)
@@ -107,6 +113,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ts.add_task_header(task_header)
         ts.request_task()
         self.assertTrue(ts.send_results("xxyyzz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
+        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
         self.assertTrue(ts.send_results("xyzxyz", "xyz", results, 40, "10.10.10.10", 10101, "key", n, "node_name"))
         self.assertEqual(ts.get_subtask_ttl("xyz"), 120)
         wtr = ts.results_to_send["xxyyzz"]
@@ -122,8 +129,13 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertEqual(wtr.owner_key_id, "key")
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.add_to_waiting_payments.assert_called_with(
-            "xyz", "key", 1)
+        ts.client.transaction_system.incomes_keeper.expect.assert_called_once_with(
+            sender_node_id="key",
+            task_id="xyz",
+            subtask_id="xyzxyz",
+            value=1,
+            p2p_node=n,
+        )
 
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected("aabbcc")
@@ -131,14 +143,24 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         prev_call_count = trust.PAYMENT.increase.call_count
         with self.assertLogs(logger, level="WARNING"):
-            ts.reward_for_subtask_paid("aa2bb2cc")
+            ts.reward_for_subtask_paid(subtask_id="aa2bb2cc", reward=1,
+                transaction_id=None, block_number=None)
+        ts.client.transaction_system.incomes_keeper.received.assert_not_called()
         self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd.task_id = "xyz"
         ctd.subtask_id = "xxyyzz"
         ts.task_manager.comp_task_keeper.receive_subtask(ctd)
-        ts.reward_for_subtask_paid("xxyyzz")
+        model.ExpectedIncome.create(
+            sender_node="key",
+            sender_node_details=None,
+            task=ctd.task_id,
+            subtask=ctd.subtask_id,
+            value=1
+        )
+        ts.reward_for_subtask_paid(subtask_id="xxyyzz", reward=1,
+            transaction_id=None, block_number=None)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
@@ -330,36 +352,37 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         wtr.port = 10000
 
         ts.sync_network()
-        self.assertFalse(ts._add_pending_request.called)
+        ts._add_pending_request.assert_not_called()
 
         wtr.last_sending_trial = 0
         ts.retry_sending_task_result(subtask_id)
 
         ts.sync_network()
-        self.assertTrue(ts._add_pending_request.called)
+        ts._add_pending_request.assert_called()
 
-        ts._add_pending_request.called = False
+        ts._add_pending_request.reset_mock()
         ts.task_sessions[subtask_id] = Mock()
+        ts.task_sessions[subtask_id].last_message_time = float('infinity')
 
         ts.sync_network()
-        self.assertFalse(ts._add_pending_request.called)
+        ts._add_pending_request.assert_not_called()
 
-        ts._add_pending_request.called = False
+        ts._add_pending_request.reset_mock()
         ts.results_to_send = dict()
 
         wtf = wtr
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        self.assertFalse(ts._add_pending_request.called)
+        ts._add_pending_request.assert_not_called()
         self.assertEqual(ts.failures_to_send, {})
 
-        ts._add_pending_request.called = False
+        ts._add_pending_request.reset_mock()
         ts.task_sessions.pop(subtask_id)
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        self.assertTrue(ts._add_pending_request.called)
+        ts._add_pending_request.assert_called()
         self.assertEqual(ts.failures_to_send, {})
 
     def test_add_task_session(self):
