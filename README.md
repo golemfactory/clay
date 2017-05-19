@@ -64,5 +64,5 @@ Icons:
 Help us develop the application by submitting issues and bugs. See instruction
 [here](https://github.com/golemfactory/golem/wiki/Testing).
 
-You can also send us an email to `contact@golemproject.net` or talk to us on slack `golemproject.slack.com`.
+You can also send us an email to `contact@golem.network` or talk to us on slack `golemproject.slack.com`.
 Get an invitation [here](http://golemproject.org:3000).
