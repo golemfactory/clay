@@ -27,6 +27,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     CYCLES_TASK_FILE = "docker-blender-cycles-task.json"
     BLENDER_TASK_FILE = "docker-blender-render-task.json"
+    BLENDER_OPENGL_TASK_FILE = "docker-blender-render-OpenGL-task.json"
 
     def setUp(self):
         TempDirFixture.setUp(self)
@@ -118,7 +119,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         TaskServer.send_task_failed = send_task_failed
 
-        # Start task computation
+        # Start task computation - simulate provider
         task_computer.task_given(ctd)
         result = task_computer.resource_given(ctd.task_id)
         assert result
@@ -238,6 +239,9 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
     def test_blender_cycles_subtask(self):
         self._test_blender_subtask(self.CYCLES_TASK_FILE)
+
+    def test_blender_opengl_rendering(self):
+        self._test_blender_subtask(self.BLENDER_OPENGL_TASK_FILE)
 
     def test_blender_subtask_timeout(self):
         task = self._create_test_task()

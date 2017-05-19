@@ -3,6 +3,17 @@
 # written to tempfile and passed as arg to blender.
 import bpy
 
+## ---------- GG: begin opengl test --------------
+import sys                      # read argument from sys.argv
+from bpy.app.handlers import persistent
+
+@persistent
+def do_render_opengl(dummy):
+    bpy.ops.render.opengl(write_still=True, view_context=False)
+    bpy.ops.wm.quit_blender()
+## ---------- GG: end opengl test ---------------
+
+
 class EngineWarning(bpy.types.Operator):
     bl_idname = "wm.engine_warning"
     bl_label = "Inform about not supported rendering engine"
@@ -59,7 +70,9 @@ for scene in bpy.data.scenes:
     scene.render.use_compositing = bool(%(use_compositing)r)
 
 #then render:
-bpy.ops.render.render()
+#bpy.ops.render.render()
+bpy.app.handlers.load_post.append(do_render_opengl) # to run openGl
+
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()

@@ -21,7 +21,8 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
                               start_task, frame, output_format):
     cmd = [
         "{}".format(BLENDER_COMMAND),
-        "-b", "{}".format(scene_file),
+        # "-b", # OpenGL cannot work in background... thus its is impossible to run it in docker :(
+        "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
