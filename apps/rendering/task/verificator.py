@@ -12,7 +12,8 @@ from golem.task.taskbase import ComputeTaskDef
 from golem.task.localcomputer import LocalComputer
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
-from apps.rendering.resources.imgcompare import advance_verify_img, check_size
+from apps.rendering.resources.imgrepr import load_img, crop_to_imgrepr
+from apps.rendering.resources.imgcompare import check_size
 
 
 logger = logging.getLogger("apps.rendering")
@@ -20,7 +21,8 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerificator(CoreVerificator):
     def __init__(self, verification_options=None, advanced_verification=False):
-        super(RenderingVerificator, self).__init__(verification_options, advanced_verification)
+        super(RenderingVerificator, self).__init__(verification_options,
+                                                   advanced_verification)
         self.tmp_dir = None
         self.res_x = 0
         self.res_y = 0
@@ -62,12 +64,30 @@ class RenderingVerificator(CoreVerificator):
         cmp_file, cmp_start_box = self._get_cmp_file(img_file, start_box,
                                                      subtask_id,
                                                      subtask_info, task)
+        if not cmp_file:
+            logger.error("Cannot generate cmp file binary")
+
         logger.debug('cmp_start_box {}'.format(cmp_start_box))
         res_x, res_y = self._get_part_size(subtask_info)
 
-        return advance_verify_img(img_file, res_x, res_y, start_box,
-                                  self.verification_options.box_size, cmp_file,
-                                  cmp_start_box)
+        cmp_img = load_img(cmp_file)
+        box_size = cmp_img.get_size()
+
+        img = load_img(img_file)
+        img = crop_to_imgrepr(img, start_box, box_size)
+
+        cmp_img = load_img(cmp_file)
+
+        pixcolor = cmp_img.get_pixel((1, 1))
+        pixels = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0),
+                  (2, 1), (2, 2)]
+        for pixel in pixels:
+            if pixcolor == img.get_pixel(pixel):
+                movement = [pixel[0] - 1, pixel[1] - 1]
+                # FIXME (crop and compare rest of the pixels
+                return True
+
+        return False
 
     def _check_size(self, file_, res_x, res_y):
         return check_size(file_, res_x, res_y)
@@ -107,7 +127,8 @@ class RenderingVerificator(CoreVerificator):
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
+        extra_data['tmp_path'] = os.path.join(self.tmp_dir,
+                                              str(subtask_info['start_task']))
         ensure_dir_exists(extra_data['tmp_path'])
         return extra_data, start_box
 

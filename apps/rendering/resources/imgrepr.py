@@ -195,3 +195,10 @@ def crop(img, start_box, size):
     x0, y0 = start_box
     x1, y1 = start_box[0] + size[0], start_box[1] + size[1]
     return img.crop((x0, y0, x1, y1))
+
+
+def crop_to_imgrepr(img_repr, start_box, box_size):
+    cropped_img = img_repr.crop(start_box, box_size)
+    img_repr = PILImgRepr()
+    img_repr.img = cropped_img
+    return img_repr

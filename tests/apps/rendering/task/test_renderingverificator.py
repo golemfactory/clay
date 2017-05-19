@@ -81,7 +81,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         computer_mock.return_value.tt.result.get.return_value = \
             self.additional_dir_content([3])
         assert rv.verify("Subtask1", {"start_task": 3, "output_format": "png"},
-                         [img_path], Mock()) == \
+                         [], Mock()) == \
                SubtaskVerificationState.WRONG_ANSWER
 
         # Properly verified

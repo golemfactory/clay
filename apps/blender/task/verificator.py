@@ -30,13 +30,18 @@ class BlenderVerificator(FrameRenderingVerificator):
         extra_data, _ = super(BlenderVerificator, self).change_scope(subtask_id, start_box,
                                                                      tr_file, subtask_info)
         min_x = start_box[0] / self.res_x
-        max_x = (start_box[0] + self.verification_options.box_size[0] + 1) / self.res_x
+        max_x = (start_box[0] + self.verification_options.box_size[0]) / self.res_x
         shift_y = (extra_data['start_task'] - 1) * (self.res_y / extra_data['total_tasks'])
         start_y = start_box[1] + shift_y
         max_y = (self.res_y - start_y) / self.res_y
-        shift_y = start_y + self.verification_options.box_size[1] + 1
+        shift_y = start_y + self.verification_options.box_size[1]
         min_y = max((self.res_y - shift_y) / self.res_y, 0.0)
         min_y = max(min_y, 0)
+        print min_x
+        print max_x
+        print min_y
+        print max_y
+
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
             borders_x=(min_x, max_x),

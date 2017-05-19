@@ -5,10 +5,10 @@ from PIL import Image
 from golem.tools.testdirfixture import TestDirFixture
 
 
-from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgcompare import (advance_verify_img,
-                                                 compare_pil_imgs)
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.renderingtaskcollector import \
+    RenderingTaskCollector
+from apps.rendering.resources.imgcompare import (compare_imgs, compare_pil_imgs)
+from apps.rendering.resources.imgrepr import crop_to_imgrepr, load_img
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
@@ -66,7 +66,8 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img.save(img3)
 
         assert final_img.size == (10, 20)
-        assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
+        testfinalimg_repr = crop_to_imgrepr(load_img(img3), (0, 0), (10, 10))
+        assert compare_imgs(testfinalimg_repr, load_img(img1))
 
         collector = RenderingTaskCollector(paste=False, width=10, height=10)
         collector.add_img_file(img1)
