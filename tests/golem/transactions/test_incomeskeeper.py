@@ -1,5 +1,4 @@
 import datetime
-import mock
 import random
 import sys
 import time
@@ -7,18 +6,21 @@ import time
 from golem.model import db
 from golem.model import ExpectedIncome
 from golem.model import Income
+from golem.network.p2p.node import Node
 from golem.testutils import PEP8MixIn
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.tools.assertlogs import LogTestCase
 from golem.transactions.incomeskeeper import IncomesKeeper
 
+
 def generate_some_id(prefix='test'):
-    return "%s-%d-%d" % (prefix, time.time()*1000, random.random() * 1000)
+    return "%s-%d-%d" % (prefix, time.time() * 1000, random.random() * 1000)
+
 
 class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
     PEP8_FILES = [
         'golem/transactions/incomeskeeper.py',
     ]
+
     def setUp(self):
         super(TestIncomesKeeper, self).setUp()
         random.seed()
@@ -33,7 +35,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             sender_node_id=sender_node_id,
             task_id=task_id,
             subtask_id=subtask_id,
-            p2p_node=mock.MagicMock(),
+            p2p_node=Node(),
             value=value
         )
         with db.atomic():
@@ -82,11 +84,10 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         subtask_id = generate_some_id('subtask_id')
         value = random.randint(1, 10**5)
         transaction_id = generate_some_id('transaction_id')
-        block_number = random.randint(1, 10**10)
 
         expected_income = self.incomes_keeper.expect(
             sender_node_id=sender_node_id,
-            p2p_node=mock.MagicMock(),
+            p2p_node=Node(),
             task_id=task_id,
             subtask_id=subtask_id,
             value=value
@@ -104,7 +105,7 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
             expected_income.modified_date = datetime.datetime.now() + datetime.timedelta(hours=1)
             expected_income.save()
 
-        income = self.incomes_keeper.received(
+        self.incomes_keeper.received(
             sender_node_id=sender_node_id,
             task_id=task_id,
             subtask_id=subtask_id,
