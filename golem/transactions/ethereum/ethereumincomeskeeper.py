@@ -25,6 +25,8 @@ class EthereumIncomesKeeper(IncomesKeeper):
             logger.error('Transaction not present: %r', transaction_id)
             return
         received_tokens = 0
+        # FIXME sum() will overflow if it becomes bigger than 8 bytes
+        # signed int
         spent_tokens = model.Income.select(peewee.fn.sum(model.Income.value))\
             .where(model.Income.transaction == transaction_id)\
             .scalar()
@@ -35,7 +37,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
             # Should we verify sender address?
             sender = income_log['topics'][1][-40:]
             receiver = income_log['topics'][2][-40:]
-            log_value = int(income_log['data'], 16)
+            log_value = long(income_log['data'], 16)
             logger.debug('INCOME: from %r to %r v:%r', sender, receiver, log_value)
             # Count tokens only when we're the receiver.
             if receiver == my_address:
