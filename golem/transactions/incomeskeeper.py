@@ -23,7 +23,7 @@ class IncomesKeeper(object):
                     .order_by(-ExpectedIncome.id).limit(50):
                 try:
                     with db.atomic():
-                        income = Income.get(
+                        Income.get(
                             sender_node=expected_income.sender_node,
                             task=expected_income.task,
                             subtask=expected_income.subtask,
@@ -83,7 +83,7 @@ class IncomesKeeper(object):
         )
         return ExpectedIncome.create(
             sender_node=sender_node_id,
-            sender_node_details=p2p_node.__dict__,
+            sender_node_details=p2p_node,
             task=task_id,
             subtask=subtask_id,
             value=value

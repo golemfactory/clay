@@ -841,15 +841,23 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(ans_conn_id)
         self.remove_responses(ans_conn_id)
 
+    def new_session_prepare(self, session, subtask_id, key_id, conn_id):
+        session.task_id = subtask_id
+        session.key_id = key_id
+        session.conn_id = conn_id
+        self._mark_connected(conn_id, session.address, session.port)
+        self.task_sessions[subtask_id] = session
+
     def connection_for_payment_established(self, session, conn_id, obj):
         # obj - Payment
         logger.debug('connection_for_payment_established(%r)', obj)
 
-        session.task_id = obj.subtask
-        session.key_id = obj.get_sender_node().key
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[obj.subtask] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=obj.subtask,
+            key_id=obj.get_sender_node().key,
+            conn_id=conn_id
+        )
 
         session.send_hello()
         session.inform_worker_about_payment(obj)
@@ -858,11 +866,12 @@ class TaskServer(PendingConnectionsServer):
         # obj - ExpectedIncome
         logger.debug('connection_for_payment_request_established(%r)', obj)
 
-        session.task_id = obj.subtask
-        session.key_id = obj.sender_node_details['key']
-        session.conn_id = conn_id
-        self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[obj.subtask] = session
+        self.new_session_prepare(
+            session=session,
+            subtask_id=obj.subtask,
+            key_id=obj.get_sender_node().key,
+            conn_id=conn_id
+        )
 
         session.send_hello()
         session.request_payment(obj)

@@ -1,13 +1,12 @@
 from __future__ import division
 
-import os
-import uuid
 from collections import deque
-
 from math import ceil
 from mock import Mock, MagicMock, patch, ANY
-
+import os
+import random
 from stun import FullCone
+import uuid
 
 from golem import model
 from golem import testutils
@@ -17,6 +16,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.threads import wait_for
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
+from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -59,6 +59,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
     def setUp(self):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
+        random.seed()
+        self.ccd = self._get_config_desc()
+        self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
+                             self.client, use_docker_machine_manager=False)
 
     def tearDown(self):
         LogTestCase.tearDown(self)
@@ -144,7 +148,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         prev_call_count = trust.PAYMENT.increase.call_count
         with self.assertLogs(logger, level="WARNING"):
             ts.reward_for_subtask_paid(subtask_id="aa2bb2cc", reward=1,
-                transaction_id=None, block_number=None)
+                                       transaction_id=None, block_number=None)
         ts.client.transaction_system.incomes_keeper.received.assert_not_called()
         self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
@@ -160,7 +164,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             value=1
         )
         ts.reward_for_subtask_paid(subtask_id="xxyyzz", reward=1,
-            transaction_id=None, block_number=None)
+                                   transaction_id=None, block_number=None)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
@@ -180,8 +184,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         session = Mock()
         session.address = "10.10.10.10"
         session.port = 1020
-        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](session, "abc", "nodename", "key", "xyz", 1010, 30, 3,
-                                                                1, 2)
+        ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
+            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
         self.assertEqual(session.task_id, "xyz")
         self.assertEqual(session.key_id, "key")
         self.assertEqual(session.conn_id, "abc")
@@ -274,8 +278,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         self.ts = ts
         ts.network = Mock()
         ts.traverse_nat("ABC", "10.10.10.10", 1312, 310319041904, "DEF")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address,  "10.10.10.10")
-        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port,  1312)
+        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].address, "10.10.10.10")
+        self.assertEqual(ts.network.connect.call_args[0][0].socket_addresses[0].port, 1312)
 
     def test_forwarded_session_requests(self):
         ccd = self._get_config_desc()
@@ -554,9 +558,10 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.task_computer = Mock()
 
         # Always fail on listening
+        from golem.network.transport import tcpnetwork
         ts.network.listen = MagicMock(
             side_effect=lambda listen_info, waiting_task_result:
-                TCPNetwork.__call_failure_callback(
+                tcpnetwork.TCPNetwork.__call_failure_callback(
                     listen_info.failure_callback,
                     {'waiting_task_result': waiting_task_result}
                 )
@@ -617,12 +622,88 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.deny_set.add("ABC")
         assert not ts.should_accept_requestor("ABC")
 
+    @patch('golem.task.taskserver.TaskServer._mark_connected')
+    def test_new_session_prepare(self, mark_mock):
+        session = tasksession.TaskSession(conn=MagicMock())
+        session.address = '127.0.0.1'
+        session.port = 10
+
+        subtask_id = str(uuid.uuid4())
+        key_id = str(uuid.uuid4())
+        conn_id = str(uuid.uuid4())
+
+        self.ts.new_session_prepare(
+            session=session,
+            subtask_id=subtask_id,
+            key_id=key_id,
+            conn_id=conn_id
+        )
+        self.assertEquals(session.task_id, subtask_id)
+        self.assertEquals(session.key_id, key_id)
+        self.assertEquals(session.conn_id, conn_id)
+        mark_mock.assert_called_once_with(conn_id, session.address, session.port)
+
+    @patch('golem.task.taskserver.TaskServer.new_session_prepare')
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
+    def test_connection_for_payment(self, inform_mock, hello_mock,
+                                    new_session_mock):
+        session = tasksession.TaskSession(conn=MagicMock())
+        session.address = '127.0.0.1'
+        session.port = 10
+        conn_id = str(uuid.uuid4())
+        node = Node()
+        payment = model.Payment.create(
+            subtask=str(uuid.uuid4()),
+            payee=str(uuid.uuid4()),
+            value=random.randint(1, 10),
+            details={'node_info': node, }
+        )
+        self.ts.connection_for_payment_established(session, conn_id, payment)
+        new_session_mock.assert_called_once_with(
+            session=session,
+            subtask_id=payment.subtask,
+            key_id=node.key,
+            conn_id=conn_id
+        )
+        inform_mock.assert_called_once_with(payment)
+        hello_mock.assert_called_once_with()
+
+    @patch('golem.task.taskserver.TaskServer.new_session_prepare')
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    @patch('golem.task.tasksession.TaskSession.request_payment')
+    def test_connection_for_payment_request(self, request_payment_mock,
+                                            hello_mock, new_session_mock):
+        session = tasksession.TaskSession(conn=MagicMock())
+        session.address = '127.0.0.1'
+        session.port = 10
+        conn_id = str(uuid.uuid4())
+        node = Node()
+        expected_income = model.ExpectedIncome.create(
+            sender_node=str(uuid.uuid4()),
+            sender_node_details=node,
+            value=random.randint(1, 10),
+            subtask=str(uuid.uuid4()),
+            task=str(uuid.uuid4())
+        )
+        self.ts.connection_for_payment_request_established(session, conn_id,
+                                                           expected_income)
+        new_session_mock.assert_called_once_with(
+            session=session,
+            subtask_id=expected_income.subtask,
+            key_id=node.key,
+            conn_id=conn_id
+        )
+        request_payment_mock.assert_called_once_with(expected_income)
+        hello_mock.assert_called_once_with()
+
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
     def setUp(self):
-        TestDirFixtureWithReactor.setUp(self)
-        TestWithKeysAuth.setUp(self)
+        for parent in self.__class__.__bases__:
+            parent.setUp(self)
+        random.seed()
 
     def tearDown(self):
         TestWithKeysAuth.tearDown(self)
@@ -654,7 +735,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         wait_for(ts.task_manager.add_new_task(task_mock))
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
-                                                                     1000, 10,  5, 10, 2,
+                                                                     1000, 10, 5, 10, 2,
                                                                      "10.10.10.10")
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         self.assertEqual(ts.task_manager.tasks_states["xyz"].subtask_states["xxyyzz"].computation_time, 1031)
@@ -695,7 +776,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         wait_for(ts.task_manager.add_new_task(task_mock))
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
-            "DEF", "DEF", "xyz", 1000, 10,  5, 10, 2, "10.10.10.10")
+            "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
 
         ts.receive_subtask_computation_time("xxyyzz", 1031)
         account_info = Mock()

@@ -7,6 +7,8 @@ import uuid
 from apps.core.task.coretask import TaskResourceHeader
 from mock import Mock, MagicMock, patch
 
+from golem import model
+from golem import testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
@@ -22,12 +24,11 @@ from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
-from golem.testutils import PEP8MixIn
-from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
+class TestTaskSession(LogTestCase, testutils.TempDirFixture,
+                      testutils.PEP8MixIn):
     PEP8_FILES = ['golem/task/tasksession.py', ]
 
     def setUp(self):
@@ -440,6 +441,69 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
         assert Message.deserialize_message(db.buffered_data)
+
+
+class TestSessionWithDB(testutils.DatabaseFixture):
+    def setUp(self):
+        super(TestSessionWithDB, self).setUp()
+        random.seed()
+        self.task_session = TaskSession(Mock())
+
+    @patch('golem.task.tasksession.TaskSession.send')
+    def test_inform_worker_about_payment(self, send_mock):
+        transaction_id = str(uuid.uuid4())
+        block_number = random.randint(1, 2**8)
+        payment = model.Payment.create(
+            subtask=str(uuid.uuid4()),
+            payee=str(uuid.uuid4()),
+            value=random.randint(1, 10),
+            details={
+                'tx': transaction_id,
+                'block_number': block_number,
+            }
+        )
+        self.task_session.inform_worker_about_payment(payment)
+        expected = {
+            'BLOCK_NUMBER': block_number,
+            'REWARD_STR': payment.value,
+            'SUB_TASK_ID': payment.subtask,
+            'TRANSACTION_ID': transaction_id,
+        }
+        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+
+    @patch('golem.task.tasksession.TaskSession.send')
+    def test_request_payment(self, send_mock):
+        subtask_id = str(uuid.uuid4())
+        expected_income = model.ExpectedIncome.create(
+            sender_node=str(uuid.uuid4()),
+            sender_node_details=None,
+            value=random.randint(1, 10),
+            subtask=subtask_id,
+            task=str(uuid.uuid4())
+        )
+        self.task_session.request_payment(expected_income)
+        expected = {
+            'SUB_TASK_ID': subtask_id,
+        }
+        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+
+    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
+    def test_react_to_subtask_payment_request(self, inform_mock):
+        subtask_id = str(uuid.uuid4())
+        msg = message.MessageSubtaskPaymentRequest(subtask_id=subtask_id)
+        # Payment does not exist
+        self.task_session._react_to_subtask_payment_request(msg)
+        inform_mock.assert_not_called()
+
+        # Payment exists
+        payment = model.Payment.create(
+            subtask=subtask_id,
+            payee=str(uuid.uuid4()),
+            value=random.randint(1, 10),
+            details={}
+        )
+        self.task_session._react_to_subtask_payment_request(msg)
+        inform_mock.assert_called_once_with(payment)
 
 
 def executor_success(req, success, error):

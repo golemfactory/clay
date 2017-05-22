@@ -174,14 +174,7 @@ class ExpectedIncome(BaseModel):
             .format(self.subtask, self.value)
 
     def get_sender_node(self):
-        from golem.network.p2p.node import Node
-        node_attrs = {'prv_port', 'prv_addr', 'pub_addr', 'pub_port'}
-        kwargs = dict(
-            (key, self.sender_node_details[key]) for key in node_attrs
-        )
-        p2p_node = Node(**kwargs)
-        p2p_node.prv_addresses = self.sender_node_details['prv_addresses']
-        return p2p_node
+        return self.sender_node_details
 
 
 class Income(BaseModel):
