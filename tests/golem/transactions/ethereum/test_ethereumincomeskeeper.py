@@ -12,6 +12,7 @@ from golem.transactions.ethereum.ethereumincomeskeeper\
 def get_some_id():
     return str(uuid.uuid4())
 
+
 class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/transactions/ethereum/ethereumincomeskeeper.py',
@@ -97,7 +98,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         received_kwargs = {
             'sender_node_id': get_some_id(),
             'task_id': get_some_id(),
-            'subtask_id': get_some_id(),
+            'subtask_id': 's1' + get_some_id(),
             'transaction_id': get_some_id(),
             'block_number': random.randint(0, sys.maxint),
             'value': random.randint(10, sys.maxint),
@@ -117,15 +118,15 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.received(**received_kwargs)
         self.assertEquals(
             1,
-            model.Income.select().where(model.Income.subtask==received_kwargs['subtask_id'])
-                .count()
+            model.Income.select().where(model.Income.subtask == received_kwargs['subtask_id'])
+            .count()
         )
 
         # Try to use the same payment for another subtask
-        received_kwargs['subtask_id'] = get_some_id()
+        received_kwargs['subtask_id'] = 's2' + get_some_id()
         self.instance.received(**received_kwargs)
         self.assertEquals(
             0,
-            model.Income.select().where(model.Income.subtask==received_kwargs['subtask_id'])
-                .count()
+            model.Income.select().where(model.Income.subtask == received_kwargs['subtask_id'])
+            .count()
         )
