@@ -241,14 +241,6 @@ class TaskServer(PendingConnectionsServer):
             if self.task_sessions[tsk] == task_session:
                 del self.task_sessions[tsk]
 
-        for idx in range(len(self.task_sessions_incoming)):  # using iter() fails with IndexError
-            try:
-                session = self.task_sessions_incoming[idx]
-            except IndexError:
-                break
-            if session == task_session:
-                self.task_sessions_incoming.remove(session)
-
     def set_last_message(self, type_, t, msg, address, port):
         if len(self.last_messages) >= 5:
             self.last_messages = self.last_messages[-4:]
