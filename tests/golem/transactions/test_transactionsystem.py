@@ -7,7 +7,10 @@ from golem.network.p2p.node import Node
 
 
 class TestTransactionSystem(TestWithDatabase):
+    def setUp(self):
+        super(TestTransactionSystem, self).setUp()
+        self.transaction_system = TransactionSystem()
+
     def test_add_payment_info(self):
-        e = TransactionSystem()
         ai = EthAccountInfo("DEF", 2010, "10.0.0.1", "node1", Node(), urandom(20))
-        e.add_payment_info("xyz", "xxyyzz", 10, ai)
+        self.transaction_system.add_payment_info("xyz", "xxyyzz", 10, ai)

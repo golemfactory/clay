@@ -923,12 +923,8 @@ class TaskServer(PendingConnectionsServer):
             elem._last_try = datetime.datetime.now()
             subtask_id = subtask_id_getter(elem)
             sessions = self._find_sessions(subtask_id)
-            if hasattr(elem, 'task'):
-                task_id = elem.task
-            else:
-                task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
 
-            logger.debug('_send_waiting() task_id: %r len(sessions):%r', task_id, len(sessions))
+            logger.debug('_send_waiting() len(sessions):%r', len(sessions))
             if not sessions:
                 p2p_node = p2p_node_getter(elem)
                 if p2p_node is None:

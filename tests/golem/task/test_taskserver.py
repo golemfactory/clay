@@ -1,6 +1,7 @@
 from __future__ import division
 
 from collections import deque
+import datetime
 from math import ceil
 from mock import Mock, MagicMock, patch, ANY
 import os
@@ -704,10 +705,89 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
         random.seed()
+        self.ccd = self._get_config_desc()
+        self.ts = TaskServer(Node(), self.ccd, EllipticalKeysAuth(self.path),
+                             self.client, use_docker_machine_manager=False)
+        self.ts.task_computer = MagicMock()
 
     def tearDown(self):
-        TestWithKeysAuth.tearDown(self)
-        TestDirFixtureWithReactor.tearDown(self)
+        for parent in self.__class__.__bases__:
+            parent.tearDown(self)
+
+    def test_find_sessions(self):
+        subtask_id = str(uuid.uuid4())
+
+        # Empty
+        self.assertEquals([], self.ts._find_sessions(subtask_id))
+
+        # Found task_id
+        task_id = 't' + str(uuid.uuid4())
+        session = MagicMock()
+        session.task_id = task_id
+        self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
+        self.ts.task_sessions_incoming.append(session)
+        self.assertEquals([session], self.ts._find_sessions(subtask_id))
+
+        # Found in task_sessions
+        subtask_session = MagicMock()
+        self.ts.task_sessions[subtask_id] = subtask_session
+        self.assertEquals([subtask_session], self.ts._find_sessions(subtask_id))
+
+    @patch("golem.task.taskserver.TaskServer._add_pending_request")
+    @patch("golem.task.taskserver.TaskServer._find_sessions")
+    def test_send_waiting(self, find_sessions_mock, add_pending_mock):
+        session_cbk = MagicMock()
+        elem = MagicMock()
+        elem.subtask_id = 's' + str(uuid.uuid4())
+        elem.p2p_node = MagicMock()
+        kwargs = {
+            'elems_set': {elem},
+            'subtask_id_getter': lambda x: x.subtask_id,
+            'req_type': 'TEST_REQUEST_TYPE',
+            'session_cbk': session_cbk,
+            'p2p_node_getter': lambda x: x.p2p_node,
+        }
+
+        elem._last_try = datetime.datetime.now()
+        self.ts._send_waiting(**kwargs)
+        find_sessions_mock.assert_not_called()
+
+        find_sessions_mock.return_value = []
+        elem._last_try = datetime.datetime.min
+        self.ts._send_waiting(**kwargs)
+        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.reset_mock()
+        add_pending_mock.assert_called_once_with(
+            req_type=kwargs['req_type'],
+            task_owner=elem.p2p_node,
+            port=elem.p2p_node.prv_port,
+            key_id=ANY,
+            args={'obj': elem}
+        )
+        add_pending_mock.reset_mock()
+
+        # Test ordinary session
+        session = tasksession.TaskSession(conn=MagicMock())
+        find_sessions_mock.return_value = [session]
+        elem._last_try = datetime.datetime.min
+        self.ts._send_waiting(**kwargs)
+        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.reset_mock()
+        session_cbk.assert_called_once_with(session, elem)
+        session_cbk.reset_mock()
+        self.assertEquals(0, len(kwargs['elems_set']))
+
+        # Test weakref session exists
+        import weakref
+        find_sessions_mock.return_value = [weakref.ref(session)]
+        elem._last_try = datetime.datetime.min
+        kwargs['elems_set'] = {elem}
+        self.ts._send_waiting(**kwargs)
+        find_sessions_mock.assert_called_once_with(elem.subtask_id)
+        find_sessions_mock.reset_mock()
+        session_cbk.assert_called_once_with(session, elem)
+        session_cbk.reset_mock()
+        self.assertEquals(0, len(kwargs['elems_set']))
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskmanager.get_external_address")
