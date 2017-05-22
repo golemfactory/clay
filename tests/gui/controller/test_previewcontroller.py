@@ -22,7 +22,7 @@ class TestPriorites(TestCase):
         s_sta = SubtaskState()
         s_sta.subtask_status = SubtaskStatus.starting
         s_wai = SubtaskState()
-        s_wai.subtask_status = SubtaskStatus.waiting
+        s_wai.subtask_status = SubtaskStatus.downloading
         assert subtasks_priority(s_rst) > subtasks_priority(s_fin)
         assert subtasks_priority(s_fil) > subtasks_priority(s_fin)
         assert subtasks_priority(s_rsd) > subtasks_priority(s_fin)

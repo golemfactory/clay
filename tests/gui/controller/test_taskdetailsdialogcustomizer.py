@@ -33,7 +33,7 @@ class TestTaskDetailsDialogCustomizer(LogTestCase):
         ss1.computer.ip_address = "10.10.10.10"
         ss1.computer.performance = "1000"
         ss1.subtask_definition = "DEF 1"
-        ss1.subtask_status = SubtaskStatus.waiting
+        ss1.subtask_status = SubtaskStatus.downloading
         ss2 = SubtaskState()
         ss2.subtask_id = "def"
         ss2.computer.node_name = "DEF"
