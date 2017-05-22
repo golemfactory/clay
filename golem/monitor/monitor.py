@@ -59,10 +59,12 @@ class SystemMonitor(object):
         try:
             result = self.ping_request(kwargs['port'])
             if not result['success']:
-                dispatcher.send('golem.p2p', event='unreachable', port=kwargs['port'])
-                log.warning('Port unreachable: %r -> %r', kwargs['port'], result['description'])
+                status = result['description'].replace('\n', ', ')
+                log.warning('Port status: {}'.format(status))
+                dispatcher.send('golem.p2p', event='unreachable',
+                                port=kwargs['port'], description=result['description'])
         except:
-            log.exception('ping error')
+            log.exception('Port reachability check error')
 
     def ping_request(self, port):
         import requests
