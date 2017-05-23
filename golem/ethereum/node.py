@@ -15,6 +15,7 @@ from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider
 
+from golem.core.common import is_windows
 from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 
@@ -61,6 +62,7 @@ class Faucet(object):
 class NodeProcess(object):
     MIN_GETH_VERSION = '1.6.1'
     MAX_GETH_VERSION = '1.6.999'
+    IPC_CONNECTION_TIMEOUT = 10
 
     def __init__(self, datadir):
         self.datadir = datadir
@@ -118,13 +120,19 @@ class NodeProcess(object):
 
         self.__ps = subprocess.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
-        WAIT_PERIOD = 0.1
-        wait_time = 0
+
+        if is_windows():
+            # On Windows expend to full named pipe path.
+            ipc_path = r'\\.\pipe\{}'.format(ipc_path)
+
         self.web3 = Web3(IPCProvider(ipc_path))
+        CHECK_PERIOD = 0.1
+        wait_time = 0
         while not self.web3.isConnected():
-            # FIXME: Add timeout limit, we don't want to loop here forever.
-            time.sleep(WAIT_PERIOD)
-            wait_time += WAIT_PERIOD
+            if wait_time > self.IPC_CONNECTION_TIMEOUT:
+                raise OSError("Cannot connect to geth at {}".format(ipc_path))
+            time.sleep(CHECK_PERIOD)
+            wait_time += CHECK_PERIOD
 
         identified_chain = self.identify_chain()
         if identified_chain != chain:

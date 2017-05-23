@@ -45,7 +45,7 @@ class RopstenFaucetTest(unittest.TestCase):
 
 
 class EthereumNodeTest(TempDirFixture):
-    def test_ethereum_node(self, *_):
+    def test_ethereum_node(self):
         np = NodeProcess(self.tempdir)
         assert np.is_running() is False
         np.start()
@@ -57,7 +57,7 @@ class EthereumNodeTest(TempDirFixture):
         assert np.is_running() is False
 
     @unittest.skip("Ethereum node sharing not supported")
-    def test_ethereum_node_reuse(self, *_):
+    def test_ethereum_node_reuse(self):
         np = NodeProcess(self.tempdir)
         np.start()
         np1 = NodeProcess(self.tempdir)
@@ -67,7 +67,7 @@ class EthereumNodeTest(TempDirFixture):
         np.stop()
         np1.stop()
 
-    def test_geth_version_check(self, *_):
+    def test_geth_version_check(self):
         min = NodeProcess.MIN_GETH_VERSION
         max = NodeProcess.MAX_GETH_VERSION
         NodeProcess.MIN_GETH_VERSION = "0.1.0"
