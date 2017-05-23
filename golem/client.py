@@ -341,6 +341,7 @@ class Client(HardwarePresetsMixin):
         try:
             new_task = DictSerializer.load(t_dict)
             self.enqueue_new_task(new_task)
+            return unicode(new_task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
