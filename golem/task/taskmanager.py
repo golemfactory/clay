@@ -554,8 +554,8 @@ class TaskManager(TaskEventListener):
             state = states.get(task.header.task_id)
             return {
                 u'id': to_unicode(task.header.task_id),
-                u'name': to_unicode(task.task_definition.name),
-                u'type': to_unicode(task.task_definition.type),
+                u'name': to_unicode(task.task_definition.task_name),
+                u'type': to_unicode(task.task_definition.task_type),
                 u'duration': max(task.task_definition.full_task_timeout -
                                  state.remaining_time, 0),
                 u'time_remaining': state.remaining_time,
