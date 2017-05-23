@@ -636,6 +636,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             subtask.computer = ComputerState()
             subtask.computer.node_name = 'node_{}'.format(i)
             subtask.computer.node_id = 'deadbeef0{}'.format(i)
+            subtask.results = []
+            subtask.stderr = 'error_{}'.format(i)
+            subtask.stdout = 'output_{}'.format(i)
             subtask_id = subtask.subtask_id
 
             subtasks[subtask.subtask_id] = subtask
