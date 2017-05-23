@@ -61,12 +61,16 @@ class TaskStatus(object):
 
 
 class SubtaskStatus(object):
-    waiting = u"Waiting"
     starting = u"Starting"
+    downloading = u"Downloading"
     resent = u"Failed - Resent"
     finished = u"Finished"
     failure = u"Failure"
     restarted = u"Restart"
+
+    @classmethod
+    def is_computed(cls, status):
+        return status in [cls.starting, cls.downloading]
 
 
 class TaskTestStatus(object):

@@ -1,13 +1,13 @@
 from collections import deque
 from ipaddress import AddressValueError
 import logging
-from pydispatch import dispatcher
 import random
 from threading import Lock
 import time
 
 
 from golem.core import simplechallenge
+
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
@@ -112,23 +112,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         self.last_messages = []
 
-    def new_connection(self, session):
-        session.start()
-
-    def start_accepting(
-            self,
-            listening_established=None,
-            listening_failure=None
-            ):
-        def established(port):
-            self.cur_port = port
-            self.node.p2p_prv_port = port
-            dispatcher.send(signal='golem.p2p', event='listening', port=port)
-            logger.debug('accepting established %r', self.cur_port)
-
-        super(P2PService, self).start_accepting(
-            listening_established=established
-        )
+    def _listening_established(self, port):
+        super(P2PService, self)._listening_established(port)
+        self.node.p2p_prv_port = port
 
     def connect_to_network(self):
         self.connect_to_seeds()
@@ -167,6 +153,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             P2PService.__connection_failure
         )
         self.network.connect(connect_info)
+
+    def new_connection(self, session):
+        session.start()
 
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False

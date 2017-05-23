@@ -52,6 +52,7 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
                    use_monitor=False)
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
 class TestClient(TestWithDatabase):
@@ -109,7 +110,8 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False, use_monitor=False)
         self.client.sync()
-        self.assertTrue(self.client.transaction_system.sync.called)
+        # TODO: assertTrue when re-enabled
+        self.assertFalse(self.client.transaction_system.sync.called)
 
     def test_remove_resources(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -239,7 +241,8 @@ class TestClient(TestWithDatabase):
 
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
         self.client.start_network()
         self.client.collect_gossip()
@@ -247,7 +250,8 @@ class TestClient(TestWithDatabase):
     @patch('golem.client.log')
     def test_do_work(self, log, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
         c = self.client
@@ -385,6 +389,7 @@ class TestClient(TestWithDatabase):
         assert config.max_resource_size > 0
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
@@ -649,17 +654,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.p2pservice.cur_port = 0
         self.assertTrue(c.connection_status().startswith(u"Application not listening"))
 
-    def test_unreachable_flag(self, *_):
+    def test_port_status(self, *_):
         from pydispatch import dispatcher
         import random
         random.seed()
 
         port = random.randint(1, 50000)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
-        self.assertTrue(hasattr(self.client, 'unreachable_flag'))
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="no event at all", port=port,
+                        description="port 1234: closed")
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="unreachable", port=port,
+                        description="port 1234: closed")
+        self.assertTrue(self.client.node.port_status)
 
     @staticmethod
     def __new_session():
