@@ -603,6 +603,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         for i in xrange(0, n):
 
             task = Mock()
+            task.task_definition.full_task_timeout = 100
             task.header.task_id = str(uuid.uuid4())
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
