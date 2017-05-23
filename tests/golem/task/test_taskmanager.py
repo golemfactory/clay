@@ -448,6 +448,33 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert ts.progress == 0.3
 
     @patch("golem.task.taskmanager.get_external_address")
+    def test_create_task(self, mock_addr):
+        source = {
+            'resources': [
+                '/Users/user/Desktop/folder/texture.tex',
+                '/Users/user/Desktop/folder/model.mesh',
+                '/Users/user/Desktop/folder/stylized_levi.blend'
+            ],
+            'task_name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'task_type': 'blender',
+            'timeout': '09:25:00',
+            'subtask_amount': '6',
+            'subtask_timeout': '4:10:00',
+            'bid': '0.000032',
+            'options': {
+                'resolution': [1920, 1080],
+                'frames': '1-10',
+                'format': 'EXR',
+                'output_path': '/Users/user/Desktop/stylized.levi.exr',
+                'compositing': True,
+            }
+        }
+
+        task_state = self.tm.create_task(source)
+        definition = task_state.definition
+        # TODO
+
+    @patch("golem.task.taskmanager.get_external_address")
     def test_resume_task(self, mock_addr):
         mock_addr.return_value = self.addr_return
         with self.assertLogs(logger, level="WARNING"):

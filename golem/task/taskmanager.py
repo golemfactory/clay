@@ -6,6 +6,7 @@ import time
 
 from twisted.internet.defer import inlineCallbacks
 
+from apps.appsmanager import AppsManager
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     timeout_to_deadline
 from golem.core.hostaddress import get_external_address
@@ -38,9 +39,19 @@ class TaskManager(TaskEventListener):
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
 
-    def __init__(self, node_name, node, keys_auth, listen_address="", listen_port=0, root_path="res",
-                 use_distributed_resources=True, tasks_dir="tasks", task_persistence=False):
+    def __init__(self, node_name, node, keys_auth, listen_address="",
+                 listen_port=0, root_path="res", use_distributed_resources=True,
+                 tasks_dir="tasks", task_persistence=False):
         super(TaskManager, self).__init__()
+
+        self.apps_manager = AppsManager()
+        self.apps_manager.load_apps()
+
+        apps = self.apps_manager.apps.values()
+        task_types = [app.task_type_info(None, app.controller) for app in apps]
+
+        self.task_types = {t.name.lower(): t for t in task_types}
+
         self.node_name = node_name
         self.node = node
         self.keys_auth = keys_auth
@@ -82,6 +93,65 @@ class TaskManager(TaskEventListener):
     def get_external_address(self):
         request = AsyncRequest(get_external_address, self.listen_port)
         return async_run(request)
+
+    def create_task(self, t_dict):
+        if not isinstance(t_dict, dict):
+            return t_dict
+
+        import uuid
+        from apps.core.task.coretaskstate import TaskDesc
+
+        type_name = t_dict['task_type'].lower()
+        task_type = self.task_types[type_name]
+
+        def timeout_from_string(string):
+            values = string.split(':')
+            return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
+
+        def main_scene_file(resources):
+            exts = task_type.output_file_ext
+            candidates = filter(lambda r: any(r.lower().endswith(e.lower())
+                                              for e in exts), resources)
+            candidates.sort(key=len, reverse=True)
+            return candidates[0]
+
+        definition = task_type.definition()
+        definition.options = task_type.options()
+        definition.task_id = "{}".format(uuid.uuid4())
+        definition.task_name = t_dict['task_name']
+        definition.task_type = task_type.name
+
+        definition.full_task_timeout = timeout_from_string(
+            t_dict['timeout'])
+        definition.subtask_timeout = timeout_from_string(
+            t_dict['subtask_timeout'])
+
+        definition.main_program_file = task_type.defaults.main_program_file
+        definition.optimize_total = False
+        definition.total_subtasks = int(t_dict['subtask_amount'])
+
+        # price
+        definition.max_price = float(t_dict['bid']) * 10 ** 18
+
+        # task specific options
+        definition.resolution = t_dict['options']['resolution']
+        definition.output_file = t_dict['options']['output_path']
+        definition.output_format = t_dict['options']['format'].upper()
+        definition.main_scene_file = main_scene_file(t_dict['resources'])
+        definition.options.compositing = t_dict['options'].get('compositing')
+        definition.options.frames = t_dict['options'].get('frames')
+
+        # FIXME: set advanced verification options to all subtasks
+
+        # resources
+        definition.resources = set(t_dict['resources'])
+        definition.add_to_resources()
+
+        task_state = TaskDesc()
+        task_state.status = TaskStatus.notStarted
+        task_state.definition = definition
+
+        return task_state
 
     @inlineCallbacks
     def add_new_task(self, task):

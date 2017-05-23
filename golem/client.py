@@ -281,7 +281,8 @@ class Client(HardwarePresetsMixin):
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, task):
+    def enqueue_new_task(self, t_dict):
+        task = self.task_server.task_manager.create_task(t_dict)
         task_id = task.header.task_id
         files = task.get_resources(None, resource_types["hashes"])
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)

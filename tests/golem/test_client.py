@@ -468,6 +468,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
 
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.client = c
+        c.task_server.task_computer = Mock()
+        c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.root_path = self.path
+
         task = Mock()
         task.header.task_id = str(uuid.uuid4())
 
