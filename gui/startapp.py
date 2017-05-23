@@ -59,7 +59,12 @@ def start_client(start_ranking, datadir=None,
         if is_windows():
             from twisted.internet import iocpreactor
             iocpreactor.install()
+        else:
+            from golem.reactor import geventreactor
+            geventreactor.install()
         from twisted.internet import reactor
+
+    process_monitor = None
 
     from golem.core.processmonitor import ProcessMonitor
     from golem.docker.manager import DockerManager
