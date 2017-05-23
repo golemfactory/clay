@@ -340,7 +340,6 @@ class Client(HardwarePresetsMixin):
     def create_task(self, t_dict):
         try:
             new_task = DictSerializer.load(t_dict)
-            new_task.header.max_price = int(new_task.header.max_price)
             self.enqueue_new_task(new_task)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
