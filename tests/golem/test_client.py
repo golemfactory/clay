@@ -606,12 +606,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         c.enqueue_new_task = Mock()
 
-        # try to create task with error
-        task_dict = {"some data": "with no sense"}
-        with self.assertLogs(log, level="WARNING"):
-            c.create_task(task_dict)
-        self.assertFalse(c.enqueue_new_task.called)
-
         # create a task
         t = Task(TaskHeader("node_name", "task_id",
                             "10.10.10.10", 123,

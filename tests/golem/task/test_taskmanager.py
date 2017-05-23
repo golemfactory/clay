@@ -455,10 +455,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
                 '/Users/user/Desktop/folder/model.mesh',
                 '/Users/user/Desktop/folder/stylized_levi.blend'
             ],
-            'task_name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
-            'task_type': 'blender',
+            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'type': 'blender',
             'timeout': '09:25:00',
-            'subtask_amount': '6',
+            'subtask_count': '6',
             'subtask_timeout': '4:10:00',
             'bid': '0.000032',
             'options': {
@@ -470,9 +470,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             }
         }
 
-        task_state = self.tm.create_task(source)
-        definition = task_state.definition
-        # TODO
+        task = self.tm.create_task(source)
+        assert isinstance(task, Task)
 
     @patch("golem.task.taskmanager.get_external_address")
     def test_resume_task(self, mock_addr):

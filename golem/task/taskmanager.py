@@ -1,4 +1,6 @@
 import logging
+import os
+
 from pathlib import Path
 import pickle
 from pydispatch import dispatcher
@@ -16,7 +18,7 @@ from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
 
@@ -101,7 +103,7 @@ class TaskManager(TaskEventListener):
         import uuid
         from apps.core.task.coretaskstate import TaskDesc
 
-        type_name = t_dict['task_type'].lower()
+        type_name = t_dict['type'].lower()
         task_type = self.task_types[type_name]
 
         def timeout_from_string(string):
@@ -118,26 +120,25 @@ class TaskManager(TaskEventListener):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_id = "{}".format(uuid.uuid4())
-        definition.task_name = t_dict['task_name']
+        definition.task_name = t_dict['name']
         definition.task_type = task_type.name
 
         definition.full_task_timeout = timeout_from_string(
             t_dict['timeout'])
         definition.subtask_timeout = timeout_from_string(
             t_dict['subtask_timeout'])
+        definition.total_subtasks = int(t_dict['subtask_count'])
 
         definition.main_program_file = task_type.defaults.main_program_file
-        definition.optimize_total = False
-        definition.total_subtasks = int(t_dict['subtask_amount'])
+        definition.output_file = os.path.join(t_dict['options']['output_path'],
+                                              definition.task_name)
 
-        # price
         definition.max_price = float(t_dict['bid']) * 10 ** 18
 
         # task specific options
-        definition.resolution = t_dict['options']['resolution']
-        definition.output_file = t_dict['options']['output_path']
         definition.output_format = t_dict['options']['format'].upper()
         definition.main_scene_file = main_scene_file(t_dict['resources'])
+        definition.resolution = t_dict['options']['resolution']
         definition.options.compositing = t_dict['options'].get('compositing')
         definition.options.frames = t_dict['options'].get('frames')
 
@@ -147,11 +148,21 @@ class TaskManager(TaskEventListener):
         definition.resources = set(t_dict['resources'])
         definition.add_to_resources()
 
-        task_state = TaskDesc()
-        task_state.status = TaskStatus.notStarted
-        task_state.definition = definition
+        task_desc = TaskDesc()
+        task_desc.definition = definition
+        task_desc.task_state.status = TaskStatus.notStarted
 
-        return task_state
+        task_builder = task_type.task_builder_type(self.node_name,
+                                                   task_desc.definition,
+                                                   self.root_path,
+                                                   self.dir_manager)
+
+        task = Task.build_task(task_builder)
+        task.header.task_id = definition.task_id
+        task_desc.task_state.outputs = task.get_output_names()
+        task_desc.task_state.total_subtasks = task.get_total_tasks()
+
+        return task
 
     @inlineCallbacks
     def add_new_task(self, task):
