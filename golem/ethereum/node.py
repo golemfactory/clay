@@ -112,6 +112,7 @@ class NodeProcess(object):
             '--syncmode=light',
             '--rinkeby',
             '--ipcpath={}'.format(ipc_path),
+            '--nousb',
             '--verbosity', '3',
         ]
 
