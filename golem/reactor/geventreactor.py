@@ -350,13 +350,18 @@ class GeventReactor(posixbase.PosixReactorBase):
 		self._wait = 0
 		posixbase.PosixReactorBase.__init__(self,*args,**kwargs)
 
-	def mainLoop(self):
+	def mainLoop(self, timeout=None):
 		"""This main loop yields to gevent until the end, handling function calls along the way."""
 		self.greenlet = gevent.getcurrent()
 		callqueue = self._callqueue
 		seconds = self.seconds
+		start = seconds()
+		if timeout == None:
+			run = True
+		else:
+			run = False
 		try:
-			while 1:
+			while run or timeout > seconds() - start:
 				self._wait = 0
 				now = seconds()
 				if callqueue:
@@ -373,7 +378,7 @@ class GeventReactor(posixbase.PosixReactorBase):
 				finally:
 					self._wait = 0
 				now = seconds()
-				while 1:
+				while run or timeout > seconds() - start:
 					try:
 						c = callqueue[0]
 					except IndexError:
@@ -393,6 +398,8 @@ class GeventReactor(posixbase.PosixReactorBase):
 			pass
 		log.msg('Main loop terminated.')
 		self.fireSystemEvent('shutdown')
+
+	doIteration = mainLoop
 
 	def addReader(self,selectable):
 		"""Add a FileDescriptor for notification of data available to read."""

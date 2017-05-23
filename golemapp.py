@@ -5,9 +5,8 @@ from golem.core.common import is_windows
 if is_windows():
     from golem import uvent
     uvent.install()
-else:
-    from golem.reactor import geventreactor
-    geventreactor.install()
+from golem.reactor import geventreactor
+geventreactor.install()
 
 import click
 
