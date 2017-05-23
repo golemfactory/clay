@@ -288,6 +288,7 @@ class Client(HardwarePresetsMixin):
         client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
         deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
         deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
+        return task
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -339,8 +340,7 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            new_task = DictSerializer.load(t_dict)
-            self.enqueue_new_task(new_task)
+            new_task = self.enqueue_new_task(t_dict)
             return unicode(new_task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
