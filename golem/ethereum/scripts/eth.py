@@ -133,6 +133,7 @@ def multi(o, payments):
 def history(o):
     log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
     my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
+
     def get_logs_step(**kwargs):
         blocknumber = o.eth.web3.eth.blockNumber
         step = 2**8
@@ -143,7 +144,7 @@ def history(o):
             if (blocknumber / step) % 2**10 == 0:
                 sys.stdout.write(str(blocknumber))
             result = o.eth.get_logs(
-                from_block=max(blocknumber-step, 0),
+                from_block=max(blocknumber - step, 0),
                 to_block=blocknumber,
                 **kwargs
             )
