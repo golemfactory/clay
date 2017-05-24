@@ -133,8 +133,6 @@ def multi(o, payments):
 def history(o):
     log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
     my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
-    my_addr = '0x' + zpad('b3d01938429ad68c821f9623c05b556ad500ff8c'.decode('hex'), 32).encode('hex')  # colo de menin
-    my_addr = '0x' + zpad('ba088df72148e6ed972b0b160cb4754840f5bec9'.decode('hex'), 32).encode('hex')  # a luz de tieta
     def get_logs_step(**kwargs):
         blocknumber = o.eth.web3.eth.blockNumber
         step = 2**8
@@ -144,7 +142,11 @@ def history(o):
                 sys.stdout.write('.')
             if (blocknumber / step) % 2**10 == 0:
                 sys.stdout.write(str(blocknumber))
-            result = o.eth.get_logs(from_block=max(blocknumber-step, 0), to_block=blocknumber, **kwargs)
+            result = o.eth.get_logs(
+                from_block=max(blocknumber-step, 0),
+                to_block=blocknumber,
+                **kwargs
+            )
             sys.stdout.flush()
             blocknumber -= step
         sys.stdout.write('#\n')
@@ -166,8 +168,11 @@ def history(o):
             ):
         print label
         for p in l:
-            print "{!r}".format(p)
-            print "[{}] -> {} {}".format(p['blockNumber'], p['topics'][2][-40:], int(p['data'], 16))
+            print "[{}] -> {} {}".format(
+                p['blockNumber'],
+                p['topics'][2][-40:],
+                int(p['data'], 16)
+            )
 
 
 @app.group()
