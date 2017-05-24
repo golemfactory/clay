@@ -168,9 +168,10 @@ class RenderingTask(CoreTask):
         img_task = self._open_preview()
 
         for sub in self.subtasks_given.values():
-            if sub['status'] == SubtaskStatus.starting:
+            if SubtaskStatus.is_computed(sub['status']):
                 self._mark_task_area(sub, img_task, sent_color)
-            if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
+            if sub['status'] in [SubtaskStatus.failure,
+                                 SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
         img_task.save(self.preview_task_file_path, "BMP")

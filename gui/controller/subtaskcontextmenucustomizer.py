@@ -33,7 +33,7 @@ class SubtaskContextMenuCustomizer:
         if subtask_status == SubtaskStatus.starting:
             enabled["Restart"] = True
 
-        if subtask_status == SubtaskStatus.waiting:
+        if subtask_status == SubtaskStatus.downloading:
             enabled["Restart"] = False
 
         if subtask_status == SubtaskStatus.failure:
