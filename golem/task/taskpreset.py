@@ -34,7 +34,6 @@ def remove_task_preset(task_type, name):
         query = TaskPreset.delete().where(_is_same_task_preset(task_type, name))
         query.execute()
     except Exception:
-        print "NO EXCEPTION"
         logger.exception(("Canont remove task preset {}:{}".format(task_type,
                                                                    name)))
 
