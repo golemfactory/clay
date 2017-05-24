@@ -37,10 +37,6 @@ class BlenderVerificator(FrameRenderingVerificator):
         shift_y = start_y + self.verification_options.box_size[1]
         min_y = max((self.res_y - shift_y) / self.res_y, 0.0)
         min_y = max(min_y, 0)
-        print min_x
-        print max_x
-        print min_y
-        print max_y
 
         script_src = generate_blender_crop_file(
             resolution=(self.res_x, self.res_y),
