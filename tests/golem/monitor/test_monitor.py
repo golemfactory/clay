@@ -81,4 +81,5 @@ class TestSystemMonitor(TestCase):
             response_mock.json = mock.MagicMock(return_value={'success': False, 'description': 'failure'})
             dispatcher.send(signal='golem.p2p', event='listening', port=port)
             signals = [s for s in signals if s[1] != 'listening']
-            self.assertEquals(signals, [('golem.p2p', 'unreachable', {'port': port})])
+            self.assertEquals(signals, [('golem.p2p', 'unreachable',
+                                         {'description': 'failure', 'port': port})])

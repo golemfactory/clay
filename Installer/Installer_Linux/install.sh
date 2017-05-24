@@ -93,7 +93,7 @@ function check_dependencies()
     fi
 
     # check if geth is installed
-    if [[ -z "$( dpkg -l | grep geth )" ]]; then
+    if [[ -z "$( dpkg -l | awk '{print $2}' | grep geth )" ]]; then
         ask_user "Geth not found. Do you want to install it? (y/n)"
         INSTALL_GETH=$?
     fi
