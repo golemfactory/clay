@@ -57,9 +57,6 @@ class Node(object):
 
     def run(self, use_rpc=False):
         try:
-            if 'twisted.internet.reactor' not in sys.modules:
-                from golem.reactor import geventreactor
-                geventreactor.install()
             from twisted.internet import reactor
 
             if use_rpc:

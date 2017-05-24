@@ -44,8 +44,7 @@ class TestGolemApp(TempDirFixture):
     @ci_skip
     @patch('gui.startapp.start_app')
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.delete_reactor')
-    def test_start_gui(self, delete_reactor, reactor, start_app):
+    def test_start_gui(self, reactor, start_app):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         assert start_app.called
