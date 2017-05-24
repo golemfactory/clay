@@ -442,6 +442,38 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         assert Message.deserialize_message(db.buffered_data)
 
+    @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
+    def test_react_to_subtask_payment(self, check_msg_mock):
+        reward_mock = MagicMock()
+        self.task_session.task_server.reward_for_subtask_paid = reward_mock
+        subtask_id = str(uuid.uuid4())
+        reward = random.randint(1, 2**10)
+        transaction_id = str(uuid.uuid4())
+        block_number = random.randint(1, 2**10)
+
+        # Pending
+        msg = message.MessageSubtaskPayment(
+            subtask_id=subtask_id,
+            reward=reward
+        )
+        self.task_session.interpret(msg)
+        reward_mock.assert_not_called()
+
+        # Transaction created but not mined
+        msg.transaction_id = transaction_id
+        self.task_session.interpret(msg)
+        reward_mock.assert_not_called()
+
+        # Proper/finished transaction
+        msg.block_number = block_number
+        self.task_session.interpret(msg)
+        reward_mock.assert_called_once_with(
+            subtask_id=subtask_id,
+            reward=reward,
+            transaction_id=transaction_id,
+            block_number=block_number
+        )
+
 
 class TestSessionWithDB(testutils.DatabaseFixture):
     def setUp(self):
