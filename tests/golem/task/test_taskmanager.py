@@ -629,6 +629,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         for i in xrange(0, n):
 
             task = Mock()
+            task.task_definition.full_task_timeout = 100
             task.header.task_id = str(uuid.uuid4())
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
@@ -662,6 +663,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             subtask.computer = ComputerState()
             subtask.computer.node_name = 'node_{}'.format(i)
             subtask.computer.node_id = 'deadbeef0{}'.format(i)
+            subtask.results = []
+            subtask.stderr = 'error_{}'.format(i)
+            subtask.stdout = 'output_{}'.format(i)
             subtask_id = subtask.subtask_id
 
             subtasks[subtask.subtask_id] = subtask
