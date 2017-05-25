@@ -329,8 +329,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     def build_dict_from_def(cls, t_def):
         t_dict = super(RenderingTaskBuilder, cls).build_dict_from_def(t_def)
         t_dict[u'options'][u'compositing'] = t_def.options.compositing
-        t_dict[u'format'] = t_def.output_format
-        t_dict[u'resolution'] = t_def.resolution
+        t_dict[u'options'][u'format'] = t_def.output_format
+        t_dict[u'options'][u'resolution'] = t_def.resolution
         return t_dict
 
     @classmethod

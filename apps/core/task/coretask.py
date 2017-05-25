@@ -439,11 +439,12 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def build_dict_from_def(cls, t_def):
         return {
-            u'options': dict(),
+            u'options': {
+                u'output_path': to_unicode(cls._output_path_for_dict(t_def))
+            },
             u'type': to_unicode(t_def.task_type),
             u'name': to_unicode(t_def.task_name),
             u'bid': float(t_def.max_price) / denoms.ether,
-            u'output_path': to_unicode(cls._output_path_for_dict(t_def)),
             u'subtask_count': t_def.total_subtasks,
             u'resources': [to_unicode(r) for r in t_def.resources],
             u'timeout': to_unicode(
