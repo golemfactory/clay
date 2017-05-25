@@ -3,15 +3,19 @@ import multiprocessing
 import psutil
 from psutil import virtual_memory
 
-from golem.appconfig import logger, MIN_MEMORY_SIZE, MIN_DISK_SPACE, MIN_CPU_CORES, DEFAULT_HARDWARE_PRESET_NAME, \
+from golem.appconfig import logger,\
+    MIN_MEMORY_SIZE,\
+    MIN_DISK_SPACE,\
+    MIN_CPU_CORES,\
+    DEFAULT_HARDWARE_PRESET_NAME,\
     CUSTOM_HARDWARE_PRESET_NAME
 from golem.core.fileshelper import free_partition_space
 from golem.model import HardwarePreset
 
 
 def cpu_cores_available():
-    """
-    Retrieves available CPU cores except for the first one. Tries to read process' CPU affinity first.
+    """Retrieves available CPU cores except for the first one. Tries to read
+       process' CPU affinity first.
     :return list: Available cpu cores except the first one.
     """
     try:

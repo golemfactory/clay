@@ -106,4 +106,4 @@ class TestAppConfig(TestDirFixture):
         assert config_descC.computing_trust == 0.23
 
         with self.assertRaises(TypeError):
-            AppConfig.change_config(None)
+            cfgC.change_config(None)
