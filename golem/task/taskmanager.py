@@ -114,7 +114,7 @@ class TaskManager(TaskEventListener):
             return task
 
         t_def = task.task_definition
-        t_type = self.task_types[t_def.task_type]
+        t_type = self.task_types[t_def.task_type.lower()]
         return t_type.task_builder_type.build_dict_from_def(t_def)
 
     @inlineCallbacks
