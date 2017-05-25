@@ -341,6 +341,27 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.request_failure("xyz")
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
+    def test_receive_subtask_problems(self):
+        ctk = CompTaskKeeper(Path(self.path), False)
+        th = get_task_header()
+        ctk.add_request(th, 5)
+        ctd = ComputeTaskDef()
+        ctd.task_id = "xyz"
+        ctd.subtask_id = "abc"
+        ctk.receive_subtask(ctd)
+        assert ctk.active_tasks["xyz"].requests == 0
+        assert ctk.subtask_to_task["abc"] == "xyz"
+        ctd2 = ComputeTaskDef()
+        ctd2.task_id = "xyz"
+        ctd2.subtask_id = "def"
+        ctk.receive_subtask(ctd2)
+        assert ctk.active_tasks["xyz"].requests == 0
+        assert ctk.subtask_to_task.get("def") is None
+        assert ctk.subtask_to_task["abc"] == "xyz"
+        ctk.active_tasks["xyz"].requests = 1
+        ctk.receive_subtask(ctd)
+        assert ctk.active_tasks["xyz"].requests == 1
+
     @patch('golem.task.taskkeeper.CompTaskKeeper.dump')
     def test_get_task_env(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))

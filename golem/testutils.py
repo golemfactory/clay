@@ -125,9 +125,21 @@ class TestGui(TempDirFixture):
 
 
 class PEP8MixIn(object):
+    """A mix-in class that adds PEP-8 style conformance.
+    To use it in your TestCase just add it to inheritance list like so:
+    class MyTestCase(unittest.TestCase, testutils.PEP8MixIn):
+        PEP8_FILES = <iterable>
+
+    PEP8_FILES attribute should be an iterable containing paths of python
+    source files relative to <golem root>.
+
+    Afterwards your test case will perform conformance test on files mentioned
+    in this attribute.
+    """
+
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-        style = pycodestyle.StyleGuide(ignore=['E501'])
+        style = pycodestyle.StyleGuide(ignore=[], max_line_length=80)
 
         # PyCharm needs absolute paths
         base_path = Path(get_golem_path())
