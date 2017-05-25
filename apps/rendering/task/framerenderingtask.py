@@ -295,21 +295,40 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         if self.task_definition.options.use_frames:
             num_frames = len(self.task_definition.options.frames)
             if self.task_definition.total_subtasks > num_frames:
-                est = math.floor(self.task_definition.total_subtasks / num_frames) * num_frames
+                est = math.floor(self.task_definition.total_subtasks /
+                                 num_frames) * num_frames
                 est = int(est)
                 if est != self.task_definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. %s subtasks will be used",
-                                   est)
+                    logger.warning("Too many subtasks for this task. %s "
+                                   "subtasks will be used", est)
                 return est
 
-            est = num_frames / math.ceil(num_frames / self.task_definition.total_subtasks)
+            est = num_frames / math.ceil(num_frames /
+                                         self.task_definition.total_subtasks)
             est = int(math.ceil(est))
             if est != self.task_definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. %s subtasks will be used.", est)
+                logger.warning("Too many subtasks for this task. %s "
+                               "subtasks will be used.", est)
 
             return est
 
-        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
+        if defaults.min_subtasks <= self.task_definition.total_subtasks \
+                <= defaults.max_subtasks:
             return self.task_definition.total_subtasks
         else:
             return defaults.default_subtasks
+
+    @classmethod
+    def build_dict_from_def(cls, t_def):
+        t_dict = RenderingTaskBuilder.build_dict_from_def(t_def)
+        t_dict[u'options'][u'frames'] = t_def.options.frames
+        return t_dict
+
+    @classmethod
+    def build_def_from_dict(cls, t_type, t_dict):
+        t_def = super(FrameRenderingTaskBuilder, cls)\
+            .build_def_from_dict(t_type, t_dict)
+        t_def.options.frames = t_dict['options']['frames']
+        return t_def
+
+

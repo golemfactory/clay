@@ -1,22 +1,24 @@
 from __future__ import division
+
 import copy
 import logging
 import os
+import uuid
 
 from enum import Enum
+from ethereum.utils import denoms
 
-from golem.core.common import HandleKeyError, timeout_to_deadline
+from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, \
+    resource_types
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-
-
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -396,3 +398,67 @@ class CoreTaskBuilder(TaskBuilder):
         kwargs["node_name"] = self.node_name
         kwargs["environment"] = self.environment
         return kwargs
+
+    @staticmethod
+    def timeout_from_string(string):
+        values = string.split(':')
+        return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
+
+    @staticmethod
+    def timeout_to_string(timeout):
+        fmt = u':'.join([u'{0:0=2d}'] * 3)
+        hours = int(timeout / 3600)
+        timeout -= hours * 3600
+        minutes = int(timeout / 60)
+        timeout -= minutes * 60
+        return fmt.format(hours, minutes, timeout)
+
+    @classmethod
+    def build_def_from_dict(cls, t_type, t_dict):
+        t_def = t_type.definition()
+        t_def.options = t_type.options()
+        t_def.task_id = str(uuid.uuid4())
+        t_def.task_type = t_type.name
+        t_def.task_name = t_dict['name']
+
+        t_def.total_subtasks = int(t_dict['subtask_count'])
+        t_def.full_task_timeout = cls.timeout_from_string(
+            t_dict['timeout'])
+        t_def.subtask_timeout = cls.timeout_from_string(
+            t_dict['subtask_timeout'])
+
+        t_def.main_program_file = t_type.defaults.main_program_file
+        t_def.output_file = cls._output_path_from_dict(t_dict, t_def)
+
+        t_def.max_price = float(t_dict['bid']) * denoms.ether
+        t_def.resources = set(t_dict['resources'])
+        t_def.add_to_resources()
+
+        return t_def
+
+    @classmethod
+    def build_dict_from_def(cls, t_def):
+        return {
+            u'options': dict(),
+            u'type': to_unicode(t_def.task_type),
+            u'name': to_unicode(t_def.task_name),
+            u'bid': float(t_def.max_price) / denoms.ether,
+            u'output_path': to_unicode(cls._output_path_for_dict(t_def)),
+            u'subtask_count': t_def.total_subtasks,
+            u'resources': [to_unicode(r) for r in t_def.resources],
+            u'timeout': to_unicode(
+                cls.timeout_to_string(t_def.full_task_timeout)
+            ),
+            u'subtask_timeout': to_unicode(
+                cls.timeout_to_string(t_def.subtask_timeout)
+            )
+        }
+
+    @classmethod
+    def _output_path_from_dict(cls, t_dict, t_def):
+        return os.path.join(t_dict['options']['output_path'],
+                            t_def.task_name)
+
+    @staticmethod
+    def _output_path_for_dict(t_def):
+        return t_def.output_file.rsplit(os.path.sep, 1)[0]

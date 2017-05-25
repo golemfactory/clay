@@ -1,3 +1,4 @@
+import os
 import random
 import shutil
 import time
@@ -618,8 +619,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             wait_for(self.tm.add_new_task(t))
 
-    @classmethod
-    def __build_tasks(cls, n):
+    def __build_tasks(self, n):
 
         tasks = dict()
         tasks_states = dict()
@@ -629,7 +629,15 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         for i in xrange(0, n):
 
             task = Mock()
-            task.task_definition.full_task_timeout = 100
+            task.task_definition.task_type = "blender"
+            task.task_definition.subtask_timeout = 3671
+            task.task_definition.full_task_timeout = 3671 * 10
+            task.task_definition.max_price = 1 * 10 ** 18
+            task.task_definition.resources = [str(uuid.uuid4())
+                                              for _ in range(5)]
+            task.task_definition.output_file = os.path.join(self.tempdir,
+                                                            'somefile')
+
             task.header.task_id = str(uuid.uuid4())
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
@@ -638,7 +646,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             state.status = 'waiting'
             state.remaining_time = 100 - i
 
-            subtask_states, subtask_id = cls.__build_subtasks(n)
+            subtask_states, subtask_id = self.__build_subtasks(n)
 
             state.subtask_states = subtask_states
             task.subtask_states = subtask_states

@@ -303,6 +303,14 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     def _set_verification_options(self, new_task):
         new_task.verificator.set_verification_options(self.task_definition.verification_options)
 
+    @staticmethod
+    def _scene_file(t_type, resources):
+        exts = t_type.output_file_ext
+        candidates = filter(lambda r: any(r.lower().endswith(e.lower())
+                                          for e in exts), resources)
+        candidates.sort(key=len, reverse=True)
+        return candidates[0]
+
     def get_task_kwargs(self, **kwargs):
         # super() when ready
         kwargs['node_name'] = self.node_name
@@ -316,3 +324,29 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         self._set_verification_options(task)
         task.initialize(self.dir_manager)
         return task
+
+    @classmethod
+    def build_dict_from_def(cls, t_def):
+        t_dict = super(RenderingTaskBuilder, cls).build_dict_from_def(t_def)
+        t_dict[u'options'][u'compositing'] = t_def.options.compositing
+        t_dict[u'format'] = t_def.output_format
+        t_dict[u'resolution'] = t_def.resolution
+        return t_dict
+
+    @classmethod
+    def build_def_from_dict(cls, t_type, t_dict):
+        t_def = super(RenderingTaskBuilder, cls).build_def_from_dict(t_type,
+                                                                     t_dict)
+        t_def.options.compositing = t_dict['options']['compositing']
+        t_def.output_format = t_dict['options']['format'].upper()
+        t_def.resolution = t_dict['options']['resolution']
+        t_def.main_scene_file = cls._scene_file(t_type, t_dict['resources'])
+        t_def.add_to_resources()
+        return t_def
+
+    @classmethod
+    def _output_path_from_dict(cls, t_dict, t_def):
+        return '{}.{}'.format(t_dict['options']['output_path'],
+                              t_def.task_name,
+                              t_dict['options']['format'])
+

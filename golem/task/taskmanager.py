@@ -1,6 +1,4 @@
 import logging
-import os
-
 from pathlib import Path
 import pickle
 from pydispatch import dispatcher
@@ -100,69 +98,24 @@ class TaskManager(TaskEventListener):
         if not isinstance(t_dict, dict):
             return t_dict
 
-        import uuid
-        from apps.core.task.coretaskstate import TaskDesc
-
         type_name = t_dict['type'].lower()
-        task_type = self.task_types[type_name]
+        t_type = self.task_types[type_name]
 
-        def timeout_from_string(string):
-            values = string.split(':')
-            return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
-
-        def main_scene_file(resources):
-            exts = task_type.output_file_ext
-            candidates = filter(lambda r: any(r.lower().endswith(e.lower())
-                                              for e in exts), resources)
-            candidates.sort(key=len, reverse=True)
-            return candidates[0]
-
-        definition = task_type.definition()
-        definition.options = task_type.options()
-        definition.task_id = "{}".format(uuid.uuid4())
-        definition.task_name = t_dict['name']
-        definition.task_type = task_type.name
-
-        definition.full_task_timeout = timeout_from_string(
-            t_dict['timeout'])
-        definition.subtask_timeout = timeout_from_string(
-            t_dict['subtask_timeout'])
-        definition.total_subtasks = int(t_dict['subtask_count'])
-
-        definition.main_program_file = task_type.defaults.main_program_file
-        definition.output_file = os.path.join(t_dict['options']['output_path'],
-                                              definition.task_name)
-
-        definition.max_price = float(t_dict['bid']) * 10 ** 18
-
-        # task specific options
-        definition.output_format = t_dict['options']['format'].upper()
-        definition.main_scene_file = main_scene_file(t_dict['resources'])
-        definition.resolution = t_dict['options']['resolution']
-        definition.options.compositing = t_dict['options'].get('compositing')
-        definition.options.frames = t_dict['options'].get('frames')
-
-        # FIXME: set advanced verification options to all subtasks
-
-        # resources
-        definition.resources = set(t_dict['resources'])
-        definition.add_to_resources()
-
-        task_desc = TaskDesc()
-        task_desc.definition = definition
-        task_desc.task_state.status = TaskStatus.notStarted
-
-        task_builder = task_type.task_builder_type(self.node_name,
-                                                   task_desc.definition,
-                                                   self.root_path,
-                                                   self.dir_manager)
-
-        task = Task.build_task(task_builder)
-        task.header.task_id = definition.task_id
-        task_desc.task_state.outputs = task.get_output_names()
-        task_desc.task_state.total_subtasks = task.get_total_tasks()
-
+        t_def = t_type.task_builder_type.build_def_from_dict(t_type, t_dict)
+        t_builder = t_type.task_builder_type(self.node_name, t_def,
+                                             self.root_path,
+                                             self.dir_manager)
+        task = Task.build_task(t_builder)
+        task.header.task_id = t_def.task_id
         return task
+
+    def create_dict(self, task):
+        if isinstance(task, dict):
+            return task
+
+        t_def = task.task_definition
+        t_type = self.task_types[t_def.task_type]
+        return t_type.task_builder_type.build_dict_from_def(t_def)
 
     @inlineCallbacks
     def add_new_task(self, task):
@@ -186,6 +139,7 @@ class TaskManager(TaskEventListener):
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
+        task.header.max_price = int(task.header.max_price)
 
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
@@ -612,7 +566,10 @@ class TaskManager(TaskEventListener):
         return self.subtask2task_mapping[subtask_id]
 
     def get_dict_task(self, task_id):
-        return self._simple_task_repr(self.tasks_states, self.tasks[task_id])
+        task = self.tasks[task_id]
+        t_dict = self._simple_task_repr(self.tasks_states, task)
+        t_dict.update(self.create_dict(task))
+        return t_dict
 
     def get_dict_tasks(self):
         return [self._simple_task_repr(self.tasks_states, t)
