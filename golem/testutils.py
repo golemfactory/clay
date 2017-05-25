@@ -103,6 +103,7 @@ class TempDirFixture(unittest.TestCase):
         if path.isdir(self.tempdir):
             shutil.rmtree(self.tempdir)
 
+
 class DatabaseFixture(TempDirFixture):
     """ Setups temporary database for tests."""
 
@@ -132,6 +133,18 @@ class TestGui(TempDirFixture):
 
 
 class PEP8MixIn(object):
+    """A mix-in class that adds PEP-8 style conformance.
+    To use it in your TestCase just add it to inheritance list like so:
+    class MyTestCase(unittest.TestCase, testutils.PEP8MixIn):
+        PEP8_FILES = <iterable>
+
+    PEP8_FILES attribute should be an iterable containing paths of python
+    source files relative to <golem root>.
+
+    Afterwards your test case will perform conformance test on files mentioned
+    in this attribute.
+    """
+
     def test_conformance(self):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(ignore=['E501'])
