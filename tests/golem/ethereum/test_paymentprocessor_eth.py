@@ -19,12 +19,13 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
             privkey=privkey
         )
 
+    @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance", return_value=2**100)  # noqa
     @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.gnt_balance", return_value=2**11)  # noqa
-    def test_load_from_db(self, balance_mock):
+    def test_load_from_db(self, gnt_balance_mock, eth_balance_mock):
         self.assertEquals([], self.payment_processor._awaiting)
 
         subtask_id = str(uuid.uuid4())
-        value = random.randint(1, 2**10)
+        value = random.randint(1, 2**5)
         payee = os.urandom(32)
         payment = model.Payment.create(
             subtask=subtask_id,
