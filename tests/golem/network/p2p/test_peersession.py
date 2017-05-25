@@ -167,6 +167,25 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         peer_session.key_id = "NEW KEY_ID"
         peer_session._react_to_stop_gossip(MessageStopGossip())
 
+    def test_verify(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        keys_auth = EllipticalKeysAuth(self.path)
+        peer_session.key_id = keys_auth.get_key_id()
+        peer_session.p2p_service.verify_sig = keys_auth.verify
+        msg = MessageStopGossip()
+        assert not peer_session.verify(msg)
+        msg.sig = keys_auth.sign(msg.get_short_hash())
+        assert peer_session.verify(msg)
+
+    def test_interpret(self):
+        conn = MagicMock()
+        peer_session = PeerSession(conn)
+        peer_session.key_id = "KEY_ID"
+        msg = MessageStopGossip()
+        peer_session.interpret(msg)
+        assert peer_session.p2p_service.set_last_message.called
+
 
 class TestPeerSessionInfo(unittest.TestCase):
 

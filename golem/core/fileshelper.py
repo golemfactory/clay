@@ -6,13 +6,13 @@ import subprocess
 
 from golem.core.common import is_windows
 
-from gui.controller.memoryhelper import dir_size_to_display, translate_resource_index
+from gui.controller import memoryhelper
 
 
 def copy_file_tree(src, dst, exclude=None):
-    """
-    Copy directory and it's content from src to dst. Doesn't copy files with extensions from excluded. Don't remove
-    additional files from destination directory.
+    """Copy directory and it's content from src to dst. Doesn't copy files
+       with extensions from excluded. Don't remove additional files from
+       destination directory.
     :param str src: source directory (copy this directory)
     :param str dst: destination directory (copy source directory here)
     :param list|None exclude: don't copy files with this extensions
@@ -127,7 +127,8 @@ def common_dir(arr, ign_case=None):
 def find_file_with_ext(directory, extensions):
     """ Return first file with one of the given extension from directory.
     :param str directory: name of the directory
-    :param list extensions: list of acceptable extensions (with dot, ie. ".png", ".txt")
+    :param list extensions: list of acceptable extensions (with dot,
+                            ie. ".png", ".txt")
     :return str: name of the first file wich extension is in
     """
     extensions = map(lambda y: y.lower(), extensions)
@@ -162,8 +163,8 @@ def has_ext(filename, ext, case_sensitive=False):
 
 
 def free_partition_space(directory):
-    """
-    Returns free partition space. The partition is determined by the given directory.
+    """Returns free partition space. The partition is determined by the
+       given directory.
     :param directory: Directory to determine partition by
     :return: Free space in kB
     """
@@ -179,9 +180,11 @@ def free_partition_space(directory):
 
 
 def du(path):
-    """ Imitates bash "du -h <path>" command behaviour. Returns the estimated size of this directory
+    """Imitates bash "du -h <path>" command behaviour. Returns the estimated
+       size of this directory
     :param str path: path to directory which size should be measured
-    :return str: directory size in human readable format (eg. 1 Mb) or "-1" if an error occurs.
+    :return str: directory size in human readable format (eg. 1 Mb) or "-1"
+                 if an error occurs.
     """
     try:
         size, _ = subprocess.check_output(['du', '-sh', path]).split()
@@ -192,10 +195,14 @@ def du(path):
             size = int(get_dir_size(path))
         except OSError as err:
             import logging
-            logging.getLogger('golem.core').info("Can't open dir {}: {}".format(path, str(err)))
+            logging.getLogger('golem.core')\
+                .info("Can't open dir {}: {}".format(path, str(err)))
             return "-1"
-    human_readable_size, idx = dir_size_to_display(size)
-    return "{} {}".format(human_readable_size, translate_resource_index(idx))
+    human_readable_size, idx = memoryhelper.dir_size_to_display(size)
+    return "{} {}".format(
+        human_readable_size,
+        memoryhelper.translate_resource_index(idx)
+    )
 
 
 def format_cmd_line_path(path):
