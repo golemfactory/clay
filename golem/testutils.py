@@ -67,13 +67,24 @@ class TempDirFixture(unittest.TestCase):
     def temp_file_name(self, name):
         return path.join(self.tempdir, name)
 
-    def additional_dir_content(self, file_num_list, dir_=None, results=None, sub_dir=None):
-        """ Create recursively additional temporary files in directories in given directory
-        For example file_num_list in format [5, [2], [4, []]] will create 5 files in self.tempdir directory,
-        and 2 subdirectories - first one will contain 2 tempfiles, second will contain 4 tempfiles and
-        an empty subdirectory
-        :param file_num_list: list containing number of new files that should be created in this directory or
-            list describing file_num_list for new inner directories
+    def additional_dir_content(
+            self,
+            file_num_list,
+            dir_=None,
+            results=None,
+            sub_dir=None
+            ):
+        """Create recursively additional temporary files in directories
+        in given directory
+
+        For example file_num_list in format [5, [2], [4, []]]
+        will create 5 files in self.tempdir directory,
+        and 2 subdirectories - first one will contain 2 tempfiles,
+        second will contain 4 tempfiles and an empty subdirectory
+        :param file_num_list: list containing number of new files that
+                              should be created in this directory or
+                              list describing file_num_list for new
+                              inner directories
         :param dir_: directory in which files should be created
         :param results: list of created temporary files
         :return:
@@ -147,11 +158,15 @@ class PEP8MixIn(object):
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-        style = pycodestyle.StyleGuide(ignore=['E501'])
+        style = pycodestyle.StyleGuide(ignore=[], max_line_length=80)
 
         # PyCharm needs absolute paths
         base_path = Path(get_golem_path())
         absolute_files = [str(base_path / path) for path in self.PEP8_FILES]
 
         result = style.check_files(absolute_files)
-        self.assertEqual(result.total_errors, 0, "Found code style errors (and warnings).")
+        self.assertEqual(
+            result.total_errors,
+            0,
+            "Found code style errors (and warnings)."
+        )

@@ -72,8 +72,10 @@ class ClientConfigDescriptor(object):
 
 
 class ConfigApprover(object):
-    """ Change specific config description option from strings to the right format. Doesn't change
-     them if they're in a wrong format (they're saved as strings then). """
+    """Change specific config description option from strings to the right
+       format. Doesn't change them if they're in a wrong format (they're
+       saved as strings then).
+       """
 
     dont_change_opt = ['seed_host', 'max_resource_size', 'max_memory_size',
                        'use_distributed_resource_management', 'use_waiting_for_task_timeout', 'send_pings',
@@ -88,7 +90,9 @@ class ConfigApprover(object):
 
     def __init__(self, config_desc):
         """ Create config approver class that keeps old config descriptor
-        :param ClientConfigDescriptor config_desc: old config descriptor that may be modified in the future
+        :param ClientConfigDescriptor config_desc: old config descriptor that
+                                                   may be modified in the
+                                                   future
         """
         self.config_desc = config_desc
         self._actions = {}
@@ -96,13 +100,17 @@ class ConfigApprover(object):
         self._init_actions()
 
     def change_config(self, new_config_desc):
-        """ Try to change specific configuration options in the old config for a values from new config. Try to
-        change new config options to the right format (int or float) if it's expected.
+        """Try to change specific configuration options in the old config
+           for a values from new config. Try to change new config options to
+           the right format (int or float) if it's expected.
         :param ClientConfigDescriptor new_config_desc: new config descriptor
         :return ClientConfigDescriptor: changed config descriptor
         """
         ncd_dict = new_config_desc.__dict__
-        change_dict = {k: ncd_dict[k] for k in self._opts_to_change if k in self._opts_to_change}
+        change_dict = {
+            k: ncd_dict[k]
+            for k in self._opts_to_change if k in self._opts_to_change
+        }
         for key, val in change_dict.iteritems():
             change_dict[key] = self._actions[key](val, key)
         self.config_desc.__dict__.update(change_dict)
@@ -136,7 +144,8 @@ class ConfigApprover(object):
 
     @staticmethod
     def _to_float(val, name):
-        """ Try to change value <val> to float. If it's not possible return unchanged val
+        """Try to change value <val> to float. If it's not possible
+           return unchanged val
         :param val: value that should be changed to float
         :param str name: name of a config description option for logs
         :return: value change to float or unchanged value if it's not possible
