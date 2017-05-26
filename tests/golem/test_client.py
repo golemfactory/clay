@@ -478,6 +478,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.task_server.task_manager.root_path = self.path
 
         task = Mock()
+        task.header.max_price = 1 * 10 ** 18
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
