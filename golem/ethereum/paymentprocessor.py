@@ -9,6 +9,7 @@ from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem.model import db
 from golem.model import Payment, PaymentStatus
 from golem.transactions.service import Service
 from .contracts import TestGNT
@@ -68,8 +69,8 @@ class PaymentProcessor(Service):
         self.__eth_balance = None
         self.__gnt_balance = None
         self.__gnt_reserved = 0
-        self.__awaiting = []  # Awaiting individual payments
-        self.__inprogress = {}  # Sent transactions.
+        self._awaiting = []  # Awaiting individual payments
+        self._inprogress = {}  # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
@@ -77,6 +78,7 @@ class PaymentProcessor(Service):
         self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
+        self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
     def synchronized(self):
@@ -159,7 +161,7 @@ class PaymentProcessor(Service):
         # Here we keep the same simple estimation by number of atomic payments.
         # FIXME: This is different than estimation in sendout(). Create
         #        helpers for estimation and stick to them.
-        num_payments = len(self.__awaiting) + sum(len(p) for p in self.__inprogress.values())
+        num_payments = len(self._awaiting) + sum(len(p) for p in self._inprogress.values())
         return num_payments * self.SINGLE_PAYMENT_ETH_COST
 
     def _eth_available(self):
@@ -171,6 +173,20 @@ class PaymentProcessor(Service):
 
     def _gnt_available(self):
         return self.gnt_balance() - self.__gnt_reserved
+
+    def load_from_db(self):
+        with db.atomic():
+            for sent_payment in Payment\
+                    .select()\
+                    .where(Payment.status == PaymentStatus.sent):
+                transaction_hash = sent_payment.details['tx'].decode('hex')
+                if transaction_hash not in self._inprogress:
+                    self._inprogress[transaction_hash] = []
+                self._inprogress[transaction_hash].append(sent_payment)
+            for awaiting_payment in Payment\
+                    .select()\
+                    .where(Payment.status == PaymentStatus.awaiting):
+                self.add(awaiting_payment)
 
     def add(self, payment, deadline=DEFAULT_DEADLINE):
         if payment.status is not PaymentStatus.awaiting:
@@ -191,7 +207,7 @@ class PaymentProcessor(Service):
             log.warning("Low GNT: {:.6f}".format(av_gnt / denoms.ether))
             return False
 
-        self.__awaiting.append(payment)
+        self._awaiting.append(payment)
         self.__gnt_reserved += payment.value
 
         # Set new deadline if not set already or shorter than the current one.
@@ -205,7 +221,7 @@ class PaymentProcessor(Service):
         return True
 
     def sendout(self):
-        if not self.__awaiting:
+        if not self._awaiting:
             return False
 
         now = int(time.time())
@@ -213,8 +229,8 @@ class PaymentProcessor(Service):
             log.info("Next sendout in {} s".format(self.deadline - now))
             return False
 
-        payments = self.__awaiting  # FIXME: Should this list be synchronized?
-        self.__awaiting = []
+        payments = self._awaiting  # FIXME: Should this list be synchronized?
+        self._awaiting = []
         self.deadline = sys.maxsize
         addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
@@ -247,7 +263,7 @@ class PaymentProcessor(Service):
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
                                    .format(tx_hash[2:].decode('hex'), h))
 
-            self.__inprogress[h] = payments
+            self._inprogress[h] = payments
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
@@ -256,7 +272,7 @@ class PaymentProcessor(Service):
 
     def monitor_progress(self):
         confirmed = []
-        for h, payments in self.__inprogress.iteritems():
+        for h, payments in self._inprogress.iteritems():
             hstr = '0x' + h.encode('hex')
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
@@ -296,7 +312,7 @@ class PaymentProcessor(Service):
                 confirmed.append(h)
         for h in confirmed:
             # Delete in progress entry.
-            del self.__inprogress[h]
+            del self._inprogress[h]
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) == 0:

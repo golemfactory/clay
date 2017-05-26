@@ -327,7 +327,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_monitor_progress(self):
         a1 = urandom(20)
 
-        inprogress = self.pp._PaymentProcessor__inprogress
+        inprogress = self.pp._inprogress
 
         # Give 1 ETH and 99 GNT
         balance_eth = 1 * denoms.ether
