@@ -14,14 +14,22 @@ from twisted.python.compat import _PY3
 
 asyncSkip = "asyncio not available before python 3.4"
 
-
-
 from twisted.python import failure, log
 from twisted.internet import defer
 from twisted.internet.task import Clock
 from twisted.trial import unittest
 
+def setup_module(module):
+    import sys
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
+    from golem.reactor import geventreactor
+    geventreactor.install()
 
+def teardown_module(module):
+    import sys
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
 
 class GenericError(Exception):
     pass
@@ -79,18 +87,6 @@ class UtilTests(unittest.TestCase):
     Tests for utility functions.
     """
 
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-
     def test_logErrorReturnsError(self):
         """
         L{defer.logError} returns the given error.
@@ -135,21 +131,11 @@ class UtilTests(unittest.TestCase):
 class DeferredTests(unittest.SynchronousTestCase, ImmediateFailureMixin):
 
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.callbackResults = None
         self.errbackResults = None
         self.callback2Results = None
         # Restore the debug flag to its original state when done.
         self.addCleanup(defer.setDebugging, defer.getDebugging())
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def _callback(self, *args, **kw):
         self.callbackResults = args, kw
@@ -1453,18 +1439,6 @@ class FirstErrorTests(unittest.SynchronousTestCase):
     Tests for L{FirstError}.
     """
 
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-
     def test_repr(self):
         """
         The repr of a L{FirstError} instance includes the repr of the value of
@@ -1531,19 +1505,11 @@ class FirstErrorTests(unittest.SynchronousTestCase):
 
 class AlreadyCalledTests(unittest.SynchronousTestCase):
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self._deferredWasDebugging = defer.getDebugging()
         defer.setDebugging(True)
 
     def tearDown(self):
         defer.setDebugging(self._deferredWasDebugging)
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def _callback(self, *args, **kw):
         pass
@@ -1682,11 +1648,6 @@ class AlreadyCalledTests(unittest.SynchronousTestCase):
 
 class DeferredCancellerTests(unittest.SynchronousTestCase):
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.callbackResults = None
         self.errbackResults = None
         self.callback2Results = None
@@ -1696,9 +1657,6 @@ class DeferredCancellerTests(unittest.SynchronousTestCase):
     def tearDown(self):
         # Sanity check that the canceller was called at most once.
         self.assertIn(self.cancellerCallCount, (0, 1))
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
 
     def _callback(self, data):
@@ -1960,11 +1918,6 @@ class LogTests(unittest.SynchronousTestCase):
         """
         Add a custom observer to observer logging.
         """
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.c = []
         log.addObserver(self.c.append)
 
@@ -1973,9 +1926,6 @@ class LogTests(unittest.SynchronousTestCase):
         Remove the observer.
         """
         log.removeObserver(self.c.append)
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
 
     def _loggedErrors(self):
@@ -2041,11 +1991,6 @@ class LogTests(unittest.SynchronousTestCase):
 
 class DeferredListEmptyTests(unittest.SynchronousTestCase):
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.callbackRan = 0
 
     def testDeferredListEmpty(self):
@@ -2059,9 +2004,6 @@ class DeferredListEmptyTests(unittest.SynchronousTestCase):
 
     def tearDown(self):
         self.assertTrue(self.callbackRan, "Callback was never run.")
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
 
 
@@ -2070,17 +2012,7 @@ class OtherPrimitivesTests(unittest.SynchronousTestCase, ImmediateFailureMixin):
         self.counter += 1
 
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.counter = 0
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def testLock(self):
         lock = defer.DeferredLock()
@@ -2323,19 +2255,9 @@ class DeferredFilesystemLockTests(unittest.TestCase):
     """
 
     def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
         self.clock = Clock()
         self.lock = defer.DeferredFilesystemLock(self.mktemp(),
                                                  scheduler=self.clock)
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def test_waitUntilLockedWithNoLock(self):
         """
@@ -2472,18 +2394,6 @@ class DeferredAddTimeoutTests(unittest.SynchronousTestCase):
     """
     Tests for the function L{Deferred.addTimeout}
     """
-
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def test_timeoutChainable(self):
         """
@@ -2950,18 +2860,6 @@ class EnsureDeferredTests(unittest.TestCase):
     Tests for L{twisted.internet.defer.ensureDeferred}.
     """
 
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-
     def test_passesThroughDeferreds(self):
         """
         L{defer.ensureDeferred} will pass through a Deferred unchanged.
@@ -2985,18 +2883,6 @@ class TimeoutErrorTests(unittest.TestCase, ImmediateFailureMixin):
     """
     L{twisted.internet.defer} timeout code.
     """
-
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     def test_deprecatedTimeout(self):
         """
@@ -3029,18 +2915,6 @@ def callAllSoonCalls(loop):
 
 
 class DeferredFutureAdapterTests(unittest.TestCase):
-
-    def setUp(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
-        from golem.reactor import geventreactor
-        geventreactor.install()
-
-    def tearDown(self):
-        import sys
-        if 'twisted.internet.reactor' in sys.modules:
-            del sys.modules['twisted.internet.reactor']
 
     skip = asyncSkip
 
