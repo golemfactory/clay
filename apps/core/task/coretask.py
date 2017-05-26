@@ -406,7 +406,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     @staticmethod
     def timeout_to_string(timeout):
-        fmt = u':'.join([u'{0:0=2d}'] * 3)
+        fmt = u':'.join([u'{:0=2d}'] * 3)
         hours = int(timeout / 3600)
         timeout -= hours * 3600
         minutes = int(timeout / 60)
