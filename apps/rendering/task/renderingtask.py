@@ -339,9 +339,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
                                                                      t_dict)
         t_def.options.compositing = t_dict['options']['compositing']
         t_def.output_format = t_dict['options']['format'].upper()
-        t_def.resolution = t_dict['options']['resolution']
         t_def.main_scene_file = cls._scene_file(t_type, t_dict['resources'])
+        t_def.resolution = [int(d) for d in t_dict['options']['resolution']]
         t_def.add_to_resources()
+
         return t_def
 
     @classmethod

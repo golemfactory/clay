@@ -293,32 +293,46 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Implement this method properly - send disconnect package, close connections etc.
+        # FIXME: Implement this method properly - send disconnect package,
+        # close connections etc.
         self.p2pservice = None
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, t_dict):
-        task = self.task_server.task_manager.create_task(t_dict)
+    def enqueue_new_task(self, task):
+        if isinstance(task, dict):
+            task = self.task_server.task_manager.create_task(task)
+        else:
+            task.header.max_price = int(task.header.max_price)
+
+        resource_manager = self.resource_server.resource_manager
+        task_manager = self.task_server.task_manager
+
         task_id = task.header.task_id
+        key_id = self.keys_auth.key_id
+
+        options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
-        client_options = self.resource_server.resource_manager.build_client_options(self.keys_auth.key_id)
-        deferred = self.resource_server.add_task(files, task_id, client_options=client_options)
-        deferred.addCallback(lambda _: self.task_server.task_manager.add_new_task(task))
+
+        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred.addCallback(lambda _: task_manager.add_new_task(task))
+
         return task
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(task_id, unpack_delta)
+        self.task_server.task_computer.task_resource_collected(task_id,
+                                                               unpack_delta)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
-        self.p2pservice.set_resource_peer(self.node.prv_addr, self.resource_port)
+        self.p2pservice.set_resource_peer(self.node.prv_addr,
+                                          self.resource_port)
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
@@ -327,7 +341,8 @@ class Client(HardwarePresetsMixin):
             return True
 
         if self.rpc_publisher:
-            self.rpc_publisher.publish(Task.evt_task_test_status, TaskTestStatus.error,
+            self.rpc_publisher.publish(Task.evt_task_test_status,
+                                       TaskTestStatus.error,
                                        u"Another test is running")
         return False
 

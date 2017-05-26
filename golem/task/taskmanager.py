@@ -139,7 +139,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
-        task.header.max_price = int(task.header.max_price)
 
         self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
