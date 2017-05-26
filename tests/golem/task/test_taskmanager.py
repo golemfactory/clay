@@ -449,32 +449,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert ts.progress == 0.3
 
     @patch("golem.task.taskmanager.get_external_address")
-    def test_create_task(self, mock_addr):
-        source = {
-            'resources': [
-                '/Users/user/Desktop/folder/texture.tex',
-                '/Users/user/Desktop/folder/model.mesh',
-                '/Users/user/Desktop/folder/stylized_levi.blend'
-            ],
-            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
-            'type': 'blender',
-            'timeout': '09:25:00',
-            'subtask_count': '6',
-            'subtask_timeout': '4:10:00',
-            'bid': '0.000032',
-            'options': {
-                'resolution': [1920, 1080],
-                'frames': '1-10',
-                'format': 'EXR',
-                'output_path': '/Users/user/Desktop/stylized.levi.exr',
-                'compositing': True,
-            }
-        }
-
-        task = self.tm.create_task(source)
-        assert isinstance(task, Task)
-
-    @patch("golem.task.taskmanager.get_external_address")
     def test_resume_task(self, mock_addr):
         mock_addr.return_value = self.addr_return
         with self.assertLogs(logger, level="WARNING"):
@@ -584,10 +558,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert t.header.deadline <= get_timestamp_utc() + 60
         assert t.header.subtask_timeout == 10
 
-    @patch("golem.task.taskmanager.get_external_address", side_effect=lambda *a, **k: ('1.2.3.4', 40103, None))
+    @patch("golem.task.taskmanager.get_external_address",
+           side_effect=lambda *a, **k: ('1.2.3.4', 40103, None))
     def test_update_signatures(self, _):
-        node = Node("node", "key_id", "10.0.0.10", 40103, "1.2.3.4", 40103, None, 40102, 40102)
-        task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234, "key_id", "environment", task_owner=node), '')
+
+        node = Node("node", "key_id", "10.0.0.10", 40103,
+                    "1.2.3.4", 40103, None, 40102, 40102)
+        task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
+                               "key_id", "environment", task_owner=node), '')
 
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
         wait_for(self.tm.add_new_task(task))

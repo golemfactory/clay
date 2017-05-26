@@ -496,6 +496,50 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
 
+    def test_enqueue_new_task_dict(self, *_):
+        t_dict = {
+            'resources': [
+                '/Users/user/Desktop/folder/texture.tex',
+                '/Users/user/Desktop/folder/model.mesh',
+                '/Users/user/Desktop/folder/stylized_levi.blend'
+            ],
+            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'type': 'blender',
+            'timeout': '09:25:00',
+            'subtask_count': '6',
+            'subtask_timeout': '4:10:00',
+            'bid': '0.000032',
+            'options': {
+                'resolution': [1920, 1080],
+                'frames': '1-10',
+                'format': 'EXR',
+                'output_path': '/Users/user/Desktop/stylized.levi.exr',
+                'compositing': True,
+            }
+        }
+
+        c = self.client
+        c.resource_server = Mock()
+        c.keys_auth = Mock()
+        c.keys_auth.key_id = str(uuid.uuid4())
+
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.client = c
+        c.task_server.task_computer = Mock()
+        c.task_server.task_manager = TaskManager('node_name', Mock(),
+                                                 c.keys_auth)
+        c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.root_path = self.path
+
+        task = c.enqueue_new_task(t_dict)
+        assert isinstance(task, Task)
+        assert task.header.task_id
+
+        c.resource_server.resource_manager.build_client_options\
+            .assert_called_with(c.keys_auth.key_id)
+        assert c.resource_server.add_task.called
+        assert not c.task_server.task_manager.add_new_task.called
+
     @patch('golem.client.async_run')
     def test_get_balance(self, async_run, *_):
         c = self.client
