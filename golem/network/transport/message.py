@@ -1,7 +1,6 @@
 import collections
 import logging
 import time
-import warnings
 
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
@@ -12,17 +11,20 @@ logger = logging.getLogger('golem.network.transport.message')
 
 
 # TODO: Separate class logic from payload by implementing dict interface.
-#       All message payload should be stored as dict not as instance attributes.
+#       All message payload should be stored as dict not as instance
+#       attributes.
 class Message(object):
     """ Communication message that is sent in all networks """
 
-    registered_message_types = {}  # Message types that are allowed to be sent in the network """
+    # Message types that are allowed to be sent in the network
+    registered_message_types = {}
 
     def __init__(self, sig="", timestamp=None, dict_repr=None):
         """ Create new message"""
         if not self.registered_message_types:
             init_messages()
-        self.sig = sig  # signature (short data representation signed with private key)
+        # signature (short data representation signed with private key)
+        self.sig = sig
         if timestamp is None:
             timestamp = time.time()
         self.timestamp = timestamp
@@ -31,8 +33,10 @@ class Message(object):
         self.load_dict_repr(dict_repr)
 
     def get_short_hash(self):
-        """ Return short message representation for signature
-        :return str: short hash of serialized and sorted message dictionary representation """
+        """Return short message representation for signature
+        :return str: short hash of serialized and sorted message dictionary
+                     representation
+        """
         sorted_dict = self._sort_obj(self.dict_repr())
         return SimpleHash.hash(CBORSerializer.dumps(sorted_dict))
 
@@ -60,7 +64,9 @@ class Message(object):
         """ Return serialized message
         :return str: serialized message """
         try:
-            return CBORSerializer.dumps([self.TYPE, self.sig, self.timestamp, self.dict_repr()])
+            return CBORSerializer.dumps(
+                [self.TYPE, self.sig, self.timestamp, self.dict_repr()]
+            )
         except Exception:
             logger.exception("Error serializing message:")
             raise
@@ -71,19 +77,23 @@ class Message(object):
         :param DataBuffer db_: data buffer that message should be attached to
         """
         if not isinstance(db_, DataBuffer):
-            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
+            raise TypeError(
+                "Incorrect db type: {}. Should be: DataBuffer".format(db_)
+            )
         db_.append_len_prefixed_string(self.serialize())
 
     @classmethod
     def decrypt_and_deserialize(cls, db_, server):
-        """
-        Take out messages from data buffer, decrypt them using server if they are encrypted and deserialize them
+        """Take out messages from data buffer, decrypt them using server if
+           they are encrypted and deserialize them
         :param DataBuffer db_: data buffer containing messages
         :param SafeServer server: server that is able to decrypt data
         :return list: list of decrypted and deserialized messages
         """
         if not isinstance(db_, DataBuffer):
-            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
+            raise TypeError(
+                "Incorrect db type: {}. Should be: DataBuffer".format(db_)
+            )
         messages_ = []
 
         for msg in db_.get_len_prefixed_string():
@@ -92,7 +102,9 @@ class Message(object):
             try:
                 msg = server.decrypt(msg)
             except AssertionError:
-                logger.info("Failed to decrypt message, maybe it's not encrypted?")
+                logger.info(
+                    "Failed to decrypt message, maybe it's not encrypted?"
+                )
                 encrypted = False
             except Exception as err:
                 logger.info("Failed to decrypt message {}".format(str(err)))
@@ -117,7 +129,10 @@ class Message(object):
         :return list: list of deserialized messages
         """
         if not isinstance(db_, DataBuffer):
-            raise TypeError("Incorrect db type: {}. Should be: DataBuffer".format(db_))
+            raise TypeError(
+                "Incorrect db type: {}. Should be: DataBuffer"
+                .format(db_)
+            )
         messages_ = []
         msg_ = db_.read_len_prefixed_string()
 
@@ -138,7 +153,8 @@ class Message(object):
         """
         Deserialize single message
         :param str msg_: serialized message
-        :return Message|None: deserialized message or none if this message type is unknown
+        :return Message|None: deserialized message or none if this message
+                              type is unknown
         """
         try:
             msg_repr = CBORSerializer.loads(msg_)
@@ -160,7 +176,11 @@ class Message(object):
             logger.info('Unrecognized message type: %r', msg_type)
             return
 
-        return cls.registered_message_types[msg_type](sig=msg_sig, timestamp=msg_timestamp, dict_repr=d_repr)
+        return cls.registered_message_types[msg_type](
+            sig=msg_sig,
+            timestamp=msg_timestamp,
+            dict_repr=d_repr
+        )
 
     def __str__(self):
         return "{}".format(self.__class__)
@@ -182,7 +202,10 @@ class Message(object):
 
     def dict_repr(self):
         """Returns dictionary/list representation of  any subclass message"""
-        return dict((self.MAPPING[attr_name], getattr(self, attr_name)) for attr_name in self.MAPPING)
+        return dict(
+            (self.MAPPING[attr_name], getattr(self, attr_name))
+            for attr_name in self.MAPPING
+        )
 
 
 ##################
@@ -207,9 +230,20 @@ class MessageHello(Message):
         'metadata': u"METADATA",
     }
 
-    def __init__(self, port=0, node_name=None, client_key_id=None, node_info=None,
-                 rand_val=0, metadata=None, solve_challenge=False, challenge=None, difficulty=0, proto_id=0,
-                 client_ver=0, **kwargs):
+    def __init__(
+            self,
+            port=0,
+            node_name=None,
+            client_key_id=None,
+            node_info=None,
+            rand_val=0,
+            metadata=None,
+            solve_challenge=False,
+            challenge=None,
+            difficulty=0,
+            proto_id=0,
+            client_ver=0,
+            **kwargs):
         """
         Create new introduction message
         :param int port: listening port
@@ -218,7 +252,8 @@ class MessageHello(Message):
         :param NodeInfo node_info: information about node
         :param float rand_val: random value that should be signed by other site
         :param metadata dict_repr: metadata
-        :param boolean solve_challenge: should other client solve given challenge
+        :param boolean solve_challenge: should other client solve given
+                                        challenge
         :param str challenge: challenge to solve
         :param int difficulty: difficulty of a challenge
         :param int proto_id: protocol id
@@ -475,7 +510,12 @@ class MessageWantToStartTaskSession(Message):
         'super_node_info': u"SUPER_NODE_INFO",
     }
 
-    def __init__(self, node_info=None, conn_id=None, super_node_info=None, **kwargs):
+    def __init__(
+            self,
+            node_info=None,
+            conn_id=None,
+            super_node_info=None,
+            **kwargs):
         """
         Create request for starting task session with given node
         :param Node node_info: information about this node
@@ -498,9 +538,15 @@ class MessageSetTaskSession(Message):
         'super_node_info': u"SUPER_NODE_INFO",
     }
 
-    def __init__(self, key_id=None, node_info=None, conn_id=None, super_node_info=None, **kwargs):
-        """
-        Create message with information that node from node_info want to start task session with key_id node
+    def __init__(
+            self,
+            key_id=None,
+            node_info=None,
+            conn_id=None,
+            super_node_info=None,
+            **kwargs):
+        """Create message with information that node from node_info wants
+           to start task session with key_id node
         :param key_id: target node key
         :param Node node_info: information about requestor
         :param uuid conn_id: connection id for reference
@@ -523,7 +569,13 @@ class MessageNatHole(Message):
         'conn_id': u"CONN_ID",
     }
 
-    def __init__(self, key_id=None, address=None, port=None, conn_id=None, **kwargs):
+    def __init__(
+            self,
+            key_id=None,
+            address=None,
+            port=None,
+            conn_id=None,
+            **kwargs):
         """
         Create message with information about nat hole
         :param key_id: key of the node behind nat hole
@@ -563,8 +615,8 @@ class MessageInformAboutNatTraverseFailure(Message):
     }
 
     def __init__(self, key_id=None, conn_id=None, **kwargs):
-        """
-        Create request to inform node with key_id about unsuccessful nat traverse.
+        """Create request to inform node with key_id about unsuccessful
+           nat traverse.
         :param key_id: key of the node that should be inform about failure
         :param uuid conn_id: connection id for reference
         """
@@ -589,7 +641,16 @@ class MessageWantToComputeTask(Message):
         'price': u"PRICE",
     }
 
-    def __init__(self, node_name=0, task_id=0, perf_index=0, price=0, max_resource_size=0, max_memory_size=0, num_cores=0, **kwargs):
+    def __init__(
+            self,
+            node_name=0,
+            task_id=0,
+            perf_index=0,
+            price=0,
+            max_resource_size=0,
+            max_memory_size=0,
+            num_cores=0,
+            **kwargs):
         """
         Create message with information that node wants to compute given task
         :param str node_name: id of that node
@@ -619,7 +680,8 @@ class MessageTaskToCompute(Message):
     def __init__(self, compute_task_def=None, **kwargs):
         """
         Create message with information about subtask to compute
-        :param ComputeTaskDef compute_task_def: definition of a subtask that should be computed
+        :param ComputeTaskDef compute_task_def: definition of a subtask that
+                                                should be computed
         """
         self.compute_task_def = compute_task_def
         super(MessageTaskToCompute, self).__init__(**kwargs)
@@ -661,13 +723,25 @@ class MessageReportComputedTask(Message):
         'eth_account': u"ETH_ACCOUNT",
     }
 
-    def __init__(self, subtask_id=0, result_type=None, computation_time='', node_name='', address='',
-                 port='', key_id='', node_info=None, eth_account='', extra_data=None, **kwargs):
+    def __init__(
+            self,
+            subtask_id=0,
+            result_type=None,
+            computation_time='',
+            node_name='',
+            address='',
+            port='',
+            key_id='',
+            node_info=None,
+            eth_account='',
+            extra_data=None,
+            **kwargs):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
         :param int result_type: type of a result (from result_types dict)
-        :param float computation_time: how long does it take to  compute this subtask
+        :param float computation_time: how long does it take to  compute this
+                                       subtask
         :param node_name: task result owner name
         :param str address: task result owner address
         :param int port: task result owner port
@@ -715,7 +789,13 @@ class MessageTaskResultHash(Message):
         'options': u"OPTIONS",
     }
 
-    def __init__(self, subtask_id=0, multihash="", secret="", options=None, **kwargs):
+    def __init__(
+            self,
+            subtask_id=0,
+            multihash="",
+            secret="",
+            options=None,
+            **kwargs):
         self.subtask_id = subtask_id
         self.multihash = multihash
         self.secret = secret
@@ -735,7 +815,8 @@ class MessageGetResource(Message):
         """
         Send request for resource to given task
         :param uuid task_id: given task id
-        :param ResourceHeader resource_header: description of resources that current node has
+        :param ResourceHeader resource_header: description of resources that
+                                               current node has
         """
         self.task_id = task_id
         self.resource_header = resource_header
@@ -795,8 +876,11 @@ class MessageDeltaParts(Message):
         """
         Create message with resource description in form of "delta parts".
         :param task_id: resources are for task with this id
-        :param TaskResourceHeader delta_header: resource header containing only parts that computing node doesn't have
-        :param list parts: list of all files that are needed to create resources
+        :param TaskResourceHeader delta_header: resource header containing
+                                                only parts that computing
+                                                node doesn't have
+        :param list parts: list of all files that are needed to create
+                           resources
         :param str node_name: resource owner name
         :param Node node_info: information about resource owner
         :param address: resource owner address
@@ -839,8 +923,8 @@ class MessageStartSessionResponse(Message):
     }
 
     def __init__(self, conn_id=None, **kwargs):
-        """
-        Create message with information that this session was started as an answer for a request to start task session
+        """Create message with information that this session was started as
+           an answer for a request to start task session
         :param uuid conn_id: connection id for reference
         """
         self.conn_id = conn_id
@@ -856,10 +940,16 @@ class MessageMiddleman(Message):
         'ask_conn_id': u"ASK_CONN_ID",
     }
 
-    def __init__(self, asking_node=None, dest_node=None, ask_conn_id=None, **kwargs):
-        """
-        Create message that is used to ask node to become middleman in the communication with other node
-        :param Node asking_node: other node information. Middleman should connect with that node.
+    def __init__(
+            self,
+            asking_node=None,
+            dest_node=None,
+            ask_conn_id=None,
+            **kwargs):
+        """Create message that is used to ask node to become middleman in the
+           communication with other node
+        :param Node asking_node: other node information. Middleman should
+                                 connect with that node.
         :param Node dest_node: information about this node
         :param ask_conn_id: connection id that asking node gave for reference
         """
@@ -878,13 +968,19 @@ class MessageJoinMiddlemanConn(Message):
         'dest_node_key_id': u"DEST_NODE_KEY_ID",
     }
 
-    def __init__(self, key_id=None, conn_id=None, dest_node_key_id=None, **kwargs):
-        """
-        Create message that is used to ask node communicate with other through middleman connection (this node
-        is the middleman and connection with other node is already opened
+    def __init__(
+            self,
+            key_id=None,
+            conn_id=None,
+            dest_node_key_id=None,
+            **kwargs):
+        """Create message that is used to ask node communicate with other
+           through middleman connection (this node is the middleman and
+           connection with other node is already opened
         :param key_id:  this node public key
         :param conn_id: connection id for reference
-        :param dest_node_key_id: public key of the other node of the middleman connection
+        :param dest_node_key_id: public key of the other node of the
+                                 middleman connection
         """
         self.conn_id = conn_id
         self.key_id = key_id
@@ -899,13 +995,17 @@ class MessageBeingMiddlemanAccepted(Message):
 
 
 class MessageMiddlemanAccepted(Message):
-    """Create message with information that this node accepted connection with middleman"""
+    """Create message with information that this node accepted connection
+       with middleman
+    """
     TYPE = TASK_MSG_BASE + 20
     MAPPING = {}
 
 
 class MessageMiddlemanReady(Message):
-    """Create message with information that other node connected and middleman session may be started"""
+    """Create message with information that other node connected and
+       middleman session may be started
+    """
     TYPE = TASK_MSG_BASE + 21
     MAPPING = {}
 
@@ -919,13 +1019,20 @@ class MessageNatPunch(Message):
         'ask_conn_id': u"ASK_CONN_ID",
     }
 
-    def __init__(self, asking_node=None, dest_node=None, ask_conn_id=None, **kwargs):
-        """
-        Create message that is used to ask node to inform other node about nat hole that this node will prepare
-        with this connection
-        :param Node asking_node: node that should be informed about potential hole based on this connection
-        :param Node dest_node: node that will try to end this connection and open hole in it's NAT
-        :param uuid ask_conn_id: connection id that asking node gave for reference
+    def __init__(
+            self,
+            asking_node=None,
+            dest_node=None,
+            ask_conn_id=None,
+            **kwargs):
+        """Create message that is used to ask node to inform other node about
+           nat hole that this node will prepare with this connection
+        :param Node asking_node: node that should be informed about potential
+                                 hole based on this connection
+        :param Node dest_node: node that will try to end this connection and
+                               open hole in it's NAT
+        :param uuid ask_conn_id: connection id that asking node gave for
+                                 reference
         """
         self.asking_node = asking_node
         self.dest_node = dest_node
@@ -941,9 +1048,10 @@ class MessageWaitForNatTraverse(Message):
     }
 
     def __init__(self, port=None, **kwargs):
-        """
-        Create message that inform node that it should start listening on given port (to open nat hole)
-        :param int port: this connection goes out from this port, other node should listen on this port
+        """Create message that inform node that it should start listening on
+           given port (to open nat hole)
+        :param int port: this connection goes out from this port, other node
+                         should listen on this port
         """
         self.port = port
         super(MessageWaitForNatTraverse, self).__init__(**kwargs)
@@ -1002,8 +1110,8 @@ class MessagePushResource(AbstractResource):
     }
 
     def __init__(self, copies=0, **kwargs):
-        """
-        Create message with information that expected number of copies of given resource should be pushed to the network
+        """Create message with information that expected number of copies of
+           given resource should be pushed to the network
         :param int copies: number of copies
         """
         self.copies = copies
@@ -1034,8 +1142,8 @@ class MessagePullAnswer(Message):
     }
 
     def __init__(self, resource=None, has_resource=False, **kwargs):
-        """
-        Create message with information whether current peer has given resource and may send it
+        """Create message with information whether current peer has given
+           resource and may send it
         :param str resource: resource name
         :param bool has_resource: information if user has resource
         """
@@ -1129,5 +1237,8 @@ def init_messages():
             MessageResourceList,
             ):
         if message_class.TYPE in Message.registered_message_types:
-            raise RuntimeError("Duplicated message {}.TYPE: {}".format(message_class.__name__, message_class.TYPE))
+            raise RuntimeError(
+                "Duplicated message {}.TYPE: {}"
+                .format(message_class.__name__, message_class.TYPE)
+            )
         Message.registered_message_types[message_class.TYPE] = message_class

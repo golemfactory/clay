@@ -67,13 +67,24 @@ class TempDirFixture(unittest.TestCase):
     def temp_file_name(self, name):
         return path.join(self.tempdir, name)
 
-    def additional_dir_content(self, file_num_list, dir_=None, results=None, sub_dir=None):
-        """ Create recursively additional temporary files in directories in given directory
-        For example file_num_list in format [5, [2], [4, []]] will create 5 files in self.tempdir directory,
-        and 2 subdirectories - first one will contain 2 tempfiles, second will contain 4 tempfiles and
-        an empty subdirectory
-        :param file_num_list: list containing number of new files that should be created in this directory or
-            list describing file_num_list for new inner directories
+    def additional_dir_content(
+            self,
+            file_num_list,
+            dir_=None,
+            results=None,
+            sub_dir=None
+            ):
+        """Create recursively additional temporary files in directories
+        in given directory
+
+        For example file_num_list in format [5, [2], [4, []]]
+        will create 5 files in self.tempdir directory,
+        and 2 subdirectories - first one will contain 2 tempfiles,
+        second will contain 4 tempfiles and an empty subdirectory
+        :param file_num_list: list containing number of new files that
+                              should be created in this directory or
+                              list describing file_num_list for new
+                              inner directories
         :param dir_: directory in which files should be created
         :param results: list of created temporary files
         :return:
@@ -102,6 +113,7 @@ class TempDirFixture(unittest.TestCase):
     def __remove_files(self):
         if path.isdir(self.tempdir):
             shutil.rmtree(self.tempdir)
+
 
 class DatabaseFixture(TempDirFixture):
     """ Setups temporary database for tests."""
@@ -132,13 +144,29 @@ class TestGui(TempDirFixture):
 
 
 class PEP8MixIn(object):
+    """A mix-in class that adds PEP-8 style conformance.
+    To use it in your TestCase just add it to inheritance list like so:
+    class MyTestCase(unittest.TestCase, testutils.PEP8MixIn):
+        PEP8_FILES = <iterable>
+
+    PEP8_FILES attribute should be an iterable containing paths of python
+    source files relative to <golem root>.
+
+    Afterwards your test case will perform conformance test on files mentioned
+    in this attribute.
+    """
+
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-        style = pycodestyle.StyleGuide(ignore=['E501'])
+        style = pycodestyle.StyleGuide(ignore=[], max_line_length=80)
 
         # PyCharm needs absolute paths
         base_path = Path(get_golem_path())
         absolute_files = [str(base_path / path) for path in self.PEP8_FILES]
 
         result = style.check_files(absolute_files)
-        self.assertEqual(result.total_errors, 0, "Found code style errors (and warnings).")
+        self.assertEqual(
+            result.total_errors,
+            0,
+            "Found code style errors (and warnings)."
+        )
