@@ -23,21 +23,21 @@ class TestScenFileReader(TestCase):
                          '"float cropwindow" [0, 1, 0, 1]'
         assert sfr.get_resolution(scene_file_src) == (200, 100)
         scene_file_src = "no resultion"
-        assert sfr.get_resolution(scene_file_src) == (None, None)
+        assert sfr.get_resolution(scene_file_src) is None
 
         scene_file_src = 'Film "fleximage"\n "bool write_exr" ["true"]\n ' \
                          '"integer yresolution" [100]\n ' \
                          '"integer writeinterval" [15]\n ' \
                          '"float cropwindow" [0, 1, 0, 1]'
 
-        assert sfr.get_resolution(scene_file_src) == (None, 100)
+        assert sfr.get_resolution(scene_file_src) is None
 
         scene_file_src = 'Film "fleximage"\n "bool write_exr" ["true"]\n ' \
                          '"integer xresolution" [200]\n ' \
                          '"integer writeinterval" [15]\n ' \
                          '"float cropwindow" [0, 1, 0, 1]'
 
-        assert sfr.get_resolution(scene_file_src) == (200, None)
+        assert sfr.get_resolution(scene_file_src) is None
 
         assert sfr.get_resolution(get_benchmark_scene()) == (201, 268)
 
@@ -51,3 +51,7 @@ class TestScenFileReader(TestCase):
         assert sfr.get_file_format(get_benchmark_scene()) == ".png"
 
         assert sfr.get_file_format("no filename") is None
+
+    def test_get_haltspp(self):
+        assert sfr.get_haltspp(get_benchmark_scene()) == 5
+        assert sfr.get_haltspp("no haltspp") is None
