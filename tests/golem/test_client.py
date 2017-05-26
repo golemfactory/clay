@@ -241,7 +241,8 @@ class TestClient(TestWithDatabase):
 
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
         self.client.start_network()
         self.client.collect_gossip()
@@ -249,7 +250,8 @@ class TestClient(TestWithDatabase):
     @patch('golem.client.log')
     def test_do_work(self, log, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
         c = self.client
