@@ -34,10 +34,6 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         )
         self.assertTrue(self.payment_processor.add(payment))
 
-        # Shouldn't add duplicate
-        self.assertFalse(self.payment_processor.add(payment))
-        self.assertEquals([payment], self.payment_processor._awaiting)
-
         self.payment_processor._awaiting = []
         self.payment_processor.load_from_db()
         expected = [payment]

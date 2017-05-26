@@ -185,8 +185,6 @@ class PaymentProcessor(Service):
     def add(self, payment, deadline=DEFAULT_DEADLINE):
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError("Invalid payment status: {}".format(payment.status))
-        if payment in self._awaiting:
-            return False
 
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
             payment.subtask,
