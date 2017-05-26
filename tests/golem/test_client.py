@@ -514,7 +514,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 'resolution': [1920, 1080],
                 'frames': '1-10',
                 'format': 'EXR',
-                'output_path': '/Users/user/Desktop/stylized.levi.exr',
+                'output_path': '/Users/user/Desktop/',
                 'compositing': True,
             }
         }

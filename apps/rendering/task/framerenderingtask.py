@@ -320,14 +320,15 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
     @classmethod
     def build_dict_from_def(cls, t_def):
-        t_dict = RenderingTaskBuilder.build_dict_from_def(t_def)
+        parent = super(FrameRenderingTaskBuilder, cls)
+        t_dict = parent.build_dict_from_def(t_def)
         t_dict[u'options'][u'frames'] = t_def.options.frames
         return t_dict
 
     @classmethod
     def build_def_from_dict(cls, t_type, t_dict):
-        t_def = super(FrameRenderingTaskBuilder, cls)\
-            .build_def_from_dict(t_type, t_dict)
+        parent = super(FrameRenderingTaskBuilder, cls)
+        t_def = parent.build_def_from_dict(t_type, t_dict)
         t_def.options.frames = t_dict['options']['frames']
         return t_def
 

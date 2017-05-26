@@ -49,7 +49,6 @@ class TaskManager(TaskEventListener):
 
         apps = self.apps_manager.apps.values()
         task_types = [app.task_type_info(None, app.controller) for app in apps]
-
         self.task_types = {t.name.lower(): t for t in task_types}
 
         self.node_name = node_name
@@ -100,14 +99,13 @@ class TaskManager(TaskEventListener):
 
         type_name = t_dict['type'].lower()
         t_type = self.task_types[type_name]
+        t_builder_type = t_type.task_builder_type
 
-        t_def = t_type.task_builder_type.build_def_from_dict(t_type, t_dict)
-        t_builder = t_type.task_builder_type(self.node_name, t_def,
-                                             self.root_path,
-                                             self.dir_manager)
-        task = Task.build_task(t_builder)
-        task.header.task_id = t_def.task_id
-        return task
+        t_def = t_builder_type.build_def_from_dict(t_type, t_dict)
+        t_builder = t_builder_type(self.node_name, t_def,
+                                   self.root_path, self.dir_manager)
+
+        return Task.build_task(t_builder)
 
     def create_dict(self, task):
         if isinstance(task, dict):
