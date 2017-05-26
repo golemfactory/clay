@@ -26,7 +26,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
 
         subtask_id = str(uuid.uuid4())
         value = random.randint(1, 2**5)
-        payee = os.urandom(32)
+        payee = os.urandom(32).encode('hex')
         payment = model.Payment.create(
             subtask=subtask_id,
             payee=payee,
@@ -42,3 +42,26 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         self.payment_processor.load_from_db()
         expected = [payment]
         self.assertEquals(expected, self.payment_processor._awaiting)
+
+        # Sent payments
+        self.assertEquals({}, self.payment_processor._inprogress)
+        tx_hash = os.urandom(32)
+        sent_payment = model.Payment.create(
+            subtask='sent' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details={'tx': tx_hash.encode('hex')},
+            status=model.PaymentStatus.sent
+        )
+        sent_payment2 = model.Payment.create(
+            subtask='sent2' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details={'tx': tx_hash.encode('hex')},
+            status=model.PaymentStatus.sent
+        )
+        self.payment_processor.load_from_db()
+        expected = {
+            tx_hash: [sent_payment, sent_payment2],
+        }
+        self.assertEquals(expected, self.payment_processor._inprogress)

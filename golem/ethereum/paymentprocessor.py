@@ -70,7 +70,7 @@ class PaymentProcessor(Service):
         self.__gnt_balance = None
         self.__gnt_reserved = 0
         self._awaiting = []  # Awaiting individual payments
-        self.__inprogress = {}  # Sent transactions.
+        self._inprogress = {}  # Sent transactions.
         self.__last_sync_check = time.time()
         self.__sync = False
         self.__temp_sync = False
@@ -155,7 +155,7 @@ class PaymentProcessor(Service):
         # Here we keep the same simple estimation by number of atomic payments.
         # FIXME: This is different than estimation in sendout(). Create
         #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in self.__inprogress.values())
+        num_payments = len(self._awaiting) + sum(len(p) for p in self._inprogress.values())
         return num_payments * self.SINGLE_PAYMENT_ETH_COST
 
     def _eth_available(self):
@@ -170,6 +170,13 @@ class PaymentProcessor(Service):
 
     def load_from_db(self):
         with db.atomic():
+            for sent_payment in Payment\
+                    .select()\
+                    .where(Payment.status == PaymentStatus.sent):
+                transaction_hash = sent_payment.details['tx'].decode('hex')
+                if transaction_hash not in self._inprogress:
+                    self._inprogress[transaction_hash] = []
+                self._inprogress[transaction_hash].append(sent_payment)
             for awaiting_payment in Payment\
                     .select()\
                     .where(Payment.status == PaymentStatus.awaiting):
@@ -252,7 +259,7 @@ class PaymentProcessor(Service):
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
                                    .format(tx_hash[2:].decode('hex'), h))
 
-            self.__inprogress[h] = payments
+            self._inprogress[h] = payments
 
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block?
@@ -261,7 +268,7 @@ class PaymentProcessor(Service):
 
     def monitor_progress(self):
         confirmed = []
-        for h, payments in self.__inprogress.iteritems():
+        for h, payments in self._inprogress.iteritems():
             hstr = '0x' + h.encode('hex')
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
@@ -289,7 +296,7 @@ class PaymentProcessor(Service):
                 confirmed.append(h)
         for h in confirmed:
             # Delete in progress entry.
-            del self.__inprogress[h]
+            del self._inprogress[h]
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) == 0:
