@@ -38,7 +38,12 @@ class EthereumIncomesKeeper(IncomesKeeper):
             sender = income_log['topics'][1][-40:]
             receiver = income_log['topics'][2][-40:]
             log_value = long(income_log['data'], 16)
-            logger.debug('INCOME: from %r to %r v:%r', sender, receiver, log_value)
+            logger.debug(
+                'INCOME: from %r to %r v:%r',
+                sender,
+                receiver,
+                log_value
+            )
             # Count tokens only when we're the receiver.
             if receiver == my_address:
                 received_tokens += log_value
