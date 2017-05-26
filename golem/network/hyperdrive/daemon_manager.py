@@ -1,15 +1,16 @@
 import atexit
 import logging
-import os
+import signal
 import subprocess
-import time
+import sys
 
+import os
 from requests import ConnectionError
 
 from golem.core.processmonitor import ProcessMonitor
 from golem.network.hyperdrive.client import HyperdriveClient
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('golem.resources')
 
 
 class HyperdriveDaemonManager(object):
@@ -25,44 +26,56 @@ class HyperdriveDaemonManager(object):
         self._monitor = ProcessMonitor()
         self._monitor.add_callbacks(self._start)
 
-        # hyperdrive data directory
         self._dir = os.path.join(datadir, self._executable)
-        if not os.path.exists(self._dir):
-            os.makedirs(self._dir)
+        self._command = [self._executable, '--db', self._dir]
 
-        atexit.register(self.stop)
+    def addresses(self):
+        try:
+            return HyperdriveClient(**self._config).addresses()
+        except ConnectionError:
+            return dict()
+
+    def ports(self, addresses=None):
+        if addresses is None:
+            addresses = self.addresses() or dict()
+
+        return set(value['port'] for key, value
+                   in addresses.iteritems()
+                   if value and value.get('port'))
 
     def start(self):
+        atexit.register(self.stop)
+
+        signal.signal(signal.SIGABRT, self.stop)
+        signal.signal(signal.SIGTERM, self.stop)
+        signal.signal(signal.SIGINT, self.stop)
+
         self._monitor.start()
-        self._start()
+        return self._start()
 
-    def stop(self):
+    def stop(self, *_):
         self._monitor.exit()
-
-    def _command(self):
-        return [self._executable, '--db', self._dir]
-
-    def _daemon_running(self):
-        try:
-            return HyperdriveClient(**self._config).id()
-        except ConnectionError:
-            return False
 
     def _start(self, *_):
         # do not supervise already running processes
-        if self._daemon_running():
-            return
+        addresses = self.addresses()
+        if addresses:
+            return self.ports(addresses)
 
         try:
-            process = subprocess.Popen(self._command())
-        except OSError as e:
-            logger.critical('Can\'t run hyperdrive executable %r. Make sure path is correct and check if it starts correctly.', ' '.join(self._command()))
-            import sys
+            if not os.path.exists(self._dir):
+                os.makedirs(self._dir)
+            process = subprocess.Popen(self._command)
+        except OSError:
+            logger.critical("Can't run hyperdrive executable %r. "
+                            "Make sure path is correct and check "
+                            "if it starts correctly.",
+                            ' '.join(self._command))
             sys.exit(1)
-        while not self._daemon_running():
-            time.sleep(0.1)
 
         if process.poll() is None:
             self._monitor.add_child_processes(process)
         else:
             raise RuntimeError("Cannot start {}".format(self._executable))
+
+        return self.ports()

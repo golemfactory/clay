@@ -10,7 +10,7 @@ from mock import Mock, MagicMock, patch
 from golem import model
 from golem import testutils
 from golem.core.databuffer import DataBuffer
-from golem.core.keysauth import KeysAuth
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
@@ -141,7 +141,8 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"], 13190, 10, 0, "10.10.10.10",
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
+                                13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
         ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
@@ -163,7 +164,11 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts2.can_be_unsigned.append(ms.TYPE)
         ts2.task_manager.subtask2task_mapping = {"xxyyzz": "xyz"}
         ts2.interpret(ms)
-        ts2.task_server.receive_subtask_computation_time.assert_called_with("xxyyzz", 13190)
+        ts2.task_server.receive_subtask_computation_time.assert_called_with(
+            "xxyyzz", 13190)
+        wtr.result_type = "UNKNOWN"
+        with self.assertLogs(logger, level="ERROR"):
+            ts.send_report_computed_task(wtr, "10.10.10.10", 30102, "0x00", n)
 
     def test_react_to_hello(self):
         conn = MagicMock()
@@ -278,6 +283,10 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts._react_to_task_result_hash(msg)
         assert ts.task_server.reject_result.called
         assert ts.task_manager.task_computation_failure.called
+
+        msg.subtask_id = "UNKNOWN"
+        with self.assertLogs(logger, level="ERROR"):
+            ts._react_to_task_result_hash(msg)
 
     def test_react_to_task_to_compute(self):
         conn = Mock()
@@ -441,6 +450,19 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         sess.request_resource(str(uuid.uuid4()), TaskResourceHeader("tmp"))
 
         assert Message.deserialize_message(db.buffered_data)
+
+    def test_verify(self):
+        keys_auth = EllipticalKeysAuth(self.path)
+        conn = Mock()
+        ts = TaskSession(conn)
+        ts.task_server = Mock()
+        ts.task_server.verify_sig = keys_auth.verify
+
+        msg = message.MessageRemoveTask()
+        assert not ts.verify(msg)
+        msg.sig = keys_auth.sign(msg.get_short_hash())
+        ts.key_id = keys_auth.get_key_id()
+        assert ts.verify(msg)
 
     @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
     def test_react_to_subtask_payment(self, check_msg_mock):
