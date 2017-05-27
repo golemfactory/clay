@@ -10,10 +10,8 @@ from time import sleep
 
 from mock import MagicMock
 
-from golem.core.common import get_golem_path
-from golem.core.common import is_windows
+from golem.core.common import get_golem_path, is_windows
 
-from golem.core.simpleenv import get_local_datadir
 from golem.model import Database
 from golem.ethereum import Client
 
@@ -24,7 +22,7 @@ class TempDirFixture(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.DEBUG)
-        cls.__root_dir = get_local_datadir('tests')
+        cls.__root_dir = tempfile.mkdtemp(prefix='golem-tests-')
         if not os.path.exists(cls.__root_dir):
             os.makedirs(cls.__root_dir, mode=0770)
 
@@ -35,7 +33,8 @@ class TempDirFixture(unittest.TestCase):
     #         shutil.rmtree(cls.__root_dir)
 
     def setUp(self):
-        self.tempdir = tempfile.mkdtemp(prefix='', dir=self.__root_dir)
+        prefix = self.id().rsplit('.', 1)[1]  # Use test method name
+        self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.__root_dir)
         self.path = self.tempdir  # Alias for legacy tests
         if not is_windows():
             os.chmod(self.tempdir, 0770)
