@@ -14,7 +14,7 @@ environment:
 
       NODEJS_VERSION: "6"
 
-      VER_GETH: geth-windows-amd64-1.5.9-a07539fb
+      VER_GETH: geth-windows-amd64-1.6.1-021c3c28
       VER_IPFS: go-ipfs_v0.4.4_windows-386
       VER_OPENSSL: openssl-1.0.2k-i386-win32
 

@@ -17,11 +17,10 @@ pyelliptic==1.5.7
 pysha3>=1.0.2
 pystun==0.1.0
 pytz
-requests==2.13.0
 six==1.10.0
 Twisted>=17.1.0
 cffi==1.10.0
-web3==3.7.2
+web3==3.8.0
 ethereum==1.6.0
 ethereum-abi-utils==0.4.0
 autobahn==0.18.1
@@ -47,3 +46,7 @@ qt5reactor
 GitPython>=2.1.0
 semantic_version
 pyOpenSSL==16.2.0
+gevent>=1.2.1
+devp2p==0.9.1
+rlp==0.5.0
+pyuv==1.3.0

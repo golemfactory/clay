@@ -27,12 +27,9 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__node_address = keys.privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        self.__eth_node = Client()
-        self.__proc = PaymentProcessor(
-            self.__eth_node,
-            node_priv_key,
-            faucet=True
-        )
+        self.__eth_node = Client(datadir)
+        self.__proc = PaymentProcessor(self.__eth_node, node_priv_key,
+                                       faucet=True)
         self.__proc.start()
 
     def stop(self):

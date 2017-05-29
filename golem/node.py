@@ -57,9 +57,6 @@ class Node(object):
 
     def run(self, use_rpc=False):
         try:
-            if is_windows() and 'twisted.internet.reactor' not in sys.modules:
-                from twisted.internet import iocpreactor
-                iocpreactor.install()
             from twisted.internet import reactor
 
             if use_rpc:

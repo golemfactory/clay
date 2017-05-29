@@ -18,6 +18,7 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
+from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
@@ -228,16 +229,15 @@ class LuxTask(renderingtask.RenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(
-            self.scene_file_src,
-            self.res_x,
-            self.res_y,
-            1,
-            0,
-            1,
-            [0, 1, 0, 1],
-            self.output_format
-        )
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=0,
+                                        haltspp=1,
+                                        writeinterval=3,
+                                        crop=[0, 1, 0, 1],
+                                        output_format=self.output_format)
+
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
         extra_data = {
@@ -273,6 +273,8 @@ class LuxTask(renderingtask.RenderingTask):
         else:
             return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
             logger.warning(return_data["warnings"])
+
+        make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 
     def query_extra_data_for_merge(self):
