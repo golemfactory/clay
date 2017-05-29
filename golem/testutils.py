@@ -17,24 +17,27 @@ from golem.ethereum import Client
 
 
 class TempDirFixture(unittest.TestCase):
-    __root_dir = None
+    root_dir = None
 
     @classmethod
     def setUpClass(cls):
         logging.basicConfig(level=logging.DEBUG)
-        cls.__root_dir = tempfile.mkdtemp(prefix='golem-tests-')
-        if not os.path.exists(cls.__root_dir):
-            os.makedirs(cls.__root_dir, mode=0770)
+        if cls.root_dir is None:
+            # Select nice root temp dir exactly once.
+            cls.root_dir = tempfile.mkdtemp(prefix='golem-tests-')
+            if is_windows():
+                import win32api
+                cls.root_dir = win32api.GetLongPathName(cls.root_dir)
 
     # Concurrent tests will fail
     # @classmethod
     # def tearDownClass(cls):
-    #     if os.path.exists(cls.__root_dir):
-    #         shutil.rmtree(cls.__root_dir)
+    #     if os.path.exists(cls.root_dir):
+    #         shutil.rmtree(cls.root_dir)
 
     def setUp(self):
         prefix = self.id().rsplit('.', 1)[1]  # Use test method name
-        self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.__root_dir)
+        self.tempdir = tempfile.mkdtemp(prefix=prefix, dir=self.root_dir)
         self.path = self.tempdir  # Alias for legacy tests
         if not is_windows():
             os.chmod(self.tempdir, 0770)
