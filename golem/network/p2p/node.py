@@ -22,6 +22,7 @@ class Node(object):
         self.prv_addresses = []
 
         self.nat_type = nat_type
+        self.port_status = None
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:

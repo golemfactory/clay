@@ -22,7 +22,7 @@ def subtasks_priority(sub):
         SubtaskStatus.resent: 4,
         SubtaskStatus.finished: 3,
         SubtaskStatus.starting: 2,
-        SubtaskStatus.waiting: 1}
+        SubtaskStatus.downloading: 1}
 
     return priority[sub.subtask_status]
 

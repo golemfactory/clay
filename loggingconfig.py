@@ -14,7 +14,8 @@
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,  # False is required for golem.tools.assertlogs
+    # False is required for golem.tools.assertlogs
+    'disable_existing_loggers': False,
     'formatters': {
         'simple': {
             '()': 'golem.utils.UnicodeFormatter',
@@ -39,7 +40,8 @@ LOGGING = {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'level': 'INFO',
             'formatter': 'date',
-            'filename': '%(datadir)slogs/golem%(suffix)s.log',  # suffix is substituted in golem.core.common.config_logging()
+            # suffix is substituted in golem.core.common.config_logging()
+            'filename': '%(datadir)slogs/golem%(suffix)s.log',
             'when': 'D',
             'interval': 1,
             'backupCount': 5,
@@ -56,7 +58,7 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
-        'golem.client': {
+        'golem.ethereum': {
             'level': 'INFO',
             'propagate': True,
         },

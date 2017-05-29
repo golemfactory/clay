@@ -1,6 +1,6 @@
 import logging
 
-from golem.appconfig import CUSTOM_HARDWARE_PRESET_NAME, DEFAULT_HARDWARE_PRESET_NAME
+from golem import appconfig
 from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
 
@@ -56,7 +56,10 @@ class HardwarePresetsMixin(object):
 
     @staticmethod
     def remove_hw_preset(name):
-        if name in [CUSTOM_HARDWARE_PRESET_NAME, DEFAULT_HARDWARE_PRESET_NAME]:
+        if name in [
+                appconfig.CUSTOM_HARDWARE_PRESET_NAME,
+                appconfig.DEFAULT_HARDWARE_PRESET_NAME,
+                ]:
             raise ValueError('Cannot remove preset with name: ' + name)
 
         deleted = HardwarePreset \
@@ -75,6 +78,6 @@ class HardwarePresetsMixin(object):
 
     @staticmethod
     def __sanitize_preset_name(name):
-        if not name or name == DEFAULT_HARDWARE_PRESET_NAME:
-            return CUSTOM_HARDWARE_PRESET_NAME
+        if not name or name == appconfig.DEFAULT_HARDWARE_PRESET_NAME:
+            return appconfig.CUSTOM_HARDWARE_PRESET_NAME
         return name
