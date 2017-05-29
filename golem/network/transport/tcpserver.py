@@ -66,7 +66,7 @@ class TCPServer(Server):
 
     def _listening_established(self, port):
         self.cur_port = port
-        logger.info("Port {} opened - listening.".format(self.cur_port))
+        logger.debug("Port {} opened - listening.".format(self.cur_port))
 
     def _listening_failure(self):
         logger.error("Listening on ports {} to {} failure.".format(self.config_desc.start_port,

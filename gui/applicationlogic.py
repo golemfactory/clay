@@ -524,22 +524,31 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def disable_environment(self, env_id):
         self.client.disable_environment(env_id)
 
-    def test_task_computation_success(self, results, est_mem, time_spent,  msg=None):
-        self.progress_dialog.stop_progress_bar()                # stop progress bar and set it's value to 100
-        self.progress_dialog_customizer.enable_ok_button(True)  # enable 'ok' button
+    def test_task_computation_success(self, results, est_mem, time_spent,
+                                      after_test_data):
+        # stop progress bar and set it's value to 100
+        self.progress_dialog.stop_progress_bar()
+        # enable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(True)
         self.progress_dialog_customizer.enable_close(True)
-        self.progress_dialog_customizer.enable_abort_button(False)  # disable 'abort' button
+        # disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)
 
-        if msg is not None:
+        logger.debug("After test: {}".format(after_test_data))
+        if after_test_data.get("warnings") is not None:
             self.progress_dialog.close()
-            self.customizer.show_warning_window(u"{}".format(msg))
+            self.customizer.show_warning_window(u"{}".format(
+                after_test_data["warnings"]
+            ))
         else:
             msg = u"Task tested successfully - time %.2f" % time_spent
             self.progress_dialog_customizer.show_message(msg)
 
-        self.customizer.gui.setEnabled('new_task', True)        # enable everything on 'new task' tab
+        # enable everything on 'new task' tab
+        self.customizer.gui.setEnabled('new_task', True)
         if self.customizer.new_task_dialog_customizer:
-            self.customizer.new_task_dialog_customizer.test_task_computation_finished(True, est_mem)
+            self.customizer.new_task_dialog_customizer\
+                .test_task_computation_finished(True, est_mem)
 
     def test_task_computation_error(self, error):
         self.progress_dialog.stop_progress_bar()

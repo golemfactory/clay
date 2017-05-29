@@ -6,17 +6,12 @@ import shutil
 from collections import deque
 from threading import Lock
 
+from golem.core.common import to_unicode
 from golem.core.fileshelper import copy_file_tree, common_dir
 from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient, AsyncRequest, \
     async_run
 
 logger = logging.getLogger(__name__)
-
-
-def to_unicode(string):
-    if not isinstance(string, unicode):
-        return unicode(string)
-    return string
 
 
 def split_path(path):

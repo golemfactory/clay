@@ -77,7 +77,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
         
-        self.assertEqual(task.after_test(None, None), None)
+        self.assertEqual(task.after_test(None, None), {})
 
         assert len(task.listeners) == 0
 
@@ -238,14 +238,19 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                                       'start_task': 2,
                                       'end_task': 2,
                                       'node_id': 'aha'}
+        task.subtasks_given["jkl"] = {'status': SubtaskStatus.downloading,
+                                      'start_task': 8,
+                                      'end_task': 8,
+                                      'node_id': 'DEF'}
         task.restart()
         assert task.num_tasks_received == 0
         assert task.last_task == 8
-        assert task.num_failed_subtasks == 4
+        assert task.num_failed_subtasks == 5
         assert task.subtasks_given["xyz"]["status"] == SubtaskStatus.restarted
         assert task.subtasks_given["abc"]["status"] == SubtaskStatus.failure
         assert task.subtasks_given["def"]["status"] == SubtaskStatus.restarted
         assert task.subtasks_given["ghi"]["status"] == SubtaskStatus.resent
+        assert task.subtasks_given["jkl"]["status"] == SubtaskStatus.restarted
 
     @staticmethod
     def __compress_and_dump_file(file_name, data):

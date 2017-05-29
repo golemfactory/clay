@@ -52,8 +52,8 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
                    use_monitor=False)
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-@patch('golem.ethereum.node.NodeProcess.save_static_nodes')
 class TestClient(TestWithDatabase):
 
     def tearDown(self):
@@ -68,8 +68,10 @@ class TestClient(TestWithDatabase):
         payments = [
             Payment(subtask=uuid.uuid4(),
                     status=PaymentStatus.awaiting,
-                    payee=uuid.uuid4(),
-                    value=2 * 10 ** 18)
+                    payee=str(uuid.uuid4()),
+                    value=2 * 10 ** 18,
+                    created=time.time(),
+                    modified=time.time())
             for _ in xrange(2)
         ]
 
@@ -82,10 +84,14 @@ class TestClient(TestWithDatabase):
         self.assertEqual(len(received_payments), len(payments))
 
         for i in xrange(len(payments)):
-            self.assertEqual(received_payments[i]['subtask'], payments[i].subtask)
-            self.assertEqual(received_payments[i]['status'], payments[i].status.value)
-            self.assertEqual(received_payments[i]['payee'], payments[i].payee)
-            self.assertEqual(received_payments[i]['value'], str(payments[i].value))
+            self.assertEqual(received_payments[i]['subtask'],
+                             payments[i].subtask)
+            self.assertEqual(received_payments[i]['status'],
+                             payments[i].status.value)
+            self.assertEqual(received_payments[i]['payee'],
+                             unicode(payments[i].payee))
+            self.assertEqual(received_payments[i]['value'],
+                             unicode(payments[i].value))
 
     def test_payment_address(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
@@ -103,7 +109,8 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False, use_monitor=False)
         self.client.sync()
-        self.assertTrue(self.client.transaction_system.sync.called)
+        # TODO: assertTrue when re-enabled
+        self.assertFalse(self.client.transaction_system.sync.called)
 
     def test_remove_resources(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -233,7 +240,8 @@ class TestClient(TestWithDatabase):
 
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
         self.client.start_network()
         self.client.collect_gossip()
@@ -241,7 +249,8 @@ class TestClient(TestWithDatabase):
     @patch('golem.client.log')
     def test_do_work(self, log, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
         c = self.client
@@ -323,6 +332,7 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = future_time
         c.last_net_check_time = future_time
         c.last_balance_time = future_time
+        c.last_tasks_time = future_time
 
         c._Client__publish_events()
 
@@ -333,12 +343,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert not log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 2
+        assert c._publish.call_count == 3
 
         def raise_exc(*_):
             raise Exception('Test exception')
@@ -350,12 +361,13 @@ class TestClient(TestWithDatabase):
         c.last_nss_time = past_time
         c.last_net_check_time = past_time
         c.last_balance_time = past_time
+        c.last_tasks_time = past_time
 
         c._Client__publish_events()
 
         assert log.debug.called
         assert send.call_count == 2
-        assert c._publish.call_count == 1
+        assert c._publish.call_count == 2
 
     def test_activate_hw_preset(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
@@ -376,18 +388,18 @@ class TestClient(TestWithDatabase):
         assert config.max_resource_size > 0
 
 
+@patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
 
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            client = Client(datadir=self.path,
-                            transaction_system=False,
-                            connect_to_known_hosts=False,
-                            use_docker_machine_manager=False,
-                            use_monitor=False)
+        client = Client(datadir=self.path,
+                        transaction_system=False,
+                        connect_to_known_hosts=False,
+                        use_docker_machine_manager=False,
+                        use_monitor=False)
 
         client.sync = Mock()
         client.p2pservice = Mock()
@@ -640,17 +652,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.p2pservice.cur_port = 0
         self.assertTrue(c.connection_status().startswith(u"Application not listening"))
 
-    def test_unreachable_flag(self, *_):
+    def test_port_status(self, *_):
         from pydispatch import dispatcher
         import random
         random.seed()
 
         port = random.randint(1, 50000)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="no event at all", port=port)
-        self.assertFalse(hasattr(self.client, 'unreachable_flag'))
-        dispatcher.send(signal="golem.p2p", event="unreachable", port=port)
-        self.assertTrue(hasattr(self.client, 'unreachable_flag'))
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="no event at all", port=port,
+                        description="port 1234: closed")
+        self.assertFalse(self.client.node.port_status)
+        dispatcher.send(signal="golem.p2p", event="unreachable", port=port,
+                        description="port 1234: closed")
+        self.assertTrue(self.client.node.port_status)
 
     @staticmethod
     def __new_session():

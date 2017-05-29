@@ -1,11 +1,13 @@
 # -*- encoding: utf-8 -*-
 
+from copy import copy
 import os
 import random
 import time
 import unittest
 import uuid
 
+from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
 from golem.testutils import PEP8MixIn
@@ -106,21 +108,21 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
     def test_unicode(self):
         source = unicode("test string")
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is source
 
         source = "\xd0\xd1\xd2\xd3"
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is source
 
         source = "test string"
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert type(result) is unicode
         assert result is not source
         assert result == source
 
         source = None
-        result = message.Message._unicode(source)
+        result = to_unicode(source)
         assert result is None
 
     def test_timestamp_and_timezones(self):
@@ -456,3 +458,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'options': options,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    @mock.patch("golem.network.transport.message.MessageRandVal")
+    def test_init_messages_error(self, mock_message_rand_val):
+        copy_registered = copy(message.Message.registered_message_types)
+        message.Message.registered_message_types = dict()
+        mock_message_rand_val.__name__ = "randvalmessage"
+        mock_message_rand_val.TYPE = message.MessageHello.TYPE
+        with self.assertRaises(RuntimeError):
+            message.init_messages()
+        message.Message.registered_message_types = copy_registered

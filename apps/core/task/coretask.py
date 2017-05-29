@@ -180,7 +180,7 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if subtask_info['status'] == SubtaskStatus.starting:
+        if SubtaskStatus.is_computed(subtask_info['status']):
             self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
@@ -258,8 +258,10 @@ class CoreTask(Task):
         if sort:
             self.results[subtask_id].sort()
 
+    @handle_key_error
     def result_incoming(self, subtask_id):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
@@ -311,13 +313,13 @@ class CoreTask(Task):
                     os.rename(tr, new_tr)
                     filtered_task_results.append(new_tr)
                 except (IOError, OSError) as err:
-                    logger.warning("Problem with moving file {} to new location: {}".format(tr,
-                                                                                            err))
+                    logger.warning("Cannot move file {} to new location: "
+                                   "{}".format(tr, err))
 
         return filtered_task_results
 
     def after_test(self, results, tmp_dir):
-        return None
+        return {}
 
     def notify_update_task(self):
         for l in self.listeners:
@@ -325,9 +327,8 @@ class CoreTask(Task):
 
     @handle_key_error
     def should_accept(self, subtask_id):
-        if self.subtasks_given[subtask_id]['status'] != SubtaskStatus.starting:
-            return False
-        return True
+        status = self.subtasks_given[subtask_id]['status']
+        return SubtaskStatus.is_computed(status)
 
     @staticmethod
     def _interpret_log(log):

@@ -6,7 +6,7 @@ from ethereum.utils import zpad
 from mock import patch
 
 from golem.ethereum import Client
-from golem.ethereum.node import NodeProcess, is_geth_listening
+from golem.ethereum.node import NodeProcess
 from golem.testutils import TempDirFixture
 
 
@@ -15,14 +15,10 @@ class EthereumClientTest(TempDirFixture):
         super(EthereumClientTest, self).setUp()
         # Show information about Ethereum node starting and terminating.
         logging.basicConfig(level=logging.INFO)
-        self.manage_client = not is_geth_listening(NodeProcess.testnet)
-
-        with patch('golem.ethereum.node.NodeProcess.save_static_nodes'):
-            self.client = Client()
+        self.client = Client(self.tempdir)
 
     def tearDown(self):
-        if self.manage_client:
-            self.client.node.stop()
+        self.client.node.stop()
         super(EthereumClientTest, self).tearDown()
 
     def test_client(self):
@@ -52,8 +48,6 @@ class EthereumClientTest(TempDirFixture):
         with self.assertRaisesRegexp(ValueError, "Insufficient funds"):
             client.send(tx)
 
-    @unittest.skipIf(is_geth_listening(NodeProcess.testnet),
-                     "geth is already running; skipping starting and stopping tests")
     def test_start_terminate(self):
         client = self.client
         assert client.node.is_running()

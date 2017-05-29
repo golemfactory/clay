@@ -38,7 +38,8 @@ class TestNode(TestWithDatabase):
     @patch('twisted.internet.reactor', create=True)
     def test_wrong_option(self, mock_reactor):
         runner = CliRunner()
-        return_value = runner.invoke(start, ['--blargh'], catch_exceptions=False)
+        return_value = runner.invoke(start, ['--blargh'],
+                                     catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
@@ -64,12 +65,11 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
     @ci_skip
-    @patch('golem.ethereum.node.NodeProcess.save_static_nodes')
     @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.core.common.config_logging')
-    def test_node_address_passed_to_client(self, config_logging, mock_reactor, mock_client,
-                                           save_static_nodes):
+    def test_node_address_passed_to_client(self, config_logging, mock_reactor,
+                                           mock_client):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
@@ -107,10 +107,12 @@ class TestNode(TestWithDatabase):
     def test_single_peer(self, config_logging, mock_node):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
-        return_value = runner.invoke(start, self.args + ['--peer', addr1], catch_exceptions=False)
+        return_value = runner.invoke(start, self.args + ['--peer', addr1],
+                                     catch_exceptions=False)
         self.assertTrue(mock_node.called)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
+        mock_node.assert_has_calls([call().run(use_rpc=True),
+                                   call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().connect_with_peers' in call_names)
         peer_num = call_names.index('().connect_with_peers')
@@ -128,7 +130,8 @@ class TestNode(TestWithDatabase):
         args = self.args + ['--peer', addr1, '--peer', addr2]
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
+        mock_node.assert_has_calls([call().run(use_rpc=True),
+                                   call().add_tasks([])], any_order=True)
         call_names = [name for name, arg, kwarg in mock_node.mock_calls]
         self.assertTrue('().connect_with_peers' in call_names)
         peer_num = call_names.index('().connect_with_peers')
@@ -200,9 +203,11 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.OptNode')
     def test_wrong_task(self, mock_node):
         runner = CliRunner()
-        return_value = runner.invoke(start, self.args + ['--task', 'testtask.gt'], catch_exceptions=False)
+        args = self.args + ['--task', 'testtask.gt']
+        return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
-        self.assertTrue('Error' in return_value.output and 'Usage' in return_value.output)
+        assert 'Error' in return_value.output
+        assert 'Usage' in return_value.output
 
     @ci_skip
     @patch('golemapp.OptNode')
