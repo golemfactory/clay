@@ -9,7 +9,8 @@ from enum import Enum
 from ethereum.utils import denoms
 
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
-from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, timeout_to_string, string_to_timeout
+from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
+    timeout_to_string, string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
