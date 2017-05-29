@@ -1,4 +1,6 @@
 import logging
+
+import collections
 from pathlib import Path
 import pickle
 from pydispatch import dispatcher
@@ -563,18 +565,17 @@ class TaskManager(TaskEventListener):
 
     def get_dict_task(self, task_id):
         task = self.tasks[task_id]
-        t_dict = self._simple_task_repr(self.tasks_states, task)
-        t_dict.update(self.create_dict(task))
-        return t_dict
+        dictionary = self._simple_task_repr(task)
+        dictionary.update(self.create_dict(task))
+        return dictionary
 
     def get_dict_tasks(self):
-        return [self._simple_task_repr(self.tasks_states, t)
-                for task_id, t in self.tasks.iteritems()]
+        return [self._simple_task_repr(t) for t in self.tasks.itervalues()]
 
     def get_dict_subtasks(self, task_id):
         task_state = self.tasks_states[task_id]
-        return [self._simple_subtask_repr(subtask) for subtask_id, subtask
-                in task_state.subtask_states.iteritems()]
+        return [self._simple_subtask_repr(subtask) for subtask
+                in task_state.subtask_states.itervalues()]
 
     def get_dict_subtask(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -582,21 +583,30 @@ class TaskManager(TaskEventListener):
         subtask = task_state.subtask_states[subtask_id]
         return self._simple_subtask_repr(subtask)
 
-    @staticmethod
-    def _simple_task_repr(states, task):
-        if task:
-            state = states.get(task.header.task_id)
-            return {
-                u'id': to_unicode(task.header.task_id),
-                u'name': to_unicode(task.task_definition.task_name),
-                u'type': to_unicode(task.task_definition.task_type),
-                u'duration': max(task.task_definition.full_task_timeout -
-                                 state.remaining_time, 0),
-                u'time_remaining': state.remaining_time,
-                u'subtasks': task.get_total_tasks(),
-                u'status': to_unicode(state.status),
-                u'progress': task.get_progress()
-            }
+    def _simple_task_repr(self, task):
+        if not task:
+            return
+
+        state = self.tasks_states.get(task.header.task_id)
+        preview = state.extra_data["result_preview"]
+
+        if isinstance(preview, basestring):
+            preview = to_unicode(preview)
+        elif isinstance(preview, collections.Iterable):
+            preview = [to_unicode(entry) for entry in preview]
+
+        return {
+            u'id': to_unicode(task.header.task_id),
+            u'name': to_unicode(task.task_definition.task_name),
+            u'type': to_unicode(task.task_definition.task_type),
+            u'duration': max(task.task_definition.full_task_timeout -
+                             state.remaining_time, 0),
+            u'time_remaining': state.remaining_time,
+            u'subtasks': task.get_total_tasks(),
+            u'status': to_unicode(state.status),
+            u'progress': task.get_progress(),
+            u'preview': preview
+        }
 
     @staticmethod
     def _simple_subtask_repr(subtask):

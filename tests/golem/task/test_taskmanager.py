@@ -603,6 +603,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         tasks_states = dict()
         task_id = None
         subtask_id = None
+        previews = [None, 'result', ['result_1', 'result_2']]
 
         for i in xrange(0, n):
 
@@ -623,6 +624,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             state = Mock()
             state.status = 'waiting'
             state.remaining_time = 100 - i
+            state.extra_data = dict(result_preview=previews[i % 3])
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
