@@ -37,6 +37,12 @@ class MockReactor(SelectReactor):
         self.threadpool = None
         super(MockReactor, self).__init__()
 
+    def startRunning(self, installSignalHandlers=True):
+        self.running = True
+        super(MockReactor, self).startRunning(installSignalHandlers=installSignalHandlers)
+        self._started = True
+        self._stopped = False
+
     def stop(self):
         if self.running:
             result = super(MockReactor, self).stop()
