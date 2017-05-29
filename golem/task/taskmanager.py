@@ -93,27 +93,26 @@ class TaskManager(TaskEventListener):
         request = AsyncRequest(get_external_address, self.listen_port)
         return async_run(request)
 
-    def create_task(self, t_dict):
-        if not isinstance(t_dict, dict):
-            return t_dict
+    def create_task(self, dictionary):
+        if not isinstance(dictionary, dict):
+            return dictionary
 
-        type_name = t_dict['type'].lower()
-        t_type = self.task_types[type_name]
-        t_builder_type = t_type.task_builder_type
+        type_name = dictionary['type'].lower()
+        task_type = self.task_types[type_name]
+        builder_type = task_type.task_builder_type
 
-        t_def = t_builder_type.build_def_from_dict(t_type, t_dict)
-        t_builder = t_builder_type(self.node_name, t_def,
-                                   self.root_path, self.dir_manager)
+        definition = builder_type.build_definition(task_type, dictionary)
+        builder = builder_type(self.node_name, definition,
+                               self.root_path, self.dir_manager)
 
-        return Task.build_task(t_builder)
+        return Task.build_task(builder)
 
     def create_dict(self, task):
         if isinstance(task, dict):
             return task
-
-        t_def = task.task_definition
-        t_type = self.task_types[t_def.task_type.lower()]
-        return t_type.task_builder_type.build_dict_from_def(t_def)
+        definition = task.task_definition
+        task_type = self.task_types[definition.task_type.lower()]
+        return task_type.task_builder_type.build_dictionary(definition)
 
     @inlineCallbacks
     def add_new_task(self, task):

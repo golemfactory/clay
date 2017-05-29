@@ -312,24 +312,24 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
             return est
 
-        if defaults.min_subtasks <= self.task_definition.total_subtasks \
-                <= defaults.max_subtasks:
-            return self.task_definition.total_subtasks
+        total = self.task_definition.total_subtasks
+        if defaults.min_subtasks <= total <= defaults.max_subtasks:
+            return total
         else:
             return defaults.default_subtasks
 
     @classmethod
-    def build_dict_from_def(cls, t_def):
+    def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
-        t_dict = parent.build_dict_from_def(t_def)
-        t_dict[u'options'][u'frames'] = t_def.options.frames
-        return t_dict
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'frames'] = definition.options.frames
+        return dictionary
 
     @classmethod
-    def build_def_from_dict(cls, t_type, t_dict):
+    def build_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
-        t_def = parent.build_def_from_dict(t_type, t_dict)
-        t_def.options.frames = t_dict['options']['frames']
-        return t_def
+        definition = parent.build_definition(task_type, dictionary)
+        definition.options.frames = dictionary['options']['frames']
+        return definition
 
 

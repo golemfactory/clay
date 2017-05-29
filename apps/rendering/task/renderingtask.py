@@ -293,19 +293,22 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
-            return self.task_definition.total_subtasks
+        total = self.task_definition.total_subtasks
+
+        if defaults.min_subtasks <= total <= defaults.max_subtasks:
+            return total
         else:
-            logger.warning("Cannot set total subtasks to {}. Changing to {}".format(
-                self.task_definition.total_subtasks, defaults.default_subtasks))
+            logger.warning("Cannot set total subtasks to {}. Changing to {}"
+                           .format(total, defaults.default_subtasks))
             return defaults.default_subtasks
 
     def _set_verification_options(self, new_task):
-        new_task.verificator.set_verification_options(self.task_definition.verification_options)
+        new_task.verificator.set_verification_options(
+            self.task_definition.verification_options)
 
     @staticmethod
-    def _scene_file(t_type, resources):
-        extensions = t_type.output_file_ext
+    def _scene_file(type, resources):
+        extensions = type.output_file_ext
         candidates = filter(lambda res: any(res.lower().endswith(ext.lower())
                                             for ext in extensions),
                             resources)
@@ -327,31 +330,35 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return task
 
     @classmethod
-    def build_dict_from_def(cls, t_def):
+    def build_dictionary(cls, definition):
         parent = super(RenderingTaskBuilder, cls)
 
-        t_dict = parent.build_dict_from_def(t_def)
-        t_dict[u'options'][u'format'] = t_def.output_format
-        t_dict[u'options'][u'resolution'] = t_def.resolution
-        t_dict[u'options'][u'compositing'] = t_def.options.compositing
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'format'] = definition.output_format
+        dictionary[u'options'][u'resolution'] = definition.resolution
+        dictionary[u'options'][u'compositing'] = definition.options.compositing
 
-        return t_dict
+        return dictionary
 
     @classmethod
-    def build_def_from_dict(cls, t_type, t_dict):
+    def build_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
 
-        t_def = parent.build_def_from_dict(t_type, t_dict)
-        t_def.output_format = t_dict['options']['format'].upper()
-        t_def.resolution = [int(val) for val in t_dict['options']['resolution']]
-        t_def.options.compositing = t_dict['options']['compositing']
-        t_def.main_scene_file = cls._scene_file(t_type, t_dict['resources'])
-        t_def.add_to_resources()
+        options = dictionary['options']
+        resources = dictionary['resources']
 
-        return t_def
+        definition = parent.build_definition(task_type, dictionary)
+        definition.output_format = options['format'].upper()
+        definition.options.compositing = options['compositing']
+        definition.main_scene_file = cls._scene_file(task_type, resources)
+        definition.resolution = [int(val) for val in options['resolution']]
+        definition.add_to_resources()
+
+        return definition
 
     @classmethod
-    def _output_path_from_dict(cls, t_dict, t_def):
-        path = os.path.join(t_dict['options']['output_path'], t_def.task_name)
-        return '{}.{}'.format(path, t_dict['options']['format'])
+    def get_output_path(cls, dictionary, definition):
+        options = dictionary['options']
+        path = os.path.join(options['output_path'], definition.task_name)
+        return '{}.{}'.format(path, options['format'])
 
