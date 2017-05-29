@@ -3,12 +3,15 @@ import os
 from PIL import Image
 
 
-from apps.rendering.resources.imgcompare import (advance_verify_img,
-                                                 check_size, compare_exr_imgs,
-                                                 compare_imgs,
-                                                 compare_pil_imgs,
-                                                 calculate_mse,
-                                                 calculate_psnr, logger)
+# from apps.rendering.resources.imgcompare import (advance_verify_img,
+#                                                  check_size, compare_exr_imgs,
+#                                                  compare_imgs,
+#                                                  compare_pil_imgs,
+#                                                  calculate_mse,
+#                                                  calculate_psnr, logger)
+
+from apps.rendering.resources.imgcompare import *
+
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
 from golem.testutils import TempDirFixture
@@ -16,6 +19,7 @@ from golem.tools.assertlogs import LogTestCase
 
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
+
 
 
 class TestCompareImgFunctions(TempDirFixture, LogTestCase):
@@ -149,6 +153,9 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         assert calculate_mse(img1, img2, box=(5, 5)) == 0
         assert calculate_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
 
+        with self.assertRaises(ValueError):
+            calculate_mse(img1, img2)
+
         img2 = get_pil_img_repr(img2_path, (10, 10), (253, 0, 0))
         assert calculate_mse(img1, img2) == 1
 
@@ -157,6 +164,130 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         assert calculate_mse(img1, img2) == 216
 
         assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
+
+
+
+    def test_get_random_starting_corner_of_the_box(self):
+        test_path = os.getcwd()
+        folder_path = os.path.join(test_path, 'sample_img_150x200')
+
+        merged_img =  PILImgRepr()
+        path_to_merged_img = os.path.join(folder_path + "/MergedResult", 'merged.png')
+        merged_img.load_from_file(path_to_merged_img)
+
+        import random
+        random.seed(0)
+        box_side = 100
+        start = get_random_starting_corner_of_the_box(merged_img, (box_side,box_side) )
+        end = start[0] + box_side, start[1] + box_side
+
+        assert end == (143, 176)
+
+    def test_get_random_starting_corner_of_the_box_should_throw_exception(self):
+        test_path = os.getcwd()
+        folder_path = os.path.join(test_path, 'sample_img_150x200')
+
+        merged_img = PILImgRepr()
+        path_to_merged_img = os.path.join(folder_path + "/MergedResult", 'merged.png')
+        merged_img.load_from_file(path_to_merged_img)
+
+
+        with self.assertRaises(ValueError):
+            start = get_random_starting_corner_of_the_box(merged_img, (151, 199))
+
+        with self.assertRaises(ValueError):
+            start = get_random_starting_corner_of_the_box(merged_img, (149, 201))
+
+
+    def get_images(self):
+        test_path = os.getcwd()
+        folder_path = os.path.join(test_path, 'sample_img_150x200')
+
+        merged_img =  PILImgRepr()
+        path_to_merged_img = os.path.join(folder_path + "/MergedResult", 'merged.png')
+        merged_img.load_from_file(path_to_merged_img)
+
+        images = list()
+        for file_name in os.listdir(folder_path):
+            if file_name.endswith(".png") and 'current_preview' not in file_name:
+                p = PILImgRepr()
+                p.load_from_file(os.path.join(folder_path, file_name))
+                images.append(p)
+
+        return merged_img, images
+
+    def get_malicious_images(self):
+        test_path = os.getcwd()
+        folder_path = os.path.join(test_path, 'sample_img_150x200')
+
+        malicious_blank_img = PILImgRepr()
+        path_to_malicious_blank_img = os.path.join(folder_path + "/MaliciousImg", 'maliciousBlank.png')
+        malicious_blank_img.load_from_file(path_to_malicious_blank_img)
+
+        malicious_kitty_img = PILImgRepr()
+        path_to_malicious_kitty_img = os.path.join(folder_path + "/MaliciousImg", 'maliciousKitty.png')
+        malicious_kitty_img.load_from_file(path_to_malicious_kitty_img)
+
+        return malicious_blank_img, malicious_kitty_img
+
+
+    def test_calculate_sub_img_mse_for_real_img(self):
+
+        merged_img, images = self.get_images()
+
+        box = (100,100)
+        import random
+        random.seed(0)
+        rnd_start = get_random_starting_corner_of_the_box(merged_img, box=box)
+
+
+        assert calculate_sub_img_mse(merged_img, [merged_img], rnd_start, box) == [0]
+        assert calculate_sub_img_mse(merged_img, images, rnd_start, box) == [4535, 4767, 4485, 4584, 4730, 4476]
+
+        # MSE_against_result = list()
+        # for img in images:
+        #     mse = calculate_mse(img,merged_img)
+        #     MSE_against_result.append(mse)
+        #
+        # N = len(images)
+        # MSE_matrix = [[0 for x in range(N)] for y in range(N)]
+        #
+        #
+        # for i in range(N):
+        #     for j in range(i+1,N):
+        #         MSE_matrix[i][j]= calculate_mse(images[i],images[j])
+        #
+        # print MSE_matrix
+
+
+
+    def test_find_malicious_image(self):
+        merged_img, images = self.get_images()
+        malicious_blank_img, malicious_kitty_img = self.get_malicious_images()
+
+
+        images.append(malicious_blank_img)
+        images.append(malicious_kitty_img)
+
+        box = (100,100)
+        import random
+        #random.seed(0)
+        rnd_start = get_random_starting_corner_of_the_box(merged_img, box=box)
+
+
+        mse_against_base_img, psnr_against_base_img, ssim_against_base_img = \
+            calculate_mse_psnr_ssim_metrics(merged_img, images, rnd_start, box)
+
+        base_img = images.pop(0)
+        mse_against_base_img2, psnr_against_base_img2, ssim_against_base_img2 = \
+            calculate_mse_psnr_ssim_metrics(base_img, images, rnd_start, box)
+
+
+
+        assert False
+
+
+
 
     def test_compare_imgs(self):
         img1_path = self.temp_file_name("img1.png")

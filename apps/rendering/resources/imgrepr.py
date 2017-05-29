@@ -45,9 +45,14 @@ class PILImgRepr(ImgRepr):
     def load_from_file(self, file_):
         self.img = Image.open(file_)
         self.img = self.img.convert('RGB')
+        self.img.name = os.path.basename(file_)
 
     def get_size(self):
         return self.img.size
+
+    @property
+    def size(self):
+        return self.get_size()
 
     def get_pixel(self, (i, j)):
         return list(self.img.getpixel((i, j)))

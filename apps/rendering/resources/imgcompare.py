@@ -22,15 +22,88 @@ def calculate_psnr(mse, max_=255):
     return 20 * math.log10(max_) - 10 * math.log10(mse)
 
 
+def get_random_starting_corner_of_the_box(img, box):
+    """
+    
+    :param img: 
+    :param box: describes the lengths of the sides of the box 
+    :return: describes the the (x,y) coordinates of the SE corner
+    """
+    (res_x, res_y) = img.get_size()
+
+    if res_x < box[0] or res_y < box[1]:
+        raise ValueError('box cannot be larger then the image')
+
+    from random import randint
+    start = [randint(0, res_x - box[0]), randint(0, res_y - box[1])]
+
+    return start
+
+
+def calculate_sub_img_mse(base_img, other_images, start, box):
+
+    mse_against_base_img = list()
+    for img in other_images:
+        mse = calculate_mse(img, base_img, start1=start, start2=start, box=box)
+        mse_against_base_img.append(mse)
+
+    return mse_against_base_img
+
+def calculate_mse_psnr_ssim_metrics(base_img, other_images, start, box):
+
+
+    mse_against_base_img = calculate_sub_img_mse(base_img, other_images, start, box)
+
+    psnr_against_base_img = list()
+    for mse in mse_against_base_img:
+        psnr_against_base_img.append(calculate_psnr(mse))
+
+    from ssim import compute_ssim
+    ssim_against_base_img = list()
+
+    # the PIL crop method starts from the NE corner.
+    # in the PILs world the y-axis points downward.
+    # However the start input parameter is defined as the SE corner
+    # thus we have to make some CSYS alignment ;P
+    pNWx = start[0]
+    pNWy = start[1]
+    pSEx = start[0] + box[0]
+    pSEy = start[1] + box[1]
+
+    for img in other_images:
+        cropped_base_img = base_img.to_pil().crop((pNWx,pNWy,pSEx, pSEy))
+        cropped_img = img.to_pil().crop((pNWx,pNWy,pSEx, pSEy))
+
+        ssim_against_base_img.append(compute_ssim(cropped_base_img, cropped_img))
+
+        #pil_base_img = base_img.to_pil()
+        #pil_img = img.to_pil()
+        #ssim_against_base_img.append(compute_ssim(base_img.to_pil(), img.to_pil()))
+
+    return mse_against_base_img, psnr_against_base_img, ssim_against_base_img
+
 def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
+    """
+    :param img1: 
+    :param img2: 
+    :param start1: 
+    :param start2: 
+    :param box: describes side lengths of the box
+    :return: 
+    """
     mse = 0
-    if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
+    if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr): # todo GG why we check it again?
         raise TypeError("img1 and img2 must be ImgRepr")
 
-    if box is None:
-        (res_x, res_y) = img1.get_size()
-    else:
+    if box is not None:
         (res_x, res_y) = box
+    else:
+        if img1.get_size() == img2.get_size():
+            (res_x, res_y) = img1.get_size()
+        else:
+             raise ValueError('img1 and img2 are of different sizes and there is no cropping box provided.')
+
+
     for i in range(0, res_x):
         for j in range(0, res_y):
             [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
@@ -41,6 +114,7 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
 
     if res_x <= 0 or res_y <= 0:
         raise ValueError("Image or box resolution must be greater than 0")
+
     mse /= res_x * res_y * 3
     return mse
 
@@ -69,7 +143,7 @@ def compare_pil_imgs(file1, file2):
         return False
 
 
-def compare_exr_imgs(file1, file2):
+def compare_exr_imgs(file1, file2): #  GG: same as compare_pil_imgs...
     try:
         img1 = EXRImgRepr()
         img1.load_from_file(file1)
@@ -102,7 +176,7 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
             logger.error("Wrong box size for advanced verification " \
                          "{}".format(box_size))
 
-        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
+        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr): #  GG: why we need to check PILImgRepr?
             return compare_imgs(img, cmp_img, start1=start_box,
                                 start2=cmp_start_box, box=box_size)
         else:
