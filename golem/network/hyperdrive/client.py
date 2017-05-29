@@ -34,6 +34,10 @@ class HyperdriveClient(IClient):
         response = self._request(command='id')
         return response['id']
 
+    def addresses(self):
+        response = self._request(command='addresses')
+        return response['addresses']
+
     def add(self, files, client_options=None, **kwargs):
         response = self._request(
             command='upload',
@@ -71,6 +75,5 @@ class HyperdriveClient(IClient):
                                  headers=self._headers,
                                  data=json.dumps(data),
                                  timeout=self.timeout)
-
         response.raise_for_status()
         return json.loads(response.content)

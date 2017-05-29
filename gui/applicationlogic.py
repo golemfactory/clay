@@ -534,6 +534,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         # disable 'abort' button
         self.progress_dialog_customizer.enable_abort_button(False)
 
+        logger.debug("After test: {}".format(after_test_data))
         if after_test_data.get("warnings") is not None:
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(

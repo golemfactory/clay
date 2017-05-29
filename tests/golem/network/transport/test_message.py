@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 
+from copy import copy
 import os
 import random
 import time
@@ -457,3 +458,13 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'options': options,
         }
         self.assertEquals(expected, msg.dict_repr())
+
+    @mock.patch("golem.network.transport.message.MessageRandVal")
+    def test_init_messages_error(self, mock_message_rand_val):
+        copy_registered = copy(message.Message.registered_message_types)
+        message.Message.registered_message_types = dict()
+        mock_message_rand_val.__name__ = "randvalmessage"
+        mock_message_rand_val.TYPE = message.MessageHello.TYPE
+        with self.assertRaises(RuntimeError):
+            message.init_messages()
+        message.Message.registered_message_types = copy_registered

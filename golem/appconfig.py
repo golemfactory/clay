@@ -67,7 +67,13 @@ class CommonConfig:
         self._section = section
 
         for k, v in kwargs.iteritems():
-            ConfigEntry.create_property(section, k.replace("_", " "), v, self, k)
+            ConfigEntry.create_property(
+                section,
+                k.replace("_", " "),
+                v,
+                self,
+                k
+            )
 
         self.prop_names = kwargs.keys()
 
@@ -99,7 +105,13 @@ class NodeConfig:
         kwargs["estimated_performance"] = estimated_performance
 
         for k, v in kwargs.iteritems():
-            ConfigEntry.create_property(self.section(), k.replace("_", " "), v, self, k)
+            ConfigEntry.create_property(
+                self.section(),
+                k.replace("_", " "),
+                v,
+                self,
+                k
+            )
 
         self.prop_names = kwargs.keys()
 
@@ -119,48 +131,49 @@ class AppConfig:
             raise RuntimeError("Config has been loaded: {}".format(cfg_file))
         cls.__loaded_configs.add(cfg_file)
 
-        node_config = NodeConfig(node_name="",
-                                 node_address="",
-                                 public_address="",
-                                 eth_account="",
-                                 use_ipv6=USE_IP6,
-                                 start_port=START_PORT,
-                                 end_port=END_PORT,
-                                 rpc_address=RPC_ADDRESS,
-                                 rpc_port=RPC_PORT,
-                                 # peers
-                                 seed_host="",
-                                 seed_port=START_PORT,
-                                 opt_peer_num=OPTIMAL_PEER_NUM,
-                                 # flags
-                                 accept_tasks=ACCEPT_TASKS,
-                                 send_pings=SEND_PINGS,
-                                 # hardware
-                                 hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
-                                 # price and trust
-                                 min_price=MIN_PRICE,
-                                 max_price=MAX_PRICE,
-                                 requesting_trust=REQUESTING_TRUST,
-                                 computing_trust=COMPUTING_TRUST,
-                                 # benchmarks
-                                 estimated_lux_performance="0",
-                                 estimated_blender_performance="0",
-                                 # intervals
-                                 pings_interval=PINGS_INTERVALS,
-                                 getting_peers_interval=GETTING_PEERS_INTERVAL,
-                                 getting_tasks_interval=GETTING_TASKS_INTERVAL,
-                                 task_request_interval=TASK_REQUEST_INTERVAL,
-                                 node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
-                                 network_check_interval=NETWORK_CHECK_INTERVAL,
-                                 max_results_sending_delay=MAX_SENDING_DELAY,
-                                 # timeouts
-                                 p2p_session_timeout=P2P_SESSION_TIMEOUT,
-                                 task_session_timeout=TASK_SESSION_TIMEOUT,
-                                 resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
-                                 use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
-                                 waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
-                                 waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
-                                 forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT)
+        node_config = NodeConfig(
+            node_name="",
+            node_address="",
+            public_address="",
+            eth_account="",
+            use_ipv6=USE_IP6,
+            start_port=START_PORT,
+            end_port=END_PORT,
+            rpc_address=RPC_ADDRESS,
+            rpc_port=RPC_PORT,
+            # peers
+            seed_host="",
+            seed_port=START_PORT,
+            opt_peer_num=OPTIMAL_PEER_NUM,
+            # flags
+            accept_tasks=ACCEPT_TASKS,
+            send_pings=SEND_PINGS,
+            # hardware
+            hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
+            # price and trust
+            min_price=MIN_PRICE,
+            max_price=MAX_PRICE,
+            requesting_trust=REQUESTING_TRUST,
+            computing_trust=COMPUTING_TRUST,
+            # benchmarks
+            estimated_lux_performance="0",
+            estimated_blender_performance="0",
+            # intervals
+            pings_interval=PINGS_INTERVALS,
+            getting_peers_interval=GETTING_PEERS_INTERVAL,
+            getting_tasks_interval=GETTING_TASKS_INTERVAL,
+            task_request_interval=TASK_REQUEST_INTERVAL,
+            node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
+            network_check_interval=NETWORK_CHECK_INTERVAL,
+            max_results_sending_delay=MAX_SENDING_DELAY,
+            # timeouts
+            p2p_session_timeout=P2P_SESSION_TIMEOUT,
+            task_session_timeout=TASK_SESSION_TIMEOUT,
+            resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
+            use_waiting_for_task_timeout=USE_WAITING_FOR_TASK_TIMEOUT,
+            waiting_for_task_timeout=WAITING_FOR_TASK_TIMEOUT,
+            waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
+            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT)
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)
@@ -180,7 +193,11 @@ class AppConfig:
 
     def change_config(self, cfg_desc):
         if not isinstance(cfg_desc, ClientConfigDescriptor):
-            raise TypeError("Incorrect config descriptor type: {}. Should be ClientConfigDescriptor".format(type(cfg_desc)))
+            raise TypeError(
+                "Incorrect config descriptor type: {}."
+                " Should be ClientConfigDescriptor"
+                .format(type(cfg_desc))
+            )
 
         for var, val in vars(cfg_desc).iteritems():
             setter = "set_{}".format(var)

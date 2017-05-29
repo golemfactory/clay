@@ -1,15 +1,18 @@
 from ethereum import keys
-from mock import patch
+from mock import patch, MagicMock
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.transactions.ethereum.ethereumtransactionsystem import (
+    EthereumTransactionSystem
+)
 
 PRIV_KEY = '\7' * 32
 
 
-class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase, testutils.PEP8MixIn):
+class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
+                                    testutils.PEP8MixIn):
     PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
 
     def test_init(self):
@@ -37,6 +40,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase, testutils.PEP
 
         switch_value = [True]
 
+        def false():
+            return False
+
         def switch(*_):
             switch_value[0] = not switch_value[0]
             return not switch_value[0]
@@ -47,7 +53,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase, testutils.PEP
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
         sleep.call_count = 0
-        with patch('golem.ethereum.Client.is_syncing', side_effect=lambda: False):
+        with patch('golem.ethereum.Client.is_syncing', side_effect=false):
             e.sync()
             assert sleep.call_count == 1
 
@@ -68,15 +74,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase, testutils.PEP
         def init(self, *args, **kwargs):
             self.rpcport = 65001
             self._NodeProcess__ps = None
-            self.testnet = True
+            self.web3 = MagicMock()
 
         with patch(pkg + 'paymentprocessor.PaymentProcessor.start'), \
-            patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
-            patch(pkg + 'node.NodeProcess.start'), \
-            patch(pkg + 'node.NodeProcess.stop'), \
-            patch(pkg + 'node.NodeProcess.__init__', init), \
-            patch(pkg + 'node.NodeProcess.system_geth', False, create=True), \
-            patch('web3.providers.rpc.HTTPProvider.__init__', init):
+                patch(pkg + 'paymentprocessor.PaymentProcessor.stop'), \
+                patch(pkg + 'node.NodeProcess.start'), \
+                patch(pkg + 'node.NodeProcess.stop'), \
+                patch(pkg + 'node.NodeProcess.__init__', init), \
+                patch('web3.providers.rpc.HTTPProvider.__init__', init):
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 

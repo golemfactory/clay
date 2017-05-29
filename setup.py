@@ -95,7 +95,8 @@ setup(
 from golem.docker.manager import DockerManager
 from golem.tools.ci import in_appveyor, in_travis
 
-if not (in_appveyor() or in_travis()):
+if not (in_appveyor() or in_travis() or
+        building_wheel or building_binary):
     DockerManager.pull_images()
 
 if not (building_wheel or building_binary):
