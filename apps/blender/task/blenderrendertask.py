@@ -141,13 +141,22 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         res_x, res_y = definition.resolution
 
         if not definition.options.use_frames:
-            return cls.__get_border(start_task, end_task, total_subtasks, res_x, res_y)
+            return cls.__get_border(start_task, end_task, total_subtasks,
+                                    res_x, res_y)
 
         if total_subtasks > frames:
             parts = int(total_subtasks / frames)
-            return cls.__get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1,
+            return cls.__get_border((start_task - 1) % parts + 1,
+                                    (end_task - 1) % parts + 1,
                                     parts, res_x, res_y)
 
+        return []
+
+    @classmethod
+    def get_task_borders(cls, definition, total_subtasks):
+        if not definition.options.use_frames:
+            res_x, res_y = definition.resolution
+            return generate_expected_offsets(total_subtasks, res_x, res_y)
         return []
 
     @classmethod
@@ -245,13 +254,15 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater = None
         self.preview_updaters = None
 
-        FrameRenderingTask.__init__(self, task_definition=task_definition, **kwargs)
+        FrameRenderingTask.__init__(self, task_definition=task_definition,
+                                    **kwargs)
 
+        definition = self.task_definition
         self.verificator.compositing = self.compositing
         self.verificator.output_format = self.output_format
         self.verificator.src_code = self.src_code
-        self.verificator.docker_images = self.task_definition.docker_images
-        self.verificator.verification_timeout = self.task_definition.subtask_timeout
+        self.verificator.docker_images = definition.docker_images
+        self.verificator.verification_timeout = definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
