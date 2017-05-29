@@ -101,7 +101,7 @@ install:
   - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 
   # requirements
-  - pip install six pytest mock coverage
+  - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
   - python setup.py develop
 
@@ -109,7 +109,10 @@ build_script:
   - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  - pytest tests
+  - pytest --cov=golem
+
+after_test:
+  - codecov
 
 on_finish:
   - ps: Stop-Process -Id $IPFSProcess.Id
