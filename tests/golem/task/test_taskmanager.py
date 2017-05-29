@@ -6,6 +6,7 @@ import uuid
 
 from mock import Mock, patch
 
+from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.threads import wait_for
@@ -510,40 +511,30 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
-
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
-
         count = 3
 
-        tasks, tasks_states, task_id, subtask_id = self.__build_tasks(count)
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        task_id, subtask_id = self.__build_tasks(tm, count)
 
-        tm.tasks = tasks
-        tm.tasks_states = tasks_states
-        tm.subtask2task_mapping = self.__build_subtask2task(tasks)
-
-        one_task = tm.get_dict_task(task_id)
+        one_task = tm.get_task_dict(task_id)
         assert one_task
         assert isinstance(one_task, dict)
         assert len(one_task)
 
-        all_tasks = tm.get_dict_tasks()
-
+        all_tasks = tm.get_tasks_dict()
         assert all_tasks
         assert isinstance(all_tasks, list)
         assert len(all_tasks) == count
         assert all([isinstance(t, dict) for t in all_tasks])
 
-        one_subtask = tm.get_dict_subtask(subtask_id)
-
-        assert one_subtask
+        one_subtask = tm.get_subtask_dict(subtask_id)
         assert isinstance(one_subtask, dict)
         assert len(one_subtask)
 
-        task_subtasks = tm.get_dict_subtasks(task_id)
-
-        assert task_subtasks
-        assert isinstance(task_subtasks, list)
-        assert all([isinstance(t, dict) for t in task_subtasks])
+        all_subtasks = tm.get_subtasks_dict(task_id)
+        assert all_subtasks
+        assert isinstance(all_subtasks, list)
+        assert all([isinstance(t, dict) for t in all_subtasks])
 
     @patch("golem.task.taskmanager.get_external_address")
     def test_change_timeouts(self, mock_addr):
@@ -597,46 +588,48 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             wait_for(self.tm.add_new_task(t))
 
-    def __build_tasks(self, n):
+    def __build_tasks(self, tm, n):
+        tm.tasks = dict()
+        tm.tasks_states = dict()
+        tm.subtask_states = dict()
 
-        tasks = dict()
-        tasks_states = dict()
         task_id = None
         subtask_id = None
         previews = [None, 'result', ['result_1', 'result_2']]
 
         for i in xrange(0, n):
+            task_id = str(uuid.uuid4())
 
-            task = Mock()
-            task.task_definition.task_type = "blender"
-            task.task_definition.subtask_timeout = 3671
-            task.task_definition.full_task_timeout = 3671 * 10
-            task.task_definition.max_price = 1 * 10 ** 18
-            task.task_definition.resources = [str(uuid.uuid4())
-                                              for _ in range(5)]
-            task.task_definition.output_file = os.path.join(self.tempdir,
-                                                            'somefile')
-
-            task.header.task_id = str(uuid.uuid4())
-            task.get_total_tasks.return_value = i + 2
-            task.get_progress.return_value = i * 10
-
-            state = Mock()
-            state.status = 'waiting'
-            state.remaining_time = 100 - i
-            state.extra_data = dict(result_preview=previews[i % 3])
+            definition = Mock()
+            definition.task_id = task_id
+            definition.task_type = "blender"
+            definition.subtask_timeout = 3671
+            definition.full_task_timeout = 3671 * 10
+            definition.max_price = 1 * 10 ** 18
+            definition.resources = [str(uuid.uuid4()) for _ in range(5)]
+            definition.output_file = os.path.join(self.tempdir, 'somefile')
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
+            state = TaskState()
+            state.status = 'waiting'
+            state.remaining_time = 100 - i
+            state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
+
+            task = CoreTask('source.code', definition, 'node', 'blender')
+            task.get_total_tasks = Mock()
+            task.get_progress = Mock()
+            task.get_total_tasks.return_value = i + 2
+            task.get_progress.return_value = i * 10
             task.subtask_states = subtask_states
 
-            task_id = task.header.task_id
+            tm.tasks[task_id] = task
+            tm.tasks_states[task_id] = state
+            tm.subtask_states.update(subtask_states)
 
-            tasks[task.header.task_id] = task
-            tasks_states[task.header.task_id] = state
-
-        return tasks, tasks_states, task_id, subtask_id
+        tm.subtask2task_mapping = self.__build_subtask2task(tm.tasks)
+        return task_id, subtask_id
 
     @staticmethod
     def __build_subtasks(n):
@@ -646,7 +639,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
         for i in xrange(0, n):
 
-            subtask = Mock()
+            subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
             subtask.computer = ComputerState()
             subtask.computer.node_name = 'node_{}'.format(i)
@@ -664,7 +657,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def __build_subtask2task(tasks):
         subtask2task = dict()
         for k, t in tasks.items():
-            print k, t.subtask_states
             for sk, st in t.subtask_states.items():
                 subtask2task[st.subtask_id] = t.header.task_id
         return subtask2task

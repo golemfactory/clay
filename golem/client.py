@@ -534,18 +534,18 @@ class Client(HardwarePresetsMixin):
         return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_task(self, task_id):
-        return self.task_server.task_manager.get_dict_task(task_id)
+        return self.task_server.task_manager.get_task_dict(task_id)
 
     def get_tasks(self, task_id=None):
         if task_id:
-            return self.task_server.task_manager.get_dict_task(task_id)
-        return self.task_server.task_manager.get_dict_tasks()
+            return self.task_server.task_manager.get_task_dict(task_id)
+        return self.task_server.task_manager.get_tasks_dict()
 
     def get_subtasks(self, task_id):
-        return self.task_server.task_manager.get_dict_subtasks(task_id)
+        return self.task_server.task_manager.get_subtasks_dict(task_id)
 
     def get_subtask(self, subtask_id):
-        return self.task_server.task_manager.get_dict_subtask(subtask_id)
+        return self.task_server.task_manager.get_subtask_dict(subtask_id)
 
     def get_task_stats(self):
         return {

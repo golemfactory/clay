@@ -1,16 +1,14 @@
 import logging
-
-import collections
-from pathlib import Path
 import pickle
-from pydispatch import dispatcher
 import time
 
+from pathlib import Path
+from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline, to_unicode
+    timeout_to_deadline
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -20,7 +18,8 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
-from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, SubtaskState
+from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
+    SubtaskState
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +108,7 @@ class TaskManager(TaskEventListener):
 
         return Task.build_task(builder)
 
-    def create_dict(self, task):
+    def get_task_definition_dict(self, task):
         if isinstance(task, dict):
             return task
         definition = task.task_definition
@@ -563,69 +562,40 @@ class TaskManager(TaskEventListener):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def get_dict_task(self, task_id):
+    def get_task_dict(self, task_id):
         task = self.tasks[task_id]
-        dictionary = self._simple_task_repr(task)
-        dictionary.update(self.create_dict(task))
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+
+        dictionary = {u'borders': None}
+        dictionary.update(self.get_simple_task_dict(task))
+        dictionary.update(self.get_task_definition_dict(task))
         return dictionary
 
-    def get_dict_tasks(self):
-        return [self._simple_task_repr(t) for t in self.tasks.itervalues()]
+    def get_tasks_dict(self):
+        return [self.get_simple_task_dict(t) for t in self.tasks.itervalues()]
 
-    def get_dict_subtasks(self, task_id):
-        task_state = self.tasks_states[task_id]
-        return [self._simple_subtask_repr(subtask) for subtask
-                in task_state.subtask_states.itervalues()]
-
-    def get_dict_subtask(self, subtask_id):
+    @handle_subtask_key_error
+    def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
         task_state = self.tasks_states[task_id]
         subtask = task_state.subtask_states[subtask_id]
-        return self._simple_subtask_repr(subtask)
+        return subtask.to_dictionary()
 
-    def _simple_task_repr(self, task):
-        if not task:
-            return
+    @handle_task_key_error
+    def get_subtasks_dict(self, task_id):
+        task_state = self.tasks_states[task_id]
+        subtasks = task_state.subtask_states
+        return [subtask.to_dictionary() for subtask in subtasks.itervalues()]
 
+    def get_simple_task_dict(self, task):
         state = self.tasks_states.get(task.header.task_id)
-        preview = state.extra_data["result_preview"]
+        timeout = task.task_definition.full_task_timeout
 
-        if isinstance(preview, basestring):
-            preview = to_unicode(preview)
-        elif isinstance(preview, collections.Iterable):
-            preview = [to_unicode(entry) for entry in preview]
-
-        return {
-            u'id': to_unicode(task.header.task_id),
-            u'name': to_unicode(task.task_definition.task_name),
-            u'type': to_unicode(task.task_definition.task_type),
-            u'duration': max(task.task_definition.full_task_timeout -
-                             state.remaining_time, 0),
-            u'time_remaining': state.remaining_time,
-            u'subtasks': task.get_total_tasks(),
-            u'status': to_unicode(state.status),
-            u'progress': task.get_progress(),
-            u'preview': preview
-        }
-
-    @staticmethod
-    def _simple_subtask_repr(subtask):
-        if subtask:
-            return {
-                u'subtask_id': to_unicode(subtask.subtask_id),
-                u'node_name': to_unicode(subtask.computer.node_name),
-                u'node_id': to_unicode(subtask.computer.node_id),
-                u'node_performance': subtask.computer.performance,
-                u'node_ip_address': to_unicode(subtask.computer.ip_address),
-                u'node_port': subtask.computer.port,
-                u'status': to_unicode(subtask.subtask_status),
-                u'progress': subtask.subtask_progress,
-                u'time_started': subtask.time_started,
-                u'time_remaining': subtask.subtask_rem_time,
-                u'results': [to_unicode(r) for r in subtask.results],
-                u'stderr': to_unicode(subtask.stderr),
-                u'stdout': to_unicode(subtask.stdout)
-            }
+        dictionary = {u'duration': max(timeout - state.remaining_time, 0)}
+        dictionary.update(task.to_dictionary())
+        dictionary.update(state.to_dictionary())
+        return dictionary
 
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):

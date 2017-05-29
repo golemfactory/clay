@@ -59,7 +59,7 @@ class TaskTypeInfo(object):
         return 0
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+    def get_task_border(cls, subtask, definition, total_subtasks, output_num=1):
         return []
 
 
@@ -237,6 +237,15 @@ class CoreTask(Task):
 
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
+
+    def to_dictionary(self):
+        return {
+            u'id': to_unicode(self.header.task_id),
+            u'name': to_unicode(self.task_definition.task_name),
+            u'type': to_unicode(self.task_definition.task_type),
+            u'subtasks': self.get_total_tasks(),
+            u'progress': self.get_progress()
+        }
 
     #########################
     # Specific task methods #
