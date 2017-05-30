@@ -17,14 +17,15 @@ class Node(rlp.Serializable):
         ('nat_type', CBORSedes),
         ('p2p_prv_port', CBORSedes),
         ('p2p_pub_port', CBORSedes),
-        ('prv_addresses', rlp.sedes.CountableList(CBORSedes))
+        ('prv_addresses', rlp.sedes.CountableList(CBORSedes)),
+        ('port_status', CBORSedes),
     ]
 
     def __init__(self, node_name=None, key=None, prv_addr=None, prv_port=None, pub_addr=None, pub_port=None,
-                 nat_type=None, p2p_prv_port=None, p2p_pub_port=None, prv_addresses=None):
+                 nat_type=None, p2p_prv_port=None, p2p_pub_port=None, prv_addresses=None, port_status=None):
 
         rlp.Serializable.__init__(self, node_name, key, prv_addr, prv_port, pub_addr, pub_port,
-                 nat_type, p2p_prv_port, p2p_pub_port, prv_addresses)
+                 nat_type, p2p_prv_port, p2p_pub_port, prv_addresses, port_status)
 
     def collect_network_info(self, seed_host=None, use_ipv6=False):
         if not self.pub_addr:

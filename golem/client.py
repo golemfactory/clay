@@ -242,13 +242,6 @@ class Client(BaseApp, HardwarePresetsMixin):
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
-
-        self.p2pservice = P2PService(
-            self.node,
-            self.config_desc,
-            self.keys_auth,
-            connect_to_known_hosts=self.connect_to_known_hosts
-        )
         self.task_server = TaskServer(
             self.node,
             self.config_desc,
@@ -274,32 +267,22 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.resource_server = BaseResourceServer(resource_manager, dir_manager,
                                                   self.keys_auth, self)
 
-        def connect((p2p_port, task_port)):
-            log.info('P2P server is listening on port %s', p2p_port)
+        def connect((task_port)):
             log.info('Task server is listening on port %s', task_port)
 
             dispatcher.send(signal='golem.p2p', event='listening',
-                            port=[p2p_port, task_port] + list(hyperdrive_ports))
+                            port=[task_port] + list(hyperdrive_ports))
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
-            self.p2pservice.connect_to_network()
-
-        self.peermonitor = PeerMonitor(self.services.peermanager)
-
-            if self.monitor:
-                self.diag_service.register(self.p2pservice,
-                                           self.monitor.on_peer_snapshot)
-                self.monitor.on_login()
 
         def terminate(*exceptions):
             log.error("Golem cannot listen on ports: %s", exceptions)
             self.quit()
 
         task = Deferred()
-        p2p = Deferred()
 
-        gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
+        gatherResults([task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
         log.info("Starting p2p server ...")
         #self.p2pservice.start_accepting(listening_established=p2p.callback,
@@ -308,6 +291,15 @@ class Client(BaseApp, HardwarePresetsMixin):
         log.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+
+        self.peermonitor = PeerMonitor(self.services.peermanager)
+
+        # self.p2pservice.connect_to_network()
+
+        if self.peermonitor:
+            self.diag_service.register(self.peermonitor,
+                                       self.monitor.on_peer_snapshot)
+            # self.monitor.on_login()
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
