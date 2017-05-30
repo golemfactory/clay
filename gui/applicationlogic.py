@@ -627,7 +627,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         returnValue(cost)
 
     @inlineCallbacks
-    def load_task_presets(self, task_type):
+    def get_task_presets(self, task_type):
         presets = yield self.client.get_task_presets(task_type)
         unpacked_presets = {}
         for preset_name, preset_value in presets.items():
@@ -638,7 +638,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 self.client.delete_task_preset(task_type, preset_name)
         returnValue(unpacked_presets)
 
-    def remove_task_preset(self, task_type, preset_name):
+    def delete_task_preset(self, task_type, preset_name):
         self.client.delete_task_preset(task_type, preset_name)
 
     def set_current_task_type(self, name):

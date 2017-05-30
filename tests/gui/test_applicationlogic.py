@@ -243,13 +243,13 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.change_description(description)
         self.assertEqual(self.client.get_description(), description)
 
-        p = logic.load_task_presets("Blender")
+        p = logic.get_task_presets("Blender")
         assert p.result == {}
         logic.save_task_preset("NewPreset", "Blender", "Some data")
-        p = logic.load_task_presets("Blender")
+        p = logic.get_task_presets("Blender")
         assert p.result == {'NewPreset': "Some data"}
-        logic.remove_task_preset("Blender", "NewPreset")
-        p = logic.load_task_presets("Blender")
+        logic.delete_task_preset("Blender", "NewPreset")
+        p = logic.get_task_presets("Blender")
         assert p.result == {}
 
     def test_add_tasks(self):
