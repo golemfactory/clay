@@ -843,13 +843,13 @@ class Client(HardwarePresetsMixin):
         taskpreset.save_task_preset(preset_name, task_type, data)
 
     @staticmethod
-    def load_task_presets(task_type):
+    def get_task_presets(task_type):
         log.info("Loading presets for {}".format(task_type))
-        return taskpreset.load_task_presets(task_type)
+        return taskpreset.get_task_presets(task_type)
 
     @staticmethod
-    def remove_task_preset(task_type, preset_name):
-        taskpreset.remove_task_preset(task_type, preset_name)
+    def delete_task_preset(task_type, preset_name):
+        taskpreset.delete_task_preset(task_type, preset_name)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

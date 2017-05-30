@@ -393,19 +393,19 @@ class TestClient(TestWithDatabase):
         Client.save_task_preset("Preset2", "TaskType1", "data2")
         Client.save_task_preset("Preset1", "TaskType2", "data3")
         Client.save_task_preset("Preset3", "TaskType2", "data4")
-        presets = Client.load_task_presets("TaskType1")
+        presets = Client.get_task_presets("TaskType1")
         assert len(presets) == 2
         assert presets["Preset1"] == "data1"
         assert presets["Preset2"] == "data2"
-        presets = Client.load_task_presets("TaskType2")
+        presets = Client.get_task_presets("TaskType2")
         assert len(presets) == 2
         assert presets["Preset1"] == "data3"
         assert presets["Preset3"] == "data4"
-        Client.remove_task_preset("TaskType2", "Preset1")
-        presets = Client.load_task_presets("TaskType1")
+        Client.delete_task_preset("TaskType2", "Preset1")
+        presets = Client.get_task_presets("TaskType1")
         assert len(presets) == 2
         assert presets["Preset1"] == "data1"
-        presets = Client.load_task_presets("TaskType2")
+        presets = Client.get_task_presets("TaskType2")
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 

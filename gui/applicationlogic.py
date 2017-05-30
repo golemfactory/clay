@@ -628,18 +628,18 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def load_task_presets(self, task_type):
-        presets = yield self.client.load_task_presets(task_type)
+        presets = yield self.client.get_task_presets(task_type)
         unpacked_presets = {}
         for preset_name, preset_value in presets.items():
             try:
                 unpacked_presets[preset_name] = jsonpickle.loads(preset_value)
             except Exception:
                 logger.exception("Cannot unpickle preset")
-                self.client.remove_task_preset(task_type, preset_name)
+                self.client.delete_task_preset(task_type, preset_name)
         returnValue(unpacked_presets)
 
     def remove_task_preset(self, task_type, preset_name):
-        self.client.remove_task_preset(task_type, preset_name)
+        self.client.delete_task_preset(task_type, preset_name)
 
     def set_current_task_type(self, name):
         if name in self.task_types:

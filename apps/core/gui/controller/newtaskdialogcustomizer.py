@@ -184,7 +184,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _remove_preset_button_clicked(self):
         try:
             preset_name = self.__get_current_preset_name()
-            self.logic.remove_task_preset(self.__get_current_task_type_name(),
+            self.logic.delete_task_preset(self.__get_current_task_type_name(),
                                           preset_name)
             self.gui.ui.presetComboBox.removeItem(
                 self.gui.ui.presetComboBox.currentIndex())
@@ -204,7 +204,7 @@ class NewTaskDialogCustomizer(Customizer):
     @inlineCallbacks
     def load_presets(self):
         self.gui.ui.presetComboBox.clear()
-        presets = yield self.logic.load_task_presets(
+        presets = yield self.logic.get_task_presets(
             self.__get_current_task_type_name())
         if not presets:
             return

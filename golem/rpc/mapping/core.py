@@ -14,7 +14,7 @@ CORE_METHOD_MAP = dict(
     get_hw_preset=          Environment.preset,
     create_hw_preset=       Environment.preset_create,
     update_hw_preset=       Environment.preset_update,
-    remove_hw_preset=       Environment.preset_delete,
+    delete_hw_preset=       Environment.preset_delete,
     activate_hw_preset=     Environment.preset_activate,
 
     use_ranking=            Environment.use_ranking,
@@ -46,8 +46,8 @@ CORE_METHOD_MAP = dict(
     get_known_tasks=        Task.tasks_known,
     remove_task_header=     Task.tasks_known_delete,
     save_task_preset=       Task.tasks_save_preset,
-    load_task_presets=      Task.tasks_load_presets,
-    remove_task_preset=     Task.tasks_remove_preset,
+    get_task_presets=       Task.tasks_load_presets,
+    delete_task_preset=     Task.tasks_remove_preset,
 
     get_task=               Task.task,
     get_task_cost=          Task.task_cost,

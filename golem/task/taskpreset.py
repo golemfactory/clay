@@ -22,19 +22,19 @@ def save_task_preset(preset_name, task_type, data):
         logger.exception("Cannot save preset")
 
 
-def load_task_presets(task_type):
+def get_task_presets(task_type):
     task_presets = TaskPreset.select().where(TaskPreset.task_type == task_type)
     proper_presets = {task_preset.name: task_preset.data
                       for task_preset in task_presets}
     return proper_presets
 
 
-def remove_task_preset(task_type, name):
+def delete_task_preset(task_type, name):
     try:
         query = TaskPreset.delete().where(_is_same_task_preset(task_type, name))
         query.execute()
     except Exception:
-        logger.exception(("Canont remove task preset {}:{}".format(task_type,
+        logger.exception(("Cannot remove task preset {}:{}".format(task_type,
                                                                    name)))
 
 
