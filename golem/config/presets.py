@@ -55,7 +55,7 @@ class HardwarePresetsMixin(object):
         return preset.to_dict()
 
     @staticmethod
-    def remove_hw_preset(name):
+    def delete_hw_preset(name):
         if name in [
                 appconfig.CUSTOM_HARDWARE_PRESET_NAME,
                 appconfig.DEFAULT_HARDWARE_PRESET_NAME,

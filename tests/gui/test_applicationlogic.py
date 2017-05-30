@@ -28,7 +28,8 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import Gui
-from gui.applicationlogic import GuiApplicationLogic, logger, task_to_remove_status
+from gui.applicationlogic import (GuiApplicationLogic, logger,
+                                  task_to_remove_status)
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -192,8 +193,10 @@ class TestGuiApplicationLogic(DatabaseFixture):
 
         ui = logic.customizer.gui.ui
         ui.localBalanceLabel.setText.assert_called_once_with("3.00000000 GNT")
-        ui.reservedBalanceLabel.setText.assert_called_once_with("2.00000000 GNT")
-        ui.availableBalanceLabel.setText.assert_called_once_with("1.00000000 GNT")
+        ui.reservedBalanceLabel.setText.assert_called_once_with(
+            "2.00000000 GNT")
+        ui.availableBalanceLabel.setText.assert_called_once_with(
+            "1.00000000 GNT")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
 
     def test_start_task(self):
@@ -218,7 +221,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         DatabaseFixture.setUp(self)
         LogTestCase.setUp(self)
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
     def tearDown(self):
@@ -239,6 +243,15 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.change_description(description)
         self.assertEqual(self.client.get_description(), description)
 
+        p = logic.get_task_presets("Blender")
+        assert p.result == {}
+        logic.save_task_preset("NewPreset", "Blender", "Some data")
+        p = logic.get_task_presets("Blender")
+        assert p.result == {'NewPreset': "Some data"}
+        logic.delete_task_preset("Blender", "NewPreset")
+        p = logic.get_task_presets("Blender")
+        assert p.result == {}
+
     def test_add_tasks(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
@@ -246,17 +259,22 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.add_task_from_definition(td)
         self.assertIn("xyz", logic.tasks, "Task was not added")
         task_state1 = TestGuiApplicationLogicWithClient._get_task_state()
-        task_state2 = TestGuiApplicationLogicWithClient._get_task_state(task_id="abc")
-        task_state3 = TestGuiApplicationLogicWithClient._get_task_state(task_id="def")
+        task_state2 = TestGuiApplicationLogicWithClient._get_task_state(
+            task_id="abc")
+        task_state3 = TestGuiApplicationLogicWithClient._get_task_state(
+            task_id="def")
         logic.add_tasks([task_state1, task_state2, task_state3])
         self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
         self.assertIn("xyz", logic.tasks, "Task was not added")
         self.assertIn("abc", logic.tasks, "Task was not added")
         self.assertIn("def", logic.tasks, "Task was not added")
-        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
-        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100,
+                         "Wrong task timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50,
+                         "Wrong subtask timeout")
         result = logic.add_tasks([])
-        self.assertIsNone(result, "Returned value [{}] is not None".format(result))
+        self.assertIsNone(result, "Returned value [{}] is not None".format(
+            result))
         result = logic.get_test_tasks()
         self.assertEqual(result, {}, "Returned value is not empty")
         with self.assertLogs(logger):
@@ -291,7 +309,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         assert logic.client.query_task_state.called
 
         logic.client.query_task_state.called = False
-        logic.customizer.current_task_highlighted.definition.task_id = str(uuid.uuid4())
+        logic.customizer.current_task_highlighted.definition.task_id = \
+            str(uuid.uuid4())
         logic.task_status_changed(str(uuid.uuid4()))
         assert not logic.client.query_task_state.called
         assert not logic.customizer.update_task_additional_info.called
@@ -333,17 +352,19 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         assert all([isinstance(env, dict) for env in environments])
 
     @staticmethod
-    def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+    def _get_task_state(task_id="xyz", full_task_timeout=100,
+                        subtask_timeout=50):
         task_state = TaskDesc()
-        td = TestGuiApplicationLogicWithClient._get_task_definition(task_id=task_id,
-                                                                    full_task_timeout=full_task_timeout,
-                                                                    subtask_timeout=subtask_timeout)
+        td = TestGuiApplicationLogicWithClient._get_task_definition(
+            task_id=task_id, full_task_timeout=full_task_timeout,
+            subtask_timeout=subtask_timeout)
         task_state.status = TaskStatus.notStarted
         task_state.definition = td
         return task_state
 
     @staticmethod
-    def _get_task_definition(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+    def _get_task_definition(task_id="xyz", full_task_timeout=100,
+                             subtask_timeout=50):
         td = TaskDefinition()
         td.task_id = task_id
         td.full_task_timeout = full_task_timeout
@@ -385,7 +406,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.lock_config(False)
 
         self.assertTrue(logic.customizer.gui.ui.settingsOkButton.isEnabled())
-        self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
+        self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled(
+        ))
 
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
@@ -411,7 +433,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         peer2.port = 1034
         peer2.key_id = "KEYID2"
         peer2.node_name = "NODE 2"
-        logic._update_peers_view([DictSerializer.dump(peer), DictSerializer.dump(peer2)])
+        logic._update_peers_view([DictSerializer.dump(peer),
+                                  DictSerializer.dump(peer2)])
         table = logic.customizer.gui.ui.connectedPeersTable
         self.assertEqual(table.rowCount(), 2)
         self.assertEqual(table.item(0, 0).text(), "10.10.10.10")
@@ -427,17 +450,24 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic = self.logic
         logic.client = Mock()
         logic.client.datadir = self.path
-        self.logic.customizer = MainWindowCustomizer(self.app.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.app.main_window,
+                                                     self.logic)
         prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
         logic.change_verification_option(size_x_max=914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), prev_y)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), prev_y)
         logic.change_verification_option(size_y_max=123)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 123)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 123)
         logic.change_verification_option(size_y_max=3190, size_x_max=134)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
     @patch('gui.applicationlogic.QMessageBox')
@@ -606,7 +636,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         self.app.app.deleteLater()
         TestDirFixtureWithReactor.tearDown(self)
 
-    @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    @patch('gui.view.dialog.QDialogPlus.enable_close',
+           side_effect=lambda *_: True)
     @patch('gui.view.dialog.QDialogPlus.show')
     def test_run_test_task(self, *_):
         logic = self.logic
@@ -647,7 +678,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        ttb.src_code = "import time\ntime.sleep(0.1)\n" \
+                       "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
         wait_for(logic.run_test_task(ts))
         logic.progress_dialog.close()
@@ -656,7 +688,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         # since PythonTestVM does not support end_comp() method,
         # this is only a smoke test instead of actual test
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        ttb.src_code = "import time\ntime.sleep(0.1)\n" \
+                       "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
         wait_for(logic.run_test_task(ts))
         logic.progress_dialog.close()
@@ -683,7 +716,9 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         logic.tasks["xyz"] = ts
         logic.clone_task("xyz")
 
-        self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
+        self.assertEqual(
+            logic.customizer.new_task_dialog_customizer.
+                load_task_definition.call_args[0][0], ts.definition)
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
