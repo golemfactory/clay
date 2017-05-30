@@ -567,13 +567,15 @@ class TaskManager(TaskEventListener):
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
 
-        dictionary = {
-            u'borders': task_type.get_task_borders(task.task_definition,
-                                                   task.get_total_tasks())
-        }
-
+        dictionary = {u'options': dict()}
         dictionary.update(self.get_simple_task_dict(task))
         dictionary.update(self.get_task_definition_dict(task))
+
+        dictionary[u'borders'] = task_type.get_task_borders(
+            task.task_definition, task.get_total_tasks())
+        dictionary[u'options'][u'format'] = task_type.output_formats[
+            task.task_definition.output_format
+        ]
 
         return dictionary
 

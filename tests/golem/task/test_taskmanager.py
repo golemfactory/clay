@@ -608,6 +608,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             definition.max_price = 1 * 10 ** 18
             definition.resources = [str(uuid.uuid4()) for _ in range(5)]
             definition.output_file = os.path.join(self.tempdir, 'somefile')
+            definition.output_format = i % 3
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
