@@ -100,7 +100,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset = HardwarePresetsMixin.upsert_hw_preset(preset_dict)
         assert preset['cpu_cores'] == preset_dict['cpu_cores']
 
-    def test_remove_hw_preset(self):
+    def test_delete_hw_preset(self):
         # do not allow removal of default and custom presets
         with self.assertRaises(ValueError):
             HardwarePresetsMixin.delete_hw_preset(DEFAULT_HARDWARE_PRESET_NAME)
