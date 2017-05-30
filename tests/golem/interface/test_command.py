@@ -1,10 +1,10 @@
 import unittest
 
-from mock import Mock
 from twisted.internet.defer import Deferred, TimeoutError
 
-from golem.interface.command import Argument, CommandResult, CommandHelper, group, doc, command, client_ctx, \
-    CommandStorage, storage_context, CommandException
+from golem.core.deferred import sync_wait
+from golem.interface.command import Argument, CommandResult, CommandHelper, \
+    group, doc, command, CommandStorage, storage_context, CommandException
 
 
 class TestArgument(unittest.TestCase):
@@ -108,17 +108,17 @@ class TestCommandHelper(unittest.TestCase):
 
     def test_wait_for_deferred(self):
 
-        self.assertEqual(CommandHelper.wait_for('1234'), '1234')
+        self.assertEqual(sync_wait('1234'), '1234')
 
         deferred = Deferred()
         deferred.result = '5678'
         deferred.called = True
 
-        self.assertEqual(CommandHelper.wait_for(deferred), '5678')
+        self.assertEqual(sync_wait(deferred), '5678')
 
         with self.assertRaises(TimeoutError):
             deferred_2 = Deferred()
-            CommandHelper.wait_for(deferred_2, timeout=0)
+            sync_wait(deferred_2, timeout=0)
 
     def test_structure(self):
 
@@ -160,10 +160,14 @@ class TestCommandHelper(unittest.TestCase):
             def command_root():
                 pass
 
-            self.assertEqual(CommandStorage.roots, [MockPreClass, MockClass, command_root])
-            self.assertEqual(CommandHelper.get_children(MockPreClass).keys(), ['mock_2_renamed'])
-            self.assertEqual(CommandHelper.get_children(MockClass).keys(), ['sub_commands', 'mock_1', 'renamed_mc'])
-            self.assertEqual(CommandHelper.get_children(MockSubClass).keys(), ['command_msc', 'command'])
+            self.assertEqual(CommandStorage.roots, [MockPreClass, MockClass,
+                                                    command_root])
+            self.assertEqual(CommandHelper.get_children(MockPreClass).keys(),
+                             ['mock_2_renamed'])
+            self.assertEqual(CommandHelper.get_children(MockClass).keys(),
+                             ['sub_commands', 'mock_1', 'renamed_mc'])
+            self.assertEqual(CommandHelper.get_children(MockSubClass).keys(),
+                             ['command_msc', 'command'])
 
         with self.assertRaises(TypeError):
             @group("commands", help="command group")

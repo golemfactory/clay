@@ -10,7 +10,7 @@ from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import wait_for
+from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -528,22 +528,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (None, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (u"1", u"1", u"None")
         assert all(isinstance(entry, unicode) for entry in balance)
 
         c.transaction_system = None
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
     def test_run_benchmark(self, *_):
@@ -555,9 +555,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
-            wait_for(self.client.run_benchmark(str(uuid.uuid4())))
+            sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
-        wait_for(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
         assert task_computer.run_blender_benchmark.called
         assert not task_computer.run_lux_benchmark.called
@@ -565,7 +565,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_blender_benchmark.called = False
         task_computer.run_lux_benchmark.called = False
 
-        wait_for(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called

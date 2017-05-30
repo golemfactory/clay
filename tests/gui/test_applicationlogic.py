@@ -12,7 +12,7 @@ from twisted.internet.defer import Deferred
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import wait_for
+from golem.core.deferred import sync_wait
 from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -345,7 +345,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         for env in apps_manager.get_env_list():
             self.client.environments_manager.add_environment(env)
 
-        environments = wait_for(logic.get_environments())
+        environments = sync_wait(logic.get_environments())
 
         assert len(environments) > 0
         assert all([bool(env) for env in environments])
@@ -671,7 +671,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         logic.task_types["TESTTASK"] = task_type
 
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         logic.test_task_started(True)
         self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
@@ -681,7 +681,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         ttb.src_code = "import time\ntime.sleep(0.1)\n" \
                        "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
@@ -691,20 +691,20 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         ttb.src_code = "import time\ntime.sleep(0.1)\n" \
                        "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(0.5)
         logic.abort_test_task()
 
         ttb.src_code = "raise Exception('some error')"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(1)
         self.assertFalse(rpc_publisher.success)
 
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         self.assertFalse(rpc_publisher.success)
 
@@ -722,8 +722,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert wait_for(logic.run_test_task(ts))
+        assert sync_wait(logic.run_test_task(ts))
 
         ttb = TTaskBuilder(self.path, TTaskWithError)
         logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert not wait_for(logic.run_test_task(ts))
+        assert not sync_wait(logic.run_test_task(ts))
