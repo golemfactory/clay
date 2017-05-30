@@ -5,6 +5,7 @@ import logging
 import re
 import subprocess
 import time
+import tempfile
 from datetime import datetime
 from distutils.version import StrictVersion
 from os import path
@@ -18,6 +19,7 @@ from web3 import Web3, IPCProvider
 from golem.core.common import is_windows
 from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
+from golem.utils import find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
 
@@ -89,7 +91,6 @@ class NodeProcess(object):
         # Init geth datadir
         chain = 'rinkeby'
         geth_datadir = path.join(self.datadir, 'ethereum', chain)
-        ipc_path = path.join(geth_datadir, 'ipc')
         datadir_arg = '--datadir={}'.format(geth_datadir)
         this_dir = path.dirname(__file__)
         init_file = path.join(this_dir, chain + '.json')
@@ -105,7 +106,13 @@ class NodeProcess(object):
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
-        log.info("Will attempt to start new Ethereum node")
+        port = find_free_net_port()
+
+        # Build unique IPC/socket path. We have to use system temp dir to
+        # make sure the path has length shorter that ~100 chars.
+        tempdir = tempfile.gettempdir()
+        ipc_file = '{}-{}'.format(chain, port)
+        ipc_path = path.join(tempdir, ipc_file)
 
         args = [
             self.__prog,
@@ -113,16 +120,19 @@ class NodeProcess(object):
             '--cache=32',
             '--syncmode=light',
             '--rinkeby',
+            '--port={}'.format(port),
             '--ipcpath={}'.format(ipc_path),
             '--nousb',
             '--verbosity', '3',
         ]
 
+        log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
+
         self.__ps = subprocess.Popen(args, close_fds=True)
         atexit.register(lambda: self.stop())
 
         if is_windows():
-            # On Windows expend to full named pipe path.
+            # On Windows expand to full named pipe path.
             ipc_path = r'\\.\pipe\{}'.format(ipc_path)
 
         self.web3 = Web3(IPCProvider(ipc_path))
@@ -138,7 +148,7 @@ class NodeProcess(object):
         if identified_chain != chain:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
-        log.info("Node started in {} s: `{}`".format(wait_time, " ".join(args)))
+        log.info("Node started in {} s".format(wait_time))
 
     def stop(self):
         if self.__ps:
