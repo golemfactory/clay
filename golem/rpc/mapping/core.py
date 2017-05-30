@@ -47,7 +47,7 @@ CORE_METHOD_MAP = dict(
     remove_task_header=     Task.tasks_known_delete,
     save_task_preset=       Task.tasks_save_preset,
     load_task_presets=      Task.tasks_load_presets,
-    remove_task_preset=    Task.tasks_remove_preset,
+    remove_task_preset=     Task.tasks_remove_preset,
 
     get_task=               Task.task,
     get_task_cost=          Task.task_cost,

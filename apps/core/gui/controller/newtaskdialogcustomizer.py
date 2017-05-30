@@ -24,6 +24,10 @@ from gui.view.dialog import AddTaskResourcesDialog
 
 logger = logging.getLogger("apps.core")
 
+# Enable / disable GUI for presets.
+# First, uncomment preset widgets in gui/view/AppMainWindow.ui.
+PRESETS_GUI_ENABLED = False
+
 
 class NewTaskDialogCustomizer(Customizer):
 
@@ -55,6 +59,9 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_payment_connections()
         self._setup_verification_connections()
 
+        if PRESETS_GUI_ENABLED:
+            self._setup_task_preset_connections()
+
     def _setup_task_type_connections(self):
         self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(
             self._task_type_value_changed)
@@ -64,12 +71,14 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.addResourceButton.clicked.connect(
             self._show_add_resource_dialog)
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
-        # self.gui.ui.savePresetButton.clicked.connect(
-        #     self._save_preset_button_clicked)
-        # self.gui.ui.loadPresetButton.clicked.connect(
-        #     self._load_preset_button_clicked)
-        # self.gui.ui.deletePresetButton.clicked.connect(
-        #     self._remove_preset_button_clicked)
+
+    def _setup_task_preset_connections(self):
+        self.gui.ui.savePresetButton.clicked.connect(
+            self._save_preset_button_clicked)
+        self.gui.ui.loadPresetButton.clicked.connect(
+            self._load_preset_button_clicked)
+        self.gui.ui.deletePresetButton.clicked.connect(
+            self._remove_preset_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
@@ -386,7 +395,9 @@ class NewTaskDialogCustomizer(Customizer):
         task = self.logic.get_task_type(task_name)
         self.logic.options = deepcopy(task.options)
         self._update_options("{}".format(name))
-        # self.load_presets()
+
+        if PRESETS_GUI_ENABLED:
+            self.load_presets()
 
     def _get_add_resource_dialog(self):
         return AddTaskResourcesDialog(self.gui.window)
