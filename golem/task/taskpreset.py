@@ -23,7 +23,7 @@ def save_task_preset(preset_name, task_type, data):
 
 
 def get_task_presets(task_type):
-    task_presets = TaskPreset.select().where(TaskPreset.task_type ** task_type)
+    task_presets = TaskPreset.select().where(TaskPreset.task_type == task_type)
     proper_presets = {task_preset.name: task_preset.data
                       for task_preset in task_presets}
     return proper_presets
@@ -39,4 +39,4 @@ def delete_task_preset(task_type, name):
 
 
 def _is_same_task_preset(task_type, name):
-    return (TaskPreset.task_type ** task_type) & (TaskPreset.name == name)
+    return (TaskPreset.task_type == task_type) & (TaskPreset.name == name)

@@ -402,10 +402,10 @@ class TestClient(TestWithDatabase):
         assert presets["Preset1"] == "data3"
         assert presets["Preset3"] == "data4"
         Client.delete_task_preset("TaskType2", "Preset1")
-        presets = Client.get_task_presets("taskType1")
+        presets = Client.get_task_presets("TaskType1")
         assert len(presets) == 2
         assert presets["Preset1"] == "data1"
-        presets = Client.get_task_presets("taskType2")
+        presets = Client.get_task_presets("TaskType2")
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
