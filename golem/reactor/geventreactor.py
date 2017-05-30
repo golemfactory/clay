@@ -548,9 +548,13 @@ class GeventReactor(posixbase.PosixReactorBase):
     # IReactorCore
 
     def stop(self):
-        self._callqueue.insert(0, DelayedCall(self, 0, gevent.sleep, (), {},
+        self._callqueue.insert(0, DelayedCall(self, 0, self._stopThreadPool,
+                                              (), {}, seconds=self.seconds))
+        self._callqueue.insert(0, DelayedCall(self, 0, self._stopGreenletPool,
+                                              (), {}, seconds=self.seconds))
+        self._callqueue.insert(0, DelayedCall(self, 0, gevent.kill,
+                                              (self.greenlet,), {},
                                               seconds=self.seconds))
-        gevent.kill(self.greenlet)
 
     def reschedule(self):
         if self._wait and self._callqueue and \
