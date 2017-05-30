@@ -334,8 +334,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'format'] = definition.output_format
         dictionary[u'options'][u'resolution'] = definition.resolution
         dictionary[u'options'][u'compositing'] = definition.options.compositing
+
         return dictionary
 
     @classmethod
