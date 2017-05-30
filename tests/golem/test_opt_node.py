@@ -276,11 +276,24 @@ class TestNode(TestWithDatabase):
 
 
 class TestOptNode(TempDirFixture):
+
+    def setUp(self):
+        super(TestOptNode, self).setUp()
+        self.node = OptNode(self.path)
+
+    def tearDown(self):
+        self.node.client.quit()
+        super(TestOptNode, self).tearDown()
+
     def test_task_builder(self):
-        node = OptNode(self.path)
-        print node.default_environments
-        print node.apps_manager.apps
         task_def = Mock()
         task_def.task_type = "Blender"
-        self.assertIsNotNone(node._get_task_builder(task_def))
-        node.client.quit()
+        self.assertIsNotNone(self.node._get_task_builder(task_def))
+
+    @patch('golem.rpc.router.CrossbarRouter', create=True)
+    @patch('twisted.internet.reactor', create=True)
+    def test_start_rpc_server(self, reactor, router):
+        self.node._start_rpc_server('127.0.0.1', 12345)
+        assert self.node.rpc_router
+        assert self.node.rpc_router.start.called
+        assert reactor.addSystemEventTrigger.called

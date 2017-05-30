@@ -74,7 +74,10 @@ class Node(object):
     def _start_rpc_server(self, host, port):
         from twisted.internet import reactor
         from golem.rpc.router import CrossbarRouter
-        self.rpc_router = CrossbarRouter(host=host, port=port, datadir=self.client.datadir)
+        self.rpc_router = CrossbarRouter(host=host, port=port,
+                                         datadir=self.client.datadir)
+        reactor.addSystemEventTrigger("before", "shutdown",
+                                      self.rpc_router.stop)
         self.rpc_router.start(reactor, self._router_ready, self._rpc_error)
 
     def _router_ready(self, *_):
