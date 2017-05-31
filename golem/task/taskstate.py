@@ -70,7 +70,7 @@ class SubtaskState(object):
             u'subtask_id': to_unicode(self.subtask_id),
             u'node_name': to_unicode(self.computer.node_name),
             u'node_id': to_unicode(self.computer.node_id),
-            u'node_performance': self.computer.performance,
+            u'node_performance': to_unicode(self.computer.performance),
             u'node_ip_address': to_unicode(self.computer.ip_address),
             u'node_port': self.computer.port,
             u'status': to_unicode(self.subtask_status),
