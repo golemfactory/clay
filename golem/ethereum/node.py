@@ -6,6 +6,7 @@ import re
 import subprocess
 import time
 import tempfile
+import os
 from datetime import datetime
 from distutils.version import StrictVersion
 from os import path
@@ -67,7 +68,7 @@ class NodeProcess(object):
     IPC_CONNECTION_TIMEOUT = 10
 
     def __init__(self, datadir):
-        self.datadir = datadir
+        self.datadir = path.join(datadir, 'ethereum')
         self.__prog = find_program('geth')
         if not self.__prog:
             raise OSError("Ethereum client 'geth' not found")
@@ -90,7 +91,7 @@ class NodeProcess(object):
 
         # Init geth datadir
         chain = 'rinkeby'
-        geth_datadir = path.join(self.datadir, 'ethereum', chain)
+        geth_datadir = path.join(self.datadir, chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
         this_dir = path.dirname(__file__)
         init_file = path.join(this_dir, chain + '.json')
@@ -148,6 +149,8 @@ class NodeProcess(object):
         if identified_chain != chain:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
+        self.setup_account()
+
         log.info("Node started in {} s".format(wait_time))
 
     def stop(self):
@@ -176,3 +179,40 @@ class NodeProcess(object):
         chain = GENESES.get(genesis, 'unknown')
         log.info("{} chain ({})".format(chain, genesis))
         return chain
+
+    def setup_account(self):
+        accounts = self.web3.personal.listAccounts
+        password_file = path.join(self.datadir, 'password')
+
+        assert len(accounts) <= 1
+
+        if not accounts:
+            # Create new account.
+            self.password = os.urandom(32).encode('hex')
+            f = os.open(password_file, os.O_WRONLY | os.O_CREAT, 0600)
+            os.write(f, self.password)
+            os.close(f)
+
+            with open(password_file) as f:
+                read_password = f.read()
+            assert read_password == self.password
+
+            self.account = self.web3.personal.newAccount(self.password)
+        else:
+            self.account = accounts[0]
+            with open(password_file) as f:
+                self.password = f.read()
+
+        log.warning("Account: {}".format(self.account))
+
+        locked = self.web3.personal.lockAccount(self.account)
+        assert(locked)
+        log.warning("Account locked {}".format(locked))
+
+        unlocked = self.web3.personal.unlockAccount(self.account, self.password, 0)
+        assert(unlocked)
+        log.warning("Account unlocked {}".format(unlocked))
+
+        locked = self.web3.personal.lockAccount(self.account)
+        assert(locked)
+        log.warning("Account locked {}".format(locked))
