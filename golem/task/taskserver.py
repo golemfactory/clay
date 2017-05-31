@@ -918,6 +918,8 @@ class TaskServer(PendingConnectionsServer):
                 p2p_node = p2p_node_getter(elem)
                 if p2p_node is None:
                     logger.debug('Empty node info in %r', elem)
+                    elems_set.remove(elem)
+                    continue
                 self._add_pending_request(
                     req_type=req_type,
                     task_owner=p2p_node,
