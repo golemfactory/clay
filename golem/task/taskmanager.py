@@ -95,6 +95,7 @@ class TaskManager(TaskEventListener):
         return async_run(request)
 
     def create_task(self, dictionary):
+        # FIXME: remove after the new interface has been intergrated with
         if not isinstance(dictionary, dict):
             return dictionary
 

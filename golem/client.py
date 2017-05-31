@@ -334,6 +334,7 @@ class Client(HardwarePresetsMixin):
         self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
+        # FIXME: remove after the new interface has been intergrated with
         if isinstance(task, dict):
             task = self.task_server.task_manager.create_task(task)
         else:
