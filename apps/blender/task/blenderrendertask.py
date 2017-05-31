@@ -269,6 +269,8 @@ class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
     VERIFICATOR_CLASS = BlenderVerificator
 
+    BLENDER_MIN_BOX = [8, 8]
+
     ################
     # Task methods #
     ################
@@ -299,7 +301,6 @@ class BlenderRenderTask(FrameRenderingTask):
         if self.res_y != 0 and preview_y != 0:
             self.scale_factor = preview_y / self.res_y
         preview_x = int(round(self.res_x * self.scale_factor))
-
 
         if self.use_frames:
             self.preview_file_path = []
@@ -364,7 +365,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "scene_file": scene_file,
                       "script_src": script_src,
                       "frames": frames,
-                      "output_format": self.output_format
+                      "output_format": self.output_format,
                       }
 
         hash = "{}".format(random.getrandbits(128))
@@ -393,36 +394,29 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_task_preview()
 
     ###################
-    # CoreTask methods #
+    # CoreTask methods#
     ###################
 
     def query_extra_data_for_test_task(self):
 
         scene_file = self._get_scene_file_rel_path()
 
-        if self.use_frames:
-            frames = [self.frames[0]]
-            if len(self.frames) > 1:
-                frames.append(max(self.frames))
-        else:
-            frames = [1]
-
         script_src = generate_blender_crop_file(
-            resolution=(8, 8),
+            resolution=BlenderRenderTask.BLENDER_MIN_BOX,
             borders_x=(0.0, 1.0),
             borders_y=(0.0, 1.0),
-            use_compositing=self.compositing
+            use_compositing=False
         )
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
                       "end_task": 1,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
+                      "total_tasks": 1,
+                      "outfilebasename": "testresult",
                       "scene_file": scene_file,
                       "script_src": script_src,
-                      "frames": frames,
-                      "output_format": self.output_format
+                      "frames": [1],
+                      "output_format": "PNG"
                       }
 
         hash = "{}".format(random.getrandbits(128))

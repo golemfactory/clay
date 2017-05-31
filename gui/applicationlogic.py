@@ -411,27 +411,32 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.customizer.configuration_dialog_customizer.load_data()
 
     def run_test_task(self, task_state):
-        if self._validate_task_state(task_state):
+        def on_abort():
+            self.progress_dialog_customizer.show_message("Aborting test...")
+            self.abort_test_task()
 
-            def on_abort():
-                self.progress_dialog_customizer.show_message("Aborting test...")
-                self.abort_test_task()
+        self.progress_dialog = TestingTaskProgressDialog(
+            self.customizer.gui.window)
+        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(
+            self.progress_dialog, self)
+        # disable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(False)
+        # disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)
+        # prevent from closing
+        self.progress_dialog_customizer.enable_close(False)
+        self.progress_dialog_customizer.show_message("Preparing test...")
+        self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(
+            on_abort)
+        self.customizer.gui.setEnabled('new_task', False)
+        # disable everything on 'new task' tab
+        self.progress_dialog.show()
 
-            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
-            self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
-            self.progress_dialog_customizer.enable_close(False)        # prevent from closing
-            self.progress_dialog_customizer.show_message("Preparing test...")
-            self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
-            self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
-            self.progress_dialog.show()
-
-            try:
-                self.client.run_test_task(self.build_and_serialize_task(task_state))
-                return True
-            except Exception as ex:
-                self.test_task_computation_error(ex)
+        try:
+            self.client.run_test_task(self.build_and_serialize_task(task_state))
+            return True
+        except Exception as ex:
+            self.test_task_computation_error(ex)
 
         return False
 

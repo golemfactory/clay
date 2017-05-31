@@ -233,13 +233,13 @@ class LuxTask(renderingtask.RenderingTask):
             os.makedirs(self.test_task_res_path)
 
         scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
-                                        xres=self.res_x,
-                                        yres=self.res_y,
-                                        halttime=0,
-                                        haltspp=1,
-                                        writeinterval=3,
+                                        xres=10,
+                                        yres=10,
+                                        halttime=1,
+                                        haltspp=0,
+                                        writeinterval=0.5,
                                         crop=[0, 1, 0, 1],
-                                        output_format=self.output_format)
+                                        output_format="png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -248,8 +248,8 @@ class LuxTask(renderingtask.RenderingTask):
             "start_task": 1,
             "end_task": 1,
             "total_tasks": 1,
-            "outfilebasename": self.header.task_id,
-            "output_format": self.output_format,
+            "outfilebasename": "testtask",
+            "output_format": "png",
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
         }
