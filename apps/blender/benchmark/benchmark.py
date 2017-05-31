@@ -20,7 +20,7 @@ class BlenderBenchmark(Benchmark):
         task_def.options.frames = [1]
         task_def.task_id = u"blender_benchmark"
         main_scene_file = pathlib.Path(self.blender_task_path)
-        main_scene_file /= "scene-Helicopter-27-cycles.blend"
+        main_scene_file /= "bmw27_cpu.blend"
         task_def.main_scene_file = str(main_scene_file)
         task_def.main_program_file = BlenderEnvironment().main_program_file
         task_def.resources.add(str(main_scene_file.resolve()))
