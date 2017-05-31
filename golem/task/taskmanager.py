@@ -8,7 +8,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline
+    timeout_to_deadline, to_unicode
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -567,15 +567,19 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
+        task_state = self.tasks_states[task_id]
+        total_subtasks = task.get_total_tasks()
 
         dictionary = {
-            u'borders': task_type.get_task_borders(task.task_definition,
-                                                   task.get_total_tasks())
+            u'borders': {
+                to_unicode(subtask.subtask_id): task_type.get_task_border(
+                    subtask, task.task_definition, total_subtasks, as_path=True
+                ) for subtask in task_state.subtask_states.values()
+            }
         }
 
         dictionary.update(self.get_simple_task_dict(task))
         dictionary.update(self.get_task_definition_dict(task))
-
         return dictionary
 
     def get_tasks_dict(self):

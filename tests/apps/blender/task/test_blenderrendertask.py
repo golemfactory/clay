@@ -522,7 +522,8 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
 
 
 class TestHelpers(unittest.TestCase):
-    def test_get_task_border(self):
+    @staticmethod
+    def _get_task_border(as_path=False):
         offsets = generate_expected_offsets(30, 800, 600)
         subtask = SubtaskState()
         definition = RenderingTaskDefinition()
@@ -530,7 +531,8 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
         for k in range(1, 31):
             subtask.extra_data = {'start_task': k, 'end_task': k}
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
+            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                         30, as_path=as_path)
             definition.options.use_frames = False
             assert min(border) == (0, offsets[k])
             assert max(border) == (240, offsets[k + 1] - 1)
@@ -540,18 +542,27 @@ class TestHelpers(unittest.TestCase):
             subtask.extra_data = {'start_task': k, 'end_task': k}
             definition.options.use_frames = True
             definition.options.frames = range(2)
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition, 30)
+            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                         30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (260, offsets[i + 1] - 1)
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True
         definition.options.frames = range(30)
-        assert BlenderTaskTypeInfo.get_task_border(subtask, definition, 30) == []
+        assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                   30, as_path=as_path) == []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)
-        assert BlenderTaskTypeInfo.get_task_border(subtask, definition, 30) == []
+        assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                   30, as_path=as_path) == []
+
+    def test_get_task_border(self):
+        self._get_task_border()
+
+    def test_get_task_border_path(self):
+        self._get_task_border(as_path=True)
 
     def test_get_task_num_from_pixels(self):
         offsets = generate_expected_offsets(30, 1920, 1080)

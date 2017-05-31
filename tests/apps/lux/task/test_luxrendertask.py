@@ -366,6 +366,23 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         definition.resolution = (0, 0)
         assert typeinfo.get_task_border("subtask1", definition, 10) == []
 
+    def test_task_border_path(self):
+        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        definition = RenderingTaskDefinition()
+        definition.resolution = (300, 200)
+        border = typeinfo.get_task_border("subtask1", definition, 10,
+                                          as_path=True)
+
+        assert len(border) == 4
+        assert (0, 0) in border
+        assert (0, 199) in border
+        assert (299, 199) in border
+        assert (299, 0) in border
+
+        definition.resolution = (0, 0)
+        assert typeinfo.get_task_border("subtask1", definition, 10,
+                                        as_path=True) == []
+        
     def test_get_task_num_from_pixels(self):
         typeinfo = LuxRenderTaskTypeInfo(None, None)
         definition = RenderingTaskDefinition()

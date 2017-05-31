@@ -60,11 +60,8 @@ class TaskTypeInfo(object):
         return 0
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtasks, output_num=1):
-        return []
-
-    @classmethod
-    def get_task_borders(cls, definition, total_subtasks):
+    def get_task_border(cls, subtask, definition, total_subtasks,
+                        output_num=1, as_path=False):
         return []
 
 

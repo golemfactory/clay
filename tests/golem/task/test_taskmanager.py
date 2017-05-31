@@ -606,8 +606,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             definition.subtask_timeout = 3671
             definition.full_task_timeout = 3671 * 10
             definition.max_price = 1 * 10 ** 18
+            definition.resolution = [1920, 1080]
             definition.resources = [str(uuid.uuid4()) for _ in range(5)]
             definition.output_file = os.path.join(self.tempdir, 'somefile')
+            definition.options.frames = [0]
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
@@ -647,6 +649,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             subtask.results = []
             subtask.stderr = 'error_{}'.format(i)
             subtask.stdout = 'output_{}'.format(i)
+            subtask.extra_data = {'start_task': i, 'end_task': i}
             subtask_id = subtask.subtask_id
 
             subtasks[subtask.subtask_id] = subtask
