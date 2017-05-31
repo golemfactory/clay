@@ -10,7 +10,7 @@ from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import wait_for
+from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -238,6 +238,7 @@ class TestClient(TestWithDatabase):
         self.client.db = None
         self.client.quit()
 
+    @patch('twisted.internet.reactor', create=True)
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
@@ -387,6 +388,29 @@ class TestClient(TestWithDatabase):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    def test_presets(self, *_):
+        Client.save_task_preset("Preset1", "TaskType1", "data1")
+        Client.save_task_preset("Preset2", "TaskType1", "data2")
+        Client.save_task_preset("Preset1", "TaskType2", "data3")
+        Client.save_task_preset("Preset3", "TaskType2", "data4")
+        presets = Client.get_task_presets("TaskType1")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data1"
+        assert presets["Preset2"] == "data2"
+        presets = Client.get_task_presets("TaskType2")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data3"
+        assert presets["Preset3"] == "data4"
+        Client.delete_task_preset("TaskType2", "Preset1")
+        presets = Client.get_task_presets("TaskType1")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data1"
+        presets = Client.get_task_presets("TaskType2")
+        assert len(presets) == 1
+        assert presets.get("Preset1") is None
+
+
+
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -504,22 +528,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (None, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (u"1", u"1", u"None")
         assert all(isinstance(entry, unicode) for entry in balance)
 
         c.transaction_system = None
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
     def test_run_benchmark(self, *_):
@@ -531,9 +555,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
-            wait_for(self.client.run_benchmark(str(uuid.uuid4())))
+            sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
-        wait_for(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
         assert task_computer.run_blender_benchmark.called
         assert not task_computer.run_lux_benchmark.called
@@ -541,7 +565,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_blender_benchmark.called = False
         task_computer.run_lux_benchmark.called = False
 
-        wait_for(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called

@@ -1,4 +1,5 @@
-from golem.interface.command import group, Argument, command, CommandHelper, CommandResult, doc
+from golem.core.deferred import sync_wait
+from golem.interface.command import group, Argument, command, CommandResult, doc
 from golem.network.transport.tcpnetwork import SocketAddress
 
 
@@ -27,7 +28,7 @@ class Network(object):
     @doc("Show client status")
     def status(self):
         deferred = Network.client.connection_status()
-        status = CommandHelper.wait_for(deferred) or "unknown"
+        status = sync_wait(deferred) or "unknown"
         return status
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
@@ -36,18 +37,19 @@ class Network(object):
             sa = SocketAddress(ip, int(port))
             Network.client.connect((sa.address, sa.port))
         except Exception as exc:
-            return CommandResult(error="Cannot connect to {}:{}: {}".format(ip, port, exc))
+            return CommandResult(error="Cannot connect to {}:{}: {}"
+                                       .format(ip, port, exc))
 
     @command(arguments=(sort_nodes, full_table), help="Show connected nodes")
     def show(self, sort, full):
         deferred = Network.client.get_connected_peers()
-        peers = CommandHelper.wait_for(deferred) or []
+        peers = sync_wait(deferred) or []
         return self.__peers(peers, sort, full)
 
     @command(arguments=(sort_nodes, full_table), help="Show known nodes")
     def dht(self, sort, full):
         deferred = Network.client.get_known_peers()
-        peers = CommandHelper.wait_for(deferred) or []
+        peers = sync_wait(deferred) or []
         return self.__peers(peers, sort, full)
 
     @staticmethod
@@ -62,7 +64,8 @@ class Network(object):
                 unicode(peer['node_name'])
             ])
 
-        return CommandResult.to_tabular(Network.node_table_headers, values, sort=sort)
+        return CommandResult.to_tabular(Network.node_table_headers, values,
+                                        sort=sort)
 
     @staticmethod
     def __key_id(key_id, full=False):

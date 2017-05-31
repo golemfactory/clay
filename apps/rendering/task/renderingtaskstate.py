@@ -33,12 +33,30 @@ class RenderingTaskDefinition(TaskDefinition):
     def is_valid(self):
         is_valid, err = super(RenderingTaskDefinition, self).is_valid()
         if is_valid and not path.exists(self.main_scene_file):
-            return False, u"Main scene file {} is not properly set".format(self.main_scene_file)
+            return False, u"Main scene file {} is not properly set".format(
+                self.main_scene_file)
         return is_valid, err
 
     def add_to_resources(self):
         super(RenderingTaskDefinition, self).add_to_resources()
         self.resources.add(path.normpath(self.main_scene_file))
+
+    def make_preset(self):
+        """ Create preset that can be shared with different tasks
+        :return dict:
+        """
+        preset = super(RenderingTaskDefinition, self).make_preset()
+        preset["resolution"] = self.resolution
+        preset["output_format"] = self.output_format
+        return preset
+
+    def load_preset(self, preset):
+        """ Apply options from preset to this task definition
+        :param dict preset: Dictionary with shared options
+        """
+        super(RenderingTaskDefinition, self).load_preset(preset)
+        self.resolution = preset["resolution"]
+        self.output_format = preset["output_format"]
 
 
 class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):

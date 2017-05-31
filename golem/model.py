@@ -9,7 +9,8 @@ from enum import Enum
 from os import path
 
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
-                    DateTimeField, TextField, CompositeKey, BooleanField, SmallIntegerField)
+                    DateTimeField, TextField, CompositeKey, BooleanField,
+                    SmallIntegerField)
 
 
 log = logging.getLogger('golem.db')
@@ -57,10 +58,12 @@ class Database:
             Payment,
             ReceivedPayment,
             Stats,
+            TaskPreset,
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
-            log.info("New database version {}, previous {}".format(Database.SCHEMA_VERSION, version))
+            log.info("New database version {}, previous {}".format(
+                Database.SCHEMA_VERSION, version))
             db.drop_tables(tables, safe=True)
             Database._set_user_version(Database.SCHEMA_VERSION)
         db.create_tables(tables, safe=True)
@@ -156,7 +159,14 @@ class Payment(BaseModel):
     def __repr__(self):
         tx = self.details.get('tx', None)
         bn = self.details.get('block_number', None)
-        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>".format(self.subtask, float(self.value) / denoms.ether, self.status, tx, bn)
+        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
+            .format(
+                self.subtask,
+                float(self.value) / denoms.ether,
+                self.status,
+                tx,
+                bn
+            )
 
     def get_sender_node(self):
         return self.details.get('node_info', None)
@@ -296,10 +306,6 @@ class Stats(BaseModel):
         database = db
 
 
-###################
-# RESOURCE MODELS #
-###################
-
 class HardwarePreset(BaseModel):
     name = CharField(null=False, index=True, unique=True)
 
@@ -322,3 +328,13 @@ class HardwarePreset(BaseModel):
 
     class Meta:
         database = db
+
+
+class TaskPreset(BaseModel):
+    name = CharField(null=False)
+    task_type = CharField(null=False, index=True)
+    data = CharField(null=False)
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task_type', 'name')

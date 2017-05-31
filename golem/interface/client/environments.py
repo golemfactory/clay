@@ -1,4 +1,5 @@
-from golem.interface.command import group, CommandHelper, Argument, command, CommandResult
+from golem.core.deferred import sync_wait
+from golem.interface.command import group, Argument, command, CommandResult
 
 
 @group(name="envs", help="Manage environments")
@@ -6,7 +7,8 @@ class Environments(object):
 
     name = Argument('name', help="Environment name")
 
-    table_headers = ['name', 'supported', 'active', 'performance', 'description']
+    table_headers = ['name', 'supported', 'active', 'performance',
+                     'description']
 
     sort = Argument(
         '--sort',
@@ -20,7 +22,7 @@ class Environments(object):
     def show(self, sort):
 
         deferred = Environments.client.get_environments()
-        result = CommandHelper.wait_for(deferred) or []
+        result = sync_wait(deferred) or []
 
         values = []
 
@@ -33,19 +35,20 @@ class Environments(object):
                 env['description']
             ])
 
-        return CommandResult.to_tabular(Environments.table_headers, values, sort=sort)
+        return CommandResult.to_tabular(Environments.table_headers, values,
+                                        sort=sort)
 
     @command(argument=name, help="Enable environment")
     def enable(self, name):
         deferred = Environments.client.enable_environment(name)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=name, help="Disable environment")
     def disable(self, name):
         deferred = Environments.client.disable_environment(name)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=name, help="Recount performance for an environment")
     def recount(self, name):
         deferred = Environments.client.run_benchmark(name)
-        return CommandHelper.wait_for(deferred, timeout=1800)
+        return sync_wait(deferred, timeout=1800)

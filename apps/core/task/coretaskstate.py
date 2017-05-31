@@ -38,7 +38,7 @@ class CoreTaskDefaults(object):
 
 
 class TaskDefinition(object):
-
+    """ Task description used in GUI and in save file format"""
     def __init__(self):
         self.task_id = ""
         self.full_task_timeout = 0
@@ -62,7 +62,8 @@ class TaskDefinition(object):
 
     def is_valid(self):
         if not path.exists(self.main_program_file):
-            return False, u"Main program file does not exist: {}".format(self.main_program_file)
+            return False, u"Main program file does not exist: {}".format(
+                self.main_program_file)
         return self._check_output_file(self.output_file)
 
     @staticmethod
@@ -79,13 +80,34 @@ class TaskDefinition(object):
         except IOError:
             return False, u"Cannot open output file: {}".format(output_file)
         except (OSError, TypeError) as err:
-            return False, u"Output file {} is not properly set: {}".format(output_file, err)
+            return False, u"Output file {} is not properly set: {}".format(
+                output_file, err)
 
     def add_to_resources(self):
         self.options.add_to_resources(self.resources)
 
     def remove_from_resources(self):
         self.options.remove_from_resources(self.resources)
+
+    def make_preset(self):
+        """ Create preset that can be shared with different tasks
+        :return dict:
+        """
+        return {
+            "options": self.options,
+            "total_subtasks": self.total_subtasks,
+            "optimize_total": self.optimize_total,
+            "verification_options": self.verification_options
+        }
+
+    def load_preset(self, preset):
+        """ Apply options from preset to this task definition
+        :param dict preset: Dictionary with shared options
+        """
+        self.options = preset["options"]
+        self.total_subtasks = preset["total_subtasks"]
+        self.optimize_total = preset["optimize_total"]
+        self.verification_options = preset["verification_options"]
 
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']

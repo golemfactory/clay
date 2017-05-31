@@ -47,6 +47,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
+from golem.task import taskpreset
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -836,6 +837,19 @@ class Client(HardwarePresetsMixin):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
+
+    @staticmethod
+    def save_task_preset(preset_name, task_type, data):
+        taskpreset.save_task_preset(preset_name, task_type, data)
+
+    @staticmethod
+    def get_task_presets(task_type):
+        log.info("Loading presets for {}".format(task_type))
+        return taskpreset.get_task_presets(task_type)
+
+    @staticmethod
+    def delete_task_preset(task_type, preset_name):
+        taskpreset.delete_task_preset(task_type, preset_name)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

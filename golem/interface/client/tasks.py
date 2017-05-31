@@ -6,9 +6,10 @@ import jsonpickle
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDesc
+from golem.core.deferred import sync_wait
 
 from golem.core.simpleserializer import DictSerializer
-from golem.interface.command import doc, group, command, Argument, CommandHelper, CommandResult
+from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -21,7 +22,7 @@ class CommandAppLogic(AppLogic):
     def __init__(self, client, datadir):
         super(CommandAppLogic, self).__init__()
 
-        self.node_name = CommandHelper.wait_for(client.get_node_name())
+        self.node_name = sync_wait(client.get_node_name())
         self.datadir = datadir
         self.dir_manager = DirManager(self.datadir)
 
@@ -75,7 +76,7 @@ class Tasks(object):
     def show(self, id, sort):
 
         deferred = Tasks.client.get_tasks(id)
-        result = CommandHelper.wait_for(deferred)
+        result = sync_wait(deferred)
 
         if not id:
             values = []
@@ -89,7 +90,8 @@ class Tasks(object):
                     Tasks.__progress_str(task['progress'])
                 ])
 
-            return CommandResult.to_tabular(Tasks.task_table_headers, values, sort=sort)
+            return CommandResult.to_tabular(Tasks.task_table_headers, values,
+                                            sort=sort)
 
         if isinstance(result, dict):
             result['progress'] = Tasks.__progress_str(result['progress'])
@@ -101,7 +103,7 @@ class Tasks(object):
         values = []
 
         deferred = Tasks.client.get_subtasks(id)
-        result = CommandHelper.wait_for(deferred)
+        result = sync_wait(deferred)
 
         if isinstance(result, list):
             for subtask in result:
@@ -113,7 +115,8 @@ class Tasks(object):
                     Tasks.__progress_str(subtask['progress'])
                 ])
 
-        return CommandResult.to_tabular(Tasks.subtask_table_headers, values, sort=sort)
+        return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
+                                        sort=sort)
 
     @command(arguments=(file_name, skip_test), help="Load a task from file")
     def load(self, file_name, skip_test):
@@ -121,11 +124,13 @@ class Tasks(object):
         try:
             definition = self.__read_from_file(file_name)
         except Exception as exc:
-            return CommandResult(error="Error reading task from file '{}': {}".format(file_name, exc))
+            return CommandResult(error="Error reading task from file '{}': {}"
+                                       .format(file_name, exc))
 
         if hasattr(definition, 'resources'):
-            definition.resources = {os.path.normpath(res) for res in definition.resources}
-        datadir = CommandHelper.wait_for(Tasks.client.get_datadir())
+            definition.resources = {os.path.normpath(res)
+                                    for res in definition.resources}
+        datadir = sync_wait(Tasks.client.get_datadir())
 
         # TODO: unify GUI and CLI logic
 
@@ -134,7 +139,8 @@ class Tasks(object):
         rendering_task_state.task_state.status = TaskStatus.starting
 
         if not Tasks.application_logic:
-            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client, datadir)
+            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client,
+                                                                  datadir)
 
         task_builder = Tasks.application_logic.get_builder(rendering_task_state)
         task = Task.build_task(task_builder)
@@ -156,43 +162,44 @@ class Tasks(object):
 
             test_result = queue.get()
             if test_result is not True:
-                return CommandResult(error="Test failed: {}".format(test_result))
+                return CommandResult(error="Test failed: {}"
+                                           .format(test_result))
 
         task_dict = DictSerializer.dump(task)
         task_def = task_dict['task_definition']
         task_def['resources'] = list(task_def.get('task_definition', []))
         deferred = Tasks.client.create_task(task_dict)
-        return CommandHelper.wait_for(deferred, timeout=1800)
+        return sync_wait(deferred, timeout=1800)
 
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
     def abort(self, id):
         deferred = Tasks.client.abort_task(id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=id_req, help="Delete a task")
     def delete(self, id):
         deferred = Tasks.client.delete_task(id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=id_req, help="Pause a task")
     def pause(self, id):
         deferred = Tasks.client.pause_task(id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=id_req, help="Resume a task")
     def resume(self, id):
         deferred = Tasks.client.resume_task(id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @doc("Show statistics for tasks")
     def stats(self):
         deferred = Tasks.client.get_task_stats()
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @staticmethod
     def __progress_str(progress):
@@ -218,9 +225,9 @@ class Subtasks(object):
     @command(argument=subtask_id, help="Show subtask details")
     def show(self, subtask_id):
         deferred = Subtasks.client.get_subtask(subtask_id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
 
     @command(argument=subtask_id, help="Restart a subtask")
     def restart(self, subtask_id):
         deferred = Subtasks.client.restart_subtask(subtask_id)
-        return CommandHelper.wait_for(deferred)
+        return sync_wait(deferred)
