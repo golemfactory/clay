@@ -110,9 +110,8 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     def get_preview(cls, task, single=False):
-        if task and task.preview_file_path:
-            return [to_unicode(task.preview_file_path)]
-        return []
+        result = to_unicode(task.preview_file_path) if task else None
+        return cls._preview_result(result, single=single)
 
 
 class LuxRenderOptions(Options):

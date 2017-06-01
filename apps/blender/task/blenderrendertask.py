@@ -139,10 +139,11 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     def get_preview(cls, task, single=False):
-        if not task:
-            return []
+        result = None
 
-        if task.use_frames:
+        if not task:
+            pass
+        elif task.use_frames:
             if single:
                 # path to the most recently updated preview
                 try:
@@ -151,15 +152,17 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
                                        task.preview_updaters)
                     # find the max timestamp
                     updater = max(iterator, key=lambda p: p.last_update_time)
-                    return [to_unicode(updater.preview_file_path)]
+                    return to_unicode(updater.preview_file_path)
                 except StopIteration:
-                    return []
+                    return None
             else:
                 # paths for all frames
                 return [to_unicode(p.preview_file_path)
                         for p in task.preview_updaters]
         else:
-            return [to_unicode(task.preview_updater.preview_file_path)]
+            result = to_unicode(task.preview_updater.preview_file_path)
+
+        return cls._preview_result(result, single=single)
 
     @classmethod
     def get_task_border(cls, subtask, definition, total_subtasks,
