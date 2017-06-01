@@ -1,3 +1,4 @@
+from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, CommandResult, Argument, CommandHelper
 from golem.resource.dirmanager import DirectoryType
 
@@ -21,18 +22,20 @@ class Resources(object):
 
     @doc("Show information on used resources")
     def show(self):
-        return CommandHelper.wait_for(Resources.client.get_res_dirs_sizes(),
-                                      timeout=None)
+        return sync_wait(Resources.client.get_res_dirs_sizes(), timeout=None)
 
-    @command(arguments=(provider, requestor), help="Clear provider / requestor resources")
+    @command(arguments=(provider, requestor),
+             help="Clear provider / requestor resources")
     def clear(self, provider, requestor):
 
         if not provider and not requestor:
-            return CommandResult(error="Target role was not specified (provider / requestor)")
+            return CommandResult(error="Target role was not specified "
+                                       "(provider / requestor)")
+
+        clear = Resources.client.clear_dir
 
         if provider:
-            CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.RECEIVED), timeout=None)
-            return CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.COMPUTED), timeout=None)
-
+            sync_wait(clear(DirectoryType.RECEIVED), timeout=None)
+            return sync_wait(clear(DirectoryType.COMPUTED), timeout=None)
         elif requestor:
-            return CommandHelper.wait_for(Resources.client.clear_dir(DirectoryType.DISTRIBUTED), timeout=None)
+            return sync_wait(clear(DirectoryType.DISTRIBUTED), timeout=None)

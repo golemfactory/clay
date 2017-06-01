@@ -3,7 +3,8 @@ from collections import namedtuple
 
 from ethereum.utils import denoms
 from golem.appconfig import MIN_MEMORY_SIZE
-from golem.interface.command import group, Argument, command, CommandHelper, CommandResult
+from golem.core.deferred import sync_wait
+from golem.interface.command import group, Argument, command, CommandResult
 from psutil import virtual_memory
 
 Setting = namedtuple('Setting', ['help', 'type', 'converter', 'validator'])
@@ -162,7 +163,8 @@ class Settings(object):
     }
 
     settings_message = '\n'.join([
-        '\t{:32} {:>32}\t{}'.format(k, s.type, s.help) for k, s in settings.iteritems()
+        '\t{:32} {:>32}\t{}'.format(k, s.type, s.help)
+        for k, s in settings.iteritems()
     ])
     invalid_key_message =\
 """Invalid key
@@ -171,7 +173,8 @@ class Settings(object):
 """ + settings_message
 
     basic_settings = [
-        'use_ipv6', 'opt_peer_num', 'getting_peers_interval', 'p2p_session_timeout', 'send_pings', 'pings_interval'
+        'use_ipv6', 'opt_peer_num', 'getting_peers_interval',
+        'p2p_session_timeout', 'send_pings', 'pings_interval'
     ]
 
     requestor_settings = [
@@ -181,10 +184,11 @@ class Settings(object):
     key = Argument('key', help='Setting name', optional=True)
     value = Argument('value', help='Setting value', optional=True)
 
-    @command(arguments=(basic, provider, requestor), help="Show current settings")
+    @command(arguments=(basic, provider, requestor),
+             help="Show current settings")
     def show(self, basic, provider, requestor):
 
-        config = CommandHelper.wait_for(Settings.client.get_settings())
+        config = sync_wait(Settings.client.get_settings())
         if not (basic ^ provider) and not (provider ^ requestor):
             return config
 
@@ -205,7 +209,8 @@ class Settings(object):
         if provider:
             result.update({
                 k: v for k, v in config.iteritems()
-                if k not in Settings.basic_settings and k not in Settings.requestor_settings
+                if k not in Settings.basic_settings
+                and k not in Settings.requestor_settings
             })
 
         return result
@@ -225,6 +230,8 @@ class Settings(object):
                 raise Exception(value)
 
         except Exception as exc:
-            return CommandResult(error="Invalid value for {} (should be {}): {}".format(key, setting.type, exc))
+            return CommandResult(error="Invalid value for {} "
+                                       "(should be {}): {}"
+                                       .format(key, setting.type, exc))
         else:
-            return CommandHelper.wait_for(Settings.client.update_setting(key, value))
+            return sync_wait(Settings.client.update_setting(key, value))

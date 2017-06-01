@@ -8,6 +8,9 @@ import pytz
 from pathlib import Path
 
 
+TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
+
+
 def is_windows():
     """
     Check if this system is Windows
@@ -81,6 +84,19 @@ def timestamp_to_datetime(ts):
 
 def datetime_to_timestamp(then):
     return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
+
+
+def timeout_to_string(timeout):
+    hours = int(timeout / 3600)
+    timeout -= hours * 3600
+    minutes = int(timeout / 60)
+    timeout -= minutes * 60
+    return TIMEOUT_FORMAT.format(hours, minutes, timeout)
+
+
+def string_to_timeout(string):
+    values = string.split(':')
+    return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 
 
 class HandleError(object):

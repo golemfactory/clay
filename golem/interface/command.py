@@ -4,7 +4,6 @@ import types
 from contextlib import contextmanager
 from operator import itemgetter
 
-from golem.core.threads import wait_for
 from golem.interface.exceptions import CommandException
 
 
@@ -240,7 +239,8 @@ class CommandHelper(object):
             self.source = source
 
     @classmethod
-    def init_interface(cls, elem, name=None, parent=None, children=None, arguments=None, argument=None, **kwargs):
+    def init_interface(cls, elem, name=None, parent=None, children=None,
+                       arguments=None, argument=None, **kwargs):
 
         interface = cls.get_interface(elem)
 
@@ -404,10 +404,6 @@ class CommandHelper(object):
         else:
             interface['arguments'] = arguments
 
-    @staticmethod
-    def wait_for(deferred, timeout=10):
-        return wait_for(deferred, timeout=timeout)
-
     @classmethod
     def wrap_call(cls, elem, instance=None):
         if not instance:
@@ -417,7 +413,8 @@ class CommandHelper(object):
 
     @staticmethod
     def is_callable(elem):
-        return isinstance(elem, types.FunctionType)  # or hasattr(elem, '__call__')
+        # or hasattr(elem, '__call__')
+        return isinstance(elem, types.FunctionType)
 
     @staticmethod
     def _public_method(entry):
@@ -425,7 +422,8 @@ class CommandHelper(object):
 
     @classmethod
     def debug(cls, elem, level=0):
-        print("{}{} : {}".format("  " * level if level else "", cls.get_name(elem), elem))
+        print("{}{} : {}".format("  " * level if level else "",
+                                 cls.get_name(elem), elem))
         for c in cls.get_children(elem).values():
             cls.debug(c, level + 1)
 
