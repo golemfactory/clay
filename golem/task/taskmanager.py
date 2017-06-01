@@ -139,7 +139,7 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
-        self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
+        self.dir_manager.clear_temporary(task.header.task_id)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.register_listener(self)
@@ -460,7 +460,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def restart_task(self, task_id):
         logger.info("restarting task")
-        self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
+        self.dir_manager.clear_temporary(task_id)
 
         self.tasks[task_id].restart()
         self.tasks[task_id].task_status = TaskStatus.waiting

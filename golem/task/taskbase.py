@@ -135,7 +135,6 @@ class Task(object):
     def __init__(self, header, src_code):
         self.src_code = src_code
         self.header = header
-        self.undeletable = []
 
         self.listeners = []
 

@@ -132,7 +132,6 @@ class LuxTask(renderingtask.RenderingTask):
             self.header.task_id,
             self.root_path
         )
-        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -259,24 +258,12 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
-        NO_ADV_VER_MSG = "Advance verification will be impossible: "
-        COULDNT_COPY_MSG = "Couldn't rename and copy .flm file."
-        COULDNT_FING_MSG = "Couldn't find flm file."
-        # Search for flm - the result of testing a lux task
-        # It's needed for verification of received results
+        FLM_NOT_FOUNND_MSG = "Flm file was not found, check scene."
         return_data = dict()
         flm = find_file_with_ext(tmp_dir, [".flm"])
-        if flm is not None:
-            try:
-                shutil.copy(flm, self.__get_test_flm())
-            except (OSError, IOError) as err:
-                return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_COPY_MSG
-                return_data["warnings"] += "{}".format(err)
-                logger.warning(return_data["warnings"])
-        else:
-            return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
+        if flm is None:
+            return_data['warnings'] = FLM_NOT_FOUNND_MSG
             logger.warning(return_data["warnings"])
-
         make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 

@@ -92,12 +92,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
             luxtask.after_test({}, self.path)
         open(os.path.join(self.path, "sth.flm"), 'w').close()
         luxtask.after_test({}, self.path)
-        prev_tmp_dir = luxtask.tmp_dir
-        luxtask.tmp_dir = "/dev/null/:errors?"
-        with self.assertLogs(logger, level="WARNING"):
-            luxtask.after_test({}, self.path)
-        luxtask.tmp_dir = prev_tmp_dir
-        assert os.path.isfile(os.path.join(luxtask.tmp_dir, "test_result.flm"))
 
     def __queries(self, luxtask):
         luxtask.collected_file_names["xxyyzz"] = "xxyyzzfile"
