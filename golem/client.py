@@ -547,8 +547,15 @@ class Client(HardwarePresetsMixin):
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
 
+    def get_subtasks_borders(self, task_id):
+        return self.task_server.task_manager.get_subtasks_borders(task_id)
+
     def get_subtask(self, subtask_id):
         return self.task_server.task_manager.get_subtask_dict(subtask_id)
+
+    def get_task_preview(self, task_id, single=False):
+        return self.task_server.task_manager.get_task_preview(task_id,
+                                                              single=single)
 
     def get_task_stats(self):
         return {

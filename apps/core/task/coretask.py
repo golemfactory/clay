@@ -64,6 +64,10 @@ class TaskTypeInfo(object):
                         output_num=1, as_path=False):
         return []
 
+    @classmethod
+    def get_preview(cls, task, single=False):
+        pass
+
 
 class CoreTask(Task):
 

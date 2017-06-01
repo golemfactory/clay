@@ -697,6 +697,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
 
+    def test_task_preview(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+        c.get_task_preview(task_id)
+        c.task_server.task_manager.get_task_preview.assert_called_with(
+            task_id, single=False)
+
+    def test_subtasks_borders(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+        c.get_subtasks_borders(task_id)
+        c.task_server.task_manager.get_subtasks_borders.assert_called_with(
+            task_id)
+
     def test_connection_status(self, *_):
         c = self.client
 

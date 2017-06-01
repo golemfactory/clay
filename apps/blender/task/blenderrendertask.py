@@ -4,9 +4,12 @@ import math
 import os
 import random
 from collections import OrderedDict
+from itertools import ifilter
 
+import time
 from PIL import Image, ImageChops
 
+from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import get_test_task_path
 from golem.task.taskstate import SubtaskStatus
@@ -39,7 +42,8 @@ class BlenderDefaults(RendererDefaults):
 
 
 class PreviewUpdater(object):
-    def __init__(self, preview_file_path, preview_res_x, preview_res_y, expected_offsets):
+    def __init__(self, preview_file_path, preview_res_x, preview_res_y,
+                 expected_offsets):
         # pairs of (subtask_number, its_image_filepath)
         # careful: chunks' numbers start from 1
         self.chunks = {}
@@ -47,6 +51,7 @@ class PreviewUpdater(object):
         self.preview_res_y = preview_res_y
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
+        self.last_update_time = None
         
         # where the match ends - since the chunks have unexpectable sizes, we 
         # don't know where to paste new chunk unless all of the above are in 
@@ -74,13 +79,19 @@ class PreviewUpdater(object):
 
             # this is the last task
             if subtask_number + 1 >= len(self.expected_offsets):
-                height = self.preview_res_y - self.expected_offsets[subtask_number]
+                height = self.preview_res_y - \
+                         self.expected_offsets[subtask_number]
             else:
-                height = self.expected_offsets[subtask_number + 1] - self.expected_offsets[subtask_number]
+                height = self.expected_offsets[subtask_number + 1] - \
+                         self.expected_offsets[subtask_number]
             
-            img = img.resize((self.preview_res_x, height), resample=Image.BILINEAR)
-            if not os.path.exists(self.preview_file_path) or len(self.chunks) == 1:
-                img_offset = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
+            img = img.resize((self.preview_res_x, height),
+                             resample=Image.BILINEAR)
+
+            if not os.path.exists(self.preview_file_path) \
+               or len(self.chunks) == 1:
+                img_offset = Image.new("RGB", (self.preview_res_x,
+                                               self.preview_res_y))
                 img_offset.paste(img, (0, offset))
                 img_offset.save(self.preview_file_path, "BMP")
                 img_offset.close()
@@ -90,13 +101,15 @@ class PreviewUpdater(object):
                 img_current.save(self.preview_file_path, "BMP")
                 img_current.close()
             img.close()
-
         except Exception:
             logger.exception("Error in Blender update preview:")
             return
-        
-        if subtask_number == self.perfectly_placed_subtasks and (subtask_number + 1) in self.chunks:
-            self.update_preview(self.chunks[subtask_number + 1], subtask_number + 1)
+
+        self.last_update_time = time.time()
+        if subtask_number == self.perfectly_placed_subtasks and \
+           (subtask_number + 1) in self.chunks:
+            self.update_preview(self.chunks[subtask_number + 1],
+                                subtask_number + 1)
 
     def restart(self):
         self.chunks = {}
@@ -123,6 +136,30 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
+
+    @classmethod
+    def get_preview(cls, task, single=False):
+        if not task:
+            return []
+
+        if task.use_frames:
+            if single:
+                # path to the most recently updated preview
+                try:
+                    # previews that were updated at least once
+                    iterator = ifilter(lambda p: bool(p.last_update_time),
+                                       task.preview_updaters)
+                    # find the max timestamp
+                    updater = max(iterator, key=lambda p: p.last_update_time)
+                    return [to_unicode(updater.preview_file_path)]
+                except StopIteration:
+                    return []
+            else:
+                # paths for all frames
+                return [to_unicode(p.preview_file_path)
+                        for p in task.preview_updaters]
+        else:
+            return [to_unicode(task.preview_updater.preview_file_path)]
 
     @classmethod
     def get_task_border(cls, subtask, definition, total_subtasks,
