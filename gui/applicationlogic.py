@@ -433,12 +433,18 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.progress_dialog.show()
 
         try:
-            self.client.run_test_task(self.build_and_serialize_task(task_state))
+            self.client.run_test_task(self.prepare_dict_for_test(task_state))
             return True
         except Exception as ex:
             self.test_task_computation_error(ex)
 
         return False
+
+    def prepare_dict_for_test(self, task_state):
+        return {
+            u'type': task_state.definition.task_type,
+            u'resources': list(task_state.definition.resources)
+        }
 
     def build_and_serialize_task(self, task_state, cbk=None):
         tb = self.get_builder(task_state)

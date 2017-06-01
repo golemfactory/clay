@@ -94,7 +94,7 @@ class TaskManager(TaskEventListener):
         request = AsyncRequest(get_external_address, self.listen_port)
         return async_run(request)
 
-    def create_task(self, dictionary):
+    def create_task(self, dictionary, minimal=False):
         # FIXME: remove after the new interface has been integrated with
         if not isinstance(dictionary, dict):
             return dictionary
@@ -103,7 +103,8 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary)
+        definition = builder_type.build_definition(task_type, dictionary,
+                                                   minimal)
         builder = builder_type(self.node_name, definition,
                                self.root_path, self.dir_manager)
 

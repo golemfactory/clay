@@ -399,7 +399,8 @@ class Client(HardwarePresetsMixin):
             self._publish(Task.evt_task_test_status,
                           TaskTestStatus.error, *args, **kwargs)
 
-        t = DictSerializer.load(t_dict)
+        t = self.task_server.task_manager.create_task(
+            dictionary=DictSerializer.load(t_dict), minimal=True)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
         self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)

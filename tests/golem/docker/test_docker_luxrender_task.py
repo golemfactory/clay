@@ -11,6 +11,7 @@ from golem.tools.ci import ci_skip
 from test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import result_types
@@ -26,7 +27,8 @@ from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 logging.getLogger("peewee").setLevel("INFO")
 
 
-# TODO: extract code common to this class and TestDockerBlenderTask to a superclass
+# TODO: extract code common to this class and TestDockerBlenderTask
+# to a superclass
 # TODO: test luxrender tasks with .flm file
 @ci_skip
 class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
@@ -77,7 +79,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
-        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir, dir_manager)
+        task_builder = LuxRenderTaskBuilder(node_name, task_def, self.tempdir,
+                                            dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
         return render_task
@@ -145,7 +148,12 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
+
+        dirname = os.path.dirname(computer.tt.result[0]['data'][0])
+        flm = find_file_with_ext(dirname, [".flm"])
         test_file = task._LuxTask__get_test_flm()
+
+        shutil.copy(flm, test_file)
 
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
@@ -153,7 +161,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = extra_data.ctd
 
         copied_file = path.join(path.dirname(test_file), "newfile.flm")
-        new_file = path.join(path.dirname(test_file), ctd.subtask_id, "newfile.flm")
+        new_file = path.join(path.dirname(test_file), ctd.subtask_id,
+                             "newfile.flm")
         file_dir = os.path.dirname(new_file)
 
         if not os.path.exists(file_dir):
@@ -165,7 +174,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         shutil.copy(test_file, new_file)
 
-        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        task.computation_finished(ctd.subtask_id, [new_file],
+                                  result_type=result_types["files"])
         self.assertTrue(task.verify_subtask(ctd.subtask_id))
 
         extra_data = task.query_extra_data(10000, node_id="Bla")
@@ -173,7 +183,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.verificator.advanced_verification = True
         bad_file = path.join(path.dirname(test_file), "badfile.flm")
         open(bad_file, "w").close()
-        task.computation_finished(ctd.subtask_id, [bad_file], result_type=result_types["files"])
+        task.computation_finished(ctd.subtask_id, [bad_file],
+                                  result_type=result_types["files"])
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
 
         extra_data = task.query_extra_data(10000)
@@ -181,7 +192,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
         shutil.move(test_file, test_file + "copy")
         remove_copied_file()
-        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        task.computation_finished(ctd.subtask_id, [new_file],
+                                  result_type=result_types["files"])
         # self.assertTrue(task.verify_subtask(ctd.subtask_id))
         shutil.move(test_file + "copy", test_file)
 
@@ -190,7 +202,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         shutil.copy(test_file, new_file)
         remove_copied_file()
         self.assertEqual(task.num_tasks_received, 2)
-        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        task.computation_finished(ctd.subtask_id, [new_file],
+                                  result_type=result_types["files"])
         self.assertTrue(task.verify_subtask(ctd.subtask_id))
         self.assertTrue(task.verify_task())
         outfile = task.output_file + "." + task.output_format
@@ -210,7 +223,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ctd = extra_data.ctd
         shutil.copy(test_file, new_file)
         remove_copied_file()
-        task.computation_finished(ctd.subtask_id, [new_file], result_type=result_types["files"])
+        task.computation_finished(ctd.subtask_id, [new_file],
+                                  result_type=result_types["files"])
         self.assertTrue(task.verify_subtask(ctd.subtask_id))
         self.assertTrue(task.verify_task())
         self.assertTrue(path.isfile(outfile))
@@ -226,8 +240,10 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(result["result_type"], result_types["files"])
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"]))
+            any(path.basename(f) == DockerTaskThread.STDOUT_FILE
+                for f in result["data"]))
         self.assertTrue(
-            any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"]))
+            any(path.basename(f) == DockerTaskThread.STDERR_FILE
+                for f in result["data"]))
         self.assertTrue(
             any(f.endswith(".flm") for f in result["data"]))

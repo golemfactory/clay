@@ -341,17 +341,18 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_definition(cls, task_type, dictionary):
+    def build_definition(cls, task_type, dictionary, minimal):
         parent = super(RenderingTaskBuilder, cls)
 
-        options = dictionary['options']
         resources = dictionary['resources']
 
-        definition = parent.build_definition(task_type, dictionary)
-        definition.output_format = options['format'].upper()
-        definition.options.compositing = options['compositing']
+        definition = parent.build_definition(task_type, dictionary, minimal)
         definition.main_scene_file = cls._scene_file(task_type, resources)
-        definition.resolution = [int(val) for val in options['resolution']]
+        if not minimal:
+            options = dictionary['options']
+            definition.output_format = options['format'].upper()
+            definition.options.compositing = options['compositing']
+            definition.resolution = [int(val) for val in options['resolution']]
         definition.add_to_resources()
 
         return definition
