@@ -8,6 +8,8 @@ from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper\
     import EthereumIncomesKeeper
 
+SQLITE3_MAX_INT = 2**63 - 1
+
 
 def get_some_id():
     return str(uuid.uuid4())
@@ -33,8 +35,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': get_some_id(),
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, sys.maxint),
-            'value': random.randint(10, sys.maxint),
+            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'value': random.randint(10, SQLITE3_MAX_INT / 2),
         }
         # Not in blockchain
         self.instance.received(**received_kwargs)
@@ -100,8 +102,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id(),
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, sys.maxint),
-            'value': random.randint(10, 2**10),
+            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'value': random.randint(10, SQLITE3_MAX_INT / 2),
         }
 
         self.instance.eth_node.get_logs.return_value = [
@@ -118,7 +120,9 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.received(**received_kwargs)
         self.assertEquals(
             1,
-            model.Income.select().where(model.Income.subtask == received_kwargs['subtask_id'])
+            model.Income.select().where(
+                model.Income.subtask == received_kwargs['subtask_id']
+            )
             .count()
         )
 
@@ -127,6 +131,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance.received(**received_kwargs)
         self.assertEquals(
             0,
-            model.Income.select().where(model.Income.subtask == received_kwargs['subtask_id'])
+            model.Income.select().where(
+                model.Income.subtask == received_kwargs['subtask_id']
+            )
             .count()
         )
