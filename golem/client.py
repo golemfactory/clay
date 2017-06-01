@@ -467,8 +467,8 @@ class Client(BaseApp, HardwarePresetsMixin):
         pass
 
     def get_suggested_addr(self, key_id):
+        return self.services.golemservice.suggested_address(key_id)
         #return self.p2pservice.suggested_address.get(key_id)
-        pass
 
     def get_suggested_conn_reverse(self, key_id):
         return self.services.golemservice.get_suggested_conn_reverse(key_id)

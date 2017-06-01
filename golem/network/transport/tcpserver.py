@@ -134,17 +134,6 @@ class PendingConnectionsServer(TCPServer):
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
         logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
-        sock_addresses = self.get_socket_addresses(task_owner, port, key_id)
-        def compare(addr1, addr2):
-            if ip_address_private(addr1.address):
-                if ip_address_private(addr2.address):
-                    return 0
-                else:
-                    return -1
-            else:
-                return 1
-
-        sock_addresses.sort(cmp=compare, reverse=True)
         sockets = [sock for sock in
                    self.get_socket_addresses(task_owner, port, key_id) if
                    self._is_address_accessible(sock)]

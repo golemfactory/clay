@@ -15,6 +15,7 @@ class GolemService(WiredService):
         self.client = client
         self.node = client.node
         self.suggested_conn_reverse = {}
+        self.suggested_address = {}
         super(GolemService, self).__init__(client)
 
     def on_wire_protocol_start(self, proto):
@@ -22,6 +23,8 @@ class GolemService(WiredService):
         log.debug('on_wire_protocol_start', proto=proto)
         assert isinstance(proto, self.wire_protocol)
         # register callbacks
+        self.suggested_address[encode_hex(proto.peer.remote_pubkey)]\
+            = proto.peer.ip_port[0]
         proto.receive_get_tasks_callbacks.append(self.on_receive_get_tasks)
         proto.receive_task_headers_callbacks.append(self.on_receive_task_headers)
         proto.receive_want_to_start_task_session_callbacks.append(self.on_receive_want_to_start_task_session)
@@ -31,6 +34,7 @@ class GolemService(WiredService):
         assert isinstance(proto, self.wire_protocol)
         log.debug('----------------------------------')
         log.debug('on_wire_protocol_stop', proto=proto)
+        self.suggested_address.pop(encode_hex(proto.peer.remote_pubkey), None)
         self.suggested_conn_reverse.pop(encode_hex(proto.peer.remote_pubkey), None)
 
     def set_task_server(self, task_server):

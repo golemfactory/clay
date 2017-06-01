@@ -58,6 +58,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
 
+    from golem.network.transport.message import init_messages
+    init_messages()
+
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
