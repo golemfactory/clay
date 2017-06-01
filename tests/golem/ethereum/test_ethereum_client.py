@@ -1,12 +1,9 @@
 import logging
-import unittest
 
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
-from mock import patch
 
 from golem.ethereum import Client
-from golem.ethereum.node import NodeProcess
 from golem.testutils import TempDirFixture
 
 
@@ -41,11 +38,11 @@ class EthereumClientTest(TempDirFixture):
 
     def test_send_transaction(self):
         client = self.client
-        addr = '\xff'*20
-        priv = '\xee'*32
-        tx = Transaction(1, 20*10**9, 21000, to=addr, value=0, data=b'')
+        addr = '\xff' * 20
+        priv = '\xee' * 32
+        tx = Transaction(1, 20 * 10**9, 21000, to=addr, value=0, data=b'')
         tx.sign(priv)
-        with self.assertRaisesRegexp(ValueError, "Insufficient funds"):
+        with self.assertRaisesRegexp(ValueError, "[Ii]nsufficient funds"):
             client.send(tx)
 
     def test_start_terminate(self):
@@ -62,7 +59,8 @@ class EthereumClientTest(TempDirFixture):
         addr = '0x' + zpad('deadbeef', 32).encode('hex')
         log_id = '0x' + zpad('beefbeef', 32).encode('hex')
         client = self.client
-        logs = client.get_logs(from_block='latest', to_block='latest', topics=[log_id, addr])
+        logs = client.get_logs(from_block='latest', to_block='latest',
+                               topics=[log_id, addr])
         assert logs == []
 
     def test_filters(self):
