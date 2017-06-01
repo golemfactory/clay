@@ -76,3 +76,11 @@ class GolemProtocol(BaseProtocol):
                      ('connection_id', rlp.sedes.binary),
                      ('super_node', CBORSedes)
                      ]
+
+    class remove_task(BaseProtocol.command):
+        """
+        Remove given task from p2p network
+        """
+        cmd_id = 4
+
+        structure = [('task_id', rlp.sedes.binary)]

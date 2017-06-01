@@ -8,6 +8,9 @@ if is_windows():
 from golem.reactor import geventreactor
 geventreactor.install()
 
+from golem.network.transport.message import init_messages
+init_messages()
+
 import click
 
 from golem.node import OptNode
@@ -57,9 +60,6 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
-
-    from golem.network.transport.message import init_messages
-    init_messages()
 
     # Crossbar
     if m == 'crossbar.worker.process':

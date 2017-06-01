@@ -3,7 +3,7 @@ p2pconfig = {
         "listen_host": "0.0.0.0",
         "listen_port": 20171,
         "bootstrap_nodes": [
-		    "enode://d0a2589b86a58120d57449b1a86f92bcd9b88509eb5a458c4606c69bda09c3d8838a7864dc9140881deb9c976e4cbda2d296d93007770221fa8471377a45bc0b@94.23.17.170:20170"]
+		    "enode://6f050c7361f539a3539a7cb5998a8186bc2b8fc60f6bf23a2db486854c47ddf919e98c2edd39b7031ed95bbf409ccbc4e0c32ffa60b9eea0f225a601bc186e39@94.23.17.170:20173"]
      },
      "p2p": {
         "listen_host": "0.0.0.0",

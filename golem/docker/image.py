@@ -15,7 +15,7 @@ class DockerImage(rlp.Serializable):
     ]
 
     def __init__(self, repository=None, image_id=None, tag=None):
-
+        self.id = image_id
         tag = tag if tag else "latest"
         rlp.Serializable.__init__(self, repository, image_id, tag)
 
@@ -30,12 +30,12 @@ class DockerImage(rlp.Serializable):
     def is_available(self):
         client = local_client()
         try:
-            if self.image_id:
-                info = client.inspect_image(self.image_id)
+            if self.id:
+                info = client.inspect_image(self.id)
                 return self.name in info["RepoTags"]
             else:
                 info = client.inspect_image(self.name)
-                return self.image_id is None or info["Id"] == self.image_id
+                return self.id is None or info["Id"] == self.id
         except errors.NotFound:
             log.debug('DockerImage NotFound', exc_info=True)
             return False

@@ -56,7 +56,8 @@ class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClient(TestWithDatabase):
 
-    def tearDown(self):
+    @patch('golem.client.Client.stop')
+    def tearDown(self, stop):
         if hasattr(self, 'client'):
             self.client.quit()
 
@@ -209,8 +210,8 @@ class TestClient(TestWithDatabase):
         c = self.client
         c.task_server = MagicMock()
         c.task_server.task_computer.get_progresses.return_value = {}
-        c.p2pservice = MagicMock()
-        c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
+        c.services = MagicMock()
+        c.services.peermanager = MagicMock(peers=["ABC", "DEF"])
         c.transaction_system = MagicMock()
         status = c.get_status()
         self.assertIn("Waiting for tasks", status)
@@ -220,7 +221,7 @@ class TestClient(TestWithDatabase):
         mock2 = MagicMock()
         mock2.get_progress.return_value = 0.33
         c.task_server.task_computer.get_progresses.return_value = {"id1": mock1, "id2": mock2}
-        c.p2pservice.get_peers.return_value = []
+        c.services.peermanager.peers = []
         status = c.get_status()
         self.assertIn("Computing 2 subtask(s)", status)
         self.assertIn("id1 (25.0%)", status)
@@ -233,13 +234,15 @@ class TestClient(TestWithDatabase):
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
 
-    def test_quit(self, *_):
+    @patch('golem.client.Client.stop')
+    def test_quit(self, stop, *_):
         self.client = Client(datadir=self.path)
         self.client.db = None
         self.client.quit()
 
     @patch('twisted.internet.reactor', create=True)
-    def test_collect_gossip(self, *_):
+    @patch('golem.client.Client.quit')
+    def test_collect_gossip(self, quit, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
@@ -248,7 +251,7 @@ class TestClient(TestWithDatabase):
         self.client.collect_gossip()
 
     @patch('golem.client.log')
-    def test_do_work(self, log, *_):
+    def test_do_work(self, log, stop, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
@@ -256,40 +259,28 @@ class TestClient(TestWithDatabase):
 
         c = self.client
         c.sync = Mock()
-        c.p2pservice = Mock()
+        c.services = MagicMock()
+        c.services.golemservice = Mock()
         c.task_server = Mock()
         c.resource_server = Mock()
         c.ranking = Mock()
         c.check_payments = Mock()
 
-        # Test if method exits if p2pservice is not present
-        c.p2pservice = None
-        c.config_desc.send_pings = False
+        # Test calls with golemservice
         c._Client__do_work()
 
         assert not log.exception.called
-        assert not c.check_payments.called
-
-        # Test calls with p2pservice
-        c.p2pservice = Mock()
-        c._Client__do_work()
-
-        assert not c.p2pservice.ping_peers.called
-        assert not log.exception.called
-        assert c.p2pservice.sync_network.called
+        assert c.services.golemservice.get_tasks.called
         assert c.task_server.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
         assert c.check_payments.called
 
-        # Enable pings
-        c.config_desc.send_pings = True
-
         # Make methods throw exceptions
         def raise_exc():
             raise Exception('Test exception')
 
-        c.p2pservice.sync_network = raise_exc
+        c.services.golemservice.get_tasks = raise_exc
         c.task_server.sync_network = raise_exc
         c.resource_server.sync_network = raise_exc
         c.ranking.sync_network = raise_exc
@@ -297,7 +288,6 @@ class TestClient(TestWithDatabase):
 
         c._Client__do_work()
 
-        assert c.p2pservice.ping_peers.called
         assert log.exception.call_count == 5
 
     @patch('golem.client.log')
@@ -426,14 +416,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                         use_monitor=False)
 
         client.sync = Mock()
-        client.p2pservice = Mock()
-        client.p2pservice.peers = {}
+        client.services = MagicMock()
+        client.services.peermanager = Mock()
+        client.services.peermanager.peers = {}
         client.task_server = Mock()
         client.monitor = Mock()
 
         self.client = client
 
-    def tearDown(self):
+    @patch('golem.client.Client.stop')
+    def tearDown(self, stop):
         self.client.quit()
 
     def test_node(self, *_):
@@ -703,12 +695,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         # status without peers
         self.assertTrue(c.connection_status().startswith(u"Not connected"))
 
-        # peers
-        c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
-        c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
+        c.services.peermanager.peers = {self.__new_session() for i in xrange(4)}
 
         known_peers = c.get_known_peers()
-        self.assertEqual(len(known_peers), 3)
+        self.assertEqual(len(known_peers), 4)
         self.assertTrue(all(peer for peer in known_peers))
 
         connected_peers = c.get_connected_peers()
@@ -717,10 +707,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # status with peers
         self.assertTrue(c.connection_status().startswith(u"Connected"))
-
-        # status without ports
-        c.p2pservice.cur_port = 0
-        self.assertTrue(c.connection_status().startswith(u"Application not listening"))
 
     def test_port_status(self, *_):
         from pydispatch import dispatcher

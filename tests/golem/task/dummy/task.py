@@ -67,7 +67,7 @@ class DummyTask(Task):
             subtask_timeout=1200,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=MIN_PRICE)
+            max_price=MIN_PRICE, docker_images=[])
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')

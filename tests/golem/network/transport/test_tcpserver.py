@@ -75,6 +75,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         server = PendingConnectionsServer(None, Network())
 
         node = Node()
+        node.prv_addresses = []
         port = 100
         res = server.get_socket_addresses(node, port, None)
         self.assertEqual(res, [])

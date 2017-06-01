@@ -84,7 +84,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node = OptNode(datadir=self.path)
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
-        self.node.client.p2pservice = Mock()
         self.node.initialize()
 
         ccd = ClientConfigDescriptor()

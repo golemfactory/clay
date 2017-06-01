@@ -65,6 +65,7 @@ from devp2p.service import BaseService
 from ethereum.utils import encode_hex
 import ethereum.slogging as slogging
 from golem.network.p2p.golemservice import GolemService
+from golem.utils import find_free_net_port
 
 devp2plog = slogging.get_logger('app')
 log = logging.getLogger("golem.client")
@@ -135,15 +136,8 @@ class Client(BaseApp, HardwarePresetsMixin):
                                       self.config_desc)
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
-        
-        from golem.p2pconfig import p2pconfig
-        configp2p = p2pconfig
-        configp2p['node'] = {}
-        configp2p['node']['privkey_hex'] = encode_hex(self.keys_auth._private_key)
-        configp2p['node']['pubkey_hex'] = encode_hex(self.keys_auth.public_key)
-        configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
 
-        BaseApp.__init__(self, configp2p)
+        self.connect(None)
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
@@ -202,7 +196,6 @@ class Client(BaseApp, HardwarePresetsMixin):
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
-
         atexit.register(self.quit)
 
     def configure_rpc(self, rpc_session):
@@ -223,8 +216,6 @@ class Client(BaseApp, HardwarePresetsMixin):
         pass
 
     def start(self):
-        if self.use_monitor:
-            self.init_monitor()
         try:
             self.start_network()
         except SystemExit:
@@ -263,7 +254,7 @@ class Client(BaseApp, HardwarePresetsMixin):
             assert hasattr(self.services, service.name)
 
         self.services.golemservice.set_task_server(self.task_server)
-        
+
         resource_manager = HyperdriveResourceManager(dir_manager)
         self.resource_server = BaseResourceServer(resource_manager, dir_manager,
                                                   self.keys_auth, self)
@@ -284,11 +275,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         task = Deferred()
 
         gatherResults([task], consumeErrors=True).addCallbacks(connect,
-                                                                    terminate)
-        log.info("Starting p2p server ...")
-        #self.p2pservice.start_accepting(listening_established=p2p.callback,
-        #                                listening_failure=p2p.errback)
-
+                                                               terminate)
         log.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
@@ -297,7 +284,8 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         # self.p2pservice.connect_to_network()
 
-        if self.peermonitor:
+        if self.peermonitor and self.use_monitor:
+            self.init_monitor()
             self.diag_service.register(self.peermonitor,
                                        self.monitor.on_peer_snapshot)
             # self.monitor.on_login()
@@ -313,19 +301,44 @@ class Client(BaseApp, HardwarePresetsMixin):
         )
         self.diag_service.start_looping_call()
 
-    def connect(self, socket_address):
-        if isinstance(socket_address, Iterable):
+    def connect(self, socket_address, node_id=""):
+        devp2plog.info("Paased in socket address {}".format(socket_address))
+        if socket_address is None:
+            log.info("bootstrap node")
+        elif isinstance(socket_address, Iterable):
             socket_address = SocketAddress(
                 socket_address[0],
                 int(socket_address[1])
             )
 
-        log.debug(
-            "P2pservice connecting to %s on port %s",
-            socket_address.address,
-            socket_address.port
-        )
-        #self.p2pservice.connect(socket_address)
+        from golem.p2pconfig import p2pconfig
+        self.configp2p = p2pconfig
+        port = find_free_net_port()
+        self.configp2p['discovery']["listen_port"] = port
+        self.configp2p['p2p']["listen_port"] = port
+        self.configp2p['node'] = {}
+        self.configp2p['node']['privkey_hex'] = encode_hex(
+            self.keys_auth._private_key)
+        self.configp2p['node']['pubkey_hex'] = encode_hex(
+            self.keys_auth.public_key)
+        self.configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
+
+        if socket_address is None:
+            self.configp2p['discovery']['bootstrap_nodes'].append(
+                "enode://%s@%s:%s" % (self.configp2p['node']['pubkey_hex'],
+                                      "127.0.0.1",
+                                      port)
+            )
+        else:
+            devp2plog.info("Not bootstrap adding, so adding correct bootstrap"
+                           " to list")
+            self.configp2p['discovery']['bootstrap_nodes'].append(
+                "enode://%s@%s:%s" % (node_id, socket_address.address,
+                                      socket_address.port))
+
+        devp2plog.info(self.configp2p['discovery']['bootstrap_nodes'])
+
+        BaseApp.__init__(self, self.configp2p)
 
     def quit(self):
         if self.do_work_task.running:
@@ -348,11 +361,10 @@ class Client(BaseApp, HardwarePresetsMixin):
     def key_changed(self):
         self.node.key = self.keys_auth.get_key_id()
         self.task_server.key_changed()
-        #self.p2pservice.key_changed()
 
     def stop_network(self):
-        # FIXME: Implement this method properly - send disconnect package, close connections etc.
-        #self.p2pservice = None
+        # FIXME: Implement this method properly - send disconnect package,
+        # close connections etc.
         self.task_server = None
         self.nodes_manager_client = None
 
@@ -391,10 +403,6 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     def set_resource_port(self, resource_port):
         self.resource_port = resource_port
-        #self.p2pservice.set_resource_peer(
-        #    self.node.prv_addr,
-        #    self.resource_port
-        #)
 
     def run_test_task(self, t_dict):
         if self.task_tester is None:
@@ -470,34 +478,28 @@ class Client(BaseApp, HardwarePresetsMixin):
         return unicode(name) if name else u''
 
     def get_neighbours_degree(self):
-        #return self.p2pservice.get_peers_degree()
         pass
 
     def get_suggested_addr(self, key_id):
-        return self.services.golemservice.suggested_address(key_id)
-        #return self.p2pservice.suggested_address.get(key_id)
+        return self.services.golemservice.suggested_address.get(key_id)
 
     def get_suggested_conn_reverse(self, key_id):
         return self.services.golemservice.get_suggested_conn_reverse(key_id)
 
     def get_resource_peers(self):
-        #self.p2pservice.send_get_resource_peers()
         pass
 
     def get_peers(self):
-        #return self.p2pservice.peers.values()
-        pass
+        return self.services.peermanager.peers
 
     def get_known_peers(self):
-        #peers = self.p2pservice.free_peers or []
-        peers = [] 
+        peers = self.get_peers()
         return [
             DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
         ]
 
     def get_connected_peers(self):
-        #peers = self.get_peers() or []
-        peers = self.services.peermanager.peers
+        peers = self.get_peers()
         return [
             DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
         ]
@@ -557,8 +559,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         return unicode(self.datadir)
 
     def get_p2p_port(self):
-        #return self.p2pservice.cur_port
-        pass
+        return self.configp2p["p2p"]['listen_port']
 
     def get_task_server_port(self):
         return self.task_server.cur_port
@@ -674,7 +675,8 @@ class Client(BaseApp, HardwarePresetsMixin):
         return bool(self.ranking)
 
     def want_to_start_task_session(self, key_id, node_id, conn_id):
-        self.services.golemservice.want_to_start_task_session(key_id, node_id, conn_id)
+        self.services.golemservice.want_to_start_task_session(key_id,
+                                                              node_id, conn_id)
 
     def inform_about_task_nat_hole(
             self,
@@ -684,21 +686,9 @@ class Client(BaseApp, HardwarePresetsMixin):
             port,
             ans_conn_id
             ):
-        #self.p2pservice.inform_about_task_nat_hole(
-        #    key_id,
-        #    rv_key_id,
-        #    addr,
-        #    port,
-        #    ans_conn_id
-        #)
         pass
 
     def inform_about_nat_traverse_failure(self, key_id, res_key_id, conn_id):
-        #self.p2pservice.inform_about_nat_traverse_failure(
-        #    key_id,
-        #    res_key_id,
-        #    conn_id
-        #)
         pass
 
     # CLIENT CONFIGURATION
@@ -709,7 +699,6 @@ class Client(BaseApp, HardwarePresetsMixin):
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.cfg.change_config(self.config_desc)
-        #self.p2pservice.change_config(self.config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
         if self.task_server:
             self.task_server.change_config(
@@ -802,15 +791,15 @@ class Client(BaseApp, HardwarePresetsMixin):
         dir_manager.clear_dir(self.get_received_files_dir())
 
     def remove_task(self, task_id):
-        #self.p2pservice.remove_task(task_id)
-        pass
+        self.services.golemservice.remove_task(task_id)
 
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
 
     def get_known_tasks(self):
         headers = {}
-        for key, header in self.task_server.task_keeper.task_headers.iteritems():  # noqa
+        for key, header in\
+                self.task_server.task_keeper.task_headers.iteritems():
             headers[unicode(key)] = DictSerializer.dump(header)
         return headers
 
@@ -853,23 +842,18 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.environments_manager.change_accept_tasks(env_id, False)
 
     def send_gossip(self, gossip, send_to):
-        #return self.p2pservice.send_gossip(gossip, send_to)
         pass
 
     def send_stop_gossip(self):
-        #return self.p2pservice.send_stop_gossip()
         pass
 
     def collect_gossip(self):
-        #return self.p2pservice.pop_gossips()
-        pass
+        return []
 
     def collect_stopped_peers(self):
-        #return self.p2pservice.pop_stop_gossip_form_peers()
         pass
 
     def collect_neighbours_loc_ranks(self):
-        #return self.p2pservice.pop_neighbours_loc_ranks()
         return []
 
     def push_local_rank(self, node_id, loc_rank):
@@ -999,8 +983,8 @@ class Client(BaseApp, HardwarePresetsMixin):
                 })
 
     def __make_node_state_snapshot(self, is_running=True):
-        peers_num = 0 #len(self.p2pservice.peers)
-        last_network_messages = '' #self.p2pservice.get_last_messages()
+        peers_num = 0  # len(self.p2pservice.peers)
+        last_network_messages = ''  # self.p2pservice.get_last_messages()
 
         if self.task_server:
             tasks_num = len(self.task_server.task_keeper.task_headers)
@@ -1012,8 +996,8 @@ class Client(BaseApp, HardwarePresetsMixin):
                 self.config_desc.node_name,
                 peers_num,
                 tasks_num,
-                '',#self.p2pservice.node.pub_addr,
-                '',#self.p2pservice.node.pub_port,
+                '',  # self.p2pservice.node.pub_addr,
+                '',  # self.p2pservice.node.pub_port,
                 last_network_messages,
                 last_task_messages,
                 r_tasks_progs,
@@ -1054,13 +1038,13 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     def get_metadata(self):
         metadata = dict()
-        # if self.ipfs_manager:
+        #  if self.ipfs_manager:
         #     metadata.update(self.ipfs_manager.get_metadata())
         return metadata
 
     def interpret_metadata(self, metadata, address, port, node_info):
         pass
-        # if self.config_desc and node_info and metadata:
+        #  if self.config_desc and node_info and metadata:
         #     seed_addresses = self.p2pservice.get_seeds()
         #     node_addresses = [
         #         (address, port),
@@ -1096,8 +1080,8 @@ class Client(BaseApp, HardwarePresetsMixin):
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
-            # Create datadir if not exists yet.
-            # TODO: It looks we have the same code in many places
+            #  Create datadir if not exists yet.
+            #  TODO: It looks we have the same code in many places
             makedirs(self.datadir)
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
         flags = filelock.LOCK_EX | filelock.LOCK_NB
@@ -1108,7 +1092,7 @@ class Client(BaseApp, HardwarePresetsMixin):
                           .format(self.datadir))
 
     def _unlock_datadir(self):
-        # solves locking issues on OS X
+        #  solves locking issues on OS X
         try:
             filelock.unlock(self.__datadir_lock)
         except Exception:

@@ -65,6 +65,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = self._get_config_desc()
         ccd.min_price = 10
         n = Node()
+        n.prv_addresses = []
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
                         use_docker_machine_manager=False)
@@ -76,12 +77,14 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
         n2 = Node()
+        n2.prv_addresses = []
         n2.prv_addr = "10.10.10.10"
         n2.port = 10101
         task_header = get_example_task_header()
         task_header["task_owner"] = n2
         ts.add_task_header(task_header)
-        self.assertEqual(ts.request_task(), "uvw")
+        nr = ts.request_task()
+        self.assertEqual(nr, "uvw")
         ts.remove_task_header("uvw")
         task_header["task_owner_port"] = 0
         task_header["task_id"] = "uvw2"
@@ -95,6 +98,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         ccd = self._get_config_desc()
         ccd.min_price = 11
         n = Node()
+        n.prv_addresses = []
         ka = EllipticalKeysAuth(self.path)
         ts = TaskServer(n, ccd, ka, self.client,
                         use_docker_machine_manager=False)
@@ -235,8 +239,8 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
 
         self.assertIsNotNone(ts.add_task_header(new_header))
         self.assertEqual(len(ts.get_tasks_headers()), 2)
-        saved_task = next(th for th in ts.get_tasks_headers() if th["task_id"] == "xyz_2")
-        self.assertEqual(saved_task["signature"], new_header["signature"])
+        saved_task = next(th for th in ts.get_tasks_headers() if th.task_id == "xyz_2")
+        self.assertEqual(saved_task.signature, new_header["signature"])
 
     def test_sync(self):
         ccd = self._get_config_desc()

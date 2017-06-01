@@ -110,3 +110,10 @@ class GolemService(WiredService):
 
     def on_receive_set_task_session(self, proto, key, node, connection_id, super_node):
         self.want_to_start_task_session(key, node, connection_id, super_node)
+
+    def remove_task(self, task_id):
+        self.client.services.peermanager.broadcast(GolemProtocol,
+                   'remove_task', (task_id) )
+
+    def on_receive_remove_task(self, proto, task_id):
+        self.task_server.remove_task_header(task_id)

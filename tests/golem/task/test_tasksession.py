@@ -26,6 +26,8 @@ from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
+from golem.network.transport.message import init_messages
+init_messages()
 
 class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
     PEP8_FILES = ['golem/task/tasksession.py', ]
@@ -140,6 +142,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
+        n.prv_addresses = []
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)

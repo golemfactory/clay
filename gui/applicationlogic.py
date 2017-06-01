@@ -28,6 +28,7 @@ from golem.task.taskstate import TaskStatus
 from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
 from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
+from ethereum.utils import encode_hex
 
 logger = logging.getLogger("app")
 
@@ -160,10 +161,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 table.insertRow(i)
 
         for i, peer in enumerate(peers):
-            table.setItem(i, 0, QTableWidgetItem(peer['remote_pubkey']))
-            table.setItem(i, 1, QTableWidgetItem(str(peer['ip_port'])))
-            #table.setItem(i, 2, QTableWidgetItem(peer['key_id']))
-            #table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
+            table.setItem(i, 0, QTableWidgetItem(peer['ip_port'][0]))
+            table.setItem(i, 1, QTableWidgetItem(str(peer['ip_port'][1])))
+            table.setItem(i, 2, QTableWidgetItem(encode_hex(peer['remote_pubkey'])))
 
     def update_payments_view(self):
         self.client.get_balance().addCallbacks(
