@@ -1,5 +1,7 @@
 from ethereum.utils import denoms
-from golem.interface.command import command, Argument, CommandHelper, CommandResult
+
+from golem.core.deferred import sync_wait
+from golem.interface.command import command, Argument, CommandResult
 
 incomes_table_headers = ['payer', 'status', 'value', 'block']
 payments_table_headers = ['subtask', 'payee', 'status', 'value', 'fee']
@@ -32,7 +34,7 @@ def __value(value):
 @command(argument=sort_incomes, help="Display incomes", root=True)
 def incomes(sort):
     deferred = incomes.client.get_incomes_list()
-    result = CommandHelper.wait_for(deferred) or []
+    result = sync_wait(deferred) or []
 
     values = []
 
@@ -52,15 +54,18 @@ def incomes(sort):
 def payments(sort):
 
     deferred = payments.client.get_payments_list()
-    result = CommandHelper.wait_for(deferred) or []
+    result = sync_wait(deferred) or []
 
     values = []
 
     for payment in result:
 
         payment_value = float(payment["value"])
-        payment_fee = payment["fee"]
-        payment_fee = u"{:.1f}%".format(float(payment_fee) * 100 / payment_value) if payment_fee else u""
+        payment_fee = payment["fee"] or u""
+
+        if payment_fee:
+            payment_fee = u"{:.1f}%".format(float(payment_fee) * 100 /
+                                            payment_value)
 
         entry = [
             payment["subtask"],

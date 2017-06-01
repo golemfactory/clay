@@ -1,22 +1,22 @@
 from ethereum.utils import denoms
 
-from golem.interface.command import command, CommandHelper
+from golem.core.deferred import sync_wait
+from golem.interface.command import command
 
 
 @command(help="Display account & financial info", root=True)
 def account():
 
-    wait = CommandHelper.wait_for
     client = account.client
 
-    node = wait(account.client.get_node())
+    node = sync_wait(account.client.get_node())
     node_key = node['key']
 
-    computing_trust = wait(client.get_computing_trust(node_key))
-    requesting_trust = wait(client.get_requesting_trust(node_key))
-    payment_address = wait(client.get_payment_address())
+    computing_trust = sync_wait(client.get_computing_trust(node_key))
+    requesting_trust = sync_wait(client.get_requesting_trust(node_key))
+    payment_address = sync_wait(client.get_payment_address())
 
-    balance = wait(client.get_balance())
+    balance = sync_wait(client.get_balance())
     if any(b is None for b in balance):
         balance = 0, 0, 0
 

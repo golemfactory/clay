@@ -1,11 +1,7 @@
 import logging
 import time
-from Queue import Queue, Empty
 from collections import deque
 from threading import Thread, Lock
-
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.python.failure import Failure
 
 logger = logging.getLogger(__name__)
 
@@ -126,20 +122,3 @@ class ThreadQueueExecutor(QueueExecutor):
             job.setDaemon(True)
             job.start()
         job.join()
-
-
-def wait_for(deferred, timeout=10):
-    if not isinstance(deferred, Deferred):
-        return deferred
-
-    queue = Queue()
-    deferred.addBoth(queue.put)
-
-    try:
-        result = queue.get(True, timeout)
-    except Empty:
-        raise TimeoutError("Command timed out")
-
-    if isinstance(result, Failure):
-        result.raiseException()
-    return result
