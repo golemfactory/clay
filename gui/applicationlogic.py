@@ -1,21 +1,19 @@
 from __future__ import division
 
-import jsonpickle
 import logging
 import os
-
-from PyQt5.QtCore import Qt
-from ethereum.utils import denoms
 from PyQt5 import QtCore
+
+import jsonpickle
 from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PyQt5.QtWidgets import QTableWidgetItem
+from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
-
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
@@ -24,15 +22,17 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState, TaskTestStatus
 from golem.task.taskstate import TaskStatus
-
-from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gui.controller.testingtaskprogresscustomizer import \
+    TestingTaskProgressDialogCustomizer
+from gui.controller.updatingconfigdialogcustomizer import \
+    UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("app")
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout,
+                         TaskStatus.finished, TaskStatus.paused]
 
 
 class GuiApplicationLogic(QtCore.QObject, AppLogic):
@@ -379,8 +379,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     def save_task_preset(self, preset_name, task_type, data):
         try:
-            self.client.save_task_preset(preset_name, task_type,
-                                         jsonpickle.dumps(data))
+            self.client.save_task_preset(preset_name, task_type, data)
         except Exception:
             logger.exception("Cannot save task preset")
 
@@ -629,14 +628,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def get_task_presets(self, task_type):
         presets = yield self.client.get_task_presets(task_type)
-        unpacked_presets = {}
-        for preset_name, preset_value in presets.items():
-            try:
-                unpacked_presets[preset_name] = jsonpickle.loads(preset_value)
-            except Exception:
-                logger.exception("Cannot unpickle preset")
-                self.client.delete_task_preset(task_type, preset_name)
-        returnValue(unpacked_presets)
+        returnValue(presets)
 
     def delete_task_preset(self, task_type, preset_name):
         self.client.delete_task_preset(task_type, preset_name)
