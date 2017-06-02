@@ -9,6 +9,7 @@ from __future__ import division, absolute_import
 import warnings
 import gc, traceback
 import re
+import shutil
 
 from twisted.python.compat import _PY3
 
@@ -86,6 +87,11 @@ class UtilTests(unittest.TestCase):
     """
     Tests for utility functions.
     """
+
+    def tearDown(self):
+        super(UtilTests, self).tearDown()
+        shutil.rmtree('./test_defer', ignore_errors=True)
+
 
     def test_logErrorReturnsError(self):
         """
