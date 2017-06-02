@@ -57,19 +57,15 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         self.output_file_ext = ["lxs"]
 
     @classmethod
-    def get_task_border(
-            cls,
-            subtask,
-            definition,
-            total_subtasks,
-            output_num=1
-            ):
+    def get_task_border(cls, subtask, definition, total_subtasks,
+                        output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
         :param int total_subtasks: total number of subtasks used in this task
         :param int output_num: number of final output files
+        :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
         preview_x = 300.0
@@ -86,8 +82,15 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
 
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
-        border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
+
+        if as_path:
+            border = [(0, 0), (x - 1, 0), (x - 1, y - 1), (0, y - 1)]
+        else:
+            border = [(0, i) for i in xrange(y)]
+            border += [(x - 1, i) for i in xrange(y)]
+            border += [(i, 0) for i in xrange(x)]
+            border += [(i, y - 1) for i in xrange(x)]
+
         return border
 
     @classmethod

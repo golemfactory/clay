@@ -24,6 +24,10 @@ from gui.view.dialog import AddTaskResourcesDialog
 
 logger = logging.getLogger("apps.core")
 
+# Enable / disable GUI for presets.
+# First, uncomment preset widgets in gui/view/AppMainWindow.ui.
+PRESETS_GUI_ENABLED = False
+
 
 class NewTaskDialogCustomizer(Customizer):
 
@@ -40,6 +44,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.add_task_resource_dialog_customizer = \
             AddResourcesDialogCustomizer(self.add_task_resource_dialog, logic)
 
+        self.presets = dict()
+
     def load_data(self):
         self._set_uid()
         self.gui.ui.advanceNewTaskWidget.hide()
@@ -53,13 +59,26 @@ class NewTaskDialogCustomizer(Customizer):
         self._setup_payment_connections()
         self._setup_verification_connections()
 
+        if PRESETS_GUI_ENABLED:
+            self._setup_task_preset_connections()
+
     def _setup_task_type_connections(self):
-        self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(self._task_type_value_changed)
+        self.gui.ui.taskTypeComboBox.currentIndexChanged[str].connect(
+            self._task_type_value_changed)
 
     def _setup_basic_new_task_connections(self):
         self.gui.ui.saveButton.clicked.connect(self._save_task_button_clicked)
-        self.gui.ui.addResourceButton.clicked.connect(self._show_add_resource_dialog)
+        self.gui.ui.addResourceButton.clicked.connect(
+            self._show_add_resource_dialog)
         self.gui.ui.finishButton.clicked.connect(self._finish_button_clicked)
+
+    def _setup_task_preset_connections(self):
+        self.gui.ui.savePresetButton.clicked.connect(
+            self._save_preset_button_clicked)
+        self.gui.ui.loadPresetButton.clicked.connect(
+            self._load_preset_button_clicked)
+        self.gui.ui.deletePresetButton.clicked.connect(
+            self._remove_preset_button_clicked)
 
     def _setup_advance_new_task_connections(self):
         self.gui.ui.showAdvanceNewTaskButton.clicked.connect(
@@ -151,6 +170,47 @@ class NewTaskDialogCustomizer(Customizer):
     def _save_task(self, file_path):
         definition = self._query_task_definition()
         self.logic.save_task(definition, file_path)
+
+    def _save_preset_button_clicked(self):
+        definition = self._query_task_definition()
+
+        name = u"{}".format(self.gui.ui.presetNameLineEdit.text())
+        if name == "":
+            self.show_error_window("Preset name cannot be empty")
+            return
+        self.logic.save_task_preset(name, self.__get_current_task_type_name(),
+                                    definition.make_preset())
+
+    def _remove_preset_button_clicked(self):
+        try:
+            preset_name = self.__get_current_preset_name()
+            self.logic.delete_task_preset(self.__get_current_task_type_name(),
+                                          preset_name)
+            self.gui.ui.presetComboBox.removeItem(
+                self.gui.ui.presetComboBox.currentIndex())
+            del self.presets[preset_name]
+        except KeyError:
+            logger.error("Cannot remove this preset")
+
+    def _load_preset_button_clicked(self):
+        try:
+            preset_name = self.__get_current_preset_name()
+            definition = self._query_task_definition()
+            definition.load_preset(self.presets[preset_name])
+            self.load_task_definition(definition)
+        except (KeyError, TypeError, AttributeError):
+            logger.exception("Cannot load this preset")
+
+    @inlineCallbacks
+    def load_presets(self):
+        self.gui.ui.presetComboBox.clear()
+        presets = yield self.logic.get_task_presets(
+            self.__get_current_task_type_name())
+        if not presets:
+            return
+        for preset_name in presets.keys():
+            self.gui.ui.presetComboBox.addItem(preset_name)
+        self.presets = presets
 
     def load_task_definition(self, task_definition):
         if not isinstance(task_definition, TaskDefinition):
@@ -336,6 +396,9 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.options = deepcopy(task.options)
         self._update_options("{}".format(name))
 
+        if PRESETS_GUI_ENABLED:
+            self.load_presets()
+
     def _get_add_resource_dialog(self):
         return AddTaskResourcesDialog(self.gui.window)
 
@@ -413,10 +476,16 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(False)
         self._set_max_price()
 
-    def __get_current_task_type(self):
+    def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
-        task_type = self.gui.ui.taskTypeComboBox.itemText(index)
-        return self.logic.get_task_type(u"{}".format(task_type))
+        return self.gui.ui.taskTypeComboBox.itemText(index)
+
+    def __get_current_preset_name(self):
+        index = self.gui.ui.presetComboBox.currentIndex()
+        return self.gui.ui.presetComboBox.itemText(index)
+
+    def __get_current_task_type(self):
+        return self.logic.get_task_type(self.__get_current_task_type_name())
 
     def __advanced_verification_changed(self):
         state = self.gui.ui.advanceVerificationCheckBox.isChecked()
