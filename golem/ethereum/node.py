@@ -76,7 +76,13 @@ class NodeProcess(object):
         match = re.search("Version: (\d+\.\d+\.\d+)", output).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            raise OSError("Incompatible geth version: {}".format(ver))
+            e_description = "Incompatible geth version: {}."\
+                " Expected >= {} and <= {}".format(
+                    ver,
+                    self.MIN_GETH_VERSION,
+                    self.MAX_GETH_VERSION
+                )
+            raise OSError(e_description)
         log.info("geth {}: {}".format(ver, self.__prog))
 
         self.__ps = None  # child process

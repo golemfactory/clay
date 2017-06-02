@@ -273,7 +273,7 @@ class HardwarePreset(BaseModel):
 class TaskPreset(BaseModel):
     name = CharField(null=False)
     task_type = CharField(null=False, index=True)
-    data = CharField(null=False)
+    data = JsonField(null=False)
 
     class Meta:
         database = db

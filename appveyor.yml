@@ -101,8 +101,8 @@ install:
   - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 
   # requirements
+  - pip install six pytest mock coverage
   - pip install -r requirements.txt
-  - pip install pytest mock coverage
   - python setup.py develop
 
 build_script:

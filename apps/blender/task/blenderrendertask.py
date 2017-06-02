@@ -126,13 +126,14 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     def get_task_border(cls, subtask, definition, total_subtasks,
-                        output_num=1):
+                        output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
         :param int total_subtasks: total number of subtasks used in this task
         :param int output_num: number of final output files
+        :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
         start_task = subtask.extra_data['start_task']
@@ -140,14 +141,19 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
+        if as_path:
+            method = cls.__get_border_path
+        else:
+            method = cls.__get_border
+
         if not definition.options.use_frames:
-            return cls.__get_border(start_task, end_task, total_subtasks, res_x, res_y)
+            return method(start_task, end_task, total_subtasks, res_x, res_y)
 
         if total_subtasks > frames:
             parts = int(total_subtasks / frames)
-            return cls.__get_border((start_task - 1) % parts + 1, (end_task - 1) % parts + 1,
-                                    parts, res_x, res_y)
-
+            return method((start_task - 1) % parts + 1,
+                          (end_task - 1) % parts + 1,
+                          parts, res_x, res_y)
         return []
 
     @classmethod
@@ -167,16 +173,42 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
             return border
         offsets = generate_expected_offsets(parts, res_x, res_y)
         scale_factor = offsets[parts + 1] / res_y
+        x = int(math.floor(res_x * scale_factor))
 
         upper = offsets[start]
         lower = offsets[end + 1]
-        for i in range(upper, lower):
+        for i in xrange(upper, lower):
             border.append((0, i))
-            border.append((int(math.floor(res_x * scale_factor)), i))
-        for i in range(0, int(math.floor(res_x * scale_factor))):
+            border.append((x, i))
+        for i in xrange(0, x):
             border.append((i, upper))
             border.append((i, lower))
         return border
+
+    @classmethod
+    def __get_border_path(cls, start, end, parts, res_x, res_y):
+        """
+        Return list of points that make a border of subtasks with numbers 
+        between start and end.
+        :param int start: number of first subtask
+        :param int end: number of last subtask
+        :param int parts: number of parts for single frame
+        :param int res_x: image resolution width
+        :param int res_y: image resolution height
+        :return list: list of pixels that belong to a subtask border
+        """
+        if res_x == 0 or res_y == 0:
+            return []
+
+        offsets = generate_expected_offsets(parts, res_x, res_y)
+        scale_factor = offsets[parts + 1] / res_y
+
+        x = int(math.floor(res_x * scale_factor))
+        upper = offsets[start]
+        lower = max(0, offsets[end + 1] - 1)
+
+        return [(0, upper), (x, upper),
+                (x, lower), (0, lower)]
 
     @classmethod
     def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
@@ -245,13 +277,15 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater = None
         self.preview_updaters = None
 
-        FrameRenderingTask.__init__(self, task_definition=task_definition, **kwargs)
+        FrameRenderingTask.__init__(self, task_definition=task_definition,
+                                    **kwargs)
 
+        definition = self.task_definition
         self.verificator.compositing = self.compositing
         self.verificator.output_format = self.output_format
         self.verificator.src_code = self.src_code
-        self.verificator.docker_images = self.task_definition.docker_images
-        self.verificator.verification_timeout = self.task_definition.subtask_timeout
+        self.verificator.docker_images = definition.docker_images
+        self.verificator.verification_timeout = definition.subtask_timeout
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
