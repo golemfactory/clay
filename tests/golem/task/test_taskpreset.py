@@ -1,5 +1,3 @@
-import jsonpickle
-
 from golem.task.taskpreset import (get_task_presets, logger,
                                    delete_task_preset, save_task_preset,
                                    TaskPreset)
@@ -20,12 +18,12 @@ class TestTaskPresets(TestWithDatabase, PEP8MixIn, LogTestCase):
         assert len(presets) == 1
         assert presets["NewPreset"] == "Data number1"
 
-        data = jsonpickle.dumps({"data1": "abc", "data2": 1313})
+        data = {"data1": "abc", "data2": 1313}
         save_task_preset("NewPreset2", "NewTask", data)
         presets = get_task_presets("NewTask")
         assert len(presets) == 2
         assert presets["NewPreset"] == "Data number1"
-        assert jsonpickle.loads(presets["NewPreset2"])["data2"] == 1313
+        assert presets["NewPreset2"]["data2"] == 1313
 
         save_task_preset("NewPreset", "NewTask", "Data number2")
         presets = get_task_presets("NewTask")
