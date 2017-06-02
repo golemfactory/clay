@@ -103,7 +103,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'subtask_id': 's1' + get_some_id(),
             'transaction_id': get_some_id(),
             'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
-            'value': random.randint(10, SQLITE3_MAX_INT / 2),
+            'value': random.randint(10, SQLITE3_MAX_INT / 4),
         }
 
         self.instance.eth_node.get_logs.return_value = [
