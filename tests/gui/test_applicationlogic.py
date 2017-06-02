@@ -470,7 +470,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
             logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    @patch('gui.applicationlogic.QMessageBox')
+    @patch('PyQt5.QtWidgets.QMessageBox')
     def test_messages(self, msg_box):
         msg_box.return_value = msg_box
         logic = self.logic
