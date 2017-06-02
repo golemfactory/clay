@@ -379,7 +379,8 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     def save_task_preset(self, preset_name, task_type, data):
         try:
-            self.client.save_task_preset(preset_name, task_type, data)
+            self.client.save_task_preset(preset_name, task_type,
+                                         jsonpickle.dumps(data))
         except Exception:
             logger.exception("Cannot save task preset")
 
@@ -628,7 +629,14 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def get_task_presets(self, task_type):
         presets = yield self.client.get_task_presets(task_type)
-        returnValue(presets)
+        unpacked_presets = {}
+        for preset_name, preset_value in presets.items():
+            try:
+                unpacked_presets[preset_name] = jsonpickle.loads(preset_value)
+            except Exception:
+                logger.exception("Cannot unpickle preset")
+                self.client.delete_task_preset(task_type, preset_name)
+        returnValue(unpacked_presets)
 
     def delete_task_preset(self, task_type, preset_name):
         self.client.delete_task_preset(task_type, preset_name)
