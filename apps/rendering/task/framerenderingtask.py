@@ -326,11 +326,10 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_definition(cls, task_type, dictionary, minimal):
+    def build_full_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
-        definition = parent.build_definition(task_type, dictionary, minimal)
-        if not minimal:
-            definition.options.frames = dictionary['options']['frames']
+        definition = parent.build_full_definition(task_type, dictionary)
+        definition.options.frames = dictionary['options']['frames']
         return definition
 
 

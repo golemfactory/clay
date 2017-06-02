@@ -418,15 +418,17 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
         definition.main_program_file = task_type.defaults.main_program_file
-        definition.add_to_resources()
         return definition
 
     @classmethod
     def build_definition(cls, task_type, dictionary, minimal=False):
         if not minimal:
-            return cls.build_full_definition(task_type, dictionary)
+            definition = cls.build_full_definition(task_type, dictionary)
         else:
-            return cls.build_minimal_definition(task_type, dictionary)
+            definition = cls.build_minimal_definition(task_type, dictionary)
+
+        definition.add_to_resources()
+        return definition
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
@@ -441,7 +443,6 @@ class CoreTaskBuilder(TaskBuilder):
             dictionary['subtask_timeout'])
 
         definition.main_program_file = task_type.defaults.main_program_file
-        definition.add_to_resources()
         return definition
 
     @classmethod
