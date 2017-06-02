@@ -18,7 +18,7 @@ cache:
     - $HOME/Library/Caches/pip
 
 before_install:
-  - brew install qt@5.7 wget openexr freeimage
+  - brew install qt@5.7 openexr freeimage
 
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz
   - tar xvf ${GETH_VER}.tar.gz
