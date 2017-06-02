@@ -135,13 +135,21 @@ def history(o):
     my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
 
     def get_logs_step(**kwargs):
+        """Iteratively dive deeper into blockchain
+        until result of eth.get_logs(**kwargs) is found.
+        """
+        # Iteration starts from newest block
         blocknumber = o.eth.web3.eth.blockNumber
+        # Every iteration will go that much deeper
         step = 2**8
         result = []
         while not (result or blocknumber <= 0):
             if (blocknumber / step) % 2**4 == 0:
+                # Show progress to avoid user frustration
                 sys.stdout.write('.')
             if (blocknumber / step) % 2**10 == 0:
+                # Show further progress information
+                # to increase user satisfaction
                 sys.stdout.write(str(blocknumber))
             result = o.eth.get_logs(
                 from_block=max(blocknumber - step, 0),
@@ -152,7 +160,9 @@ def history(o):
             blocknumber -= step
         sys.stdout.write('#\n')
         return result
+    # Get incoming transactions/contract logs
     outgoing = get_logs_step(topics=[log_id, my_addr])
+    # Get outgoing transactions/contract logs
     incoming = get_logs_step(topics=[log_id, None, my_addr])
 
     import web3.utils.compat.compat_stdlib
