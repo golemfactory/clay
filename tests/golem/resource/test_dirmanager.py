@@ -1,10 +1,10 @@
 import os
 import shutil
 
+from golem.core.common import is_windows
 from golem.resource.dirmanager import DirManager, find_task_script, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
 
 
 class TestDirManager(TestDirFixture):
