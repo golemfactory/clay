@@ -51,6 +51,7 @@ CORE_METHOD_MAP = dict(
 
     get_task=               Task.task,
     get_task_cost=          Task.task_cost,
+    get_task_preview=       Task.task_preview,
     query_task_state=       Task.task_state,
     create_task=            Task.task_create,
     delete_task=            Task.task_delete,
@@ -60,6 +61,7 @@ CORE_METHOD_MAP = dict(
     resume_task=            Task.task_resume,
 
     get_subtasks=           Task.subtasks,
+    get_subtasks_borders=   Task.subtasks_borders,
     get_subtask=            Task.subtask,
     restart_subtask=        Task.subtask_restart,
 

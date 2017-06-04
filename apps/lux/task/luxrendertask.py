@@ -7,7 +7,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.common import timeout_to_deadline, get_golem_path
+from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.task.localcomputer import LocalComputer
@@ -107,6 +107,11 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         """
 
         return 1
+
+    @classmethod
+    def get_preview(cls, task, single=False):
+        result = to_unicode(task.preview_file_path) if task else None
+        return cls._preview_result(result, single=single)
 
 
 class LuxRenderOptions(Options):

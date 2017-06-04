@@ -525,7 +525,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert all_tasks
         assert isinstance(all_tasks, list)
         assert len(all_tasks) == count
-        assert all([isinstance(t, dict) for t in all_tasks])
+        assert all(isinstance(t, dict) for t in all_tasks)
 
         one_subtask = tm.get_subtask_dict(subtask_id)
         assert isinstance(one_subtask, dict)
@@ -534,7 +534,25 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         all_subtasks = tm.get_subtasks_dict(task_id)
         assert all_subtasks
         assert isinstance(all_subtasks, list)
-        assert all([isinstance(t, dict) for t in all_subtasks])
+        assert all(isinstance(t, dict) for t in all_subtasks)
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_task_preview(self, _):
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        task_id, _ = self.__build_tasks(tm, 1)
+
+        tm.get_task_preview(task_id)
+        assert tm.tasks[task_id].get_preview.called
+
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_subtasks_borders(self, _):
+        count = 3
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        task_id, _ = self.__build_tasks(tm, count)
+
+        borders = tm.get_subtasks_borders(task_id)
+        assert len(borders) == count
+        assert all(len(b) == 4 for b in borders.values())
 
     @patch("golem.task.taskmanager.get_external_address")
     def test_change_timeouts(self, mock_addr):
@@ -622,6 +640,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task = CoreTask('source.code', definition, 'node', 'blender')
             task.get_total_tasks = Mock()
             task.get_progress = Mock()
+            task.get_preview = Mock()
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
             task.subtask_states = subtask_states

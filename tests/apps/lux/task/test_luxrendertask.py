@@ -204,7 +204,15 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_update_task_preview(self):
         luxtask = self.get_test_lux_task()
+        # _update_task_preview currently does nothing
         luxtask._update_task_preview()
+        assert not LuxRenderTaskTypeInfo.get_preview(luxtask)
+        assert not LuxRenderTaskTypeInfo.get_preview(None)
+        # set the path
+        luxtask.preview_file_path = "{}".format(
+            os.path.join(luxtask.tmp_dir, "current_preview"))
+        assert LuxRenderTaskTypeInfo.get_preview(luxtask)
+        assert not LuxRenderTaskTypeInfo.get_preview(None)
 
     @patch("golem.resource.dirmanager.find_task_script")
     def test_get_merge_ctd_error(self, find_task_script_mock):
