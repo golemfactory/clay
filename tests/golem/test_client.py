@@ -531,7 +531,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
             'type': 'blender',
             'timeout': '09:25:00',
-            'subtask_count': '6',
+            'subtasks': '6',
             'subtask_timeout': '4:10:00',
             'bid': '0.000032',
             'options': {

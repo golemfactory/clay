@@ -427,7 +427,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_id = str(uuid.uuid4())
         definition.task_type = task_type.name
         definition.task_name = dictionary['name']
-        definition.total_subtasks = int(dictionary['subtask_count'])
+        definition.total_subtasks = int(dictionary['subtasks'])
         definition.max_price = float(dictionary['bid']) * denoms.ether
 
         definition.full_task_timeout = string_to_timeout(
@@ -453,7 +453,6 @@ class CoreTaskBuilder(TaskBuilder):
             u'name': to_unicode(definition.task_name),
             u'timeout': to_unicode(task_timeout),
             u'subtask_timeout': to_unicode(subtask_timeout),
-            u'subtask_count': definition.total_subtasks,
             u'bid': float(definition.max_price) / denoms.ether,
             u'resources': [to_unicode(r) for r in definition.resources],
             u'options': {
