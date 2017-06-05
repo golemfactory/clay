@@ -7,6 +7,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
+from apps.rendering.task.framerenderingtask import FrameRenderingTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     timeout_to_deadline, to_unicode, update_dict
 from golem.core.hostaddress import get_external_address
@@ -32,6 +33,17 @@ def log_subtask_key_error(*args, **kwargs):
 def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task {}".format(args[1]))
     return None
+
+
+subtask_priority = {
+    None: -1,
+    SubtaskStatus.failure: 0,
+    SubtaskStatus.restarted: 1,
+    SubtaskStatus.resent: 2,
+    SubtaskStatus.starting: 3,
+    SubtaskStatus.downloading: 4,
+    SubtaskStatus.finished: 5
+}
 
 
 class TaskManager(TaskEventListener):
@@ -609,6 +621,41 @@ class TaskManager(TaskEventListener):
                 subtask, task.task_definition, total_subtasks, as_path=True
             ) for subtask in task_state.subtask_states.values()
         }
+
+    def get_subtasks_frames(self, task_id):
+        task = self.tasks[task_id]
+        if not (isinstance(task, FrameRenderingTask) and task.use_frames):
+            return []
+
+        subtasks = self.tasks_states[task_id].subtask_states
+        frames = task.get_subtask_frames()
+        results = []
+
+        for frame_num, subtask_ids in frames.iteritems():
+            # Not assigned to a subtask
+            if len(subtask_ids) == 0:
+                results.append((frame_num, None, None))
+                continue
+            # Single subtask, skip sorting
+            if len(subtask_ids) == 1:
+                subtask = subtasks[subtask_ids[0]]
+            # Choose the most significant subtask
+            else:
+                subtask = self._top_priority_subtask(subtask_ids, subtasks)
+
+            results.append((
+                frame_num,
+                to_unicode(subtask.subtask_id),
+                to_unicode(subtask.subtask_status)
+            ))
+
+        return results
+
+    @staticmethod
+    def _top_priority_subtask(subtask_ids, subtasks):
+        candidates = map(lambda sid: subtasks.get(sid), subtask_ids)
+        candidates.sort(key=lambda c: subtask_priority.get(c.subtask_status))
+        return candidates[-1]
 
     def get_task_preview(self, task_id, single=False):
         task = self.tasks[task_id]

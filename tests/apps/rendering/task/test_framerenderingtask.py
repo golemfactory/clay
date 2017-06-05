@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from pathlib import Path
 from PIL import Image
@@ -162,7 +163,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             new_img = task._paste_new_chunk(img, preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
 
-
     def test_mark_task_area(self):
         task = self._get_frame_task()
         task.total_tasks = 4
@@ -195,6 +195,54 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.total_tasks = 5
         task.frames = [x * 10 for x in range(1, 16)]
         assert task._choose_frames(task.frames, 2, 5) == ([40, 50, 60], 1)
+
+    def test_subtask_frames(self):
+        task = self._get_frame_task()
+        task.frames = range(4)
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 0 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): None,
+            str(uuid.uuid4()): {
+                'frames': None
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 0 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): {
+                'frames': [0, 1]
+            },
+            str(uuid.uuid4()): {
+                'frames': [2, 3]
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 1 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): {
+                'frames': [0, 1]
+            },
+            str(uuid.uuid4()): {
+                'frames': [1, 2, 3]
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert len(frames[0]) == 1
+        assert len(frames[1]) == 2
+        assert len(frames[2]) == 1
+        assert len(frames[3]) == 1
 
     def test_update_preview_task_file_path(self):
         task = self._get_frame_task()

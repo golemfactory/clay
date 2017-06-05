@@ -3,19 +3,22 @@ import random
 import shutil
 import time
 import uuid
+from collections import OrderedDict
 
 from mock import Mock, patch
 
-from apps.core.task.coretask import CoreTask
+from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.deferred import sync_wait
+from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, TaskEventListener
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
+    TaskEventListener
 from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager, logger
-from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, TaskStatus, ComputerState
+from golem.task.taskmanager import TaskManager, logger, subtask_priority
+from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
+    TaskStatus, ComputerState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -556,6 +559,40 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert len(borders) == count
         assert all(len(b) == 4 for b in borders.values())
 
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def test_get_subtasks_frames(self, _):
+        count = 3
+
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        self.__build_tasks(tm, count, fixed_frames=True)
+
+        for i, (task_id, task) in enumerate(tm.tasks.iteritems()):
+            frames = tm.get_subtasks_frames(task.header.task_id)
+            assert len(frames) == i + 1
+
+    def test_top_priority_subtask(self):
+        s1, s2 = Mock(), Mock()
+        s1.subtask_id = str(uuid.uuid4())
+        s2.subtask_id = str(uuid.uuid4())
+
+        subtasks = {s1.subtask_id: s1, s2.subtask_id: s2}
+        subtask_ids = subtasks.keys()
+
+        for i1, (k1, v1) in enumerate(subtask_priority.iteritems()):
+            s1.subtask_status = k1
+
+            for i2, (k2, v2) in enumerate(subtask_priority.iteritems()):
+                s2.subtask_status = k2
+
+                if v1 < v2:
+                    assert TaskManager._top_priority_subtask(
+                        subtask_ids, subtasks
+                    ) == s2
+                elif v1 > v2:
+                    assert TaskManager._top_priority_subtask(
+                        subtask_ids, subtasks
+                    ) == s1
+
     @patch("golem.task.taskmanager.get_external_address")
     def test_change_timeouts(self, mock_addr):
         mock_addr.return_value = self.addr_return
@@ -608,8 +645,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             sync_wait(self.tm.add_new_task(t))
 
-    def __build_tasks(self, tm, n):
-        tm.tasks = dict()
+    def __build_tasks(self, tm, n, fixed_frames=False):
+        tm.tasks = OrderedDict()
         tm.tasks_states = dict()
         tm.subtask_states = dict()
 
@@ -624,12 +661,15 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             definition.task_id = task_id
             definition.task_type = "blender"
             definition.subtask_timeout = 3671
+            definition.subtask_status = [SubtaskStatus.failure,
+                                         SubtaskStatus.finished][i % 2]
             definition.full_task_timeout = 3671 * 10
             definition.max_price = 1 * 10 ** 18
             definition.resolution = [1920, 1080]
             definition.resources = [str(uuid.uuid4()) for _ in range(5)]
             definition.output_file = os.path.join(self.tempdir, 'somefile')
-            definition.options.frames = [0]
+            definition.main_scene_file = self.path
+            definition.options.frames = range(i + 1)
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
@@ -639,7 +679,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
 
-            task = CoreTask('source.code', definition, 'node', 'blender')
+            task = BlenderRenderTask(node_name='node',
+                                     task_definition=definition,
+                                     total_tasks=n,
+                                     root_path=self.path)
             task.get_total_tasks = Mock()
             task.get_progress = Mock()
             task.get_total_tasks.return_value = i + 2
@@ -648,7 +691,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
             task.preview_updater = Mock()
             task.preview_updaters = [Mock()] * n
-            task.use_frames = i % 2 == 0
+            task.use_frames = fixed_frames or i % 2 == 0
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state

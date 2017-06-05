@@ -553,6 +553,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.task_server.task_computer = Mock()
         c.task_server.task_manager = TaskManager('node_name', Mock(),
                                                  c.keys_auth)
+
         c.task_server.task_manager.add_new_task = Mock()
         c.task_server.task_manager.root_path = self.path
 
@@ -564,6 +565,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             .assert_called_with(c.keys_auth.key_id)
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.add_new_task.called
+
+        c.task_server.task_manager.tasks[task.header.task_id] = task
+        frames = c.get_subtasks_frames(task.header.task_id)
+        assert frames is not None
 
     @patch('golem.client.async_run')
     def test_get_balance(self, async_run, *_):

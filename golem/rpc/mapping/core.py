@@ -62,6 +62,7 @@ CORE_METHOD_MAP = dict(
 
     get_subtasks=           Task.subtasks,
     get_subtasks_borders=   Task.subtasks_borders,
+    get_subtasks_frames=    Task.subtasks_frames,
     get_subtask=            Task.subtask,
     restart_subtask=        Task.subtask_restart,
 

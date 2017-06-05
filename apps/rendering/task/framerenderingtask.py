@@ -1,19 +1,22 @@
 from __future__ import division
-import os
+
 import logging
 import math
+import os
 from collections import OrderedDict
-from PIL import Image, ImageChops
 
-from golem.core.common import update_dict
-from golem.task.taskstate import SubtaskStatus
+from PIL import Image, ImageChops
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
-from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from apps.rendering.resources.renderingtaskcollector import \
+    RenderingTaskCollector
+from apps.rendering.task.renderingtask import RenderingTask, \
+    RenderingTaskBuilder
 from apps.rendering.task.verificator import FrameRenderingVerificator
+from golem.core.common import update_dict
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.rendering")
 
@@ -89,6 +92,19 @@ class FrameRenderingTask(RenderingTask):
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
+
+    def get_subtask_frames(self):
+        frames = OrderedDict((frame_num, []) for frame_num in self.frames)
+
+        for subtask_id, subtask in self.subtasks_given.iteritems():
+            if not (subtask and subtask['frames']):
+                continue
+            # There might be multiple subtasks per frame.
+            # We do not know their status at this point.
+            for frame in subtask['frames']:
+                frames[frame].append(subtask_id)
+
+        return frames
 
     def to_dictionary(self):
         dictionary = super(FrameRenderingTask, self).to_dictionary()
