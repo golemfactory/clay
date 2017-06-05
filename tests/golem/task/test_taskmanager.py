@@ -646,6 +646,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.get_progress.return_value = i * 10
             task.subtask_states = subtask_states
 
+            task.preview_updater = Mock()
             task.preview_updaters = [Mock()] * n
             task.use_frames = i % 2 == 0
 
