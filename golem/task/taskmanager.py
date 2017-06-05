@@ -565,12 +565,26 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
-        dictionary = self.get_basic_task_dict(task)
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+        state = self.tasks_states.get(task.header.task_id)
+        timeout = task.task_definition.full_task_timeout
+
+        dictionary = {
+            u'duration': max(timeout - state.remaining_time, 0),
+            # single=True retrieves one preview file. If rendering frames,
+            # it's the preview of the most recently computed frame.
+            u'preview': task_type.get_preview(task, single=True)
+        }
+        dictionary.update(task.to_dictionary())
+        dictionary.update(state.to_dictionary())
         dictionary.update(self.get_task_definition_dict(task))
+
         return dictionary
 
     def get_tasks_dict(self):
-        return [self.get_basic_task_dict(t) for t in self.tasks.itervalues()]
+        return [self.get_task_dict(task_id) for task_id
+                in self.tasks.iterkeys()]
 
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -595,23 +609,6 @@ class TaskManager(TaskEventListener):
                 subtask, task.task_definition, total_subtasks, as_path=True
             ) for subtask in task_state.subtask_states.values()
         }
-
-    def get_basic_task_dict(self, task):
-        task_type_name = task.task_definition.task_type.lower()
-        task_type = self.task_types[task_type_name]
-        state = self.tasks_states.get(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
-
-        dictionary = {
-            u'duration': max(timeout - state.remaining_time, 0),
-            # single=True retrieves one preview file. If rendering frames,
-            # it's the preview of the most recently computed frame.
-            u'preview': task_type.get_preview(task, single=True)
-        }
-
-        dictionary.update(task.to_dictionary())
-        dictionary.update(state.to_dictionary())
-        return dictionary
 
     def get_task_preview(self, task_id, single=False):
         task = self.tasks[task_id]
