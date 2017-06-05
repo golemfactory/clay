@@ -565,10 +565,12 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
 
         # single=True retrieves one preview file. If rendering frames,
         # it's the preview of the most recently computed frame.
-        dictionary = {u'preview': task.get_preview(single=True)}
+        dictionary = {u'preview': task_type.get_preview(task, single=True)}
         dictionary.update(self.get_simple_task_dict(task))
         dictionary.update(self.get_task_definition_dict(task))
         return dictionary
@@ -610,7 +612,10 @@ class TaskManager(TaskEventListener):
         return dictionary
 
     def get_task_preview(self, task_id, single=False):
-        return self.tasks[task_id].get_preview(single=single)
+        task = self.tasks[task_id]
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+        return task_type.get_preview(task, single=single)
 
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):

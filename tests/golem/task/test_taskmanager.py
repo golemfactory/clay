@@ -537,12 +537,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert all(isinstance(t, dict) for t in all_subtasks)
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_task_preview(self, _):
+    @patch('apps.blender.task.blenderrendertask.'
+           'BlenderTaskTypeInfo.get_preview')
+    def test_get_task_preview(self, get_preview, _):
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
         task_id, _ = self.__build_tasks(tm, 1)
 
         tm.get_task_preview(task_id)
-        assert tm.tasks[task_id].get_preview.called
+        assert get_preview.called
 
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_subtasks_borders(self, _):
@@ -640,10 +642,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task = CoreTask('source.code', definition, 'node', 'blender')
             task.get_total_tasks = Mock()
             task.get_progress = Mock()
-            task.get_preview = Mock()
             task.get_total_tasks.return_value = i + 2
             task.get_progress.return_value = i * 10
             task.subtask_states = subtask_states
+
+            task.preview_updaters = [Mock()] * n
+            task.use_frames = i % 2 == 0
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state
