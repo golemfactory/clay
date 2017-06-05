@@ -8,7 +8,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline, to_unicode
+    timeout_to_deadline, to_unicode, update_dict
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -576,11 +576,11 @@ class TaskManager(TaskEventListener):
             # it's the preview of the most recently computed frame.
             u'preview': task_type.get_preview(task, single=True)
         }
-        dictionary.update(task.to_dictionary())
-        dictionary.update(state.to_dictionary())
-        dictionary.update(self.get_task_definition_dict(task))
 
-        return dictionary
+        return update_dict(dictionary,
+                           task.to_dictionary(),
+                           state.to_dictionary(),
+                           self.get_task_definition_dict(task))
 
     def get_tasks_dict(self):
         return [self.get_task_dict(task_id) for task_id

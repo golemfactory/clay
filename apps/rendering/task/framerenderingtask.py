@@ -5,6 +5,7 @@ import math
 from collections import OrderedDict
 from PIL import Image, ImageChops
 
+from golem.core.common import update_dict
 from golem.task.taskstate import SubtaskStatus
 
 from apps.core.task.coretask import CoreTask
@@ -88,6 +89,14 @@ class FrameRenderingTask(RenderingTask):
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
+
+    def to_dictionary(self):
+        dictionary = super(FrameRenderingTask, self).to_dictionary()
+        frame_count = len(self.frames) if self.use_frames else 1
+
+        return update_dict(dictionary, {u'options': {
+            u'frame_count': frame_count
+        }})
 
     #########################
     # Specific task methods #
