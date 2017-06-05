@@ -94,7 +94,7 @@ class TaskManager(TaskEventListener):
         request = AsyncRequest(get_external_address, self.listen_port)
         return async_run(request)
 
-    def create_task(self, dictionary):
+    def create_task(self, dictionary, minimal=False):
         # FIXME: remove after the new interface has been integrated with
         if not isinstance(dictionary, dict):
             return dictionary
@@ -103,7 +103,8 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary)
+        definition = builder_type.build_definition(task_type, dictionary,
+                                                   minimal)
         builder = builder_type(self.node_name, definition,
                                self.root_path, self.dir_manager)
 
@@ -139,7 +140,7 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
-        self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
+        self.dir_manager.clear_temporary(task.header.task_id)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.register_listener(self)
@@ -460,7 +461,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def restart_task(self, task_id):
         logger.info("restarting task")
-        self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
+        self.dir_manager.clear_temporary(task_id)
 
         self.tasks[task_id].restart()
         self.tasks[task_id].task_status = TaskStatus.waiting

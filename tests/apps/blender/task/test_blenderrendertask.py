@@ -230,12 +230,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.frames = [1, 2, 3, 5, 7, 11, 13]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd.extra_data['frames'] == [1, 13])
+        self.assertTrue(ctd.extra_data['frames'] == [1])
         
         self.bt.frames = [2]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd.extra_data['frames'] == [2])
+        self.assertTrue(ctd.extra_data['frames'] == [1])
         
         self.bt.use_frames = False
         self.bt.frames = [1]

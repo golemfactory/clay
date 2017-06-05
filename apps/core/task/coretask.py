@@ -421,11 +421,28 @@ class CoreTaskBuilder(TaskBuilder):
         return kwargs
 
     @classmethod
-    def build_definition(cls, task_type, dictionary):
+    def build_minimal_definition(cls, task_type, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_id = str(uuid.uuid4())
         definition.task_type = task_type.name
+        definition.resources = set(dictionary['resources'])
+        definition.main_program_file = task_type.defaults.main_program_file
+        return definition
+
+    @classmethod
+    def build_definition(cls, task_type, dictionary, minimal=False):
+        if not minimal:
+            definition = cls.build_full_definition(task_type, dictionary)
+        else:
+            definition = cls.build_minimal_definition(task_type, dictionary)
+
+        definition.add_to_resources()
+        return definition
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
         definition.total_subtasks = int(dictionary['subtask_count'])
         definition.max_price = float(dictionary['bid']) * denoms.ether
@@ -435,11 +452,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
 
-        definition.resources = set(dictionary['resources'])
         definition.main_program_file = task_type.defaults.main_program_file
-        definition.output_file = cls.get_output_path(dictionary,
-                                                     definition)
-        definition.add_to_resources()
         return definition
 
     @classmethod
