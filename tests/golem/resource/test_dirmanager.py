@@ -1,10 +1,10 @@
 import os
 import shutil
 
+from golem.core.common import is_windows
 from golem.resource.dirmanager import DirManager, find_task_script, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
 
 
 class TestDirManager(TestDirFixture):
@@ -29,9 +29,6 @@ class TestDirManager(TestDirFixture):
             os.mkdir(dir2)
         open(file3, 'w').close()
         open(file4, 'w').close()
-        undeletable = []
-        undeletable.append(file1)
-        undeletable.append(file3)
         self.assertTrue(os.path.isfile(file1))
         self.assertTrue(os.path.isfile(file2))
         self.assertTrue(os.path.isfile(file3))
@@ -39,17 +36,13 @@ class TestDirManager(TestDirFixture):
         self.assertTrue(os.path.isdir(dir1))
         self.assertTrue(os.path.isdir(dir2))
         dm = DirManager(self.path)
-        dm.clear_dir(dm.root_path, undeletable)
-        self.assertTrue(os.path.isfile(file1))
-        self.assertTrue(os.path.isfile(file3))
-        self.assertTrue(os.path.isdir(dir1))
-        self.assertFalse(os.path.isfile(file2))
-        self.assertFalse(os.path.isfile(file4))
-        self.assertFalse(os.path.isdir(dir2))
         dm.clear_dir(dm.root_path)
         self.assertFalse(os.path.isfile(file1))
         self.assertFalse(os.path.isfile(file3))
         self.assertFalse(os.path.isdir(dir1))
+        self.assertFalse(os.path.isfile(file2))
+        self.assertFalse(os.path.isfile(file4))
+        self.assertFalse(os.path.isdir(dir2))
 
     def testGetTaskTemporaryDir(self):
         dm = DirManager(self.path)
