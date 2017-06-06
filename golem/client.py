@@ -47,6 +47,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
 from golem.task.taskbase import resource_types
+from golem.task import taskpreset
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
@@ -333,19 +334,25 @@ class Client(HardwarePresetsMixin):
         self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
+        # FIXME: remove after the new interface has been integrated with
+        if isinstance(task, dict):
+            task = self.task_server.task_manager.create_task(task)
+        else:
+            task.header.max_price = int(task.header.max_price)
+
+        resource_manager = self.resource_server.resource_manager
+        task_manager = self.task_server.task_manager
+
         task_id = task.header.task_id
+        key_id = self.keys_auth.key_id
+
+        options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
-        client_options = self.resource_server\
-            .resource_manager\
-            .build_client_options(self.keys_auth.key_id)
-        deferred = self.resource_server.add_task(
-            files,
-            task_id,
-            client_options=client_options
-        )
-        deferred.addCallback(
-            lambda _: self.task_server.task_manager.add_new_task(task)
-        )
+
+        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred.addCallback(lambda _: task_manager.add_new_task(task))
+
+        return task
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -392,7 +399,8 @@ class Client(HardwarePresetsMixin):
             self._publish(Task.evt_task_test_status,
                           TaskTestStatus.error, *args, **kwargs)
 
-        t = DictSerializer.load(t_dict)
+        t = self.task_server.task_manager.create_task(
+            dictionary=DictSerializer.load(t_dict), minimal=True)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
         self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
@@ -406,9 +414,9 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            new_task = DictSerializer.load(t_dict)
-            new_task.header.max_price = int(new_task.header.max_price)
-            self.enqueue_new_task(new_task)
+            task = DictSerializer.load(t_dict)
+            new_task = self.enqueue_new_task(task)
+            return unicode(new_task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
@@ -530,18 +538,25 @@ class Client(HardwarePresetsMixin):
         return len(self.task_server.task_keeper.get_all_tasks())
 
     def get_task(self, task_id):
-        return self.task_server.task_manager.get_dict_task(task_id)
+        return self.task_server.task_manager.get_task_dict(task_id)
 
     def get_tasks(self, task_id=None):
         if task_id:
-            return self.task_server.task_manager.get_dict_task(task_id)
-        return self.task_server.task_manager.get_dict_tasks()
+            return self.task_server.task_manager.get_task_dict(task_id)
+        return self.task_server.task_manager.get_tasks_dict()
 
     def get_subtasks(self, task_id):
-        return self.task_server.task_manager.get_dict_subtasks(task_id)
+        return self.task_server.task_manager.get_subtasks_dict(task_id)
+
+    def get_subtasks_borders(self, task_id):
+        return self.task_server.task_manager.get_subtasks_borders(task_id)
 
     def get_subtask(self, subtask_id):
-        return self.task_server.task_manager.get_dict_subtask(subtask_id)
+        return self.task_server.task_manager.get_subtask_dict(subtask_id)
+
+    def get_task_preview(self, task_id, single=False):
+        return self.task_server.task_manager.get_task_preview(task_id,
+                                                              single=single)
 
     def get_task_stats(self):
         return {
@@ -836,6 +851,19 @@ class Client(HardwarePresetsMixin):
         after_deadline_nodes = self.transaction_system.check_payments()
         for node_id in after_deadline_nodes:
             Trust.PAYMENT.decrease(node_id)
+
+    @staticmethod
+    def save_task_preset(preset_name, task_type, data):
+        taskpreset.save_task_preset(preset_name, task_type, data)
+
+    @staticmethod
+    def get_task_presets(task_type):
+        log.info("Loading presets for {}".format(task_type))
+        return taskpreset.get_task_presets(task_type)
+
+    @staticmethod
+    def delete_task_preset(task_type, preset_name):
+        taskpreset.delete_task_preset(task_type, preset_name)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

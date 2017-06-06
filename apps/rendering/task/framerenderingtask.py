@@ -295,21 +295,41 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         if self.task_definition.options.use_frames:
             num_frames = len(self.task_definition.options.frames)
             if self.task_definition.total_subtasks > num_frames:
-                est = math.floor(self.task_definition.total_subtasks / num_frames) * num_frames
+                est = math.floor(self.task_definition.total_subtasks /
+                                 num_frames) * num_frames
                 est = int(est)
                 if est != self.task_definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. %s subtasks will be used",
-                                   est)
+                    logger.warning("Too many subtasks for this task. %s "
+                                   "subtasks will be used", est)
                 return est
 
-            est = num_frames / math.ceil(num_frames / self.task_definition.total_subtasks)
+            est = num_frames / math.ceil(num_frames /
+                                         self.task_definition.total_subtasks)
             est = int(math.ceil(est))
             if est != self.task_definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. %s subtasks will be used.", est)
+                logger.warning("Too many subtasks for this task. %s "
+                               "subtasks will be used.", est)
 
             return est
 
-        if defaults.min_subtasks <= self.task_definition.total_subtasks <= defaults.max_subtasks:
-            return self.task_definition.total_subtasks
+        total = self.task_definition.total_subtasks
+        if defaults.min_subtasks <= total <= defaults.max_subtasks:
+            return total
         else:
             return defaults.default_subtasks
+
+    @classmethod
+    def build_dictionary(cls, definition):
+        parent = super(FrameRenderingTaskBuilder, cls)
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'frames'] = definition.options.frames
+        return dictionary
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        parent = super(FrameRenderingTaskBuilder, cls)
+        definition = parent.build_full_definition(task_type, dictionary)
+        definition.options.frames = dictionary['options']['frames']
+        return definition
+
+

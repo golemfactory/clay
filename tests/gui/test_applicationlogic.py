@@ -12,7 +12,7 @@ from twisted.internet.defer import Deferred
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import wait_for
+from golem.core.deferred import sync_wait
 from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -28,7 +28,8 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 
 from gui.application import Gui
-from gui.applicationlogic import GuiApplicationLogic, logger, task_to_remove_status
+from gui.applicationlogic import (GuiApplicationLogic, logger,
+                                  task_to_remove_status)
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -67,13 +68,6 @@ class TTaskWithDef(TTask):
         super(TTaskWithDef, self).__init__()
         self.task_definition = TaskDefinition()
         self.task_definition.max_price = 100 * denoms.ether
-
-
-class TTaskWithError(TTask):
-    def __init__(self):
-        super(TTaskWithDef, self).__init__()
-        self.task_definition = TaskDefinition()
-        self.task_definition.max_price = "ABCDEFGHT"
 
 
 class TTaskBuilder(TaskBuilder):
@@ -192,8 +186,10 @@ class TestGuiApplicationLogic(DatabaseFixture):
 
         ui = logic.customizer.gui.ui
         ui.localBalanceLabel.setText.assert_called_once_with("3.00000000 GNT")
-        ui.reservedBalanceLabel.setText.assert_called_once_with("2.00000000 GNT")
-        ui.availableBalanceLabel.setText.assert_called_once_with("1.00000000 GNT")
+        ui.reservedBalanceLabel.setText.assert_called_once_with(
+            "2.00000000 GNT")
+        ui.availableBalanceLabel.setText.assert_called_once_with(
+            "1.00000000 GNT")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
 
     def test_start_task(self):
@@ -218,7 +214,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         DatabaseFixture.setUp(self)
         LogTestCase.setUp(self)
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
     def tearDown(self):
@@ -239,6 +236,15 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.change_description(description)
         self.assertEqual(self.client.get_description(), description)
 
+        p = logic.get_task_presets("Blender")
+        assert p.result == {}
+        logic.save_task_preset("NewPreset", "Blender", "Some data")
+        p = logic.get_task_presets("Blender")
+        assert p.result == {'NewPreset': "Some data"}
+        logic.delete_task_preset("Blender", "NewPreset")
+        p = logic.get_task_presets("Blender")
+        assert p.result == {}
+
     def test_add_tasks(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
@@ -246,17 +252,22 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.add_task_from_definition(td)
         self.assertIn("xyz", logic.tasks, "Task was not added")
         task_state1 = TestGuiApplicationLogicWithClient._get_task_state()
-        task_state2 = TestGuiApplicationLogicWithClient._get_task_state(task_id="abc")
-        task_state3 = TestGuiApplicationLogicWithClient._get_task_state(task_id="def")
+        task_state2 = TestGuiApplicationLogicWithClient._get_task_state(
+            task_id="abc")
+        task_state3 = TestGuiApplicationLogicWithClient._get_task_state(
+            task_id="def")
         logic.add_tasks([task_state1, task_state2, task_state3])
         self.assertEqual(len(logic.tasks), 3, "Incorrect number of tasks")
         self.assertIn("xyz", logic.tasks, "Task was not added")
         self.assertIn("abc", logic.tasks, "Task was not added")
         self.assertIn("def", logic.tasks, "Task was not added")
-        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100, "Wrong task timeout")
-        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50, "Wrong subtask timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.full_task_timeout, 100,
+                         "Wrong task timeout")
+        self.assertEqual(logic.tasks["xyz"].definition.subtask_timeout, 50,
+                         "Wrong subtask timeout")
         result = logic.add_tasks([])
-        self.assertIsNone(result, "Returned value [{}] is not None".format(result))
+        self.assertIsNone(result, "Returned value [{}] is not None".format(
+            result))
         result = logic.get_test_tasks()
         self.assertEqual(result, {}, "Returned value is not empty")
         with self.assertLogs(logger):
@@ -291,7 +302,8 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         assert logic.client.query_task_state.called
 
         logic.client.query_task_state.called = False
-        logic.customizer.current_task_highlighted.definition.task_id = str(uuid.uuid4())
+        logic.customizer.current_task_highlighted.definition.task_id = \
+            str(uuid.uuid4())
         logic.task_status_changed(str(uuid.uuid4()))
         assert not logic.client.query_task_state.called
         assert not logic.customizer.update_task_additional_info.called
@@ -326,24 +338,26 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         for env in apps_manager.get_env_list():
             self.client.environments_manager.add_environment(env)
 
-        environments = wait_for(logic.get_environments())
+        environments = sync_wait(logic.get_environments())
 
         assert len(environments) > 0
         assert all([bool(env) for env in environments])
         assert all([isinstance(env, dict) for env in environments])
 
     @staticmethod
-    def _get_task_state(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+    def _get_task_state(task_id="xyz", full_task_timeout=100,
+                        subtask_timeout=50):
         task_state = TaskDesc()
-        td = TestGuiApplicationLogicWithClient._get_task_definition(task_id=task_id,
-                                                                    full_task_timeout=full_task_timeout,
-                                                                    subtask_timeout=subtask_timeout)
+        td = TestGuiApplicationLogicWithClient._get_task_definition(
+            task_id=task_id, full_task_timeout=full_task_timeout,
+            subtask_timeout=subtask_timeout)
         task_state.status = TaskStatus.notStarted
         task_state.definition = td
         return task_state
 
     @staticmethod
-    def _get_task_definition(task_id="xyz", full_task_timeout=100, subtask_timeout=50):
+    def _get_task_definition(task_id="xyz", full_task_timeout=100,
+                             subtask_timeout=50):
         td = TaskDefinition()
         td.task_id = task_id
         td.full_task_timeout = full_task_timeout
@@ -378,14 +392,16 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.lock_config(True)
 
         self.assertFalse(logic.customizer.gui.ui.settingsOkButton.isEnabled())
-        self.assertFalse(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
+        self.assertFalse(
+            logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
         logic.lock_config(True)
         logic.lock_config(False)
         logic.lock_config(False)
 
         self.assertTrue(logic.customizer.gui.ui.settingsOkButton.isEnabled())
-        self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
+        self.assertTrue(logic.customizer.gui.ui.settingsCancelButton.isEnabled(
+        ))
 
     def test_main_window(self):
         self.app.main_window.ui.taskTableWidget.setColumnWidth = Mock()
@@ -411,7 +427,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         peer2.port = 1034
         peer2.key_id = "KEYID2"
         peer2.node_name = "NODE 2"
-        logic._update_peers_view([DictSerializer.dump(peer), DictSerializer.dump(peer2)])
+        logic._update_peers_view([DictSerializer.dump(peer),
+                                  DictSerializer.dump(peer2)])
         table = logic.customizer.gui.ui.connectedPeersTable
         self.assertEqual(table.rowCount(), 2)
         self.assertEqual(table.item(0, 0).text(), "10.10.10.10")
@@ -427,20 +444,27 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic = self.logic
         logic.client = Mock()
         logic.client.datadir = self.path
-        self.logic.customizer = MainWindowCustomizer(self.app.main_window, self.logic)
+        self.logic.customizer = MainWindowCustomizer(self.app.main_window,
+                                                     self.logic)
         prev_y = logic.customizer.gui.ui.verificationSizeYSpinBox.maximum()
         logic.change_verification_option(size_x_max=914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), prev_y)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), prev_y)
         logic.change_verification_option(size_y_max=123)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 123)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 914)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 123)
         logic.change_verification_option(size_y_max=3190, size_x_max=134)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
-        self.assertEqual(logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeXSpinBox.maximum(), 134)
+        self.assertEqual(
+            logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    @patch('gui.applicationlogic.QMessageBox')
+    @patch('PyQt5.QtWidgets.QMessageBox')
     def test_messages(self, msg_box):
         msg_box.return_value = msg_box
         logic = self.logic
@@ -594,19 +618,26 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
     def setUp(self):
         TestDirFixtureWithReactor.setUp(self)
-        self.client = Client.__new__(Client)
-        from threading import Lock
-        self.client.lock = Lock()
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
+        self.client.start()
+
+        # from threading import Lock
+        # self.client.lock = Lock()
         self.client.task_tester = None
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
+        self.client.quit()
         self.app.app.exit(0)
         self.app.app.deleteLater()
         TestDirFixtureWithReactor.tearDown(self)
 
-    @patch('gui.view.dialog.QDialogPlus.enable_close', side_effect=lambda *_: True)
+    @patch('gui.view.dialog.QDialogPlus.enable_close',
+           side_effect=lambda *_: True)
     @patch('gui.view.dialog.QDialogPlus.show')
     def test_run_test_task(self, *_):
         logic = self.logic
@@ -622,6 +653,11 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
 
+        task_type = Mock()
+        ttb = TTaskBuilder(self.path)
+        task_type.task_builder_type.return_value = ttb
+        self.client.task_server.task_manager.task_types[u"testtask"] = task_type
+
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         logic.customizer.show_warning_window = Mock()
@@ -634,44 +670,42 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         ts.definition.output_file = f[0]
         ts.definition.main_scene_file = f[1]  # FIXME Remove me
 
-        task_type = Mock()
-        ttb = TTaskBuilder(self.path)
-        task_type.task_builder_type.return_value = ttb
-        logic.task_types["TESTTASK"] = task_type
-
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         logic.test_task_started(True)
-        self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
+        e = logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
+        self.assertTrue(e)
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        ttb.src_code = "import time\ntime.sleep(0.1)\n" \
+                       "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
         # since PythonTestVM does not support end_comp() method,
         # this is only a smoke test instead of actual test
-        ttb.src_code = "import time\ntime.sleep(0.1)\noutput = {'data': n, 'result_type': 0}"
+        ttb.src_code = "import time\ntime.sleep(0.1)\n" \
+                       "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(0.5)
         logic.abort_test_task()
 
         ttb.src_code = "raise Exception('some error')"
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         time.sleep(1)
         self.assertFalse(rpc_publisher.success)
 
         rpc_publisher.reset()
-        wait_for(logic.run_test_task(ts))
+        sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         self.assertFalse(rpc_publisher.success)
 
@@ -683,12 +717,12 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         logic.tasks["xyz"] = ts
         logic.clone_task("xyz")
 
-        self.assertEqual(logic.customizer.new_task_dialog_customizer.load_task_definition.call_args[0][0], ts.definition)
+        self.assertEqual(
+            logic.customizer.new_task_dialog_customizer.
+                load_task_definition.call_args[0][0], ts.definition)
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert wait_for(logic.run_test_task(ts))
+        self.client.task_server.task_manager.task_types[u"testtask"] = ttb
+        assert sync_wait(logic.run_test_task(ts))
 
-        ttb = TTaskBuilder(self.path, TTaskWithError)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert not wait_for(logic.run_test_task(ts))
+        assert not sync_wait(logic.run_test_task(None))

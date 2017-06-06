@@ -7,7 +7,7 @@ import shutil
 from collections import OrderedDict
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.common import timeout_to_deadline, get_golem_path
+from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.task.localcomputer import LocalComputer
@@ -57,19 +57,15 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         self.output_file_ext = ["lxs"]
 
     @classmethod
-    def get_task_border(
-            cls,
-            subtask,
-            definition,
-            total_subtasks,
-            output_num=1
-            ):
+    def get_task_border(cls, subtask, definition, total_subtasks,
+                        output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
         :param int total_subtasks: total number of subtasks used in this task
         :param int output_num: number of final output files
+        :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
         preview_x = 300.0
@@ -86,8 +82,15 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
 
         x = int(round(res_x * scale_factor))
         y = int(round(res_y * scale_factor))
-        border = [(0, i) for i in range(y)] + [(x - 1, i) for i in range(y)]
-        border += [(i, 0) for i in range(x)] + [(i, y - 1) for i in range(x)]
+
+        if as_path:
+            border = [(0, 0), (x - 1, 0), (x - 1, y - 1), (0, y - 1)]
+        else:
+            border = [(0, i) for i in xrange(y)]
+            border += [(x - 1, i) for i in xrange(y)]
+            border += [(i, 0) for i in xrange(x)]
+            border += [(i, y - 1) for i in xrange(x)]
+
         return border
 
     @classmethod
@@ -104,6 +107,11 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         """
 
         return 1
+
+    @classmethod
+    def get_preview(cls, task, single=False):
+        result = to_unicode(task.preview_file_path) if task else None
+        return cls._preview_result(result, single=single)
 
 
 class LuxRenderOptions(Options):
@@ -129,7 +137,6 @@ class LuxTask(renderingtask.RenderingTask):
             self.header.task_id,
             self.root_path
         )
-        self.undeletable.append(self.__get_test_flm())
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -230,13 +237,13 @@ class LuxTask(renderingtask.RenderingTask):
             os.makedirs(self.test_task_res_path)
 
         scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
-                                        xres=self.res_x,
-                                        yres=self.res_y,
-                                        halttime=0,
-                                        haltspp=1,
-                                        writeinterval=3,
+                                        xres=10,
+                                        yres=10,
+                                        halttime=1,
+                                        haltspp=0,
+                                        writeinterval=0.5,
                                         crop=[0, 1, 0, 1],
-                                        output_format=self.output_format)
+                                        output_format="png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -245,8 +252,8 @@ class LuxTask(renderingtask.RenderingTask):
             "start_task": 1,
             "end_task": 1,
             "total_tasks": 1,
-            "outfilebasename": self.header.task_id,
-            "output_format": self.output_format,
+            "outfilebasename": "testtask",
+            "output_format": "png",
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
         }
@@ -256,24 +263,12 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
-        NO_ADV_VER_MSG = "Advance verification will be impossible: "
-        COULDNT_COPY_MSG = "Couldn't rename and copy .flm file."
-        COULDNT_FING_MSG = "Couldn't find flm file."
-        # Search for flm - the result of testing a lux task
-        # It's needed for verification of received results
+        FLM_NOT_FOUNND_MSG = "Flm file was not found, check scene."
         return_data = dict()
         flm = find_file_with_ext(tmp_dir, [".flm"])
-        if flm is not None:
-            try:
-                shutil.copy(flm, self.__get_test_flm())
-            except (OSError, IOError) as err:
-                return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_COPY_MSG
-                return_data["warnings"] += "{}".format(err)
-                logger.warning(return_data["warnings"])
-        else:
-            return_data["warnings"] = NO_ADV_VER_MSG + COULDNT_FING_MSG
+        if flm is None:
+            return_data['warnings'] = FLM_NOT_FOUNND_MSG
             logger.warning(return_data["warnings"])
-
         make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 

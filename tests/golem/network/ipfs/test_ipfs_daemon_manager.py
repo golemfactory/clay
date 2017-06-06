@@ -44,7 +44,8 @@ class TestIPFSDaemonManager(unittest.TestCase):
             if IPFSAddress.allowed_ip_address(ipfs_addr.ip_address):
                 assert metadata['ipfs']['addresses']
 
-    def testInterpretMetadata(self):
+    @patch('twisted.internet.reactor', create=True)
+    def testInterpretMetadata(self, mock_reactor):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         dm.store_client_info()
         meta = dm.get_metadata()

@@ -1,22 +1,25 @@
 from __future__ import division
+
 import copy
 import logging
 import os
+import uuid
 
 from enum import Enum
+from ethereum.utils import denoms
 
-from golem.core.common import HandleKeyError, timeout_to_deadline
+from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
+    timeout_to_string, string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, resource_types
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, \
+    resource_types
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-
-
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -57,8 +60,19 @@ class TaskTypeInfo(object):
         return 0
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtask, output_num=1):
+    def get_task_border(cls, subtask, definition, total_subtasks,
+                        output_num=1, as_path=False):
         return []
+
+    @classmethod
+    def get_preview(cls, task, single=False):
+        pass
+
+    @staticmethod
+    def _preview_result(result, single=False):
+        if result is not None:
+            return result if single else [result]
+        return None if single else []
 
 
 class CoreTask(Task):
@@ -236,6 +250,15 @@ class CoreTask(Task):
     def get_results(self, subtask_id):
         return self.results.get(subtask_id, [])
 
+    def to_dictionary(self):
+        return {
+            u'id': to_unicode(self.header.task_id),
+            u'name': to_unicode(self.task_definition.task_name),
+            u'type': to_unicode(self.task_definition.task_type),
+            u'subtasks': self.get_total_tasks(),
+            u'progress': self.get_progress()
+        }
+
     #########################
     # Specific task methods #
     #########################
@@ -396,3 +419,66 @@ class CoreTaskBuilder(TaskBuilder):
         kwargs["node_name"] = self.node_name
         kwargs["environment"] = self.environment
         return kwargs
+
+    @classmethod
+    def build_minimal_definition(cls, task_type, dictionary):
+        definition = task_type.definition()
+        definition.options = task_type.options()
+        definition.task_id = str(uuid.uuid4())
+        definition.task_type = task_type.name
+        definition.resources = set(dictionary['resources'])
+        definition.main_program_file = task_type.defaults.main_program_file
+        return definition
+
+    @classmethod
+    def build_definition(cls, task_type, dictionary, minimal=False):
+        if not minimal:
+            definition = cls.build_full_definition(task_type, dictionary)
+        else:
+            definition = cls.build_minimal_definition(task_type, dictionary)
+
+        definition.add_to_resources()
+        return definition
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        definition = cls.build_minimal_definition(task_type, dictionary)
+        definition.task_name = dictionary['name']
+        definition.total_subtasks = int(dictionary['subtask_count'])
+        definition.max_price = float(dictionary['bid']) * denoms.ether
+
+        definition.full_task_timeout = string_to_timeout(
+            dictionary['timeout'])
+        definition.subtask_timeout = string_to_timeout(
+            dictionary['subtask_timeout'])
+
+        definition.main_program_file = task_type.defaults.main_program_file
+        return definition
+
+    @classmethod
+    def build_dictionary(cls, definition):
+        task_timeout = timeout_to_string(definition.full_task_timeout)
+        subtask_timeout = timeout_to_string(definition.subtask_timeout)
+        output_path = cls.build_output_path(definition)
+
+        return {
+            u'type': to_unicode(definition.task_type),
+            u'name': to_unicode(definition.task_name),
+            u'timeout': to_unicode(task_timeout),
+            u'subtask_timeout': to_unicode(subtask_timeout),
+            u'subtask_count': definition.total_subtasks,
+            u'bid': float(definition.max_price) / denoms.ether,
+            u'resources': [to_unicode(r) for r in definition.resources],
+            u'options': {
+                u'output_path': to_unicode(output_path)
+            }
+        }
+
+    @classmethod
+    def get_output_path(cls, dictionary, definition):
+        options = dictionary['options']
+        return os.path.join(options['output_path'], definition.task_name)
+
+    @staticmethod
+    def build_output_path(definition):
+        return definition.output_file.rsplit(os.path.sep, 1)[0]

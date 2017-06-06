@@ -10,7 +10,7 @@ from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import wait_for
+from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -238,6 +238,7 @@ class TestClient(TestWithDatabase):
         self.client.db = None
         self.client.quit()
 
+    @patch('twisted.internet.reactor', create=True)
     def test_collect_gossip(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
@@ -387,6 +388,29 @@ class TestClient(TestWithDatabase):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    def test_presets(self, *_):
+        Client.save_task_preset("Preset1", "TaskType1", "data1")
+        Client.save_task_preset("Preset2", "TaskType1", "data2")
+        Client.save_task_preset("Preset1", "TaskType2", "data3")
+        Client.save_task_preset("Preset3", "TaskType2", "data4")
+        presets = Client.get_task_presets("TaskType1")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data1"
+        assert presets["Preset2"] == "data2"
+        presets = Client.get_task_presets("TaskType2")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data3"
+        assert presets["Preset3"] == "data4"
+        Client.delete_task_preset("TaskType2", "Preset1")
+        presets = Client.get_task_presets("TaskType1")
+        assert len(presets) == 2
+        assert presets["Preset1"] == "data1"
+        presets = Client.get_task_presets("TaskType2")
+        assert len(presets) == 1
+        assert presets.get("Preset1") is None
+
+
+
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -470,7 +494,15 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
 
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.client = c
+        c.task_server.task_computer = Mock()
+        c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.root_path = self.path
+
         task = Mock()
+        task.header.max_price = 1 * 10 ** 18
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
@@ -489,6 +521,50 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.resource_server.add_task.called
         assert c.task_server.task_manager.add_new_task.called
 
+    def test_enqueue_new_task_dict(self, *_):
+        t_dict = {
+            'resources': [
+                '/Users/user/Desktop/folder/texture.tex',
+                '/Users/user/Desktop/folder/model.mesh',
+                '/Users/user/Desktop/folder/stylized_levi.blend'
+            ],
+            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'type': 'blender',
+            'timeout': '09:25:00',
+            'subtask_count': '6',
+            'subtask_timeout': '4:10:00',
+            'bid': '0.000032',
+            'options': {
+                'resolution': [1920, 1080],
+                'frames': '1-10',
+                'format': 'EXR',
+                'output_path': '/Users/user/Desktop/',
+                'compositing': True,
+            }
+        }
+
+        c = self.client
+        c.resource_server = Mock()
+        c.keys_auth = Mock()
+        c.keys_auth.key_id = str(uuid.uuid4())
+
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.client = c
+        c.task_server.task_computer = Mock()
+        c.task_server.task_manager = TaskManager('node_name', Mock(),
+                                                 c.keys_auth)
+        c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.root_path = self.path
+
+        task = c.enqueue_new_task(t_dict)
+        assert isinstance(task, Task)
+        assert task.header.task_id
+
+        c.resource_server.resource_manager.build_client_options\
+            .assert_called_with(c.keys_auth.key_id)
+        assert c.resource_server.add_task.called
+        assert not c.task_server.task_manager.add_new_task.called
+
     @patch('golem.client.async_run')
     def test_get_balance(self, async_run, *_):
         c = self.client
@@ -504,22 +580,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (None, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
         result = (1, 1, None)
         deferred.result = result
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (u"1", u"1", u"None")
         assert all(isinstance(entry, unicode) for entry in balance)
 
         c.transaction_system = None
-        balance = wait_for(c.get_balance())
+        balance = sync_wait(c.get_balance())
         assert balance == (None, None, None)
 
     def test_run_benchmark(self, *_):
@@ -531,9 +607,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
-            wait_for(self.client.run_benchmark(str(uuid.uuid4())))
+            sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
-        wait_for(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
 
         assert task_computer.run_blender_benchmark.called
         assert not task_computer.run_lux_benchmark.called
@@ -541,7 +617,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_blender_benchmark.called = False
         task_computer.run_lux_benchmark.called = False
 
-        wait_for(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
 
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called
@@ -601,12 +677,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c = self.client
         c.enqueue_new_task = Mock()
 
-        # try to create task with error
-        task_dict = {"some data": "with no sense"}
-        with self.assertLogs(log, level="WARNING"):
-            c.create_task(task_dict)
-        self.assertFalse(c.enqueue_new_task.called)
-
         # create a task
         t = Task(TaskHeader("node_name", "task_id",
                             "10.10.10.10", 123,
@@ -626,6 +696,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
+
+    def test_task_preview(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+        c.get_task_preview(task_id)
+        c.task_server.task_manager.get_task_preview.assert_called_with(
+            task_id, single=False)
+
+    def test_subtasks_borders(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+        c.get_subtasks_borders(task_id)
+        c.task_server.task_manager.get_subtasks_borders.assert_called_with(
+            task_id)
 
     def test_connection_status(self, *_):
         c = self.client

@@ -90,8 +90,9 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         name = "{}".format(customizer.gui.ui.taskNameLineEdit.text())
         assert re.match(reg, name) is not None, "Task name does not match: {}".format(name)
 
+    @patch('gui.applicationlogic.TestingTaskProgressDialog')
     @patch('apps.core.gui.controller.newtaskdialogcustomizer.QFileDialog')
-    def test_customizer(self, file_dialog_mock):
+    def test_customizer(self, file_dialog_mock, test_task_dialog_mock):
         self.logic.client = Mock()
         self.logic.client.config_desc = Mock()
         self.logic.client.config_desc.max_price = 0
@@ -135,7 +136,8 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
 
         customizer._NewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)
-        self.assertEqual(customizer.task_state.definition.estimated_memory, 103139)
+        self.assertEqual(customizer.task_state.definition.estimated_memory,
+                         103139)
         self.assertTrue(customizer.gui.ui.finishButton.isEnabled())
         customizer._show_add_resource_dialog()
         self.assertFalse(customizer.gui.ui.finishButton.isEnabled())

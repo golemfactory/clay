@@ -89,6 +89,16 @@ class TaskBuilder(object):
     def build(self):
         return
 
+    @classmethod
+    def build_definition(cls, task_type, dictionary, minimal=False):
+        """ Build task defintion from dictionary with described options.
+        :param dict dictionary: described all options need to build a task
+        :param bool minimal: if this option is set too True, then only minimal
+        definition that can be used for task testing can be build. Otherwise
+        all necessary options must be specified in dictionary
+        """
+        pass
+
 
 class ComputeTaskDef(object):
     def __init__(self):
@@ -135,7 +145,6 @@ class Task(object):
     def __init__(self, header, src_code):
         self.src_code = src_code
         self.header = header
-        self.undeletable = []
 
         self.listeners = []
 

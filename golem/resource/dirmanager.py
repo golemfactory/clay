@@ -56,24 +56,20 @@ class DirManager(object):
         self.output = output
         self.global_resource = global_resource
 
-    def clear_dir(self, d, undeletable=None):
-        """ Remove everything but undeletable from given directory
+    def clear_dir(self, d):
+        """ Remove everything from given directory
         :param str d: directory that should be cleared
-        :param list undeletable: files and directories to skip while deleting
         """
-        if undeletable is None:
-            undeletable = []
         if not os.path.isdir(d):
             return
         for i in os.listdir(d):
             path = os.path.join(d, i)
-            if path not in undeletable:
-                if os.path.isfile(path):
-                    os.remove(path)
-                if os.path.isdir(path):
-                    self.clear_dir(path, undeletable)
-                    if not os.listdir(path):
-                        shutil.rmtree(path, ignore_errors=True)
+            if os.path.isfile(path):
+                os.remove(path)
+            if os.path.isdir(path):
+                self.clear_dir(path)
+                if not os.listdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
 
     def create_dir(self, full_path):
         """ Create new directory, remove old directory if it exists.
@@ -155,14 +151,11 @@ class DirManager(object):
             return next(os.walk(task_dir))[1]
         return []
 
-    def clear_temporary(self, task_id, undeletable=None):
+    def clear_temporary(self, task_id):
         """ Remove everything from temporary directory for given task
         :param task_id: temporary directory of a task with that id should be cleared
-        :param undeletable is list of files/directories which shouldn't be removed
         """
-        if undeletable is None:
-            undeletable = []
-        self.clear_dir(self.__get_tmp_path(task_id), undeletable)
+        self.clear_dir(self.__get_tmp_path(task_id))
 
     def clear_resource(self, task_id):
         """ Remove everything from resource directory for given task
