@@ -1,19 +1,20 @@
 import re
 
+from golem.core.common import to_unicode
 
 def make_scene_analysis(scene_file_src, return_data):
     resolution = get_resolution(scene_file_src)
     if resolution:
-        return_data["resolution"] = resolution
+        return_data[u"resolution"] = resolution
     filename = get_filename(scene_file_src)
     if filename:
-        return_data["filename"] = filename
+        return_data[u"filename"] = to_unicode(filename)
     fileformat = get_file_format(scene_file_src)
     if fileformat:
-        return_data["fileformat"] = fileformat
+        return_data[u"file_format"] = to_unicode(fileformat)
     haltspp = get_haltspp(scene_file_src)
     if haltspp:
-        return_data["haltspp"] = haltspp
+        return_data[u"haltspp"] = haltspp
 
 
 def get_resolution(scene_file_src):

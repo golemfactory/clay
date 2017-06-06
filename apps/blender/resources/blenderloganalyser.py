@@ -1,24 +1,27 @@
 import os
 import re
 
+from golem.core.common import to_unicode
+
 
 def make_log_analyses(log_content, return_data):
     _get_warnings(log_content, return_data)
     rendering_time = find_rendering_time(log_content)
     if rendering_time:
-        return_data["rendering_time"] = rendering_time
+        return_data[u"rendering_time"] = to_unicode(rendering_time)
     output_path = find_filepath(log_content)
     if output_path:
-        return_data["output_path"] = output_path
+        return_data[u"output_path"] = to_unicode(output_path)
     frames = find_frames(log_content)
+    # FIXME Convert to nice string and to unicode
     if frames:
-        return_data["frames"] = frames
+        return_data[u"frames"] = frames
     resolution = find_resolution(log_content)
     if resolution:
-        return_data["resolution"] = resolution
+        return_data[u"resolution"] = resolution
     file_format = find_file_format(log_content)
     if file_format:
-        return_data["file_format"] = file_format
+        return_data[u"file_format"] = to_unicode(file_format)
 
 
 def _get_warnings(log_content, return_data):
@@ -33,10 +36,10 @@ def _get_warnings(log_content, return_data):
         warnings.append(u"\n{}\n".format(wrong_engine))
 
     if warnings:
-        if return_data.get("warnings"):
-            return_data["warnings"] += "".join(warnings)
+        if return_data.get(u"warnings"):
+            return_data[u"warnings"] += "".join(warnings)
         else:
-            return_data["warnings"] = "".join(warnings)
+            return_data[u"warnings"] = "".join(warnings)
 
 
 def find_wrong_renderer_warning(log_content):
