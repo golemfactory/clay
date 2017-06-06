@@ -30,7 +30,7 @@ class LuxRenderVerificator(RenderingVerificator):
             if has_ext(tr_file, '.FLM'):
                 if self.advanced_verification:
                     if not os.path.isfile(self.test_flm):
-                        logger.warning("Advanced verification set, but couldn't find test result!")
+                        logger.warning("Advanced verification set, but couldn't find test result!") #GG why not set self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER ?
                         logger.warning("Skipping verification")
                     else:
                         if not self.merge_flm_files(tr_file, task, self.test_flm):
