@@ -214,7 +214,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.header.docker_images[0].tag == '1.3'
         assert task.header.max_price == 10.2
         assert not task.header.signature
-        assert task.undeletable == []
         assert task.listeners == []
         assert len(task.task_resources) == 1
         assert task.task_resources[0].endswith('scene-Helicopter-27-cycles.blend')

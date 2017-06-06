@@ -1,20 +1,19 @@
 import ntpath
-import unittest
 from os import makedirs, path, remove
 
 from mock import Mock, patch, ANY
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskState
+from apps.core.task.coretaskstate import Options, TaskDefinition, TaskState
 from apps.core.task.coretask import logger as core_logger
+from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
-from apps.rendering.task.framerenderingtask import FrameRendererOptions
-from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder, logger
+from apps.rendering.task.renderingtask import (RenderingTask,
+                                               RenderingTaskBuilder, logger)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -306,11 +305,14 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        builder = RenderingTaskBuilder(root_path=self.path, dir_manager=DirManager(self.path),
-                                       node_name="SOME NODE NAME", task_definition=definition)
+        builder = RenderingTaskBuilder(root_path=self.path,
+                                       dir_manager=DirManager(self.path),
+                                       node_name="SOME NODE NAME",
+                                       task_definition=definition)
 
         class Defaults(object):
-            def __init__(self, default_subtasks=13, min_subtasks=3, max_subtasks=33):
+            def __init__(self, default_subtasks=13, min_subtasks=3,
+                         max_subtasks=33):
                 self.default_subtasks = default_subtasks
                 self.min_subtasks = min_subtasks
                 self.max_subtasks = max_subtasks
@@ -340,3 +342,23 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.total_subtasks = 33
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
+
+    def test_build_definition(self):
+        defaults_mock = Mock()
+        defaults_mock.main_program_file = "src_code.py"
+        tti = TaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
+                           Options, RenderingTaskBuilder)
+        tti.output_file_ext = 'txt'
+        definition = RenderingTaskBuilder.build_definition(
+            tti,
+            {
+                'resources': {"file1.png", "file2.txt", 'file3.jpg',
+                              'file4.txt'},
+                'task_type': 'TESTTASK'
+            },
+            minimal=True
+        )
+        assert definition.main_scene_file in ['file2.txt', 'file4.txt']
+        assert definition.task_type == "TESTTASK"
+        assert definition.resources == {'file1.png', 'file2.txt',
+                                        'file3.jpg', 'file4.txt'}

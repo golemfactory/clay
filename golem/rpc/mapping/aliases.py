@@ -80,6 +80,7 @@ class Task(object):
 
     task                    = 'comp.task'
     task_cost               = 'comp.task.cost'
+    task_preview            = 'comp.task.preview'
     task_state              = 'comp.task.state'
     task_create             = 'comp.task.create'
     task_delete             = 'comp.task.delete'
@@ -91,6 +92,7 @@ class Task(object):
     # task_price_update       = 'comp.task.price.update'
 
     subtasks                = 'comp.task.subtasks'
+    subtasks_borders        = 'comp.task.subtasks.borders'
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 

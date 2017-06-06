@@ -6,7 +6,7 @@ pathlib>=1.0.1
 pyvbox
 enum34
 ipaddress>=1.0.18
-ipfsapi
+ipfsapi==0.4.0
 netifaces==0.10.4
 OpenEXR==1.2.0
 peewee>=2.8.1

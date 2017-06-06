@@ -94,8 +94,8 @@ class TaskManager(TaskEventListener):
         request = AsyncRequest(get_external_address, self.listen_port)
         return async_run(request)
 
-    def create_task(self, dictionary):
-        # FIXME: remove after the new interface has been intergrated with
+    def create_task(self, dictionary, minimal=False):
+        # FIXME: remove after the new interface has been integrated with
         if not isinstance(dictionary, dict):
             return dictionary
 
@@ -103,7 +103,8 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[type_name]
         builder_type = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary)
+        definition = builder_type.build_definition(task_type, dictionary,
+                                                   minimal)
         builder = builder_type(self.node_name, definition,
                                self.root_path, self.dir_manager)
 
@@ -139,7 +140,7 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
-        self.dir_manager.clear_temporary(task.header.task_id, undeletable=task.undeletable)
+        self.dir_manager.clear_temporary(task.header.task_id)
         self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
 
         task.register_listener(self)
@@ -460,7 +461,7 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def restart_task(self, task_id):
         logger.info("restarting task")
-        self.dir_manager.clear_temporary(task_id, undeletable=self.tasks[task_id].undeletable)
+        self.dir_manager.clear_temporary(task_id)
 
         self.tasks[task_id].restart()
         self.tasks[task_id].task_status = TaskStatus.waiting
@@ -565,19 +566,10 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
-        task_type_name = task.task_definition.task_type.lower()
-        task_type = self.task_types[task_type_name]
-        task_state = self.tasks_states[task_id]
-        total_subtasks = task.get_total_tasks()
 
-        dictionary = {
-            u'borders': {
-                to_unicode(subtask.subtask_id): task_type.get_task_border(
-                    subtask, task.task_definition, total_subtasks, as_path=True
-                ) for subtask in task_state.subtask_states.values()
-            }
-        }
-
+        # single=True retrieves one preview file. If rendering frames,
+        # it's the preview of the most recently computed frame.
+        dictionary = {u'preview': task.get_preview(single=True)}
         dictionary.update(self.get_simple_task_dict(task))
         dictionary.update(self.get_task_definition_dict(task))
         return dictionary
@@ -585,18 +577,29 @@ class TaskManager(TaskEventListener):
     def get_tasks_dict(self):
         return [self.get_simple_task_dict(t) for t in self.tasks.itervalues()]
 
-    @handle_subtask_key_error
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
         task_state = self.tasks_states[task_id]
         subtask = task_state.subtask_states[subtask_id]
         return subtask.to_dictionary()
 
-    @handle_task_key_error
     def get_subtasks_dict(self, task_id):
         task_state = self.tasks_states[task_id]
         subtasks = task_state.subtask_states
         return [subtask.to_dictionary() for subtask in subtasks.itervalues()]
+
+    def get_subtasks_borders(self, task_id):
+        task = self.tasks[task_id]
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+        task_state = self.tasks_states[task_id]
+        total_subtasks = task.get_total_tasks()
+
+        return {
+            to_unicode(subtask.subtask_id): task_type.get_task_border(
+                subtask, task.task_definition, total_subtasks, as_path=True
+            ) for subtask in task_state.subtask_states.values()
+        }
 
     def get_simple_task_dict(self, task):
         state = self.tasks_states.get(task.header.task_id)
@@ -606,6 +609,9 @@ class TaskManager(TaskEventListener):
         dictionary.update(task.to_dictionary())
         dictionary.update(state.to_dictionary())
         return dictionary
+
+    def get_task_preview(self, task_id, single=False):
+        return self.tasks[task_id].get_preview(single=single)
 
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):

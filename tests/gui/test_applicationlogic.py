@@ -70,13 +70,6 @@ class TTaskWithDef(TTask):
         self.task_definition.max_price = 100 * denoms.ether
 
 
-class TTaskWithError(TTask):
-    def __init__(self):
-        super(TTaskWithDef, self).__init__()
-        self.task_definition = TaskDefinition()
-        self.task_definition.max_price = "ABCDEFGHT"
-
-
 class TTaskBuilder(TaskBuilder):
 
     def __init__(self, path, task_class=TTask):
@@ -399,7 +392,8 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         logic.lock_config(True)
 
         self.assertFalse(logic.customizer.gui.ui.settingsOkButton.isEnabled())
-        self.assertFalse(logic.customizer.gui.ui.settingsCancelButton.isEnabled())
+        self.assertFalse(
+            logic.customizer.gui.ui.settingsCancelButton.isEnabled())
 
         logic.lock_config(True)
         logic.lock_config(False)
@@ -464,7 +458,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
             logic.customizer.gui.ui.verificationSizeYSpinBox.maximum(), 3190)
 
     @ci_skip
-    @patch('gui.applicationlogic.QMessageBox')
+    @patch('PyQt5.QtWidgets.QMessageBox')
     def test_messages(self, msg_box):
         msg_box.return_value = msg_box
         logic = self.logic
@@ -618,14 +612,20 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
     def setUp(self):
         TestDirFixtureWithReactor.setUp(self)
-        self.client = Client.__new__(Client)
-        from threading import Lock
-        self.client.lock = Lock()
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
+        self.client.start()
+
+        # from threading import Lock
+        # self.client.lock = Lock()
         self.client.task_tester = None
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 
     def tearDown(self):
+        self.client.quit()
         self.app.app.exit(0)
         self.app.app.deleteLater()
         TestDirFixtureWithReactor.tearDown(self)
@@ -647,6 +647,11 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
 
+        task_type = Mock()
+        ttb = TTaskBuilder(self.path)
+        task_type.task_builder_type.return_value = ttb
+        self.client.task_server.task_manager.task_types[u"testtask"] = task_type
+
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
         logic.customizer.show_warning_window = Mock()
@@ -659,16 +664,12 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         ts.definition.output_file = f[0]
         ts.definition.main_scene_file = f[1]  # FIXME Remove me
 
-        task_type = Mock()
-        ttb = TTaskBuilder(self.path)
-        task_type.task_builder_type.return_value = ttb
-        logic.task_types["TESTTASK"] = task_type
-
         rpc_publisher.reset()
         sync_wait(logic.run_test_task(ts))
         logic.progress_dialog.close()
         logic.test_task_started(True)
-        self.assertTrue(logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled())
+        e = logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
+        self.assertTrue(e)
         time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
@@ -715,9 +716,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                 load_task_definition.call_args[0][0], ts.definition)
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
+        self.client.task_server.task_manager.task_types[u"testtask"] = ttb
         assert sync_wait(logic.run_test_task(ts))
 
-        ttb = TTaskBuilder(self.path, TTaskWithError)
-        logic.task_types["TESTTASK"].task_builder_type.return_value = ttb
-        assert not sync_wait(logic.run_test_task(ts))
+        assert not sync_wait(logic.run_test_task(None))

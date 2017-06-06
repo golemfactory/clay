@@ -369,7 +369,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
-        # FIXME: remove after the new interface has been intergrated with
+        # FIXME: remove after the new interface has been integrated with
         if isinstance(task, dict):
             task = self.task_server.task_manager.create_task(task)
         else:
@@ -430,7 +430,8 @@ class Client(BaseApp, HardwarePresetsMixin):
             self._publish(Task.evt_task_test_status,
                           TaskTestStatus.error, *args, **kwargs)
 
-        t = DictSerializer.load(t_dict)
+        t = self.task_server.task_manager.create_task(
+            dictionary=DictSerializer.load(t_dict), minimal=True)
         self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
         self.task_tester.run()
         self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
@@ -578,8 +579,15 @@ class Client(BaseApp, HardwarePresetsMixin):
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
 
+    def get_subtasks_borders(self, task_id):
+        return self.task_server.task_manager.get_subtasks_borders(task_id)
+
     def get_subtask(self, subtask_id):
         return self.task_server.task_manager.get_subtask_dict(subtask_id)
+
+    def get_task_preview(self, task_id, single=False):
+        return self.task_server.task_manager.get_task_preview(task_id,
+                                                              single=single)
 
     def get_task_stats(self):
         return {
