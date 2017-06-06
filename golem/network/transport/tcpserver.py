@@ -54,9 +54,15 @@ class TCPServer(Server):
             if listening_failure:
                 listening_failure()
 
-        listen_info = TCPListenInfo(self.config_desc.start_port, self.config_desc.end_port,
+        listen_info = TCPListenInfo(self.config_desc.start_port,
+                                    self.config_desc.end_port,
                                     established, failure)
         self.network.listen(listen_info)
+
+    def stop_accepting(self):
+        if self.network and self.cur_port:
+            self.network.stop_listening(TCPListeningInfo(self.cur_port))
+            self.cur_port = None
 
     def _stopped_callback(self):
         logger.debug("Stopped listening on previous port")
