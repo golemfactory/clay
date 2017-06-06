@@ -312,6 +312,9 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = filter(lambda res: any(res.lower().endswith(ext.lower())
                                             for ext in extensions),
                             resources)
+        if not candidates:
+            raise Exception("Scene file was not found.")
+
         candidates.sort(key=len)
         return candidates[0]
 
