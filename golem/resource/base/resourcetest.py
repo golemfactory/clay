@@ -4,7 +4,8 @@ import uuid
 from mock import Mock
 
 from golem.client import Client
-from golem.network.transport.message import MessageGetResource, MessageResourceList
+from golem.network.transport.message import MessageGetResource, \
+    MessageResourceList
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.client import file_sha_256
 from golem.resource.dirmanager import DirManager
@@ -52,8 +53,10 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.dir_manager_1 = DirManager(self.datadir_1)
         self.dir_manager_2 = DirManager(self.datadir_2)
 
-        self.resource_manager_1 = self._resource_manager_class(self.dir_manager_1)
-        self.resource_manager_2 = self._resource_manager_class(self.dir_manager_2)
+        self.resource_manager_1 = self._resource_manager_class(
+            self.dir_manager_1)
+        self.resource_manager_2 = self._resource_manager_class(
+            self.dir_manager_2)
 
         self.client_1 = Client(datadir=self.datadir_1,
                                connect_to_known_hosts=False,
@@ -74,10 +77,16 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.resource_server_1.client.resource_server = self.resource_server_1
         self.resource_server_2.client.resource_server = self.resource_server_2
 
-        task_server_1 = TaskServer.__new__(TaskServer, Mock(), Mock(), Mock(), self.client_1)
-        task_server_2 = TaskServer.__new__(TaskServer, Mock(), Mock(), Mock(), self.client_2)
+        task_server_1 = TaskServer.__new__(TaskServer, Mock(), Mock(),
+                                           Mock(), self.client_1)
+        task_server_2 = TaskServer.__new__(TaskServer, Mock(), Mock(),
+                                           Mock(), self.client_2)
         task_server_1.client = self.client_1
         task_server_2.client = self.client_2
+        task_server_1.network = None
+        task_server_2.network = None
+        task_server_1.task_sessions = {}
+        task_server_2.task_sessions = {}
         task_server_1.keys_auth = self.client_1.keys_auth
         task_server_2.keys_auth = self.client_2.keys_auth
         task_server_1.sync_network = task_server_2.sync_network = Mock()
@@ -93,13 +102,18 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_2.task_server = task_server_2
         self.task_session_1.task_id = self.task_session_2.task_id = self.task_id
 
-        self.resource_dir_1 = self.resource_manager_1.storage.get_dir(self.task_id)
-        self.resource_dir_2 = self.resource_manager_2.storage.get_dir(self.task_id)
+        self.resource_dir_1 = self.resource_manager_1.storage.get_dir(
+            self.task_id)
+        self.resource_dir_2 = self.resource_manager_2.storage.get_dir(
+            self.task_id)
 
-        client_options = self.resource_manager_1.build_client_options(task_server_1.get_key_id())
+        client_options = self.resource_manager_1.build_client_options(
+            task_server_1.get_key_id())
 
-        self.resources_relative, self.resources = self._create_resources(self.resource_dir_1)
-        self.resource_manager_1._add_task(self.resources, self.task_id, client_options=client_options)
+        self.resources_relative, self.resources = self._create_resources(
+            self.resource_dir_1)
+        self.resource_manager_1._add_task(self.resources, self.task_id,
+                                          client_options=client_options)
 
     def tearDown(self):
         self.client_1.quit()
@@ -115,13 +129,15 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_2.send = lambda x: send_buf_2.append(x)
 
         msg_get_resource = MessageGetResource(task_id=self.task_id)
-        msg = MessageGetResource.deserialize_message(msg_get_resource.serialize())
+        msg = MessageGetResource.deserialize_message(
+            msg_get_resource.serialize())
         assert msg
 
         self.task_session_1._react_to_get_resource(msg)
 
         msg_resource_list = send_buf_1.pop()
-        msg = MessageResourceList.deserialize_message(msg_resource_list.serialize())
+        msg = MessageResourceList.deserialize_message(
+            msg_resource_list.serialize())
         assert msg
 
         self.task_session_2._react_to_resource_list(msg)

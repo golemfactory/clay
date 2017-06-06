@@ -63,7 +63,8 @@ class TestClient(TestWithDatabase):
     def test_get_payments(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
                              connect_to_known_hosts=False,
-                             use_docker_machine_manager=False, use_monitor=False)
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
 
         payments = [
             Payment(subtask=uuid.uuid4(),
@@ -314,7 +315,9 @@ class TestClient(TestWithDatabase):
             return d
 
         c.task_server = Mock()
+        c.task_server.task_sessions = {}
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
+        c.task_server.task_computer.current_computations = []
         c.task_server.task_computer.stats = dict()
 
         c.get_balance = get_balance
@@ -459,7 +462,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsInstance(c.get_dir_manager(), Mock)
 
         c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.network = None
+        c.task_server.task_sessions = {}
         c.task_server.client = self.client
+        c.task_server.cur_port = None
         c.task_server.task_manager = TaskManager.__new__(TaskManager)
         c.task_server.task_manager.root_path = self.path
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
@@ -495,7 +501,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth.key_id = str(uuid.uuid4())
 
         c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.network = None
+        c.task_server.task_sessions = {}
         c.task_server.client = c
+        c.task_server.cur_port = 12345
         c.task_server.task_computer = Mock()
         c.task_server.task_manager = TaskManager.__new__(TaskManager)
         c.task_server.task_manager.add_new_task = Mock()
@@ -549,6 +558,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth.key_id = str(uuid.uuid4())
 
         c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.network = None
+        c.task_server.cur_port = None
+        c.task_server.task_sessions = {}
         c.task_server.client = c
         c.task_server.task_computer = Mock()
         c.task_server.task_manager = TaskManager('node_name', Mock(),
