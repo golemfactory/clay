@@ -132,7 +132,8 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
 
         options = Options()
         customizer.set_options(options)
-        assert customizer.logic.options == options
+        assert all(hasattr(customizer.logic.options, key)
+                   for key in options.__dict__)
 
         customizer._NewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)

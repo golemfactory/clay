@@ -4,6 +4,7 @@ from copy import deepcopy
 
 from PyQt5.QtWidgets import QFileDialog
 
+from apps.rendering.task.framerenderingtask import FrameRenderingTaskBuilder
 from gui.controller.customizer import Customizer
 
 logger = logging.getLogger("apps.rendering")
@@ -170,16 +171,19 @@ class FrameRendererCustomizer(RendererCustomizer):
         self.gui.ui.framesCheckBox.setChecked(self.options.use_frames)
         self.gui.ui.framesLineEdit.setEnabled(self.options.use_frames)
         if self.options.use_frames:
-            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.options.frames))
+            self.gui.ui.framesLineEdit.setText(self.options.frames)
         else:
             self.gui.ui.framesLineEdit.setText("")
 
     def _change_options(self):
         self.options.use_frames = self.gui.ui.framesCheckBox.isChecked()
         if self.options.use_frames:
-            frames = self.string_to_frames(self.gui.ui.framesLineEdit.text())
-            if not frames:
-                self.show_error_window(u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.")
+            frames = self.gui.ui.framesLineEdit.text()
+            # This is a temporary solution for current interface
+            frames_list = FrameRenderingTaskBuilder.string_to_frames(frames)
+            if not frames_list:
+                self.show_error_window(u"Wrong frame format. "
+                                       u"Frame list expected, e.g. 1;3;5-12.")
                 return
             self.options.frames = frames
 
@@ -187,72 +191,7 @@ class FrameRendererCustomizer(RendererCustomizer):
         self.logic.task_settings_changed()
 
     def _frames_check_box_changed(self):
-        self.gui.ui.framesLineEdit.setEnabled(self.gui.ui.framesCheckBox.isChecked())
+        self.gui.ui.framesLineEdit.setEnabled(
+            self.gui.ui.framesCheckBox.isChecked())
         if self.gui.ui.framesCheckBox.isChecked():
-            self.gui.ui.framesLineEdit.setText(self.frames_to_string(self.options.frames))
-
-    @staticmethod
-    def frames_to_string(frames):
-        s = ""
-        last_frame = None
-        interval = False
-        try:
-            for frame in sorted(frames):
-                frame = int(frame)
-                if frame < 0:
-                    raise ValueError("Frame number must be greater or equal to 0")
-
-                if last_frame is None:
-                    s += str(frame)
-                elif frame - last_frame == 1:
-                    if not interval:
-                        s += '-'
-                        interval = True
-                elif interval:
-                    s += str(last_frame) + ";" + str(frame)
-                    interval = False
-                else:
-                    s += ';' + str(frame)
-
-                last_frame = frame
-
-        except (ValueError, AttributeError, TypeError) as err:
-            logger.error("Wrong frame format: {}".format(err))
-            return ""
-
-        if interval:
-            s += str(last_frame)
-
-        return s
-
-    @staticmethod
-    def string_to_frames(s):
-        try:
-            frames = []
-            after_split = s.split(";")
-            for i in after_split:
-                inter = i.split("-")
-                if len(inter) == 1:  # pojedyncza klatka (np. 5)
-                    frames.append(int(inter[0]))
-                elif len(inter) == 2:
-                    inter2 = inter[1].split(",")
-                    if len(inter2) == 1:  # przedzial klatek (np. 1-10)
-                        start_frame = int(inter[0])
-                        end_frame = int(inter[1]) + 1
-                        frames += range(start_frame, end_frame)
-                    elif len(inter2) == 2:  # co n-ta klata z przedzialu (np. 10-100,5)
-                        start_frame = int(inter[0])
-                        end_frame = int(inter2[0]) + 1
-                        step = int(inter2[1])
-                        frames += range(start_frame, end_frame, step)
-                    else:
-                        raise ValueError("Wrong frame step")
-                else:
-                    raise ValueError("Wrong frame range")
-            return sorted(frames)
-        except ValueError as err:
-            logger.warning("Wrong frame format: {}".format(err))
-            return []
-        except (AttributeError, TypeError) as err:
-            logger.error("Problem with change string to frame: {}".format(err))
-            return []
+            self.gui.ui.framesLineEdit.setText(self.options.frames)

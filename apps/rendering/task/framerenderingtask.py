@@ -15,7 +15,7 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.task.renderingtask import RenderingTask, \
     RenderingTaskBuilder
 from apps.rendering.task.verificator import FrameRenderingVerificator
-from golem.core.common import update_dict
+from golem.core.common import update_dict, to_unicode
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.rendering")
@@ -28,6 +28,7 @@ class FrameRendererOptions(Options):
         super(FrameRendererOptions, self).__init__()
         self.use_frames = False
         self.frames = range(1, 11)
+        self.frames_string = "1-10"
 
 
 class FrameRenderingTask(RenderingTask):
@@ -347,14 +348,89 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'frames'] = definition.options.frames
+        dictionary[u'options'][u'frames'] = definition.options.frames_string
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
+
+        frames_string = to_unicode(dictionary['options']['frames'])
+        frames = cls.string_to_frames(frames_string)
+
         definition = parent.build_full_definition(task_type, dictionary)
-        definition.options.frames = dictionary['options']['frames']
+        definition.options.frames_string = frames_string
+        definition.options.frames = frames
+
         return definition
+
+    @staticmethod
+    def frames_to_string(frames):
+        s = ""
+        last_frame = None
+        interval = False
+        try:
+            for frame in sorted(frames):
+                frame = int(frame)
+                if frame < 0:
+                    raise ValueError("Frame number must be "
+                                     "greater or equal to 0")
+
+                if last_frame is None:
+                    s += str(frame)
+                elif frame - last_frame == 1:
+                    if not interval:
+                        s += '-'
+                        interval = True
+                elif interval:
+                    s += str(last_frame) + ";" + str(frame)
+                    interval = False
+                else:
+                    s += ';' + str(frame)
+
+                last_frame = frame
+
+        except (ValueError, AttributeError, TypeError) as err:
+            logger.error("Wrong frame format: {}".format(err))
+            return ""
+
+        if interval:
+            s += str(last_frame)
+
+        return s
+
+    @staticmethod
+    def string_to_frames(s):
+        try:
+            frames = []
+            after_split = s.split(";")
+            for i in after_split:
+                inter = i.split("-")
+                if len(inter) == 1:  # pojedyncza klatka (np. 5)
+                    frames.append(int(inter[0]))
+                elif len(inter) == 2:
+                    inter2 = inter[1].split(",")
+                    # przedzial klatek (np. 1-10)
+                    if len(inter2) == 1:
+                        start_frame = int(inter[0])
+                        end_frame = int(inter[1]) + 1
+                        frames += range(start_frame, end_frame)
+                    # co n-ta klata z przedzialu (np. 10-100,5)
+                    elif len(inter2) == 2:
+                        start_frame = int(inter[0])
+                        end_frame = int(inter2[0]) + 1
+                        step = int(inter2[1])
+                        frames += range(start_frame, end_frame, step)
+                    else:
+                        raise ValueError("Wrong frame step")
+                else:
+                    raise ValueError("Wrong frame range")
+            return sorted(frames)
+        except ValueError as err:
+            logger.warning("Wrong frame format: {}".format(err))
+            return []
+        except (AttributeError, TypeError) as err:
+            logger.error("Problem with change string to frame: {}".format(err))
+            return []
 
 
