@@ -154,6 +154,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         )
         self.network.connect(connect_info)
 
+    def disconnect(self):
+        for peer in self.peers.itervalues():
+            peer.dropped()
+
     def new_connection(self, session):
         session.start()
 

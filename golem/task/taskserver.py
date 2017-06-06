@@ -157,6 +157,10 @@ class TaskServer(PendingConnectionsServer):
     def new_connection(self, session):
         self.task_sessions_incoming.append(session)
 
+    def disconnect(self):
+        for task_session in self.task_sessions.itervalues():
+            task_session.dropped()
+
     def get_tasks_headers(self):
         ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
         return [th.to_dict() for th in ths]
