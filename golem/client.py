@@ -399,9 +399,15 @@ class Client(HardwarePresetsMixin):
             self._publish(Task.evt_task_test_status,
                           TaskTestStatus.error, *args, **kwargs)
 
-        t = self.task_server.task_manager.create_task(
-            dictionary=DictSerializer.load(t_dict), minimal=True)
-        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        try:
+            dictionary = DictSerializer.load(t_dict)
+            task = self.task_server.task_manager.create_task(
+                dictionary=dictionary, minimal=True
+            )
+        except Exception as e:
+            return on_error(to_unicode(e))
+
+        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
         self.task_tester.run()
         self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
 
