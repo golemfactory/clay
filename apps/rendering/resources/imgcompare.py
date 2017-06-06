@@ -1,9 +1,9 @@
+from __future__ import division
 import logging
 import math
 
 from apps.rendering.resources.imgrepr import (EXRImgRepr, ImgRepr, load_img,
                                               PILImgRepr)
-
 logger = logging.getLogger("apps.rendering")
 
 PSNR_ACCEPTABLE_MIN = 30
@@ -49,8 +49,8 @@ def calculate_sub_img_mse(base_img, other_images, start, box):
 
     return mse_against_base_img
 
-def calculate_mse_psnr_ssim_metrics(base_img, other_images, start, box):
 
+def calculate_mse_psnr_ssim_metrics(base_img, other_images, start, box):
 
     mse_against_base_img = calculate_sub_img_mse(base_img, other_images, start, box)
 
@@ -70,8 +70,9 @@ def calculate_mse_psnr_ssim_metrics(base_img, other_images, start, box):
     pSEx = start[0] + box[0]
     pSEy = start[1] + box[1]
 
+    cropped_base_img = base_img.to_pil().crop((pNWx, pNWy, pSEx, pSEy))
+
     for img in other_images:
-        cropped_base_img = base_img.to_pil().crop((pNWx,pNWy,pSEx, pSEy))
         cropped_img = img.to_pil().crop((pNWx,pNWy,pSEx, pSEy))
 
         ssim_against_base_img.append(compute_ssim(cropped_base_img, cropped_img))
@@ -103,7 +104,6 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
         else:
              raise ValueError('img1 and img2 are of different sizes and there is no cropping box provided.')
 
-
     for i in range(0, res_x):
         for j in range(0, res_y):
             [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
@@ -117,6 +117,9 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
 
     mse /= res_x * res_y * 3
     return mse
+
+
+
 
 
 def compare_imgs(img1, img2, max_col=255, start1=(0, 0),

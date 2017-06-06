@@ -199,9 +199,9 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
             start = get_random_starting_corner_of_the_box(merged_img, (149, 201))
 
 
-    def get_images(self):
+    def get_images(self, folder='sample_img_150x200'):
         test_path = os.getcwd()
-        folder_path = os.path.join(test_path, 'sample_img_150x200')
+        folder_path = os.path.join(test_path, folder)
 
         merged_img =  PILImgRepr()
         path_to_merged_img = os.path.join(folder_path + "/MergedResult", 'merged.png')
@@ -244,49 +244,66 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         assert calculate_sub_img_mse(merged_img, [merged_img], rnd_start, box) == [0]
         assert calculate_sub_img_mse(merged_img, images, rnd_start, box) == [4535, 4767, 4485, 4584, 4730, 4476]
 
-        # MSE_against_result = list()
-        # for img in images:
-        #     mse = calculate_mse(img,merged_img)
-        #     MSE_against_result.append(mse)
-        #
-        # N = len(images)
-        # MSE_matrix = [[0 for x in range(N)] for y in range(N)]
-        #
-        #
-        # for i in range(N):
-        #     for j in range(i+1,N):
-        #         MSE_matrix[i][j]= calculate_mse(images[i],images[j])
-        #
-        # print MSE_matrix
 
 
 
-    def test_find_malicious_image(self):
+    def test_ssim_metrics(self):
+        test_path = os.getcwd()
+        folder_path = os.path.join(test_path, 'ssim_tests')
+
+        base_img_name = '150x200.png'
+
+        base_img =  PILImgRepr()
+        path_to_base_img = os.path.join(folder_path, base_img_name)
+        base_img.load_from_file(path_to_base_img)
+        base_img = base_img.to_pil()
+
+        images = list()
+        for file_name in os.listdir(folder_path):
+            if file_name.endswith(".png") and base_img_name not in file_name:
+                p = PILImgRepr()
+                p.load_from_file(os.path.join(folder_path, file_name))
+                p = p.to_pil()
+
+                images.append(p)
+
+
+        ssim_against_base_img = []
+        from ssim import compute_ssim
+
+        for img in images:
+            result = compute_ssim(base_img, img)
+            ssim_against_base_img.append(result)
+
+        # to run from console: go to the folder with images and type:
+        # $ pyssim base_img_name.png '*.png'
+        # !!! WARNING !!! PILImgRepr().load_from_file() runs self.img = self.img.convert('RGB') which may change the result!!!
+        # you can always check the file's color map by typing:
+        # $ file myImage.png
+        # myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
+
+        assert ssim_against_base_img == [0.11842130180584261, 0.70054366032698712, 0.68625917049235718, 0.15288382973924206, 0.00065590280721773903, 0.11439479700895952, 0.11452445265962116, 0.11572090880817917, 0.70266996576917806, 0.28458237775124801, 0.11541546434045616, 0.11492945303331591, 0.68830479820048085, 0.22511529949333181]
+
+
+
+    def test_mse_psnr_ssim_image(self):
         merged_img, images = self.get_images()
         malicious_blank_img, malicious_kitty_img = self.get_malicious_images()
-
 
         images.append(malicious_blank_img)
         images.append(malicious_kitty_img)
 
         box = (100,100)
         import random
-        #random.seed(0)
+        random.seed(0)
         rnd_start = get_random_starting_corner_of_the_box(merged_img, box=box)
-
 
         mse_against_base_img, psnr_against_base_img, ssim_against_base_img = \
             calculate_mse_psnr_ssim_metrics(merged_img, images, rnd_start, box)
 
-        base_img = images.pop(0)
-        mse_against_base_img2, psnr_against_base_img2, ssim_against_base_img2 = \
-            calculate_mse_psnr_ssim_metrics(base_img, images, rnd_start, box)
-
-
-
-        assert False
-
-
+        assert mse_against_base_img == [4535, 4767, 4485, 4584, 4730, 4476, 23404, 9705]
+        assert psnr_against_base_img == [11.565030694717962, 11.348352089408678, 11.613179134877996, 11.518357519085768, 11.382192201300988, 11.621902830115978, 4.437902714292292, 8.260848211435288]
+        assert ssim_against_base_img == [0.32060261517385014, 0.30832337280486394, 0.31882716318497456, 0.31266586499660071, 0.31434149187356769, 0.30621505327378207, 0.10074719565491498, 0.048281300251529345]
 
 
     def test_compare_imgs(self):

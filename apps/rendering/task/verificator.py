@@ -46,17 +46,14 @@ class RenderingVerificator(CoreVerificator):
 
         file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
         if file_for_adv_ver:
-            if not self.make_advance_verification(file_for_adv_ver,
-                                                  subtask_info, subtask_id,
-                                                  task):
+            if not self.make_advance_verification(file_for_adv_ver, subtask_info, subtask_id, task):
                 return False
             else:
                 self.verified_clients.append(subtask_info['node_id'])
 
         return True
 
-    def make_advance_verification(self, img_file, subtask_info, subtask_id,
-                                  task):
+    def make_advance_verification(self, img_file, subtask_info, subtask_id, task):
         start_box = self._get_box_start(*self._get_part_img_size(subtask_info))
         logger.debug('testBox: {}'.format(start_box))
         cmp_file, cmp_start_box = self._get_cmp_file(img_file, start_box,
