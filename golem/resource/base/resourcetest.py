@@ -44,11 +44,12 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
     def setUp(self):
         TempDirFixture.setUp(self)
+        LogTestCase.setUp(self)
 
         self.task_id = str(uuid.uuid4())
 
-        self.datadir_1 = os.path.join(self.path, 'node_1')
-        self.datadir_2 = os.path.join(self.path, 'node_2')
+        self.datadir_1 = os.path.join(self.tempdir, 'node_1')
+        self.datadir_2 = os.path.join(self.tempdir, 'node_2')
 
         self.dir_manager_1 = DirManager(self.datadir_1)
         self.dir_manager_2 = DirManager(self.datadir_2)
@@ -66,7 +67,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
                                connect_to_known_hosts=False,
                                use_docker_machine_manager=False,
                                use_monitor=False)
+
         self.client_1.start = self.client_2.start = Mock()
+        self.client_1.start_network = self.client_2.start_network = Mock()
 
         self.resource_server_1 = BaseResourceServer(self.resource_manager_1,
                                                     self.dir_manager_1,
@@ -74,21 +77,17 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.resource_server_2 = BaseResourceServer(self.resource_manager_2,
                                                     self.dir_manager_2,
                                                     Mock(), self.client_2)
+
         self.resource_server_1.client.resource_server = self.resource_server_1
         self.resource_server_2.client.resource_server = self.resource_server_2
 
-        task_server_1 = TaskServer.__new__(TaskServer, Mock(), Mock(),
-                                           Mock(), self.client_1)
-        task_server_2 = TaskServer.__new__(TaskServer, Mock(), Mock(),
-                                           Mock(), self.client_2)
-        task_server_1.client = self.client_1
-        task_server_2.client = self.client_2
-        task_server_1.network = None
-        task_server_2.network = None
-        task_server_1.task_sessions = {}
-        task_server_2.task_sessions = {}
-        task_server_1.keys_auth = self.client_1.keys_auth
-        task_server_2.keys_auth = self.client_2.keys_auth
+        task_server_1 = TaskServer(Mock(), Mock(),
+                                   self.client_1.keys_auth, self.client_1,
+                                   use_docker_machine_manager=False)
+        task_server_2 = TaskServer(Mock(), Mock(),
+                                   self.client_2.keys_auth, self.client_2,
+                                   use_docker_machine_manager=False)
+
         task_server_1.sync_network = task_server_2.sync_network = Mock()
         task_server_1.start_accepting = task_server_2.start_accepting = Mock()
         task_server_1.task_computer = task_server_2.task_computer = Mock()
@@ -118,6 +117,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
     def tearDown(self):
         self.client_1.quit()
         self.client_2.quit()
+        LogTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
 
     def test(self):

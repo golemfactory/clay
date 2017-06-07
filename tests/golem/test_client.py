@@ -9,6 +9,7 @@ from twisted.internet.defer import Deferred
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, log
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus
@@ -19,7 +20,6 @@ from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -273,6 +273,10 @@ class TestClient(TestWithDatabase):
 
         # Test calls with p2pservice
         c.p2pservice = Mock()
+        c.p2pservice.peers = {
+            str(uuid.uuid4()): Mock()
+        }
+
         c._Client__do_work()
 
         assert not c.p2pservice.ping_peers.called
@@ -315,7 +319,10 @@ class TestClient(TestWithDatabase):
             return d
 
         c.task_server = Mock()
-        c.task_server.task_sessions = {}
+        c.task_server.task_sessions = {
+            str(uuid.uuid4()): Mock()
+        }
+
         c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
         c.task_server.task_computer.current_computations = []
         c.task_server.task_computer.stats = dict()
@@ -375,7 +382,8 @@ class TestClient(TestWithDatabase):
 
     def test_activate_hw_preset(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
-                             connect_to_known_hosts=False, use_docker_machine_manager=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
                              use_monitor=False)
 
         config = self.client.config_desc
@@ -412,7 +420,31 @@ class TestClient(TestWithDatabase):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.client.P2PService.connect_to_network')
+    def test_start_stop(self, connect_to_network, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
 
+        deferred = Deferred()
+        connect_to_network.side_effect = lambda *_: deferred.callback(True)
+
+        self.client.start()
+        sync_wait(deferred)
+
+        p2p_disc = self.client.p2pservice.disconnect
+        task_disc = self.client.task_server.disconnect
+
+        self.client.p2pservice.disconnect = Mock()
+        self.client.p2pservice.disconnect.side_effect = p2p_disc
+        self.client.task_server.disconnect = Mock()
+        self.client.task_server.disconnect.side_effect = task_disc
+
+        self.client.stop()
+
+        assert self.client.p2pservice.disconnect.called
+        assert self.client.task_server.disconnect.called
 
 
 @patch('signal.signal')
@@ -429,9 +461,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                         use_monitor=False)
 
         client.sync = Mock()
+        client.keys_auth = Mock()
+        client.keys_auth.key_id = str(uuid.uuid4())
         client.p2pservice = Mock()
         client.p2pservice.peers = {}
-        client.task_server = Mock()
+        client.task_server = TaskServer(Node(), ClientConfigDescriptor(),
+                                        Mock(), client,
+                                        use_docker_machine_manager=False)
         client.monitor = Mock()
 
         self.client = client
@@ -441,6 +477,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_node(self, *_):
         c = self.client
+        c.keys_auth = EllipticalKeysAuth(self.path)
+
         self.assertIsInstance(c.get_node(), dict)
         self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
@@ -458,23 +496,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_directories(self, *_):
         c = self.client
 
-        self.assertIsInstance(c.get_datadir(), unicode)
-        self.assertIsInstance(c.get_dir_manager(), Mock)
-
-        c.task_server = TaskServer.__new__(TaskServer)
-        c.task_server.network = None
-        c.task_server.task_sessions = {}
-        c.task_server.client = self.client
-        c.task_server.cur_port = None
-        c.task_server.task_manager = TaskManager.__new__(TaskManager)
-        c.task_server.task_manager.root_path = self.path
-        c.task_server.task_computer = TaskComputer.__new__(TaskComputer)
-        c.task_server.task_computer.dir_manager = DirManager(self.tempdir)
-        c.task_server.task_computer.current_computations = []
-
         c.resource_server = ResourceServer.__new__(ResourceServer)
         c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
 
+        self.assertIsInstance(c.get_datadir(), unicode)
         self.assertIsInstance(c.get_dir_manager(), DirManager)
 
         res_dirs = c.get_res_dirs()
@@ -497,18 +522,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_enqueue_new_task(self, *_):
         c = self.client
         c.resource_server = Mock()
+        c.task_server.task_manager.add_new_task = Mock()
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-
-        c.task_server = TaskServer.__new__(TaskServer)
-        c.task_server.network = None
-        c.task_server.task_sessions = {}
-        c.task_server.client = c
-        c.task_server.cur_port = 12345
-        c.task_server.task_computer = Mock()
-        c.task_server.task_manager = TaskManager.__new__(TaskManager)
-        c.task_server.task_manager.add_new_task = Mock()
-        c.task_server.task_manager.root_path = self.path
 
         task = Mock()
         task.header.max_price = 1 * 10 ** 18
@@ -516,7 +532,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.enqueue_new_task(task)
         task.get_resources.assert_called_with(None, resource_types["hashes"])
-        c.resource_server.resource_manager.build_client_options.assert_called_with(c.keys_auth.key_id)
+
+        c.resource_server.resource_manager.build_client_options \
+            .assert_called_with(c.keys_auth.key_id)
+
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.add_new_task.called
 
@@ -556,17 +575,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server = Mock()
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
-
-        c.task_server = TaskServer.__new__(TaskServer)
-        c.task_server.network = None
-        c.task_server.cur_port = None
-        c.task_server.task_sessions = {}
-        c.task_server.client = c
-        c.task_server.task_computer = Mock()
-        c.task_server.task_manager = TaskManager('node_name', Mock(),
-                                                 c.keys_auth)
         c.task_server.task_manager.add_new_task = Mock()
-        c.task_server.task_manager.root_path = self.path
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
@@ -615,7 +624,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         from apps.lux.luxenvironment import LuxRenderEnvironment
 
         task_computer = self.client.task_server.task_computer
+        task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_lux_benchmark = Mock()
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
@@ -712,6 +723,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_task_preview(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
+        c.task_server.task_manager.tasks[task_id] = Mock()
+        c.task_server.task_manager.get_task_preview = Mock()
+
         c.get_task_preview(task_id)
         c.task_server.task_manager.get_task_preview.assert_called_with(
             task_id, single=False)
@@ -719,12 +733,23 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
+        c.task_server.task_manager.tasks[task_id] = Mock()
+        c.task_server.task_manager.get_subtasks_borders = Mock()
+
         c.get_subtasks_borders(task_id)
         c.task_server.task_manager.get_subtasks_borders.assert_called_with(
             task_id)
 
     def test_connection_status(self, *_):
         c = self.client
+
+        # not connected
+        self.assertTrue(c.connection_status()
+                        .startswith(u"Application not listening"))
+
+        # status without peers
+        c.p2pservice.cur_port = 12345
+        c.task_server.cur_port = 12346
 
         # status without peers
         self.assertTrue(c.connection_status().startswith(u"Not connected"))

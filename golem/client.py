@@ -223,6 +223,7 @@ class Client(HardwarePresetsMixin):
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
             self.stop_monitor()
+            self.monitor = None
 
     def start_network(self):
         log.info("Starting network ...")
