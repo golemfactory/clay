@@ -10,7 +10,8 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory, Ses
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
 from golem.tools.testwithreactor import TestWithReactor
-
+from golem.network.transport.message import init_messages
+init_messages()
 
 class ASession(object):
     def __init__(self, conn):

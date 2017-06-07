@@ -25,7 +25,7 @@ from golem.node import OptNode
 @click.option('--rpc-address', '-r', multiple=False, callback=OptNode.parse_rpc_address,
               help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+              help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or <node_id>@<ipv6_addr>:<port>")
 @click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
               callback=OptNode.parse_task_file,
               help="Request task from file")
@@ -81,9 +81,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
+        node.connect_with_peers(peer)
         node.initialize()
 
-        node.connect_with_peers(peer)
         node.add_tasks(task)
         node.run(use_rpc=True)
 
