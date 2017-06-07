@@ -5,10 +5,10 @@ import uuid
 
 from golem.core.fileshelper import common_dir
 from golem.core.keysauth import EllipticalKeysAuth
+from golem.resource.base import resourcesmanager
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.base.resourcesmanager import TestResourceManager
 from golem.resource.dirmanager import DirManager
-from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools import testwithreactor
 
 node_name = 'test_suite'
 
@@ -36,11 +36,10 @@ class MockConfig:
         self.root_path = root_path
 
 
-class TestResourceServer(TestDirFixtureWithReactor):
+class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def setUp(self):
-
-        TestDirFixtureWithReactor.setUp(self)
+        super(TestResourceServer, self).setUp()
 
         self.task_id = str(uuid.uuid4())
 
@@ -71,32 +70,35 @@ class TestResourceServer(TestDirFixtureWithReactor):
             os.remove(test_dir_file_copy)
 
         shutil.copy(test_dir_file, test_dir_file_copy)
+        self.resource_manager = resourcesmanager.TestResourceManager(self.dir_manager)
+        self.keys_auth = EllipticalKeysAuth(self.path)
+        self.client = MockClient()
+        self.resource_server = BaseResourceServer(
+            self.resource_manager,
+            self.dir_manager,
+            self.keys_auth,
+            self.client
+        )
 
     def testStartAccepting(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
-        rs.start_accepting()
+        self.resource_server.start_accepting()
 
     def testGetDistributedResourceRoot(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
         resource_dir = self.dir_manager.get_node_dir()
 
-        assert rs.get_distributed_resource_root() == resource_dir
+        self.assertEquals(
+            self.resource_server.get_distributed_resource_root(),
+            resource_dir
+        )
 
     def testDecrypt(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
 
         to_encrypt = "test string to enc"
-        encrypted = rs.encrypt(to_encrypt, keys_auth.get_public_key())
-        decrypted = rs.decrypt(encrypted)
+        encrypted = self.resource_server.encrypt(
+            to_encrypt,
+            self.keys_auth.get_public_key()
+        )
+        decrypted = self.resource_server.decrypt(encrypted)
 
         self.assertEqual(decrypted, to_encrypt)
 
@@ -111,22 +113,17 @@ class TestResourceServer(TestDirFixtureWithReactor):
         return existing_paths
 
     def _add_task(self):
-
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
         new_config_desc = MockConfig(self.path, node_name)
-        dir_manager = DirManager(new_config_desc.root_path)
 
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                dir_manager, keys_auth, client)
-        rm = rs.resource_manager
+        rs = self.resource_server
+        rm = self.resource_server.resource_manager
         rm.storage.clear_cache()
 
         existing_paths = self._resources()
-        return rm, rs, rs.add_task(existing_paths, self.task_id)
+        return rm, rs.add_task(existing_paths, self.task_id)
 
     def testAddTask(self):
-        rm, rs, deferred = self._add_task()
+        rm, deferred = self._add_task()
 
         def test(*_):
             resources = rm.storage.get_resources(self.task_id)
@@ -146,25 +143,22 @@ class TestResourceServer(TestDirFixtureWithReactor):
             time.sleep(0.1)
 
     def testChangeResourceDir(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
 
-        rm = TestResourceManager(self.dir_manager)
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
+        self.resource_manager.add_files(
+            self._resources(),
+            self.task_id,
+            absolute_path=True
+        )
 
-        rm.add_files(self._resources(), self.task_id,
-                     absolute_path=True)
-
-        resources = rm.storage.get_resources(self.task_id)
+        resources = self.resource_manager.storage.get_resources(self.task_id)
 
         assert resources
 
         new_path = self.path + '_' + str(uuid.uuid4())
 
         new_config_desc = MockConfig(new_path, node_name + "-new")
-        rs.change_resource_dir(new_config_desc)
-        new_resources = rm.storage.get_resources(self.task_id)
+        self.resource_server.change_resource_dir(new_config_desc)
+        new_resources = self.resource_manager.storage.get_resources(self.task_id)
 
         assert len(resources) == len(new_resources)
 
@@ -175,44 +169,39 @@ class TestResourceServer(TestDirFixtureWithReactor):
             shutil.rmtree(new_path)
 
     def testRemoveTask(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
 
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
-        rm = rs.resource_manager
+        self.resource_manager.add_files(
+            self._resources(),
+            self.task_id,
+            absolute_path=True
+        )
 
-        rm.add_files(self._resources(), self.task_id,
-                     absolute_path=True)
+        assert self.resource_manager.storage.get_resources(self.task_id)
 
-        assert rm.storage.get_resources(self.task_id)
-
-        rs.remove_task(self.task_id)
-        resources = rm.storage.get_resources(self.task_id)
+        self.resource_server.remove_task(self.task_id)
+        resources = self.resource_manager.storage.get_resources(self.task_id)
 
         assert not resources
 
     def testGetResources(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        client = MockClient()
 
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, client)
-
-        rm = rs.resource_manager
-        rm.storage.clear_cache()
-        rm.add_files(self.target_resources, self.task_id)
+        self.resource_manager.storage.clear_cache()
+        self.resource_manager.add_files(self.target_resources, self.task_id)
 
         common_path = common_dir(self.target_resources)
-        resources = rm.storage.get_resources(self.task_id)
+        resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == len(self.target_resources)
 
-        assert len(rs.pending_resources) == 0
-        rs.download_resources(resources, self.task_id)
-        assert len(rs.pending_resources[self.task_id]) == len(resources)
+        assert len(self.resource_server.pending_resources) == 0
+        self.resource_server.download_resources(resources, self.task_id)
+        assert len(self.resource_server.pending_resources[self.task_id]) == len(resources)  # noqa
 
-        rs_aux = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                    self.dir_manager_aux, keys_auth, client)
+        rs_aux = BaseResourceServer(
+            resourcesmanager.TestResourceManager(self.dir_manager),
+            self.dir_manager_aux,
+            self.keys_auth,
+            self.client
+        )
 
         relative_resources = []
         for resource in resources:
@@ -230,32 +219,24 @@ class TestResourceServer(TestDirFixtureWithReactor):
         for entry in relative_resources:
             assert os.path.exists(entry[0])
 
-        assert client.downloaded
+        assert self.client.downloaded
 
     def testVerifySig(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, MockClient())
-
         test_str = "A test string to sign"
-        sig = rs.sign(test_str)
-        self.assertTrue(rs.verify_sig(sig, test_str, keys_auth.get_public_key()))
+        sig = self.resource_server.sign(test_str)
+        self.assertTrue(self.resource_server.verify_sig(sig, test_str, self.keys_auth.get_public_key()))
 
     def testAddFilesToGet(self):
-        keys_auth = EllipticalKeysAuth(self.path)
-        rs = BaseResourceServer(TestResourceManager(self.dir_manager),
-                                self.dir_manager, keys_auth, MockClient())
-
         test_files = [
             ['file1.txt', '1'],
             [os.path.join('tmp', 'file2.bin'), '2']
         ]
 
-        assert not rs.pending_resources
-        rs.download_resources(test_files, self.task_id)
-        assert len(rs.pending_resources[self.task_id]) == len(test_files)
+        assert not self.resource_server.pending_resources
+        self.resource_server.download_resources(test_files, self.task_id)
+        assert len(self.resource_server.pending_resources[self.task_id]) == len(test_files)
 
-        return rs, test_files
+        return self.resource_server, test_files
 
     def testDownloadSuccess(self):
         rs, file_names = self.testAddFilesToGet()
