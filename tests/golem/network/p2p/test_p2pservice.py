@@ -399,3 +399,10 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         ccd.node_name = "test sending hello on name change"
         self.service.change_config(ccd)
         assert peer.hello_called # positive test
+
+    def test_disconnect(self):
+        self.service.peers = {
+            'peer_id': Mock()
+        }
+        self.service.disconnect()
+        assert self.service.peers['peer_id'].dropped.called

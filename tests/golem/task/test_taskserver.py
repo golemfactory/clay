@@ -15,6 +15,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import sync_wait
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
+from golem.network.transport.tcpnetwork import TCPNetwork
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -682,6 +683,13 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
         ts.accept_result("xxyyzz", account_info)
         self.assertEqual(ts.client.transaction_system.add_payment_info.call_count, 0)
+
+    def test_disconnect(self):
+        task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
+                                 self.client, use_docker_machine_manager=False)
+        task_server.task_sessions = {'task_id': Mock()}
+        task_server.disconnect()
+        assert task_server.task_sessions['task_id'].dropped.called
 
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
