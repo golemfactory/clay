@@ -522,6 +522,12 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase):
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
+        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        method = ts._TaskServer__connection_for_task_request_final_failure
+        method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
+               1024, 3)
+        self.assertTrue(ts.task_computer.task_request_rejected.called)
+
     def test_task_result_connection_failure(self):
         """Tests what happens after connection failure when sending task_result"""
         ccd = self._get_config_desc()

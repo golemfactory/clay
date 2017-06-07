@@ -729,10 +729,14 @@ class TaskServer(PendingConnectionsServer):
         session.open_session = open_session
         open_session.open_session = session
 
-    def __connection_for_task_request_final_failure(self, conn_id, node_name, key_id, task_id, estimated_performance,
-                                                    price, max_resource_size, max_memory_size, num_cores, *args):
-        logger.warning("Cannot connect to task {} owner".format(task_id))
-        logger.warning("Removing task {} from task list".format(task_id))
+    def __connection_for_task_request_final_failure(self, conn_id, node_name,
+                                                    key_id, task_id,
+                                                    estimated_performance,
+                                                    price, max_resource_size,
+                                                    max_memory_size, num_cores,
+                                                    *args):
+        logger.info("Cannot connect to task {} owner".format(task_id))
+        logger.info("Removing task {} from task list".format(task_id))
 
         self.task_computer.task_request_rejected(task_id, "Connection failed")
         self.task_keeper.request_failure(task_id)
@@ -740,22 +744,29 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_resource_request_final_failure(self, conn_id, key_id, subtask_id, resource_header):
-        logger.warning("Cannot connect to task {} owner".format(subtask_id))
-        logger.warning("Removing task {} from task list".format(subtask_id))
+    def __connection_for_resource_request_final_failure(self, conn_id, key_id,
+                                                        subtask_id,
+                                                        resource_header):
+        logger.info("Cannot connect to task {} owner".format(subtask_id))
+        logger.info("Removing task {} from task list".format(subtask_id))
 
-        self.task_computer.resource_request_rejected(subtask_id, "Connection failed")
+        self.task_computer.resource_request_rejected(subtask_id,
+                                                     "Connection failed")
         self.remove_task_header(subtask_id)
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_result_rejected_final_failure(self, conn_id, key_id, subtask_id):
-        logger.warning("Cannot connect to deliver information about rejected result for task {}".format(subtask_id))
+    def __connection_for_result_rejected_final_failure(self, conn_id, key_id,
+                                                       subtask_id):
+        logger.info("Cannot connect to deliver information about rejected "
+                    "result for task {}".format(subtask_id))
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_task_result_final_failure(self, conn_id, key_id, waiting_task_result):
-        logger.warning("Cannot connect to task {} owner".format(waiting_task_result.subtask_id))
+    def __connection_for_task_result_final_failure(self, conn_id, key_id,
+                                                   waiting_task_result):
+        logger.info("Cannot connect to task {} owner".format(
+            waiting_task_result.subtask_id))
 
         waiting_task_result.lastSendingTrial = time.time()
         waiting_task_result.delayTime = self.config_desc.max_results_sending_delay
@@ -763,8 +774,9 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_task_failure_final_failure(self, conn_id, key_id, subtask_id, err_msg):
-        logger.warning("Cannot connect to task {} owner".format(subtask_id))
+    def __connection_for_task_failure_final_failure(self, conn_id, key_id,
+                                                    subtask_id, err_msg):
+        logger.info("Cannot connect to task {} owner".format(subtask_id))
         self.task_computer.session_timeout()
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
