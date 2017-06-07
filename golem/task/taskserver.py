@@ -158,7 +158,8 @@ class TaskServer(PendingConnectionsServer):
         self.task_sessions_incoming.append(session)
 
     def disconnect(self):
-        for task_session in self.task_sessions.itervalues():
+        task_sessions = dict(self.task_sessions)
+        for task_session in task_sessions.itervalues():
             task_session.dropped()
 
     def get_tasks_headers(self):
