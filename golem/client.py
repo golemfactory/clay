@@ -317,7 +317,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service.start_looping_call()
 
     def stop_monitor(self):
-        self.monitor.join()
+        self.monitor.shut_down()
         self.diag_service.stop_looping_call()
 
     def connect(self, socket_address):
