@@ -250,7 +250,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param str key_id: peer id
         :param PeerSession peer: peer session with given peer
         """
-        logger.info(
+        logger.debug(
             "Adding peer %r, key id difficulty: %r",
             key_id,
             self.keys_auth.get_difficulty(peer.key_id)
@@ -284,7 +284,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         key_id = peer_info["node"].key
         if force or self.__is_new_peer(key_id):
-            logger.info(
+            logger.debug(
                 "add peer to incoming %r %r %r (%r)",
                 peer_info["node_name"],
                 peer_info["address"],
@@ -331,7 +331,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if peer:
             self.__send_degree()
         else:
-            logger.info("Can't remove peer {}, unknown peer".format(peer_id))
+            logger.debug("Can't remove peer {}, unknown peer".format(peer_id))
 
     def refresh_peer(self, peer):
         self.remove_peer(peer)
