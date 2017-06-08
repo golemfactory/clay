@@ -349,16 +349,15 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
 
-        def add_resources():
-            deferred = self.resource_server.add_task(files, task_id, options)
-            deferred.addCallbacks(lambda _: task_manager.add_new_task(task),
-                                  error)
+        def add_task(_):
+            request = AsyncRequest(task_manager.add_new_task, task)
+            async_run(request, None, error)
 
         def error(e):
             log.error("Task %s creation failed: %s", task_id, e)
 
-        # Add resources and the task asynchronously
-        async_run(AsyncRequest(add_resources), None, error)
+        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred.addCallbacks(add_task, error)
         return task
 
     def task_resource_send(self, task_id):
