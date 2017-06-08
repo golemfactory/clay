@@ -519,7 +519,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.enqueue_new_task(task)
         assert c.resource_server.add_task.called
-        assert c.task_server.task_manager.add_new_task.called
 
     def test_enqueue_new_task_dict(self, *_):
         t_dict = {

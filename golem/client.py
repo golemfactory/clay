@@ -334,7 +334,7 @@ class Client(HardwarePresetsMixin):
         self.nodes_manager_client = None
 
     def enqueue_new_task(self, task):
-        # FIXME: remove after the new interface has been integrated with
+        # FIXME: remove after the new interface has been integrated
         if isinstance(task, dict):
             task = self.task_server.task_manager.create_task(task)
         else:
@@ -349,9 +349,16 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
 
-        deferred = self.resource_server.add_task(files, task_id, options)
-        deferred.addCallback(lambda _: task_manager.add_new_task(task))
+        def success(_):
+            request = AsyncRequest(task_manager.add_new_task, task)
+            async_run(request, lambda _: log.info("Task %s created", task_id),
+                      error)
 
+        def error(e):
+            log.error("Task %s creation failed: %s", task_id, e)
+
+        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred.addCallbacks(success, error)
         return task
 
     def task_resource_send(self, task_id):

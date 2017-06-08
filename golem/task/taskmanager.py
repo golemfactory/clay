@@ -4,7 +4,6 @@ import time
 
 from pathlib import Path
 from pydispatch import dispatcher
-from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from apps.rendering.task.framerenderingtask import FrameRenderingTask
@@ -13,7 +12,6 @@ from golem.core.common import HandleKeyError, get_timestamp_utc, \
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.resource.client import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
@@ -102,10 +100,6 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
-    def get_external_address(self):
-        request = AsyncRequest(get_external_address, self.listen_port)
-        return async_run(request)
-
     def create_task(self, dictionary, minimal=False):
         # FIXME: remove after the new interface has been integrated with
         if not isinstance(dictionary, dict):
@@ -129,17 +123,21 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[definition.task_type.lower()]
         return task_type.task_builder_type.build_dictionary(definition)
 
-    @inlineCallbacks
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task has been already added")
         if not self.key_id:
             raise ValueError("'key_id' is not set")
-        if not SocketAddress.is_proper_address(self.listen_address, self.listen_port):
+        if not SocketAddress.is_proper_address(self.listen_address,
+                                               self.listen_port):
             raise IOError("Incorrect socket address")
 
-        prev_pub_addr, prev_pub_port, prev_nat_type = self.node.pub_addr, self.node.pub_port, self.node.nat_type
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = yield self.get_external_address()
+        prev_pub_addr = self.node.pub_addr
+        prev_pub_port = self.node.pub_port
+        prev_nat_type = self.node.nat_type
+
+        self.node.pub_addr, self.node.pub_port, self.node.nat_type = \
+            get_external_address(self.listen_port)
 
         if prev_pub_addr != self.node.pub_addr or \
            prev_pub_port != self.node.pub_port or \
@@ -153,7 +151,8 @@ class TaskManager(TaskEventListener):
         task.header.signature = self.sign_task_header(task.header)
 
         self.dir_manager.clear_temporary(task.header.task_id)
-        self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
+        self.dir_manager.get_task_temporary_dir(task.header.task_id,
+                                                create=True)
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
