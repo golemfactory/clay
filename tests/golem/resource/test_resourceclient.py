@@ -8,8 +8,9 @@ from golem.tools.testwithreactor import TestWithReactor
 from mock import Mock, patch
 from twisted.internet.defer import Deferred
 
-from golem.resource.client import ClientHandler, ClientCommands, ClientError, ClientOptions, ClientConfig, AsyncRequest, \
-    async_run
+from golem.resource.client import ClientHandler, ClientCommands, ClientError, \
+    ClientOptions, ClientConfig
+from golem.core.async import AsyncRequest, async_run
 
 
 class MockClientHandler(ClientHandler):

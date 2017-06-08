@@ -6,17 +6,19 @@ import shutil
 import socket
 import types
 import uuid
-from enum import Enum
 from threading import Lock
 
 import base58
 import multihash
-
 import requests
 import twisted
-from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, ReadTimeoutError, \
+from enum import Enum
+from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
+    ReadTimeoutError, \
     ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
+
+from golem.core.async import AsyncRequest, async_run
 
 log = logging.getLogger(__name__)
 
@@ -216,33 +218,6 @@ class ClientHandler(IClientHandler):
         if exc_type is types.InstanceType:
             exc_type = exc.__class__
         return exc_type
-
-
-class AsyncRequest(object):
-
-    """ Deferred job descriptor """
-
-    def __init__(self, method, *args, **kwargs):
-        self.method = method
-        self.args = args or []
-        self.kwargs = kwargs or {}
-
-
-def default_errback(failure):
-    log.error('Caught async exception:\n%s', failure.getTraceback())
-
-
-def async_run(deferred_call, success=None, error=None):
-    """Execute a deferred job in a separate thread (Twisted)"""
-    deferred = threads.deferToThread(deferred_call.method,
-                                     *deferred_call.args,
-                                     **deferred_call.kwargs)
-    if error is None:
-        error = default_errback
-    if success:
-        deferred.addCallback(success)
-    deferred.addErrback(error)
-    return deferred
 
 
 class TestClient(IClient):
