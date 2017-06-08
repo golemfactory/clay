@@ -58,15 +58,19 @@ class Network(object):
         values = []
 
         for peer in peers:
-            #ip, port = str(peer['ip_port']).split(',')
             ip = peer['ip_port'][0]
             port = str(peer['ip_port'][1])
             values.append([
                 unicode(ip),
                 port,
-                encode_hex(peer['remote_pubkey'])
+                Network.__key_id(encode_hex(peer['remote_pubkey']), full)
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,
                                         sort=sort)
 
+    @staticmethod
+    def __key_id(key_id, full=False):
+        if full:
+            return key_id
+        return key_id[:16] + "..." + key_id[-16:]
