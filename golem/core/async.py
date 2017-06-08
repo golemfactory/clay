@@ -38,7 +38,7 @@ def async_run(async_request, success=None, error=None):
         else:
             deferred.callback(result)
 
-    _thread_pool.apply_async(wrapper)
+    _thread_pool.spawn(wrapper)
     return deferred
 
 
