@@ -1,26 +1,23 @@
 from __future__ import division
-from copy import deepcopy
+
 import logging
 import math
 import os
+from copy import deepcopy
 
-from pathlib import Path
 from PIL import Image, ImageChops
-
-
-from golem.core.common import get_golem_path, timeout_to_deadline
-
-from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.core.fileshelper import format_cmd_line_path
-from golem.docker.job import DockerJob
-from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
+from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
-
+from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.fileshelper import format_cmd_line_path
+from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.job import DockerJob
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
@@ -337,9 +334,12 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'format'] = definition.output_format
-        dictionary[u'options'][u'resolution'] = definition.resolution
-        dictionary[u'options'][u'compositing'] = definition.options.compositing
+        options = dictionary[u'options']
+        options[u'format'] = definition.output_format
+        options[u'resolution'] = definition.resolution
+
+        if hasattr(definition.options, 'compositing'):
+            options[u'compositing'] = definition.options.compositing
 
         return dictionary
 
@@ -361,8 +361,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
-        definition.options.compositing = options['compositing']
         definition.resolution = [int(val) for val in options['resolution']]
+
+        if 'compositing' in options:
+            definition.options.compositing = options['compositing']
 
         return definition
 
