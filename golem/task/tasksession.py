@@ -137,14 +137,14 @@ class TaskSession(MiddlemanSafeSession):
         try:
             data = self.task_server.decrypt(data)
         except AssertionError:
-            logger.info(
+            logger.debug(
                 "Failed to decrypt message from %r:%r, "
                 "maybe it's not encrypted?",
                 self.address,
                 self.port
             )
         except Exception as err:
-            logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug("Fail to decrypt message {}".format(err))
             logger.debug('Failing msg: %r', data)
             self.dropped()
             return None

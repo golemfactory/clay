@@ -102,6 +102,7 @@ class TaskComputer(object):
         self.compute_tasks = task_server.config_desc.accept_tasks
 
     def task_given(self, ctd):
+        logger.info('Subtask given subtask_id={}'.format(ctd.subtask_id))
         if ctd.subtask_id not in self.assigned_subtasks:
             self.wait(ttl=self.waiting_for_task_timeout)
             self.assigned_subtasks[ctd.subtask_id] = ctd
@@ -115,6 +116,7 @@ class TaskComputer(object):
     def resource_given(self, task_id):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
+            logger.info('Resource given subtask_id={}'.format(subtask_id))
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
                 timeout = deadline_to_timeout(subtask.deadline)
@@ -178,6 +180,7 @@ class TaskComputer(object):
 
         time_ = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
+        logger.info("Subtask {} has completed".format(subtask_id))
         try:
             subtask = self.assigned_subtasks.pop(subtask_id)
         except KeyError:
@@ -194,7 +197,7 @@ class TaskComputer(object):
                                               subtask.task_owner, self.node_name)
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=time_)
         elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
-            logger.info("Task %r computed", subtask_id)
+            logger.info("Subtask {} computed".format(subtask_id))
             self.stats.increase_stat('computed_tasks')
             self.task_server.send_results(subtask_id, subtask.task_id, task_thread.result, time_,
                                           subtask.return_address, subtask.return_port, subtask.key_id,

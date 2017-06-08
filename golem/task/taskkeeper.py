@@ -107,6 +107,7 @@ class CompTaskKeeper(object):
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
+        logger.info('Got task request, task_id={}'.format(task_id))
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
@@ -132,6 +133,7 @@ class CompTaskKeeper(object):
         task.requests -= 1
         task.subtasks[comp_task_def.subtask_id] = comp_task_def
         self.subtask_to_task[comp_task_def.subtask_id] = comp_task_def.task_id
+        logger.info('Received subtask subtask_id={}'.format(comp_task_def.subtask_id))
         self.dump()
         return True
 

@@ -788,7 +788,7 @@ class TaskServer(PendingConnectionsServer):
                                                     price, max_resource_size,
                                                     max_memory_size, num_cores,
                                                     *args):
-        logger.info("Cannot connect to task {} owner".format(task_id))
+        logger.info("Cannot connect to task {} owner {}".format(task_id, node_name))
         logger.info("Removing task {} from task list".format(task_id))
 
         self.task_computer.task_request_rejected(task_id, "Connection failed")
@@ -800,7 +800,7 @@ class TaskServer(PendingConnectionsServer):
     def __connection_for_resource_request_final_failure(self, conn_id, key_id,
                                                         subtask_id,
                                                         resource_header):
-        logger.info("Cannot connect to task {} owner".format(subtask_id))
+        logger.info("Cannot connect to subtask {} owner".format(subtask_id))
         logger.info("Removing task {} from task list".format(subtask_id))
 
         self.task_computer.resource_request_rejected(subtask_id,
