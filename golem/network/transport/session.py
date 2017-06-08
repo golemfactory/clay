@@ -154,8 +154,7 @@ class BasicSession(FileSession):
         return True
 
     def _react_to_disconnect(self, msg):
-        logger.info("Disconnect reason: {}".format(msg.reason))
-        logger.info("Closing {} : {}".format(self.address, self.port))
+        logger.info("Closing {} : {}. Reason: {}".format(self.address, self.port, msg.reason))
         self.dropped()
 
 
@@ -202,8 +201,8 @@ class BasicSafeSession(BasicSession, SafeSession):
         :param boolean send_unverified: should message be sent even if the connection hasn't been verified yet?
         """
         if not self._can_send(message, send_unverified):
-            logger.info("Connection hasn't been verified yet, not sending message {} to {} {}"
-                        .format(message, self.address, self.port))
+            logger.debug("Connection hasn't been verified yet, not sending message {} to {} {}"
+                         .format(message, self.address, self.port))
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
                 self.disconnect(BasicSafeSession.DCRUnverified)

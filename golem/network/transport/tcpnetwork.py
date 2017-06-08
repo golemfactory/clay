@@ -285,7 +285,7 @@ class TCPNetwork(Network):
         for sa in addresses:
             if sa.address in self.host_addresses\
                     and sa.port in self.active_listeners:
-                logger.warning(
+                logger.debug(
                     'Can\'t connect with self: %r:%r',
                     sa.address,
                     sa.port
@@ -339,7 +339,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
-        logger.info("Connection failure. {}".format(err_desc))
+        logger.debug("Connection failure. {}".format(err_desc))
         TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
@@ -437,8 +437,8 @@ class BasicProtocol(SessionProtocol):
         :return bool: return True if message has been send, False if an error has
         """
         if not self.opened:
-            logger.error(msg)
-            logger.error("Send message failed - connection closed.")
+            logger.debug(msg)
+            logger.debug("Send message failed - connection closed.")
             return False
 
         msg_to_send = self._prepare_msg_to_send(msg)
@@ -478,7 +478,7 @@ class BasicProtocol(SessionProtocol):
             return None
 
         if not self.session:
-            logger.warning("No session argument in connection state")
+            logger.debug("No session argument in connection state")
             return None
 
         self._interpret(data)
@@ -512,8 +512,8 @@ class BasicProtocol(SessionProtocol):
             for m in mess:
                 self.session.interpret(m)
         elif data:
-            logger.info("Deserialization of messages from {}:{} failed, maybe it's still "
-                        "too short?".format(self.session.address, self.session.port))
+            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
+                         "too short?".format(self.session.address, self.session.port))
 
     def _data_to_messages(self):
         return Message.deserialize(self.db)
@@ -577,12 +577,12 @@ class SafeProtocol(ServerProtocol):
         for msg in self.db.get_len_prefixed_string():
             dec_msg = self.session.decrypt(msg)
             if not dec_msg:
-                logger.warning("Decryption of message failed")
+                logger.debug("Decryption of message failed")
                 break
 
             m = Message.deserialize_message(dec_msg)
             if not m:
-                logger.warning("Deserialization of message failed")
+                logger.debug("Deserialization of message failed")
                 break
 
             m.encrypted = dec_msg != msg
@@ -735,7 +735,7 @@ class FileProducer(object):
     def init_data(self):
         """  Open first file from list and read first chunk of data """
         if len(self.file_list) == 0:
-            logger.warning("Empty file list to send")
+            logger.debug("Empty file list to send")
             self.data = None
             return
         self.fh = open(self.file_list[-1], 'rb')

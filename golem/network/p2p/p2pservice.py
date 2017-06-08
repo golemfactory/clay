@@ -940,12 +940,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
 
-        logger.debug("Connection to peer established. {}: {}, conn_id {}"
-                     .format(ip_address, port, conn_id))
+        logger.info("Connection to peer established. {}: {}, conn_id {}"
+                    .format(ip_address, port, conn_id))
 
     @staticmethod
     def __connection_failure(conn_id=None):
-        logger.info("Connection to peer failure {}.".format(conn_id))
+        logger.debug("Connection to peer failure {}.".format(conn_id))
 
     @staticmethod
     def __connection_final_failure(conn_id=None):
@@ -996,7 +996,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 else:
                     port = node.p2p_prv_port
 
-                logger.info(
+                logger.debug(
                     "Connecting to peer %r:%r",
                     peer['address'],
                     port
