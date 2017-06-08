@@ -36,7 +36,7 @@ class TestBlenderDockerJob(TestDockerJob):
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
         shutil.copy(str(scene_file), self.resources_dir)
-        dest_scene_file = pathlib.Path(DockerJob.RESOURCES_DIR)
+        dest_scene_file = pathlib.PurePosixPath(DockerJob.RESOURCES_DIR)
         dest_scene_file /= scene_file.name
 
         params = {
