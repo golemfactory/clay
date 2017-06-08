@@ -164,7 +164,7 @@ class PeerSession(BasicSafeSession):
         try:
             msg = self.p2p_service.decrypt(data)
         except ECIESDecryptionError as err:
-            logger.info(
+            logger.debug(
                 "Failed to decrypt message from %r:%r,"
                 " maybe it's not encrypted? %r",
                 self.address,
@@ -179,7 +179,7 @@ class PeerSession(BasicSafeSession):
         """
         Send first hello message
         """
-        logger.info(
+        logger.debug(
             "Starting peer session %r:%r",
             self.address,
             self.port
@@ -345,7 +345,7 @@ class PeerSession(BasicSafeSession):
         difficulty = msg.difficulty
 
         if not self.verify(msg):
-            logger.warning(
+            logger.debug(
                 "Wrong signature for Hello msg from %r:%r",
                 self.address,
                 self.port
@@ -354,7 +354,7 @@ class PeerSession(BasicSafeSession):
             return
 
         if msg.proto_id != P2P_PROTOCOL_ID:
-            logger.info(
+            logger.debug(
                 "P2P protocol version mismatch %r vs %r (local)"
                 " for node %r:%r",
                 msg.proto_id,
@@ -391,7 +391,7 @@ class PeerSession(BasicSafeSession):
             if not next_hello and p != self and p.conn.opened:
                 # self.sendPing()
                 logger_msg = "PEER DUPLICATED: %r %r : %r AND %r : %r"
-                logger.warning(
+                logger.debug(
                     logger_msg,
                     p.node_name,
                     p.address,
