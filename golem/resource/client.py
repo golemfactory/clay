@@ -14,8 +14,7 @@ import requests
 import twisted
 from enum import Enum
 from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
-    ReadTimeoutError, \
-    ConnectTimeoutError, ConnectionError
+    ReadTimeoutError, ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
 
 from golem.core.async import AsyncRequest, async_run
