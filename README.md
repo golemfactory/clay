@@ -53,7 +53,7 @@ Golem communicates with external technologies some of them may be downloaded and
 
 Benchmarks:
 * General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop
-* Blender: [scene-Helicopter/BMW](https://www.blender.org/download/demo-files/)
+* Blender: [scene-BMW](https://www.blender.org/download/demo-files/)
 * LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche
 
 Icons:
