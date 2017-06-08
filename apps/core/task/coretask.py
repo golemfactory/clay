@@ -466,6 +466,7 @@ class CoreTaskBuilder(TaskBuilder):
             u'name': to_unicode(definition.task_name),
             u'timeout': to_unicode(task_timeout),
             u'subtask_timeout': to_unicode(subtask_timeout),
+            u'subtasks': definition.total_subtasks,
             u'bid': float(definition.max_price) / denoms.ether,
             u'resources': [to_unicode(r) for r in definition.resources],
             u'options': {
