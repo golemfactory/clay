@@ -26,6 +26,16 @@ from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
 
 
+def mock_async_run(req, success, error):
+    try:
+        result = req.method(*req.args, **req.kwargs)
+    except Exception as e:
+        error(e)
+    else:
+        if success:
+            success(result)
+
+
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/client.py', ]
 
@@ -488,6 +498,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             self.assertIsInstance(value, unicode)
             self.assertTrue(key in res_dirs)
 
+    @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         c = self.client
         c.resource_server = Mock()
@@ -520,6 +531,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         assert c.resource_server.add_task.called
 
+    @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task_dict(self, *_):
         t_dict = {
             'resources': [
