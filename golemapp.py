@@ -11,6 +11,7 @@ geventreactor.install()
 import click
 
 from golem.node import OptNode
+from golem.core.simpleenv import get_local_datadir
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -53,6 +54,9 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
+    if not datadir:
+        datadir = get_local_datadir('default')
+
     config = dict(datadir=datadir, transaction_system=payments)
     if rpc_address:
         config['rpc_address'] = rpc_address.address
@@ -67,7 +71,8 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from gui.startgui import start_gui, check_rpc_address
         address = '{}:{}'.format(rpc_address.address, rpc_address.port)
         start_gui(check_rpc_address(ctx=None, param=None,
-                                    address=address))
+                                    address=address),
+                  datadir)
     # Golem
     elif gui:
         delete_reactor()

@@ -10,7 +10,6 @@ from golem.rpc.session import object_method_map, Session, WebSocketAddress
 from ipaddress import AddressValueError
 from twisted.internet.defer import inlineCallbacks
 
-config_logging("_gui")
 logger = logging.getLogger("app")
 install_unhandled_error_logger()
 
@@ -72,7 +71,9 @@ def start_error(err):
     logger.error("GUI process error: {}".format(err))
 
 
-def start_gui(rpc_address, gui_app=None):
+def start_gui(rpc_address, datadir, gui_app=None):
+
+    config_logging(suffix="_gui", datadir=datadir)
 
     from golem.rpc.mapping.gui import GUI_EVENT_MAP
     from golem.rpc.session import Client

@@ -51,7 +51,7 @@ def start_client(start_ranking, datadir=None,
                  transaction_system=False, client=None,
                  reactor=None, **config_overrides):
 
-    config_logging("client", datadir=datadir)
+    config_logging(suffix="client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
 
