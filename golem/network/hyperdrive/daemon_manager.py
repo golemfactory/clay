@@ -29,6 +29,11 @@ class HyperdriveDaemonManager(object):
         self._dir = os.path.join(datadir, self._executable)
         self._command = [self._executable, '--db', self._dir]
 
+        logsdir = os.path.join(datadir, "logs")
+        if not os.path.exists(logsdir):
+            os.makedirs(logsdir)
+        self._logfilename = os.path.join(logsdir, "hyperg.log")
+
     def addresses(self):
         try:
             return HyperdriveClient(**self._config).addresses()
@@ -63,9 +68,11 @@ class HyperdriveDaemonManager(object):
             return self.ports(addresses)
 
         try:
+            logger.error("hyperg log file: {}".format(self._logfilename))
             if not os.path.exists(self._dir):
                 os.makedirs(self._dir)
-            process = subprocess.Popen(self._command)
+            with open(self._logfilename, 'a') as logfile:
+                process = subprocess.Popen(self._command, stdout=logfile)
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
                             "Make sure path is correct and check "
