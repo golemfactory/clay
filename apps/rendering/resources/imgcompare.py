@@ -93,7 +93,7 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
     :return: 
     """
     mse = 0
-    if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr): # todo GG why we check it again?
+    if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
         raise TypeError("img1 and img2 must be ImgRepr")
 
     if box is not None:
@@ -146,7 +146,7 @@ def compare_pil_imgs(file1, file2):
         return False
 
 
-def compare_exr_imgs(file1, file2): #  GG: same as compare_pil_imgs...
+def compare_exr_imgs(file1, file2):
     try:
         img1 = EXRImgRepr()
         img1.load_from_file(file1)
@@ -179,7 +179,7 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
             logger.error("Wrong box size for advanced verification " \
                          "{}".format(box_size))
 
-        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr): #  GG: why we need to check PILImgRepr?
+        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr): #
             return compare_imgs(img, cmp_img, start1=start_box,
                                 start2=cmp_start_box, box=box_size)
         else:

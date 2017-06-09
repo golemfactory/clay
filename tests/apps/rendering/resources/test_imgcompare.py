@@ -167,7 +167,7 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
 
 
 
-    def test_get_random_starting_corner_of_the_box(self):
+    def test_get_random_starting_corner_of_the_box(self): # GG todo posprzataj nie potrzebne unit testy
         test_path = os.getcwd()
         folder_path = os.path.join(test_path, 'sample_img_150x200')
 

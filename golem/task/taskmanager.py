@@ -145,7 +145,7 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
-
+        task.create_reference_data_for_task_validation()
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
@@ -156,10 +156,13 @@ class TaskManager(TaskEventListener):
 
         self.tasks_states[task.header.task_id] = ts
 
+
         if self.task_persistence:
             self.dump_task(task.header.task_id)
             logger.info("Task {} added".format(task.header.task_id))
             self.notice_task_updated(task.header.task_id)
+
+
 
     def dump_task(self, task_id):
         logger.debug('DUMP TASK')

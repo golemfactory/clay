@@ -39,6 +39,10 @@ def get_tmp_path(task_id, root_path):
     # TODO: Is node name still needed?
     return os.path.join(root_path, "task", task_id, "tmp")
 
+def get_ref_data_path(task_id, root_path, counter=None):
+    return os.path.join(root_path, "GGres", task_id, "".join(["reference_data", str(counter)]))
+    # GG clean up to return os.path.join(root_path, "res", task_id, "".join(["reference_data", str(counter)]))
+
 
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """

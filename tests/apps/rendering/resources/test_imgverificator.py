@@ -71,6 +71,16 @@ class TestImgVerificator(TempDirFixture, LogTestCase):
 
         pass
 
+    def test_get_random_crop_window(self):
+        import random
+        random.seed(0)  # GG todo remove
+
+
+        random_crop_window_for_verification = ImgVerificator().get_random_crop_window()
+
+
+        assert random_crop_window_for_verification == (0.7599796663725433, 0.7821589626462723, 0.6821589626462723, 0.7821589626462723)
+
 
     def test_is_valid_against_reference(self):
 

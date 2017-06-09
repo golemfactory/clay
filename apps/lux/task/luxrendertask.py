@@ -21,6 +21,7 @@ from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
+from apps.rendering.resources.imgverificator import ImgVerificator
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
 
@@ -137,6 +138,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.header.task_id,
             self.root_path
         )
+
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -155,6 +157,11 @@ class LuxTask(renderingtask.RenderingTask):
         self.num_add = 0
 
         self.preview_exr = None
+
+        import random
+        random.seed(0) # GG todo remove
+        self.random_crop_window_for_verification = ImgVerificator().get_random_crop_window()
+
 
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
@@ -226,6 +233,42 @@ class LuxTask(renderingtask.RenderingTask):
 
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
+
+    def query_extra_data_for_reference_task(self):
+
+        # GG: zaimplementuj obsluge scenariusza w ktorym pierwotna scena juz ma zadane crop_window
+        # GG: dodaj losowanie cropwindow
+
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=self.halttime,
+                                        haltspp=self.haltspp,
+                                        writeinterval=0.5,
+                                        crop=self.random_crop_window_for_verification, # [0, 1, 0, 1],
+                                        output_format="png")
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
+            "outfilebasename": "reference_task0",
+            "output_format": "png",
+            "scene_file_src": scene_src,
+            "scene_dir": scene_dir,
+        }
+
+        ctd = self._new_compute_task_def(
+            "ReferenceTask",
+            extra_data,
+            scene_dir,
+            0)
+
+        return ctd
+
 
     ###################
     # CoreTask methods #
@@ -423,6 +466,22 @@ class LuxTask(renderingtask.RenderingTask):
         img.close()
         scaled.close()
         img_current.close()
+
+    def create_reference_data_for_task_validation(self):
+        for i in range(0,2):
+            computer = LocalComputer(
+                self,
+                dirmanager.get_ref_data_path(self.header.task_id, self.root_path, i),
+                self.__final_img_ready,
+                self.__final_img_error,
+                self.query_extra_data_for_reference_task
+                )
+            computer.run()
+            computer.tt.join()
+
+    # GG: posprzataj zbedne resourcy po wyrenderowanjiu reference data
+
+
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(

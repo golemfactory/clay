@@ -79,14 +79,14 @@ class ImgVerificator:
         lower = int(res_y * crop_window[2])
         upper = int(res_y * crop_window[3])
 
-        cropped_img = img.to_pil().crop((left, lower, right, upper))  # this time (0,0) is bottom left ;p
+        cropped_img = img.to_pil().crop((left, lower, right, upper))  # in PIL's world (0,0) is bottom left ;p
         p = PILImgRepr()
         p.load_from_pil_object(cropped_img, img.get_name())
         return p
 
 
 
-    def get_random_crop_window(coverage = 0.1, window=(0,1,0,1)):
+    def get_random_crop_window(self, coverage = 0.1, window=(0,1,0,1)):
         """
         :param coverage: determines coverage ratio
         :param window: if the window is already set then make a subwindow from it

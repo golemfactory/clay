@@ -138,6 +138,14 @@ class RenderingTask(CoreTask):
     #########################
     # Specific task methods #
     #########################
+    def query_extra_data_for_reference_task(self):
+        """
+        This method will generate tasks which will be solved on local computer (by requestor)
+        in order to obtain reference results.
+        The reference results will be used to validate the output given by providers.
+        """
+        pass
+
 
     def get_preview_file_path(self):
         return self.preview_file_path

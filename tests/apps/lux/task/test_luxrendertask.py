@@ -49,6 +49,12 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         self.__queries(luxtask)
 
+    def test_query_extra_data_for_test_task(self):
+        pass
+
+
+
+
     def test_query_extra_data(self):
         luxtask = self.get_test_lux_task()
         luxtask._get_scene_file_rel_path = Mock()
@@ -144,6 +150,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask._remove_from_preview("SUBTASK1")
         preview_img = Image.open(luxtask.preview_file_path)
         assert preview_img.getpixel((100, 100)) == (0, 127, 127)
+
 
     def test_accept_results(self):
         luxtask = self.get_test_lux_task()
