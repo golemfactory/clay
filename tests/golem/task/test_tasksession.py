@@ -7,6 +7,8 @@ import uuid
 from apps.core.task.coretask import TaskResourceHeader
 from mock import Mock, MagicMock, patch
 
+from golem import model
+from golem import testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth, EllipticalKeysAuth
 from golem.docker.environment import DockerEnvironment
@@ -22,12 +24,11 @@ from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.task.taskbase import ComputeTaskDef, result_types
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
-from golem.testutils import PEP8MixIn
-from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
+class TestTaskSession(LogTestCase, testutils.TempDirFixture,
+                      testutils.PEP8MixIn):
     PEP8_FILES = ['golem/task/tasksession.py', ]
 
     def setUp(self):
@@ -37,7 +38,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
-        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random()*1000, )
+        self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000, )
         self.task_session.send_hello()
         expected = {
             u'CHALLENGE': None,
@@ -60,7 +61,7 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         data = "ABC"
 
         ts.key_id = "123"
-        res = ts.encrypt(data)
+        ts.encrypt(data)
         ts.task_server.encrypt.assert_called_with(data, "123")
 
         ts.task_server = None
@@ -315,7 +316,6 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
-
         # No source code in the local environment -> failure
         __reset_mocks()
         ctd = ComputeTaskDef()
@@ -464,6 +464,101 @@ class TestTaskSession(LogTestCase, TempDirFixture, PEP8MixIn):
         ts.key_id = keys_auth.get_key_id()
         assert ts.verify(msg)
 
+    @patch("golem.task.tasksession.TaskSession._check_msg", return_value=True)
+    def test_react_to_subtask_payment(self, check_msg_mock):
+        reward_mock = MagicMock()
+        self.task_session.task_server.reward_for_subtask_paid = reward_mock
+        subtask_id = str(uuid.uuid4())
+        reward = random.randint(1, 2**10)
+        transaction_id = str(uuid.uuid4())
+        block_number = random.randint(1, 2**10)
+
+        # Pending
+        msg = message.MessageSubtaskPayment(
+            subtask_id=subtask_id,
+            reward=reward
+        )
+        self.task_session.interpret(msg)
+        reward_mock.assert_not_called()
+
+        # Transaction created but not mined
+        msg.transaction_id = transaction_id
+        self.task_session.interpret(msg)
+        reward_mock.assert_not_called()
+
+        # Proper/finished transaction
+        msg.block_number = block_number
+        self.task_session.interpret(msg)
+        reward_mock.assert_called_once_with(
+            subtask_id=subtask_id,
+            reward=reward,
+            transaction_id=transaction_id,
+            block_number=block_number
+        )
+
+
+class TestSessionWithDB(testutils.DatabaseFixture):
+    def setUp(self):
+        super(TestSessionWithDB, self).setUp()
+        random.seed()
+        self.task_session = TaskSession(Mock())
+
+    @patch('golem.task.tasksession.TaskSession.send')
+    def test_inform_worker_about_payment(self, send_mock):
+        transaction_id = str(uuid.uuid4())
+        block_number = random.randint(1, 2**8)
+        payment = model.Payment.create(
+            subtask=str(uuid.uuid4()),
+            payee=str(uuid.uuid4()),
+            value=random.randint(1, 10),
+            details={
+                'tx': transaction_id,
+                'block_number': block_number,
+            }
+        )
+        self.task_session.inform_worker_about_payment(payment)
+        expected = {
+            'BLOCK_NUMBER': block_number,
+            'REWARD_STR': payment.value,
+            'SUB_TASK_ID': payment.subtask,
+            'TRANSACTION_ID': transaction_id,
+        }
+        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+
+    @patch('golem.task.tasksession.TaskSession.send')
+    def test_request_payment(self, send_mock):
+        subtask_id = str(uuid.uuid4())
+        expected_income = model.ExpectedIncome.create(
+            sender_node=str(uuid.uuid4()),
+            sender_node_details=None,
+            value=random.randint(1, 10),
+            subtask=subtask_id,
+            task=str(uuid.uuid4())
+        )
+        self.task_session.request_payment(expected_income)
+        expected = {
+            'SUB_TASK_ID': subtask_id,
+        }
+        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+
+    @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
+    def test_react_to_subtask_payment_request(self, inform_mock):
+        subtask_id = str(uuid.uuid4())
+        msg = message.MessageSubtaskPaymentRequest(subtask_id=subtask_id)
+        # Payment does not exist
+        self.task_session._react_to_subtask_payment_request(msg)
+        inform_mock.assert_not_called()
+
+        # Payment exists
+        payment = model.Payment.create(
+            subtask=subtask_id,
+            payee=str(uuid.uuid4()),
+            value=random.randint(1, 10),
+            details={}
+        )
+        self.task_session._react_to_subtask_payment_request(msg)
+        inform_mock.assert_called_once_with(payment)
+
 
 def executor_success(req, success, error):
     success(('filename', 'multihash'))
@@ -518,7 +613,7 @@ class TestCreatePackage(unittest.TestCase):
         assert ts.task_server.retry_sending_task_result.called
 
     @patch('golem.task.tasksession.async_run', side_effect=executor_error)
-    def test_send_task_result_hash_recoverable_error(self, _):
+    def test_send_task_result_hash_unrecoverable_error(self, _):
 
         ts = self.ts
         ts._react_to_get_task_result(self.msg)

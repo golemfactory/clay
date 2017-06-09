@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+
+from ethereum.utils import denoms
 import logging
 import functools
 import os
@@ -6,11 +9,14 @@ import time
 
 from golem.core.common import HandleAttributeError
 from golem.core.simpleserializer import CBORSerializer
+from golem.decorators import log_error
 from golem.docker.environment import DockerEnvironment
 from golem.network.transport import message
 from golem.network.transport.session import MiddlemanSafeSession
+from golem.model import db
+from golem.model import Payment
 from golem.network.transport import tcpnetwork
-from golem.resource.client import AsyncRequest, async_run
+from golem.core.async import AsyncRequest, async_run
 from golem.resource.resource import decompress_dir
 from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -139,6 +145,7 @@ class TaskSession(MiddlemanSafeSession):
             )
         except Exception as err:
             logger.warning("Fail to decrypt message {}".format(err))
+            logger.debug('Failing msg: %r', data)
             self.dropped()
             return None
 
@@ -264,6 +271,29 @@ class TaskSession(MiddlemanSafeSession):
 
         self.task_server.accept_result(subtask_id, self.result_owner)
         self.send(message.MessageSubtaskResultAccepted(subtask_id=subtask_id))
+
+    @log_error()
+    def inform_worker_about_payment(self, payment):
+        logger.debug('inform_worker_about_payment(%r)', payment)
+        if payment.details:
+            logger.debug('payment.details: %r', payment.details)
+        transaction_id = payment.details.get('tx', None)
+        block_number = payment.details.get('block_number', None)
+        msg = message.MessageSubtaskPayment(
+            subtask_id=payment.subtask,
+            reward=payment.value,
+            transaction_id=transaction_id,
+            block_number=block_number
+        )
+        self.send(msg)
+
+    @log_error()
+    def request_payment(self, expected_income):
+        logger.debug('request_payment(%r)', expected_income)
+        msg = message.MessageSubtaskPaymentRequest(
+            subtask_id=expected_income.subtask
+        )
+        self.send(msg)
 
     def _reject_subtask_result(self, subtask_id):
         self.task_server.reject_result(subtask_id, self.result_owner)
@@ -746,6 +776,39 @@ class TaskSession(MiddlemanSafeSession):
     def _react_to_nat_punch_failure(self, msg):
         pass
 
+    def _react_to_subtask_payment(self, msg):
+        if msg.transaction_id is None:
+            logger.debug(
+                'PAYMENT PENDING %r for %r',
+                msg.reward,
+                msg.subtask_id
+            )
+            return
+        if msg.block_number is None:
+            logger.debug(
+                'PAYMENT NOT MINED: %r for %r tid: %r',
+                msg.reward,
+                msg.subtask_id,
+                msg.transaction_id
+            )
+            return
+        self.task_server.reward_for_subtask_paid(
+            subtask_id=msg.subtask_id,
+            reward=msg.reward,
+            transaction_id=msg.transaction_id,
+            block_number=msg.block_number
+        )
+
+    def _react_to_subtask_payment_request(self, msg):
+        logger.debug('_react_to_subtask_payment_request: %r', msg)
+        try:
+            with db.atomic():
+                payment = Payment.get(Payment.subtask == msg.subtask_id)
+        except Payment.DoesNotExist:
+            logger.info('PAYMENT DOES NOT EXIST YET %r', msg.subtask_id)
+            return
+        self.inform_worker_about_payment(payment)
+
     def send(self, msg, send_unverified=False):
         if not self.is_middleman and not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
@@ -842,23 +905,6 @@ class TaskSession(MiddlemanSafeSession):
             node_info=self.task_server.node,
             address=self.task_server.get_resource_addr(),
             port=self.task_server.get_resource_port()))
-
-    def __send_data_results(self, res):
-        result = CBORSerializer.dumps(res.result)
-        extra_data = {"subtask_id": res.subtask_id, "data_type": "result"}
-        self.conn.producer = tcpnetwork.EncryptDataProducer(
-            self.encrypt(result),
-            self,
-            extra_data=extra_data
-        )
-
-    def __send_files_results(self, res):
-        extra_data = {"subtask_id": res.subtask_id}
-        self.conn.producer = tcpnetwork.EncryptFileProducer(
-            res.result,
-            self,
-            extra_data=extra_data
-        )
 
     def __send_result_hash(self, res):
         task_result_manager = self.task_manager.task_result_manager
@@ -963,6 +1009,8 @@ class TaskSession(MiddlemanSafeSession):
             message.MessageNatPunch.TYPE: self._react_to_nat_punch,
             message.MessageWaitForNatTraverse.TYPE: self._react_to_wait_for_nat_traverse,  # noqa
             message.MessageWaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.MessageSubtaskPayment.TYPE: self._react_to_subtask_payment,
+            message.MessageSubtaskPaymentRequest.TYPE: self._react_to_subtask_payment_request,  # noqa
         })
 
         # self.can_be_not_encrypted.append(message.MessageHello.TYPE)
