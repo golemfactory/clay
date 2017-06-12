@@ -37,9 +37,9 @@ def _get_warnings(log_content, return_data):
 
     if warnings:
         if return_data.get(u"warnings"):
-            return_data[u"warnings"] += "".join(warnings)
+            return_data[u"warnings"] += u"".join(warnings)
         else:
-            return_data[u"warnings"] = "".join(warnings)
+            return_data[u"warnings"] = u"".join(warnings)
 
 
 def find_wrong_renderer_warning(log_content):
@@ -64,7 +64,7 @@ def find_missing_files(log_content):
 def _format_missing_files_warning(missing_files):
     missing_files = [u"    {}\n".format(missing_file)
                      for missing_file in missing_files]
-    ret = u"Additional data is missing:\n" + "".join(missing_files)
+    ret = u"Additional data is missing:\n" + u"".join(missing_files)
     ret += u"\nTry to add missing files to resources before " \
            "you start rendering."
     return ret
