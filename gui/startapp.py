@@ -128,7 +128,7 @@ def start_client(start_ranking, datadir=None,
         process_monitor.exit()
 
 
-def start_app(start_ranking=True, datadir=None,
+def start_app(start_ranking=False, datadir=None,
               transaction_system=False, rendering=False, **config_overrides):
     start_client(start_ranking, datadir,
                  transaction_system, **config_overrides)

@@ -1,7 +1,10 @@
-import jsonpickle as json
+#!/usr/bin/env python
+
+import json
 import logging
 import os
 from os import path
+import sys
 
 import click
 import gevent
@@ -41,7 +44,7 @@ def app(ctx, data_dir, name):
         data_dir = path.join(get_local_datadir("ethereum"))
 
     logging.basicConfig(level=logging.DEBUG)
-    geth = Client(data_dir)
+    geth = Client()
     while not geth.get_peer_count():
         print "Waiting for peers..."
         gevent.sleep(1)
@@ -130,19 +133,57 @@ def multi(o, payments):
 def history(o):
     log_id = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
     my_addr = '0x' + zpad(o.me.address, 32).encode('hex')
-    outgoing = o.eth.get_logs(from_block='earliest', topics=[log_id, my_addr])
-    incomming = o.eth.get_logs(from_block='earliest', topics=[log_id, None, my_addr])
 
-    balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
+    def get_logs_step(**kwargs):
+        """Iteratively dive deeper into blockchain
+        until result of eth.get_logs(**kwargs) is found.
+        """
+        # Iteration starts from newest block
+        blocknumber = o.eth.web3.eth.blockNumber
+        # Every iteration will go that much deeper
+        step = 2**8
+        result = []
+        while not (result or blocknumber <= 0):
+            if (blocknumber / step) % 2**4 == 0:
+                # Show progress to avoid user frustration
+                sys.stdout.write('.')
+            if (blocknumber / step) % 2**10 == 0:
+                # Show further progress information
+                # to increase user satisfaction
+                sys.stdout.write(str(blocknumber))
+            result = o.eth.get_logs(
+                from_block=max(blocknumber - step, 0),
+                to_block=blocknumber,
+                **kwargs
+            )
+            sys.stdout.flush()
+            blocknumber -= step
+        sys.stdout.write('#\n')
+        return result
+    # Get incoming transactions/contract logs
+    outgoing = get_logs_step(topics=[log_id, my_addr])
+    # Get outgoing transactions/contract logs
+    incoming = get_logs_step(topics=[log_id, None, my_addr])
+
+    import web3.utils.compat.compat_stdlib
+    try:
+        balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
+    except web3.utils.compat.compat_stdlib.Timeout:
+        balance = "<timeout>"
     print "BALANCE", balance
 
-    print "OUTGOING"
-    for p in outgoing:
-        print "[{}] -> {} {}".format(int(p['blockNumber'], 16), p['topics'][2][-40:], int(p['data'], 16))
-
-    print "INCOMING"
-    for p in incomming:
-        print "[{}] -> {} {}".format(p['blockNumber'], p['topics'][1][-40:], p['data'])
+    for label, l in \
+            (
+                ("OUTGOING", outgoing),
+                ("INCOMING", incoming),
+            ):
+        print label
+        for p in l:
+            print "[{}] -> {} {}".format(
+                p['blockNumber'],
+                p['topics'][2][-40:],
+                int(p['data'], 16)
+            )
 
 
 @app.group()
