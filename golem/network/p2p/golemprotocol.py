@@ -84,3 +84,20 @@ class GolemProtocol(BaseProtocol):
         cmd_id = 4
 
         structure = [('task_id', rlp.sedes.binary)]
+
+
+    class get_node_name(BaseProtocol.command):
+        """
+        Request node name
+        """
+        cmd_id = 5
+
+        structure = []
+
+    class node_name(BaseProtocol.command):
+        """
+        Deliver node name
+        """
+        cmd_id = 6
+
+        structure = [('node_name', rlp.sedes.binary)]

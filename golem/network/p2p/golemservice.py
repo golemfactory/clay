@@ -29,6 +29,9 @@ class GolemService(WiredService):
         proto.receive_task_headers_callbacks.append(self.on_receive_task_headers)
         proto.receive_want_to_start_task_session_callbacks.append(self.on_receive_want_to_start_task_session)
         proto.receive_set_task_session_callbacks.append(self.on_receive_set_task_session)
+        proto.receive_get_node_name_callbacks.append(self.on_receive_get_node_name)
+        proto.receive_node_name_callbacks.append(self.on_receive_node_name)
+        proto.send_get_node_name()
 
     def on_wire_protocol_stop(self, proto):
         assert isinstance(proto, self.wire_protocol)
@@ -117,3 +120,9 @@ class GolemService(WiredService):
 
     def on_receive_remove_task(self, proto, task_id):
         self.task_server.remove_task_header(task_id)
+
+    def on_receive_get_node_name(self, proto):
+        proto.send_node_name(self.client.config_desc.node_name)
+
+    def on_receive_node_name(self, proto, node_name):
+        proto.peer.node_name = node_name
