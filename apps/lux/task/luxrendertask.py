@@ -263,11 +263,11 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
-        FLM_NOT_FOUNND_MSG = u"Flm file was not found, check scene."
+        FLM_NOT_FOUND_MSG = u"Flm file was not found, check scene."
         return_data = dict()
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is None:
-            return_data[u'warnings'] = FLM_NOT_FOUNND_MSG
+            return_data[u'warnings'] = FLM_NOT_FOUND_MSG
             logger.warning(return_data[u"warnings"])
         make_scene_analysis(self.scene_file_src, return_data)
         return return_data
