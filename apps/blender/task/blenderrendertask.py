@@ -346,14 +346,17 @@ class BlenderRenderTask(FrameRenderingTask):
             self.preview_file_path = []
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
-                preview_path = os.path.join(self.tmp_dir, "current_task_preview{}".format(i))
+                preview_name = "current_task_preview{}.BMP".format(i)
+                preview_path = os.path.join(self.tmp_dir, preview_name)
                 self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
                                                             preview_x,
                                                             preview_y, 
                                                             expected_offsets))
         else:
-            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
+            preview_name = "current_preview.BMP"
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                              preview_name))
             self.preview_updater = PreviewUpdater(self.preview_file_path, 
                                                   preview_x,
                                                   preview_y, 

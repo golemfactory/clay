@@ -151,19 +151,21 @@ class RenderingTask(CoreTask):
         img.close()
 
     @CoreTask.handle_key_error
-    def _remove_from_preview(self, subtask_id):
+    def _remove_from_preview(self, subtask_id, ext="BMP"):
         empty_color = (0, 0, 0)
         if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        img.save(self.preview_file_path, "BMP")
+        img.save(self.preview_file_path, ext)
 
-    def _update_task_preview(self):
+    def _update_task_preview(self, ext="BMP"):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir, "current_task_preview"))
+        preview_name = "current_task_preview.{}".format(ext)
+        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                               preview_name))
 
         img_task = self._open_preview()
 
@@ -174,7 +176,7 @@ class RenderingTask(CoreTask):
                                  SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, "BMP")
+        img_task.save(self.preview_task_file_path, ext)
         self._update_preview_task_file_path(self.preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
@@ -260,8 +262,11 @@ class RenderingTask(CoreTask):
     def _open_preview(self, mode="RGB", ext="BMP"):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """
-        if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
-            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
+        if self.preview_file_path is None or not os.path.exists(
+                self.preview_file_path):
+            preview_name = "current_preview.{}".format(ext)
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                              preview_name))
             img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
                                    int(round(self.res_y * self.scale_factor))))
             logger.debug('Saving new preview: %r', self.preview_file_path)

@@ -204,7 +204,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert not LuxRenderTaskTypeInfo.get_preview(None)
         # set the path
         luxtask.preview_file_path = "{}".format(
-            os.path.join(luxtask.tmp_dir, "current_preview"))
+            os.path.join(luxtask.tmp_dir, "current_preview.BMP"))
         assert LuxRenderTaskTypeInfo.get_preview(luxtask)
         assert not LuxRenderTaskTypeInfo.get_preview(None)
 
