@@ -154,7 +154,7 @@ class NodeProcess(object):
         if identified_chain != chain:
             raise OSError("Wrong '{}' Ethereum chain".format(identified_chain))
 
-        log.info("Node started in {} s".format(wait_time))
+        log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
 
     def stop(self):
         if self.__ps:

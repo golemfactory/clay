@@ -46,9 +46,20 @@ class Database:
 
     @staticmethod
     def create_database():
-        tables = [LocalRank, GlobalRank, NeighbourLocRank, Payment,
-                  ReceivedPayment, KnownHosts, Account, Stats, HardwarePreset,
-                  TaskPreset]
+        tables = [
+            Account,
+            ExpectedIncome,
+            GlobalRank,
+            HardwarePreset,
+            Income,
+            KnownHosts,
+            LocalRank,
+            NeighbourLocRank,
+            Payment,
+            ReceivedPayment,
+            Stats,
+            TaskPreset,
+        ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
             log.info("New database version {}, previous {}".format(
@@ -146,9 +157,57 @@ class Payment(BaseModel):
             self.details = {}
 
     def __repr__(self):
-        tx = self.details.get('tx', 'NULL')
-        return "<Payment stid: {!r} v: {.3f} s: {!r} tx: {!s}>" % \
-               (self.subtask, self.value / denoms.ether, self.status, tx)
+        tx = self.details.get('tx', None)
+        bn = self.details.get('block_number', None)
+        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r}>"\
+            .format(
+                self.subtask,
+                float(self.value) / denoms.ether,
+                self.status,
+                tx,
+                bn
+            )
+
+    def get_sender_node(self):
+        return self.details.get('node_info', None)
+
+
+class ExpectedIncome(BaseModel):
+    sender_node = CharField()
+    sender_node_details = JsonField()  # golem.network.p2p.node.Node()
+    task = CharField()
+    subtask = CharField()
+    value = BigIntegerField()
+
+    def __repr__(self):
+        return "<ExpectedIncome: {!r} v:{:.3f}>"\
+            .format(self.subtask, self.value)
+
+    def get_sender_node(self):
+        return self.sender_node_details
+
+
+class Income(BaseModel):
+    """Payments received from other nodes."""
+    sender_node = CharField()
+    task = CharField()
+    subtask = CharField()
+    transaction = CharField()
+    block_number = BigIntegerField()
+    value = BigIntegerField()
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('sender_node', 'subtask')
+
+    def __repr__(self):
+        return "<Income: {!r} v:{:.3f} tid:{!r} bn:{!r}>"\
+            .format(
+                self.subtask,
+                self.value,
+                self.transaction,
+                self.block_number
+            )
 
 
 class ReceivedPayment(BaseModel):
@@ -164,6 +223,7 @@ class ReceivedPayment(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('from_node_id', 'task')
+
 
 ##################
 # RANKING MODELS #

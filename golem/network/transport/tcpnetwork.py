@@ -283,12 +283,20 @@ class TCPNetwork(Network):
         result = []
 
         for sa in addresses:
-            if not (sa.address in self.host_addresses and sa.port in self.active_listeners):
-                result.append(sa)
+            if sa.address in self.host_addresses\
+                    and sa.port in self.active_listeners:
+                logger.warning(
+                    'Can\'t connect with self: %r:%r',
+                    sa.address,
+                    sa.port
+                )
+                continue
+            result.append(sa)
         return result
 
     def __try_to_connect_to_addresses(self, addresses, established_callback, failure_callback, **kwargs):
         addresses = self.__filter_host_addresses(addresses)
+        logger.debug('__try_to_connect_to_addresses(%r) filtered', addresses)
 
         if len(addresses) == 0:
             logger.warning("No addresses for connection given")

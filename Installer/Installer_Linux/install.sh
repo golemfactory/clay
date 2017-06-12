@@ -31,6 +31,7 @@ declare -r docker_checksum='1f4ffc2c1884b3e499de90f614ac05a7'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
 declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
+declare -r hyperg_pack=/tmp/hyperg.tar.gz
 
 # Questions
 declare -i INSTALL_DOCKER=0
@@ -142,11 +143,11 @@ function install_dependencies()
 
     if [[ ! -f $HOME/hyperg/hyperg ]]; then
         info_msg "Installing HyperG"
-        wget -qO- $hyperg > /tmp/hyperg.tar.bz2
-        tar -vxjf /tmp/hyperg.tar.bz2
+        wget -qO- $hyperg > ${hyperg_pack}
+        tar -xvf ${hyperg_pack}
         mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
-        rm -f /tmp/hyperg.tar.bz2 &>/dev/null
+        rm -f ${hyperg_pack} &>/dev/null
     fi
     info_msg "Done installing Golem dependencies"
 }

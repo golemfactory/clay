@@ -1,12 +1,9 @@
 import logging
-import unittest
 
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
-from mock import patch
 
 from golem.ethereum import Client
-from golem.ethereum.node import NodeProcess
 from golem.testutils import TempDirFixture
 
 

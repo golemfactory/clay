@@ -7,7 +7,7 @@ from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskcomputer import TaskComputer, PyTaskThread
+from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -229,6 +229,12 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     @staticmethod
     def __wait_for_tasks(tc):
         [t.join() for t in tc.current_computations]
+
+    def test_request_rejected(self):
+        task_server = mock.MagicMock()
+        tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+        with self.assertLogs(logger, level="INFO"):
+            tc.task_request_rejected("xyz", "my rejection reason")
 
 
 @ci_skip

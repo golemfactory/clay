@@ -158,10 +158,11 @@ class TaskComputer(object):
                 self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
-        logger.warning("Task {} request rejected: {}".format(task_id, reason))
+        logger.info("Task {} request rejected: {}".format(task_id, reason))
 
     def resource_request_rejected(self, subtask_id, reason):
-        logger.warning("Task {} resource request rejected: {}".format(subtask_id, reason))
+        logger.info("Task {} resource request rejected: {}".format(subtask_id,
+                                                                   reason))
         self.assigned_subtasks.pop(subtask_id, None)
         self.reset()
 
