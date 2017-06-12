@@ -9,12 +9,14 @@ class PeerSessionInfo(object):
 
     attributes = [
         'remote_pubkey',
-        'ip_port'
+        'ip_port',
+        'node_name'
     ]
 
-    def __init__(self, session):
-        for attr in self.attributes:
-            setattr(self, attr, getattr(session, attr))
+    def __init__(self, peer):
+        setattr(self, 'remote_pubkey', getattr(peer, 'remote_pubkey'))
+        setattr(self, 'ip_port', getattr(peer, 'ip_port'))
+        setattr(self, 'node_name', peer.config['node']['node_name'])
 
     def get_simplified_repr(self):
         repr = self.__dict__

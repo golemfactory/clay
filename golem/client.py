@@ -322,6 +322,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.configp2p['node']['pubkey_hex'] = encode_hex(
             self.keys_auth.public_key)
         self.configp2p['node']['id'] = encode_hex(self.keys_auth.public_key)
+        self.configp2p['node']['node_name'] = self.config_desc.node_name
 
         if socket_address is None:
             self.configp2p['discovery']['bootstrap_nodes'].append(
