@@ -9,6 +9,10 @@ from golem.task.localcomputer import LocalComputer
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator
 
+from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
+from apps.rendering.resources.imgrepr import (PILImgRepr)
+
+from golem.resource.dirmanager import DirManager
 
 logger = logging.getLogger("apps.lux")
 
@@ -27,6 +31,53 @@ class LuxRenderVerificator(RenderingVerificator):
 
         for tr_file in tr_files:
             tr_file = os.path.normpath(tr_file)
+
+            if has_ext(tr_file, '.png'): # GG todo render png from flm
+                if self.advanced_verification:
+                    if not os.path.isfile(self.test_flm): # GG what for is test_flm?
+                        logger.warning("Advanced verification set, but couldn't find test result!") #GG why not set self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER ?
+                        logger.warning("Skipping verification")
+                    else:
+                     #   root_path = dirmanager.get_ref_data_path(task.header.task_id, self.root_path, 0)
+
+                        ref_img_name = 'reference_task1.png'
+                        ref_img0 = PILImgRepr()
+                        ref_img0.load_from_file(os.path.join(
+                            DirManager(self.root_path).get_ref_data_dir(task.header.task_id, counter=0),
+                            ref_img_name.png
+                        ))
+
+                        ref_img1 = PILImgRepr()
+                        ref_img1.load_from_file(os.path.join(
+                            DirManager(self.root_path).get_ref_data_dir(task.header.task_id, counter=1),
+                            ref_img_name
+                        ))
+
+                        cropping_window = task.random_crop_window_for_verification
+
+                        ref_img0 = imgVerificator.crop_img_relative(ref_img0, cropping_window)
+                        ref_img1 = imgVerificator.crop_img_relative(ref_img1, cropping_window)
+
+                        reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
+
+                        imgVerificator = ImgVerificator()
+
+                        croped_img = imgVerificator.crop_img_relative(tr_file, cropping_window)
+                        # croped_img.img.save('aaa'+croped_img.get_name())
+                        imgstat = ImgStatistics(ref_img0, croped_img)
+
+                        validation_result = imgVerificator.is_valid_against_reference(imgstat, reference_stats)
+                        self.ver_states[subtask_id] = validation_result
+
+                        if validation_result == SubtaskVerificationState.VERIFIED:
+                            if not self.merge_flm_files(tr_file, task, self.test_flm): # just in case it fails?
+                                logger.info("Subtask " + str(subtask_id) + " rejected.")
+                                self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+                                return
+
+
+
+            ### OLD STUFF ###
             if has_ext(tr_file, '.FLM'):
                 if self.advanced_verification:
                     if not os.path.isfile(self.test_flm):
@@ -50,7 +101,7 @@ class LuxRenderVerificator(RenderingVerificator):
     def merge_flm_files(self, new_flm, task, output):
         computer = LocalComputer(task, self.root_path, self.__verify_flm_ready,
                                  self.__verify_flm_failure,
-                                 lambda: self.query_extra_data_for_advanced_verification(new_flm),
+                                 lambda: self.query_extra_data_for_advanced_verification(new_flm), # GG why we need lambda?
                                  use_task_resources=False,
                                  additional_resources=[self.test_flm, new_flm])
         computer.run()

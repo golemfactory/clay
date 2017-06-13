@@ -26,27 +26,26 @@ def find_task_script(task_dir, script_name):
 
     logger.error("Script file {} does not exist!".format(script_file))
 
+# GG why DirManager is not used always?
 
-def get_test_task_path(root_path):
-    return os.path.join(root_path, "task_test")
-
-
-def get_test_task_tmp_path(root_path):
-    return os.path.join(root_path, "task_tmp")
+# def get_test_task_path(root_path):
+#     return os.path.join(root_path, "task_test")
 
 
-def get_tmp_path(task_id, root_path):
-    # TODO: Is node name still needed?
-    return os.path.join(root_path, "task", task_id, "tmp")
+# def get_test_task_tmp_path(root_path):
+#     return os.path.join(root_path, "task_tmp")
 
-def get_ref_data_path(task_id, root_path, counter=None):
-    return os.path.join(root_path, "GGres", task_id, "".join(["reference_data", str(counter)]))
-    # GG clean up to return os.path.join(root_path, "res", task_id, "".join(["reference_data", str(counter)]))
+
+# def get_tmp_path(task_id, root_path):
+#     # TODO: Is node name still needed?
+#     return os.path.join(root_path, "task", task_id, "tmp")
+
+
 
 
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """
-    def __init__(self, root_path, tmp="tmp", res="resources", output="output", global_resource="golemres"):
+    def __init__(self, root_path, tmp="tmp", res="resources", output="output", global_resource="golemres", reference_data_dir="reference_data", test="test"):
         """ Creates new dir manager instance
         :param str root_path: path to the main directory where all other working directories are placed
         :param str tmp: temporary directory name
@@ -59,6 +58,8 @@ class DirManager(object):
         self.res = res
         self.output = output
         self.global_resource = global_resource
+        self.ref = reference_data_dir
+        self.test = test
 
     def clear_dir(self, d):
         """ Remove everything from given directory
@@ -79,7 +80,7 @@ class DirManager(object):
         """ Create new directory, remove old directory if it exists.
         :param str full_path: path to directory that should be created
         """
-        if os.path.exists(full_path):
+        if os.path.exists(full_path):  # GG why remove old?
             os.remove(full_path)
 
         os.makedirs(full_path)
@@ -145,6 +146,24 @@ class DirManager(object):
         full_path = self.__get_out_path(task_id)
         return self.get_dir(full_path, create, "output dir does not exist")
 
+    def get_ref_data_dir(self, task_id, create=True, counter=None):
+        """ Get directory for storing reference data created by the requestor for validation of providers results
+        :param task_id:
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_ref_path(task_id, counter)
+        return self.get_dir(full_path, create, "reference dir does not exist")
+
+    def get_task_test_dir(self, task_id, create=True):
+        """ Get task test directory
+        :param task_id:
+        :param bool create: *Default: True* should directory be created if it doesn't exist
+        :return str: path to directory
+        """
+        full_path = self.__get_test_path(task_id)
+        return self.get_dir(full_path, create, "test dir does not exist")
+
     @staticmethod
     def list_dir_names(task_dir):
         """ Get the names of subdirectories as task ids
@@ -187,6 +206,12 @@ class DirManager(object):
 
     def __get_global_resource_path(self):
         return os.path.join(self.root_path, self.global_resource)
+
+    def __get_ref_path(self, task_id, counter):
+        return os.path.join(self.root_path, task_id, self.ref, "".join(["runNumber", str(counter)]))
+
+    def __get_test_path(self, task_id):
+        return os.path.join(self.root_path, task_id, self.test)
 
 
 class DirectoryType(object):

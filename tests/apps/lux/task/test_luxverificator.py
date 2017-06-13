@@ -9,6 +9,9 @@ from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
+from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
+
+
 class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
     def test_check_files(self):
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)
@@ -17,6 +20,9 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
         lrv.advanced_verification = False
         lrv._check_files("SUBTASK2", {}, ["not existing"], Mock())
         assert lrv.get_verification_state("SUBTASK2") == SubtaskVerificationState.WRONG_ANSWER
+
+
+
 
     @patch("apps.lux.task.verificator.LocalComputer")
     def test_merge_flm_files_failure(self, mock_lc):
@@ -49,3 +55,5 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
         with self.assertLogs(logger, level="INFO"):
             lrv._LuxRenderVerificator__verify_flm_failure("Error in something")
         assert lrv.verification_error
+
+

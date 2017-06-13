@@ -93,13 +93,15 @@ class ImgVerificator:
         :return: Values describing render region that range from min (0) to max (1) in order xmin, xmax, ymin,ymax. (0,0) is top left
         """
 
+        alfa = math.sqrt(coverage)
+        dx = alfa*(window[1]-window[0])
+        dy = alfa*(window[3]-window[2])
         from random import uniform
-        start = [ uniform(window[0], window[1]*(1-coverage)),
-                  uniform(window[2], window[3]*(1-coverage))]
+        start = [ uniform(window[0], window[1] - dx),
+                  uniform(window[2], window[3] - dy)]
 
-        end=[start[0]+coverage*window[1],start[1]+coverage*window[3]]
-        crop_window = (start[0], end[1], start[1], end[1])
 
+        crop_window = (start[0], start[0] + dx, start[1], start[1] + dy)
         return crop_window
 
 
@@ -126,6 +128,8 @@ class ImgVerificator:
         pass
 
 
+
+
 class LuxReferenceImgGenerator:
     """
     This class will generate an luxrender Scene_file_format.lxs to be rendered locally by the requstor.
@@ -133,8 +137,6 @@ class LuxReferenceImgGenerator:
     """
     def __init__(self):
         pass
-
-
 
 
     def generate_cropped_scene_file(self, original_scene_file, cropping_window):

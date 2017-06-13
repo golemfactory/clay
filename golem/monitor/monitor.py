@@ -57,6 +57,8 @@ class SystemMonitor(object):
         if event != 'listening':
             return
         try:
+            from time import sleep
+            sleep(2) # GG wtf?! Some synchronization problems in debug mode... increasing timeout in ping_request does not always work... :(
             result = self.ping_request(kwargs['port'])
             if not result['success']:
                 status = result['description'].replace('\n', ', ')

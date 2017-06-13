@@ -1,27 +1,17 @@
 import os
 
-from PIL import Image
 
+import PIL
+#from PIL import Image
 
-# from apps.rendering.resources.imgcompare import (advance_verify_img,
-#                                                  check_size, compare_exr_imgs,
-#                                                  compare_imgs,
-#                                                  compare_pil_imgs,
-#                                                  calculate_mse,
-#                                                  calculate_psnr, logger)
-
-from apps.rendering.resources.imgverificator import ImgStatistics, ImgVerificator
+from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
 
 from apps.core.task.verificator import SubtaskVerificationState as VerificationState
-
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
-# from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
-#                        make_test_img)
-#
 
 
 
@@ -41,8 +31,7 @@ class TestImgVerificator(TempDirFixture, LogTestCase):
 
         (res_x, res_y) = base_img.get_size()
 
-        import PIL
-        from PIL import Image
+
 
         images = list()
         for file_name in os.listdir(folder_path):
@@ -73,13 +62,10 @@ class TestImgVerificator(TempDirFixture, LogTestCase):
 
     def test_get_random_crop_window(self):
         import random
-        random.seed(0)  # GG todo remove
+        random.seed(0)
 
-
-        random_crop_window_for_verification = ImgVerificator().get_random_crop_window()
-
-
-        assert random_crop_window_for_verification == (0.7599796663725433, 0.7821589626462723, 0.6821589626462723, 0.7821589626462723)
+        random_crop_window_for_verification = ImgVerificator().get_random_crop_window(coverage = 0.1, window=(0,1,0,1))
+        assert random_crop_window_for_verification == (0.57739221584148, 0.8936199818583179, 0.5182681753558643, 0.8344959413727022)
 
 
     def test_is_valid_against_reference(self):

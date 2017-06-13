@@ -13,7 +13,9 @@ from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.core.async import AsyncRequest, async_run
-from golem.resource.dirmanager import DirManager
+from golem.resource.dirmanager import * #DirManager
+
+
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task

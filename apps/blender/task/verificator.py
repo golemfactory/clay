@@ -85,6 +85,4 @@ class BlenderVerificator(FrameRenderingVerificator):
             else:
                 res_y = ceiling_height
         return res_y
-
-    def _check_size(self, file_, res_x, res_y):
-        return check_size(file_, res_x, res_y) # GG: nothing new in override?
+    

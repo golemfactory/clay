@@ -11,7 +11,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder, logger)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
-from golem.resource.dirmanager import DirManager, get_tmp_path
+from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -105,8 +105,9 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
-        tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
-        makedirs(tmp_dir)
+        tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header.task_id)
+       # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
+       # makedirs(tmp_dir)
         img = rt._open_preview()
         for i in range(int(round(rt.res_x * rt.scale_factor))):
             for j in range(int(round(rt.res_y * rt.scale_factor))):
