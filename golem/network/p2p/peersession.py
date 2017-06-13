@@ -16,7 +16,8 @@ class PeerSessionInfo(object):
     def __init__(self, peer):
         setattr(self, 'remote_pubkey', getattr(peer, 'remote_pubkey'))
         setattr(self, 'ip_port', getattr(peer, 'ip_port'))
-        setattr(self, 'node_name', peer.node_name)
+        if hasattr(peer, 'node_name'):
+            setattr(self, 'node_name', peer.node_name)
 
     def get_simplified_repr(self):
         repr = self.__dict__
