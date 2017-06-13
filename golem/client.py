@@ -42,7 +42,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.resource.client import AsyncRequest, async_run
+from golem.core.async import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager

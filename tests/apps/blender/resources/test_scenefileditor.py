@@ -90,7 +90,7 @@ True'''
             self.assertEqual(value, expected, 'Value of scene.render.%s expected:%r got:%r' % (name, expected, value))
 
         # test calls
-        bpy_m.ops.render.render.assert_called_once_with()
+        bpy_m.ops.render.render.assert_not_called()
         bpy_m.ops.file.report_missing_files.assert_called_once_with()
 
     @mock.patch("golem.resource.dirmanager")
