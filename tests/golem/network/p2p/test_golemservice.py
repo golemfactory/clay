@@ -34,7 +34,8 @@ class TestGolemService(unittest.TestCase):
 
     @patch('gevent._socket2.socket')
     @patch('devp2p.peer.Peer.send_packet')
-    def test_broadcast(self, send_packet, socket):
+    @patch('golem.network.p2p.golemservice.GolemService.on_wire_protocol_start')
+    def test_broadcast(self, on_wire_protocol_start, send_packet, socket):
         gservice = self.client.services.golemservice
         peer = Peer(self.client.services.peermanager, socket)
         peer.remote_pubkey = "f325434534jfdslgfds0"
@@ -44,3 +45,4 @@ class TestGolemService(unittest.TestCase):
         pkt = Packet(prioritize=False, payload='\xc0', cmd_id=0, protocol_id=18317)
         peer.stop()
         peer.send_packet.assert_called_once_with(pkt)
+	gservice.on_wire_protocol_start.assert_called_once()
