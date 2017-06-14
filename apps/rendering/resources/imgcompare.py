@@ -98,7 +98,7 @@ def compare_exr_imgs(file1, file2):
 
 
 
-# GG deprecate advance_verify_img --> to be deleted
+# GG deprecate advance_verify_img --> to be deleted?
 def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
                        cmp_start_box):
     try:

@@ -18,7 +18,7 @@ from apps.rendering.resources.imgcompare import advance_verify_img, check_size
 logger = logging.getLogger("apps.rendering")
 
 
-class RenderingVerificator(CoreVerificator):
+class RenderingVerificator(CoreVerificator): # GG: (Frame)RenderingVerificator
     def __init__(self, verification_options=None, advanced_verification=False):
         super(RenderingVerificator, self).__init__(verification_options, advanced_verification)
         self.tmp_dir = None

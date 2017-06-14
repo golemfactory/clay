@@ -491,7 +491,7 @@ class LuxTask(renderingtask.RenderingTask):
             computer.tt.join()
 
 
-    # GG: posprzataj zbedne resourcy po wyrenderowaniu reference data?
+    # GG: kiedy requestor robi clean up? sprzatac zbedne resourcy po wyrenderowaniu reference img?
 
 
 
