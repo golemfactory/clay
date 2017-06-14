@@ -649,6 +649,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 self.client.delete_task_preset(task_type, preset_name)
         returnValue(unpacked_presets)
 
+    @inlineCallbacks
+    def get_estimated_cost(self, task_type, options):
+        cost = yield self.client.get_estimated_cost(task_type, options)
+        returnValue(cost)
+
     def delete_task_preset(self, task_type, preset_name):
         self.client.delete_task_preset(task_type, preset_name)
 

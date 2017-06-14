@@ -77,6 +77,7 @@ class Task(object):
     tasks_save_preset       = 'comp.tasks.preset.save'
     tasks_load_presets      = 'comp.tasks.preset.get'
     tasks_remove_preset     = 'comp.tasks.preset.delete'
+    tasks_estimated_cost    = 'comp.tasks.estimated.cost'
 
     task                    = 'comp.task'
     task_cost               = 'comp.task.cost'

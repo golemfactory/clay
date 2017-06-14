@@ -638,6 +638,15 @@ class TaskManager(TaskEventListener):
             val += ss.value
         return val
 
+    def get_estimated_cost(self, task_type, options):
+        try:
+            subtask_value = compute_subtask_value(options['price'],
+                                                  options['subtask_time'])
+            return options['num_subtasks'] * subtask_value
+        except (KeyError, ValueError):
+            logger.exception("Cannot estimate price, wrong params")
+            return None
+
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 
         if ctd.task_id not in self.tasks_states:

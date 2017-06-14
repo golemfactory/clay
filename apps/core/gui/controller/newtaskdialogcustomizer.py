@@ -402,15 +402,25 @@ class NewTaskDialogCustomizer(Customizer):
     def _get_add_resource_dialog(self):
         return AddTaskResourcesDialog(self.gui.window)
 
+    @inlineCallbacks
     def _set_new_pessimistic_cost(self):
         try:
             price = float(self.gui.ui.taskMaxPriceLineEdit.text())
             if self.gui.ui.optimizeTotalCheckBox.isChecked():
                 self.gui.ui.pessimisticCostLabel.setText("unknown")
             else:
-                time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
-                cost = price * time_
-                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
+                subtask_time = get_subtask_hours(self.gui)
+                num_subtasks = float(self.gui.ui.totalSpinBox.value())
+                type = self.__get_current_task_type_name()
+                options = {
+                    u'price': price,
+                    u'num_subtasks': num_subtasks,
+                    u'subtask_time': subtask_time
+                }
+                cost = yield self.logic.get_estimated_cost(type, options)
+
+                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(
+                    cost))
         except ValueError:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
 
