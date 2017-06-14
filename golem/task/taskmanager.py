@@ -640,8 +640,7 @@ class TaskManager(TaskEventListener):
 
     def get_estimated_cost(self, task_type, options):
         try:
-            subtask_value = compute_subtask_value(options['price'],
-                                                  options['subtask_time'])
+            subtask_value = options['price'] * options['subtask_time']
             return options['num_subtasks'] * subtask_value
         except (KeyError, ValueError):
             logger.exception("Cannot estimate price, wrong params")

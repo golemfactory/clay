@@ -866,7 +866,8 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
-        return self.task_server.task_manager.get_estimated_cost(task_type, options)
+        return self.task_server.task_manager.get_estimated_cost(task_type,
+                                                                options)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
