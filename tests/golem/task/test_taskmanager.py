@@ -587,6 +587,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.tm.update_task_signatures()
         assert task.header.signature != sig
 
+    def test_get_estimated_cost(self):
+        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        options = {'price': 100,
+                   'subtask_time': 1.5,
+                   'num_subtasks': 7
+                   }
+        assert tm.get_estimated_cost("Blender", options) == 1050
+        with self.assertLogs(logger, level="WARNING"):
+            assert tm.get_estimated_cost("Blender", {}) is None
+
     def test_errors(self):
         task_id = 'qaz123WSX'
         subtask_id = "qweasdzxc"

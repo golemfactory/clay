@@ -488,6 +488,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             self.assertIsInstance(value, unicode)
             self.assertTrue(key in res_dirs)
 
+    def test_get_estimated_cost(self, *_):
+        c = self.client
+        c.task_server = TaskServer.__new__(TaskServer)
+        c.task_server.task_computer = TaskServer.__new__(TaskComputer)
+        c.task_server.task_computer.current_computations = []
+        c.task_server.task_manager = TaskManager.__new__(TaskManager)
+        c.task_server.client = c
+        assert c.get_estimated_cost("task type", {"price": 150,
+                                                  "subtask_time": 2.5,
+                                                  "num_subtasks": 5}) == 1875
+
     def test_enqueue_new_task(self, *_):
         c = self.client
         c.resource_server = Mock()
@@ -497,6 +508,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.task_server = TaskServer.__new__(TaskServer)
         c.task_server.client = c
         c.task_server.task_computer = Mock()
+        c.task_server.task_computer.current_computations = dict()
         c.task_server.task_manager = TaskManager.__new__(TaskManager)
         c.task_server.task_manager.add_new_task = Mock()
         c.task_server.task_manager.root_path = self.path
