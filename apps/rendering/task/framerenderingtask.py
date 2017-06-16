@@ -354,7 +354,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
-        options = dictionary.get('options')
+        options = dictionary.get('options') or dict()
 
         frames_string = to_unicode(options.get('frames', 1))
         frames = cls.string_to_frames(frames_string)
