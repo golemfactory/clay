@@ -333,12 +333,12 @@ class Client(HardwarePresetsMixin):
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, task):
-        # FIXME: remove after the new interface has been integrated
-        if isinstance(task, dict):
-            task = self.task_server.task_manager.create_task(task)
+    def enqueue_new_task(self, task_dict):
+        # FIXME: Statement only for DummyTask compatibility
+        if isinstance(task_dict, dict):
+            task = self.task_server.task_manager.create_task(task_dict)
         else:
-            task.header.max_price = int(task.header.max_price)
+            task = task_dict
 
         resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
@@ -426,9 +426,8 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            task = DictSerializer.load(t_dict)
-            new_task = self.enqueue_new_task(task)
-            return unicode(new_task.header.task_id)
+            task = self.enqueue_new_task(t_dict)
+            return unicode(task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 

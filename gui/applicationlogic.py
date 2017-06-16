@@ -448,20 +448,16 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         }
 
     def build_and_serialize_task(self, task_state, cbk=None):
-        tb = self.get_builder(task_state)
-        t = Task.build_task(tb)
-        t.header.max_price = str(t.header.max_price)
-        t_serialized = DictSerializer.dump(t)
-        if 'task_definition' in t_serialized:
-            t_serialized_def = t_serialized['task_definition']
-            t_serialized_def['resources'] = list(t_serialized_def['resources'])
-            if 'max_price' in t_serialized_def:
-                t_serialized_def['max_price'] = str(t_serialized_def['max_price'])
-        from pprint import pformat
-        logger.debug('task serialized: %s', pformat(t_serialized))
+        task_builder = self.get_builder(task_state)
+        task = Task.build_task(task_builder)
+        task.header.max_price = str(task.header.max_price)
+
+        definition = task_state.definition
+        serialized = task_builder.build_dictionary(definition)
+
         if cbk:
-            cbk(t)
-        return t_serialized
+            cbk(task)
+        return serialized
 
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")
