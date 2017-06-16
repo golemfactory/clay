@@ -312,7 +312,8 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     TASK_CLASS = FrameRenderingTask
 
     def _calculate_total(self, defaults):
-        if self.task_definition.optimize_total:
+        if self.task_definition.optimize_total or \
+                        self.task_definition.total_subtasks == 0:
             if self.task_definition.options.use_frames:
                 return len(self.task_definition.options.frames)
             else:

@@ -2,6 +2,7 @@ from __future__ import division
 
 import logging
 import os
+from copy import deepcopy
 from PyQt5 import QtCore
 
 import jsonpickle
@@ -448,7 +449,15 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         }
 
     def build_and_serialize_task(self, task_state, cbk=None):
-        task_builder = self.get_builder(task_state)
+        #FIXME Temporary solution for old interface
+        task_state_copy = deepcopy(task_state)
+        if hasattr(task_state_copy.definition.options, "frames"):
+            from apps.rendering.task.framerenderingtask import \
+                FrameRenderingTaskBuilder
+            task_state_copy.definition.options.frames = \
+                FrameRenderingTaskBuilder.string_to_frames(
+                        task_state_copy.definition.options.frames)
+        task_builder = self.get_builder(task_state_copy)
         task = Task.build_task(task_builder)
         task.header.max_price = str(task.header.max_price)
 
