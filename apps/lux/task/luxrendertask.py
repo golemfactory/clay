@@ -160,7 +160,7 @@ class LuxTask(renderingtask.RenderingTask):
         self.num_add = 0
 
         self.preview_exr = None
-
+        self.referenceRuns =2
 
     def _get_random_crop_window_for_verification(self, source_lux_config_file_lxs):
         if "float cropwindow" in source_lux_config_file_lxs:
@@ -247,6 +247,37 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
+    def \
+            query_extra_data_for_flm_merging_test(self):
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=4,
+                                        haltspp=1,
+                                        writeinterval=0.5,
+                                        crop=[0, 1, 0, 1],
+                                        output_format="png")
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
+            "outfilebasename": "reference_merging_task",
+            "output_format": "png",
+            "scene_file_src": scene_src,
+            "scene_dir": scene_dir,
+        }
+
+        ctd = self._new_compute_task_def(
+            "ReferenceMergingTask",
+            extra_data,
+            scene_dir,
+            0)
+
+        return ctd
     def query_extra_data_for_reference_task(self):
         scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
                                         xres=self.res_x,
@@ -478,7 +509,7 @@ class LuxTask(renderingtask.RenderingTask):
         img_current.close()
 
     def create_reference_data_for_task_validation(self):
-        for i in range(0,2):
+        for i in range(0,self.referenceRuns):
             path = self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
             computer = LocalComputer(
                 self,
@@ -491,7 +522,16 @@ class LuxTask(renderingtask.RenderingTask):
             computer.tt.join()
 
 
-    # GG: kiedy requestor robi clean up? sprzatac zbedne resourcy po wyrenderowaniu reference img?
+        path = self.dirManager.get_ref_data_dir(self.header.task_id, counter='flmMergingTest')
+        computer = LocalComputer(
+            self,
+            path,
+            self.__final_img_ready,
+            self.__final_img_error,
+            self.query_extra_data_for_flm_merging_test
+        )
+        computer.run()
+        computer.tt.join()
 
 
 

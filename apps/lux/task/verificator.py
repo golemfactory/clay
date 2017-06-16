@@ -2,6 +2,7 @@ from copy import deepcopy
 import logging
 import os
 import shutil
+import glob
 
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.task.localcomputer import LocalComputer
@@ -22,12 +23,22 @@ class LuxRenderVerificator(RenderingVerificator):
         self.merge_ctd = None
         self.verification_error = False
 
+    def _get_test_flm(self, task):
+        dm = task.dirManager
+        dir = os.path.join(
+                dm.get_ref_data_dir(task.header.task_id, counter='flmMergingTest'),
+                dm.tmp,
+                dm.output
+                )
+
+        test_flm = glob.glob(os.path.join(dir,'*.flm'))
+        return test_flm.pop()
+
 
     def _get_reference_imgs(self, task):
         ref_imgs = []
         dm=task.dirManager
 
-        import glob
         for i in range(0,task.referenceRuns):
             dir = os.path.join(
                 dm.get_ref_data_dir(task.header.task_id, counter=i),
@@ -52,7 +63,7 @@ class LuxRenderVerificator(RenderingVerificator):
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
             return
 
-
+        self.test_flm = self._get_test_flm(task)
         if not os.path.isfile(self.test_flm):
             logger.warning("Advanced verification set, but couldn't find flm for merging test!")
             logger.warning("No merge verification")

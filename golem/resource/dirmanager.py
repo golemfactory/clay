@@ -26,22 +26,6 @@ def find_task_script(task_dir, script_name):
 
     logger.error("Script file {} does not exist!".format(script_file))
 
-# GG why DirManager is not used always?
-
-# def get_test_task_path(root_path):
-#     return os.path.join(root_path, "task_test")
-
-
-# def get_test_task_tmp_path(root_path):
-#     return os.path.join(root_path, "task_tmp")
-
-
-# def get_tmp_path(task_id, root_path):
-#     # TODO: Is node name still needed?
-#     return os.path.join(root_path, "task", task_id, "tmp")
-
-
-
 
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """
