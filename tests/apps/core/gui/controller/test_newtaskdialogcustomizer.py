@@ -4,17 +4,18 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 from mock import Mock, patch
 
+from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
+from apps.core.gui.controller.newtaskdialogcustomizer import (
+    logger, NewTaskDialogCustomizer
+)
+from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretaskstate import (
+    TaskDefinition, CoreTaskDefaults, Options
+)
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-from apps.core.gui.controller.newtaskdialogcustomizer import (logger, NewTaskDialogCustomizer)
-from apps.core.task.coretask import TaskTypeInfo
-from apps.core.task.coretaskstate import TaskDefinition, CoreTaskDefaults, Options
-from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
-
-
 from gui.application import Gui
 from gui.applicationlogic import GuiApplicationLogic
 from gui.startapp import register_task_types

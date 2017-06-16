@@ -515,6 +515,10 @@ class TestTasks(TempDirFixture):
 
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
+        definition.options.use_frames = True
+        definition.options.frames = [1, 2, 3, 4, 5, 6]
+        definition.options.frames_string = "1-6"
+        definition.total_subtasks = 6
         definition.task_id = "deadbeef"
         definition.task_type = "Blender"
 

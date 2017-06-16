@@ -21,6 +21,7 @@ from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -570,15 +571,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
-        assert task.header.task_id
+        task_id = task.header.task_id
+        assert task_id
 
         c.resource_server.resource_manager.build_client_options\
             .assert_called_with(c.keys_auth.key_id)
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.add_new_task.called
 
-        c.task_server.task_manager.tasks[task.header.task_id] = task
-        frames = c.get_subtasks_frames(task.header.task_id)
+        c.task_server.task_manager.tasks[task_id] = task
+        c.task_server.task_manager.tasks_states[task_id] = TaskState()
+        frames = c.get_subtasks_frames(task_id)
         assert frames is not None
 
     @patch('golem.client.async_run')

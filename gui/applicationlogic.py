@@ -410,7 +410,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def config_changed(self):
         self.customizer.configuration_dialog_customizer.load_data()
 
-    def run_test_task(self, task_state):
+    def run_test_task(self, task_def):
         def on_abort():
             self.progress_dialog_customizer.show_message("Aborting test...")
             self.abort_test_task()
@@ -433,17 +433,18 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.progress_dialog.show()
 
         try:
-            self.client.run_test_task(self.prepare_dict_for_test(task_state))
+            self.client.run_test_task(self.prepare_dict_for_test(task_def))
             return True
         except Exception as ex:
             self.test_task_computation_error(ex)
 
         return False
 
-    def prepare_dict_for_test(self, task_state):
+    def prepare_dict_for_test(self, task_def):
         return {
-            u'type': task_state.definition.task_type,
-            u'resources': list(task_state.definition.resources)
+            u'type': task_def.task_type,
+            u'subtasks': 1,
+            u'resources': list(task_def.resources)
         }
 
     def build_and_serialize_task(self, task_state, cbk=None):

@@ -427,6 +427,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_id = str(uuid.uuid4())
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
+        definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
@@ -444,7 +445,6 @@ class CoreTaskBuilder(TaskBuilder):
     def build_full_definition(cls, task_type, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
-        definition.total_subtasks = int(dictionary['subtasks'])
         definition.max_price = float(dictionary['bid']) * denoms.ether
 
         definition.full_task_timeout = string_to_timeout(

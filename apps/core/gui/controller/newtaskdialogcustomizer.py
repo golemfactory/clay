@@ -460,7 +460,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
 
-        if not self.logic.run_test_task(self.task_state):
+        if not self.logic.run_test_task(self.task_state.definition):
             logger.error("Task not tested properly")
 
     def __reset_to_defaults(self):

@@ -47,7 +47,7 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
             .task_customizer
 
         assert isinstance(customizer, FrameRendererCustomizer)
-        assert not customizer.gui.ui.framesCheckBox.isChecked()
+        assert customizer.gui.ui.framesCheckBox.isChecked()
         customizer._change_options()
         assert customizer.options.frames == '1-10'
         customizer.gui.ui.framesCheckBox.setChecked(True)

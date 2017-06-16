@@ -26,7 +26,7 @@ DEFAULT_PADDING = 4
 class FrameRendererOptions(Options):
     def __init__(self):
         super(FrameRendererOptions, self).__init__()
-        self.use_frames = False
+        self.use_frames = True
         self.frames = range(1, 11)
         self.frames_string = "1-10"
 
@@ -352,15 +352,18 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
+    def build_minimal_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
+        options = dictionary.get('options')
 
-        frames_string = to_unicode(dictionary['options']['frames'])
+        frames_string = to_unicode(options.get('frames', 1))
         frames = cls.string_to_frames(frames_string)
+        use_frames = len(frames) > 1 or frames != [1]
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = parent.build_minimal_definition(task_type, dictionary)
         definition.options.frames_string = frames_string
         definition.options.frames = frames
+        definition.options.use_frames = options.get('use_frames', use_frames)
 
         return definition
 

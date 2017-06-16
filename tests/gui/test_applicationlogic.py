@@ -9,6 +9,7 @@ from ethereum.utils import denoms
 from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
+import golem
 from golem import rpc
 from golem.client import Client
 from golem.core.simpleserializer import DictSerializer
@@ -16,6 +17,7 @@ from golem.core.deferred import sync_wait
 from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus, TaskTestStatus, TaskState
 from golem.testutils import DatabaseFixture
@@ -614,6 +616,19 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         assert not self.logic.test_task_computation_error.called
 
 
+def mock_async_run(req):
+    return req.method(*req.args, **req.kwargs)
+
+
+def mock_tester_run(self):
+    LocalComputer.run(self)
+    self.tt.join()
+
+
+@patch('golem.client.P2PService.start_accepting')
+@patch('golem.client.TaskServer.start_accepting')
+@patch('golem.client.async_run', side_effect=mock_async_run)
+@patch.object(golem.client.TaskTester, 'run', mock_tester_run)
 class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
     def setUp(self):
@@ -622,11 +637,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
-        self.client.start()
 
-        # from threading import Lock
-        # self.client.lock = Lock()
-        self.client.task_tester = None
         self.logic = GuiApplicationLogic()
         self.app = Gui(self.logic, AppMainWindow)
 
@@ -652,6 +663,8 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         self.client.datadir = logic.root_path
         self.client.rpc_publisher = rpc_publisher
+        self.client.start()
+        self.client.task_tester = None
 
         task_type = Mock()
         ttb = TTaskBuilder(self.path)
@@ -663,28 +676,28 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         logic.customizer.show_warning_window = Mock()
 
         ts = TaskDesc()
-        files = self.additional_dir_content([1])
+        files = self.additional_dir_content([3])
+
+        ts.definition.total_subtasks = 1
         ts.definition.main_program_file = files[0]
         ts.definition.task_type = "TESTTASK"
-        f = self.additional_dir_content([2])
-        ts.definition.output_file = f[0]
-        ts.definition.main_scene_file = f[1]  # FIXME Remove me
+        ts.definition.output_file = files[1]
+        ts.definition.main_scene_file = files[2]
+        ts.definition.options.use_frames = False
 
         rpc_publisher.reset()
-        sync_wait(logic.run_test_task(ts))
+        logic.run_test_task(ts.definition)
         logic.progress_dialog.close()
         logic.test_task_started(True)
         e = logic.progress_dialog_customizer.gui.ui.abortButton.isEnabled()
         self.assertTrue(e)
-        time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
         ttb.src_code = "import time\ntime.sleep(0.1)\n" \
                        "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        sync_wait(logic.run_test_task(ts))
+        logic.run_test_task(ts.definition)
         logic.progress_dialog.close()
-        time.sleep(0.5)
         self.assertTrue(rpc_publisher.success)
 
         # since PythonTestVM does not support end_comp() method,
@@ -692,27 +705,26 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         ttb.src_code = "import time\ntime.sleep(0.1)\n" \
                        "output = {'data': n, 'result_type': 0}"
         rpc_publisher.reset()
-        sync_wait(logic.run_test_task(ts))
+        logic.run_test_task(ts.definition)
         logic.progress_dialog.close()
-        time.sleep(0.5)
         logic.abort_test_task()
 
         ttb.src_code = "raise Exception('some error')"
         rpc_publisher.reset()
-        sync_wait(logic.run_test_task(ts))
+        logic.run_test_task(ts.definition)
         logic.progress_dialog.close()
-        time.sleep(1)
         self.assertFalse(rpc_publisher.success)
 
         rpc_publisher.reset()
-        sync_wait(logic.run_test_task(ts))
+        logic.run_test_task(ts.definition)
         logic.progress_dialog.close()
         self.assertFalse(rpc_publisher.success)
 
         ctr = logic.customizer.new_task_dialog_customizer
         prev_call_count = ctr.task_settings_changed.call_count
         logic.task_settings_changed()
-        self.assertGreater(ctr.task_settings_changed.call_count,prev_call_count)
+        self.assertGreater(ctr.task_settings_changed.call_count,
+                           prev_call_count)
 
         logic.tasks["xyz"] = ts
         logic.clone_task("xyz")
@@ -723,6 +735,6 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
         self.client.task_server.task_manager.task_types[u"testtask"] = ttb
-        assert sync_wait(logic.run_test_task(ts))
 
-        assert not sync_wait(logic.run_test_task(None))
+        assert logic.run_test_task(ts.definition)
+        assert not logic.run_test_task(None)
