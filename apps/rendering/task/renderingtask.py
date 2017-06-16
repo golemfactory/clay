@@ -24,6 +24,7 @@ from apps.rendering.task.verificator import RenderingVerificator
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
+PREVIEW_EXT = "BMP"
 
 logger = logging.getLogger("apps.rendering")
 
@@ -147,23 +148,23 @@ class RenderingTask(CoreTask):
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
-        img_current.save(self.preview_file_path, "BMP")
+        img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
 
     @CoreTask.handle_key_error
-    def _remove_from_preview(self, subtask_id, ext="BMP"):
+    def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
         if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        img.save(self.preview_file_path, ext)
+        img.save(self.preview_file_path, PREVIEW_EXT)
 
-    def _update_task_preview(self, ext="BMP"):
+    def _update_task_preview(self):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        preview_name = "current_task_preview.{}".format(ext)
+        preview_name = "current_task_preview.{}".format(PREVIEW_EXT)
         self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                                preview_name))
 
@@ -176,7 +177,7 @@ class RenderingTask(CoreTask):
                                  SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, ext)
+        img_task.save(self.preview_task_file_path, PREVIEW_EXT)
         self._update_preview_task_file_path(self.preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
@@ -259,7 +260,7 @@ class RenderingTask(CoreTask):
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
-    def _open_preview(self, mode="RGB", ext="BMP"):
+    def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """
         if self.preview_file_path is None or not os.path.exists(

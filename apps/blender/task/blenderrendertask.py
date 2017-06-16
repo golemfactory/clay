@@ -22,9 +22,8 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
+from apps.rendering.task.renderingtask import PREVIEW_EXT
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
-
-PREVIEW_EXT = "BMP"
 
 
 logger = logging.getLogger("apps.blender")
@@ -93,12 +92,12 @@ class PreviewUpdater(object):
                 img_offset = Image.new("RGB", (self.preview_res_x,
                                                self.preview_res_y))
                 img_offset.paste(img, (0, offset))
-                img_offset.save(self.preview_file_path, "BMP")
+                img_offset.save(self.preview_file_path, PREVIEW_EXT)
                 img_offset.close()
             else:
                 img_current = Image.open(self.preview_file_path)
                 img_current.paste(img, (0, offset))
-                img_current.save(self.preview_file_path, "BMP")
+                img_current.save(self.preview_file_path, PREVIEW_EXT)
                 img_current.close()
             img.close()
         except Exception:
@@ -117,7 +116,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             img = Image.new("RGB", (self.preview_res_x, self.preview_res_y))
-            img.save(self.preview_file_path, "BMP")
+            img.save(self.preview_file_path, PREVIEW_EXT)
             img.close()
 
 
@@ -346,7 +345,8 @@ class BlenderRenderTask(FrameRenderingTask):
             self.preview_file_path = []
             self.preview_updaters = []
             for i in range(0, len(self.frames)):
-                preview_name = "current_task_preview{}.BMP".format(i)
+                preview_name = "current_task_preview{}.{}".format(i,
+                                                                  PREVIEW_EXT)
                 preview_path = os.path.join(self.tmp_dir, preview_name)
                 self.preview_file_path.append(preview_path)
                 self.preview_updaters.append(PreviewUpdater(preview_path, 
@@ -354,7 +354,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                                             preview_y, 
                                                             expected_offsets))
         else:
-            preview_name = "current_preview.BMP"
+            preview_name = "current_preview.{}".format(PREVIEW_EXT)
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                               preview_name))
             self.preview_updater = PreviewUpdater(self.preview_file_path, 
@@ -497,7 +497,8 @@ class BlenderRenderTask(FrameRenderingTask):
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)
 
-    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1,
+                              final=False):
         num = self.frames.index(frame_num)
         if final:
             img = load_as_pil(new_chunk_file_path)
