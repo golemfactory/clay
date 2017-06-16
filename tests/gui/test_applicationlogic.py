@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import time
 import uuid
 
 from ethereum.utils import denoms
@@ -10,28 +9,27 @@ from mock import Mock, ANY, call, patch
 from twisted.internet.defer import Deferred
 
 import golem
+from apps.blender.benchmark.benchmark import BlenderBenchmark
+from apps.core.task.coretask import CoreTaskBuilder
+from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
 from golem import rpc
 from golem.client import Client
-from golem.core.simpleserializer import DictSerializer
 from golem.core.deferred import sync_wait
+from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.logic import logger as int_logger
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import TaskBuilder, Task, ComputeTaskDef, TaskHeader
+from golem.task.taskbase import Task, ComputeTaskDef, TaskHeader
 from golem.task.taskstate import TaskStatus, TaskTestStatus, TaskState
 from golem.testutils import DatabaseFixture
-from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
-
-from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
-from apps.blender.benchmark.benchmark import BlenderBenchmark
+from golem.tools.ci import ci_skip
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
-from gui.controller.mainwindowcustomizer import MainWindowCustomizer
-
 from gui.application import Gui
 from gui.applicationlogic import (GuiApplicationLogic, logger,
                                   task_to_remove_status)
+from gui.controller.mainwindowcustomizer import MainWindowCustomizer
 from gui.startapp import register_task_types
 from gui.view.appmainwindow import AppMainWindow
 
@@ -72,7 +70,7 @@ class TTaskWithDef(TTask):
         self.task_definition.max_price = 100 * denoms.ether
 
 
-class TTaskBuilder(TaskBuilder):
+class TTaskBuilder(CoreTaskBuilder):
 
     def __init__(self, path, task_class=TTask):
         self.path = path
