@@ -73,11 +73,12 @@ class ImgVerificator:
         :return: a rectangular region from this image - left, upper, right, and lower pixel ordinate.
         """
 
+        # GG todo check whther pilImg.crop() rounds off in the same way as luxrender's "float cropwindow" [0.2 0.4 0.7 0.9] parameter
         (res_x, res_y) = img.get_size()
-        left  = int(res_x * crop_window[0])
-        right = int(res_x * crop_window[1])
-        lower = int(res_y * crop_window[2])
-        upper = int(res_y * crop_window[3])
+        left  = int(round(res_x * crop_window[0]))
+        right = int(round(res_x * crop_window[1]))
+        lower = int(round(res_y * crop_window[2]))
+        upper = int(round(res_y * crop_window[3]))
 
         cropped_img = img.to_pil().crop((left, lower, right, upper))  # in PIL's world (0,0) is bottom left ;p
         p = PILImgRepr()
@@ -86,7 +87,7 @@ class ImgVerificator:
 
 
 
-    def get_random_crop_window(self, coverage = 0.1, window=(0,1,0,1)):
+    def get_random_crop_window(self, coverage = 0.2, window=(0,1,0,1)):
         """
         :param coverage: determines coverage ratio
         :param window: if the window is already set then make a subwindow from it
@@ -105,7 +106,7 @@ class ImgVerificator:
         return crop_window
 
 
-    def is_valid_against_reference(self, imgStat, reference_imgStat, acceptance_ratio=0.75, maybe_ratio=0.6):
+    def is_valid_against_reference(self, imgStat, reference_imgStat, acceptance_ratio=0.75, maybe_ratio=0.55):
         if not isinstance(imgStat, ImgStatistics) and not isinstance (reference_imgStat, ImgStatistics):
             raise TypeError("imgStatistics be instance of ImgStatistics")
 

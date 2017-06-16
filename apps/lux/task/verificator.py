@@ -12,8 +12,6 @@ from apps.rendering.task.verificator import RenderingVerificator
 from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
 from apps.rendering.resources.imgrepr import (PILImgRepr)
 
-from golem.resource.dirmanager import DirManager
-
 logger = logging.getLogger("apps.lux")
 
 
@@ -39,19 +37,11 @@ class LuxRenderVerificator(RenderingVerificator):
 
             f = glob.glob(os.path.join(dir,'*.png'))
 
-            # from os import listdir
-            # from os.path import isfile, join
-            # onlyfiles0 =[f for f in listdir(dir) if isfile(join(dir, f)) and has_ext(f, '.png')]
-
-
             ref_img = PILImgRepr()
             ref_img.load_from_file(f.pop())
             ref_imgs.append(ref_img)
 
-
         return ref_imgs
-
-
 
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
         if len(tr_files) == 0:
