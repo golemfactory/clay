@@ -294,8 +294,11 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.options = FrameRendererOptions()
         definition.options.use_frames = True
         definition.options.frames = range(1, 7)
-        builder = FrameRenderingTaskBuilder(root_path=self.path, dir_manager=DirManager(self.path),
-                                            node_name="SOME NODE NAME", task_definition=definition)
+
+        builder = FrameRenderingTaskBuilder(root_path=self.path,
+                                            dir_manager=DirManager(self.path),
+                                            node_name="SOME NODE NAME",
+                                            task_definition=definition)
 
         class Defaults(object):
             def __init__(self, default_subtasks, min_subtasks, max_subtasks):
@@ -312,6 +315,15 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.optimize_total = False
         assert builder._calculate_total(defaults) == 12
 
+        definition.total_subtasks = None
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 0
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 1
+        assert builder._calculate_total(defaults) == 13
+
         definition.total_subtasks = 2
         assert builder._calculate_total(defaults) == 13
 
@@ -324,14 +336,31 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.total_subtasks = 33
         assert builder._calculate_total(defaults) == 33
 
-        definition.total_subtasks = 6
         definition.options.use_frames = True
+
+        definition.total_subtasks = None
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
+
+        definition.total_subtasks = 0
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
+
+        definition.total_subtasks = 1
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 1
+
+        definition.total_subtasks = 2
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 2
 
         definition.total_subtasks = 3
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
+
+        definition.total_subtasks = 6
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 12
         with self.assertNoLogs(logger, level="WARNING"):

@@ -6,6 +6,7 @@ import os
 from collections import OrderedDict
 
 from PIL import Image, ImageChops
+from copy import deepcopy
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
@@ -311,9 +312,20 @@ def get_frame_name(output_name, ext, frame_num):
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     TASK_CLASS = FrameRenderingTask
 
+    def __init__(self, node_name, task_definition, root_path, dir_manager):
+        frames = task_definition.options.frames
+
+        if isinstance(frames, basestring):
+            task_definition = deepcopy(task_definition)
+            task_definition.options.frames = self.string_to_frames(frames)
+
+        super(FrameRenderingTaskBuilder, self).__init__(node_name,
+                                                        task_definition,
+                                                        root_path, dir_manager)
+
     def _calculate_total(self, defaults):
         if self.task_definition.optimize_total or \
-                        self.task_definition.total_subtasks == 0:
+           not self.task_definition.total_subtasks:
             if self.task_definition.options.use_frames:
                 return len(self.task_definition.options.frames)
             else:
@@ -410,16 +422,17 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             after_split = s.split(";")
             for i in after_split:
                 inter = i.split("-")
-                if len(inter) == 1:  # pojedyncza klatka (np. 5)
+                if len(inter) == 1:
+                    # single frame (e.g. 5)
                     frames.append(int(inter[0]))
                 elif len(inter) == 2:
                     inter2 = inter[1].split(",")
-                    # przedzial klatek (np. 1-10)
+                    # frame range (e.g. 1-10)
                     if len(inter2) == 1:
                         start_frame = int(inter[0])
                         end_frame = int(inter[1]) + 1
                         frames += range(start_frame, end_frame)
-                    # co n-ta klata z przedzialu (np. 10-100,5)
+                    # every nth frame (e.g. 10-100,5)
                     elif len(inter2) == 2:
                         start_frame = int(inter[0])
                         end_frame = int(inter2[0]) + 1
