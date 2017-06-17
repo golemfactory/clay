@@ -453,6 +453,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         task.header.max_price = str(task.header.max_price)
 
         definition = task_state.definition
+        definition.legacy = True
         serialized = task_builder.build_dictionary(definition)
 
         if cbk:

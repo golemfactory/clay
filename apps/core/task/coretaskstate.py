@@ -59,6 +59,8 @@ class TaskDefinition(object):
         self.verification_options = None
         self.options = Options()
         self.docker_images = None
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        self.legacy = False
 
     def is_valid(self):
         if not path.exists(self.main_program_file):

@@ -363,14 +363,17 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
 
-        if 'compositing' in options:
-            definition.options.compositing = options['compositing']
+        if hasattr(definition.options, 'compositing'):
+            definition.options.compositing = options.get('compositing', False)
 
         return definition
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if definition.legacy:
+            return definition.output_file
+
         options = dictionary['options']
         path = os.path.join(options['output_path'], definition.task_name)
         return '{}.{}'.format(path, options['format'])
-

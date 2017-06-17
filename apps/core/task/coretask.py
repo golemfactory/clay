@@ -424,11 +424,15 @@ class CoreTaskBuilder(TaskBuilder):
     def build_minimal_definition(cls, task_type, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
-        definition.task_id = str(uuid.uuid4())
+        definition.task_id = dictionary.get('id', str(uuid.uuid4()))
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
+
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        definition.legacy = dictionary.get('legacy', False)
+
         return definition
 
     @classmethod
@@ -451,8 +455,8 @@ class CoreTaskBuilder(TaskBuilder):
             dictionary['timeout'])
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
+        definition.output_file = cls.get_output_path(dictionary, definition)
 
-        definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
     @classmethod
@@ -462,6 +466,7 @@ class CoreTaskBuilder(TaskBuilder):
         output_path = cls.build_output_path(definition)
 
         return {
+            u'id': to_unicode(definition.task_id),
             u'type': to_unicode(definition.task_type),
             u'name': to_unicode(definition.task_name),
             u'timeout': to_unicode(task_timeout),
@@ -471,14 +476,25 @@ class CoreTaskBuilder(TaskBuilder):
             u'resources': [to_unicode(r) for r in definition.resources],
             u'options': {
                 u'output_path': to_unicode(output_path)
-            }
+            },
+            # FIXME: Backward compatibility only. Remove after upgrading GUI.
+            u'legacy': definition.legacy,
         }
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
+
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if dictionary.get('legacy'):
+            return dictionary['output_path']
+
         return os.path.join(options['output_path'], definition.task_name)
 
     @staticmethod
     def build_output_path(definition):
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if definition.legacy:
+            return definition.output_file
+
         return definition.output_file.rsplit(os.path.sep, 1)[0]

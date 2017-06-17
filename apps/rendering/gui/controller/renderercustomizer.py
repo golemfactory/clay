@@ -185,7 +185,12 @@ class FrameRendererCustomizer(RendererCustomizer):
                 self.show_error_window(u"Wrong frame format. "
                                        u"Frame list expected, e.g. 1;3;5-12.")
                 return
-            self.options.frames = frames
+        else:
+            frames = "1"
+
+        self.options.frames = frames
+        # FIXME: CoreTask uses frames_string for frame conversion
+        self.options.frames_string = frames
 
     def _frames_changed(self):
         self.logic.task_settings_changed()

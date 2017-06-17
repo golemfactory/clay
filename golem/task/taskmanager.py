@@ -101,7 +101,7 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
-        # FIXME: remove after the new interface has been integrated with
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
         if not isinstance(dictionary, dict):
             return dictionary
 

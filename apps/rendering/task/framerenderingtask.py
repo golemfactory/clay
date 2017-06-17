@@ -371,12 +371,12 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
         frames_string = to_unicode(options.get('frames', 1))
         frames = cls.string_to_frames(frames_string)
-        use_frames = len(frames) > 1 or frames != [1]
+        use_frames = options.get('use_frames', len(frames) > 1)
 
         definition = parent.build_minimal_definition(task_type, dictionary)
         definition.options.frames_string = frames_string
         definition.options.frames = frames
-        definition.options.use_frames = options.get('use_frames', use_frames)
+        definition.options.use_frames = use_frames
 
         return definition
 
