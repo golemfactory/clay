@@ -333,12 +333,12 @@ class Client(HardwarePresetsMixin):
         self.task_server = None
         self.nodes_manager_client = None
 
-    def enqueue_new_task(self, task):
-        # FIXME: remove after the new interface has been integrated with
-        if isinstance(task, dict):
-            task = self.task_server.task_manager.create_task(task)
+    def enqueue_new_task(self, task_dict):
+        # FIXME: Statement only for DummyTask compatibility
+        if isinstance(task_dict, dict):
+            task = self.task_server.task_manager.create_task(task_dict)
         else:
-            task.header.max_price = int(task.header.max_price)
+            task = task_dict
 
         resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
@@ -349,9 +349,15 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
 
-        deferred = self.resource_server.add_task(files, task_id, options)
-        deferred.addCallback(lambda _: task_manager.add_new_task(task))
+        def add_task(_):
+            request = AsyncRequest(task_manager.add_new_task, task)
+            async_run(request, None, error)
 
+        def error(e):
+            log.error("Task %s creation failed: %s", task_id, e)
+
+        deferred = self.resource_server.add_task(files, task_id, options)
+        deferred.addCallbacks(add_task, error)
         return task
 
     def task_resource_send(self, task_id):
@@ -399,9 +405,15 @@ class Client(HardwarePresetsMixin):
             self._publish(Task.evt_task_test_status,
                           TaskTestStatus.error, *args, **kwargs)
 
-        t = self.task_server.task_manager.create_task(
-            dictionary=DictSerializer.load(t_dict), minimal=True)
-        self.task_tester = TaskTester(t, self.datadir, on_success, on_error)
+        try:
+            dictionary = DictSerializer.load(t_dict)
+            task = self.task_server.task_manager.create_task(
+                dictionary=dictionary, minimal=True
+            )
+        except Exception as e:
+            return on_error(to_unicode(e))
+
+        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
         self.task_tester.run()
         self._publish(Task.evt_task_test_status, TaskTestStatus.started, True)
 
@@ -414,9 +426,8 @@ class Client(HardwarePresetsMixin):
 
     def create_task(self, t_dict):
         try:
-            task = DictSerializer.load(t_dict)
-            new_task = self.enqueue_new_task(task)
-            return unicode(new_task.header.task_id)
+            task = self.enqueue_new_task(t_dict)
+            return unicode(task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
@@ -550,6 +561,9 @@ class Client(HardwarePresetsMixin):
 
     def get_subtasks_borders(self, task_id):
         return self.task_server.task_manager.get_subtasks_borders(task_id)
+
+    def get_subtasks_frames(self, task_id):
+        return self.task_server.task_manager.get_subtasks_frames(task_id)
 
     def get_subtask(self, subtask_id):
         return self.task_server.task_manager.get_subtask_dict(subtask_id)

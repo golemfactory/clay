@@ -1,4 +1,6 @@
 import os
+import unittest
+import uuid
 
 from pathlib import Path
 from PIL import Image
@@ -162,7 +164,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             new_img = task._paste_new_chunk(img, preview_path, 1, 10)
         assert isinstance(new_img, Image.Image)
 
-
     def test_mark_task_area(self):
         task = self._get_frame_task()
         task.total_tasks = 4
@@ -195,6 +196,54 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.total_tasks = 5
         task.frames = [x * 10 for x in range(1, 16)]
         assert task._choose_frames(task.frames, 2, 5) == ([40, 50, 60], 1)
+
+    def test_subtask_frames(self):
+        task = self._get_frame_task()
+        task.frames = range(4)
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 0 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): None,
+            str(uuid.uuid4()): {
+                'frames': None
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 0 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): {
+                'frames': [0, 1]
+            },
+            str(uuid.uuid4()): {
+                'frames': [2, 3]
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert all(len(f) == 1 for f in frames.values())
+
+        task.subtasks_given = {
+            str(uuid.uuid4()): {
+                'frames': [0, 1]
+            },
+            str(uuid.uuid4()): {
+                'frames': [1, 2, 3]
+            }
+        }
+
+        frames = task.get_subtask_frames()
+        assert len(frames) == 4
+        assert len(frames[0]) == 1
+        assert len(frames[1]) == 2
+        assert len(frames[2]) == 1
+        assert len(frames[3]) == 1
 
     def test_update_preview_task_file_path(self):
         task = self._get_frame_task()
@@ -245,8 +294,11 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.options = FrameRendererOptions()
         definition.options.use_frames = True
         definition.options.frames = range(1, 7)
-        builder = FrameRenderingTaskBuilder(root_path=self.path, dir_manager=DirManager(self.path),
-                                            node_name="SOME NODE NAME", task_definition=definition)
+
+        builder = FrameRenderingTaskBuilder(root_path=self.path,
+                                            dir_manager=DirManager(self.path),
+                                            node_name="SOME NODE NAME",
+                                            task_definition=definition)
 
         class Defaults(object):
             def __init__(self, default_subtasks, min_subtasks, max_subtasks):
@@ -263,6 +315,15 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.optimize_total = False
         assert builder._calculate_total(defaults) == 12
 
+        definition.total_subtasks = None
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 0
+        assert builder._calculate_total(defaults) == 13
+
+        definition.total_subtasks = 1
+        assert builder._calculate_total(defaults) == 13
+
         definition.total_subtasks = 2
         assert builder._calculate_total(defaults) == 13
 
@@ -275,14 +336,31 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.total_subtasks = 33
         assert builder._calculate_total(defaults) == 33
 
-        definition.total_subtasks = 6
         definition.options.use_frames = True
+
+        definition.total_subtasks = None
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
+
+        definition.total_subtasks = 0
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
+
+        definition.total_subtasks = 1
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 1
+
+        definition.total_subtasks = 2
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 2
 
         definition.total_subtasks = 3
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
+
+        definition.total_subtasks = 6
+        with self.assertNoLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 12
         with self.assertNoLogs(logger, level="WARNING"):
@@ -303,3 +381,60 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.total_subtasks = 18
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 18
+
+
+class TestFramesConversion(unittest.TestCase):
+    def test_frames_to_string(self):
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([1, 4, 3, 2]), "1-4")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([1]), "1")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string(range(10)), "0-9")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string(range(13, 16) + range(10)),
+                         "0-9;13-15")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([1, 3, 4, 5, 10, 11]), '1;3-5;10-11')
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([0, 5, 10, 15]), '0;5;10;15')
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([]), "")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string(["abc", "5"]), "")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string(["1", "5"]), "1;5")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string(["5", "2", "1", "3"]), "1-3;5")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([-1]), "")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string([2, 3, -1]), "")
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .frames_to_string("ABC"), "")
+
+    def test_string_to_frames(self):
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('1-4'), range(1, 5))
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('5-8;1-3'), [1, 2, 3, 5, 6, 7, 8])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('1 - 4'), range(1, 5))
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('0-9; 13-15'),
+                         range(10) + range(13, 16))
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('0-15,5;23'), [0, 5, 10, 15, 23])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('0-15,5;23-25;26'),
+                         [0, 5, 10, 15, 23, 24, 25, 26])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('abc'), [])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('0-15,5;abc'), [])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames(0), [])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('5-8;1-2-3'), [])
+        self.assertEqual(FrameRenderingTaskBuilder
+                         .string_to_frames('1-100,2,3'), [])
