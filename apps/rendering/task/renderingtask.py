@@ -370,10 +370,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
-        # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        if definition.legacy:
-            return definition.output_file
-
-        options = dictionary['options']
-        path = os.path.join(options['output_path'], definition.task_name)
-        return '{}.{}'.format(path, options['format'])
+        path = super(RenderingTaskBuilder, cls).get_output_path(
+            dictionary, definition)
+        return '{}.{}'.format(path, dictionary['options']['format'])

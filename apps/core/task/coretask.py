@@ -487,7 +487,7 @@ class CoreTaskBuilder(TaskBuilder):
 
         # FIXME: Backward compatibility only. Remove after upgrading GUI.
         if dictionary.get('legacy'):
-            return dictionary['output_path']
+            return options['output_path']
 
         return os.path.join(options['output_path'], definition.task_name)
 
