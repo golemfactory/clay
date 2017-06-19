@@ -8,7 +8,8 @@ from golem import testutils
 from golem.transactions.ethereum.ethereumincomeskeeper\
     import EthereumIncomesKeeper
 
-SQLITE3_MAX_INT = 2**63 - 1
+
+SQLITE3_MAX_INT = 2**31 - 1
 
 
 def get_some_id():
@@ -96,14 +97,36 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.assert_called_once_with(**received_kwargs)
         super_received_mock.reset_mock()
 
+    def test_transaction_overflow(self):
+        received_kwargs = {
+            'sender_node_id': get_some_id(),
+            'task_id': get_some_id(),
+            'subtask_id': 's1' + get_some_id()[:-2],
+            'transaction_id': get_some_id(),
+            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'value': 2147483647,
+        }
+        self.instance.eth_node.get_logs.return_value = [
+            {
+                'topics': [
+                    EthereumIncomesKeeper.LOG_ID,
+                    get_some_id(),  # sender
+                    self.instance.processor.eth_address(),  # receiver
+                ],
+                'data': hex(received_kwargs['value']),
+            },
+        ]
+        with self.assertRaises(OverflowError):
+            self.instance.received(**received_kwargs)
+
     def test_received_double_spending(self):
         received_kwargs = {
             'sender_node_id': get_some_id(),
             'task_id': get_some_id(),
-            'subtask_id': 's1' + get_some_id(),
+            'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
             'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
-            'value': random.randint(10, SQLITE3_MAX_INT / 4),
+            'value': SQLITE3_MAX_INT - 1,
         }
 
         self.instance.eth_node.get_logs.return_value = [
@@ -127,7 +150,17 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         )
 
         # Try to use the same payment for another subtask
-        received_kwargs['subtask_id'] = 's2' + get_some_id()
+        received_kwargs['subtask_id'] = 's2' + get_some_id()[:-2]
+        # Paranoid mode: Make sure subtask_id wasn't used before
+        self.assertEquals(
+            0,
+            model.Income.select().where(
+                model.Income.subtask == received_kwargs['subtask_id']
+            )
+            .count(),
+            "Paranoid duplicated subtask check failed"
+        )
+
         self.instance.received(**received_kwargs)
         self.assertEquals(
             0,

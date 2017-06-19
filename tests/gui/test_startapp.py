@@ -225,7 +225,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
     def test_start_app(self, _start_client):
 
         start_app(datadir=self.tempdir)
-        _start_client.assert_called_with(True, self.tempdir, False)
+        _start_client.assert_called_with(False, self.tempdir, False)
 
     def test_start_gui_subprocess(self):
 

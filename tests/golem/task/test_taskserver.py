@@ -14,7 +14,6 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
-from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
@@ -819,7 +818,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.query_extra_data.return_value = extra_data
 
-        sync_wait(ts.task_manager.add_new_task(task_mock))
+        ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask("DEF", "DEF", "xyz",
                                                                      1000, 10, 5, 10, 2,
@@ -860,7 +859,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.query_extra_data.return_value = extra_data
 
-        sync_wait(ts.task_manager.add_new_task(task_mock))
+        ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states["xyz"].status = ts.task_manager.activeStatus[0]
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")

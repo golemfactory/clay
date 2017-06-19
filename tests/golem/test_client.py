@@ -7,7 +7,7 @@ from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
 from golem import testutils
-from golem.client import Client, ClientTaskComputerEventListener, log
+from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
@@ -20,10 +20,22 @@ from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+
+
+def mock_async_run(req, success, error):
+    try:
+        result = req.method(*req.args, **req.kwargs)
+    except Exception as e:
+        error(e)
+    else:
+        if success:
+            success(result)
 
 
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
@@ -519,6 +531,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             self.assertIsInstance(value, unicode)
             self.assertTrue(key in res_dirs)
 
+    @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         c = self.client
         c.resource_server = Mock()
@@ -547,8 +560,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.enqueue_new_task(task)
         assert c.resource_server.add_task.called
-        assert c.task_server.task_manager.add_new_task.called
 
+    @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task_dict(self, *_):
         t_dict = {
             'resources': [
@@ -559,7 +572,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
             'type': 'blender',
             'timeout': '09:25:00',
-            'subtask_count': '6',
+            'subtasks': '6',
             'subtask_timeout': '4:10:00',
             'bid': '0.000032',
             'options': {
@@ -585,6 +598,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             .assert_called_with(c.keys_auth.key_id)
         assert c.resource_server.add_task.called
         assert not c.task_server.task_manager.add_new_task.called
+
+        task_id = task.header.task_id
+        c.task_server.task_manager.tasks[task_id] = task
+        c.task_server.task_manager.tasks_states[task_id] = TaskState()
+        frames = c.get_subtasks_frames(task_id)
+        assert frames is not None
 
     @patch('golem.client.async_run')
     def test_get_balance(self, async_run, *_):

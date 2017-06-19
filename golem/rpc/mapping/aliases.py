@@ -93,6 +93,7 @@ class Task(object):
 
     subtasks                = 'comp.task.subtasks'
     subtasks_borders        = 'comp.task.subtasks.borders'
+    subtasks_frames         = 'comp.task.subtasks.frames'
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 

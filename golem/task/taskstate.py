@@ -22,17 +22,9 @@ class TaskState(object):
         return '<TaskStatus: %r %.2f>' % (self.status, self.progress)
 
     def to_dictionary(self):
-        preview = self.extra_data.get('result_preview')
-
-        if isinstance(preview, basestring):
-            preview = to_unicode(preview)
-        elif isinstance(preview, collections.Iterable):
-            preview = [to_unicode(entry) for entry in preview]
-
         return {
             u'time_remaining': self.remaining_time,
-            u'status': to_unicode(self.status),
-            u'preview': preview
+            u'status': to_unicode(self.status)
         }
 
 

@@ -8,8 +8,9 @@ from threading import Lock
 
 from golem.core.common import to_unicode
 from golem.core.fileshelper import copy_file_tree, common_dir
-from golem.resource.client import IClientHandler, ClientCommands, ClientHandler, ClientConfig, TestClient, AsyncRequest, \
-    async_run
+from golem.resource.client import IClientHandler, ClientCommands, \
+    ClientHandler, ClientConfig, TestClient
+from golem.core.async import AsyncRequest, async_run
 
 logger = logging.getLogger(__name__)
 

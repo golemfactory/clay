@@ -18,7 +18,7 @@ pysha3>=1.0.2
 pystun==0.1.0
 pytz
 six==1.10.0
-Twisted>=17.1.0
+Twisted==17.1.0
 cffi==1.10.0
 web3==3.8.0
 ethereum==1.6.0

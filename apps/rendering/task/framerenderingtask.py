@@ -1,18 +1,23 @@
 from __future__ import division
-import os
+
 import logging
 import math
+import os
 from collections import OrderedDict
-from PIL import Image, ImageChops
 
-from golem.task.taskstate import SubtaskStatus
+from PIL import Image, ImageChops
+from copy import deepcopy
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
-from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.task.renderingtask import RenderingTask, RenderingTaskBuilder
+from apps.rendering.resources.renderingtaskcollector import \
+    RenderingTaskCollector
+from apps.rendering.task.renderingtask import RenderingTask, \
+    RenderingTaskBuilder
 from apps.rendering.task.verificator import FrameRenderingVerificator
+from golem.core.common import update_dict, to_unicode
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.rendering")
 
@@ -22,8 +27,9 @@ DEFAULT_PADDING = 4
 class FrameRendererOptions(Options):
     def __init__(self):
         super(FrameRendererOptions, self).__init__()
-        self.use_frames = False
+        self.use_frames = True
         self.frames = range(1, 11)
+        self.frames_string = "1-10"
 
 
 class FrameRenderingTask(RenderingTask):
@@ -88,6 +94,27 @@ class FrameRenderingTask(RenderingTask):
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
+
+    def get_subtask_frames(self):
+        frames = OrderedDict((frame_num, []) for frame_num in self.frames)
+
+        for subtask_id, subtask in self.subtasks_given.iteritems():
+            if not (subtask and subtask['frames']):
+                continue
+            # There might be multiple subtasks per frame.
+            # We do not know their status at this point.
+            for frame in subtask['frames']:
+                frames[frame].append(subtask_id)
+
+        return frames
+
+    def to_dictionary(self):
+        dictionary = super(FrameRenderingTask, self).to_dictionary()
+        frame_count = len(self.frames) if self.use_frames else 1
+
+        return update_dict(dictionary, {u'options': {
+            u'frame_count': frame_count
+        }})
 
     #########################
     # Specific task methods #
@@ -285,8 +312,20 @@ def get_frame_name(output_name, ext, frame_num):
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     TASK_CLASS = FrameRenderingTask
 
+    def __init__(self, node_name, task_definition, root_path, dir_manager):
+        frames = task_definition.options.frames
+
+        if isinstance(frames, basestring):
+            task_definition = deepcopy(task_definition)
+            task_definition.options.frames = self.string_to_frames(frames)
+
+        super(FrameRenderingTaskBuilder, self).__init__(node_name,
+                                                        task_definition,
+                                                        root_path, dir_manager)
+
     def _calculate_total(self, defaults):
-        if self.task_definition.optimize_total:
+        if self.task_definition.optimize_total or \
+           not self.task_definition.total_subtasks:
             if self.task_definition.options.use_frames:
                 return len(self.task_definition.options.frames)
             else:
@@ -322,14 +361,93 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'frames'] = definition.options.frames
+        dictionary[u'options'][u'frames'] = definition.options.frames_string
         return dictionary
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
+    def build_minimal_definition(cls, task_type, dictionary):
         parent = super(FrameRenderingTaskBuilder, cls)
-        definition = parent.build_full_definition(task_type, dictionary)
-        definition.options.frames = dictionary['options']['frames']
+        options = dictionary.get('options') or dict()
+
+        frames_string = to_unicode(options.get('frames', 1))
+        frames = cls.string_to_frames(frames_string)
+        use_frames = options.get('use_frames', len(frames) > 1)
+
+        definition = parent.build_minimal_definition(task_type, dictionary)
+        definition.options.frames_string = frames_string
+        definition.options.frames = frames
+        definition.options.use_frames = use_frames
+
         return definition
+
+    @staticmethod
+    def frames_to_string(frames):
+        s = ""
+        last_frame = None
+        interval = False
+        try:
+            for frame in sorted(frames):
+                frame = int(frame)
+                if frame < 0:
+                    raise ValueError("Frame number must be "
+                                     "greater or equal to 0")
+
+                if last_frame is None:
+                    s += str(frame)
+                elif frame - last_frame == 1:
+                    if not interval:
+                        s += '-'
+                        interval = True
+                elif interval:
+                    s += str(last_frame) + ";" + str(frame)
+                    interval = False
+                else:
+                    s += ';' + str(frame)
+
+                last_frame = frame
+
+        except (ValueError, AttributeError, TypeError) as err:
+            logger.error("Wrong frame format: {}".format(err))
+            return ""
+
+        if interval:
+            s += str(last_frame)
+
+        return s
+
+    @staticmethod
+    def string_to_frames(s):
+        try:
+            frames = []
+            after_split = s.split(";")
+            for i in after_split:
+                inter = i.split("-")
+                if len(inter) == 1:
+                    # single frame (e.g. 5)
+                    frames.append(int(inter[0]))
+                elif len(inter) == 2:
+                    inter2 = inter[1].split(",")
+                    # frame range (e.g. 1-10)
+                    if len(inter2) == 1:
+                        start_frame = int(inter[0])
+                        end_frame = int(inter[1]) + 1
+                        frames += range(start_frame, end_frame)
+                    # every nth frame (e.g. 10-100,5)
+                    elif len(inter2) == 2:
+                        start_frame = int(inter[0])
+                        end_frame = int(inter2[0]) + 1
+                        step = int(inter2[1])
+                        frames += range(start_frame, end_frame, step)
+                    else:
+                        raise ValueError("Wrong frame step")
+                else:
+                    raise ValueError("Wrong frame range")
+            return sorted(frames)
+        except ValueError as err:
+            logger.warning("Wrong frame format: {}".format(err))
+            return []
+        except (AttributeError, TypeError) as err:
+            logger.error("Problem with change string to frame: {}".format(err))
+            return []
 
 
