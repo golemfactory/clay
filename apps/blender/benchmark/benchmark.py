@@ -17,7 +17,7 @@ class BlenderBenchmark(Benchmark):
         task_def.task_type = "Blender"
         task_def.output_format = "png"
         task_def.options = BlenderRendererOptions()
-        task_def.options.frames = [1]
+        task_def.options.frames = "1"
         task_def.task_id = u"blender_benchmark"
         main_scene_file = pathlib.Path(self.blender_task_path)
         main_scene_file /= "bmw27_cpu.blend"
