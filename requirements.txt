@@ -54,3 +54,4 @@ requests==2.13.0
 Automat==0.5.0
 zope.interface==4.3.3
 incremental==16.10.1
+pyssim
