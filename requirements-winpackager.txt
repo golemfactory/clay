@@ -7,4 +7,5 @@ https://github.com/golemfactory/golem/wiki/wheels/OpenEXR-1.2.0-cp27-none-win32.
 https://github.com/golemfactory/golem/wiki/wheels/pyethash-0.1.23-cp27-cp27m-win32.whl
 https://github.com/golemfactory/golem/wiki/wheels/secp256k1-0.13.2-cp27-cp27m-win32.whl
 https://github.com/golemfactory/golem/wiki/wheels/devp2p-0.8.0-py2.py3-none-any.whl
+https://github.com/golemfactory/golem/wiki/wheels/scipy-0.19.0-cp27-cp27m-win32.whl
 -r requirements.txt
