@@ -28,9 +28,10 @@ environment:
       WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
       WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
       WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
+      WHEEL_NUMPY: numpy-1.11.3+mkl-cp27-cp27m-win32.whl
       WHEEL_SCIPY: scipy-0.19.0-cp27-cp27m-win32.whl
 
-      WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1% %WHEEL_SCIPY%)
+      WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1% %WHEEL_NUMPY% %WHEEL_SCIPY%)
 
       PYWIN32: pywin32-220.win32-py2.7.exe
 
