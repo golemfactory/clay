@@ -553,10 +553,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.progress_dialog_customizer.enable_abort_button(False)
 
         logger.debug("After test: {}".format(after_test_data))
-        if after_test_data.get("warnings") is not None:
+        if after_test_data.get(u"warnings") is not None:
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(
-                after_test_data["warnings"]
+                after_test_data[u"warnings"]
             ))
         else:
             msg = u"Task tested successfully - time %.2f" % time_spent
