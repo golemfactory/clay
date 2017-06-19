@@ -145,6 +145,8 @@ class Payments(object):
 class UI(object):
 
     quit                    = 'ui.quit'
+    start                   = 'ui.start'
+    stop                    = 'ui.stop'
 
     evt_lock_config         = 'evt.ui.widget.config.lock'
 
