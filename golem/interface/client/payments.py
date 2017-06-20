@@ -1,5 +1,6 @@
 from ethereum.utils import denoms
 
+from golem.core.common import to_unicode
 from golem.core.deferred import sync_wait
 from golem.interface.command import command, Argument, CommandResult
 
@@ -23,12 +24,8 @@ sort_payments = Argument(
 )
 
 
-def __status(info):
-    return unicode(info["status"]).replace(u"PaymentStatus.", u"")
-
-
 def __value(value):
-    return u"{:.6f} GNT".format(value / denoms.ether)
+    return u"{:.6f} GNT".format(float(value) / denoms.ether)
 
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
@@ -40,8 +37,8 @@ def incomes(sort):
 
     for income in result:
         entry = [
-            income["payer"].encode('hex'),
-            __status(income),
+            to_unicode(income["payer"]),
+            to_unicode(income["status"]),
             __value(float(income["value"])),
             str(income["block_number"])
         ]
@@ -68,16 +65,13 @@ def payments(sort):
                                             payment_value)
 
         entry = [
-            payment["subtask"],
-            payment["payee"].encode('hex'),
-            __status(payment),
+            to_unicode(payment["subtask"]),
+            to_unicode(payment["payee"]),
+            to_unicode(payment["status"]),
             __value(payment_value),
-            payment_fee
+            to_unicode(payment_fee)
         ]
 
         values.append(entry)
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
-
-
-

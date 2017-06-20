@@ -610,20 +610,13 @@ class Client(HardwarePresetsMixin):
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            payments = self.transaction_system.get_payments_list()
-            return map(self._map_payment, payments)
+            return self.transaction_system.get_payments_list()
         return ()
 
     def get_incomes_list(self):
-        # Will be implemented in incomes_core
+        if self.use_transaction_system():
+            return self.transaction_system.get_incoming_payments()
         return []
-
-    @classmethod
-    def _map_payment(cls, obj):
-        obj["payee"] = to_unicode(obj["payee"])
-        obj["value"] = to_unicode(obj["value"])
-        obj["fee"] = to_unicode(obj["fee"])
-        return obj
 
     def get_task_cost(self, task_id):
         """

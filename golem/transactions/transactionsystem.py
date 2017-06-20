@@ -1,4 +1,5 @@
-from golem.model import Payment
+from golem.core.common import datetime_to_timestamp, to_unicode
+from golem.model import Payment, PaymentStatus
 
 from paymentskeeper import PaymentsKeeper
 from incomeskeeper import IncomesKeeper
@@ -52,22 +53,24 @@ class TransactionSystem(object):
         """Returns preprocessed list of pending & confirmed incomes.
         It's optimised for electron GUI.
         """
-        # TODO: Do sql join
-        # TODO: group by task? (sum(subtask payments))
-        expected = self.incomes_keeper.get_pending()
-        confirmed = self.incomes_keeper.get_confirmed()
+        incomes = self.incomes_keeper.get_list_of_all_incomes()
 
         def item(o):
-            d = {
-                'title': o.task,  # TODO try to get task name?
-                'time': o.created_date,
-                'status': getattr(o, 'transaction') and o.transaction or "Pending",
-                'amount': o.value,
-            }
-            return d
+            status = PaymentStatus.confirmed if o.income.transaction \
+                     else PaymentStatus.awaiting
 
-        result = [item(o) for o in (expected + confirmed)]
-        return result
+            return {
+                u"task": to_unicode(o.task),
+                u"subtask": to_unicode(o.subtask),
+                u"payer": to_unicode(o.sender_node),
+                u"status": to_unicode(status.name),
+                u"value": to_unicode(o.value),
+                u"block_number": to_unicode(o.income.block_number),
+                u"created": datetime_to_timestamp(o.created_date),
+                u"modified": datetime_to_timestamp(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def check_payments(self):
         # TODO Some code from taskkeeper
