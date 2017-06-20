@@ -9,6 +9,7 @@ from twisted.internet.defer import Deferred
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import timestamp_to_datetime
 from golem.core.simpleserializer import DictSerializer
 from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus, ExpectedIncome
@@ -84,12 +85,14 @@ class TestClient(TestWithDatabase):
 
         n = 9
         payments = [
-            Payment(subtask=uuid.uuid4(),
-                    status=PaymentStatus.awaiting,
-                    payee=random_hex_str().decode('hex'),
-                    value=i * 10 ** 18,
-                    created=i,
-                    modified=i)
+            Payment(
+                subtask=uuid.uuid4(),
+                status=PaymentStatus.awaiting,
+                payee=random_hex_str().decode('hex'),
+                value=i * 10 ** 18,
+                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
+                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+            )
             for i in xrange(n + 1)
         ]
 
@@ -126,8 +129,8 @@ class TestClient(TestWithDatabase):
                 task=random_hex_str(),
                 subtask=random_hex_str(),
                 value=i * 10 ** 18,
-                created=i,
-                modified=i
+                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
+                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
             )
             for i in xrange(n + 1)
         ]
@@ -136,7 +139,6 @@ class TestClient(TestWithDatabase):
             income.save()
 
         received_incomes = self.client.get_incomes_list()
-
         self.assertEqual(len(received_incomes), len(incomes))
 
         for i in xrange(len(incomes)):
