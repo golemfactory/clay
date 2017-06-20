@@ -8,7 +8,8 @@ from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
-                                               RenderingTaskBuilder, logger)
+                                               RenderingTaskBuilder, logger,
+                                               PREVIEW_EXT)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
@@ -111,7 +112,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         for i in range(int(round(rt.res_x * rt.scale_factor))):
             for j in range(int(round(rt.res_y * rt.scale_factor))):
                 img.putpixel((i, j), (1, 255, 255))
-        img.save(rt.preview_file_path, "BMP")
+        img.save(rt.preview_file_path, PREVIEW_EXT)
         img.close()
         rt._remove_from_preview("xxyyzz")
         img = rt._open_preview()
@@ -363,3 +364,15 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',
                                         'file3.jpg', 'file4.txt'}
+
+    def test_get_output_path(self):
+        td = TaskDefinition()
+        td.legacy = True
+        td.task_name = "MY task"
+        tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               "/dir1/dir2/DEFOUTPUT_FILE.txt"
+        td.legacy = False
+        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               path.join("/dir3/dir4", "MY task.txt")

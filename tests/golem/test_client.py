@@ -531,6 +531,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             self.assertIsInstance(value, unicode)
             self.assertTrue(key in res_dirs)
 
+    def test_get_estimated_cost(self, *_):
+        c = self.client
+        assert c.get_estimated_cost("task type", {"price": 150,
+                                                  "subtask_time": 2.5,
+                                                  "num_subtasks": 5}) == 1875
+
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         c = self.client
