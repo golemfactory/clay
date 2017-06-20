@@ -16,6 +16,7 @@ from apps.rendering.resources.imgrepr import (PILImgRepr)
 logger = logging.getLogger("apps.lux")
 
 
+
 class LuxRenderVerificator(RenderingVerificator):
     def __init__(self, *args, **kwargs):
         super(LuxRenderVerificator, self).__init__(*args, **kwargs)
