@@ -416,11 +416,24 @@ class NewTaskDialogCustomizer(Customizer):
             if self.gui.ui.optimizeTotalCheckBox.isChecked():
                 self.gui.ui.pessimisticCostLabel.setText("unknown")
             else:
-                time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
-                cost = price * time_
-                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
-        except ValueError:
+                self._get_estimated_cost(price)
+
+        except Exception as ex:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
+
+    @inlineCallbacks
+    def _get_estimated_cost(self, price):
+        subtask_time = get_subtask_hours(self.gui)
+        num_subtasks = float(self.gui.ui.totalSpinBox.value())
+        type = self.__get_current_task_type_name()
+        options = {
+            u'price': price,
+            u'num_subtasks': num_subtasks,
+            u'subtask_time': subtask_time
+        }
+        cost = yield self.logic.get_estimated_cost(type, options)
+        self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(
+            cost))
 
     def _advance_settings_button_clicked(self):
         self.gui.ui.advanceNewTaskWidget.setVisible(not self.gui.ui.advanceNewTaskWidget.isVisible())
@@ -486,7 +499,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
-        return self.gui.ui.taskTypeComboBox.itemText(index)
+        return unicode(self.gui.ui.taskTypeComboBox.itemText(index))
 
     def __get_current_preset_name(self):
         index = self.gui.ui.presetComboBox.currentIndex()
