@@ -13,7 +13,6 @@ from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager, find_task_script
 
-
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -160,21 +159,24 @@ class LuxTask(renderingtask.RenderingTask):
         self.num_add = 0
 
         self.preview_exr = None
-        self.referenceRuns =2
+        self.referenceRuns = 2
+
+
+        self.create_reference_data_for_task_validation() # GG: add mocks, whats the difference between Task and CoreTask
 
     def _get_random_crop_window_for_verification(self, source_lux_config_file_lxs):
         if "float cropwindow" in source_lux_config_file_lxs:
             start = source_lux_config_file_lxs.find('float cropwindow')
             start_bracket = source_lux_config_file_lxs.find('[', start)
             end_bracket = source_lux_config_file_lxs.find(']', start)
-            line = source_lux_config_file_lxs[start_bracket +1:end_bracket]
+            line = source_lux_config_file_lxs[start_bracket + 1: end_bracket]
             window = [float(w) for w in line.split()]
-            crop_window = ImgVerificator().get_random_crop_window(coverage = 0.5, window=window) #make smaller_window from window for verification
+            crop_window = ImgVerificator().get_random_crop_window(coverage=0.5,
+                                                                  window=window)  # make smaller_window from window for verification
             return crop_window
 
         crop_window = ImgVerificator().get_random_crop_window()
         return crop_window
-
 
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
@@ -192,7 +194,7 @@ class LuxTask(renderingtask.RenderingTask):
             num_cores=0,
             node_id=None,
             node_name=None
-            ):
+    ):
         verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
 
@@ -278,6 +280,7 @@ class LuxTask(renderingtask.RenderingTask):
             0)
 
         return ctd
+
     def query_extra_data_for_reference_task(self):
         scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
                                         xres=self.res_x,
@@ -309,14 +312,13 @@ class LuxTask(renderingtask.RenderingTask):
 
         return ctd
 
-
     ###################
     # CoreTask methods #
     ###################
 
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = self.dirManager.get_task_test_dir(self.header.task_id)
-      #  self.test_task_res_path = dirmanager.get_test_task_path(self.root_path)
+        #  self.test_task_res_path = dirmanager.get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
@@ -407,7 +409,7 @@ class LuxTask(renderingtask.RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.verificator.advanced_verification\
+            if self.verificator.advanced_verification \
                     and os.path.isfile(self.__get_test_flm()):
                 self.__generate_final_flm_advanced_verification()
             else:
@@ -437,8 +439,8 @@ class LuxTask(renderingtask.RenderingTask):
         return ctd
 
     def _short_extra_data_repr(self, perf_index, extra_data):
-        return "start_task: {start_task}, "\
-               "outfilebasename: {outfilebasename}, "\
+        return "start_task: {start_task}, " \
+               "outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
 
     def _update_preview(self, new_chunk_file_path, chunk_num):
@@ -455,8 +457,8 @@ class LuxTask(renderingtask.RenderingTask):
     def _remove_from_preview(self, subtask_id):
         preview_files = []
         for sub_id, task in self.subtasks_given.iteritems():
-            if sub_id != subtask_id\
-                    and task['status'] == 'Finished'\
+            if sub_id != subtask_id \
+                    and task['status'] == 'Finished' \
                     and 'preview_file' in task:
                 preview_files.append(task['preview_file'])
 
@@ -509,7 +511,7 @@ class LuxTask(renderingtask.RenderingTask):
         img_current.close()
 
     def create_reference_data_for_task_validation(self):
-        for i in range(0,self.referenceRuns):
+        for i in range(0, self.referenceRuns):
             path = self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
             computer = LocalComputer(
                 self,
@@ -517,10 +519,9 @@ class LuxTask(renderingtask.RenderingTask):
                 self.__final_img_ready,
                 self.__final_img_error,
                 self.query_extra_data_for_reference_task
-                )
+            )
             computer.run()
             computer.tt.join()
-
 
         path = self.dirManager.get_ref_data_dir(self.header.task_id, counter='flmMergingTest')
         computer = LocalComputer(
@@ -532,8 +533,6 @@ class LuxTask(renderingtask.RenderingTask):
         )
         computer.run()
         computer.tt.join()
-
-
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(

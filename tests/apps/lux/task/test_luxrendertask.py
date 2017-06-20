@@ -60,10 +60,10 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         random.seed(0)
         window = luxtask._get_random_crop_window_for_verification(src)
 
-        assert window == (0.31547844316829604, 0.37872399637166365, 0.8036536350711728, 0.8668991882745405)
+        assert window == (0.24946508682591728, 0.39088644306322684, 0.7443999409582027, 0.8858212971955123)
 
         window2 = luxtask._get_random_crop_window_for_verification("")
-        assert window2 == (0.28757516937453687, 0.6038029353913748, 0.17704008476348007, 0.493267850780318)
+        assert window2 == (0.2576849079862461, 0.6449832426069878, 0.1586387240990842, 0.5459370587198259)
 
 
 
