@@ -138,7 +138,8 @@ class LuxTask(renderingtask.RenderingTask):
         super(LuxTask, self).__init__(**kwargs)
 
         self.dirManager = DirManager(self.root_path)
-        self.tmp_dir = self.dirManager.get_task_temporary_dir(self.header.task_id)
+        self.tmp_dir = \
+            self.dirManager.get_task_temporary_dir(self.header.task_id)
 
         self.halttime = halttime
         self.haltspp = haltspp
@@ -146,10 +147,13 @@ class LuxTask(renderingtask.RenderingTask):
         self.merge_timeout = MERGE_TIMEOUT
 
         # Is it necessary to load scene_file contents here?
+
         try:
             with open(self.main_scene_file) as f:
                 self.scene_file_src = f.read()
-                self.random_crop_window_for_verification = self._get_random_crop_window_for_verification(self.scene_file_src)
+                self.random_crop_window_for_verification = \
+                    self._get_random_crop_window_for_verification(
+                        self.scene_file_src)
         except IOError as err:
             logger.error("Wrong scene file: {}".format(err))
             self.scene_file_src = ""
@@ -161,18 +165,21 @@ class LuxTask(renderingtask.RenderingTask):
         self.preview_exr = None
         self.referenceRuns = 2
 
+    def _get_random_crop_window_for_verification(self,
+                                                 source_lux_config_file_lxs):
 
-        self.create_reference_data_for_task_validation() # GG: add mocks, whats the difference between Task and CoreTask
-
-    def _get_random_crop_window_for_verification(self, source_lux_config_file_lxs):
         if "float cropwindow" in source_lux_config_file_lxs:
             start = source_lux_config_file_lxs.find('float cropwindow')
             start_bracket = source_lux_config_file_lxs.find('[', start)
             end_bracket = source_lux_config_file_lxs.find(']', start)
             line = source_lux_config_file_lxs[start_bracket + 1: end_bracket]
             window = [float(w) for w in line.split()]
-            crop_window = ImgVerificator().get_random_crop_window(coverage=0.5,
-                                                                  window=window)  # make smaller_window from window for verification
+
+            # make smaller_window from window for verification
+            crop_window = \
+                ImgVerificator().get_random_crop_window(
+                    coverage=0.5,
+                    window=window)
             return crop_window
 
         crop_window = ImgVerificator().get_random_crop_window()
@@ -187,6 +194,17 @@ class LuxTask(renderingtask.RenderingTask):
         super(LuxTask, self).initialize(dir_manager)
         self.verificator.test_flm = self.__get_test_flm()
         self.verificator.merge_ctd = self.__get_merge_ctd([])
+        self.create_reference_data_for_task_validation()
+
+
+    def _write_interval_wrapper(self, halttime):
+        if halttime > 0:
+            write_interval = int(self.halttime / 2)
+        else:
+            write_interval = 60
+
+        return write_interval
+
 
     def query_extra_data(
             self,
@@ -214,10 +232,13 @@ class LuxTask(renderingtask.RenderingTask):
             logger.error("Task already computed")
             return self.ExtraData()
 
-        if self.halttime > 0:
-            write_interval = int(self.halttime / 2)
-        else:
-            write_interval = 60
+        # if self.halttime > 0:
+        #     write_interval = int(self.halttime / 2)
+        # else:
+        #     write_interval = 60
+
+        write_interval = self._write_interval_wrapper(self.halttime)
+
         scene_src = regenerate_lux_file(
             self.scene_file_src,
             self.res_x,
@@ -249,16 +270,16 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
-    def \
-            query_extra_data_for_flm_merging_test(self):
-        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
-                                        xres=self.res_x,
-                                        yres=self.res_y,
-                                        halttime=4,
-                                        haltspp=1,
-                                        writeinterval=0.5,
-                                        crop=[0, 1, 0, 1],
-                                        output_format="png")
+    def query_extra_data_for_flm_merging_test(self):
+        scene_src = regenerate_lux_file(
+            scene_file_src=self.scene_file_src,
+            xres=self.res_x,
+            yres=self.res_y,
+            halttime=4,
+            haltspp=1,
+            writeinterval=0.5,
+            crop=[0, 1, 0, 1],
+            output_format="png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -281,15 +302,17 @@ class LuxTask(renderingtask.RenderingTask):
 
         return ctd
 
-    def query_extra_data_for_reference_task(self):
-        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
-                                        xres=self.res_x,
-                                        yres=self.res_y,
-                                        halttime=self.halttime,
-                                        haltspp=self.haltspp,
-                                        writeinterval=0.5,
-                                        crop=self.random_crop_window_for_verification,
-                                        output_format="png")
+    def query_extra_data_for_reference_task(self): # GG todo it seems that the file is not regenerated properly :/
+        write_interval = self._write_interval_wrapper(self.halttime)
+        scene_src = regenerate_lux_file(
+            scene_file_src=self.scene_file_src,
+            xres=self.res_x,
+            yres=self.res_y,
+            halttime=self.halttime,
+            haltspp=self.haltspp,
+            writeinterval=write_interval,
+            crop=self.random_crop_window_for_verification,
+            output_format="png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -315,21 +338,23 @@ class LuxTask(renderingtask.RenderingTask):
     ###################
     # CoreTask methods #
     ###################
-
     def query_extra_data_for_test_task(self):
-        self.test_task_res_path = self.dirManager.get_task_test_dir(self.header.task_id)
-        #  self.test_task_res_path = dirmanager.get_test_task_path(self.root_path)
+        self.test_task_res_path = \
+            self.dirManager.get_task_test_dir(
+                self.header.task_id)
+
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
-                                        xres=10,
-                                        yres=10,
-                                        halttime=1,
-                                        haltspp=0,
-                                        writeinterval=0.5,
-                                        crop=[0, 1, 0, 1],
-                                        output_format="png")
+        scene_src = regenerate_lux_file(
+            scene_file_src=self.scene_file_src,
+            xres=10,
+            yres=10,
+            halttime=1,
+            haltspp=0,
+            writeinterval=0.5,
+            crop=[0, 1, 0, 1],
+            output_format="png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -512,7 +537,9 @@ class LuxTask(renderingtask.RenderingTask):
 
     def create_reference_data_for_task_validation(self):
         for i in range(0, self.referenceRuns):
-            path = self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
+            path = \
+                self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
+
             computer = LocalComputer(
                 self,
                 path,
@@ -523,7 +550,10 @@ class LuxTask(renderingtask.RenderingTask):
             computer.run()
             computer.tt.join()
 
-        path = self.dirManager.get_ref_data_dir(self.header.task_id, counter='flmMergingTest')
+        path = \
+            self.dirManager.get_ref_data_dir(
+                self.header.task_id, counter='flmMergingTest')
+
         computer = LocalComputer(
             self,
             path,

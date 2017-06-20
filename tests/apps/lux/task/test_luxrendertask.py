@@ -6,6 +6,8 @@ import unittest
 from mock import Mock, patch
 from PIL import Image
 
+import mock
+
 from golem.core.common import is_linux
 from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
@@ -18,7 +20,8 @@ from apps.lux.task.luxrendertask import (
     LuxRenderDefaults,
     LuxRenderOptions,
     LuxRenderTaskBuilder,
-    LuxRenderTaskTypeInfo
+    LuxRenderTaskTypeInfo,
+    LuxTask
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
@@ -34,19 +37,34 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    def get_test_lux_task(self):
+    # def get_test_lux_task(self):
+    #     td = RenderingTaskDefinition()
+    #     lro = LuxRenderOptions()
+    #     td.options = lro
+    #
+    #
+    #     dm = DirManager(self.path)
+    #     lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
+    #     return lb.build()
+
+    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # we do not need it during tests
+    def get_test_lux_task(self, create_reference_data_for_task_validation_mock):
+        create_reference_data_for_task_validation_mock.return_value = None
+
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         td.options = lro
+
+
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         return lb.build()
+
 
     def test_luxtask(self):
         luxtask = self.get_test_lux_task()
 
         self.__after_test_errors(luxtask)
-
         self.__queries(luxtask)
 
     def test_get_random_crop_window_for_verification(self): # GG how to add luxrender_config_file.lxs to docker img / task builder?
@@ -64,7 +82,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         window2 = luxtask._get_random_crop_window_for_verification("")
         assert window2 == (0.2576849079862461, 0.6449832426069878, 0.1586387240990842, 0.5459370587198259)
-
 
 
 

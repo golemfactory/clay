@@ -5,7 +5,6 @@ from threading import Lock
 import time
 
 from golem.docker.task_thread import DockerTaskThread
-#from golem.resource.dirmanager import get_test_task_path, get_test_task_tmp_path
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskbase import Task, resource_types
@@ -28,7 +27,6 @@ class LocalComputer(object):
         self.success = False
         self.lock = Lock()
         self.tt = None
-        # self.root_path = root_path
         self.dirManager = DirManager(root_path)
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
@@ -125,8 +123,7 @@ class LocalComputer(object):
         return True
 
     def __prepare_tmp_dir(self):
-        self.tmp_dir = self.dirManager.get_task_temporary_dir("") #self.task.header.task_id)
-        #self.tmp_dir = get_test_task_tmp_path(self.root_path)
+        self.tmp_dir = self.dirManager.get_task_temporary_dir("")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
