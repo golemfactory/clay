@@ -1,9 +1,9 @@
+from __future__ import division
 import logging
 import math
 
 from apps.rendering.resources.imgrepr import (EXRImgRepr, ImgRepr, load_img,
                                               PILImgRepr)
-
 logger = logging.getLogger("apps.rendering")
 
 PSNR_ACCEPTABLE_MIN = 30
@@ -21,16 +21,27 @@ def calculate_psnr(mse, max_=255):
         raise ValueError("MSE & MAX_ must be higher than 0")
     return 20 * math.log10(max_) - 10 * math.log10(mse)
 
-
 def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
+    """
+    :param img1: 
+    :param img2: 
+    :param start1: 
+    :param start2: 
+    :param box: describes side lengths of the box
+    :return: 
+    """
     mse = 0
     if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
         raise TypeError("img1 and img2 must be ImgRepr")
 
-    if box is None:
-        (res_x, res_y) = img1.get_size()
-    else:
+    if box is not None:
         (res_x, res_y) = box
+    else:
+        if img1.get_size() == img2.get_size():
+            (res_x, res_y) = img1.get_size()
+        else:
+             raise ValueError('img1 and img2 are of different sizes and there is no cropping box provided.')
+
     for i in range(0, res_x):
         for j in range(0, res_y):
             [r1, g1, b1] = img1.get_pixel((start1[0] + i, start1[1] + j))
@@ -41,8 +52,12 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
 
     if res_x <= 0 or res_y <= 0:
         raise ValueError("Image or box resolution must be greater than 0")
+
     mse /= res_x * res_y * 3
     return mse
+
+
+
 
 
 def compare_imgs(img1, img2, max_col=255, start1=(0, 0),
@@ -82,6 +97,8 @@ def compare_exr_imgs(file1, file2):
         return False
 
 
+
+# GG deprecate advance_verify_img --> to be deleted?
 def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
                        cmp_start_box):
     try:
@@ -102,7 +119,7 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
             logger.error("Wrong box size for advanced verification " \
                          "{}".format(box_size))
 
-        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
+        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr): #
             return compare_imgs(img, cmp_img, start1=start_box,
                                 start2=cmp_start_box, box=box_size)
         else:

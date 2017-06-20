@@ -9,7 +9,10 @@ from PIL import Image, ImageChops, ImageOps
 
 from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
+
 from golem.resource import dirmanager
+from golem.resource.dirmanager import DirManager, find_task_script
+
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -21,6 +24,7 @@ from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
+from apps.rendering.resources.ImgVerificator import ImgVerificator
 from apps.rendering.task import renderingtask
 from apps.rendering.task.renderingtask import PREVIEW_EXT
 from apps.rendering.task import renderingtaskstate
@@ -133,10 +137,9 @@ class LuxTask(renderingtask.RenderingTask):
     def __init__(self, halttime, haltspp, **kwargs):
         super(LuxTask, self).__init__(**kwargs)
 
-        self.tmp_dir = dirmanager.get_tmp_path(
-            self.header.task_id,
-            self.root_path
-        )
+        self.dirManager = DirManager(self.root_path)
+        self.tmp_dir = self.dirManager.get_task_temporary_dir(self.header.task_id)
+
         self.halttime = halttime
         self.haltspp = haltspp
         self.verification_error = False
@@ -146,6 +149,7 @@ class LuxTask(renderingtask.RenderingTask):
         try:
             with open(self.main_scene_file) as f:
                 self.scene_file_src = f.read()
+                self.random_crop_window_for_verification = self._get_random_crop_window_for_verification(self.scene_file_src)
         except IOError as err:
             logger.error("Wrong scene file: {}".format(err))
             self.scene_file_src = ""
@@ -155,6 +159,24 @@ class LuxTask(renderingtask.RenderingTask):
         self.num_add = 0
 
         self.preview_exr = None
+        self.referenceRuns = 2
+
+
+        self.create_reference_data_for_task_validation() # GG: add mocks, whats the difference between Task and CoreTask
+
+    def _get_random_crop_window_for_verification(self, source_lux_config_file_lxs):
+        if "float cropwindow" in source_lux_config_file_lxs:
+            start = source_lux_config_file_lxs.find('float cropwindow')
+            start_bracket = source_lux_config_file_lxs.find('[', start)
+            end_bracket = source_lux_config_file_lxs.find(']', start)
+            line = source_lux_config_file_lxs[start_bracket + 1: end_bracket]
+            window = [float(w) for w in line.split()]
+            crop_window = ImgVerificator().get_random_crop_window(coverage=0.5,
+                                                                  window=window)  # make smaller_window from window for verification
+            return crop_window
+
+        crop_window = ImgVerificator().get_random_crop_window()
+        return crop_window
 
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
@@ -172,7 +194,7 @@ class LuxTask(renderingtask.RenderingTask):
             num_cores=0,
             node_id=None,
             node_name=None
-            ):
+    ):
         verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
 
@@ -227,12 +249,76 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
+    def \
+            query_extra_data_for_flm_merging_test(self):
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=4,
+                                        haltspp=1,
+                                        writeinterval=0.5,
+                                        crop=[0, 1, 0, 1],
+                                        output_format="png")
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
+            "outfilebasename": "reference_merging_task",
+            "output_format": "png",
+            "scene_file_src": scene_src,
+            "scene_dir": scene_dir,
+        }
+
+        ctd = self._new_compute_task_def(
+            "ReferenceMergingTask",
+            extra_data,
+            scene_dir,
+            0)
+
+        return ctd
+
+    def query_extra_data_for_reference_task(self):
+        scene_src = regenerate_lux_file(scene_file_src=self.scene_file_src,
+                                        xres=self.res_x,
+                                        yres=self.res_y,
+                                        halttime=self.halttime,
+                                        haltspp=self.haltspp,
+                                        writeinterval=0.5,
+                                        crop=self.random_crop_window_for_verification,
+                                        output_format="png")
+
+        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
+            "outfilebasename": "reference_task",
+            "output_format": "png",
+            "scene_file_src": scene_src,
+            "scene_dir": scene_dir,
+        }
+
+        ctd = self._new_compute_task_def(
+            "ReferenceTask",
+            extra_data,
+            scene_dir,
+            0)
+
+        return ctd
+
     ###################
     # CoreTask methods #
     ###################
 
     def query_extra_data_for_test_task(self):
-        self.test_task_res_path = dirmanager.get_test_task_path(self.root_path)
+        self.test_task_res_path = self.dirManager.get_task_test_dir(self.header.task_id)
+        #  self.test_task_res_path = dirmanager.get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
@@ -323,7 +409,7 @@ class LuxTask(renderingtask.RenderingTask):
                 self._update_preview(tr_file, num_start)
 
         if self.num_tasks_received == self.total_tasks:
-            if self.verificator.advanced_verification\
+            if self.verificator.advanced_verification \
                     and os.path.isfile(self.__get_test_flm()):
                 self.__generate_final_flm_advanced_verification()
             else:
@@ -353,8 +439,8 @@ class LuxTask(renderingtask.RenderingTask):
         return ctd
 
     def _short_extra_data_repr(self, perf_index, extra_data):
-        return "start_task: {start_task}, "\
-               "outfilebasename: {outfilebasename}, "\
+        return "start_task: {start_task}, " \
+               "outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
 
     def _update_preview(self, new_chunk_file_path, num_start):
@@ -371,8 +457,8 @@ class LuxTask(renderingtask.RenderingTask):
     def _remove_from_preview(self, subtask_id):
         preview_files = []
         for sub_id, task in self.subtasks_given.iteritems():
-            if sub_id != subtask_id\
-                    and task['status'] == 'Finished'\
+            if sub_id != subtask_id \
+                    and task['status'] == 'Finished' \
                     and 'preview_file' in task:
                 preview_files.append(task['preview_file'])
 
@@ -423,6 +509,30 @@ class LuxTask(renderingtask.RenderingTask):
         img.close()
         scaled.close()
         img_current.close()
+
+    def create_reference_data_for_task_validation(self):
+        for i in range(0, self.referenceRuns):
+            path = self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
+            computer = LocalComputer(
+                self,
+                path,
+                self.__final_img_ready,
+                self.__final_img_error,
+                self.query_extra_data_for_reference_task
+            )
+            computer.run()
+            computer.tt.join()
+
+        path = self.dirManager.get_ref_data_dir(self.header.task_id, counter='flmMergingTest')
+        computer = LocalComputer(
+            self,
+            path,
+            self.__final_img_ready,
+            self.__final_img_error,
+            self.query_extra_data_for_flm_merging_test
+        )
+        computer.run()
+        computer.tt.join()
 
     def __generate_final_file(self, flm):
         computer = LocalComputer(

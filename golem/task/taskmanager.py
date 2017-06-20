@@ -12,7 +12,10 @@ from golem.core.common import HandleKeyError, get_timestamp_utc, \
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+
+from golem.core.async import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
+
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task
@@ -156,7 +159,7 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
-
+        # task.create_reference_data_for_task_validation() # GG task init?
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()
@@ -167,10 +170,13 @@ class TaskManager(TaskEventListener):
 
         self.tasks_states[task.header.task_id] = ts
 
+
         if self.task_persistence:
             self.dump_task(task.header.task_id)
             logger.info("Task {} added".format(task.header.task_id))
             self.notice_task_updated(task.header.task_id)
+
+
 
     def dump_task(self, task_id):
         logger.debug('DUMP TASK')
