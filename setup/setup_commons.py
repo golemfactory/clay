@@ -96,8 +96,8 @@ class PyInstaller(Command):
         blender_dir = path.join(examples_dir, 'blender')
         lux_dir = path.join(examples_dir, 'lux')
 
-        blender_example = path.join('apps', 'blender', 'benchmark', 'test_task',
-                                    'scene-Helicopter-27-cycles.blend')
+        blender_example = path.join('apps', 'blender', 'benchmark',
+                                    'test_task', 'bmw27_cpu.blend')
         lux_example = path.join('apps', 'lux', 'benchmark', 'test_task')
 
         if not path.exists(blender_dir):
