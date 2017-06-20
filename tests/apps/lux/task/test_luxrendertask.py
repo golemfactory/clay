@@ -21,6 +21,7 @@ from apps.lux.task.luxrendertask import (
     LuxRenderOptions,
     LuxRenderTaskBuilder,
     LuxRenderTaskTypeInfo,
+    ImgVerificator
     LuxTask
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -245,7 +246,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert not LuxRenderTaskTypeInfo.get_preview(None)
         # set the path
         luxtask.preview_file_path = "{}".format(
-            os.path.join(luxtask.tmp_dir, "current_preview"))
+            os.path.join(luxtask.tmp_dir, "current_preview.{}".format(
+                PREVIEW_EXT)))
         assert LuxRenderTaskTypeInfo.get_preview(luxtask)
         assert not LuxRenderTaskTypeInfo.get_preview(None)
 

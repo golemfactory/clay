@@ -13,8 +13,9 @@ from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.task.renderingtask import RenderingTask, \
-    RenderingTaskBuilder
+from apps.rendering.task.renderingtask import (RenderingTask,
+                                               RenderingTaskBuilder,
+                                               PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskstate import SubtaskStatus
@@ -132,8 +133,8 @@ class FrameRenderingTask(RenderingTask):
         img = img.resize((int(round(self.scale_factor * img_x)),
                           int(round(self.scale_factor * img_y))),
                          resample=Image.BILINEAR)
-        img.save(self._get_preview_file_path(num), "BMP")
-        img.save(self._get_preview_task_file_path(num), "BMP")
+        img.save(self._get_preview_file_path(num), PREVIEW_EXT)
+        img.save(self._get_preview_task_file_path(num), PREVIEW_EXT)
 
         img.close()
 
@@ -178,7 +179,7 @@ class FrameRenderingTask(RenderingTask):
         if not os.path.exists(preview_file_path):
             img = Image.new("RGB", (int(round(self.res_x * self.scale_factor)), 
                                     int(round(self.res_y * self.scale_factor))))
-            img.save(preview_file_path, "BMP")
+            img.save(preview_file_path, PREVIEW_EXT)
 
         return Image.open(preview_file_path)
 
@@ -280,15 +281,18 @@ class FrameRenderingTask(RenderingTask):
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:
-            subtask_dir_list[num] = "{}{}".format(os.path.join(self.tmp_dir, name_dir), num)
+            subtask_dir_list[num] = "{}{}.{}".format(os.path.join(self.tmp_dir,
+                                                                  name_dir),
+                                                     num, PREVIEW_EXT)
         return subtask_dir_list[num]
 
     def _get_preview_task_file_path(self, num):
-        return self._get_subtask_file_path(self.preview_task_file_path, "current_task_preview",
-                                           num)
+        return self._get_subtask_file_path(self.preview_task_file_path,
+                                           "current_task_preview", num)
 
     def _get_preview_file_path(self, num):
-        return self._get_subtask_file_path(self.preview_file_path, "current_preview", num)
+        return self._get_subtask_file_path(self.preview_file_path,
+                                           "current_preview", num)
 
     def _get_output_name(self, frame_num):
         return get_frame_name(self.outfilebasename, self.output_format, frame_num)

@@ -26,6 +26,7 @@ from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.resources.ImgVerificator import ImgVerificator
 from apps.rendering.task import renderingtask
+from apps.rendering.task.renderingtask import PREVIEW_EXT
 from apps.rendering.task import renderingtaskstate
 
 logger = logging.getLogger("apps.lux")
@@ -33,7 +34,6 @@ logger = logging.getLogger("apps.lux")
 MERGE_TIMEOUT = 7200
 
 APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
-PREVIEW_EXT = "BMP"
 
 
 class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
@@ -468,7 +468,7 @@ class LuxTask(renderingtask.RenderingTask):
                "outfilebasename: {outfilebasename}, " \
                "scene_file_src: {scene_file_src}".format(**extra_data)
 
-    def _update_preview(self, new_chunk_file_path, chunk_num):
+    def _update_preview(self, new_chunk_file_path, num_start):
         self.num_add += 1
         if has_ext(new_chunk_file_path, ".exr"):
             self._update_preview_from_exr(new_chunk_file_path)

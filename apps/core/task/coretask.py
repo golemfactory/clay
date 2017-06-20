@@ -493,8 +493,8 @@ class CoreTaskBuilder(TaskBuilder):
         options = dictionary['options']
 
         # FIXME: Backward compatibility only. Remove after upgrading GUI.
-        if dictionary.get('legacy'):
-            return dictionary['output_path']
+        if definition.legacy:
+            return options['output_path']
 
         return os.path.join(options['output_path'], definition.task_name)
 
