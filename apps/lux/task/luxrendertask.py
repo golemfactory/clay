@@ -22,7 +22,7 @@ from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
-from apps.rendering.task.renderingtask import PREVIEW_EXT
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
 from apps.rendering.task import renderingtaskstate
 
 logger = logging.getLogger("apps.lux")
@@ -68,8 +68,8 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
-        preview_x = 300.0
-        preview_y = 200.0
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
         res_x, res_y = definition.resolution
         if res_x == 0 or res_y == 0:
             return []

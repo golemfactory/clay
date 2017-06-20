@@ -22,6 +22,8 @@ from golem.task.taskstate import SubtaskStatus
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
 PREVIEW_EXT = "BMP"
+PREVIEW_X = 1280
+PREVIEW_Y = 720
 
 logger = logging.getLogger("apps.rendering")
 
@@ -94,8 +96,8 @@ class RenderingTask(CoreTask):
 
         self.collected_file_names = {}
 
-        preview_x = 300
-        preview_y = 200
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
         if self.res_x != 0 and self.res_y != 0:
             if self.res_x / self.res_y > preview_x / preview_y:
                 self.scale_factor = preview_x / self.res_x
