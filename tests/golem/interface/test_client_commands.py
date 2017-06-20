@@ -7,8 +7,8 @@ import jsonpickle
 from ethereum.utils import denoms
 from mock import Mock
 
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
-from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
+    BlenderRenderTask
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -244,7 +244,7 @@ class TestPayments(unittest.TestCase):
             {
                 'value': '{}'.format(i),
                 'payer': 'node_{}'.format(i),
-                'status': 'PaymentStatus.waiting',
+                'status': 'waiting',
                 'block_number': 'deadbeef0{}'.format(i)
             } for i in xrange(1, 6)
         ]
@@ -255,7 +255,7 @@ class TestPayments(unittest.TestCase):
                 'value': '0.{}'.format(i),
                 'subtask': 'subtask_{}'.format(i),
                 'payee': 'node_{}'.format(i),
-                'status': 'PaymentStatus.waiting',
+                'status': 'waiting',
             } for i in xrange(1, 6)
         ]
 
@@ -276,7 +276,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                u'6e6f64655f31',
+                u'node_1',
                 u'waiting',
                 u'0.000000 GNT',
                 u'deadbeef01'
@@ -292,7 +292,7 @@ class TestPayments(unittest.TestCase):
 
             assert result.data[1][0][:-1] == [
                 u'subtask_1',
-                u'6e6f64655f31',
+                u'node_1',
                 u'waiting',
                 u'0.000000 GNT',
             ]

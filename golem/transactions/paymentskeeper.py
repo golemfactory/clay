@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 
-from golem.core.common import datetime_to_timestamp
+from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment
 
 logger = logging.getLogger(__name__)
@@ -80,13 +80,13 @@ class PaymentsKeeper(object):
     def get_list_of_all_payments(self):
         # This data is used by UI.
         return [{
-            "subtask": payment.subtask,
-            "payee": payment.payee,
-            "value": payment.value,
-            "status": payment.status.value,
-            "fee": payment.details.get('fee'),
-            "created": datetime_to_timestamp(payment.created_date),
-            "modified": datetime_to_timestamp(payment.modified_date)
+            u"subtask": to_unicode(payment.subtask),
+            u"payee": to_unicode(payment.payee.encode('hex')),
+            u"value": to_unicode(payment.value),
+            u"status": to_unicode(payment.status.name),
+            u"fee": to_unicode(payment.details.get('fee')),
+            u"created": datetime_to_timestamp(payment.created_date),
+            u"modified": datetime_to_timestamp(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
 
     def finished_subtasks(self, payment_info):
