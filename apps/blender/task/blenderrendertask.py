@@ -153,7 +153,7 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
                     # find the max timestamp
                     updater = max(iterator, key=lambda p: p.last_update_time)
                     return to_unicode(updater.preview_file_path)
-                except StopIteration:
+                except (StopIteration, ValueError):
                     return None
             else:
                 # paths for all frames

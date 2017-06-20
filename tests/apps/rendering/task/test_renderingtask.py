@@ -354,7 +354,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             {
                 'resources': {"file1.png", "file2.txt", 'file3.jpg',
                               'file4.txt'},
-                'task_type': 'TESTTASK'
+                'task_type': 'TESTTASK',
+                'subtasks': 1
             },
             minimal=True
         )
