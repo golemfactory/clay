@@ -364,3 +364,15 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',
                                         'file3.jpg', 'file4.txt'}
+
+    def test_get_output_path(self):
+        td = TaskDefinition()
+        td.legacy = True
+        td.task_name = "MY task"
+        tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               "/dir1/dir2/DEFOUTPUT_FILE.txt"
+        td.legacy = False
+        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               path.join("/dir3/dir4", "MY task.txt")
