@@ -6,8 +6,6 @@ import unittest
 from mock import Mock, patch
 from PIL import Image
 
-import mock
-
 from golem.core.common import is_linux
 from golem.resource.dirmanager import DirManager
 from golem.testutils import PEP8MixIn, TempDirFixture
@@ -53,8 +51,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         td.options = lro
-
-
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         return lb.build()
@@ -79,8 +75,9 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         assert window == (0.24946508682591728, 0.39088644306322684, 0.7443999409582027, 0.8858212971955123)
 
+        random.seed(0)
         window2 = luxtask._get_random_crop_window_for_verification("")
-        assert window2 == (0.2576849079862461, 0.6449832426069878, 0.1586387240990842, 0.5459370587198259)
+        assert window2 == (0.4667849191857998, 0.9139985146857577, 0.41898688917634597, 0.8662004846763038)
 
 
 

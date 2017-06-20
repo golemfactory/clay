@@ -196,7 +196,6 @@ class LuxTask(renderingtask.RenderingTask):
         self.verificator.merge_ctd = self.__get_merge_ctd([])
         self.create_reference_data_for_task_validation()
 
-
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:
             write_interval = int(self.halttime / 2)
@@ -204,7 +203,6 @@ class LuxTask(renderingtask.RenderingTask):
             write_interval = 60
 
         return write_interval
-
 
     def query_extra_data(
             self,
@@ -302,8 +300,11 @@ class LuxTask(renderingtask.RenderingTask):
 
         return ctd
 
-    def query_extra_data_for_reference_task(self): # GG todo it seems that the file is not regenerated properly :/
-        write_interval = self._write_interval_wrapper(self.halttime)
+    # GG todo it seems that the file is not regenerated properly :/
+    def query_extra_data_for_reference_task(self):
+        write_interval = \
+            self._write_interval_wrapper(self.halttime)
+
         scene_src = regenerate_lux_file(
             scene_file_src=self.scene_file_src,
             xres=self.res_x,
