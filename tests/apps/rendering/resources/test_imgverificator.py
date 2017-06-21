@@ -72,14 +72,10 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         folder_path = os.path.join(get_golem_path(),
                                    "tests", "apps", "rendering", "resources", "imgs_for_verification_tests")
 
-        test_path = os.getcwd()
-        folder_path = os.path.join(test_path, 'imgs_for_verification_tests')
-
         ref_img0 = PILImgRepr()
         ref_img0.load_from_file(os.path.join(folder_path, 'cropped_300x400spp25_run0.png'))
         ref_img1 = PILImgRepr()
         ref_img1.load_from_file(os.path.join(folder_path, 'cropped_300x400spp25_run1.png'))
-
 
         images = list()
         for file_name in os.listdir(folder_path):
