@@ -9,7 +9,7 @@ from os import path
 
 import docker.errors
 import requests
-from mock import patch, mock
+from mock import mock, patch, MagicMock
 
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
@@ -54,6 +54,7 @@ class TestDockerJob(DockerTestCase):
         with self.assertRaises(TypeError):
             DockerJob(None, "scr", [], '/var/lib/resources/', '/var/lib/work', '/var/lib/out')
         job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir, self.work_dir, self.output_dir)
+        job.image.repository = "repository"
         self.assertEqual(job.image, self.image)
         self.assertEqual(job.script_src, self.TEST_SCRIPT)
         self.assertEqual(job.parameters, {})

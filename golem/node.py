@@ -46,7 +46,7 @@ class Node(object):
 
     def connect_with_peers(self, peers):
         for peer in peers:
-            self.client.connect(peer)
+            self.client.connect(peer[0], peer[1])
 
     def add_tasks(self, tasks):
         for task_def in tasks:
@@ -131,8 +131,9 @@ class OptNode(Node):
         addresses = []
         for arg in value:
             try:
-                addresses.append(SocketAddress.parse(arg))
-            except AddressValueError as e:
+                node_id, sock_addr = arg.split('@', 1)
+                addresses.append([SocketAddress.parse(sock_addr), node_id])
+            except (AddressValueError, ValueError) as e:
                 raise click.BadParameter(
                     "Invalid peer address specified: {}".format(e.message))
         return addresses

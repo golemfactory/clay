@@ -13,7 +13,7 @@ class DockerTestCase(unittest.TestCase):
     TEST_REPOSITORY = "golemfactory/base"
     TEST_TAG = "1.2"
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
-    TEST_IMAGE_ID = None
+    TEST_IMAGE_ID = "id"
 
     @classmethod
     def test_client(cls):
@@ -47,7 +47,7 @@ class TestDockerImage(DockerTestCase):
 
     def _is_test_image(self, img):
         self.assertEqual(img.name, self.TEST_IMAGE)
-        if img.id:
+        if img.image_id:
             self.assertEqual(img.id, self.TEST_IMAGE_ID)
         self.assertEqual(img.repository, self.TEST_REPOSITORY)
         self.assertEqual(img.tag, self.TEST_TAG)

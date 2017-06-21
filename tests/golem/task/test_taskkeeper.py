@@ -236,7 +236,7 @@ def get_dict_task_header():
     return {
         "task_id": "xyz",
         "node_name": "ABC",
-        "task_owner": dict(),
+        "task_owner": Node(prv_addresses=[]),
         "task_owner_address": "10.10.10.10",
         "task_owner_port": 10101,
         "task_owner_key_id": "kkkk",
@@ -254,7 +254,7 @@ def get_task_header():
     return TaskHeader(header["node_name"], header["task_id"], header["task_owner_address"],
                       header["task_owner_port"], header["task_owner_key_id"],
                       header["environment"], header["task_owner"], header["deadline"],
-                      header["subtask_timeout"], 1024, 1.0, 1000)
+                      header["subtask_timeout"], 1024, 1.0, 1000, docker_images=[])
 
 
 class TestCompSubtaskInfo(TestCase):

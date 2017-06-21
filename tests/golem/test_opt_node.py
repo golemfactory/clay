@@ -20,6 +20,8 @@ class A(object):
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
+        self.exampleNodeID = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8\
+954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8"
         self.args = ['--nogui', '--datadir', self.path]
 
     def tearDown(self):
@@ -105,7 +107,7 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
     def test_single_peer(self, config_logging, mock_node):
-        addr1 = '10.30.10.216:40111'
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1],
                                      catch_exceptions=False)
@@ -118,14 +120,14 @@ class TestNode(TestWithDatabase):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 1)
-        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
+        self.assertEqual(peer_arg[0][0], SocketAddress.parse(addr1.split('@',1)[1]))
 
     @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
     def test_many_peers(self, config_logging, mock_node):
-        addr1 = '10.30.10.216:40111'
-        addr2 = '10.30.10.214:3333'
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
+        addr2 = self.exampleNodeID + '@10.30.10.214:3333'
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', addr2]
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -137,13 +139,13 @@ class TestNode(TestWithDatabase):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 2)
-        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
-        self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
+        self.assertEqual(peer_arg[0][0], SocketAddress.parse(addr1.split('@',1)[1]))
+        self.assertEqual(peer_arg[1][0], SocketAddress.parse(addr2.split('@',1)[1]))
 
     @ci_skip
     @patch('golemapp.OptNode')
     def test_bad_peer(self, mock_node):
-        addr1 = '10.30.10.216:40111'
+        addr1 = self.exampleNodeID + "@10.30.10.216:40111"
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', 'bla']
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -156,9 +158,9 @@ class TestNode(TestWithDatabase):
     def test_peers(self, config_logging, mock_node):
         runner = CliRunner()
         return_value = runner.invoke(
-            start, self.args + ['--peer', u'10.30.10.216:40111',
-                                u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                                '--peer', '[::ffff:0:0:0]:96'],
+            start, self.args + ['--peer', self.exampleNodeID + u'@10.30.10.216:40111',
+                                u'--peer', self.exampleNodeID + u'@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+                                '--peer', self.exampleNodeID + '@[::ffff:0:0:0]:96'],
             catch_exceptions=False
         )
         self.assertEqual(return_value.exit_code, 0)
@@ -168,9 +170,9 @@ class TestNode(TestWithDatabase):
         peer_num = call_names.index('().connect_with_peers')
         peer_arg = mock_node.mock_calls[peer_num][1][0]
         self.assertEqual(len(peer_arg), 3)
-        self.assertEqual(peer_arg[0], SocketAddress('10.30.10.216', 40111))
-        self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
-        self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
+        self.assertEqual(peer_arg[0][0], SocketAddress('10.30.10.216', 40111))
+        self.assertEqual(peer_arg[1][0], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
+        self.assertEqual(peer_arg[2][0], SocketAddress('::ffff:0:0:0', 96))
 
     @ci_skip
     @patch('golemapp.OptNode')
