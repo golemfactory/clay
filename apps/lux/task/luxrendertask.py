@@ -147,7 +147,6 @@ class LuxTask(renderingtask.RenderingTask):
         self.merge_timeout = MERGE_TIMEOUT
 
         # Is it necessary to load scene_file contents here?
-
         try:
             with open(self.main_scene_file) as f:
                 self.scene_file_src = f.read()
@@ -229,11 +228,6 @@ class LuxTask(renderingtask.RenderingTask):
         if start_task is None or end_task is None:
             logger.error("Task already computed")
             return self.ExtraData()
-
-        # if self.halttime > 0:
-        #     write_interval = int(self.halttime / 2)
-        # else:
-        #     write_interval = 60
 
         write_interval = self._write_interval_wrapper(self.halttime)
 
