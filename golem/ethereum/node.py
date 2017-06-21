@@ -4,8 +4,8 @@ import atexit
 import logging
 import re
 import subprocess
-import time
 import tempfile
+import time
 from datetime import datetime
 from distutils.version import StrictVersion
 from os import path
@@ -56,7 +56,8 @@ class Faucet(object):
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                 '0x' + addr.encode('hex'), h))
+                                                       '0x' + addr.encode(
+                                                           'hex'), h))
         h = h[2:].decode('hex')
         return h
 
@@ -76,12 +77,9 @@ class NodeProcess(object):
         match = re.search("Version: (\d+\.\d+\.\d+)", output).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
-            e_description = "Incompatible geth version: {}."\
-                " Expected >= {} and <= {}".format(
-                    ver,
-                    self.MIN_GETH_VERSION,
-                    self.MAX_GETH_VERSION
-                )
+            e_description =\
+                "Incompatible geth version: {}. Expected >= {} and <= {}".\
+                format(ver, self.MIN_GETH_VERSION, self.MAX_GETH_VERSION)
             raise OSError(e_description)
         log.info("geth {}: {}".format(ver, self.__prog))
 
@@ -98,8 +96,14 @@ class NodeProcess(object):
         chain = 'rinkeby'
         geth_datadir = path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
-        this_dir = path.dirname(__file__)
-        init_file = path.join(this_dir, chain + '.json')
+        import sys
+        from os.path import dirname
+        if hasattr(sys, 'frozen') and sys.frozen:
+            init_file = path.join(dirname(sys.executable), 'golem', 'ethereum',
+                                  chain + '.json')
+        else:
+            this_dir = path.dirname(__file__)
+            init_file = path.join(this_dir, chain + '.json')
         log.info("init file: {}".format(init_file))
 
         init_subp = subprocess.Popen([
@@ -174,9 +178,12 @@ class NodeProcess(object):
     def identify_chain(self):
         """Check what chain the Ethereum node is running."""
         GENESES = {
-            u'0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3': 'mainnet',  # noqa
-            u'0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d': 'ropsten',  # noqa
-            u'0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177': 'rinkeby',  # noqa
+        u'0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3':
+            'mainnet',  # noqa
+        u'0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d':
+            'ropsten',  # noqa
+        u'0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177':
+            'rinkeby',  # noqa
         }
         genesis = self.web3.eth.getBlock(0)['hash']
         chain = GENESES.get(genesis, 'unknown')
