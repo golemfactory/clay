@@ -63,9 +63,10 @@ class TransactionSystem(object):
                 u"task": to_unicode(o.task),
                 u"subtask": to_unicode(o.subtask),
                 u"payer": to_unicode(o.sender_node),
-                u"status": to_unicode(status.name),
                 u"value": to_unicode(o.value),
+                u"status": to_unicode(status.name),
                 u"block_number": to_unicode(o.income.block_number),
+                u"transaction": to_unicode(o.income.transaction),
                 u"created": datetime_to_timestamp(o.created_date),
                 u"modified": datetime_to_timestamp(o.modified_date)
             }

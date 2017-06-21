@@ -94,8 +94,8 @@ class IncomesKeeper(object):
         return (
             ExpectedIncome.select(ExpectedIncome, Income)
             .join(Income, peewee.JOIN_LEFT_OUTER, on=(
-                (ExpectedIncome.subtask == Income.subtask)
-                & (ExpectedIncome.sender_node == Income.sender_node)
+                (ExpectedIncome.subtask == Income.subtask) &
+                (ExpectedIncome.sender_node == Income.sender_node)
             ))
             .order_by(ExpectedIncome.created_date.desc())
         )
