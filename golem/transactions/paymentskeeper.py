@@ -85,6 +85,8 @@ class PaymentsKeeper(object):
             u"value": to_unicode(payment.value),
             u"status": to_unicode(payment.status.name),
             u"fee": to_unicode(payment.details.get('fee')),
+            u"block_number": to_unicode(payment.details.get('block_number')),
+            u"transaction": to_unicode(payment.details.get('tx')),
             u"created": datetime_to_timestamp(payment.created_date),
             u"modified": datetime_to_timestamp(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
