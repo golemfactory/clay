@@ -22,7 +22,7 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
 
 
@@ -630,8 +630,8 @@ def get_min_max_y(task_num, parts, res_y):
 
 
 def __scale_factor(res_x, res_y):
-    preview_x = 300
-    preview_y = 200
+    preview_x = PREVIEW_X
+    preview_y = PREVIEW_Y
     if res_x != 0 and res_y != 0:
         if res_x / res_y > preview_x / preview_y:
             scale_factor = preview_x / res_x

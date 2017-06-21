@@ -17,6 +17,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  PreviewUpdater,
                                                  logger)
 from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
@@ -441,12 +442,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt = self.build_bt(600, 200, 4, frames=[2, 3])
         subtask = {"start_task": 2, "end_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
-        img_task2 = Image.new("RGB", (bt.res_x / 2, bt.res_y / 2))
+        img_task2 = Image.new("RGB", (bt.res_x, bt.res_y))
         img_task2.save(file2, "BMP")
         bt._mark_task_area(subtask, img_task2, color)
-        pixel = img_task2.getpixel((0, 49))
+        pixel = img_task2.getpixel((0, 99))
         self.assertTrue(pixel == (0, 0, 0))
-        pixel = img_task2.getpixel((0, 50))
+        pixel = img_task2.getpixel((0, 100))
         self.assertTrue(pixel == color)
 
     def test_query_extra_data(self):
@@ -531,10 +532,10 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
                 res_y += y
             
             if res_x != 0 and res_y != 0:
-                if float(res_x) / float(res_y) > 300. / 200.:
-                    scale_factor = 300. / res_x
+                if float(res_x) / float(res_y) > float(PREVIEW_X) / PREVIEW_Y:
+                    scale_factor = float(PREVIEW_X) / res_x
                 else:
-                    scale_factor = 200. / res_y
+                    scale_factor = float(PREVIEW_Y) / res_y
                 scale_factor = min(1.0, scale_factor)
             else:
                 scale_factor = 1.0
@@ -547,13 +548,13 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
                 img.save(file1)
                 pu.update_preview(file1, i)
-            if int(round(res_y * scale_factor)) != 200:
+            if int(round(res_y * scale_factor)) != PREVIEW_Y:
                 self.assertAlmostEqual(pu.perfect_match_area_y,
                                        res_y * scale_factor)
             self.assertTrue(pu.perfectly_placed_subtasks == chunks)
 
     def test_error_in_preview_update(self):
-        pu = PreviewUpdater(None, 300, 200, {})
+        pu = PreviewUpdater(None, PREVIEW_X, PREVIEW_Y, {})
         with self.assertLogs(logger, level="WARNING"):
             pu.update_preview("Not existing", 4)
 
@@ -587,7 +588,7 @@ class TestHelpers(unittest.TestCase):
             border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                          30, as_path=as_path)
             assert min(border) == (0, offsets[k])
-            assert max(border) == (240, offsets[k + 1] - 1)
+            assert max(border) == (797, offsets[k + 1] - 1)
 
         definition.options.use_frames = True
         definition.options.frames = range(2)
@@ -599,7 +600,7 @@ class TestHelpers(unittest.TestCase):
                                                          30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
-            assert max(border) == (260, offsets[i + 1] - 1)
+            assert max(border) == (798, offsets[i + 1] - 1)
 
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True

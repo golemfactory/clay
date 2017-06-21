@@ -326,42 +326,42 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
 
         definition.resolution = (300, 300)
         border = typeinfo.get_task_border("subtask1", definition, 10)
-        for i in range(200):
+        for i in range(300):
             assert (i, 0) in border
-            assert (i, 199) in border
-        for j in range(200):
+            assert (i, 299) in border
+        for j in range(300):
             assert (0, j) in border
-            assert (199, j) in border
-        assert (200, 199) not in border
-        assert (199, 200) not in border
-        assert (0, 200) not in border
-        assert (200, 0) not in border
+            assert (299, j) in border
+        assert (300, 299) not in border
+        assert (299, 300) not in border
+        assert (0, 300) not in border
+        assert (300, 0) not in border
 
         definition.resolution = (1000, 100)
         border = typeinfo.get_task_border("subtask1", definition, 10)
         for i in range(300):
             assert (i, 0) in border
-            assert (i, 29) in border
+            assert (i, 99) in border
         for j in range(30):
             assert (0, j) in border
-            assert (299, j) in border
-        assert (30, 299) not in border
-        assert (29, 200) not in border
-        assert (0, 30) not in border
-        assert (300, 0) not in border
+            assert (999, j) in border
+        assert (100, 999) not in border
+        assert (99, 720) not in border
+        assert (0, 100) not in border
+        assert (1280, 0) not in border
 
         definition.resolution = (100, 1000)
         border = typeinfo.get_task_border("subtask1", definition, 10)
         for i in range(20):
             assert (i, 0) in border
-            assert (i, 199) in border
+            assert (i, 719) in border
         for j in range(200):
             assert (0, j) in border
-            assert (19, j) in border
-        assert (20, 199) not in border
-        assert (19, 200) not in border
-        assert (20, 0) not in border
-        assert (0, 200) not in border
+            assert (71, j) in border
+        assert (72, 719) not in border
+        assert (71, 720) not in border
+        assert (72, 0) not in border
+        assert (0, 720) not in border
 
         definition.resolution = (0, 4)
         assert typeinfo.get_task_border("subtask1", definition, 10) == []
