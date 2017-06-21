@@ -90,7 +90,8 @@ class TaskManager(TaskEventListener):
                                                      resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
-        self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
+        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
+                             TaskStatus.waiting, TaskStatus.restarted]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
@@ -475,8 +476,8 @@ class TaskManager(TaskEventListener):
         self.dir_manager.clear_temporary(task_id)
 
         self.tasks[task_id].restart()
-        self.tasks[task_id].task_status = TaskStatus.waiting
-        self.tasks_states[task_id].status = TaskStatus.waiting
+        self.tasks[task_id].task_status = TaskStatus.restarted
+        self.tasks_states[task_id].status = TaskStatus.restarted
         self.tasks_states[task_id].time_started = time.time()
 
         for ss in self.tasks_states[task_id].subtask_states.values():

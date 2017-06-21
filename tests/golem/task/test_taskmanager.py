@@ -472,8 +472,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.restart_task("xyz")
-        assert self.tm.tasks["xyz"].task_status == TaskStatus.waiting
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.waiting
+        assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
+        assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
         with patch('golem.task.taskbase.Task.needs_computation', return_value=True):
             self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
             t.query_extra_data_return_value.ctd.subtask_id = "xxyyzz2"
@@ -481,8 +481,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             self.assertEquals(len(self.tm.tasks_states["xyz"].subtask_states), 2)
             with self.assertNoLogs(logger, level="WARNING"):
                 self.tm.restart_task("xyz")
-            assert self.tm.tasks["xyz"].task_status == TaskStatus.waiting
-            assert self.tm.tasks_states["xyz"].status == TaskStatus.waiting
+            assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
+            assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
             assert len(self.tm.tasks_states["xyz"].subtask_states) == 2
             for ss in self.tm.tasks_states["xyz"].subtask_states.values():
                 assert ss.subtask_status == SubtaskStatus.restarted
