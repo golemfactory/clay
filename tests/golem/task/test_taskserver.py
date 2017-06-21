@@ -522,7 +522,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         method = ts._TaskServer__connection_for_task_result_final_failure
         wtr = Mock()
-        method('conn_id', 'key_id', wtr)
+        method('conn_id', wtr)
 
         self.assertTrue(ts.remove_pending_conn.called)
         self.assertTrue(ts.remove_responses.called)
