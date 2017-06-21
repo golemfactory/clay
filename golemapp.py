@@ -3,12 +3,8 @@ import sys
 from multiprocessing import freeze_support
 from golem.core.common import is_windows
 if is_windows():
-    from golem import uvent
-    uvent.install()
-from golem.reactor import geventreactor
-if 'twisted.internet.reactor' in sys.modules:
-    del sys.modules['twisted.internet.reactor']
-geventreactor.install()
+    from twisted.internet import iocpreactor
+    iocpreactor.install()
 
 import click
 
