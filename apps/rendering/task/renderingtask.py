@@ -21,7 +21,7 @@ from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
-PREVIEW_EXT = "BMP"
+PREVIEW_EXT = "PNG"
 
 logger = logging.getLogger("apps.rendering")
 
