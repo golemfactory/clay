@@ -34,15 +34,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    # def get_test_lux_task(self):
-    #     td = RenderingTaskDefinition()
-    #     lro = LuxRenderOptions()
-    #     td.options = lro
-    #
-    #
-    #     dm = DirManager(self.path)
-    #     lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
-    #     return lb.build()
 
     @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # we do not need it during tests
     def get_test_lux_task(self, create_reference_data_for_task_validation_mock):
