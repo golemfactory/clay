@@ -118,7 +118,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
 
 
         # assert
-        # assert reference_stats.ssim == 0.40088751827025393
-        # assert reference_stats.mse  == 253.2704861111111
-        # assert reference_stats.psnr == 24.094957769434753
-        # assert validation_results == [VerificationState.WRONG_ANSWER, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.WRONG_ANSWER ]
+        assert reference_stats.ssim == 0.40088751827025393
+        assert reference_stats.mse  == 253.2704861111111
+        assert reference_stats.psnr == 24.094957769434753
+        assert validation_results == [VerificationState.WRONG_ANSWER, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.WRONG_ANSWER ]
