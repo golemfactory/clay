@@ -629,7 +629,8 @@ class TaskServer(PendingConnectionsServer):
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[subtask_id] = session
         session.send_hello()
-        session.send_task_failure(subtask_id, err_msg)
+        session.send_task_failure(subtask_id,
+                                  self.client.daemon_manager.version + err_msg)
 
     def __connection_for_task_failure_failure(self, conn_id, key_id, subtask_id, err_msg):
 
