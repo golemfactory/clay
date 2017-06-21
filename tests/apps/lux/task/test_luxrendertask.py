@@ -21,8 +21,6 @@ from apps.lux.task.luxrendertask import (
     LuxRenderOptions,
     LuxRenderTaskBuilder,
     LuxRenderTaskTypeInfo,
-    ImgVerificator
-    LuxTask
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
