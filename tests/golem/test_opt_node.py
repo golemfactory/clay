@@ -82,7 +82,7 @@ class TestNode(TestWithDatabase):
 
         mock_client.assert_called_with(node_address=node_address,
                                        datadir=self.path,
-                                       transaction_system=True)
+                                       transaction_system=True, geth_port=None)
 
     @ci_skip
     @patch('golem.core.common.config_logging')
