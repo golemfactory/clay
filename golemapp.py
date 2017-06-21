@@ -33,6 +33,7 @@ from golem.node import OptNode
 @click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
+@click.option('--geth-port', default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
 # Multiprocessing option (ignored)
 @click.option('--multiprocessing-fork', nargs=1, expose_value=False)
@@ -43,7 +44,8 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
+def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt,
+          version, m, geth_port):
     freeze_support()
     if version:
         from golem.core.variables import APP_VERSION
@@ -59,7 +61,6 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
-
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
@@ -74,12 +75,12 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
     elif gui:
         delete_reactor()
         from gui.startapp import start_app
-        start_app(rendering=True, **config)
+        start_app(rendering=True, geth_port=geth_port, **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
-        node = OptNode(node_address=node_address, **config)
+        node = OptNode(node_address=node_address, geth_port=geth_port, **config)
         node.initialize()
 
         node.connect_with_peers(peer)

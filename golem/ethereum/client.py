@@ -14,11 +14,11 @@ class Client(object):
 
     node = None
 
-    def __init__(self, datadir):
+    def __init__(self, datadir, port=None):
         if not Client.node:
             Client.node = NodeProcess(datadir)
         if not Client.node.is_running():
-            Client.node.start()
+            Client.node.start(port)
         self.web3 = Client.node.web3
         # Set fake default account.
         self.web3.eth.defaultAccount = '\xff' * 20

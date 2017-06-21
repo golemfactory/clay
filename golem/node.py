@@ -8,7 +8,6 @@ import jsonpickle as json
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import is_windows
 from golem.network.transport.tcpnetwork import SocketAddress, AddressValueError
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import object_method_map, Session
@@ -20,12 +19,13 @@ class Node(object):
     :type client golem.client.Client:
     """
 
-    def __init__(self, datadir=None, transaction_system=False,
+    def __init__(self, datadir=None, transaction_system=False, geth_port=None,
                  **config_overrides):
 
         self.default_environments = []
         self.client = Client(datadir=datadir,
                              transaction_system=transaction_system,
+                             geth_port=geth_port,
                              **config_overrides)
 
         self.rpc_router = None
@@ -94,8 +94,10 @@ class Node(object):
 
 
 class OptNode(Node):
-    def __init__(self, datadir=None, transaction_system=False, **config_overrides):
-        super(OptNode, self).__init__(datadir, transaction_system, **config_overrides)
+    def __init__(self, datadir=None, transaction_system=False, geth_port=None,
+                 **config_overrides):
+        super(OptNode, self).__init__(datadir, transaction_system, geth_port,
+                                      **config_overrides)
         self.apps_manager = AppsManager()
         self.apps_manager.load_apps()
         self.default_environments = self.apps_manager.get_env_list()

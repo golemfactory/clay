@@ -49,7 +49,7 @@ def start_gui(address):
 
 def start_client(start_ranking, datadir=None,
                  transaction_system=False, client=None,
-                 reactor=None, **config_overrides):
+                 reactor=None, geth_port=None, **config_overrides):
 
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
@@ -66,7 +66,8 @@ def start_client(start_ranking, datadir=None,
 
     process_monitor = None
     if not client:
-        client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
+        client = Client(datadir=datadir, transaction_system=transaction_system,
+                        geth_port=geth_port, **config_overrides)
 
     docker_manager = DockerManager.install(client.config_desc)
     docker_manager.check_environment()
@@ -129,6 +130,7 @@ def start_client(start_ranking, datadir=None,
 
 
 def start_app(start_ranking=False, datadir=None,
-              transaction_system=False, rendering=False, **config_overrides):
+              transaction_system=False, rendering=False, geth_port=None,
+              **config_overrides):
     start_client(start_ranking, datadir,
-                 transaction_system, **config_overrides)
+                 transaction_system, geth_port=geth_port, **config_overrides)

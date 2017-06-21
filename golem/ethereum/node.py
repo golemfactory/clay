@@ -90,7 +90,7 @@ class NodeProcess(object):
     def is_running(self):
         return self.__ps is not None
 
-    def start(self):
+    def start(self, port=None):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
@@ -112,7 +112,8 @@ class NodeProcess(object):
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
-        port = find_free_net_port()
+        if port is None:
+            port = find_free_net_port()
 
         # Build unique IPC/socket path. We have to use system temp dir to
         # make sure the path has length shorter that ~100 chars.

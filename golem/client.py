@@ -78,6 +78,7 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts=True,
             use_docker_machine_manager=True,
             use_monitor=True,
+            geth_port=None,
             **config_overrides):
 
         if not datadir:
@@ -151,7 +152,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key, geth_port)
         else:
             self.transaction_system = None
 
