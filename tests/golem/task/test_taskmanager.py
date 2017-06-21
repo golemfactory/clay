@@ -24,6 +24,9 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 
 class TaskMock(Task):
+    task_definition = Mock()
+    task_definition.full_task_timeout = 10
+
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
 

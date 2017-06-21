@@ -474,10 +474,13 @@ class TaskManager(TaskEventListener):
     def restart_task(self, task_id):
         logger.info("restarting task")
         self.dir_manager.clear_temporary(task_id)
+        task = self.tasks[task_id]
 
-        self.tasks[task_id].restart()
-        self.tasks[task_id].task_status = TaskStatus.restarted
+        task.restart()
+        task.task_status = TaskStatus.restarted
         self.tasks_states[task_id].status = TaskStatus.restarted
+        task.header.deadline = timeout_to_deadline(
+            task.task_definition.full_task_timeout)
         self.tasks_states[task_id].time_started = time.time()
 
         for ss in self.tasks_states[task_id].subtask_states.values():
