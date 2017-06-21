@@ -1000,12 +1000,6 @@ class TaskServer(PendingConnectionsServer):
 
         self.failures_to_send.clear()
 
-    def __connection_for_payment_final_failure(self, conn_id, *args, **kwargs):
-        pass
-
-    def __connection_for_payment_request_final_failure(self, conn_id, *args, **kwargs):
-        pass
-
     def __connection_for_payment_failure(self, *args, **kwargs):
         self.final_conn_failure(kwargs['conn_id'])
 
@@ -1052,10 +1046,8 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
             TASK_CONN_TYPES['middleman']: self.noop,
             TASK_CONN_TYPES['nat_punch']: self.noop,
-            TASK_CONN_TYPES['payment']:
-                self.__connection_for_payment_final_failure,
-            TASK_CONN_TYPES['payment_request']:
-                self.__connection_for_payment_request_final_failure,
+            TASK_CONN_TYPES['payment']:self.noop,
+            TASK_CONN_TYPES['payment_request']: self.noop,
         })
 
     def _set_listen_established(self):
