@@ -277,7 +277,7 @@ class FrameRenderingTask(RenderingTask):
         preview_task_file_path = self._get_preview_task_file_path(idx)
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
-        img_task.save(preview_task_file_path, "BMP")
+        img_task.save(preview_task_file_path, PREVIEW_EXT)
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:

@@ -6,6 +6,8 @@ if is_windows():
     from golem import uvent
     uvent.install()
 from golem.reactor import geventreactor
+if 'twisted.internet.reactor' in sys.modules:
+    del sys.modules['twisted.internet.reactor']
 geventreactor.install()
 
 import click
