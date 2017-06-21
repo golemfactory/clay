@@ -1006,10 +1006,16 @@ class TaskServer(PendingConnectionsServer):
         self.failures_to_send.clear()
 
     def __connection_for_payment_failure(self, *args, **kwargs):
-        self.final_conn_failure(kwargs['conn_id'])
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
 
     def __connection_for_payment_request_failure(self, *args, **kwargs):
-        self.final_conn_failure(kwargs['conn_id'])
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
 
     # CONFIGURATION METHODS
     #############################
