@@ -632,20 +632,13 @@ class Client(HardwarePresetsMixin):
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            payments = self.transaction_system.get_payments_list()
-            return map(self._map_payment, payments)
+            return self.transaction_system.get_payments_list()
         return ()
 
     def get_incomes_list(self):
-        # Will be implemented in incomes_core
+        if self.use_transaction_system():
+            return self.transaction_system.get_incoming_payments()
         return []
-
-    @classmethod
-    def _map_payment(cls, obj):
-        obj["payee"] = to_unicode(obj["payee"])
-        obj["value"] = to_unicode(obj["value"])
-        obj["fee"] = to_unicode(obj["fee"])
-        return obj
 
     def get_task_cost(self, task_id):
         """
@@ -902,6 +895,9 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
+        options['price'] = float(options['price'])
+        options['subtask_time'] = float(options['subtask_time'])
+        options['num_subtasks'] = int(options['num_subtasks'])
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
 

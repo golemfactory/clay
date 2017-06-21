@@ -864,7 +864,7 @@ class TaskServer(PendingConnectionsServer):
             key_id=obj.get_sender_node().key,
             conn_id=conn_id
         )
-
+        self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.inform_worker_about_payment(obj)
 
@@ -878,7 +878,7 @@ class TaskServer(PendingConnectionsServer):
             key_id=obj.get_sender_node().key,
             conn_id=conn_id
         )
-
+        self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.request_payment(obj)
 
@@ -1005,6 +1005,12 @@ class TaskServer(PendingConnectionsServer):
 
         self.failures_to_send.clear()
 
+    def __connection_for_payment_failure(self, *args, **kwargs):
+        self.final_conn_failure(kwargs['conn_id'])
+
+    def __connection_for_payment_request_failure(self, *args, **kwargs):
+        self.final_conn_failure(kwargs['conn_id'])
+
     # CONFIGURATION METHODS
     #############################
     @staticmethod
@@ -1031,8 +1037,10 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
             TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_failure,
             TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
-            TASK_CONN_TYPES['payment']: self.noop,
-            TASK_CONN_TYPES['payment_request']: self.noop,
+            TASK_CONN_TYPES['payment']:
+                self.__connection_for_payment_failure,
+            TASK_CONN_TYPES['payment_request']:
+                self.__connection_for_payment_request_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -1043,7 +1051,7 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
             TASK_CONN_TYPES['middleman']: self.noop,
             TASK_CONN_TYPES['nat_punch']: self.noop,
-            TASK_CONN_TYPES['payment']: self.noop,
+            TASK_CONN_TYPES['payment']:self.noop,
             TASK_CONN_TYPES['payment_request']: self.noop,
         })
 

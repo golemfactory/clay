@@ -9,10 +9,11 @@ from twisted.internet.defer import Deferred
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import timestamp_to_datetime
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
 from golem.core.deferred import sync_wait
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
@@ -36,6 +37,10 @@ def mock_async_run(req, success, error):
     else:
         if success:
             success(result)
+
+
+def random_hex_str():
+    return str(uuid.uuid4()).replace('-', '')
 
 
 class TestCreateClient(TestDirFixture, testutils.PEP8MixIn):
@@ -73,23 +78,27 @@ class TestClient(TestWithDatabase):
             self.client.quit()
 
     def test_get_payments(self, *_):
-        self.client = Client(datadir=self.path, transaction_system=True,
+        self.client = Client(datadir=self.path,
+                             transaction_system=True,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False,
                              use_monitor=False)
 
+        n = 9
         payments = [
-            Payment(subtask=uuid.uuid4(),
-                    status=PaymentStatus.awaiting,
-                    payee=str(uuid.uuid4()),
-                    value=2 * 10 ** 18,
-                    created=time.time(),
-                    modified=time.time())
-            for _ in xrange(2)
+            Payment(
+                subtask=uuid.uuid4(),
+                status=PaymentStatus.awaiting,
+                payee=random_hex_str().decode('hex'),
+                value=i * 10 ** 18,
+                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
+                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+            )
+            for i in xrange(n + 1)
         ]
 
         db = Mock()
-        db.get_newest_payment.return_value = payments
+        db.get_newest_payment.return_value = reversed(payments)
 
         self.client.transaction_system.payments_keeper.db = db
         received_payments = self.client.get_payments_list()
@@ -98,13 +107,50 @@ class TestClient(TestWithDatabase):
 
         for i in xrange(len(payments)):
             self.assertEqual(received_payments[i]['subtask'],
-                             payments[i].subtask)
+                             unicode(payments[n - i].subtask))
             self.assertEqual(received_payments[i]['status'],
-                             payments[i].status.value)
+                             payments[n - i].status.name)
             self.assertEqual(received_payments[i]['payee'],
-                             unicode(payments[i].payee))
+                             unicode(payments[n - i].payee.encode('hex')))
             self.assertEqual(received_payments[i]['value'],
-                             unicode(payments[i].value))
+                             unicode(payments[n - i].value))
+
+    def test_get_incomes(self, *_):
+        self.client = Client(datadir=self.path,
+                             transaction_system=True,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        n = 9
+        incomes = [
+            ExpectedIncome(
+                sender_node=random_hex_str(),
+                sender_node_details={},
+                task=random_hex_str(),
+                subtask=random_hex_str(),
+                value=i * 10 ** 18,
+                created_date=timestamp_to_datetime(i).replace(tzinfo=None),
+                modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
+            )
+            for i in xrange(n + 1)
+        ]
+
+        for income in incomes:
+            income.save()
+
+        received_incomes = self.client.get_incomes_list()
+        self.assertEqual(len(received_incomes), len(incomes))
+
+        for i in xrange(len(incomes)):
+            self.assertEqual(received_incomes[i]['subtask'],
+                             unicode(incomes[n - i].subtask))
+            self.assertEqual(received_incomes[i]['status'],
+                             unicode(PaymentStatus.awaiting.name))
+            self.assertEqual(received_incomes[i]['payer'],
+                             unicode(incomes[n - i].sender_node))
+            self.assertEqual(received_incomes[i]['value'],
+                             unicode(incomes[n - i].value))
 
     def test_payment_address(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
