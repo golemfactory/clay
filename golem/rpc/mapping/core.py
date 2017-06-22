@@ -60,7 +60,6 @@ CORE_METHOD_MAP = dict(
     restart_task=           Task.task_restart,
     pause_task=             Task.task_pause,
     resume_task=            Task.task_resume,
-    get_task_output_states=Task.task_outputs_states,
 
     get_subtasks=           Task.subtasks,
     get_subtasks_borders=   Task.subtasks_borders,

@@ -139,6 +139,9 @@ class RenderingTask(CoreTask):
     # Specific task methods #
     #########################
 
+    def get_subtasks(self, part):
+        return self.subtasks_given.values()
+
     def get_preview_file_path(self):
         return self.preview_file_path
 

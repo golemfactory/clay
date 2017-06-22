@@ -3,7 +3,7 @@ from __future__ import division
 import logging
 import math
 import os
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from PIL import Image, ImageChops
 from copy import deepcopy
@@ -49,12 +49,17 @@ class FrameRenderingTask(RenderingTask):
         self.use_frames = task_definition.options.use_frames
         self.frames = task_definition.options.frames
 
+        parts = max(1, int(self.total_tasks / len(self.frames)))
+
         self.frames_given = {}
         self.frames_state = {}
+        self.frames_subtasks = {}
+
         for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
-            self.frames_state[frame_key] = TaskStatus.waiting
+            self.frames_state[frame_key] = TaskStatus.notStarted
+            self.frames_subtasks[frame_key] = [None] * parts
 
         if self.use_frames:
             self.preview_file_path = [None] * len(self.frames)
@@ -68,12 +73,42 @@ class FrameRenderingTask(RenderingTask):
         CoreTask.computation_failed(self, subtask_id)
         if self.use_frames:
             self._update_frame_task_preview()
-            frames = self.get_subtask_frames()
-            for frame in frames:
-
+            self._update_subtask_frame_status(subtask_id)
         else:
             self._update_task_preview()
 
+    @CoreTask.handle_key_error
+    def computation_finished(self, subtask_id, task_result, result_type=0):
+        super(FrameRenderingTask, self).computation_finished(subtask_id,
+                                                             task_result,
+                                                             result_type)
+        if self.use_frames:
+            self._update_subtask_frame_status(subtask_id)
+
+    def _update_subtask_frame_status(self, subtask_id):
+        frames = self.subtasks_given[subtask_id]['frames']
+        for frame in frames:
+            self._update_frame_status(frame)
+
+    def _update_frame_status(self, frame):
+        frame_key = to_unicode(frame)
+        subtask_ids = self.frames_subtasks[frame_key]
+
+        parts = max(1, int(self.total_tasks / len(self.frames)))
+        counters = defaultdict(lambda: 0, dict())
+
+        for subtask_id in subtask_ids:
+            if not subtask_id:
+                continue
+            subtask = self.subtasks_given[subtask_id]
+            counters[subtask['status']] += 1
+
+        if counters[SubtaskStatus.finished] >= parts:
+            self.frames_state[frame_key] = TaskStatus.finished
+        elif len(counters.keys()) > 2:
+            self.frames_state[frame_key] = TaskStatus.computing
+        elif counters[SubtaskStatus.failure] > 0:
+            self.frames_state[frame_key] = TaskStatus.aborted
 
     def get_output_names(self):
         if self.use_frames:
@@ -84,10 +119,12 @@ class FrameRenderingTask(RenderingTask):
 
     def get_output_states(self):
         if self.use_frames:
-            return [{'name': k, 'state': v}
-                    for k, v in self.frames_state.items()]
-        else:
-            return []
+            return sorted(self.frames_state.items())
+        return []
+
+    def get_subtasks(self, frame):
+        subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+        return [self.subtasks_given[_id] for _id in subtask_ids]
 
     def accept_results(self, subtask_id, result_files):
         super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
@@ -110,18 +147,23 @@ class FrameRenderingTask(RenderingTask):
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
 
-    def get_subtask_frames(self):
+    def get_frames_to_subtasks(self):
         frames = OrderedDict((frame_num, []) for frame_num in self.frames)
 
         for subtask_id, subtask in self.subtasks_given.iteritems():
-            if not (subtask and subtask['frames']):
-                continue
-            # There might be multiple subtasks per frame.
-            # We do not know their status at this point.
-            for frame in subtask['frames']:
-                frames[frame].append(subtask_id)
-
+            if subtask and subtask['frames']:
+                for frame in subtask['frames']:
+                    frames[frame].append(subtask_id)
         return frames
+
+    def get_frame_subtasks(self, frame):
+        result = []
+
+        for subtask_id, subtask in self.subtasks_given.iteritems():
+            if subtask and subtask['frames'] and frame in subtask['frames']:
+                result.append(subtask_id)
+
+        return result
 
     def to_dictionary(self):
         dictionary = super(FrameRenderingTask, self).to_dictionary()
@@ -208,7 +250,7 @@ class FrameRenderingTask(RenderingTask):
             upper_y = 0
             lower_y = int(round(self.res_y * self.scale_factor))
         else:
-            parts = int(self.total_tasks / len(self.frames))
+            parts = max(1, int(self.total_tasks / len(self.frames)))
             part_height = self.res_y / parts * self.scale_factor
             upper_y = int(math.ceil(part_height) * ((subtask['start_task'] - 1) % parts))
             lower_y = int(math.floor(part_height) * ((subtask['start_task'] - 1) % parts + 1))
@@ -224,7 +266,7 @@ class FrameRenderingTask(RenderingTask):
             end_frame = min(start_task * subtasks_frames, len(frames))
             return frames[start_frame:end_frame], 1
         else:
-            parts = int(total_tasks / len(frames))
+            parts = max(1, int(total_tasks / len(frames)))
             return [frames[int((start_task - 1) / parts)]], parts
 
     def _put_image_together(self):
@@ -266,7 +308,6 @@ class FrameRenderingTask(RenderingTask):
         frame_key = unicode(frames_list[0])
         self.frames_given[frame_key][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
-        self.frames_state[frame_key] = TaskStatus.finished
         return frames_list[1:]
 
     def _collect_frame_part(self, num_start, tr_file, parts):

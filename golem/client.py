@@ -194,8 +194,6 @@ class Client(HardwarePresetsMixin):
         if event != 'task_status_updated':
             return
         self._publish(Task.evt_task_status, kwargs['task_id'])
-        log.warning("task_id {}".format(kwargs['task_id']))
-        log.warning(self.get_task_output_states(kwargs['task_id']))
 
     # TODO: re-enable
     def sync(self):
@@ -583,11 +581,12 @@ class Client(HardwarePresetsMixin):
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
 
-    def get_subtasks_borders(self, task_id):
-        return self.task_server.task_manager.get_subtasks_borders(task_id)
+    def get_subtasks_borders(self, task_id, part=1):
+        return self.task_server.task_manager.get_subtasks_borders(task_id,
+                                                                  part)
 
     def get_subtasks_frames(self, task_id):
-        return self.task_server.task_manager.get_subtasks_frames(task_id)
+        return self.task_server.task_manager.get_output_states(task_id)
 
     def get_subtask(self, subtask_id):
         return self.task_server.task_manager.get_subtask_dict(subtask_id)
@@ -604,12 +603,6 @@ class Client(HardwarePresetsMixin):
             u'subtasks_with_errors': self.get_error_task_count(),
             u'subtasks_with_timeout': self.get_timeout_task_count()
         }
-
-    def get_task_output_states(self, task_id):
-        states = self.task_server.task_manager.get_output_states(task_id)
-        return [{
-            u'frame': to_unicode(s['name']),
-            u'state': to_unicode(s['state'])} for s in states]
 
     def get_supported_task_count(self):
         return len(self.task_server.task_keeper.supported_tasks)
