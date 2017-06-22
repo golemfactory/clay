@@ -437,7 +437,9 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
 
 class TestLuxRenderTaskBuilder(TempDirFixture):
 
-    def get_task(self):
+    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # since we dont need it, lets patch it to speed up the tests
+    def get_task(self, create_reference_data_for_task_validation_mock):
+        create_reference_data_for_task_validation_mock.return_value = None
         td = RenderingTaskDefinition()
         td.task_type = 'LuxRender'
         td.max_price = 5.0
