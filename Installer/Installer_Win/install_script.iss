@@ -64,7 +64,7 @@ Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {a
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\locales\*"; DestDir: {app}\locales\;
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\resources\*"; DestDir: {app}\resources\;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.1-021c3c28.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
 Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;    
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
@@ -84,7 +84,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.6.1-021c3c28.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
+Filename: "{tmp}\geth-windows-amd64-1.6.5-cf87713d.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
 
 [Code]
                                                                               
