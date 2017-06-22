@@ -525,6 +525,10 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
+    def get_output_states(self, task_id):
+        return self.tasks[task_id].get_output_states()
+
+    @handle_task_key_error
     def delete_task(self, task_id):
         for sub in self.tasks_states[task_id].subtask_states.values():
             del self.subtask2task_mapping[sub.subtask_id]
@@ -620,11 +624,13 @@ class TaskManager(TaskEventListener):
         task_state = self.tasks_states[task_id]
         total_subtasks = task.get_total_tasks()
 
-        return {
+        return_value = {
             to_unicode(subtask.subtask_id): task_type.get_task_border(
                 subtask, task.task_definition, total_subtasks, as_path=True
             ) for subtask in task_state.subtask_states.values()
         }
+        print return_value
+        return return_value
 
     def get_subtasks_frames(self, task_id):
         task = self.tasks[task_id]

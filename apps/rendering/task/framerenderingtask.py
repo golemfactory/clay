@@ -18,7 +18,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
-from golem.task.taskstate import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 logger = logging.getLogger("apps.rendering")
 
@@ -31,6 +31,7 @@ class FrameRendererOptions(Options):
         self.use_frames = True
         self.frames = range(1, 11)
         self.frames_string = "1-10"
+
 
 
 class FrameRenderingTask(RenderingTask):
@@ -49,9 +50,11 @@ class FrameRenderingTask(RenderingTask):
         self.frames = task_definition.options.frames
 
         self.frames_given = {}
+        self.frames_state = {}
         for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
+            self.frames_state[frame_key] = TaskStatus.waiting
 
         if self.use_frames:
             self.preview_file_path = [None] * len(self.frames)
@@ -65,8 +68,12 @@ class FrameRenderingTask(RenderingTask):
         CoreTask.computation_failed(self, subtask_id)
         if self.use_frames:
             self._update_frame_task_preview()
+            frames = self.get_subtask_frames()
+            for frame in frames:
+
         else:
             self._update_task_preview()
+
 
     def get_output_names(self):
         if self.use_frames:
@@ -74,6 +81,13 @@ class FrameRenderingTask(RenderingTask):
             return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
         else:
             return super(FrameRenderingTask, self).get_output_names()
+
+    def get_output_states(self):
+        if self.use_frames:
+            return [{'name': k, 'state': v}
+                    for k, v in self.frames_state.items()]
+        else:
+            return []
 
     def accept_results(self, subtask_id, result_files):
         super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
@@ -252,6 +266,7 @@ class FrameRenderingTask(RenderingTask):
         frame_key = unicode(frames_list[0])
         self.frames_given[frame_key][0] = tr_file
         self._put_frame_together(frames_list[0], num_start)
+        self.frames_state[frame_key] = TaskStatus.finished
         return frames_list[1:]
 
     def _collect_frame_part(self, num_start, tr_file, parts):

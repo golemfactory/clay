@@ -12,7 +12,7 @@ from PIL import Image, ImageChops
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import get_test_task_path
-from golem.task.taskstate import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
@@ -380,6 +380,8 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
+            for frame in frames:
+                self.frames_state[to_unicode(frame)] = TaskStatus.computing
         else:
             frames = [1]
             parts = 1
