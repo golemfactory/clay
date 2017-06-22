@@ -573,6 +573,23 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     TASK_CLASS = BlenderRenderTask
     DEFAULTS = BlenderDefaults
 
+    @classmethod
+    def build_dictionary(cls, definition):
+        parent = super(BlenderRenderTaskBuilder, cls)
+
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'compositing'] = definition.options.compositing
+        return dictionary
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        parent = super(BlenderRenderTaskBuilder, cls)
+        options = dictionary[u'options']
+
+        definition = parent.build_full_definition(task_type, dictionary)
+        definition.options.compositing = options.get('compositing', False)
+        return definition
+
 
 class CustomCollector(RenderingTaskCollector):
     def __init__(self, paste=False, width=1, height=1):
