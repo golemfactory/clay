@@ -55,11 +55,11 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         self.__after_test_errors(luxtask)
         self.__queries(luxtask)
-        luxtask = self.get_test_lux_task(19, 10)
+        luxtask = self.get_test_lux_task(haltspp=19, total_subtasks=10)
         assert luxtask.haltspp == 2
-        luxtask = self.get_test_lux_task(11, 10)
+        luxtask = self.get_test_lux_task(haltspp=11, total_subtasks=10)
         assert luxtask.haltspp == 2
-        luxtask = self.get_test_lux_task(10, 10)
+        luxtask = self.get_test_lux_task(haltspp=10, total_subtasks=10)
         assert luxtask.haltspp == 1
 
     def test_get_random_crop_window_for_verification(self): # GG how to add luxrender_config_file.lxs to docker img / task builder?
