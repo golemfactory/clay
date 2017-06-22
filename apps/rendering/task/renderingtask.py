@@ -342,19 +342,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        options = dictionary[u'options']
-        options[u'format'] = definition.output_format
-        options[u'resolution'] = definition.resolution
-
-        if hasattr(definition.options, 'compositing'):
-            options[u'compositing'] = definition.options.compositing
-
+        dictionary[u'options'][u'format'] = definition.output_format
+        dictionary[u'options'][u'resolution'] = definition.resolution
         return dictionary
 
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
@@ -364,16 +358,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         options = dictionary['options']
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
-
-        if hasattr(definition.options, 'compositing'):
-            definition.options.compositing = options.get('compositing', False)
-
         return definition
 
     @classmethod

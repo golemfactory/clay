@@ -510,3 +510,21 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
         kwargs['halttime'] = self.task_definition.options.halttime
         kwargs['haltspp'] = self.task_definition.options.haltspp
         return kwargs
+
+    @classmethod
+    def build_dictionary(cls, definition):
+        parent = super(LuxRenderTaskBuilder, cls)
+
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'haltspp'] = definition.options.haltspp
+        return dictionary
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        parent = super(LuxRenderTaskBuilder, cls)
+        options = dictionary[u'options']
+
+        definition = parent.build_full_definition(task_type, dictionary)
+        definition.options.haltspp = options.get('haltspp',
+                                                 definition.options.haltspp)
+        return definition
