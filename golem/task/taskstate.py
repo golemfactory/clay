@@ -85,6 +85,7 @@ class TaskStatus(object):
     aborted = u"Aborted"
     timeout = u"Timeout"
     paused = u"Paused"
+    restarted = u"Restart"
 
 
 class SubtaskStatus(object):
