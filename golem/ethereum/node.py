@@ -17,6 +17,7 @@ from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows
+from golem.core.mptee import MPTee
 from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -97,6 +98,7 @@ class NodeProcess(object):
         # Init geth datadir
         chain = 'rinkeby'
         geth_datadir = path.join(self.datadir, 'ethereum', chain)
+        logfilename = path.join(self.datadir, "logs", "geth.log")
         datadir_arg = '--datadir={}'.format(geth_datadir)
         this_dir = path.dirname(__file__)
         init_file = path.join(this_dir, chain + '.json')
@@ -134,7 +136,9 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
 
-        self.__ps = subprocess.Popen(args, close_fds=True)
+        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE, close_fds=True)
+        mpt = MPTee(self.__ps, logfilename)
+        mpt.start()
         atexit.register(lambda: self.stop())
 
         if is_windows():

@@ -8,6 +8,7 @@ import os
 from requests import ConnectionError
 
 from golem.core.processmonitor import ProcessMonitor
+from golem.core.mptee import MPTee
 from golem.network.hyperdrive.client import HyperdriveClient
 
 logger = logging.getLogger('golem.resources')
@@ -71,8 +72,10 @@ class HyperdriveDaemonManager(object):
             logger.error("hyperg log file: {}".format(self._logfilename))
             if not os.path.exists(self._dir):
                 os.makedirs(self._dir)
-            with open(self._logfilename, 'a') as logfile:
-                process = subprocess.Popen(self._command, stdout=logfile)
+            process = subprocess.Popen(self._command, stdout=subprocess.PIPE)
+            mpt = MPTee(process, self._logfilename)
+            mpt.start()
+
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
                             "Make sure path is correct and check "
