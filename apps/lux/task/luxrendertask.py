@@ -151,12 +151,13 @@ class LuxTask(renderingtask.RenderingTask):
         try:
             with open(self.main_scene_file) as f:
                 self.scene_file_src = f.read()
-                self.random_crop_window_for_verification = \
-                    self._get_random_crop_window_for_verification(
-                        self.scene_file_src)
+
         except IOError as err:
             logger.error("Wrong scene file: {}".format(err))
             self.scene_file_src = ""
+
+        self.random_crop_window_for_verification = \
+            self._get_random_crop_window_for_verification(self.scene_file_src)
 
         self.output_file, _ = os.path.splitext(self.output_file)
         self.output_format = self.output_format.lower()

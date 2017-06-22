@@ -36,14 +36,20 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # we do not need it during tests
+
+    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # since we dont need it, lets patch it to speed up the tests
     def get_test_lux_task(self, create_reference_data_for_task_validation_mock, haltspp=20, total_subtasks=10):
         create_reference_data_for_task_validation_mock.return_value = None
+
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         lro.haltspp = haltspp
         td.total_subtasks = total_subtasks
         td.options = lro
+
+        # td.main_scene_file= os.path.join(self.path, 'scene.lxs')
+        # td.add_to_resources()
+
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         return lb.build()
