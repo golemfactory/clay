@@ -85,33 +85,9 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 
-    def _update_subtask_frame_status(self, subtask_id):
-        frames = self.subtasks_given[subtask_id]['frames']
-        for frame in frames:
-            self._update_frame_status(frame)
-
-    def _update_frame_status(self, frame):
-        frame_key = to_unicode(frame)
-        subtask_ids = self.frames_subtasks[frame_key]
-
-        parts = max(1, int(self.total_tasks / len(self.frames)))
-        counters = defaultdict(lambda: 0, dict())
-
-        for subtask_id in subtask_ids:
-            if subtask_id:
-                subtask = self.subtasks_given[subtask_id]
-                counters[subtask['status']] += 1
-
-        computing = len(filter(lambda x: x not in [SubtaskStatus.finished,
-                                                   SubtaskStatus.failure],
-                               counters.keys()))
-
-        if counters[SubtaskStatus.finished] >= parts:
-            self.frames_state[frame_key] = TaskStatus.finished
-        elif computing > 0:
-            self.frames_state[frame_key] = TaskStatus.computing
-        elif counters[SubtaskStatus.failure] > 0:
-            self.frames_state[frame_key] = TaskStatus.aborted
+    def restart_subtask(self, subtask_id):
+        super(FrameRenderingTask, self).restart_subtask(subtask_id)
+        self._update_subtask_frame_status(subtask_id)
 
     def get_output_names(self):
         if self.use_frames:
@@ -159,15 +135,6 @@ class FrameRenderingTask(RenderingTask):
                     frames[frame].append(subtask_id)
         return frames
 
-    def get_frame_subtasks(self, frame):
-        result = []
-
-        for subtask_id, subtask in self.subtasks_given.iteritems():
-            if subtask and subtask['frames'] and frame in subtask['frames']:
-                result.append(subtask_id)
-
-        return result
-
     def to_dictionary(self):
         dictionary = super(FrameRenderingTask, self).to_dictionary()
         frame_count = len(self.frames) if self.use_frames else 1
@@ -196,6 +163,40 @@ class FrameRenderingTask(RenderingTask):
         img.save(self._get_preview_task_file_path(num), PREVIEW_EXT)
 
         img.close()
+
+    @CoreTask.handle_key_error
+    def _update_subtask_frame_status(self, subtask_id):
+        frames = self.subtasks_given[subtask_id]['frames']
+        for frame in frames:
+            self._update_frame_status(frame)
+
+    def _update_frame_status(self, frame):
+        frame_key = to_unicode(frame)
+        subtask_ids = self.frames_subtasks[frame_key]
+
+        parts = max(1, int(self.total_tasks / len(self.frames)))
+        counters = defaultdict(lambda: 0, dict())
+
+        # Count the number of occurrences of each subtask state
+        for subtask_id in filter(bool, subtask_ids):
+            subtask = self.subtasks_given[subtask_id]
+            counters[subtask['status']] += 1
+
+        # Count statuses different from 'finished' and 'failure'
+        computing = len(filter(lambda x: x not in [SubtaskStatus.finished,
+                                                   SubtaskStatus.failure],
+                               counters.keys()))
+
+        # Finished if at least n subtasks >= parts were finished
+        if counters[SubtaskStatus.finished] >= parts:
+            self.frames_state[frame_key] = TaskStatus.finished
+        # Computing if at least one subtask did not fail
+        elif computing > 0:
+            self.frames_state[frame_key] = TaskStatus.computing
+        # Failure if the only known subtask status is 'failure'
+        elif counters[SubtaskStatus.failure] > 0:
+            self.frames_state[frame_key] = TaskStatus.aborted
+        # Otherwise, do not change frame's status.
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
         try:
