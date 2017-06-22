@@ -34,7 +34,7 @@ declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/g
 declare -r hyperg_pack=/tmp/hyperg.tar.gz
 
 # Questions
-declare -i INSTALL_DOCKER=1
+declare -i INSTALL_DOCKER=0
 declare -i INSTALL_GETH=1
 # declare -i INSTALL_IPFS=0 # to restore IPFS revert this commit
 declare -i reinstall=0
@@ -112,8 +112,8 @@ function install_dependencies()
 
     if [[ ${INSTALL_GETH} -eq 1 ]]; then
         info_msg "INSTALLING GETH"
-        sudo apt-get install -y software-properties-common
-        sudo add-apt-repository -y ppa:ethereum/ethereum
+        sudo apt-get install -y -q software-properties-common
+        sudo add-apt-repository -y ppa:ethereum/ethereum >/dev/null
     fi
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
@@ -140,13 +140,13 @@ function install_dependencies()
     if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "$hyperg_release" > "$hyperg_version" ]]; then
         info_msg "Installing HyperG"
         wget -qO- ${hyperg} > ${hyperg_pack}
-        tar -xvf ${hyperg_pack}
+        tar -xvf ${hyperg_pack} >/dev/null
         mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f ${hyperg_pack} &>/dev/null
     fi
     sudo apt-get update >/dev/null
-    sudo apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev ethereum
+    sudo apt-get install -y -q openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev ethereum docker-engine
     info_msg "Done installing Golem dependencies"
 }
 
@@ -158,7 +158,7 @@ function download_package() {
         info_msg "Local package provided, skipping downloading..."
         cp "$LOCALPACKAGE" "/tmp/$PACKAGE"
     else
-        info_msg "Downloading package from $golem_package"
+        info_msg "Downloading Golem package"
         wget -qO- "$golem_package" > /tmp/${PACKAGE}
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
@@ -173,13 +173,14 @@ function download_package() {
 # @return 1 if error occurred, 0 otherwise
 function install_golem()
 {
+    info_msg "Installing Golem"
     download_package
     result=$?
     if [[ ${result} -eq 1 ]]; then
         return 1
     fi
 
-    tar -zxvf /tmp/${PACKAGE}
+    tar -zxvf /tmp/${PACKAGE} >/dev/null
     PACKAGE_DIR=$(find . -maxdepth 1 -name "golem-*" -type d -print | head -n1)
     if [[ ! -d ${PACKAGE_DIR} ]]; then
         error_msg "Error extracting package"
