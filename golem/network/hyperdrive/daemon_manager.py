@@ -31,6 +31,11 @@ class HyperdriveDaemonManager(object):
         self._command = [self._executable, '--db', self._dir]
 
         atexit.register(self.stop)
+        logsdir = os.path.join(datadir, "logs")
+        if not os.path.exists(logsdir):
+            os.makedirs(logsdir)
+        # TODO: capture hyperg output using tee
+        self._logfilename = os.path.join(logsdir, "hyperg.log")
 
     def addresses(self):
         try:
