@@ -524,5 +524,6 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
         options = dictionary[u'options']
 
         definition = parent.build_full_definition(task_type, dictionary)
-        definition.options.haltspp = options.get('haltspp', 1)
+        definition.options.haltspp = options.get('haltspp',
+                                                 definition.options.haltspp)
         return definition
