@@ -19,8 +19,8 @@ class LuxBenchmark(Benchmark):
         self.normalization_constant = 9910
 
         if hasattr(sys, 'frozen') and sys.frozen:
-            self.lux_task_path = join(dirname(sys.executable), 'apps', 'lux',
-                                      'benchmark')
+            self.lux_task_path = join(dirname(sys.executable),
+                                      'examples', 'lux')
         else:
             self.lux_task_path = join(dirname(abspath(__file__)), "test_task")
 

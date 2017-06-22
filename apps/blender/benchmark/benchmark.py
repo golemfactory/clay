@@ -14,11 +14,11 @@ class BlenderBenchmark(Benchmark):
         super(BlenderBenchmark, self).__init__()
         self.normalization_constant = 9360
         if hasattr(sys, 'frozen') and sys.frozen:
-            this_dir = join(dirname(sys.executable), 'apps', 'blender',
-                            'benchmark')
+            self.blender_task_path = join(dirname(sys.executable),
+                                          'examples', 'blender')
         else:
             this_dir = pathlib.Path(__file__).resolve().parent
-        self.blender_task_path = str(this_dir / "test_task")
+            self.blender_task_path = str(this_dir / "test_task")
         task_def = self.task_definition
         task_def.output_file = tempfile.mkstemp("blender_benchmark.png")[1]
         task_def.task_type = "Blender"
