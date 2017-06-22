@@ -4,6 +4,7 @@ import atexit
 import logging
 import re
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import datetime
@@ -96,11 +97,9 @@ class NodeProcess(object):
         chain = 'rinkeby'
         geth_datadir = path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
-        import sys
-        from os.path import dirname
         if hasattr(sys, 'frozen') and sys.frozen:
-            init_file = path.join(dirname(sys.executable), 'golem', 'ethereum',
-                                  chain + '.json')
+            init_file = path.join(path.dirname(sys.executable), 'golem',
+                                  'ethereum', chain + '.json')
         else:
             this_dir = path.dirname(__file__)
             init_file = path.join(this_dir, chain + '.json')
