@@ -60,17 +60,20 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
                                                
 [Files]
 Source: "{#Repository}\dist\*"; DestDir: {app};
+Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app};
+Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\locales\*"; DestDir: {app}\locales\;
+Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\resources\*"; DestDir: {app}\resources\;
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.1-021c3c28.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
 Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;    
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
 
 [Run]
 ; Install runtime
@@ -81,7 +84,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"       
+Filename: "{tmp}\geth-windows-amd64-1.6.1-021c3c28.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
 
 [Code]
                                                                               
