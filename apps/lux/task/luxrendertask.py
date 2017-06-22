@@ -1,5 +1,6 @@
 from __future__ import division
 import logging
+import math
 import os
 import random
 import shutil
@@ -119,7 +120,7 @@ class LuxRenderOptions(Options):
         super(LuxRenderOptions, self).__init__()
         self.environment = LuxRenderEnvironment()
         self.halttime = 0
-        self.haltspp = 1
+        self.haltspp = 10
 
 
 class LuxTask(renderingtask.RenderingTask):
@@ -138,7 +139,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.root_path
         )
         self.halttime = halttime
-        self.haltspp = haltspp
+        self.haltspp = int(math.ceil(haltspp / self.total_tasks))
         self.verification_error = False
         self.merge_timeout = MERGE_TIMEOUT
 

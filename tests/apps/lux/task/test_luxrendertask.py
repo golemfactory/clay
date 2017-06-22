@@ -35,9 +35,11 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    def get_test_lux_task(self):
+    def get_test_lux_task(self, haltspp=20, total_subtasks=10):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
+        lro.haltspp = haltspp
+        td.total_subtasks = total_subtasks
         td.options = lro
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
@@ -45,10 +47,17 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_luxtask(self):
         luxtask = self.get_test_lux_task()
+        assert luxtask.haltspp == 2
 
         self.__after_test_errors(luxtask)
 
         self.__queries(luxtask)
+        luxtask = self.get_test_lux_task(19, 10)
+        assert luxtask.haltspp == 2
+        luxtask = self.get_test_lux_task(11, 10)
+        assert luxtask.haltspp == 2
+        luxtask = self.get_test_lux_task(10, 10)
+        assert luxtask.haltspp == 1
 
     def test_query_extra_data(self):
         luxtask = self.get_test_lux_task()
