@@ -15,6 +15,12 @@ from golem import testutils
 from golem.core.common import get_golem_path
 
 
+# to run from console: go to the folder with images and type:
+# $ pyssim base_img_name.png '*.png'
+# !!! WARNING !!! PILImgRepr().load_from_file() runs self.img = self.img.convert('RGB') which may change the result!!!
+# you can always check the file's color map by typing:
+# $ file myImage.png
+# myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
 
 
 class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
@@ -51,12 +57,6 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
     #         imgstats.append(imgstat)
     #         print imgstat.name,  imgstat.get_stats()
     #
-    #     # to run from console: go to the folder with images and type:
-    #     # $ pyssim base_img_name.png '*.png'
-    #     # !!! WARNING !!! PILImgRepr().load_from_file() runs self.img = self.img.convert('RGB') which may change the result!!!
-    #     # you can always check the file's color map by typing:
-    #     # $ file myImage.png
-    #     # myImage.png: PNG image data, 150 x 200, 8-bit/color RGB, non-interlaced
     #     pass
 
     def test_get_random_crop_window(self):
@@ -65,6 +65,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
 
         random_crop_window_for_verification = ImgVerificator().get_random_crop_window(coverage = 0.1, window=(0,1,0,1))
         assert random_crop_window_for_verification == (0.57739221584148, 0.8936199818583179, 0.5182681753558643, 0.8344959413727022)
+
 
 
     def test_is_valid_against_reference(self):
@@ -84,6 +85,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
                 p.load_from_file(os.path.join(folder_path, file_name))
                 images.append(p)
 
+
         cropping_window = (0.2, 0.4, 0.7, 0.9)
         imgVerificator = ImgVerificator()
 
@@ -97,10 +99,9 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         # ref_img0.img.save(('aaa'+ref_img0.get_name()+'.png'))
         # print reference_stats.get_stats()
 
-        # print 'SSIM \t MSE \t MSE_norm \t PSNR'
-
+        print 'SSIM \t MSE \t MSE_norm \t PSNR'
         imgstats = []
-        validation_results =[]
+        validation_results ={}
 
         for img in images:
             croped_img=imgVerificator.crop_img_relative(img,cropping_window)
@@ -109,7 +110,8 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
             validation_result = imgVerificator.is_valid_against_reference(imgstat,reference_stats)
 
             imgstats.append(imgstat)
-            validation_results.append(validation_result)
+            validation_results[imgstat.name] = validation_result
+            # validation_results.append(validation_result)
             print imgstat.name, imgstat.get_stats(), validation_result
 
 
@@ -117,4 +119,15 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         assert reference_stats.ssim == 0.40088751827025393
         assert reference_stats.mse  == 253.2704861111111
         assert reference_stats.psnr == 24.094957769434753
-        assert validation_results == [VerificationState.WRONG_ANSWER, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.VERIFIED, VerificationState.WRONG_ANSWER ]
+
+
+        should_be_rejected =  [value for key, value in validation_results.items() if 'malicious' in key.lower()]
+        for w in should_be_rejected:
+            assert w ==VerificationState.WRONG_ANSWER
+
+
+        should_be_verified =  [value for key, value in validation_results.items() if 'malicious' not in key.lower()]
+        for w in should_be_verified:
+            assert w == VerificationState.VERIFIED
+
+
