@@ -98,14 +98,17 @@ class FrameRenderingTask(RenderingTask):
         counters = defaultdict(lambda: 0, dict())
 
         for subtask_id in subtask_ids:
-            if not subtask_id:
-                continue
-            subtask = self.subtasks_given[subtask_id]
-            counters[subtask['status']] += 1
+            if subtask_id:
+                subtask = self.subtasks_given[subtask_id]
+                counters[subtask['status']] += 1
+
+        computing = len(filter(lambda x: x not in [SubtaskStatus.finished,
+                                                   SubtaskStatus.failure],
+                               counters.keys()))
 
         if counters[SubtaskStatus.finished] >= parts:
             self.frames_state[frame_key] = TaskStatus.finished
-        elif len(counters.keys()) > 2:
+        elif computing > 0:
             self.frames_state[frame_key] = TaskStatus.computing
         elif counters[SubtaskStatus.failure] > 0:
             self.frames_state[frame_key] = TaskStatus.aborted
