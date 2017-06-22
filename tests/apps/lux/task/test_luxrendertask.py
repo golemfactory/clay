@@ -1,4 +1,6 @@
 import os
+
+from ethereum.utils import denoms
 from pathlib import Path
 import pickle
 import unittest
@@ -392,3 +394,43 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         definition = RenderingTaskDefinition()
         definition.resolution = (0, 0)
         assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
+
+
+class TestLuxRenderTaskBuilder(TempDirFixture):
+
+    def get_task(self):
+        td = RenderingTaskDefinition()
+        td.task_type = 'LuxRender'
+        td.max_price = 5.0
+        td.total_subtasks = 5
+        td.main_scene_file = os.path.join(self.path, 'scene.lxs')
+        td.options = LuxRenderOptions()
+        td.add_to_resources()
+        lb = LuxRenderTaskBuilder("ABC", td, self.path, DirManager(self.path))
+        return lb.build()
+
+    def test_build_dictionary(self):
+        task = self.get_task()
+
+        dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
+
+        assert dictionary['id'] is not None
+        assert dictionary['subtasks'] == 5
+        assert dictionary['bid'] == 5.0 / denoms.ether
+        assert dictionary['type'] == 'LuxRender'
+        assert dictionary['options']['haltspp'] is not None
+        assert dictionary['options']['output_path'] is not None
+
+    def test_build_definition(self):
+        task = self.get_task()
+
+        dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
+        definition = LuxRenderTaskBuilder.build_definition(
+            LuxRenderTaskTypeInfo(None, None), dictionary
+        )
+
+        assert definition.task_id == dictionary['id']
+        assert definition.task_type == 'LuxRender'
+        assert definition.max_price == dictionary['bid'] * denoms.ether
+        assert definition.total_subtasks == dictionary['subtasks']
+        assert definition.options.haltspp == dictionary['options']['haltspp']
