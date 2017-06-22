@@ -46,7 +46,7 @@ def start():
     interactive = parsed.interactive
 
     if interactive:
-        config_logging("_cli")
+        config_logging(suffix="_cli")
         cli = CLI()
     else:
         import logging

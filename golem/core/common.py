@@ -156,12 +156,18 @@ def config_logging(suffix='', datadir=None):
     logdir_path = Path('logs')
     if datadir is not None:
         logdir_path = Path(datadir) / logdir_path
+        if not logdir_path.exists():
+            logdir_path.mkdir(parents=True)
         datadir += '/'
+        set_datadir_in_filehandlers(LOGGING, suffix, datadir)
     else:
-        datadir = ''
-    if not logdir_path.exists():
-        logdir_path.mkdir(parents=True)
+        drop_filehandlers(LOGGING)
 
+    logging.config.dictConfig(LOGGING)
+    logging.captureWarnings(True)
+
+
+def set_datadir_in_filehandlers(LOGGING, suffix, datadir):
     for handler in LOGGING.get('handlers', {}).values():
         if 'filename' in handler:
             handler['filename'] %= {
@@ -169,5 +175,29 @@ def config_logging(suffix='', datadir=None):
                 'suffix': suffix,
             }
 
-    logging.config.dictConfig(LOGGING)
-    logging.captureWarnings(True)
+
+def drop_filehandlers(LOGGING):
+    """Don't write in random places on disk if datadir is unknown"""
+    handlers = LOGGING.get('handlers')
+    fhstuples = filter(lambda (key, value): 'filename' in value, handlers.items())
+    if not fhstuples:
+        return
+    filehandlers, _ = zip(*fhstuples)
+
+    for f in filehandlers:
+        handlers.pop(f)
+
+    try:
+        root = LOGGING.get('root')
+        for f in filehandlers:
+            root['handlers'].remove(f)
+    except KeyError:
+        pass
+
+    loggers = LOGGING.get('loggers').values()
+    for f in filehandlers:
+        for logger in loggers:
+            try:
+                logger['handlers'].remove(f)
+            except KeyError:
+                pass
