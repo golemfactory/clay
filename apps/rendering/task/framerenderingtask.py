@@ -338,9 +338,12 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         if self.task_definition.options.use_frames:
             num_frames = len(self.task_definition.options.frames)
             if self.task_definition.total_subtasks > num_frames:
-                est = math.floor(self.task_definition.total_subtasks /
-                                 num_frames) * num_frames
-                est = int(est)
+                # FIXME Turn on this feature after adding proper changes in
+                # API & new GUI
+                # est = math.floor(self.task_definition.total_subtasks /
+                #                  num_frames) * num_frames
+                # est = int(est)
+                est = num_frames
                 if est != self.task_definition.total_subtasks:
                     logger.warning("Too many subtasks for this task. %s "
                                    "subtasks will be used", est)
