@@ -115,12 +115,12 @@ class NodeProcess(object):
         chain = 'rinkeby'
         init_file = os.path.join(this_dir, chain + '.json')
         log.info("init file: {}".format(init_file))
-
+        logfilename = os.path.join(self.datadir, "logs", "geth.log")
         geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
-
-        init_subp = subprocess.Popen([self.__prog, datadir_arg,
-                                      'init', init_file], **pipes)
+        genesis_args = [self.__prog, datadir_arg,
+                        'init', init_file]
+        init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
             raise OSError(
@@ -136,7 +136,7 @@ class NodeProcess(object):
 
         args = [
             self.__prog,
-            datadir_arg,
+            '--datadir="{}"'.format(geth_datadir),
             '--cache=32',
             '--syncmode=light',
             '--rinkeby',
@@ -148,7 +148,25 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
 
-        self.__ps = subprocess.Popen(args, close_fds=True)
+        # close_fds=True does not work on Windows if stderr is redirected.
+        # and disabling close_fds breaks things. Instead use tee and it's
+        # PowerShell counterpart
+        if not is_windows():
+            args = args + [
+                '2>&1 |', # redirect stderr to stdout, pipe stdout
+                'tee',
+                '"{}"'.format(logfilename)
+            ]
+        else:
+            pshell = ['powershell.exe']
+            args = pshell + args + [
+                '*>&1 |', # redirect all to first stream stdout and pipe it
+                'Tee-Object',
+                '-Append',
+                '"{}"'.format(logfilename)
+            ]
+
+        self.__ps = subprocess.Popen(" ".join(args), shell=True, close_fds=True)
         atexit.register(lambda: self.stop())
 
         if is_windows():
