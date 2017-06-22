@@ -1,25 +1,26 @@
 from __future__ import division
 
-from collections import deque
 import datetime
-from math import ceil
-from mock import Mock, MagicMock, patch, ANY
 import os
 import random
-from stun import FullCone
 import uuid
+from collections import deque
+from math import ceil
+
+from mock import Mock, MagicMock, patch, ANY
+from stun import FullCone
 
 from golem import model
 from golem import testutils
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
 from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
-from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.taskserver import TASK_CONN_TYPES
+from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -522,7 +523,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
 
         method = ts._TaskServer__connection_for_task_result_final_failure
         wtr = Mock()
-        method('conn_id', 'key_id', wtr)
+        method('conn_id', wtr)
 
         self.assertTrue(ts.remove_pending_conn.called)
         self.assertTrue(ts.remove_responses.called)
@@ -871,6 +872,13 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
         ts.accept_result("xxyyzz", account_info)
         self.assertEqual(ts.client.transaction_system.add_payment_info.call_count, 0)
+
+    def test_disconnect(self):
+        task_server = TaskServer(Node(), Mock(), EllipticalKeysAuth(self.path),
+                                 self.client, use_docker_machine_manager=False)
+        task_server.task_sessions = {'task_id': Mock()}
+        task_server.disconnect()
+        assert task_server.task_sessions['task_id'].dropped.called
 
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()

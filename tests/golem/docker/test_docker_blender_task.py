@@ -198,7 +198,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert len(task.frames_given) == 10
         assert isinstance(task.preview_file_path, basestring)
         assert not task.preview_updaters
-        assert task.scale_factor == 0.33
+        assert task.scale_factor == 0.8
         assert task.src_code
         assert isinstance(task.header, TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'

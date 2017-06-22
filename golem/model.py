@@ -105,7 +105,8 @@ class BigIntegerField(CharField):
         return format(value, 'x')
 
     def python_value(self, value):
-        return int(value, 16)
+        if value is not None:
+            return int(value, 16)
 
 
 class EnumField(IntegerField):

@@ -1,5 +1,6 @@
 from __future__ import division
 import logging
+import math
 import os
 import random
 import shutil
@@ -26,7 +27,7 @@ from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.resources.ImgVerificator import ImgVerificator
 from apps.rendering.task import renderingtask
-from apps.rendering.task.renderingtask import PREVIEW_EXT
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
 from apps.rendering.task import renderingtaskstate
 
 logger = logging.getLogger("apps.lux")
@@ -72,8 +73,8 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
-        preview_x = 300.0
-        preview_y = 200.0
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
         res_x, res_y = definition.resolution
         if res_x == 0 or res_y == 0:
             return []
@@ -123,7 +124,7 @@ class LuxRenderOptions(Options):
         super(LuxRenderOptions, self).__init__()
         self.environment = LuxRenderEnvironment()
         self.halttime = 0
-        self.haltspp = 1
+        self.haltspp = 10
 
 
 class LuxTask(renderingtask.RenderingTask):
@@ -142,7 +143,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.dirManager.get_task_temporary_dir(self.header.task_id)
 
         self.halttime = halttime
-        self.haltspp = haltspp
+        self.haltspp = int(math.ceil(haltspp / self.total_tasks))
         self.verification_error = False
         self.merge_timeout = MERGE_TIMEOUT
 
@@ -644,3 +645,21 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
         kwargs['halttime'] = self.task_definition.options.halttime
         kwargs['haltspp'] = self.task_definition.options.haltspp
         return kwargs
+
+    @classmethod
+    def build_dictionary(cls, definition):
+        parent = super(LuxRenderTaskBuilder, cls)
+
+        dictionary = parent.build_dictionary(definition)
+        dictionary[u'options'][u'haltspp'] = definition.options.haltspp
+        return dictionary
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        parent = super(LuxRenderTaskBuilder, cls)
+        options = dictionary[u'options']
+
+        definition = parent.build_full_definition(task_type, dictionary)
+        definition.options.haltspp = options.get('haltspp',
+                                                 definition.options.haltspp)
+        return definition

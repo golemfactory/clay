@@ -170,7 +170,11 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = uuid.uuid4().get_hex()
-        dispatcher.connect(self.p2p_listener, signal='golem.p2p')
+
+        dispatcher.connect(
+            self.p2p_listener,
+            signal='golem.p2p'
+        )
         dispatcher.connect(
             self.taskmanager_listener,
             signal='golem.taskmanager'
@@ -196,7 +200,7 @@ class Client(HardwarePresetsMixin):
         pass
 
     def start(self):
-        if self.use_monitor:
+        if self.use_monitor and not self.monitor:
             self.init_monitor()
         try:
             self.start_network()
@@ -209,38 +213,53 @@ class Client(HardwarePresetsMixin):
         self.do_work_task.start(1, False)
         self.publish_task.start(1, True)
 
+    def stop(self):
+        self.stop_network()
+        if self.do_work_task.running:
+            self.do_work_task.stop()
+        if self.publish_task.running:
+            self.publish_task.stop()
+        if self.task_server:
+            self.task_server.task_computer.quit()
+        if self.use_monitor and self.monitor:
+            self.stop_monitor()
+            self.monitor = None
+
     def start_network(self):
         log.info("Starting network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
         log.debug("Is super node? %s", self.node.is_super_node())
 
-        # self.ipfs_manager = IPFSDaemonManager(
-        #    connect_to_bootstrap_nodes=self.connect_to_known_hosts)
-        # self.ipfs_manager.store_client_info()
+        if not self.p2pservice:
+            self.p2pservice = P2PService(
+                self.node,
+                self.config_desc,
+                self.keys_auth,
+                connect_to_known_hosts=self.connect_to_known_hosts
+            )
 
-        self.p2pservice = P2PService(
-            self.node,
-            self.config_desc,
-            self.keys_auth,
-            connect_to_known_hosts=self.connect_to_known_hosts
-        )
-        self.task_server = TaskServer(
-            self.node,
-            self.config_desc,
-            self.keys_auth, self,
-            use_ipv6=self.config_desc.use_ipv6,
-            use_docker_machine_manager=self.use_docker_machine_manager)
+        if not self.task_server:
+            self.task_server = TaskServer(
+                self.node,
+                self.config_desc,
+                self.keys_auth, self,
+                use_ipv6=self.config_desc.use_ipv6,
+                use_docker_machine_manager=self.use_docker_machine_manager)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
         log.info("Starting resource server ...")
-        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
-        hyperdrive_ports = self.daemon_manager.start()
 
-        resource_manager = HyperdriveResourceManager(dir_manager)
-        self.resource_server = BaseResourceServer(resource_manager, dir_manager,
-                                                  self.keys_auth, self)
+        if not self.daemon_manager:
+            self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+            hyperdrive_ports = self.daemon_manager.start()
+
+        if not self.resource_server:
+            resource_manager = HyperdriveResourceManager(dir_manager)
+            self.resource_server = BaseResourceServer(resource_manager,
+                                                      dir_manager,
+                                                      self.keys_auth, self)
 
         def connect((p2p_port, task_port)):
             log.info('P2P server is listening on port %s', p2p_port)
@@ -278,6 +297,14 @@ class Client(HardwarePresetsMixin):
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
 
+    def stop_network(self):
+        if self.p2pservice:
+            self.p2pservice.stop_accepting()
+            self.p2pservice.disconnect()
+        if self.task_server:
+            self.task_server.stop_accepting()
+            self.task_server.disconnect()
+
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
@@ -288,6 +315,10 @@ class Client(HardwarePresetsMixin):
             self.monitor.on_vm_snapshot
         )
         self.diag_service.start_looping_call()
+
+    def stop_monitor(self):
+        self.monitor.shut_down()
+        self.diag_service.stop_looping_call()
 
     def connect(self, socket_address):
         if isinstance(socket_address, Iterable):
@@ -304,19 +335,17 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.connect(socket_address)
 
     def quit(self):
-        if self.do_work_task.running:
-            self.do_work_task.stop()
-        if self.publish_task.running:
-            self.publish_task.stop()
-        if self.task_server:
-            self.task_server.quit()
+        self.stop()
+
         if self.transaction_system:
             self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
         if self.daemon_manager:
             self.daemon_manager.stop()
+
         dispatcher.send(signal='golem.monitor', event='shutdown')
+
         if self.db:
             self.db.close()
         self._unlock_datadir()
@@ -325,13 +354,6 @@ class Client(HardwarePresetsMixin):
         self.node.key = self.keys_auth.get_key_id()
         self.task_server.key_changed()
         self.p2pservice.key_changed()
-
-    def stop_network(self):
-        # FIXME: Implement this method properly - send disconnect package,
-        # close connections etc.
-        self.p2pservice = None
-        self.task_server = None
-        self.nodes_manager_client = None
 
     def enqueue_new_task(self, task_dict):
         # FIXME: Statement only for DummyTask compatibility
@@ -610,20 +632,13 @@ class Client(HardwarePresetsMixin):
 
     def get_payments_list(self):
         if self.use_transaction_system():
-            payments = self.transaction_system.get_payments_list()
-            return map(self._map_payment, payments)
+            return self.transaction_system.get_payments_list()
         return ()
 
     def get_incomes_list(self):
-        # Will be implemented in incomes_core
+        if self.use_transaction_system():
+            return self.transaction_system.get_incoming_payments()
         return []
-
-    @classmethod
-    def _map_payment(cls, obj):
-        obj["payee"] = to_unicode(obj["payee"])
-        obj["value"] = to_unicode(obj["value"])
-        obj["fee"] = to_unicode(obj["fee"])
-        return obj
 
     def get_task_cost(self, task_id):
         """
@@ -880,6 +895,9 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
+        options['price'] = float(options['price'])
+        options['subtask_time'] = float(options['subtask_time'])
+        options['num_subtasks'] = int(options['num_subtasks'])
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
 

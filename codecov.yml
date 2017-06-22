@@ -19,7 +19,6 @@ coverage:
     - "apps/rendering/resources/taskcollector/*"
     - "golem/testutils.py"
     - "golem/tools/pyuic.py"
-    - "golem/reactor/geventreactor.py"
     - "save/*"
     - "scripts/*"
     - "tests/*"

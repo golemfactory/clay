@@ -21,7 +21,9 @@ from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
-PREVIEW_EXT = "BMP"
+PREVIEW_EXT = "PNG"
+PREVIEW_X = 1280
+PREVIEW_Y = 720
 
 logger = logging.getLogger("apps.rendering")
 
@@ -94,8 +96,8 @@ class RenderingTask(CoreTask):
 
         self.collected_file_names = {}
 
-        preview_x = 300
-        preview_y = 200
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
         if self.res_x != 0 and self.res_y != 0:
             if self.res_x / self.res_y > preview_x / preview_y:
                 self.scale_factor = preview_x / self.res_x
@@ -348,19 +350,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        options = dictionary[u'options']
-        options[u'format'] = definition.output_format
-        options[u'resolution'] = definition.resolution
-
-        if hasattr(definition.options, 'compositing'):
-            options[u'compositing'] = definition.options.compositing
-
+        dictionary[u'options'][u'format'] = definition.output_format
+        dictionary[u'options'][u'resolution'] = definition.resolution
         return dictionary
 
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
@@ -370,16 +366,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         options = dictionary['options']
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
-
-        if hasattr(definition.options, 'compositing'):
-            definition.options.compositing = options.get('compositing', False)
-
         return definition
 
     @classmethod

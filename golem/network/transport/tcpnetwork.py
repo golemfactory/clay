@@ -285,7 +285,7 @@ class TCPNetwork(Network):
         for sa in addresses:
             if sa.address in self.host_addresses\
                     and sa.port in self.active_listeners:
-                logger.warning(
+                logger.debug(
                     'Can\'t connect with self: %r:%r',
                     sa.address,
                     sa.port
@@ -339,7 +339,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, conn.session, **kwargs)
 
     def __connection_failure(self, err_desc, failure_callback, **kwargs):
-        logger.info("Connection failure. {}".format(err_desc))
+        logger.debug("Connection failure. {}".format(err_desc))
         TCPNetwork.__call_failure_callback(failure_callback, **kwargs)
 
     def __connection_to_address_established(self, conn, **kwargs):
@@ -512,7 +512,7 @@ class BasicProtocol(SessionProtocol):
             for m in mess:
                 self.session.interpret(m)
         elif data:
-            logger.info("Deserialization of messages from {}:{} failed, maybe it's still "
+            logger.debug("Deserialization of messages from {}:{} failed, maybe it's still "
                         "too short?".format(self.session.address, self.session.port))
 
     def _data_to_messages(self):

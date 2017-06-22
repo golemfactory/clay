@@ -66,7 +66,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         queue = Queue()
 
         @patch('gui.startapp.start_gui')
-        @patch('golem.reactor.geventreactor.install')
         @patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success"))
         @patch('golem.client.Client.sync')
         @patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))

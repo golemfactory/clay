@@ -48,7 +48,7 @@ class _AssertLogsContext(_BaseTestCaseContext):
         if level:
             self.level = logging._levelNames.get(level, level)
         else:
-            self.level = logging.INFO
+            self.level = logging.DEBUG
         self.msg = None
 
     def __enter__(self):

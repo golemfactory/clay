@@ -192,8 +192,14 @@ class TaskServer(PendingConnectionsServer):
     def new_connection(self, session):
         self.task_sessions_incoming.append(session)
 
+    def disconnect(self):
+        task_sessions = dict(self.task_sessions)
+        for task_session in task_sessions.itervalues():
+            task_session.dropped()
+
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
+        ths = self.task_keeper.get_all_tasks() + \
+              self.task_manager.get_tasks_headers()
         return [th.to_dict() for th in ths]
 
     def add_task_header(self, th_dict_repr):
@@ -816,7 +822,7 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_task_result_final_failure(self, conn_id, key_id,
+    def __connection_for_task_result_final_failure(self, conn_id,
                                                    waiting_task_result):
         logger.info("Cannot connect to task {} owner".format(
             waiting_task_result.subtask_id))
@@ -859,7 +865,7 @@ class TaskServer(PendingConnectionsServer):
             key_id=obj.get_sender_node().key,
             conn_id=conn_id
         )
-
+        self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.inform_worker_about_payment(obj)
 
@@ -873,7 +879,7 @@ class TaskServer(PendingConnectionsServer):
             key_id=obj.get_sender_node().key,
             conn_id=conn_id
         )
-
+        self._mark_connected(conn_id, session.address, session.port)
         session.send_hello()
         session.request_payment(obj)
 
@@ -1000,6 +1006,18 @@ class TaskServer(PendingConnectionsServer):
 
         self.failures_to_send.clear()
 
+    def __connection_for_payment_failure(self, *args, **kwargs):
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
+
+    def __connection_for_payment_request_failure(self, *args, **kwargs):
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
+
     # CONFIGURATION METHODS
     #############################
     @staticmethod
@@ -1026,8 +1044,10 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_failure,
             TASK_CONN_TYPES['middleman']: self.__connection_for_middleman_failure,
             TASK_CONN_TYPES['nat_punch']: self.__connection_for_nat_punch_failure,
-            TASK_CONN_TYPES['payment']: self.noop,
-            TASK_CONN_TYPES['payment_request']: self.noop,
+            TASK_CONN_TYPES['payment']:
+                self.__connection_for_payment_failure,
+            TASK_CONN_TYPES['payment_request']:
+                self.__connection_for_payment_request_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -1038,7 +1058,7 @@ class TaskServer(PendingConnectionsServer):
             TASK_CONN_TYPES['start_session']: self.__connection_for_start_session_final_failure,
             TASK_CONN_TYPES['middleman']: self.noop,
             TASK_CONN_TYPES['nat_punch']: self.noop,
-            TASK_CONN_TYPES['payment']: self.noop,
+            TASK_CONN_TYPES['payment']:self.noop,
             TASK_CONN_TYPES['payment_request']: self.noop,
         })
 
