@@ -1,13 +1,16 @@
-import types
 import unittest
 from collections import OrderedDict
 
 import autobahn
-
-from golem.rpc.session import RPCAddress, WebSocketAddress, object_method_map, Publisher, Client, Session
 from mock import Mock
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
+
+from golem.rpc.session import (
+    RPCAddress, WebSocketAddress, Publisher, Client, Session,
+    object_method_map, logger
+)
+from golem.tools.assertlogs import LogTestCase
 
 
 class TestRPCAddress(unittest.TestCase):
@@ -68,18 +71,33 @@ class TestObjectMethodMap(unittest.TestCase):
             object_method_map(obj, invalid_method_map)
 
 
-class TestPublisher(unittest.TestCase):
+class TestPublisher(LogTestCase):
 
     def test_publish(self):
 
         session = Mock()
         publisher = Publisher(session)
 
+        # Not connected, session closing
         session.connected = False
-        publisher.publish('alias', 1234, kw='arg')
+        session.is_closing.return_value = True
+
+        with self.assertNoLogs(logger, level='WARNING'):
+            publisher.publish('alias', 1234, kw='arg')
         assert not session.publish.called
 
+        # Not connected, session not closing
+        session.connected = False
+        session.is_closing.return_value = False
+
+        with self.assertLogs(logger, level='WARNING'):
+            publisher.publish('alias', 1234, kw='arg')
+        assert not session.publish.called
+
+        # Connected
         session.connected = True
+        session.is_closing.return_value = False
+
         publisher.publish('alias', 1234, kw='arg')
         session.publish.assert_called_with('alias', 1234, kw='arg')
 
