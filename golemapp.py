@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 import sys
 from multiprocessing import freeze_support
-from golem.core.common import is_windows
-if is_windows():
-    from twisted.internet import iocpreactor
-    iocpreactor.install()
 
 import click
 
