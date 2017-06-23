@@ -247,8 +247,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def change_config(self, cfg_desc, run_benchmarks=False):
-        cfg_dict = DictSerializer.dump(cfg_desc)
-        del cfg_dict['py/object']
+        cfg_dict = DictSerializer.dump(cfg_desc, typed=False)
         yield self.client.update_settings(cfg_dict,
                                           run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_setting('node_name')
