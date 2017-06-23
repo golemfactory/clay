@@ -1,7 +1,9 @@
+import types
 import unittest
 from collections import OrderedDict
 
-from autobahn.wamp import types
+import autobahn
+
 from golem.rpc.session import RPCAddress, WebSocketAddress, object_method_map, Publisher, Client, Session
 from mock import Mock
 from twisted.internet.defer import Deferred
@@ -94,6 +96,8 @@ class TestClient(unittest.TestCase):
     def setUp(self):
         self.session = Mock()
         self.session.call.return_value = Deferred()
+        self.session.is_closing = lambda *_: self.session._goodbye_sent or \
+                                             self.session._transport_is_closing
         self.method_map = dict(
             method_1='alias_1',
             method_2='alias_2'
@@ -114,8 +118,9 @@ class TestClient(unittest.TestCase):
 
     def test_call_not_connected(self):
 
-        result = self.Result()
         self.session.connected = False
+        self.session._transport_is_closing = False
+        self.session._goodbye_sent = False
 
         client = Client(self.session, self.method_map)
         client._on_error = Mock()
@@ -124,9 +129,20 @@ class TestClient(unittest.TestCase):
         assert isinstance(deferred, Deferred)
         assert deferred.called
 
-        deferred.addCallbacks(result.set, result.set)
+        result = self.Result()
+        client._session._transport_is_closing = False
+
+        deferred = client.method_1(arg1=1, arg2='2')
+        deferred.addBoth(result.set)
+
         assert isinstance(result.value, Failure)
         assert not client._on_error.called
+
+        client._session._transport_is_closing = True
+        deferred = client.method_1(arg1=1, arg2='2')
+
+        assert isinstance(deferred, Deferred)
+        assert not deferred.called
 
     def test_call_connected(self):
 
@@ -149,7 +165,7 @@ class TestSession(unittest.TestCase):
         session = Session(address)
 
         assert isinstance(session.ready, Deferred)
-        assert isinstance(session.config, types.ComponentConfig)
+        assert isinstance(session.config, autobahn.wamp.types.ComponentConfig)
 
         assert session.config.realm == u'realm'
         assert not session.ready.called
