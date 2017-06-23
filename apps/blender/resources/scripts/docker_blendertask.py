@@ -25,6 +25,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
         "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
+        "-noaudio",
         "-F", "{}".format(output_format.upper()),
         "-t", "{}".format(cpu_count()),
         "-f", "{}".format(frame)
