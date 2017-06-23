@@ -557,7 +557,7 @@ class Client(HardwarePresetsMixin):
     def update_settings(self, settings_dict, run_benchmarks=False):
         for key, value in settings_dict.items():
             if not hasattr(self.config_desc, key):
-                raise KeyError("Unkown settings: {}".format(key))
+                raise KeyError(u"Unknown setting: {}".format(key))
             setattr(self.config_desc, key, value)
         self.change_config(self.config_desc, run_benchmarks)
 
