@@ -212,12 +212,19 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def update_stats(self):
         response = yield self.client.get_task_stats()
+        if not response:
+            return
 
-        self.customizer.gui.ui.knownTasks.setText(str(response['in_network']))
-        self.customizer.gui.ui.supportedTasks.setText(str(response['supported']))
-        self.customizer.gui.ui.computedTasks.setText(str(response['subtasks_computed']))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
+        self.customizer.gui.ui.knownTasks.setText(
+            str(response['in_network']))
+        self.customizer.gui.ui.supportedTasks.setText(
+            str(response['supported']))
+        self.customizer.gui.ui.computedTasks.setText(
+            str(response['subtasks_computed']))
+        self.customizer.gui.ui.tasksWithErrors.setText(
+            str(response['subtasks_with_errors']))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(
+            str(response['subtasks_with_timeout']))
 
     @inlineCallbacks
     def get_config(self):
