@@ -21,6 +21,7 @@ from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.tasksession import TaskSession
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -703,6 +704,15 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         )
         request_payment_mock.assert_called_once_with(expected_income)
         hello_mock.assert_called_once_with()
+
+    def test_new_connection(self):
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+        tss = TaskSession(Mock())
+        ts.new_connection(tss)
+        assert len(ts.task_sessions_incoming) == 1
+        assert ts.task_sessions_incoming.pop() == tss
 
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
