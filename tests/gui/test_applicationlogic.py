@@ -192,6 +192,34 @@ class TestGuiApplicationLogic(DatabaseFixture):
             "1.00000000 GNT")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
 
+    def test_update_stats(self):
+        logic = GuiApplicationLogic()
+        logic.client = Mock()
+        logic.customizer = Mock()
+
+        deferred = Deferred()
+        deferred.callback(None)
+        logic.client.get_task_stats.return_value = deferred
+
+        logic.update_stats()
+        assert not logic.customizer.gui.ui.knownTasks.setText.called
+
+        result = {
+            'in_network': 1,
+            'supported': 2,
+            'subtasks_computed': 3,
+            'subtasks_with_errors': 4,
+            'subtasks_with_timeout': 5,
+        }
+
+        deferred = Deferred()
+        deferred.callback(result)
+        logic.client.get_task_stats.return_value = deferred
+
+        logic.update_stats()
+        logic.customizer.gui.ui.knownTasks.setText.assert_called_with(
+            str(result['in_network']))
+
     def test_start_task(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
