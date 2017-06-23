@@ -30,7 +30,6 @@ base58
 ndg-httpsclient
 ovh
 certifi
-weakreflist
 tabulate
 PyYAML>=3.12
 crossbar==17.3.1
