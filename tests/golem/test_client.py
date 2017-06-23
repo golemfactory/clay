@@ -716,6 +716,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called
 
+    def test_run_benchmarks(self, *_):
+        task_computer = self.client.task_server.task_computer
+        task_computer.run_lux_benchmark = Mock()
+        task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
+        task_computer.run_blender_benchmark = Mock()
+        task_computer.run_blender_benchmark.side_effect = lambda *_: 1
+
+        task_computer.run_benchmarks()
+        assert task_computer.run_lux_benchmark.called
+        assert task_computer.run_blender_benchmark.called
+
     def test_config_changed(self, *_):
         c = self.client
 
