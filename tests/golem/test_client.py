@@ -753,6 +753,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         settings = c.get_settings()
         settings['node_name'] = newer_node_name
+        with self.assertRaises(KeyError):
+            c.update_settings(settings)
+
+        del settings['py/object']
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
