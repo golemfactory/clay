@@ -388,13 +388,13 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt.preview_file_path.append(file3)
         bt.preview_task_file_path = []
         bt.preview_task_file_path.append(file4)
-        
+
         img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(bt.res_x, 99))
         data = array.array('f', [1.0] * (bt.res_x * 99)).tostring()
         img1.writePixels({'R': data, 'G': data, 'B': data,
                           'F': data, 'A': data})
         img1.close()
-        
+
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
         self.assertTrue(img.size == (300, 200))
@@ -403,7 +403,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, list)
-        assert len(preview) == 4
+        assert len(preview) == 1
         assert all(os.path.exists(p) for p in preview)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
