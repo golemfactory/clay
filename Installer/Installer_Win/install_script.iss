@@ -39,7 +39,7 @@ SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golemapp.exe"; Flags: uninsdeletevalue;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golem-electron.exe"; Flags: uninsdeletevalue;
 
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('{sd}\Program Files\Docker Toolbox')
@@ -59,13 +59,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
                                                
 [Files]
-Source: "{#Repository}\dist\*"; DestDir: {app};
-Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app};
-Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\locales\*"; DestDir: {app}\locales\;
-Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\resources\*"; DestDir: {app}\resources\;
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
-Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;    
+Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
