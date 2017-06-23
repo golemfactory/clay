@@ -731,7 +731,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         session = MagicMock()
         session.task_id = task_id
         self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
-        self.ts.task_sessions_incoming.append(session)
+        self.ts.task_sessions_incoming.add(session)
         self.assertEquals([session], self.ts._find_sessions(subtask_id))
 
         # Found in task_sessions
