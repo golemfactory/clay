@@ -363,8 +363,8 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
             assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 12
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
+        with self.assertLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 4
         with self.assertLogs(logger, level="WARNING"):
@@ -372,15 +372,15 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
 
         definition.total_subtasks = 13
         with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
+            assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 17
         with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
+            assert builder._calculate_total(defaults) == 6
 
         definition.total_subtasks = 18
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 18
+        with self.assertLogs(logger, level="WARNING"):
+            assert builder._calculate_total(defaults) == 6
 
 
 class TestFramesConversion(unittest.TestCase):
