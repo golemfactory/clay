@@ -20,7 +20,6 @@ from taskkeeper import TaskHeaderKeeper
 from taskmanager import TaskManager
 from tasksession import TaskSession
 import weakref
-from weakreflist.weakreflist import WeakList
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -46,7 +45,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
-        self.task_sessions_incoming = WeakList()
+        self.task_sessions_incoming = weakref.WeakSet()
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -190,7 +189,7 @@ class TaskServer(PendingConnectionsServer):
                                                                    owner_address, owner_port, owner_key_id, owner)
 
     def new_connection(self, session):
-        self.task_sessions_incoming.append(session)
+        self.task_sessions_incoming.add(session)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)
