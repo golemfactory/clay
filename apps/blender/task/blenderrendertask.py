@@ -12,7 +12,7 @@ from PIL import Image, ImageChops
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import get_test_task_path
-from golem.task.taskstate import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
@@ -379,7 +379,8 @@ class BlenderRenderTask(FrameRenderingTask):
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
-            frames, parts = self._choose_frames(self.frames, start_task, self.total_tasks)
+            frames, parts = self._choose_frames(self.frames, start_task,
+                                                self.total_tasks)
         else:
             frames = [1]
             parts = 1
@@ -417,6 +418,12 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['perf'] = perf_index
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
+
+        for frame in frames:
+            frame_key = to_unicode(frame)
+            self.frames_state[frame_key] = TaskStatus.computing
+            for part in xrange(parts):
+                self.frames_subtasks[frame_key][part] = hash
 
         if not self.use_frames:
             self._update_task_preview()

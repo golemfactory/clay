@@ -809,7 +809,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         c.get_subtasks_borders(task_id)
         c.task_server.task_manager.get_subtasks_borders.assert_called_with(
-            task_id)
+            task_id, 1)
 
     def test_connection_status(self, *_):
         c = self.client
