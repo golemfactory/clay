@@ -841,7 +841,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(c.connection_status().startswith(u"Not connected"))
 
         # peers
-        c.p2pservice.free_peers = [self.__new_session() for _ in xrange(3)]
+        c.p2pservice.incoming_peers = {str(i): self.__new_incoming_peer()
+                                       for i in xrange(3)}
         c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
 
         known_peers = c.get_known_peers()
@@ -872,6 +873,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         dispatcher.send(signal="golem.p2p", event="unreachable", port=port,
                         description="port 1234: closed")
         self.assertTrue(self.client.node.port_status)
+
+    @classmethod
+    def __new_incoming_peer(cls):
+        return dict(node=cls.__new_session())
 
     @staticmethod
     def __new_session():
