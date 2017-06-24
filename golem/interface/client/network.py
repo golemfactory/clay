@@ -56,16 +56,26 @@ class Network(object):
     def __peers(peers, sort, full):
         values = []
 
-        for peer in peers:
+        for p in peers:
+            addr = Network.__one_of(p, 'address', 'pub_addr')
+            port = Network.__one_of(p, 'port', 'p2p_pub_port', 'p2p_prv_port')
+            key = Network.__one_of(p, 'key_id', 'key')
+
             values.append([
-                str(peer['address']),
-                str(peer['port']),
-                Network.__key_id(peer['key_id'], full),
-                unicode(peer['node_name'])
+                str(addr), str(port),
+                Network.__key_id(key, full),
+                unicode(p['node_name'])
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,
                                         sort=sort)
+
+    @staticmethod
+    def __one_of(dictionary, *keys):
+        for key in keys:
+            value = dictionary.get(key)
+            if value is not None:
+                return value
 
     @staticmethod
     def __key_id(key_id, full=False):

@@ -496,9 +496,10 @@ class Client(HardwarePresetsMixin):
         return self.p2pservice.peers.values()
 
     def get_known_peers(self):
-        peers = self.p2pservice.free_peers or []
+        peers = self.p2pservice.incoming_peers or dict()
         return [
-            DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
+            DictSerializer.dump(p['node'], typed=False)
+            for p in peers.itervalues()
         ]
 
     def get_connected_peers(self):
