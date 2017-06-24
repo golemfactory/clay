@@ -33,6 +33,16 @@ class FrameRendererOptions(Options):
         self.frames_string = "1-10"
 
 
+class FrameState(object):
+    __slots__ = ['status', 'started']
+
+    def __init__(self):
+        self.status = TaskStatus.notStarted
+        self.started = None
+
+    def serialize(self):
+        return to_unicode(self.status), self.started
+
 
 class FrameRenderingTask(RenderingTask):
 
@@ -58,7 +68,7 @@ class FrameRenderingTask(RenderingTask):
         for frame in self.frames:
             frame_key = unicode(frame)
             self.frames_given[frame_key] = {}
-            self.frames_state[frame_key] = TaskStatus.notStarted
+            self.frames_state[frame_key] = FrameState()
             self.frames_subtasks[frame_key] = [None] * parts
 
         if self.use_frames:
@@ -99,7 +109,8 @@ class FrameRenderingTask(RenderingTask):
 
     def get_output_states(self):
         if self.use_frames:
-            return sorted(self.frames_state.items())
+            return sorted({to_unicode(k): v.serialize() for k, v
+                           in self.frames_state.iteritems()})
         return []
 
     def get_subtasks(self, frame):
@@ -173,6 +184,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _update_frame_status(self, frame):
         frame_key = to_unicode(frame)
+        state = self.frames_state[frame_key]
         subtask_ids = self.frames_subtasks[frame_key]
 
         parts = max(1, int(self.total_tasks / len(self.frames)))
@@ -190,13 +202,13 @@ class FrameRenderingTask(RenderingTask):
 
         # Finished if at least n subtasks >= parts were finished
         if counters[SubtaskStatus.finished] >= parts:
-            self.frames_state[frame_key] = TaskStatus.finished
+            state.status = TaskStatus.finished
         # Computing if at least one subtask did not fail
         elif computing > 0:
-            self.frames_state[frame_key] = TaskStatus.computing
+            state.status = TaskStatus.computing
         # Failure if the only known subtask status is 'failure'
         elif counters[SubtaskStatus.failure] > 0:
-            self.frames_state[frame_key] = TaskStatus.aborted
+            state.status = TaskStatus.aborted
         # Otherwise, do not change frame's status.
 
     def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):

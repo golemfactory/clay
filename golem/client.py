@@ -555,8 +555,11 @@ class Client(HardwarePresetsMixin):
         self.change_config(self.config_desc)
 
     def update_settings(self, settings_dict, run_benchmarks=False):
-        cfg_desc = DictSerializer.load(settings_dict)
-        self.change_config(cfg_desc, run_benchmarks)
+        for key, value in settings_dict.items():
+            if not hasattr(self.config_desc, key):
+                raise KeyError(u"Unknown setting: {}".format(key))
+            setattr(self.config_desc, key, value)
+        self.change_config(self.config_desc, run_benchmarks)
 
     def get_datadir(self):
         return unicode(self.datadir)

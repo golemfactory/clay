@@ -370,10 +370,7 @@ class BlenderRenderTask(FrameRenderingTask):
             frames, parts = self._choose_frames(self.frames, start_task,
                                                 self.total_tasks)
         else:
-            if self.frames:
-                frames = self.frames
-            else:
-                frames = [1]
+            frames = self.frames or [1]
             parts = 1
 
         if not self.use_frames:
@@ -412,8 +409,10 @@ class BlenderRenderTask(FrameRenderingTask):
 
         for frame in frames:
             frame_key = to_unicode(frame)
-            self.frames_state[frame_key] = TaskStatus.computing
+            state = self.frames_state[frame_key]
 
+            state.status = TaskStatus.computing
+            state.started = state.started or time.time()
             for part in xrange(parts):
                 self.frames_subtasks[frame_key][part] = hash
 

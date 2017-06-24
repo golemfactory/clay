@@ -273,6 +273,16 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         p = logic.get_task_presets("Blender")
         assert p.result == {}
 
+    def test_change_config(self):
+        logic = GuiApplicationLogic()
+        logic.customizer = Mock()
+
+        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+
+        logic.client = rpc_client
+        logic.change_config(dict(node_name='node_name'))
+
     def test_add_tasks(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
