@@ -103,7 +103,7 @@ class DockerManager(DockerConfigManager):
 
         try:
             if is_linux():
-                raise EnvironmentError("native Linux environment")
+                raise EnvironmentError("Linux")
 
             # Check if a supported VM hypervisor is present
             self.hypervisor = self._get_hypervisor()
@@ -113,8 +113,10 @@ class DockerManager(DockerConfigManager):
         except Exception as exc:
 
             self.docker_machine = None
-            logger.warn("Docker machine is not available: {}"
-                        .format(exc))
+
+            if not is_linux():
+                logger.warn("Docker machine is not available: {}"
+                            .format(exc))
 
         else:
 

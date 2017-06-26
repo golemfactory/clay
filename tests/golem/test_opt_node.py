@@ -82,7 +82,8 @@ class TestNode(TestWithDatabase):
 
         mock_client.assert_called_with(node_address=node_address,
                                        datadir=self.path,
-                                       transaction_system=True)
+                                       transaction_system=True,
+                                       use_docker_machine_manager=True)
 
     @ci_skip
     @patch('golem.core.common.config_logging')
@@ -297,3 +298,19 @@ class TestOptNode(TempDirFixture):
         assert self.node.rpc_router
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
+
+    @patch('golem.docker.manager.DockerManager')
+    @patch('golem.rpc.router.CrossbarRouter', create=True)
+    @patch('twisted.internet.reactor', create=True)
+    def test_initialize(self, reactor, router, docker_manager):
+        self.node.client.start = Mock()
+        self.node.use_docker_machine_manager = False
+        self.node.initialize()
+
+        assert self.node.client.start.called
+        assert not docker_manager.install.called
+
+        self.node.use_docker_machine_manager = True
+        self.node.initialize()
+
+        assert docker_manager.install.called
