@@ -72,6 +72,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
+        delete_reactor()
         node.initialize()
 
         node.connect_with_peers(peer)
