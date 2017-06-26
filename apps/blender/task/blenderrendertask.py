@@ -50,8 +50,7 @@ class PreviewUpdater(object):
         self.preview_res_y = preview_res_y
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
-        self.last_update_time = None
-        
+
         # where the match ends - since the chunks have unexpectable sizes, we 
         # don't know where to paste new chunk unless all of the above are in 
         # their correct places
@@ -104,7 +103,6 @@ class PreviewUpdater(object):
             logger.exception("Error in Blender update preview:")
             return
 
-        self.last_update_time = time.time()
         if subtask_number == self.perfectly_placed_subtasks and \
            (subtask_number + 1) in self.chunks:
             self.update_preview(self.chunks[subtask_number + 1],
@@ -144,22 +142,12 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
             pass
         elif task.use_frames:
             if single:
-                # path to the most recently updated preview
-                try:
-                    # previews that were updated at least once
-                    iterator = ifilter(lambda p: bool(p.last_update_time),
-                                       task.preview_updaters)
-                    # find the max timestamp
-                    updater = max(iterator, key=lambda p: p.last_update_time)
-                    return to_unicode(updater.preview_file_path)
-                except (StopIteration, ValueError):
-                    return None
+                return to_unicode(task.last_preview_path)
             else:
-                # paths for all frames
-                return [to_unicode(p.preview_file_path)
-                        for p in task.preview_updaters]
+                return [to_unicode(p) for p in task.preview_task_file_path]
         else:
-            result = to_unicode(task.preview_updater.preview_file_path)
+            result = to_unicode(task.preview_task_file_path or
+                                task.preview_file_path)
 
         return cls._preview_result(result, single=single)
 
@@ -382,7 +370,7 @@ class BlenderRenderTask(FrameRenderingTask):
             frames, parts = self._choose_frames(self.frames, start_task,
                                                 self.total_tasks)
         else:
-            frames = [1]
+            frames = self.frames or [1]
             parts = 1
 
         if not self.use_frames:
@@ -515,8 +503,12 @@ class BlenderRenderTask(FrameRenderingTask):
             scaled = img.resize((int(round(self.res_x * self.scale_factor)),
                                  int(round(self.res_y * self.scale_factor))),
                                 resample=Image.BILINEAR)
+
+            preview_task_file_path = self._get_preview_task_file_path(num)
+            self.last_preview_path = preview_task_file_path
+
+            scaled.save(preview_task_file_path, PREVIEW_EXT)
             scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
-            scaled.save(self._get_preview_task_file_path(num), PREVIEW_EXT)
 
             scaled.close()
             img.close()

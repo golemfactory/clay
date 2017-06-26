@@ -74,6 +74,7 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
+        self.last_preview_path = None
 
         self.verificator.use_frames = self.use_frames
         self.verificator.frames = self.frames
@@ -350,6 +351,7 @@ class FrameRenderingTask(RenderingTask):
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, PREVIEW_EXT)
+        self.last_preview_path = preview_task_file_path
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:
