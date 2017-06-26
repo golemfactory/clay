@@ -152,6 +152,20 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         return cls._preview_result(result, single=single)
 
     @classmethod
+    def scale_factor(cls, res_x, res_y):
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
+        if res_x != 0 and res_y != 0:
+            if res_x / res_y > preview_x / preview_y:
+                scale_factor = preview_x / res_x
+            else:
+                scale_factor = preview_y / res_y
+            scale_factor = min(1.0, scale_factor)
+        else:
+            scale_factor = 1.0
+        return scale_factor
+
+    @classmethod
     def get_task_border(cls, subtask, definition, total_subtasks,
                         output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
@@ -173,8 +187,17 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         else:
             method = cls.__get_border
 
-        if not definition.options.use_frames or total_subtasks <= frames:
+        if not definition.options.use_frames:
             return method(start_task, end_task, total_subtasks, res_x, res_y)
+        elif total_subtasks <= frames:
+            if not as_path:
+                return []
+            else:
+                scale_factor = cls.scale_factor(res_x, res_y)
+                x = int(math.floor(res_x * scale_factor))
+                y = int(math.floor(res_y * scale_factor))
+                return [(0, y), (x, y),
+                        (x, 0), (0, 0)]
 
         parts = int(total_subtasks / frames)
         return method((start_task - 1) % parts + 1,
@@ -610,7 +633,7 @@ class CustomCollector(RenderingTaskCollector):
 def generate_expected_offsets(parts, res_x, res_y):
     logger.debug('generate_expected_offsets(%r, %r, %r)', parts, res_x, res_y)
     # returns expected offsets for preview; the highest value is preview's height
-    scale_factor = __scale_factor(res_x, res_y)
+    scale_factor = BlenderTaskTypeInfo.scale_factor(res_x, res_y)
     expected_offsets = [0]
     previous_end = 0
     for i in range(1, parts + 1):
@@ -646,17 +669,6 @@ def get_min_max_y(task_num, parts, res_y):
     return min_y, max_y
 
 
-def __scale_factor(res_x, res_y):
-    preview_x = PREVIEW_X
-    preview_y = PREVIEW_Y
-    if res_x != 0 and res_y != 0:
-        if res_x / res_y > preview_x / preview_y:
-            scale_factor = preview_x / res_x
-        else:
-            scale_factor = preview_y / res_y
-        scale_factor = min(1.0, scale_factor)
-    else:
-        scale_factor = 1.0
-    return scale_factor
+
     
 
