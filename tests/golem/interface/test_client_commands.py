@@ -1,5 +1,6 @@
 import os
 import unittest
+import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -14,6 +15,7 @@ from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
+from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
 from golem.interface.client.payments import incomes, payments
@@ -670,3 +672,31 @@ class TestSettings(TempDirFixture):
 
             with self.assertRaises(CommandException):
                 settings.set('num_cores', _cpu_count + 1)
+
+
+class TestDebug(unittest.TestCase):
+
+    def setUp(self):
+        super(TestDebug, self).setUp()
+
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    def test_show(self):
+        client = self.client
+
+        with client_ctx(Debug, client):
+            debug = Debug()
+            task_id = str(uuid.uuid4())
+
+            debug.rpc(('net.ident',))
+            assert client.get_node.called
+
+            debug.rpc(('comp.task', task_id))
+            client.get_task.assert_called_with(task_id)
+
+            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
+            client.get_subtasks_borders.assert_called_with(task_id, 2)
+
+            with self.assertRaises(CommandException):
+                debug.rpc((task_id,))
