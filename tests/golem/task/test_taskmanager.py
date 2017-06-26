@@ -558,43 +558,15 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
         task_id, _ = self.__build_tasks(tm, count)
 
-        borders = tm.get_subtasks_borders(task_id)
-        assert len(borders) == count
+        borders = tm.get_subtasks_borders(task_id, 0)
+        assert len(borders) == 0
+
+        borders = tm.get_subtasks_borders(task_id, 1)
+        assert len(borders) == 3
         assert all(len(b) == 4 for b in borders.values())
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
-    def test_get_subtasks_frames(self, _):
-        count = 3
-
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
-        self.__build_tasks(tm, count, fixed_frames=True)
-
-        for i, (task_id, task) in enumerate(tm.tasks.iteritems()):
-            frames = tm.get_subtasks_frames(task.header.task_id)
-            assert len(frames) == i + 1
-
-    def test_top_priority_subtask(self):
-        s1, s2 = Mock(), Mock()
-        s1.subtask_id = str(uuid.uuid4())
-        s2.subtask_id = str(uuid.uuid4())
-
-        subtasks = {s1.subtask_id: s1, s2.subtask_id: s2}
-        subtask_ids = subtasks.keys()
-
-        for i1, (k1, v1) in enumerate(subtask_priority.iteritems()):
-            s1.subtask_status = k1
-
-            for i2, (k2, v2) in enumerate(subtask_priority.iteritems()):
-                s2.subtask_status = k2
-
-                if v1 < v2:
-                    assert TaskManager._top_priority_subtask(
-                        subtask_ids, subtasks
-                    ) == s2
-                elif v1 > v2:
-                    assert TaskManager._top_priority_subtask(
-                        subtask_ids, subtasks
-                    ) == s1
+        borders = tm.get_subtasks_borders(task_id, 2)
+        assert len(borders) == 0
 
     @patch("golem.task.taskmanager.get_external_address")
     def test_change_timeouts(self, mock_addr):
@@ -705,6 +677,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.preview_updater = Mock()
             task.preview_updaters = [Mock()] * n
             task.use_frames = fixed_frames or i % 2 == 0
+
+            task.frames_subtasks = {"1": subtask_states.keys()}
+
+            task.subtasks_given = subtask_states
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state

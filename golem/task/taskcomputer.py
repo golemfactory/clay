@@ -280,7 +280,8 @@ class TaskComputer(object):
 
         lux_benchmark = LuxBenchmark()
         lux_builder = LuxRenderTaskBuilder
-        self.run_benchmark(lux_benchmark, lux_builder, datadir, node_name, success_callback, error_callback)
+        self.run_benchmark(lux_benchmark, lux_builder, datadir,
+                           node_name, success_callback, error_callback)
 
     def run_blender_benchmark(self, success=None, error=None):
 
@@ -302,11 +303,12 @@ class TaskComputer(object):
         datadir = client.datadir
         blender_benchmark = BlenderBenchmark()
         blender_builder = BlenderRenderTaskBuilder
-        self.run_benchmark(blender_benchmark, blender_builder, datadir, node_name, success_callback, error_callback)
+        self.run_benchmark(blender_benchmark, blender_builder, datadir,
+                           node_name, success_callback, error_callback)
 
     def run_benchmarks(self):
-        self.run_lux_benchmark()
-        self.run_blender_benchmark()
+        # Blender benchmark ran only if lux completed successfully
+        self.run_lux_benchmark(lambda _: self.run_blender_benchmark())
 
     def config_changed(self):
         for l in self.listeners:

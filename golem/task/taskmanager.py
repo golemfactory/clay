@@ -531,6 +531,10 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
+    def get_output_states(self, task_id):
+        return self.tasks[task_id].get_output_states()
+
+    @handle_task_key_error
     def delete_task(self, task_id):
         for sub in self.tasks_states[task_id].subtask_states.values():
             del self.subtask2task_mapping[sub.subtask_id]
@@ -619,53 +623,17 @@ class TaskManager(TaskEventListener):
         subtasks = task_state.subtask_states
         return [subtask.to_dictionary() for subtask in subtasks.itervalues()]
 
-    def get_subtasks_borders(self, task_id):
+    def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        task_state = self.tasks_states[task_id]
         total_subtasks = task.get_total_tasks()
 
         return {
             to_unicode(subtask.subtask_id): task_type.get_task_border(
                 subtask, task.task_definition, total_subtasks, as_path=True
-            ) for subtask in task_state.subtask_states.values()
+            ) for subtask in task.get_subtasks(part)
         }
-
-    def get_subtasks_frames(self, task_id):
-        task = self.tasks[task_id]
-        if not (isinstance(task, FrameRenderingTask) and task.use_frames):
-            return []
-
-        subtasks = self.tasks_states[task_id].subtask_states
-        frames = task.get_subtask_frames()
-        results = []
-
-        for frame_num, subtask_ids in frames.iteritems():
-            # Not assigned to a subtask
-            if len(subtask_ids) == 0:
-                results.append((frame_num, None, None))
-                continue
-            # Single subtask, skip sorting
-            if len(subtask_ids) == 1:
-                subtask = subtasks[subtask_ids[0]]
-            # Choose the most significant subtask
-            else:
-                subtask = self._top_priority_subtask(subtask_ids, subtasks)
-
-            results.append((
-                frame_num,
-                to_unicode(subtask.subtask_id),
-                to_unicode(subtask.subtask_status)
-            ))
-
-        return results
-
-    @staticmethod
-    def _top_priority_subtask(subtask_ids, subtasks):
-        candidates = map(lambda sid: subtasks.get(sid), subtask_ids)
-        candidates.sort(key=lambda c: subtask_priority.get(c.subtask_status))
-        return candidates[-1]
 
     def get_task_preview(self, task_id, single=False):
         task = self.tasks[task_id]

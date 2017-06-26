@@ -496,9 +496,10 @@ class Client(HardwarePresetsMixin):
         return self.p2pservice.peers.values()
 
     def get_known_peers(self):
-        peers = self.p2pservice.free_peers or []
+        peers = self.p2pservice.incoming_peers or dict()
         return [
-            DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
+            DictSerializer.dump(p['node'], typed=False)
+            for p in peers.itervalues()
         ]
 
     def get_connected_peers(self):
@@ -555,8 +556,11 @@ class Client(HardwarePresetsMixin):
         self.change_config(self.config_desc)
 
     def update_settings(self, settings_dict, run_benchmarks=False):
-        cfg_desc = DictSerializer.load(settings_dict)
-        self.change_config(cfg_desc, run_benchmarks)
+        for key, value in settings_dict.items():
+            if not hasattr(self.config_desc, key):
+                raise KeyError(u"Unknown setting: {}".format(key))
+            setattr(self.config_desc, key, value)
+        self.change_config(self.config_desc, run_benchmarks)
 
     def get_datadir(self):
         return unicode(self.datadir)
@@ -581,11 +585,12 @@ class Client(HardwarePresetsMixin):
     def get_subtasks(self, task_id):
         return self.task_server.task_manager.get_subtasks_dict(task_id)
 
-    def get_subtasks_borders(self, task_id):
-        return self.task_server.task_manager.get_subtasks_borders(task_id)
+    def get_subtasks_borders(self, task_id, part=1):
+        return self.task_server.task_manager.get_subtasks_borders(task_id,
+                                                                  part)
 
     def get_subtasks_frames(self, task_id):
-        return self.task_server.task_manager.get_subtasks_frames(task_id)
+        return self.task_server.task_manager.get_output_states(task_id)
 
     def get_subtask(self, subtask_id):
         return self.task_server.task_manager.get_subtask_dict(subtask_id)

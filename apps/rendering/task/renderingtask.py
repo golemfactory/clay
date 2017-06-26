@@ -147,6 +147,9 @@ class RenderingTask(CoreTask):
         pass
 
 
+    def get_subtasks(self, part):
+        return self.subtasks_given.values()
+
     def get_preview_file_path(self):
         return self.preview_file_path
 
@@ -172,8 +175,8 @@ class RenderingTask(CoreTask):
         failed_color = (255, 0, 0)
 
         preview_name = "current_task_preview.{}".format(PREVIEW_EXT)
-        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
-                                                               preview_name))
+        preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                          preview_name))
 
         img_task = self._open_preview()
 
@@ -184,8 +187,8 @@ class RenderingTask(CoreTask):
                                  SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, PREVIEW_EXT)
-        self._update_preview_task_file_path(self.preview_task_file_path)
+        img_task.save(preview_task_file_path, PREVIEW_EXT)
+        self._update_preview_task_file_path(preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         self.preview_task_file_path = preview_task_file_path

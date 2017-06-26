@@ -40,7 +40,7 @@ APP_DIR = os.path.join(get_golem_path(), 'apps', 'lux')
 class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
     def __init__(self):
         super(LuxRenderDefaults, self).__init__()
-        self.output_format = "exr"
+        self.output_format = "EXR"
         self.main_program_file = LuxRenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
@@ -58,7 +58,7 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
             dialog,
             customizer
         )
-        self.output_formats = ["exr", "png", "tga"]
+        self.output_formats = ["EXR", "PNG", "TGA"]
         self.output_file_ext = ["lxs"]
 
     @classmethod

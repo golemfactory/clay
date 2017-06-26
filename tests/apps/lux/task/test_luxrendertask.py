@@ -330,7 +330,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
     def test_init(self):
         typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
         assert isinstance(typeinfo, TaskTypeInfo)
-        assert typeinfo.output_formats == ["exr", "png", "tga"]
+        assert typeinfo.output_formats == ["EXR", "PNG", "TGA"]
         assert typeinfo.output_file_ext == ["lxs"]
         assert typeinfo.name == "LuxRender"
         assert isinstance(typeinfo.defaults, LuxRenderDefaults)
