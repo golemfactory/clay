@@ -43,11 +43,11 @@ class Node(object):
     def initialize(self):
         from golem.docker.manager import DockerManager
 
-        self.load_environments(self.default_environments)
-
         if self.use_docker_machine_manager:
             docker_manager = DockerManager.install(self.client.config_desc)
             docker_manager.check_environment()
+
+        self.load_environments(self.default_environments)
 
         self.client.sync()
         self.client.start()
