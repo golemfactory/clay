@@ -679,7 +679,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
             task.frames_subtasks = {"1": subtask_states.keys()}
 
-            task.subtasks_given = subtask_states
+            task.subtasks_given = {k: v.extra_data for k, v
+                                   in subtask_states.iteritems()}
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state

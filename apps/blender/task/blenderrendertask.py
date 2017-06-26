@@ -173,15 +173,13 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
         else:
             method = cls.__get_border
 
-        if not definition.options.use_frames:
+        if not definition.options.use_frames or total_subtasks <= frames:
             return method(start_task, end_task, total_subtasks, res_x, res_y)
 
-        if total_subtasks > frames:
-            parts = int(total_subtasks / frames)
-            return method((start_task - 1) % parts + 1,
-                          (end_task - 1) % parts + 1,
-                          parts, res_x, res_y)
-        return []
+        parts = int(total_subtasks / frames)
+        return method((start_task - 1) % parts + 1,
+                      (end_task - 1) % parts + 1,
+                      parts, res_x, res_y)
 
     @classmethod
     def __get_border(cls, start, end, parts, res_x, res_y):
