@@ -161,6 +161,7 @@ class FrameRenderingTask(RenderingTask):
 
     def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
         num = self.frames.index(frame_num)
+        preview_task_file_path = self._get_preview_task_file_path(num)
         img = load_as_pil(new_chunk_file_path)
 
         if not final:
@@ -172,9 +173,10 @@ class FrameRenderingTask(RenderingTask):
                           int(round(self.scale_factor * img_y))),
                          resample=Image.BILINEAR)
         img.save(self._get_preview_file_path(num), PREVIEW_EXT)
-        img.save(self._get_preview_task_file_path(num), PREVIEW_EXT)
+        img.save(preview_task_file_path, PREVIEW_EXT)
 
         img.close()
+        self.last_preview_path = preview_task_file_path
 
     @CoreTask.handle_key_error
     def _update_subtask_frame_status(self, subtask_id):
@@ -351,7 +353,6 @@ class FrameRenderingTask(RenderingTask):
         img_task = self._open_frame_preview(preview_task_file_path)
         self._mark_task_area(sub, img_task, color, idx)
         img_task.save(preview_task_file_path, PREVIEW_EXT)
-        self.last_preview_path = preview_task_file_path
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:
