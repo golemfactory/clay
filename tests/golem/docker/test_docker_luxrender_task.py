@@ -176,6 +176,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         task.computation_finished(ctd.subtask_id, [new_file],
                                   result_type=result_types["files"])
+
+        a= task.verify_subtask(ctd.subtask_id)
         self.assertTrue(task.verify_subtask(ctd.subtask_id))
 
         extra_data = task.query_extra_data(10000, node_id="Bla")

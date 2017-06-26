@@ -195,6 +195,8 @@ class LuxTask(renderingtask.RenderingTask):
         super(LuxTask, self).initialize(dir_manager)
         self.verificator.test_flm = self.__get_test_flm()
         self.verificator.merge_ctd = self.__get_merge_ctd([])
+        # self.res_y=1 # GG todo
+        # self.res_x=1
         self.create_reference_data_for_task_validation()
 
     def _write_interval_wrapper(self, halttime):
@@ -293,7 +295,6 @@ class LuxTask(renderingtask.RenderingTask):
             extra_data,
             scene_dir,
             0)
-
         return ctd
 
     # GG todo it seems that the file is not regenerated properly :/

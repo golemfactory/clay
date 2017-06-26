@@ -21,9 +21,6 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
         lrv._check_files("SUBTASK2", {}, ["not existing"], Mock())
         assert lrv.get_verification_state("SUBTASK2") == SubtaskVerificationState.WRONG_ANSWER
 
-    def test_advanced_check_files(self):
-        # GG todo
-        pass
 
     @patch("apps.lux.task.verificator.LocalComputer")
     def test_merge_flm_files_failure(self, mock_lc):

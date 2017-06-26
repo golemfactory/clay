@@ -68,7 +68,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask = self.get_test_lux_task(haltspp=10, total_subtasks=10)
         assert luxtask.haltspp == 1
 
-    def test_get_random_crop_window_for_verification(self): # GG how to add luxrender_config_file.lxs to docker img / task builder?
+    def test_get_random_crop_window_for_verification(self):
         luxtask = self.get_test_lux_task()
 
         src = '# Main Scene File\n\nRenderer "sampler"\n\n#Sampler "lowdiscrepancy"\n#\t"integer pixelsamples" [4]\n\nSampler "metropolis"\n\t"float largemutationprob" [0.400000005960464]\n\t"bool usevariance" ["false"]\n\nAccelerator "qbvh"\n\nSurfaceIntegrator "bidirectional"\n\t"integer eyedepth" [16]\n\t"integer lightdepth" [16]\n\nVolumeIntegrator "multi"\n\t"float stepsize" [1.000000000000000]\n\nPixelFilter "mitchell"\n\t"bool supersample" ["true"]\n\nLookAt -0.315666 -0.074268 1.700000 -0.414931 -0.065879 1.691284 -0.008685 0.000734 0.099619\n\nCamera "perspective"\n\t"float fov" [56.144978015299799]\n\t"float screenwindow" [-0.750000000000000 0.750000000000000 -1.000000000000000 1.000000000000000]\n\t"bool autofocus" ["false"]\n\t"float shutteropen" [0.000000000000000]\n\t"float shutterclose" [0.040000000000000]\n\t"float focaldistance" [4.000000000000000]\n\nFilm "fleximage"\n\t"integer xresolution" [300]\n\t"integer yresolution" [400]\n' \

@@ -57,8 +57,6 @@ class SystemMonitor(object):
         if event != 'listening':
             return
         try:
-            from time import sleep
-            sleep(2) # GG  Some synchronization problems in debug mode... increasing timeout in ping_request does not always work... :(
             result = self.ping_request(kwargs['port'])
             if not result['success']:
                 status = result['description'].replace('\n', ', ')
@@ -66,7 +64,6 @@ class SystemMonitor(object):
                 dispatcher.send('golem.p2p', event='unreachable',
                                 port=kwargs['port'], description=result['description'])
         except:
-            sleep(2)  # GG  Some synchronization problems in debug mode... increasing timeout in ping_request does not always work... :(
             log.exception('Port reachability check error')
 
     def ping_request(self, port):

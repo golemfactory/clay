@@ -24,7 +24,7 @@ from golem.core.common import get_golem_path
 
 
 class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
-    PEP8_FILES = ['apps/rendering/resources/ImgVerificator.py',] # GG todo
+    PEP8_FILES = ['apps/rendering/resources/ImgVerificator.py',]
     # def test_display_img_stats(self):
     #     """
     #     Uncomment this test to display img stats...
