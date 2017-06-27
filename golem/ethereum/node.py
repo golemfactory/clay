@@ -11,14 +11,13 @@ import time
 from datetime import datetime
 from distutils.version import StrictVersion
 
-
 import requests
 from ethereum.keys import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider
 
-from golem.core.common import is_windows, DEVNULL
+from golem.core.common import is_windows, DEVNULL, is_frozen
 from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
@@ -69,6 +68,12 @@ class NodeProcess(object):
     MAX_GETH_VERSION = '1.6.999'
     IPC_CONNECTION_TIMEOUT = 10
 
+    SUBPROCESS_PIPES = dict(
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=DEVNULL
+    )
+
     def __init__(self, datadir):
         self.datadir = datadir
         self.__prog = find_program('geth')
@@ -77,9 +82,7 @@ class NodeProcess(object):
 
         output, _ = subprocess.Popen(
             [self.__prog, 'version'],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            stdin=DEVNULL
+            **self.SUBPROCESS_PIPES
         ).communicate()
 
         match = re.search("Version: (\d+\.\d+\.\d+)", output).group(1)
@@ -100,23 +103,24 @@ class NodeProcess(object):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
+        if is_frozen():
+            pipes = self.SUBPROCESS_PIPES
+            this_dir = os.path.join(os.path.dirname(sys.executable),
+                                    'golem', 'ethereum')
+        else:
+            pipes = dict()
+            this_dir = os.path.dirname(__file__)
+
         # Init geth datadir
         chain = 'rinkeby'
-        geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
-        datadir_arg = '--datadir={}'.format(geth_datadir)
-        if hasattr(sys, 'frozen') and sys.frozen:
-            init_file = os.path.join(os.path.dirname(sys.executable), 'golem',
-                                     'ethereum', chain + '.json')
-        else:
-            this_dir = os.path.dirname(__file__)
-            init_file = os.path.join(this_dir, chain + '.json')
+        init_file = os.path.join(this_dir, chain + '.json')
         log.info("init file: {}".format(init_file))
 
-        init_subp = subprocess.Popen([
-            self.__prog,
-            datadir_arg,
-            'init', init_file
-        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=DEVNULL)
+        geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
+        datadir_arg = '--datadir={}'.format(geth_datadir)
+
+        init_subp = subprocess.Popen([self.__prog, datadir_arg,
+                                      'init', init_file], **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
             raise OSError(
