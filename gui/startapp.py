@@ -48,8 +48,7 @@ def start_gui(address):
         runner + ['--qt', '-r', '{}:{}'.format(address.host, address.port)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        stdin=DEVNULL,
-        **SUBPROCESS_PARAMS
+        stdin=DEVNULL
     )
 
 

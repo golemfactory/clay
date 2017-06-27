@@ -12,6 +12,7 @@ from pathlib import Path
 TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
 
+
 def is_windows():
     """
     Check if this system is Windows
