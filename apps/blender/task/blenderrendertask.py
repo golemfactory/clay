@@ -428,14 +428,16 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[hash]['node_id'] = node_id
         self.subtasks_given[hash]['parts'] = parts
 
+        part = self._count_part(start_task, parts)
+
         for frame in frames:
             frame_key = to_unicode(frame)
             state = self.frames_state[frame_key]
 
             state.status = TaskStatus.computing
             state.started = state.started or time.time()
-            for part in xrange(parts):
-                self.frames_subtasks[frame_key][part] = hash
+
+            self.frames_subtasks[frame_key][part] = hash
 
         if not self.use_frames:
             self._update_task_preview()
