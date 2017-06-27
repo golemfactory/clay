@@ -40,6 +40,8 @@ SolidCompression=yes
 [Registry]
 ; Set environment variable to point to company installation
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golem-electron.exe"; Flags: uninsdeletevalue;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golemapp.exe"; Flags: uninsdeletevalue;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golemcli.exe"; Flags: uninsdeletevalue;
 
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('{sd}\Program Files\Docker Toolbox')
