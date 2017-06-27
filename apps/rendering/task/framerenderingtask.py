@@ -3,6 +3,7 @@ from __future__ import division
 import logging
 import math
 import os
+from bisect import insort
 from collections import OrderedDict, defaultdict
 
 from PIL import Image, ImageChops
@@ -109,8 +110,10 @@ class FrameRenderingTask(RenderingTask):
 
     def get_output_states(self):
         if self.use_frames:
-            return sorted({to_unicode(k): v.serialize() for k, v
-                           in self.frames_state.iteritems()})
+            result = []
+            for k, v in self.frames_state.iteritems():
+                insort(result, (to_unicode(k), v.serialize()))
+            return result
         return []
 
     def get_subtasks(self, frame):
