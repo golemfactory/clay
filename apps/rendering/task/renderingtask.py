@@ -140,7 +140,7 @@ class RenderingTask(CoreTask):
     #########################
     def query_extra_data_for_reference_task(self):
         """
-        This method will generate tasks which will be solved on local computer (by requestor)
+        This method will generate extra data for reference task which will be solved on local computer (by requestor)
         in order to obtain reference results.
         The reference results will be used to validate the output given by providers.
         """

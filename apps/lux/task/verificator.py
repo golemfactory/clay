@@ -24,7 +24,14 @@ class LuxRenderVerificator(RenderingVerificator):
         self.merge_ctd = None
         self.verification_error = False
 
-    def set_verification_options(self, verification_options): # GG hack - advanced verification is enabled for tests & convenience
+    def _enforce_advanced_verification(foo):
+        def inside(self, arg):
+            foo(self, arg)
+            self.advanced_verification=True
+        return inside
+
+    # @_enforce_advanced_verification # GG hack - advanced verification is enabled for tests & convenience
+    def set_verification_options(self, verification_options):
         self.verification_options = verification_options
         if verification_options is None:
             self.advanced_verification = False
@@ -98,7 +105,7 @@ class LuxRenderVerificator(RenderingVerificator):
             for ref_img in ref_imgs:
                 cropped_ref_img = imgVerificator.crop_img_relative(ref_img, task.random_crop_window_for_verification)
                 cropped_ref_imgs.append(cropped_ref_img)
-                # cropped_ref_img.img.save('aaa' + cropped_ref_img.get_name())
+                cropped_ref_img.img.save('aaa' + cropped_ref_img.get_name())
 
             reference_stats = ImgStatistics(cropped_ref_imgs[0], cropped_ref_imgs[1])  # these are imgs rendered by requestor
 
@@ -106,15 +113,15 @@ class LuxRenderVerificator(RenderingVerificator):
                 img = PILImgRepr()
                 img.load_from_file(png_file)
                 cropped_img = imgVerificator.crop_img_relative(img, task.random_crop_window_for_verification)
-                # cropped_img.img.save('aaa' + cropped_img.get_name())
+                cropped_img.img.save('aaa' + cropped_img.get_name()) # GG todo dont save img in release ;)
                 imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
 
                 self.ver_states[subtask_id] = imgVerificator.is_valid_against_reference(imgstat, reference_stats)
 
                 if self.ver_states[subtask_id] == SubtaskVerificationState.VERIFIED and os.path.isfile(self.test_flm):
-                    flm_merging_validation_result = self.merge_flm_files(flm_file, task, self.test_flm)
+                    is_flm_merging_validation_passed = self.merge_flm_files(flm_file, task, self.test_flm)
 
-                    if not flm_merging_validation_result:
+                    if not is_flm_merging_validation_passed:
                         logger.info("Subtask " + str(subtask_id) + " rejected - flm merging failed.")
                         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 

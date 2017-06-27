@@ -46,7 +46,7 @@ class LocalComputer(object):
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
-            self.__prepare_resources()
+            self.__prepare_resources() # makes a copy
 
             ctd = self.get_compute_task_def()
 

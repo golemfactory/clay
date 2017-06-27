@@ -160,7 +160,7 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
-        # task.create_reference_data_for_task_validation() # GG task init?
+        task.create_reference_data_for_task_validation()
         self.tasks[task.header.task_id] = task
 
         ts = TaskState()

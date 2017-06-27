@@ -268,7 +268,9 @@ class CoreTask(Task):
 
     def create_reference_data_for_task_validation(self):
         """
-        if task validation requires some reference data, then the overriding methods will generate it
+        If task validation requires some reference data, then the overriding methods have to generate it.
+        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
+        The reference results will be used to validate the output given by providers.
         :return:
         """
         pass
