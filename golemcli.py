@@ -5,7 +5,7 @@ import sys
 
 from golem.core.common import config_logging
 from golem.interface.cli import CLI
-from golem.interface.client import account
+from golem.interface.client import account, debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
 from golem.interface.client.payments import payments, incomes
@@ -17,7 +17,7 @@ from golem.interface.websockets import WebSocketCLI
 # prevent 'unused' warnings
 _ = {
     Tasks, Subtasks, Network, Environments, Resources, Settings,
-    account, incomes, payments,
+    account, incomes, payments, debug
 }
 
 
@@ -29,9 +29,12 @@ def start():
     )
 
     flag_options = dict(
-        interactive=dict(dest="interactive", action="store_true", default=False, help="Enter interactive mode"),
-        address=dict(dest="address", type=str, default='localhost', help="Golem node's RPC address"),
-        port=dict(dest="port", type=int, default=61000, help="Golem node's RPC port"),
+        interactive=dict(dest="interactive", action="store_true",
+                         default=False, help="Enter interactive mode"),
+        address=dict(dest="address", type=str, default='localhost',
+                     help="Golem node's RPC address"),
+        port=dict(dest="port", type=int, default=61000,
+                  help="Golem node's RPC port"),
     )
 
     # process initial arguments
@@ -54,7 +57,7 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     # run the cli
-    ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port, realm=u'golem')
+    ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
     ws_cli.execute(forwarded, interactive=interactive)
 
 
