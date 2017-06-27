@@ -159,6 +159,7 @@ class Argument(object):
         kwargs = dict(self.kwargs)
 
         is_flag = args and args[0].startswith('-')
+        vargs = kwargs.pop('vargs', False)
         boolean = kwargs.pop('boolean', is_flag)
         optional = kwargs.pop('optional', is_flag)
         default = kwargs.get('default', False if boolean else None)
@@ -174,7 +175,9 @@ class Argument(object):
             else:
                 kwargs['action'] = 'store'
 
-        if not boolean and 'default' in kwargs:
+        if vargs:
+            kwargs['nargs'] = '+'
+        elif not boolean and 'default' in kwargs:
             kwargs['nargs'] = '?'
 
         ret = Argument(*args, **kwargs)
