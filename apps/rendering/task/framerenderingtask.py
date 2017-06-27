@@ -112,7 +112,7 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             result = []
             for k, v in self.frames_state.iteritems():
-                insort(result, (to_unicode(k), v.serialize()))
+                insort(result, (k, v.serialize()))
             return result
         return []
 
