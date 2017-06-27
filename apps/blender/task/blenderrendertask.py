@@ -437,7 +437,7 @@ class BlenderRenderTask(FrameRenderingTask):
             state.status = TaskStatus.computing
             state.started = state.started or time.time()
 
-            self.frames_subtasks[frame_key][part] = hash
+            self.frames_subtasks[frame_key][part - 1] = hash
 
         if not self.use_frames:
             self._update_task_preview()
