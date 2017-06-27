@@ -605,8 +605,14 @@ class TestHelpers(unittest.TestCase):
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True
         definition.options.frames = range(30)
-        assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                   30, as_path=as_path)
+        if as_path:
+            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                       30, as_path=as_path) == \
+                   [(0, 600), (800, 600), (800, 0), (0, 0)]
+        else:
+            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+                                                       30, as_path=as_path) == \
+                   []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)
