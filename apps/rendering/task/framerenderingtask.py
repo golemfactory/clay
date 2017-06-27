@@ -117,7 +117,11 @@ class FrameRenderingTask(RenderingTask):
         return []
 
     def get_subtasks(self, frame):
-        subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+        if self.task_definition.options.use_frames:
+            subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+        else:
+            subtask_ids = self.subtasks_given.iterkeys()
+
         subtasks = dict()
 
         # Convert to SubtaskState in order to match parent's return type
