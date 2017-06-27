@@ -6,7 +6,8 @@ import time
 from contextlib import contextmanager
 from threading import Thread
 
-from golem.core.common import is_linux, is_windows, is_osx, get_golem_path
+from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
+    DEVNULL, SUBPROCESS_PARAMS
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
@@ -287,8 +288,11 @@ class DockerManager(DockerConfigManager):
         logger.debug('docker_machine_command: %s', command)
 
         if check_output:
-            return subprocess.check_output(command, shell=shell)
-        return subprocess.check_call(command)
+            return subprocess.check_output(command, shell=shell,
+                                           stderr=subprocess.PIPE,
+                                           stdin=DEVNULL,
+                                           **SUBPROCESS_PARAMS)
+        return subprocess.check_call(command, **SUBPROCESS_PARAMS)
 
     @property
     def config_dir(self):

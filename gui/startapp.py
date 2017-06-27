@@ -5,7 +5,7 @@ import sys
 
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging
+from golem.core.common import config_logging, DEVNULL, SUBPROCESS_PARAMS
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
 from golem.rpc.mapping.core import CORE_METHOD_MAP
@@ -43,8 +43,14 @@ def start_gui(address):
     else:
         runner = [sys.executable,
                   os.path.join(get_golem_path(), sys.argv[0])]
-    return subprocess.Popen(runner + ['--qt', '-r',
-                                      '{}:{}'.format(address.host, address.port)])
+
+    return subprocess.Popen(
+        runner + ['--qt', '-r', '{}:{}'.format(address.host, address.port)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=DEVNULL,
+        **SUBPROCESS_PARAMS
+    )
 
 
 def start_client(start_ranking, datadir=None,

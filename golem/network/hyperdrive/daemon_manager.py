@@ -7,6 +7,7 @@ import sys
 import os
 from requests import ConnectionError
 
+from golem.core.common import SUBPROCESS_PARAMS, DEVNULL
 from golem.core.processmonitor import ProcessMonitor
 from golem.network.hyperdrive.client import HyperdriveClient
 
@@ -65,7 +66,11 @@ class HyperdriveDaemonManager(object):
         try:
             if not os.path.exists(self._dir):
                 os.makedirs(self._dir)
-            process = subprocess.Popen(self._command)
+            process = subprocess.Popen(self._command,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       stdin=DEVNULL,
+                                       **SUBPROCESS_PARAMS)
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
                             "Make sure path is correct and check "

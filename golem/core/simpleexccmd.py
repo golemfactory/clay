@@ -1,5 +1,5 @@
 import subprocess
-from common import is_windows
+from common import is_windows, DEVNULL, SUBPROCESS_PARAMS
 
 
 def exec_cmd(cmd, nice=20, wait=True):
@@ -11,7 +11,11 @@ def exec_cmd(cmd, nice=20, wait=True):
     :return:
     """
     if is_windows():
-        pc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        pc = subprocess.Popen(cmd, shell=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              stdin=DEVNULL,
+                              **SUBPROCESS_PARAMS)
         stdout, stderr = pc.communicate()
         import win32process
         import win32api
