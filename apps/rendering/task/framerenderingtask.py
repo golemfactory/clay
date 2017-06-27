@@ -19,7 +19,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
-from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
 
@@ -117,8 +117,20 @@ class FrameRenderingTask(RenderingTask):
         return []
 
     def get_subtasks(self, frame):
-        subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
-        return [self.subtasks_given[_id] for _id in subtask_ids]
+        if self.task_definition.options.use_frames:
+            subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+        else:
+            subtask_ids = self.subtasks_given.iterkeys()
+
+        subtasks = dict()
+
+        # Convert to SubtaskState in order to match parent's return type
+        for subtask_id in subtask_ids:
+            state = SubtaskState()
+            state.extra_data = self.subtasks_given[subtask_id]
+            subtasks[subtask_id] = state
+
+        return subtasks
 
     def accept_results(self, subtask_id, result_files):
         super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
