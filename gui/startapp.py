@@ -45,9 +45,11 @@ def start_gui(address):
         runner = [sys.executable,
                   os.path.join(get_golem_path(), sys.argv[0])]
 
-    startupinfo = subprocess.STARTUPINFO()
     if is_windows():
+        startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags &= ~subprocess.STARTF_USESHOWWINDOW
+    else:
+        startupinfo = None
 
     return subprocess.Popen(
         runner + ['--qt', '-r', '{}:{}'.format(address.host, address.port)],
