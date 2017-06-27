@@ -116,7 +116,7 @@ class NodeProcess(object):
             self.__prog,
             datadir_arg,
             'init', init_file
-        ])
+        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=DEVNULL)
         init_subp.wait()
         if init_subp.returncode != 0:
             raise OSError(
