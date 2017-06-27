@@ -8,9 +8,16 @@ from datetime import datetime
 import pytz
 from pathlib import Path
 
-
 TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
+
+
+def is_frozen():
+    """
+    Check if running a frozen script
+    :return: True if executing a frozen script, False otherwise
+    """
+    return hasattr(sys, 'frozen') and sys.frozen
 
 
 def is_windows():
@@ -35,14 +42,6 @@ def is_linux():
     :return bool: True if current system is Linux, False otherwise
     """
     return sys.platform.startswith('linux')
-
-
-SUBPROCESS_PARAMS = dict()
-if is_windows():
-    import subprocess
-    startupinfo = subprocess.STARTUPINFO
-    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    SUBPROCESS_PARAMS['startupinfo'] = startupinfo
 
 
 def to_unicode(value):

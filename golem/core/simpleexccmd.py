@@ -1,5 +1,5 @@
 import subprocess
-from common import is_windows, DEVNULL, SUBPROCESS_PARAMS
+from common import is_windows, DEVNULL
 
 
 def exec_cmd(cmd, nice=20, wait=True):
@@ -14,8 +14,7 @@ def exec_cmd(cmd, nice=20, wait=True):
         pc = subprocess.Popen(cmd, shell=True,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
-                              stdin=DEVNULL,
-                              **SUBPROCESS_PARAMS)
+                              stdin=DEVNULL)
         stdout, stderr = pc.communicate()
         import win32process
         import win32api
