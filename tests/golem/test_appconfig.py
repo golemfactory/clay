@@ -107,3 +107,15 @@ class TestAppConfig(TestDirFixture):
 
         with self.assertRaises(TypeError):
             cfgC.change_config(None)
+
+    def test_scale_value(self):
+        assert AppConfig.scale_value(0) == -1.0
+        assert AppConfig.scale_value(1.0) == -0.98
+        assert AppConfig.scale_value("NIE LICZBA") == -1.0
+        assert AppConfig.scale_value(100) == 1.0
+        assert AppConfig.scale_value(50) == 0.0
+        assert AppConfig.scale_value(25) == -0.5
+
+        assert AppConfig.scale_value(0.33) == 0.33
+        assert AppConfig.scale_value(-0.27) == -0.27
+        assert AppConfig.scale_value(-1.0) == -1.0
