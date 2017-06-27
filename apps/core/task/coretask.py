@@ -266,15 +266,6 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def create_reference_data_for_task_validation(self):
-        """
-        If task validation requires some reference data, then the overriding methods have to generate it.
-        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
-        The reference results will be used to validate the output given by providers.
-        :return:
-        """
-        pass
-
     def interpret_task_results(self, subtask_id, task_results, result_type, sort=True):
         """Filter out ".log" files from received results. Log files should represent
         stdout and stderr from computing machine. Other files should represent subtask results.

@@ -189,6 +189,15 @@ class Task(object):
         """
         return  # Implement in derived class
 
+    def create_reference_data_for_task_validation(self):
+        """
+        If task validation requires some reference data, then the overriding methods have to generate it.
+        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
+        The reference results will be used to validate the output given by providers.
+        :return:
+        """
+        pass
+
     @abc.abstractmethod
     def short_extra_data_repr(self, perf_index=None):
         """ Should return a short string with general task description that may be used for logging or stats gathering.
