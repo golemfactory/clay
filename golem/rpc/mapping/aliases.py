@@ -89,6 +89,7 @@ class Task(object):
     task_restart            = 'comp.task.restart'
     task_pause              = 'comp.task.pause'
     task_resume             = 'comp.task.resume'
+    task_outputs_states     = 'comp.task.outputs.states'
     # task_price              = 'comp.task.price'
     # task_price_update       = 'comp.task.price.update'
 

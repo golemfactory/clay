@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 import sys
 from multiprocessing import freeze_support
-from golem.core.common import is_windows
-if is_windows():
-    from twisted.internet import iocpreactor
-    iocpreactor.install()
 
 import click
 
@@ -76,6 +72,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
+        delete_reactor()
         node.initialize()
 
         node.connect_with_peers(peer)

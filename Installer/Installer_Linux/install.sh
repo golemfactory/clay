@@ -35,7 +35,7 @@ declare -r hyperg_pack=/tmp/hyperg.tar.gz
 
 # Questions
 declare -i INSTALL_DOCKER=0
-declare -i INSTALL_GETH=0
+declare -i INSTALL_GETH=1
 # declare -i INSTALL_IPFS=0 # to restore IPFS revert this commit
 declare -i reinstall=0
 
@@ -76,7 +76,7 @@ function ask_user()
 {
     while [ 1 ]; do
         read -p "$@ " yn
-        case $yn in
+        case ${yn} in
             y|Y ) return 1;;
             n|N ) return 0;;
             * ) warning_msg "Please answer yes or no.";;
@@ -87,7 +87,7 @@ function ask_user()
 # @brief check if dependencies (pip, Docker, and Ethereum) are installed and set proper 'global' variables
 function check_dependencies()
 {
-    # Check if docker deamon exists
+    # Check if docker daemon exists
     if [[ -z "$( service --status-all | grep -F 'docker' )" ]]; then
         ask_user "Docker not found. Do you want to install it? (y/n)"
         INSTALL_DOCKER=$?
@@ -100,7 +100,7 @@ function check_dependencies()
     fi
 }
 
-# @brief Install required dependencies
+# @brief Install/Upgrade required dependencies
 function install_dependencies()
 {
     info_msg "INSTALLING GOLEM DEPENDENCIES"
@@ -110,23 +110,17 @@ function install_dependencies()
         exit 1
     fi
 
-    sudo apt-get update
-    sudo apt-get install -y openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev
-    if [[ $INSTALL_GETH -eq 1 ]]; then
+    if [[ ${INSTALL_GETH} -eq 1 ]]; then
         info_msg "INSTALLING GETH"
-        # @todo any easy way? Without adding repository or building from source?
-        sudo apt-get install -y software-properties-common
-        sudo add-apt-repository -y ppa:ethereum/ethereum
-        sudo apt-get update
-        sudo apt-get install -y ethereum
+        sudo apt-get install -y -q software-properties-common
+        sudo add-apt-repository -y ppa:ethereum/ethereum >/dev/null
     fi
 
-    if [[ $INSTALL_DOCKER -eq 1 ]]; then
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING DOCKER"
-        # @todo any easy way? This will add PPA, update & install via apt
-        wget -qO- https://get.docker.com > /tmp/$docker_script
-        if [[ "$( md5sum /tmp/$docker_script | awk '{print $1}' )" == "$docker_checksum" ]]; then
-            bash /tmp/$docker_script
+        wget -qO- https://get.docker.com > /tmp/${docker_script}
+        if [[ "$( md5sum /tmp/${docker_script} | awk '{print $1}' )" == "$docker_checksum" ]]; then
+            bash /tmp/${docker_script}
             if [[ $? -ne 0 ]]; then
                 warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
                 sleep 5s
@@ -138,53 +132,62 @@ function install_dependencies()
             warning_msg "Cannot install docker. Install it manually: https://docs.docker.com/engine/installation/"
             sleep 5s
         fi
-        rm -f /tmp/$docker_script
+        rm -f /tmp/${docker_script}
     fi
 
-    if [[ ! -f $HOME/hyperg/hyperg ]]; then
+    hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
+    hyperg_version=$( hyperg --version 2>/dev/null )
+    if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "$hyperg_release" > "$hyperg_version" ]]; then
         info_msg "Installing HyperG"
-        wget -qO- $hyperg > ${hyperg_pack}
-        tar -xvf ${hyperg_pack}
+        wget -qO- ${hyperg} > ${hyperg_pack}
+        tar -xvf ${hyperg_pack} >/dev/null
         mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
         rm -f ${hyperg_pack} &>/dev/null
     fi
+    sudo apt-get update >/dev/null
+    sudo apt-get install -y -q openssl pkg-config libjpeg-dev libopenexr-dev libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev ethereum docker-engine
     info_msg "Done installing Golem dependencies"
 }
 
+
+# @brief Download latest Golem package (if package wasn't passed)
+# @return 1 if error occurred, 0 otherwise
 function download_package() {
     if [[ -f "$LOCALPACKAGE" ]]; then
         info_msg "Local package provided, skipping downloading..."
         cp "$LOCALPACKAGE" "/tmp/$PACKAGE"
     else
-        info_msg "Downloading package from $golem_package"
-        wget -qO- "$golem_package" > /tmp/$PACKAGE
+        info_msg "Downloading Golem package"
+        wget -qO- "$golem_package" > /tmp/${PACKAGE}
     fi
-    if [[ ! -f /tmp/$PACKAGE ]]; then
+    if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Error unpacking package"
         error_msg "Contact golem team: http://golemproject.org:3000/ or contact@golem.network"
         exit 1
     fi
+    return 0
 }
 
 # @brief Download and install golem
 # @return 1 if error occurred, 0 otherwise
 function install_golem()
 {
+    info_msg "Installing Golem"
     download_package
     result=$?
-    if [[ $result -eq 1 ]]; then
+    if [[ ${result} -eq 1 ]]; then
         return 1
     fi
 
-    tar -zxvf /tmp/$PACKAGE
+    tar -zxvf /tmp/${PACKAGE} >/dev/null
     PACKAGE_DIR=$(find . -maxdepth 1 -name "golem-*" -type d -print | head -n1)
-    if [[ ! -d $PACKAGE_DIR ]]; then
+    if [[ ! -d ${PACKAGE_DIR} ]]; then
         error_msg "Error extracting package"
         return 1
     fi
 
-    if [[ -f $GOLEM_DIR/golemapp ]]; then
+    if [[ -f ${GOLEM_DIR}/golemapp ]]; then
         CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
         if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
@@ -198,12 +201,12 @@ function install_golem()
     fi
 
     info_msg "Installing Golem into $GOLEM_DIR"
-    [[ ! -d $GOLEM_DIR ]] && mkdir -p $GOLEM_DIR
+    [[ ! -d ${GOLEM_DIR} ]] && mkdir -p ${GOLEM_DIR}
     cp -R ${PACKAGE_DIR}/* ${GOLEM_DIR}
     rm -f /tmp/${PACKAGE} &>/dev/null
     rm -rf ${PACKAGE_DIR} &>/dev/null
-    [[ ! -f /usr/local/bin/golemapp ]] && sudo ln -s $GOLEM_DIR/golemapp /usr/local/bin/golemapp
-    [[ ! -f /usr/local/bin/golemcli ]] && sudo ln -s $GOLEM_DIR/golemcli /usr/local/bin/golemcli
+    [[ ! -f /usr/local/bin/golemapp ]] && sudo ln -s ${GOLEM_DIR}/golemapp /usr/local/bin/golemapp
+    [[ ! -f /usr/local/bin/golemcli ]] && sudo ln -s ${GOLEM_DIR}/golemcli /usr/local/bin/golemcli
     return 0
 }
 
@@ -215,13 +218,13 @@ function main()
     install_dependencies
     install_golem
     result=$?
-    if [[ $INSTALL_DOCKER -eq 1 ]]; then
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
         info_msg "You need to restart your PC to finish installation"
     fi
-    if [[ $result -ne 0 ]]; then
+    if [[ ${result} -ne 0 ]]; then
         error_msg "Installation failed"
     fi
-    return $result
+    return ${result}
 }
 
 main

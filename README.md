@@ -12,13 +12,17 @@ that there are two types of nodes in the Golem network: requestor nodes that ann
 tasks and compute nodes that perform computations (in the actual implementation nodes may switch
 between both roles).
 
+## Job offers
+
+- [C++ & Solidity Software Engineer](docs/jobs/cpp_and_solidity_software_engineer.md)
+
 ## Installing and testing
 
 For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
 For Linux download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh), make it executable `chmod +x install.sh` and run `./install.sh`.
 For MS Windows download the installer from [here](https://github.com/golemfactory/golem/releases/); when downloaded, just run `setup.exe`.
 
-Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction. 
+Then read the application description and [testing](https://github.com/golemfactory/golem/wiki/Testing) instruction.
 
 [Golem for macOS](https://github.com/golemfactory/homebrew-golem)
 

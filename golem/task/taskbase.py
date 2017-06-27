@@ -355,6 +355,12 @@ class Task(object):
         """
         return []
 
+    def get_output_states(self):
+        """ Return list of states of final task results
+        :return list:
+        """
+        return []
+
 
 result_types = {'data': 0, 'files': 1}
 resource_types = {'zip': 0, 'parts': 1, 'hashes': 2}

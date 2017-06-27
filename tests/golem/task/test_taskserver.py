@@ -21,6 +21,7 @@ from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
+from golem.task.tasksession import TaskSession
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithappconfig import TestWithKeysAuth
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
@@ -704,6 +705,15 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         request_payment_mock.assert_called_once_with(expected_income)
         hello_mock.assert_called_once_with()
 
+    def test_new_connection(self):
+        ccd = self._get_config_desc()
+        ts = TaskServer(Node(), ccd, Mock(), self.client,
+                        use_docker_machine_manager=False)
+        tss = TaskSession(Mock())
+        ts.new_connection(tss)
+        assert len(ts.task_sessions_incoming) == 1
+        assert ts.task_sessions_incoming.pop() == tss
+
 
 class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
 
@@ -731,7 +741,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         session = MagicMock()
         session.task_id = task_id
         self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
-        self.ts.task_sessions_incoming.append(session)
+        self.ts.task_sessions_incoming.add(session)
         self.assertEquals([session], self.ts._find_sessions(subtask_id))
 
         # Found in task_sessions
