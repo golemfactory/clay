@@ -1,3 +1,5 @@
+import sys
+
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
 
@@ -8,7 +10,7 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    def __init__(self, cli, host, port, realm, ssl=False):
+    def __init__(self, cli, host, port, realm=u'golem', ssl=False):
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
@@ -23,12 +25,17 @@ class WebSocketCLI(object):
             threads.deferToThread(self.cli.execute, *args, **kwargs).addBoth(self.shutdown)
 
         def on_error(_):
+            sys.stderr.write("Error connecting to Golem instance ({})\n"
+                             .format(self.session.address))
+
             self.cli.register_client(WebSocketCLI.NoConnection())
             self.cli.execute(*args, **kwargs)
             self.shutdown()
 
         def connect():
-            self.session.connect().addCallbacks(on_connected, on_error)
+            self.session.connect(
+                auto_reconnect=False
+            ).addCallbacks(on_connected, on_error)
 
         reactor.callWhenRunning(connect)
         reactor.run()

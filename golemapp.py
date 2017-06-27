@@ -36,53 +36,48 @@ from golem.node import OptNode
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
 def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
-    try:
-        freeze_support()
-        delete_reactor()
+    freeze_support()
+    delete_reactor()
 
-        if version:
-            from golem.core.variables import APP_VERSION
-            print ("GOLEM version: {}".format(APP_VERSION))
-            return 0
+    if version:
+        from golem.core.variables import APP_VERSION
+        print ("GOLEM version: {}".format(APP_VERSION))
+        return 0
 
-        # Workarounds for pyinstaller executable
-        sys.modules['win32com.gen_py.os'] = None
-        sys.modules['win32com.gen_py.pywintypes'] = None
-        sys.modules['win32com.gen_py.pythoncom'] = None
+    # Workarounds for pyinstaller executable
+    sys.modules['win32com.gen_py.os'] = None
+    sys.modules['win32com.gen_py.pywintypes'] = None
+    sys.modules['win32com.gen_py.pythoncom'] = None
 
-        config = dict(datadir=datadir, transaction_system=payments)
-        if rpc_address:
-            config['rpc_address'] = rpc_address.address
-            config['rpc_port'] = rpc_address.port
+    config = dict(datadir=datadir, transaction_system=payments)
+    if rpc_address:
+        config['rpc_address'] = rpc_address.address
+        config['rpc_port'] = rpc_address.port
 
-        # Crossbar
-        if m == 'crossbar.worker.process':
-            start_crossbar_worker(m)
-        # Qt GUI
-        elif qt:
-            from gui.startgui import start_gui, check_rpc_address
-            address = '{}:{}'.format(rpc_address.address, rpc_address.port)
-            start_gui(check_rpc_address(ctx=None, param=None,
-                                        address=address))
-        # Golem
-        elif gui:
-            from gui.startapp import start_app
-            start_app(rendering=True, **config)
-        # Golem headless
-        else:
-            from golem.core.common import config_logging
-            config_logging(datadir=datadir)
-            node = OptNode(node_address=node_address, **config)
-            node.initialize()
+    # Crossbar
+    if m == 'crossbar.worker.process':
+        start_crossbar_worker(m)
+    # Qt GUI
+    elif qt:
+        from gui.startgui import start_gui, check_rpc_address
+        address = '{}:{}'.format(rpc_address.address, rpc_address.port)
+        start_gui(check_rpc_address(ctx=None, param=None,
+                                    address=address))
+    # Golem
+    elif gui:
+        from gui.startapp import start_app
+        start_app(rendering=True, **config)
+    # Golem headless
+    else:
+        from golem.core.common import config_logging
+        config_logging(datadir=datadir)
+        node = OptNode(node_address=node_address, **config)
+        node.initialize()
 
-            node.connect_with_peers(peer)
-            node.add_tasks(task)
-            node.run(use_rpc=True)
-    except Exception as e:
-        import traceback
-        print e
-        print traceback.format_exc()
-        raise e
+        node.connect_with_peers(peer)
+        node.add_tasks(task)
+        node.run(use_rpc=True)
+
 
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
