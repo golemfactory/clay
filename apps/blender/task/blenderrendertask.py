@@ -488,7 +488,9 @@ class BlenderRenderTask(FrameRenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        self.test_task_res_path = get_test_task_path(self.root_path)
+        dm = DirManager(self.root_path)
+        self.test_task_res_path = dm.get_task_test_dir(self.header.task_id) #get_test_task_path(self.root_path)
+
         logger.debug(self.test_task_res_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)

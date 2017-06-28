@@ -143,7 +143,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.dirManager.get_task_temporary_dir(self.header.task_id)
 
         self.halttime = halttime
-        self.halttime = 50 # GG HACK
+        self.halttime = 50  # GG HACK
         self.haltspp = int(math.ceil(haltspp / self.total_tasks))
         self.verification_error = False
         self.merge_timeout = MERGE_TIMEOUT
@@ -167,7 +167,6 @@ class LuxTask(renderingtask.RenderingTask):
         self.preview_exr = None
         self.referenceRuns = 2
 
-
     def _get_random_crop_window_for_verification(self,
                                                  source_lux_config_file_lxs):
 
@@ -188,13 +187,11 @@ class LuxTask(renderingtask.RenderingTask):
         crop_window = ImgVerificator().get_random_crop_window()
         return crop_window
 
-    def _temp_save(self,filename,string): # GG debug only...
-        file = os.path.join(self.root_path,filename)
+    def _temp_save(self, filename, string):  # GG debug only...
+        file = os.path.join(self.root_path, filename)
         text_file = open(file, "w")
         text_file.write(string)
         text_file.close()
-
-
 
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
