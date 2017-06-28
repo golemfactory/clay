@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 import sys
-from multiprocessing import freeze_support
-
 import click
 
+from multiprocessing import freeze_support
 from golem.node import OptNode
+
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -37,6 +37,8 @@ from golem.node import OptNode
 @click.option('--title', expose_value=False)
 def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
     freeze_support()
+    delete_reactor()
+
     if version:
         from golem.core.variables import APP_VERSION
         print ("GOLEM version: {}".format(APP_VERSION))
@@ -57,14 +59,12 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         start_crossbar_worker(m)
     # Qt GUI
     elif qt:
-        delete_reactor()
         from gui.startgui import start_gui, check_rpc_address
         address = '{}:{}'.format(rpc_address.address, rpc_address.port)
         start_gui(check_rpc_address(ctx=None, param=None,
                                     address=address))
     # Golem
     elif gui:
-        delete_reactor()
         from gui.startapp import start_app
         start_app(rendering=True, **config)
     # Golem headless
@@ -72,7 +72,6 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
-        delete_reactor()
         node.initialize()
 
         node.connect_with_peers(peer)

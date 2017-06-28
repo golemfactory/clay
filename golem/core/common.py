@@ -8,8 +8,16 @@ from datetime import datetime
 import pytz
 from pathlib import Path
 
-
 TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
+DEVNULL = open(os.devnull, 'wb')
+
+
+def is_frozen():
+    """
+    Check if running a frozen script
+    :return: True if executing a frozen script, False otherwise
+    """
+    return hasattr(sys, 'frozen') and sys.frozen
 
 
 def is_windows():

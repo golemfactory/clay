@@ -1,12 +1,13 @@
 import atexit
 import logging
+import os
 import signal
 import subprocess
 import sys
 
-import os
 from requests import ConnectionError
 
+from golem.core.common import DEVNULL, is_frozen
 from golem.core.processmonitor import ProcessMonitor
 from golem.network.hyperdrive.client import HyperdriveClient
 
@@ -65,7 +66,11 @@ class HyperdriveDaemonManager(object):
         try:
             if not os.path.exists(self._dir):
                 os.makedirs(self._dir)
-            process = subprocess.Popen(self._command)
+
+            pipe = subprocess.PIPE if is_frozen() else None
+            process = subprocess.Popen(self._command, stdin=DEVNULL,
+                                       stdout=pipe, stderr=pipe)
+
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
                             "Make sure path is correct and check "
