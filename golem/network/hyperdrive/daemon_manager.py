@@ -21,6 +21,7 @@ class HyperdriveDaemonManager(object):
     def __init__(self, datadir, **hyperdrive_config):
         super(HyperdriveDaemonManager, self).__init__()
 
+        self._addresses = None
         self._config = hyperdrive_config
 
         # monitor and restart if process dies
@@ -32,7 +33,9 @@ class HyperdriveDaemonManager(object):
 
     def addresses(self):
         try:
-            return HyperdriveClient(**self._config).addresses()
+            if not self._addresses:
+                self._addresses = HyperdriveClient(**self._config).addresses()
+            return self._addresses
         except ConnectionError:
             return dict()
 
@@ -51,6 +54,7 @@ class HyperdriveDaemonManager(object):
         signal.signal(signal.SIGTERM, self.stop)
         signal.signal(signal.SIGINT, self.stop)
 
+        self._addresses = None
         self._monitor.start()
         return self._start()
 
@@ -61,7 +65,7 @@ class HyperdriveDaemonManager(object):
         # do not supervise already running processes
         addresses = self.addresses()
         if addresses:
-            return self.ports(addresses)
+            return
 
         try:
             if not os.path.exists(self._dir):
@@ -82,5 +86,3 @@ class HyperdriveDaemonManager(object):
             self._monitor.add_child_processes(process)
         else:
             raise RuntimeError("Cannot start {}".format(self._executable))
-
-        return self.ports()
