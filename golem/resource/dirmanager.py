@@ -64,7 +64,7 @@ class DirManager(object):
         """ Create new directory, remove old directory if it exists.
         :param str full_path: path to directory that should be created
         """
-        if os.path.exists(full_path):  # GG why remove old?
+        if os.path.exists(full_path):
             os.remove(full_path)
 
         os.makedirs(full_path)

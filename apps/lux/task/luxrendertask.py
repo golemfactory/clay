@@ -187,12 +187,6 @@ class LuxTask(renderingtask.RenderingTask):
         crop_window = ImgVerificator().get_random_crop_window()
         return crop_window
 
-    def _temp_save(self, filename, string):  # GG debug only...
-        file = os.path.join(self.root_path, filename)
-        text_file = open(file, "w")
-        text_file.write(string)
-        text_file.close()
-
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
         state['preview_exr'] = None

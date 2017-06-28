@@ -66,6 +66,54 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         random_crop_window_for_verification = ImgVerificator().get_random_crop_window(coverage = 0.1, window=(0,1,0,1))
         assert random_crop_window_for_verification == (0.57739221584148, 0.8936199818583179, 0.5182681753558643, 0.8344959413727022)
 
+    def test_pilcrop_vs_luxrender_croppingwindow(self):
+
+        #arrange
+        folder_path = os.path.join(get_golem_path(),
+                                   "tests", "apps", "rendering", "resources", "pilcrop_vs_cropwindow_test")
+
+        img0 = PILImgRepr()
+        img0.load_from_file(os.path.join(folder_path, '0.209 0.509 0.709 0.909.png'))
+        cropping_window0 = (0.209, 0.509, 0.709, 0.909)
+
+        img1 = PILImgRepr()
+        img1.load_from_file(os.path.join(folder_path, '0.210 0.510 0.710 0.910.png'))
+        cropping_window1 = (0.210, 0.510, 0.710, 0.910)
+
+        img2 = PILImgRepr()
+        img2.load_from_file(os.path.join(folder_path, '0.211 0.511 0.711 0.911.png'))
+        cropping_window2 = (0.211, 0.511, 0.711, 0.911)
+
+
+        answer_img0 = PILImgRepr()
+        answer_img0.load_from_file(os.path.join(folder_path, 'answer 0.209 0.509 0.709 0.909.png'))
+
+        answer_img1 = PILImgRepr()
+        answer_img1.load_from_file(os.path.join(folder_path, 'answer 0.210 0.510 0.710 0.910.png'))
+
+        answer_img2 = PILImgRepr()
+        answer_img2.load_from_file(os.path.join(folder_path, 'answer 0.211 0.511 0.711 0.911.png'))
+
+        imgVerificator = ImgVerificator()
+
+
+        # act
+        cropped_img0 = imgVerificator.crop_img_relative(img0,cropping_window0)
+        cropped_img0.img.save(os.path.join(folder_path,'cropped'+cropped_img0.get_name() ))
+
+        cropped_img1 = imgVerificator.crop_img_relative(img1,cropping_window1)
+        cropped_img1.img.save(os.path.join(folder_path,'cropped'+cropped_img1.get_name() ))
+
+        cropped_img2 = imgVerificator.crop_img_relative(img2,cropping_window2)
+        cropped_img2.img.save(os.path.join(folder_path,'cropped'+cropped_img2.get_name() ))
+
+
+        # assert
+        import hashlib
+        assert hashlib.md5(cropped_img0.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img0.to_pil().tobytes()).hexdigest()
+        assert hashlib.md5(cropped_img1.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img1.to_pil().tobytes()).hexdigest()
+        assert hashlib.md5(cropped_img2.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img2.to_pil().tobytes()).hexdigest()
+
 
 
     def test_is_valid_against_reference(self):

@@ -77,13 +77,12 @@ class ImgVerificator:
         left, upper, right, and lower pixel ordinate.
         """
 
-        # GG todo check whther pilImg.crop() rounds off in the
-        # same way as luxrender's "float cropwindow" [0.2 0.4 0.7 0.9] parameter
         (res_x, res_y) = img.get_size()
-        left = int(round(res_x * crop_window[0]))
-        right = int(round(res_x * crop_window[1]))
-        lower = int(round(res_y * crop_window[2]))
-        upper = int(round(res_y * crop_window[3]))
+
+        left = int(math.ceil(res_x * crop_window[0]))
+        right = int(math.ceil(res_x * crop_window[1]))
+        lower = int(math.ceil(res_y * crop_window[2]))
+        upper = int(math.ceil(res_y * crop_window[3]))
 
         # in PIL's world (0,0) is bottom left ;p
         cropped_img = img.to_pil().crop((left, lower, right, upper))
