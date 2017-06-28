@@ -10,7 +10,7 @@ class HyperdriveClient(IClient):
     CLIENT_ID = 'hyperg'
     VERSION = 1.0
 
-    def __init__(self, port=3292, host='127.0.0.1', timeout=None):
+    def __init__(self, port=3292, host='localhost', timeout=None):
         super(HyperdriveClient, self).__init__()
 
         # destination address
