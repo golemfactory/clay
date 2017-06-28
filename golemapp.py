@@ -71,12 +71,6 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
     else:
         install_reactor()
 
-        from golem.core.common import is_windows
-        if is_windows():
-            import subprocess
-            startupinfo = subprocess.STARTUPINFO()
-            startupinfo.dwFlags &= ~subprocess.STARTF_USESHOWWINDOW
-
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
