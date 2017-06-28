@@ -191,6 +191,24 @@ class AppConfig:
     def set_node_property(self, prop):
         return getattr(self._cfg.get_node_config(), "set_{}".format(prop))
 
+    @staticmethod
+    def scale_value(val):
+        try:
+            val = float(val)
+            if -1.0 <= val < 1.0 and val != 0: # new gui > old gui :(
+                return val
+            elif 0.0 <= val <= 100.0:
+                return (val / 50.0) - 1.0
+            else:
+                return -1.0
+        except ValueError:
+            return -1.0
+
+    def scale_values(self, cfg_desc):
+        # FIXME Probably should be moved to frontend
+        cfg_desc.computing_trust = self.scale_value(cfg_desc.computing_trust)
+        cfg_desc.requesting_trust = self.scale_value(cfg_desc.requesting_trust)
+
     def change_config(self, cfg_desc):
         if not isinstance(cfg_desc, ClientConfigDescriptor):
             raise TypeError(
@@ -198,6 +216,7 @@ class AppConfig:
                 " Should be ClientConfigDescriptor"
                 .format(type(cfg_desc))
             )
+        self.scale_values(cfg_desc)
 
         for var, val in vars(cfg_desc).iteritems():
             setter = "set_{}".format(var)
