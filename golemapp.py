@@ -69,6 +69,14 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         start_app(rendering=True, **config)
     # Golem headless
     else:
+        install_reactor()
+
+        from golem.core.common import is_windows
+        if is_windows():
+            import subprocess
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags &= ~subprocess.STARTF_USESHOWWINDOW
+
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, **config)
@@ -82,6 +90,15 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
+
+
+def install_reactor():
+    from golem.core.common import is_windows
+    if is_windows():
+        from twisted.internet import iocpreactor
+        iocpreactor.install()
+    from twisted.internet import reactor
+    return reactor
 
 
 def start_crossbar_worker(module):
