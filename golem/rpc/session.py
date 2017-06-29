@@ -126,7 +126,7 @@ class Session(ApplicationSession):
                 logger.error("RPC: Not subscribed to: {}".format(event_name))
 
     def is_open(self):
-        return self.connected and self.is_attached()
+        return self.connected and self.is_attached() and not self.is_closing()
 
     def is_closing(self):
         return self._goodbye_sent or self._transport_is_closing

@@ -2,9 +2,8 @@ import unittest
 from collections import OrderedDict
 
 import autobahn
-from mock import Mock
+from mock import Mock, patch
 from twisted.internet.defer import Deferred
-from twisted.python.failure import Failure
 
 from golem.rpc.session import (
     RPCAddress, WebSocketAddress, Publisher, Client, Session,
@@ -74,9 +73,13 @@ class TestObjectMethodMap(unittest.TestCase):
 class TestPublisher(LogTestCase):
 
     def test_publish(self):
-
-        session = Mock()
+        session = Session(WebSocketAddress('localhost', 12345, u'golem'))
         publisher = Publisher(session)
+
+        session.publish = Mock()
+        session.is_closing = Mock()
+        session.is_attached = Mock()
+        session.is_attached.return_value = True
 
         # Not connected, session closing
         session.connected = False
@@ -102,6 +105,11 @@ class TestPublisher(LogTestCase):
         session.publish.assert_called_with('alias', 1234, kw='arg')
 
 
+def mock_report_calls(func):
+    return func
+
+
+@patch('golem.client.report_calls', mock_report_calls)
 class TestClient(unittest.TestCase):
 
     class Result(object):
@@ -113,6 +121,7 @@ class TestClient(unittest.TestCase):
 
     def setUp(self):
         self.session = Mock()
+        self.session.is_attached.return_value = True
         self.session.call.return_value = Deferred()
         self.session.is_closing = lambda *_: self.session._goodbye_sent or \
                                              self.session._transport_is_closing
@@ -121,20 +130,20 @@ class TestClient(unittest.TestCase):
             method_2='alias_2'
         )
 
-    def test_initialization(self):
+    def test_initialization(self, *_):
         client = Client(self.session, self.method_map)
         assert hasattr(client, 'method_1')
         assert hasattr(client, 'method_2')
         assert callable(getattr(client, 'method_1'))
         assert callable(getattr(client, 'method_2'))
 
-    def test_call_no_session(self):
+    def test_call_no_session(self, *_):
 
         client = Client(None, self.method_map)
         with self.assertRaises(AttributeError):
             client.method_1(arg1=1, arg2='2')
 
-    def test_call_not_connected(self):
+    def test_call_not_connected(self, *_):
 
         self.session.connected = False
         self.session._transport_is_closing = False
@@ -145,15 +154,23 @@ class TestClient(unittest.TestCase):
         deferred = client.method_1(arg1=1, arg2='2')
 
         assert isinstance(deferred, Deferred)
-        assert deferred.called
+        assert not deferred.called
+
+        self.session.connected = True
 
         result = self.Result()
-        client._session._transport_is_closing = False
+        client._session._transport_is_closing = True
 
         deferred = client.method_1(arg1=1, arg2='2')
         deferred.addBoth(result.set)
 
-        assert isinstance(result.value, Failure)
+        assert result.value is None
+        assert not client._on_error.called
+
+        deferred = client.method_1(arg1=1, arg2='2')
+        deferred.addBoth(result.set)
+
+        assert result.value is None
         assert not client._on_error.called
 
         client._session._transport_is_closing = True
@@ -162,7 +179,7 @@ class TestClient(unittest.TestCase):
         assert isinstance(deferred, Deferred)
         assert not deferred.called
 
-    def test_call_connected(self):
+    def test_call_connected(self, *_):
 
         self.session.connected = True
 
