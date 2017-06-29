@@ -45,6 +45,11 @@ class DirManager(object):
         self.ref = reference_data_dir
         self.test = test
 
+    def get_file_extension(self, fullpath):
+        filename, file_extension = os.path.splitext(fullpath)
+        return file_extension
+
+
     def clear_dir(self, d):
         """ Remove everything from given directory
         :param str d: directory that should be cleared

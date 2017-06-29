@@ -14,6 +14,15 @@ class TestDirManager(TestDirFixture):
     def testInit(self):
         self.assertIsNotNone(DirManager(self.path))
 
+
+    def test_getFileExtension(self):
+        dm = DirManager(self.path)
+        path = 'some/long/path/to/somefile.abc'
+
+        ext = dm.get_file_extension(path)
+
+        assert ext == 'abc'
+
     def testClearDir(self):
         file1 = os.path.join(self.path, 'file1')
         file2 = os.path.join(self.path, 'file2')

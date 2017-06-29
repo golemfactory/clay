@@ -266,6 +266,7 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(hash, extra_data, None, perf_index)
         return self.ExtraData(ctd=ctd)
 
+    # GG propably same as query_extra_data_for_merge
     def query_extra_data_for_flm_merging_test(self):
         scene_src = regenerate_lux_file(
             scene_file_src=self.scene_file_src,
