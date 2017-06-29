@@ -10,6 +10,7 @@ from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
     DEVNULL
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
+from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
 
@@ -304,37 +305,62 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def build_images(cls):
-        cwd = os.getcwdu()
+        entries = []
 
         for entry in cls._collect_images():
-            image, docker_file, tag = entry
-            version = '{}:{}'.format(image, tag)
+            version = cls._image_version(entry)
+            if not cls.command('images', args=[version], check_output=True):
+                entries.append(entry)
 
-            if not cls.command('images', args=[version],
-                               check_output=True):
-                try:
-                    os.chdir(APPS_DIR)
-                    logger.warn('Docker: building image {}'
-                                .format(version))
-                    cls.command('build', args=['-t', image,
-                                               '-f', docker_file,
-                                               '.'])
-                    cls.command('tag', args=[image, version])
-                finally:
-                    os.chdir(cwd)
+        if entries:
+            cls._build_images(entries)
+
+    @classmethod
+    @report_calls(Component.docker, 'images.build')
+    def _build_images(cls, entries):
+        cwd = os.getcwdu()
+
+        for entry in entries:
+            image, docker_file, tag = entry
+            version = cls._image_version(entry)
+
+            try:
+                os.chdir(APPS_DIR)
+                logger.warn('Docker: building image {}'
+                            .format(version))
+                cls.command('build', args=['-t', image,
+                                           '-f', docker_file,
+                                           '.'])
+                cls.command('tag', args=[image, version])
+            finally:
+                os.chdir(cwd)
 
     @classmethod
     def pull_images(cls):
+        entries = []
+
         for entry in cls._collect_images():
-            image, docker_file, tag = entry
-            version = '{}:{}'.format(image, tag)
+            version = cls._image_version(entry)
+            if not cls.command('images', args=[version], check_output=True):
+                entries.append(entry)
 
-            if not cls.command('images', args=[version],
-                               check_output=True):
+        if entries:
+            cls._pull_images(entries)
 
-                logger.warn('Docker: pulling image {}'
-                            .format(version))
-                cls.command('pull', args=[version])
+    @classmethod
+    @report_calls(Component.docker, 'images.pull')
+    def _pull_images(cls, entries):
+        for entry in entries:
+            version = cls._image_version(entry)
+
+            logger.warn('Docker: pulling image {}'
+                        .format(version))
+            cls.command('pull', args=[version])
+
+    @classmethod
+    def _image_version(cls, entry):
+        image, _, tag = entry
+        return '{}:{}'.format(image, tag)
 
     @classmethod
     def _collect_images(cls):
@@ -475,6 +501,7 @@ class VirtualBoxHypervisor(Hypervisor):
         self.LockType = LockType
 
     @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name):
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:
@@ -509,6 +536,7 @@ class VirtualBoxHypervisor(Hypervisor):
             self._docker_manager.start_docker_machine()
 
     @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name):
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:
@@ -535,6 +563,7 @@ class VirtualBoxHypervisor(Hypervisor):
 
         self._docker_manager.start_docker_machine()
 
+    @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name, **params):
         logger.info("VirtualBox: creating VM '{}'".format(name))
 
@@ -675,6 +704,7 @@ class XhyveHypervisor(Hypervisor):
     def __init__(self, docker_manager):
         super(XhyveHypervisor, self).__init__(docker_manager)
 
+    @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name, **params):
         cpu = params.get(CONSTRAINT_KEYS['cpu'], None)
         mem = params.get(CONSTRAINT_KEYS['mem'], None)
@@ -721,11 +751,13 @@ class XhyveHypervisor(Hypervisor):
                          .format(name, e))
 
     @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name):
         with self.restart_ctx(name) as _name:
             yield _name
 
     @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name):
         if self._docker_manager.docker_machine_running(name):
             self._docker_manager.stop_docker_machine(name)
