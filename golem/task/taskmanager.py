@@ -670,12 +670,17 @@ class TaskManager(TaskEventListener):
             logger.exception("Cannot estimate price, wrong params")
             return None
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
+    def __add_subtask_to_tasks_states(self, node_name, node_id, comp_price,
+                                      ctd, address):
 
-        if ctd.task_id not in self.tasks_states:
+        if ctd.task_id not in self.tasks_states or \
+                        ctd.task_id not in self.tasks:
             raise RuntimeError("Should never be here!")
 
-        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)', node_name, node_id, price, ctd, address)
+        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
+                     node_name, node_id, comp_price, ctd, address)
+
+        price = self.tasks[ctd.task_id].header.max_price
 
         ss = SubtaskState()
         ss.computer.node_id = node_id
