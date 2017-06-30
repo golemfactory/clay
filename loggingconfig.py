@@ -62,6 +62,14 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.rpc.crossbar': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'twisted': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.network': {'propagate': True},
         'golem.network.transport': {'propagate': True},
         'apps': {
