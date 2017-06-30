@@ -65,11 +65,6 @@ def start_client(start_ranking, datadir=None,
                  reactor=None, **config_overrides):
 
     config_logging("client", datadir=datadir)
-    from ethereum import slogging
-    slogging.configure(u':debug')
-    from twisted.python import log
-    observer = log.PythonLoggingObserver(loggerName='twisted')
-    observer.start()
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
 

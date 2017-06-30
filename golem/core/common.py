@@ -179,3 +179,9 @@ def config_logging(suffix='', datadir=None):
 
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
+
+    from ethereum import slogging
+    slogging.configure(u':debug')
+    from twisted.python import log
+    observer = log.PythonLoggingObserver(loggerName='twisted')
+    observer.start()

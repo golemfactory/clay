@@ -13,6 +13,7 @@ def monkey_patched_getLogger(*args, **kwargs):
     orig_class = logging.getLoggerClass()
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
+    return result
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
 
