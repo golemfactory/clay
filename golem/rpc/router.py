@@ -54,9 +54,6 @@ class CrossbarRouter(object):
         self._start_node(options, reactor).addCallbacks(callback, errback)
 
     def _start_node(self, options, reactor):
-        from txaio import  set_global_log_level
-        crossbar_log_lvl = logging.getLevelName(logging.getLogger('golem.rpc.crossbar').level).lower()
-        set_global_log_level(crossbar_log_lvl)
         self.node = Node(options.cbdir, reactor=reactor)
         self.pubkey = self.node.maybe_generate_key(options.cbdir)
 

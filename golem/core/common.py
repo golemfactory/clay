@@ -185,3 +185,8 @@ def config_logging(suffix='', datadir=None):
     from twisted.python import log
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
+
+    from txaio import set_global_log_level
+    crossbar_log_lvl = logging.getLevelName(
+        logging.getLogger('golem.rpc.crossbar').level).lower()
+    set_global_log_level(crossbar_log_lvl)
