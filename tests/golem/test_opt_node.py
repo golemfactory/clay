@@ -171,22 +171,17 @@ class TestNode(TestWithDatabase):
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
-    def setUp(self):
-        super(TestOptNode, self).setUp()
-
-        self.parsed_peer = OptNode.parse_peer(None, None, ['10.0.0.10:40104'])
-        self.node = OptNode(self.path, use_docker_machine_manager=False,
-                            rpc_address='127.0.0.1', rpc_port=12345,
-                            peers=self.parsed_peer)
-
-        self.node.client.connect = Mock()
-        self.node.client.start = Mock()
-
     def tearDown(self):
-        self.node.client.quit()
+        if hasattr(self, 'node'):
+            self.node.client.quit()
+        super(TestOptNode, self).tearDown()
 
     def test_start_rpc_router(self, reactor, router):
         from golem.rpc.session import WebSocketAddress
+
+        self.node = OptNode(self.path, use_docker_machine_manager=False,
+                            rpc_address='127.0.0.1', rpc_port=12345)
+
         config = self.node.client.config_desc
 
         router.return_value = router
@@ -201,23 +196,35 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.called
 
     @patch('golem.docker.image.DockerImage')
-    @patch('golem.docker.manager.DockerManager')
-    def test_setup_without_docker(self, docker_manager, *_):
-        self.node.client.use_docker_machine_manager = False
+    def test_setup_without_docker(self, *_):
+
+        self.parsed_peer = OptNode.parse_peer(None, None, ['10.0.0.10:40104'])
+        self.node = OptNode(self.path, use_docker_machine_manager=False,
+                            peers=self.parsed_peer)
+
+        self.node._setup_docker = Mock()
+        self.node.client.connect = Mock()
+        self.node.client.start = Mock()
+        self.node.client.environments_manager = Mock()
         self.node.run()
 
         assert self.node.client.start.called
         assert self.node._apps_manager is not None
-        assert not docker_manager.install.called
+        assert not self.node._setup_docker.called
         self.node.client.connect.assert_called_with(self.parsed_peer[0])
 
     @patch('golem.docker.image.DockerImage')
-    @patch('golem.docker.manager.DockerManager')
     def test_setup_with_docker(self, docker_manager, *_):
-        self.node.client.use_docker_machine_manager = True
+        docker_manager.return_value = docker_manager
+
+        self.node = OptNode(self.path, use_docker_machine_manager=True)
+
+        self.node._setup_docker = Mock()
+        self.node.client.connect = Mock()
+        self.node.client.start = Mock()
+        self.node.client.environments_manager = Mock()
         self.node.run()
 
         assert self.node.client.start.called
         assert self.node._apps_manager is not None
-        assert docker_manager.install.called
-        self.node.client.connect.assert_called_with(self.parsed_peer[0])
+        assert self.node._setup_docker.called
