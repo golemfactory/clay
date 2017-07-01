@@ -1,4 +1,4 @@
-from mock import patch, Mock
+from mock import patch, Mock, call
 from requests import ConnectionError
 
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
@@ -33,9 +33,12 @@ class TestHyperdriveDaemonManager(TempDirFixture):
 
         daemon_manager = HyperdriveDaemonManager(self.path)
         daemon_manager._monitor.add_callbacks.assert_called_with(daemon_manager._start)
-        # only registered atexit function is monitor.exit
-        register.assert_called_with(daemon_manager._monitor.exit)
-        assert register.call_count == 1
+
+        assert register.call_count == 2
+        register.assert_has_calls(
+            [call()(daemon_manager._monitor.exit)],
+            [call()(daemon_manager.stop)]
+        )
 
         # hyperdrive not running
         process.poll.return_value = True
@@ -65,7 +68,7 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             daemon_manager.start()
 
             register.assert_called_with(daemon_manager.stop)
-            assert register.call_count == 3
+            assert register.call_count == 2
             assert daemon_manager._monitor.start.called
             assert makedirs.called
             daemon_manager._monitor.add_child_processes.assert_called_with(process)
@@ -81,7 +84,7 @@ class TestHyperdriveDaemonManager(TempDirFixture):
             daemon_manager.start()
 
             register.assert_called_with(daemon_manager.stop)
-            assert register.call_count == 4
+            assert register.call_count == 2
             assert daemon_manager._monitor.start.called
             assert not makedirs.called
             assert not daemon_manager._monitor.add_child_processes.called
