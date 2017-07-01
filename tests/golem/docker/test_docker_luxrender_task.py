@@ -94,7 +94,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         # Create the computing node
         self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.start = Mock()
-        self.node.initialize()
+        self.node._run()
 
         ccd = ClientConfigDescriptor()
         ccd.estimated_blender_performance = 2000.0

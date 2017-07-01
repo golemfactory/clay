@@ -17,9 +17,6 @@ from golem.node import OptNode
               help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
-@click.option('--task', '-t', multiple=True, type=click.Path(exists=True),
-              callback=OptNode.parse_task_file,
-              help="Request task from file")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
@@ -35,7 +32,7 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
+def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version, m):
     freeze_support()
     delete_reactor()
 
@@ -69,15 +66,11 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         start_app(rendering=True, **config)
     # Golem headless
     else:
-        install_reactor()
-
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
-        node = OptNode(node_address=node_address, **config)
-        node.initialize()
+        install_reactor()
 
-        node.connect_with_peers(peer)
-        node.add_tasks(task)
+        node = OptNode(peers=peer, node_address=node_address, **config)
         node.run(use_rpc=True)
 
 
