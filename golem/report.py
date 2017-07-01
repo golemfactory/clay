@@ -49,10 +49,16 @@ def report_call(component, part, stage=None):
             StatePublisher.publish(component, part, Stage.post)
 
 
-def report_calls(component, part, stage=None):
+def report_calls(component, part, stage=None, once=False):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if once:
+                prop = '_report_called_{}'.format(part)
+                if hasattr(func, prop):
+                    return func(*args, **kwargs)
+                setattr(func, prop, True)
+
             with report_call(component, part, stage):
                 return func(*args, **kwargs)
         return wrapper
