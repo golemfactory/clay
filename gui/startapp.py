@@ -82,21 +82,11 @@ def start_client(start_ranking, datadir=None,
     from golem.rpc.router import CrossbarRouter
 
     if not client:
-        client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
-
-    docker_manager = DockerManager.install(client.config_desc)
-    docker_manager.check_environment()
-    environments = load_environments()
-
-    client.sync()
-
-    for env in environments:
-        client.environments_manager.add_environment(env)
-    client.environments_manager.load_config(client.datadir)
+        client = Client(datadir=datadir, transaction_system=transaction_system,
+                        **config_overrides)
 
     config = client.config_desc
     methods = object_method_map(client, CORE_METHOD_MAP)
-
     router = CrossbarRouter(
         host=config.rpc_address,
         port=config.rpc_port,
@@ -109,10 +99,20 @@ def start_client(start_ranking, datadir=None,
 
     def session_ready(*_):
         global process_monitor
+        client.configure_rpc(session)
+
+        docker_manager = DockerManager.install(client.config_desc)
+        docker_manager.check_environment()
+        environments = load_environments()
+
+        for env in environments:
+            client.environments_manager.add_environment(env)
+        client.environments_manager.load_config(client.datadir)
 
         logger.info('Router session ready. Starting client...')
         try:
-            client.configure_rpc(session)
+            logger.debug('client.sync()')
+            client.sync()
             logger.debug('client.start()')
             client.start()
             logger.debug('after client.start()')
