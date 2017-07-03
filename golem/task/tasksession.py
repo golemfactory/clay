@@ -23,7 +23,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-TASK_PROTOCOL_ID = 14
+TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):
@@ -44,9 +44,7 @@ def dropped_after():
             result = f(self, *args, **kwargs)
             self.dropped()
             return result
-
         return curry
-
     return inner
 
 
@@ -309,7 +307,7 @@ class TaskSession(MiddlemanSafeSession):
             max_resource_size,
             max_memory_size,
             num_cores
-    ):
+            ):
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
         :param uuid task_id: if of a task that node wants to compute
@@ -357,7 +355,7 @@ class TaskSession(MiddlemanSafeSession):
             port,
             eth_account,
             node_info
-    ):
+            ):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result
                                               with additional information
@@ -517,8 +515,8 @@ class TaskSession(MiddlemanSafeSession):
 
     @handle_attr_error_with_task_computer
     def _react_to_task_to_compute(self, msg):
-        if self._check_ctd_params(msg.compute_task_def) \
-                and self._set_env_params(msg.compute_task_def) \
+        if self._check_ctd_params(msg.compute_task_def)\
+                and self._set_env_params(msg.compute_task_def)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg.compute_task_def):  # noqa
             self.task_server.add_task_session(
                 msg.compute_task_def.subtask_id, self
@@ -833,8 +831,8 @@ class TaskSession(MiddlemanSafeSession):
         if not tcpnetwork.SocketAddress.is_proper_address(
                 ctd.return_address,
                 ctd.return_port
-        ):
-            self.err_msg = "Wrong return address {}:{}" \
+                ):
+            self.err_msg = "Wrong return address {}:{}"\
                 .format(ctd.return_address, ctd.return_port)
             return False
         return True
@@ -854,7 +852,7 @@ class TaskSession(MiddlemanSafeSession):
             ctd.src_code = env.get_source_code()
 
         if not ctd.src_code:
-            self.err_msg = "No source code for environment {}" \
+            self.err_msg = "No source code for environment {}"\
                 .format(environment)
             return False
 
