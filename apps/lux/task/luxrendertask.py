@@ -143,7 +143,6 @@ class LuxTask(renderingtask.RenderingTask):
             self.dirManager.get_task_temporary_dir(self.header.task_id)
 
         self.halttime = halttime
-        self.halttime = 50  # GG HACK
         self.haltspp = int(math.ceil(haltspp / self.total_tasks))
         self.verification_error = False
         self.merge_timeout = MERGE_TIMEOUT
