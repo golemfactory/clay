@@ -42,12 +42,6 @@ class HyperdriveDaemonManager(object):
             '--logfile', logpath,
         ]
 
-        logsdir = os.path.join(datadir, "logs")
-        if not os.path.exists(logsdir):
-            os.makedirs(logsdir)
-        # TODO: capture hyperg output using tee
-        self._logfilename = os.path.join(logsdir, "hyperg.log")
-
     def addresses(self):
         try:
             if not self._addresses:
@@ -83,8 +77,9 @@ class HyperdriveDaemonManager(object):
                 os.makedirs(self._dir)
 
             pipe = subprocess.PIPE if is_frozen() else None
-            process = subprocess.Popen(self._command, stdin=DEVNULL,
-                                       stdout=pipe, stderr=pipe)
+            logger.error("running HyperG {}".format(" ".join(self._command)))
+            process = subprocess.Popen(" ".join(self._command), shell=True,
+                                       stdin=DEVNULL, stdout=pipe, stderr=pipe)
 
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
