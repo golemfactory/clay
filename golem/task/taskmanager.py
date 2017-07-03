@@ -493,6 +493,8 @@ class TaskManager(TaskEventListener):
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
+        task.header.signature = self.sign_task_header(task.header)
+
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error

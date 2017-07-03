@@ -70,9 +70,6 @@ class Node(object):
 
     def run(self, use_rpc=False):
         try:
-            if is_windows():
-                from twisted.internet import iocpreactor
-                iocpreactor.install()
             from twisted.internet import reactor
 
             if use_rpc:
