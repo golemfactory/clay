@@ -123,6 +123,7 @@ class NodeProcess(object):
         init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
+            log.critical("geth init failed with code {}".format(init_subp.returncode))
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
@@ -155,6 +156,7 @@ class NodeProcess(object):
             args = args + [
                 '2>&1 |', # redirect stderr to stdout, pipe stdout
                 'tee',
+                '-a',
                 '"{}"'.format(logfilename)
             ]
         else:
@@ -189,12 +191,16 @@ class NodeProcess(object):
         log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
 
     def stop(self):
+        print("called node.stop")
         if self.__ps:
             start_time = time.clock()
 
             try:
+                print("called __ps.terminate")
                 self.__ps.terminate()
+                print("called __ps.wait")
                 self.__ps.wait()
+                print("__ps.wait done")
             except subprocess.NoSuchProcess:
                 log.warn("Cannot terminate node: process {} no longer exists"
                          .format(self.__ps.pid))
