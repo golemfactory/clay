@@ -487,6 +487,8 @@ class TaskManager(TaskEventListener):
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
+        task.header.signature = self.sign_task_header(task.header)
+
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error
@@ -624,9 +626,9 @@ class TaskManager(TaskEventListener):
         total_subtasks = task.get_total_tasks()
 
         return {
-            to_unicode(subtask.subtask_id): task_type.get_task_border(
+            to_unicode(subtask_id): task_type.get_task_border(
                 subtask, task.task_definition, total_subtasks, as_path=True
-            ) for subtask in task.get_subtasks(part)
+            ) for subtask_id, subtask in task.get_subtasks(part).iteritems()
         }
 
     def get_task_preview(self, task_id, single=False):

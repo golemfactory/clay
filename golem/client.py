@@ -253,7 +253,7 @@ class Client(HardwarePresetsMixin):
 
         if not self.daemon_manager:
             self.daemon_manager = HyperdriveDaemonManager(self.datadir)
-            hyperdrive_ports = self.daemon_manager.start()
+            self.daemon_manager.start()
 
         if not self.resource_server:
             resource_manager = HyperdriveResourceManager(dir_manager)
@@ -279,10 +279,11 @@ class Client(HardwarePresetsMixin):
 
         def terminate(*exceptions):
             log.error("Golem cannot listen on ports: %s", exceptions)
-            self.quit()
+            sys.exit(1)
 
         task = Deferred()
         p2p = Deferred()
+        hyperdrive_ports = self.daemon_manager.ports()
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)

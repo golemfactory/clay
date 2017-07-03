@@ -3,6 +3,7 @@ from __future__ import division
 import logging
 import math
 import os
+from bisect import insort
 from collections import OrderedDict, defaultdict
 
 from PIL import Image, ImageChops
@@ -18,7 +19,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
-from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
 
@@ -109,13 +110,27 @@ class FrameRenderingTask(RenderingTask):
 
     def get_output_states(self):
         if self.use_frames:
-            return sorted({to_unicode(k): v.serialize() for k, v
-                           in self.frames_state.iteritems()})
+            result = []
+            for k, v in self.frames_state.iteritems():
+                insort(result, (k, v.serialize()))
+            return result
         return []
 
     def get_subtasks(self, frame):
-        subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
-        return [self.subtasks_given[_id] for _id in subtask_ids]
+        if self.task_definition.options.use_frames:
+            subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+        else:
+            subtask_ids = self.subtasks_given.iterkeys()
+
+        subtasks = dict()
+
+        # Convert to SubtaskState in order to match parent's return type
+        for subtask_id in subtask_ids:
+            state = SubtaskState()
+            state.extra_data = self.subtasks_given[subtask_id]
+            subtasks[subtask_id] = state
+
+        return subtasks
 
     def accept_results(self, subtask_id, result_files):
         super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
