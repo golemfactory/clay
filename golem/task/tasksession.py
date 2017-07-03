@@ -24,7 +24,7 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 logger = logging.getLogger(__name__)
 
 
-TASK_PROTOCOL_ID = 14
+TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):
