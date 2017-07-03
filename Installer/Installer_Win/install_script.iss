@@ -69,9 +69,9 @@ Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\Hy
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golem-electron.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
 
 [Run]
 ; Install runtime
