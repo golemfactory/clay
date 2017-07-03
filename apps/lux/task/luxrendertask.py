@@ -195,7 +195,6 @@ class LuxTask(renderingtask.RenderingTask):
         super(LuxTask, self).initialize(dir_manager)
         self.verificator.test_flm = self.__get_test_flm()
         self.verificator.merge_ctd = self.__get_merge_ctd([])
-        # self.create_reference_data_for_task_validation()
 
     def _write_interval_wrapper(self, halttime):
         if halttime > 0:
@@ -297,7 +296,7 @@ class LuxTask(renderingtask.RenderingTask):
             0)
         return ctd
 
-    def query_extra_data_for_reference_task(self):
+    def query_extra_data_for_reference_task(self, counter ):
         write_interval = \
             self._write_interval_wrapper(self.halttime)
 
@@ -319,14 +318,14 @@ class LuxTask(renderingtask.RenderingTask):
             "start_task": 1,
             "end_task": 1,
             "total_tasks": 1,
-            "outfilebasename": "reference_task",
+            "outfilebasename": "".join(["reference_task", str(counter)]),
             "output_format": "png",
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
         }
 
         ctd = self._new_compute_task_def(
-            "ReferenceTask",
+            "".join(["ReferenceTask", str(counter)]),
             extra_data,
             scene_dir,
             0)
@@ -543,7 +542,7 @@ class LuxTask(renderingtask.RenderingTask):
                 path,
                 self.__final_img_ready,
                 self.__final_img_error,
-                self.query_extra_data_for_reference_task
+                lambda: self.query_extra_data_for_reference_task(counter=i)
             )
             computer.run()
             computer.tt.join()

@@ -105,7 +105,7 @@ class LuxRenderVerificator(RenderingVerificator):
             for ref_img in ref_imgs:
                 cropped_ref_img = imgVerificator.crop_img_relative(ref_img, task.random_crop_window_for_verification)
                 cropped_ref_imgs.append(cropped_ref_img)
-                cropped_ref_img.img.save('aaa' + cropped_ref_img.get_name())
+                # cropped_ref_img.img.save('aaa' + cropped_ref_img.get_name())
 
             reference_stats = ImgStatistics(cropped_ref_imgs[0], cropped_ref_imgs[1])  # these are imgs rendered by requestor
 
@@ -113,7 +113,7 @@ class LuxRenderVerificator(RenderingVerificator):
                 img = PILImgRepr()
                 img.load_from_file(png_file)
                 cropped_img = imgVerificator.crop_img_relative(img, task.random_crop_window_for_verification)
-                cropped_img.img.save('aaa' + cropped_img.get_name()) # GG todo dont save img in release ;)
+                # cropped_img.img.save('aaa' + cropped_img.get_name()) # you dont need to save cropped img in release ;)
                 imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
 
                 self.ver_states[subtask_id] = imgVerificator.is_valid_against_reference(imgstat, reference_stats)

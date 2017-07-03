@@ -22,6 +22,7 @@ from golem.testutils import TempDirFixture
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
 from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
@@ -174,7 +175,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         assert path.isfile(png)
 
         ##
-        self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
+        # self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
 
         test_file = task._LuxTask__get_test_flm()
         shutil.copy(flm, test_file)
@@ -197,9 +198,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
 
     def test_luxrender_real_task(self):
-        from golem.task.localcomputer import LocalComputer
         task = self._test_task() # GG todo change file resolution
-
+        task.res_y = 3
+        task.res_x = 4
         ctd = task.query_extra_data(10000).ctd
 
         ## act
@@ -237,8 +238,44 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertEqual(task.num_tasks_received, 1)
 
 
+    def test_run_stats(self):
+        results = []
+        pass
 
+        for i in range(0, 10):
+            task = self._test_task()  # GG todo change file resolution
+            task.res_y = 300
+            task.res_x = 400
+            ctd = task.query_extra_data(10000).ctd
 
+            ## act
+            computer = LocalComputer(
+                task,
+                self.tempdir,
+                Mock(),
+                Mock(),
+                lambda: ctd,
+            )
+
+            computer.run()
+            computer.tt.join()
+
+            new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
+
+            task.create_reference_data_for_task_validation()
+
+            ## assert good results - should pass
+            self.assertEqual(task.num_tasks_received, 0)
+            task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
+                                      result_type=result_types["files"])
+
+            result = task.verify_subtask(ctd.subtask_id)
+            results.append(result)
+
+        from collections import Counter
+        stats = Counter(results)
+        print stats
+        pass
 
 
     def test_luxrender_TaskTester_should_pass(self):
