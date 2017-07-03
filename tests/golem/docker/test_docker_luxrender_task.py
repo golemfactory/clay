@@ -13,7 +13,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
-from golem.resource.dirmanager import DirManager
+
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
@@ -29,7 +29,7 @@ logging.getLogger("peewee").setLevel("INFO")
 
 # TODO: extract code common to this class and TestDockerBlenderTask
 # to a superclass
-# TODO: test luxrender tasks with .flm file
+
 @ci_skip
 class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
@@ -83,6 +83,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
                                             dir_manager)
         render_task = task_builder.build()
         render_task.__class__._update_task_preview = lambda self_: ()
+        render_task.max_pending_client_results = 5
         return render_task
 
     def _run_docker_task(self, render_task, timeout=60*5):
@@ -142,38 +143,26 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _change_file_location(self, filepath, filename, subtask_id):
+    def _change_file_location(self, filepath, newfilepath ):
+        if os.path.exists(newfilepath):
+            os.remove(newfilepath)
 
-        new_file = path.join(
-            path.dirname(filepath),
-            subtask_id,
-            filename)
+        new_file_dir = os.path.dirname(newfilepath)
+        if not os.path.exists(new_file_dir):
+            os.makedirs(new_file_dir)
 
-        copied_file = path.join(path.dirname(filepath), filename)
+        shutil.copy(filepath, newfilepath)
+        return newfilepath
 
-        if os.path.exists(copied_file):
-            os.remove(copied_file)
-
-        shutil.copy(filepath, new_file)
-        return new_file
-
-    def test_luxrender_real_task(self):
-        from golem.task.localcomputer import LocalComputer
-        task = self._test_task() # GG todo change file resolution
-        task.max_pending_client_results = 5
-
-        computer = LocalComputer(
-            task,
-            self.tempdir,
-            Mock(),
-            Mock(),
-            # ugly lambda, should think of something prettier
-            lambda: task.query_extra_data(10000).ctd,
-        )
-        computer.run()
-        computer.tt.join()
-
-
+    def _extract_results(self, computer, task , subtask_id):
+        """
+        Since the local computer use temp dir, you should copy files out of there before you use local computer again.
+        Otherwise the files would get overwritten (during the verification process).
+        This is a problem only in test suite. In real life provider and requestor are separate machines
+        :param computer:
+        :param task:
+        :return:
+        """
         dirname = os.path.dirname(computer.tt.result['data'][0])
 
         dane =  computer.tt.result['data']
@@ -184,13 +173,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         assert path.isfile(flm)
         assert path.isfile(png)
 
-        extra_data = task.query_extra_data(10000)
-        ctd = extra_data.ctd
-
-
-        ## some copying
-
-        self.assertFalse(  path.isfile(task._LuxTask__get_test_flm()) )
+        ##
+        self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
 
         test_file = task._LuxTask__get_test_flm()
         shutil.copy(flm, test_file)
@@ -198,143 +182,78 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.dirs_to_remove.append(path.dirname(test_file))
         assert path.isfile(task._LuxTask__get_test_flm())
 
+        ## copy to new location
+        new_file_dir = path.join(path.dirname(test_file),subtask_id)
 
-        copied_file = path.join(path.dirname(test_file), "newflmfile.flm")
-        new_flm_file = path.join(path.dirname(test_file), ctd.subtask_id,
-                             "newflmfile.flm")
-        file_dir = os.path.dirname(new_flm_file)
-        file_dir2 = path.join(path.dirname(test_file), ctd.subtask_id)
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
+        new_flm_file =  self._change_file_location(test_file,
+                                                   path.join(new_file_dir, "newflmfile.flm"))
 
-        def remove_copied_file():
-            if os.path.exists(copied_file):
-                os.remove(copied_file)
+        new_png_file = self._change_file_location(png,
+                                                   path.join(new_file_dir, "newpngfile.png"))
 
-        shutil.copy(test_file, new_flm_file)
-        ## now the same for png
-        new_png_file = path.join(
-            path.dirname(test_file),
-            ctd.subtask_id,
-            "newpngfile.png")
 
-        copied_file = path.join(path.dirname(test_file), "newpngfile.png")
-        remove_copied_file()
+        return new_flm_file, new_png_file
 
-        shutil.copy(png, new_png_file)
-        ##
 
-        # new_png_file2 = self._change_file_location(png, "newpngfile2.png", ctd.subtask_id)
-        # dm = DirManager(self.tempdir)
-        # pth = DirManager.
+
+    def test_luxrender_real_task(self):
+        from golem.task.localcomputer import LocalComputer
+        task = self._test_task() # GG todo change file resolution
+
+        ctd = task.query_extra_data(10000).ctd
+
+        ## act
+        computer = LocalComputer(
+            task,
+            self.tempdir,
+            Mock(),
+            Mock(),
+            lambda: ctd,
+        )
+
+        computer.run()
+        computer.tt.join()
+
+        new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
+
         task.create_reference_data_for_task_validation()
+
+        ## assert good results - should pass
+        self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
                                   result_type=result_types["files"])
 
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
+        self.assertEqual(task.num_tasks_received, 1)
+
+        ## assert bad results - should fail
+        bad_flm_file = path.join(path.dirname(new_flm_file),"badfile.flm")
+        ctd = task.query_extra_data(10000).ctd
+        task.computation_finished(ctd.subtask_id, [bad_flm_file, new_png_file],
+                                  result_type=result_types["files"])
+
+        self.assertFalse(task.verify_subtask(ctd.subtask_id))
+        self.assertEqual(task.num_tasks_received, 1)
 
 
 
 
-    def test_luxrender_test(self):
+
+
+    def test_luxrender_TaskTester_should_pass(self):
         task = self._test_task()
-        task.max_pending_client_results = 5
+
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
         computer.tt.join(60.0)
 
         dirname = os.path.dirname(computer.tt.result[0]['data'][0])
-
         flm = find_file_with_ext(dirname, [".flm"])
         png = find_file_with_ext(dirname, [".png"])
 
         assert path.isfile(flm)
         assert path.isfile(png)
-
-
-        test_file = task._LuxTask__get_test_flm()
-
-        shutil.copy(flm, test_file)
-
-        self.dirs_to_remove.append(path.dirname(test_file))
-        assert path.isfile(task._LuxTask__get_test_flm())
-        extra_data = task.query_extra_data(10000)
-        ctd = extra_data.ctd
-
-        copied_file = path.join(path.dirname(test_file), "newfile.flm")
-        new_file = path.join(path.dirname(test_file), ctd.subtask_id,
-                             "newfile.flm")
-        file_dir = os.path.dirname(new_file)
-
-        if not os.path.exists(file_dir):
-            os.makedirs(file_dir)
-
-        def remove_copied_file():
-            if os.path.exists(copied_file):
-                os.remove(copied_file)
-
-        shutil.copy(test_file, new_file)
-
-        task.create_reference_data_for_task_validation()
-        task.computation_finished(ctd.subtask_id, [new_file, png],
-                                  result_type=result_types["files"])
-
-        # a= task.verify_subtask(ctd.subtask_id)
-        # self.assertTrue(task.verify_subtask(ctd.subtask_id))
-        # GG clean up
-
-
-        extra_data = task.query_extra_data(10000, node_id="Bla")
-        ctd = extra_data.ctd
-        task.verificator.advanced_verification = True
-        bad_file = path.join(path.dirname(test_file), "badfile.flm")
-        open(bad_file, "w").close()
-        task.computation_finished(ctd.subtask_id, [bad_file],
-                                  result_type=result_types["files"])
-        self.assertFalse(task.verify_subtask(ctd.subtask_id))
-
-        extra_data = task.query_extra_data(10000)
-        ctd = extra_data.ctd
-        shutil.copy(test_file, new_file)
-        shutil.move(test_file, test_file + "copy")
-        remove_copied_file()
-        task.computation_finished(ctd.subtask_id, [new_file],
-                                  result_type=result_types["files"])
-        # self.assertTrue(task.verify_subtask(ctd.subtask_id))
-        shutil.move(test_file + "copy", test_file)
-
-        extra_data = task.query_extra_data(10)
-        ctd = extra_data.ctd
-        shutil.copy(test_file, new_file)
-        remove_copied_file()
-        self.assertEqual(task.num_tasks_received, 2)
-        task.computation_finished(ctd.subtask_id, [new_file],
-                                  result_type=result_types["files"])
-        self.assertTrue(task.verify_subtask(ctd.subtask_id))
-        self.assertTrue(task.verify_task())
-        outfile = task.output_file + "." + task.output_format
-        outflm = task.output_file + "." + "flm"
-        self.files_to_remove.append(outfile)
-        self.files_to_remove.append(outflm)
-        self.assertTrue(path.isfile(outfile))
-
-        task.num_tasks_received -= 1
-        task.start_task = 0
-        task.end_task = 0
-        task.last_task = 0
-        self.assertFalse(task.verify_task())
-        remove(outfile)
-        task.verificator.advanced_verification = False
-        extra_data = task.query_extra_data(10)
-        ctd = extra_data.ctd
-        shutil.copy(test_file, new_file)
-        remove_copied_file()
-        task.computation_finished(ctd.subtask_id, [new_file],
-                                  result_type=result_types["files"])
-        self.assertTrue(task.verify_subtask(ctd.subtask_id))
-        self.assertTrue(task.verify_task())
-        self.assertTrue(path.isfile(outfile))
 
     def test_luxrender_subtask(self):
         task = self._test_task()
