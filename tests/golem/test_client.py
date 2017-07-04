@@ -457,6 +457,18 @@ class TestClient(TestWithDatabase):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    def test_restart_by_frame(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        self.client.task_server = Mock()
+        self.client.restart_frame_subtasks('tid', 10)
+
+        self.client.task_server.task_manager.restart_frame_subtasks.\
+            assert_called_with('tid', 10)
+
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")
         Client.save_task_preset("Preset2", "TaskType1", "data2")

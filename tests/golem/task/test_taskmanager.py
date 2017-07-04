@@ -629,6 +629,39 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             self.tm.add_new_task(t)
 
+    def test_restart_frame_subtasks(self):
+        tm = self.tm
+        tm.notice_task_updated = Mock()
+
+        # Not existing task
+        tm.restart_frame_subtasks('any_id', 1)
+        assert not tm.notice_task_updated.called
+
+        # Mock task without subtasks
+        tm.tasks['test_id'] = Mock()
+        tm.tasks['test_id'].get_subtasks.return_value = None
+        tm.restart_frame_subtasks('test_id', 1)
+        assert not tm.notice_task_updated.called
+
+        # Create tasks
+        tm.tasks.pop('test_id')
+        _, subtask_id = self.__build_tasks(tm, 3)
+
+        # Successful call
+        for task_id in tm.tasks.iterkeys():
+            for i in range(3):
+                tm.restart_frame_subtasks(task_id, i + 1)
+        assert tm.notice_task_updated.called
+
+        subtask_states = {}
+
+        for task in tm.tasks.itervalues():
+            task_state = tm.tasks_states[task.header.task_id]
+            subtask_states.update(task_state.subtask_states)
+
+        for subtask_id, subtask_state in subtask_states.iteritems():
+            assert subtask_state.subtask_status == SubtaskStatus.restarted
+
     def __build_tasks(self, tm, n, fixed_frames=False):
         tm.tasks = OrderedDict()
         tm.tasks_states = dict()
@@ -658,7 +691,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             subtask_states, subtask_id = self.__build_subtasks(n)
 
             state = TaskState()
-            state.status = 'waiting'
+            state.status = TaskStatus.waiting
             state.remaining_time = 100 - i
             state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
@@ -677,10 +710,18 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.preview_updaters = [Mock()] * n
             task.use_frames = fixed_frames or i % 2 == 0
 
-            task.frames_subtasks = {"1": subtask_states.keys()}
+            task.frames_subtasks = {str(k): [] for k in
+                                    definition.options.frames}
+            task.frames_subtasks["1"] = subtask_states.keys()
 
-            task.subtasks_given = {k: v.extra_data for k, v
-                                   in subtask_states.iteritems()}
+            task.subtask_states = subtask_states
+            task.subtasks_given = dict()
+
+            for key, entry in subtask_states.iteritems():
+                new_item = dict(entry.extra_data)
+                new_item['frames'] = definition.options.frames
+                new_item['status'] = definition.subtask_status
+                task.subtasks_given[key] = new_item
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state
@@ -699,6 +740,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
             subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
+            subtask.subtask_status = SubtaskStatus.starting
             subtask.computer = ComputerState()
             subtask.computer.node_name = 'node_{}'.format(i)
             subtask.computer.node_id = 'deadbeef0{}'.format(i)
