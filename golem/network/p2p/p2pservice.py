@@ -149,7 +149,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def connect(self, socket_address):
         if not self.active:
             return
-        
+
         connect_info = tcpnetwork.TCPConnectInfo(
             [socket_address],
             self.__connection_established,
