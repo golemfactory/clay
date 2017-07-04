@@ -199,8 +199,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     def test_luxrender_real_task(self):
         task = self._test_task() # GG todo change file resolution
-        task.res_y = 3
-        task.res_x = 4
+        task.res_y = 50
+        task.res_x = 50
+        task.haltspp = 10
         ctd = task.query_extra_data(10000).ctd
 
         ## act
@@ -237,15 +238,16 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
 
-
+    # GG todo file resolution
     def test_run_stats(self):
         results = []
-        pass
+        # pass
 
         for i in range(0, 10):
-            task = self._test_task()  # GG todo change file resolution
-            task.res_y = 300
-            task.res_x = 400
+            task = self._test_task()
+            task.res_y = 500
+            task.res_x = 500
+            task.haltspp = 10
             ctd = task.query_extra_data(10000).ctd
 
             ## act
@@ -270,10 +272,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
                                       result_type=result_types["files"])
 
             result = task.verify_subtask(ctd.subtask_id)
+            # self.assertEqual(task.num_tasks_received, 1)
+            # print i, task.num_tasks_received
             results.append(result)
+            print i, result
 
         from collections import Counter
         stats = Counter(results)
+        print results
         print stats
         pass
 

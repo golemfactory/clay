@@ -51,7 +51,26 @@ class ImgStatistics:
         max_possible_mse = res_x * res_y * 3 * 255 * 255
         norm_mse = mse / max_possible_mse
 
-        return mse, norm_mse
+        img1_bw = img1.to_pil().convert('L')  # makes it greyscale
+        img2_bw = img2.to_pil().convert('L')  # makes it greyscale
+
+        import numpy
+        npimg1 = numpy.array(img1_bw)
+        npimg2 = numpy.array(img2_bw)
+
+        npimg1 = npimg1.astype(numpy.float32, copy=False)
+        npimg2 = npimg2.astype(numpy.float32, copy=False)
+
+        mse_bw = 0
+        for i in range(len(npimg1)):
+            for j in range(len(npimg1[0])):
+                # npimg1[i][j].astype(float)
+                # npimg2[i][j].astype(float)
+                mse_bw += (npimg1[i][j]-npimg2[i][j])*(npimg1[i][j]-npimg2[i][j])
+
+        mse_bw /= res_x * res_y
+        return mse_bw, norm_mse
+        # return mse, norm_mse #  GG todo greyscale experyment
 
     def _calculate_psnr(self, mse, max_=255):
         if mse <= 0 or max_ <= 0:
