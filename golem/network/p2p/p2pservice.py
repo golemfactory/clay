@@ -147,6 +147,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                              .format(ip_address, port, exc))
 
     def connect(self, socket_address):
+        if not self.active:
+            return
+        
         connect_info = tcpnetwork.TCPConnectInfo(
             [socket_address],
             self.__connection_established,
@@ -159,8 +162,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for peer in peers.itervalues():
             peer.dropped()
 
+    def pause(self):
+        super(P2PService, self).pause()
+
+    def resume(self):
+        super(P2PService, self).resume()
+
     def new_connection(self, session):
-        session.start()
+        if self.active:
+            session.start()
+        else:
+            session.disconnect(PeerSession.DCRNoMoreMessages)
 
     def add_known_peer(self, node, ip_address, port):
         is_seed = node.is_super_node() if node else False

@@ -189,12 +189,23 @@ class TaskServer(PendingConnectionsServer):
                                                                    owner_address, owner_port, owner_key_id, owner)
 
     def new_connection(self, session):
-        self.task_sessions_incoming.add(session)
+        if self.active:
+            self.task_sessions_incoming.add(session)
+        else:
+            session.disconnect(TaskSession.DCRNoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)
+        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
+
         for task_session in task_sessions.itervalues():
             task_session.dropped()
+
+        for task_session in sessions_incoming:
+            try:
+                task_session.dropped()
+            except Exception as exc:
+                logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
         ths = self.task_keeper.get_all_tasks() + \
