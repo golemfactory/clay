@@ -84,7 +84,7 @@ CORE_METHOD_MAP = dict(
     get_incomes_list=       Payments.incomes,
 
     quit=                   UI.quit,
-    start=                  UI.start,
-    stop=                   UI.stop
+    resume=                 UI.start,
+    pause=                  UI.stop
 )
 
