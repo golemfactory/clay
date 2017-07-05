@@ -125,8 +125,8 @@ class TaskManager(TaskEventListener):
         return task_type.task_builder_type.build_dictionary(definition)
 
     def add_new_task(self, task):
-        if task.header.task_id in self.tasks:
-            raise RuntimeError("Task has been already added")
+        #if task.header.task_id in self.tasks:
+        #    raise RuntimeError("Task has been already added")
         if not self.key_id:
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
@@ -157,16 +157,7 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
-
-        self.tasks[task.header.task_id] = task
-
-        ts = TaskState()
-        ts.status = TaskStatus.waiting
-        ts.outputs = task.get_output_names()
-        ts.total_subtasks = task.get_total_tasks()
-        ts.time_started = time.time()
-
-        self.tasks_states[task.header.task_id] = ts
+        self.tasks_states[task.header.task_id].status = TaskStatus.waiting
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
