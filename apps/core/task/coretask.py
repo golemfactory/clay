@@ -71,8 +71,8 @@ class TaskTypeInfo(object):
     @staticmethod
     def _preview_result(result, single=False):
         if result is not None:
-            return result if single else [result]
-        return None if single else []
+            return result
+        return None if single else {}
 
 
 class CoreTask(Task):
