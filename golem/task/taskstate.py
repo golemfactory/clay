@@ -23,6 +23,7 @@ class TaskState(object):
 
     def to_dictionary(self):
         return {
+            u'time_started': self.time_started,
             u'time_remaining': self.remaining_time,
             u'status': to_unicode(self.status)
         }
