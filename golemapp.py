@@ -50,6 +50,7 @@ from golem.node import OptNode
 def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, version, m):
     freeze_support()
     delete_reactor()
+    set_fd_limit()
 
     if version:
         from golem.core.variables import APP_VERSION
@@ -91,6 +92,28 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt, ver
         node.connect_with_peers(peer)
         node.add_tasks(task)
         node.run(use_rpc=True)
+
+
+def set_fd_limit():
+    from golem.core.common import is_windows
+    from golem.core.variables import MIN_NOFILE
+
+    if is_windows():
+        return
+
+    import resource
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+    if soft is not None and soft < MIN_NOFILE:
+        soft = MIN_NOFILE
+    if hard is not None and hard < MIN_NOFILE:
+        hard = MIN_NOFILE
+
+    try:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (soft, hard))
+    except Exception as exc:
+        print("Error setting open file descriptor limit: {}"
+              .format(exc))
 
 
 def delete_reactor():

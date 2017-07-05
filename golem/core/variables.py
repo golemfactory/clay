@@ -10,6 +10,7 @@ PRIVATE_KEY = "golem_private_key.peb"
 PUBLIC_KEY = "golem_public_key.pubkey"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
+MIN_NOFILE = 1024
 
 #####################
 # NETWORK VARIABLES #
