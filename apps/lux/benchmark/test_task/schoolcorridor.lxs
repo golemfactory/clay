@@ -57,11 +57,11 @@ Film "fleximage"
 	"integer writeinterval" [120]
 	"integer outlierrejection_k" [1]
 	"integer haltspp" [5]
-	"string tonemapkernel" ["linear"]
-	"float linear_sensitivity" [50.0]
-	"float linear_exposure" [1.0]
-	"float linear_fstop" [2.8]
-	"float linear_gamma" [1.0]
+	"string tonemapkernel" ["reinhard"]
+	"float convergencestep" [4.000000000000000]
+	"float reinhard_prescale" [1.000000000000000]
+	"float reinhard_postscale" [1.200000047683716]
+	"float reinhard_burn" [8.000000000000000]
 
 WorldBegin
 

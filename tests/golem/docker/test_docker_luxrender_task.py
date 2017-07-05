@@ -198,10 +198,11 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
 
     def test_luxrender_real_task(self):
-        task = self._test_task() # GG todo change file resolution
-        task.res_y = 50
-        task.res_x = 50
-        task.haltspp = 10
+        task = self._test_task()
+        task.res_y = 25
+        task.res_x = 25
+        task.haltspp = 100
+        task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
         ctd = task.query_extra_data(10000).ctd
 
         ## act
@@ -238,16 +239,16 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
 
-    # GG todo file resolution
+
     def test_run_stats(self):
         results = []
-        # pass
+        return
 
         for i in range(0, 10):
             task = self._test_task()
             task.res_y = 500
             task.res_x = 500
-            task.haltspp = 10
+            task.haltspp = 50
             ctd = task.query_extra_data(10000).ctd
 
             ## act

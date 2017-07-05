@@ -115,6 +115,35 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         assert hashlib.md5(cropped_img2.to_pil().tobytes()).hexdigest() == hashlib.md5(answer_img2.to_pil().tobytes()).hexdigest()
 
 
+    def test_imgStat_values(self):
+        #arrange
+        folder_path = os.path.join(get_golem_path(),
+                                   "tests", "apps", "rendering", "resources", "imgs_for_verification_tests")
+
+        ref_img0 = PILImgRepr()
+        ref_img0.load_from_file(os.path.join(folder_path, 'reference_300x400spp25_run0.png'))
+        ref_img1 = PILImgRepr()
+        ref_img1.load_from_file(os.path.join(folder_path, 'reference_300x400spp25_run1.png'))
+
+        cropping_window = (0.2, 0.4, 0.7, 0.9)
+        imgVerificator = ImgVerificator()
+
+        # act
+        ref_img0 = imgVerificator.crop_img_relative(ref_img0,cropping_window)
+        ref_img1 = imgVerificator.crop_img_relative(ref_img1,cropping_window)
+
+
+        reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
+
+        print reference_stats.get_stats()
+
+
+        # assert
+        assert reference_stats.ssim == 0.40088751827025393
+        assert reference_stats.mse  == 253.2704861111111
+        assert reference_stats.mse_bw == 211.25416666666666
+        assert reference_stats.psnr == 24.094957769434753
+
 
 
     def test_is_valid_against_reference(self):
@@ -123,13 +152,13 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
                                    "tests", "apps", "rendering", "resources", "imgs_for_verification_tests")
 
         ref_img0 = PILImgRepr()
-        ref_img0.load_from_file(os.path.join(folder_path, 'cropped_300x400spp25_run0.png'))
+        ref_img0.load_from_file(os.path.join(folder_path, 'reference_300x400spp25_run0.png'))
         ref_img1 = PILImgRepr()
-        ref_img1.load_from_file(os.path.join(folder_path, 'cropped_300x400spp25_run1.png'))
+        ref_img1.load_from_file(os.path.join(folder_path, 'reference_300x400spp25_run1.png'))
 
         images = list()
         for file_name in os.listdir(folder_path):
-            if file_name.endswith(".png") and 'cropped' not in file_name:
+            if file_name.endswith(".png") and 'reference' not in file_name:
                 p = PILImgRepr()
                 p.load_from_file(os.path.join(folder_path, file_name))
                 images.append(p)
@@ -146,9 +175,9 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
 
         # ref_img0.img.save(('aaa'+ref_img0.get_name()+'.png'))
-        # print reference_stats.get_stats()
+        print reference_stats.get_stats()
 
-        print 'SSIM \t MSE \t MSE_norm \t PSNR'
+        print 'SSIM \t MSE \t MSE_norm \t MSE_bw \t PSNR'
         imgstats = []
         validation_results ={}
 
@@ -163,11 +192,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
             print imgstat.name, imgstat.get_stats(), validation_result
 
 
-        # assert GG todo
-        # assert reference_stats.ssim == 0.40088751827025393
-        # assert reference_stats.mse  == 253.2704861111111
-        # assert reference_stats.psnr == 24.094957769434753
-
+        # assert
 
         should_be_rejected =  [value for key, value in validation_results.items() if 'malicious' in key.lower()]
         for w in should_be_rejected:
@@ -209,7 +234,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         # ref_img0.img.save(('aaa'+ref_img0.get_name()+'.png'))
         print reference_stats.get_stats()
 
-        print 'SSIM \t MSE \t MSE_norm \t PSNR'
+        print 'SSIM \t MSE \t MSE_norm \t MSE_bw \t PSNR'
         imgstats = []
         validation_results = {}
 
@@ -223,74 +248,19 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
             validation_results[imgstat.name] = validation_result
             print imgstat.name, imgstat.get_stats(), validation_result
 
-        pass
-    #
-    #
-    #
-    # def test_is_valid_against_biednie(self):
-    #     #arrange
-    #
-    #     folder_path = os.path.join(get_golem_path(),
-    #                                "tests", "apps", "rendering", "resources", "biednie")
-    #
-    #     ref_img0 = PILImgRepr()
-    #     ref_img0.load_from_file(os.path.join(folder_path, 'reference_task1.png'))
-    #     ref_img1 = PILImgRepr()
-    #     ref_img1.load_from_file(os.path.join(folder_path, 'reference_task2.png'))
-    #
-    #
-    #
-    #     images = list()
-    #     for file_name in os.listdir(folder_path):
-    #         if file_name.endswith(".png") and 'reference' not in file_name:
-    #             p = PILImgRepr()
-    #             p.load_from_file(os.path.join(folder_path, file_name))
-    #             images.append(p)
-    #
-    #
-    #     # cropping_window = (0.2, 0.4, 0.7, 0.9)
-    #     cropping_window = (0.192348293338, 0.639561888838, 0.490618088498, 0.937831683998)
-    #     imgVerificator = ImgVerificator()
-    #
-    #     # act
-    #     ref_img0 = imgVerificator.crop_img_relative(ref_img0,cropping_window)
-    #     ref_img1 = imgVerificator.crop_img_relative(ref_img1,cropping_window)
-    #
-    #
-    #     reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
-    #
-    #     ref_img0.img.save(('aaa'+ref_img0.get_name()+'.png'))
-    #     ref_img1.img.save(('aaa' + ref_img0.get_name() + '.png'))
-    #     # print reference_stats.get_stats()
-    #
-    #     print 'SSIM \t MSE \t MSE_norm \t PSNR'
-    #     imgstats = []
-    #     validation_results ={}
-    #
-    #     for img in images:
-    #         croped_img=imgVerificator.crop_img_relative(img,cropping_window)
-    #         croped_img.img.save('aaa'+croped_img.get_name())
-    #         imgstat = ImgStatistics(ref_img0, croped_img)
-    #         validation_result = imgVerificator.is_valid_against_reference(imgstat,reference_stats)
-    #
-    #         imgstats.append(imgstat)
-    #         validation_results[imgstat.name] = validation_result
-    #
-    #         print imgstat.name, imgstat.get_stats(), validation_result
-    #
     #
     #     # assert
     #     assert reference_stats.ssim == 0.40088751827025393
     #     assert reference_stats.mse  == 253.2704861111111
     #     assert reference_stats.psnr == 24.094957769434753
-    #
-    #
-    #     should_be_rejected =  [value for key, value in validation_results.items() if 'malicious' in key.lower()]
-    #     for w in should_be_rejected:
-    #         assert w ==VerificationState.WRONG_ANSWER
-    #
-    #
-    #     should_be_verified =  [value for key, value in validation_results.items() if 'malicious' not in key.lower()]
-    #     for w in should_be_verified:
-    #         assert w == VerificationState.VERIFIED
-    #
+
+        # GG todo
+        # should_be_rejected =  [value for key, value in validation_results.items() if 'malicious' in key.lower()]
+        # for w in should_be_rejected:
+        #     assert w ==VerificationState.WRONG_ANSWER
+
+
+        should_be_verified =  [value for key, value in validation_results.items() if 'malicious' not in key.lower()]
+        for w in should_be_verified:
+            assert w == VerificationState.VERIFIED
+

@@ -22,7 +22,9 @@ class ImgStatistics:
         self.img = img
         self.ssim = compute_ssim(base_img.to_pil(), self.img.to_pil())
         self.mse, self.norm_mse = \
-            self._calculate_normalized_mse(base_img, self.img)
+            self._calculate_color_normalized_mse(base_img, self.img)
+        self.mse_bw, norm_mse_bw = \
+            self._calculate_greyscale_normalized_mse(base_img, self.img)
         self.psnr = self._calculate_psnr(self.mse)
 
     @property
@@ -33,23 +35,8 @@ class ImgStatistics:
 
         return name
 
-    def _calculate_normalized_mse(self, img1, img2):
-        mse = 0
+    def _calculate_greyscale_normalized_mse(self, img1, img2):
         (res_x, res_y) = img1.get_size()
-
-        for i in range(0, res_x):
-            for j in range(0, res_y):
-                [r1, g1, b1] = img1.get_pixel((i, j))
-                [r2, g2, b2] = img2.get_pixel((i, j))
-                mse += (r1 - r2) * (r1 - r2) + \
-                       (g1 - g2) * (g1 - g2) + \
-                       (b1 - b2) * (b1 - b2)
-
-        mse /= res_x * res_y * 3
-
-        # max value of pixel is 255
-        max_possible_mse = res_x * res_y * 3 * 255 * 255
-        norm_mse = mse / max_possible_mse
 
         img1_bw = img1.to_pil().convert('L')  # makes it greyscale
         img2_bw = img2.to_pil().convert('L')  # makes it greyscale
@@ -64,13 +51,36 @@ class ImgStatistics:
         mse_bw = 0
         for i in range(len(npimg1)):
             for j in range(len(npimg1[0])):
-                # npimg1[i][j].astype(float)
-                # npimg2[i][j].astype(float)
-                mse_bw += (npimg1[i][j]-npimg2[i][j])*(npimg1[i][j]-npimg2[i][j])
+                mse_bw += (npimg1[i][j] - npimg2[i][j]) \
+                          * (npimg1[i][j] - npimg2[i][j])
 
         mse_bw /= res_x * res_y
+
+        # max value of pixel is 255
+        max_possible_mse = res_x * res_y * 255
+        norm_mse = mse_bw / max_possible_mse
+
         return mse_bw, norm_mse
-        # return mse, norm_mse #  GG todo greyscale experyment
+
+    def _calculate_color_normalized_mse(self, img1, img2):
+        mse = 0
+        (res_x, res_y) = img1.get_size()
+
+        for i in range(0, res_x):
+            for j in range(0, res_y):
+                [r1, g1, b1] = img1.get_pixel((i, j))
+                [r2, g2, b2] = img2.get_pixel((i, j))
+                mse += (r1 - r2) * (r1 - r2) + \
+                       (g1 - g2) * (g1 - g2) + \
+                       (b1 - b2) * (b1 - b2)
+
+        mse /= res_x * res_y * 3
+
+        # max value of pixel is 255
+        max_possible_mse = res_x * res_y * 3 * 255
+        norm_mse = mse / max_possible_mse
+
+        return mse, norm_mse
 
     def _calculate_psnr(self, mse, max_=255):
         if mse <= 0 or max_ <= 0:
@@ -78,7 +88,7 @@ class ImgStatistics:
         return 20 * math.log10(max_) - 10 * math.log10(mse)
 
     def get_stats(self):
-        return self.ssim, self.mse, self.norm_mse, self.psnr
+        return self.ssim, self.mse, self.norm_mse, self.mse_bw, self.psnr
 
 
 class ImgVerificator:
@@ -132,19 +142,25 @@ class ImgVerificator:
 
     def is_valid_against_reference(self,
                                    imgStat, reference_imgStat,
-                                   acceptance_ratio=0.75, maybe_ratio=0.55):
+                                   acceptance_ratio=0.75, maybe_ratio=0.65):
 
         if not isinstance(imgStat, ImgStatistics) \
                 and not isinstance(reference_imgStat, ImgStatistics):
             raise TypeError("imgStatistics be instance of ImgStatistics")
 
-        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim \
-                and imgStat.psnr > acceptance_ratio * reference_imgStat.psnr:
+        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim: \
+                # and acceptance_ratio * imgStat.mse_bw
+            #  < reference_imgStat.mse_bw
+            # and imgStat.psnr > acceptance_ratio
+            #  * reference_imgStat.psnr:
             return VerificationState.VERIFIED
 
-        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim \
-                and imgStat.psnr > acceptance_ratio * reference_imgStat.psnr:
-                return VerificationState.UNKNOWN
+        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim: \
+                # and acceptance_ratio * imgStat.mse_bw
+            # < reference_imgStat.mse_bw:
+            # and imgStat.psnr > acceptance_ratio
+            #  * reference_imgStat.psnr:
+            return VerificationState.UNKNOWN
 
         return VerificationState.WRONG_ANSWER
 
