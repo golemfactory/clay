@@ -296,7 +296,7 @@ class LuxTask(renderingtask.RenderingTask):
             0)
         return ctd
 
-    def query_extra_data_for_reference_task(self, counter ):
+    def query_extra_data_for_reference_task(self, counter):
         write_interval = \
             self._write_interval_wrapper(self.halttime)
 
