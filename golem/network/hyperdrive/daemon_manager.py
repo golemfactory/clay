@@ -77,9 +77,8 @@ class HyperdriveDaemonManager(object):
                 os.makedirs(self._dir)
 
             pipe = subprocess.PIPE if is_frozen() else None
-            logger.error("running HyperG {}".format(" ".join(self._command)))
-            process = subprocess.Popen(" ".join(self._command), shell=True,
-                                       stdin=DEVNULL, stdout=pipe, stderr=pipe)
+            process = subprocess.Popen(self._command, stdin=DEVNULL,
+                                       stdout=pipe, stderr=pipe)
 
         except OSError:
             logger.critical("Can't run hyperdrive executable %r. "
