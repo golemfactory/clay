@@ -71,7 +71,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
             estimated_memory=3 * 1024,
-            max_price=10000,
+            max_price=1010,
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
         )
@@ -129,7 +129,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert isinstance(subtask, ComputeTaskDef)
         assert not wrong_task
-        assert self.tm.tasks_states["xyz"].subtask_states[subtask.subtask_id].computer.price == 10
+        assert self.tm.tasks_states["xyz"].subtask_states[subtask.subtask_id].computer.price == 1010
 
         task_mock.query_extra_data_return_value.ctd.subtask_id = "xyzxyz2"
         subtask, wrong_task, wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
@@ -196,7 +196,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.assertEqual(self.tm.get_value("xxyyzz"), 13)
 
         self.tm.set_computation_time("xxyyzz", 3601)
-        self.assertEqual(self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 11)
+        self.assertEqual(self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 1011)
 
     def test_change_config(self):
         self.assertTrue(self.tm.use_distributed_resources)
