@@ -60,7 +60,7 @@ class Network(object):
             addr = Network.__one_of(p, 'address', 'pub_addr')
             port = Network.__one_of(p, 'port', 'p2p_pub_port', 'p2p_prv_port')
             key = Network.__one_of(p, 'key_id', 'key')
-            version = Network.__one_of(p, 'degree')
+            version = Network.__one_of(p, 'client_ver')
 
             values.append([
                 str(addr), str(port),

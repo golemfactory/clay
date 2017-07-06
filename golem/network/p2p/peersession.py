@@ -16,7 +16,7 @@ class PeerSessionInfo(object):
         'address', 'port',
         'verified', 'degree', 'key_id',
         'node_name', 'node_info',
-        'listen_port', 'conn_id'
+        'listen_port', 'conn_id', 'client_ver'
     ]
 
     def __init__(self, session):
@@ -53,6 +53,7 @@ class PeerSession(BasicSafeSession):
         self.degree = 0
         self.node_name = ""
         self.node_info = None
+        self.client_ver = None
         self.listen_port = None
 
         self.conn_id = None
@@ -533,6 +534,7 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePong())
 
     def __send_hello(self):
+        from golem.core.variables import APP_VERSION
         self.solve_challenge = self.key_id \
                                and self.p2p_service.should_solve_challenge \
                                or False
@@ -548,6 +550,7 @@ class PeerSession(BasicSafeSession):
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.get_key_id(),
             node_info=self.p2p_service.node,
+            client_ver=APP_VERSION,
             rand_val=self.rand_val,
             metadata=self.p2p_service.metadata_manager.get_metadata(),
             solve_challenge=self.solve_challenge,
