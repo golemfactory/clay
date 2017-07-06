@@ -673,10 +673,6 @@ class TaskManager(TaskEventListener):
     def __add_subtask_to_tasks_states(self, node_name, node_id, comp_price,
                                       ctd, address):
 
-        if ctd.task_id not in self.tasks_states or \
-                        ctd.task_id not in self.tasks:
-            raise RuntimeError("Should never be here!")
-
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
                      node_name, node_id, comp_price, ctd, address)
 
