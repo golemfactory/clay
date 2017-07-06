@@ -242,12 +242,12 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     def test_run_stats(self):
         results = []
-        #return
+        return
 
         for i in range(0, 10):
             task = self._test_task()
-            task.res_y = 1000
-            task.res_x = 1000
+            task.res_y = 100
+            task.res_x = 100
             task.haltspp = 200
             ctd = task.query_extra_data(10000).ctd
 
