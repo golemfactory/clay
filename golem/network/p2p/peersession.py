@@ -335,6 +335,7 @@ class PeerSession(BasicSafeSession):
     def _react_to_hello(self, msg):
         self.node_name = msg.node_name
         self.node_info = msg.node_info
+        self.client_ver = msg.client_ver
         self.listen_port = msg.port
 
         next_hello = self.key_id == msg.client_key_id
