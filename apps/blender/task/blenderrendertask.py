@@ -152,8 +152,10 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
                         result[to_unicode(f)] = None
                     return result
         else:
-            result = to_unicode(task.preview_task_file_path or
-                                task.preview_file_path)
+            preview = to_unicode(task.preview_task_file_path or
+                                 task.preview_file_path)
+
+            result = preview if single else {u'1': preview}
 
         return cls._preview_result(result, single=single)
 
