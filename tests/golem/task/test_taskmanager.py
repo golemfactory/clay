@@ -91,6 +91,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         Task.get_progress = Mock()
         task_mock.get_progress.return_value = 0.3
 
+        ts = TaskState()
+        ts.status = TaskStatus.sending
+        ts.time_started = time.time()
+        self.tm.tasks_states[task_mock.header.task_id] = ts
+        self.tm.tasks[task_mock.header.task_id] = task_mock
+
         return task_mock
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
@@ -227,12 +233,17 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         th.max_price = 50
 
         class TestTask(Task):
-            def __init__(self, header, src_code, subtasks_id, verify_subtasks):
+            def __init__(self, header, src_code, subtasks_id, verify_subtasks, tm):
                 super(TestTask, self).__init__(header, src_code)
                 self.finished = {k: False for k in subtasks_id}
                 self.restarted = {k: False for k in subtasks_id}
                 self.verify_subtasks = verify_subtasks
                 self.subtasks_id = subtasks_id
+                ts = TaskState()
+                ts.status = TaskStatus.sending
+                ts.time_started = time.time()
+                tm.tasks_states[header.task_id] = ts
+                tm.tasks[header.task_id] = self
 
             def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
 
@@ -264,7 +275,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             def restart_subtask(self, subtask_id):
                 self.restarted[subtask_id] = True
 
-        t = TestTask(th, "print 'Hello world'", ["xxyyzz"], verify_subtasks={"xxyyzz": True})
+        t = TestTask(th, "print 'Hello world'", ["xxyyzz"],
+                     verify_subtasks={"xxyyzz": True}, tm = self.tm)
         self.tm.add_new_task(t)
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
@@ -282,7 +294,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert self.tm.tasks_states["xyz"].status == TaskStatus.finished
 
         th.task_id = "abc"
-        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"], verify_subtasks={"aabbcc": True})
+        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"],
+                      verify_subtasks={"aabbcc": True}, tm = self.tm)
         self.tm.add_new_task(t2)
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
@@ -297,7 +310,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         assert not t2.finished["aabbcc"]
 
         th.task_id = "qwe"
-        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"], {"qqwwee": True, "rrttyy": True})
+        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"],
+                      {"qqwwee": True, "rrttyy": True}, tm = self.tm)
         self.tm.add_new_task(t3)
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000, 10000, 10000)
         assert not wrong_task
@@ -312,7 +326,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             assert not self.tm.computed_task_received("qqwwee", [], 0)
 
         th.task_id = "task4"
-        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"], {'ttt4': False, 'sss4': True})
+        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"],
+                      {'ttt4': False, 'sss4': True}, tm = self.tm)
         self.tm.add_new_task(t2)
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10, 2,
                                                            "10.10.10.10")
@@ -392,7 +407,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         from pydispatch import dispatcher
         mock_addr.return_value = self.addr_return
         self.tm.task_persistence = True
-        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'")
+        t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"),
+                 "print 'hello world'")
+        ts = TaskState()
+        ts.status = TaskStatus.sending
+        ts.time_started = time.time()
+        self.tm.tasks_states[t.header.task_id] = ts
+        self.tm.tasks[t.header.task_id] = t
         listener_mock = Mock()
         def listener(sender, signal, event, task_id):
             self.assertEquals(event, 'task_status_updated')
@@ -496,6 +517,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         with self.assertLogs(logger, level="WARNING"):
             assert self.tm.abort_task("xyz") is None
         t = self._get_task_mock()
+
+        #import pdb
+        #pdb.set_trace()
         self.tm.add_new_task(t)
         with self.assertNoLogs(logger, level="WARNING"):
             self.tm.abort_task("xyz")
@@ -588,7 +612,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
                     "1.2.3.4", 40103, None, 40102, 40102)
         task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
                                "key_id", "environment", task_owner=node), '')
-
+        ts = TaskState()
+        ts.status = TaskStatus.sending
+        ts.time_started = time.time()
+        self.tm.tasks_states[task.header.task_id] = ts
+        self.tm.tasks[task.header.task_id] = task
         self.tm.keys_auth = EllipticalKeysAuth(self.path)
         self.tm.add_new_task(task)
         sig = task.header.signature
@@ -615,8 +643,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         subtask_id = "qweasdzxc"
         t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
         self.tm.add_new_task(t)
-        with self.assertRaises(RuntimeError):
-            self.tm.add_new_task(t)
         with self.assertRaises(TypeError):
             self.tm.set_value(task_id, subtask_id, "incorrect value")
         self.tm.key_id = None

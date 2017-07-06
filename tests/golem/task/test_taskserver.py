@@ -46,13 +46,20 @@ def get_example_task_header():
     }
 
 
-def get_mock_task(task_id, subtask_id):
+def get_mock_task(task_id, subtask_id, tm):
     task_mock = Mock()
     task_mock.header = TaskHeader.from_dict(get_example_task_header())
     task_mock.header.task_id = task_id
     task_mock.header.max_price = 10000
     task_mock.query_extra_data.return_value.ctd.task_id = task_id
     task_mock.query_extra_data.return_value.ctd.subtask_id = subtask_id
+    from golem.task.taskstate import TaskState, TaskStatus
+    ts = TaskState()
+    ts.status = TaskStatus.sending
+    import time
+    ts.time_started = time.time()
+    tm.tasks_states[task_mock.header.task_id] = ts
+    tm.tasks[task_mock.header.task_id] = task_mock
     return task_mock
 
 
@@ -825,7 +832,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.ctd.environment = "DEFAULT"
         extra_data.should_wait = False
 
-        task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock = get_mock_task("xyz", "xxyyzz", ts.task_manager)
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
@@ -866,7 +873,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.ctd.environment = "DEFAULT"
         extra_data.should_wait = False
 
-        task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock = get_mock_task("xyz", "xxyyzz", ts.task_manager)
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)

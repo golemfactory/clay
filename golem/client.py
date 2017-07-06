@@ -398,6 +398,19 @@ class Client(HardwarePresetsMixin):
         options = resource_manager.build_client_options(key_id)
         files = task.get_resources(None, resource_types["hashes"])
 
+        from golem.task.taskstate import TaskStatus, TaskState
+        task.task_status = TaskStatus.sending
+        task_manager.tasks[task.header.task_id] = task
+        ts = TaskState()
+        ts.status = TaskStatus.sending
+        ts.outputs = task.get_output_names()
+        ts.total_subtasks = task.get_total_tasks()
+        ts.time_started = time.time()
+
+        task_manager.tasks_states[task.header.task_id] = ts
+
+        self._publish(Task.evt_task_list, self.get_tasks())
+
         def add_task(_):
             request = AsyncRequest(task_manager.add_new_task, task)
             async_run(request, None, error)

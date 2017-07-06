@@ -125,8 +125,6 @@ class TaskManager(TaskEventListener):
         return task_type.task_builder_type.build_dictionary(definition)
 
     def add_new_task(self, task):
-        if task.header.task_id in self.tasks:
-            raise RuntimeError("Task has been already added")
         if not self.key_id:
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
@@ -140,16 +138,16 @@ class TaskManager(TaskEventListener):
         self.node.pub_addr, self.node.pub_port, self.node.nat_type = \
             get_external_address(self.listen_port)
 
-        if prev_pub_addr != self.node.pub_addr or \
-           prev_pub_port != self.node.pub_port or \
-           prev_nat_type != self.node.nat_type:
-            self.update_task_signatures()
-
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
+
+        if prev_pub_addr != self.node.pub_addr or \
+           prev_pub_port != self.node.pub_port or \
+           prev_nat_type != self.node.nat_type:
+            self.update_task_signatures()
 
         self.dir_manager.clear_temporary(task.header.task_id)
         self.dir_manager.get_task_temporary_dir(task.header.task_id,
@@ -157,16 +155,7 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
-
-        self.tasks[task.header.task_id] = task
-
-        ts = TaskState()
-        ts.status = TaskStatus.waiting
-        ts.outputs = task.get_output_names()
-        ts.total_subtasks = task.get_total_tasks()
-        ts.time_started = time.time()
-
-        self.tasks_states[task.header.task_id] = ts
+        self.tasks_states[task.header.task_id].status = TaskStatus.waiting
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
@@ -587,22 +576,26 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
-        task_type_name = task.task_definition.task_type.lower()
-        task_type = self.task_types[task_type_name]
         state = self.tasks_states.get(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
-
-        dictionary = {
-            u'duration': max(timeout - state.remaining_time, 0),
-            # single=True retrieves one preview file. If rendering frames,
-            # it's the preview of the most recently computed frame.
-            u'preview': task_type.get_preview(task, single=True)
-        }
-
-        return update_dict(dictionary,
-                           task.to_dictionary(),
-                           state.to_dictionary(),
-                           self.get_task_definition_dict(task))
+        if hasattr(task, 'task_definition'):
+            task_type_name = task.task_definition.task_type.lower()
+            task_type = self.task_types[task_type_name]
+            timeout = task.task_definition.full_task_timeout
+            dictionary = {
+                u'duration': max(timeout - state.remaining_time, 0),
+                # single=True retrieves one preview file. If rendering frames,
+                # it's the preview of the most recently computed frame.
+                u'preview': task_type.get_preview(task, single=True)
+            }
+            return update_dict(dictionary,
+                               task.to_dictionary(),
+                               state.to_dictionary(),
+                               self.get_task_definition_dict(task))
+        else:
+            dictionary = {}
+            logger.warning("Task doesn't have definition")
+            return update_dict(dictionary,
+                               state.to_dictionary())
 
     def get_tasks_dict(self):
         return [self.get_task_dict(task_id) for task_id
