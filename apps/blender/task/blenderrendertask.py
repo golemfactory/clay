@@ -150,13 +150,9 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
                         result[to_unicode(f)] = previews[i]
                     except IndexError:
                         result[to_unicode(f)] = None
-                    return result
         else:
-            preview = to_unicode(task.preview_task_file_path or
-                                 task.preview_file_path)
-
-            result = preview if single else {u'1': preview}
-
+            result = to_unicode(task.preview_task_file_path or
+                                task.preview_file_path)
         return cls._preview_result(result, single=single)
 
     @classmethod

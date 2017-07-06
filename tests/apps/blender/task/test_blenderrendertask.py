@@ -403,8 +403,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
-        assert len(preview) == 1
-        assert all(os.path.exists(p) for p in preview.values())
+        assert len(preview) == 4
+        assert all(p is None or os.path.exists(p) for p in preview.values())
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
         assert isinstance(preview, basestring)
