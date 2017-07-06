@@ -126,7 +126,8 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
-            raise RuntimeError("Task has been already added")
+            raise RuntimeError("Task {} has been already added"
+                               .format(task.header.task_id))
         if not self.key_id:
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
@@ -145,6 +146,7 @@ class TaskManager(TaskEventListener):
            prev_nat_type != self.node.nat_type:
             self.update_task_signatures()
 
+        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
@@ -155,18 +157,27 @@ class TaskManager(TaskEventListener):
         self.dir_manager.get_task_temporary_dir(task.header.task_id,
                                                 create=True)
 
-        task.register_listener(self)
-        task.task_status = TaskStatus.waiting
-
-        self.tasks[task.header.task_id] = task
-
         ts = TaskState()
-        ts.status = TaskStatus.waiting
+        ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
+        self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
+
+    @handle_task_key_error
+    def start_task(self, task_id):
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+
+        if task_state.status != TaskStatus.notStarted:
+            raise RuntimeError("Task {} has already been started"
+                               .format(task_id))
+
+        task.task_status = TaskStatus.waiting
+        task_state.status = TaskStatus.waiting
+        task.register_listener(self)
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
