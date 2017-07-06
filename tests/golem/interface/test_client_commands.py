@@ -200,7 +200,7 @@ class TestNetwork(unittest.TestCase):
             result_1 = net.show(None, full=False)
             result_2 = net.show(None, full=True)
 
-            self.__assert_peer_result(result_1, result_2)
+            self.__assert_peer_result(result_1, result_2, u'0.7.0')
 
     def test_dht(self):
         with client_ctx(Network, self.client):
@@ -209,15 +209,15 @@ class TestNetwork(unittest.TestCase):
             result_1 = net.dht(None, full=False)
             result_2 = net.dht(None, full=True)
 
-            self.__assert_peer_result(result_1, result_2)
+            self.__assert_peer_result(result_1, result_2, u'None')
 
-    def __assert_peer_result(self, result_1, result_2):
+    def __assert_peer_result(self, result_1, result_2, version):
         assert result_1.data[1][0] == [
             '10.0.0.1',
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
-            '0.7.0'
+            version
 
         ]
 
@@ -226,7 +226,7 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01' * 8,
             'node_1',
-            '0.7.0'
+            version
         ]
 
         assert isinstance(result_1, CommandResult)
