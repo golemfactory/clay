@@ -134,18 +134,6 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        prev_pub_addr = self.node.pub_addr
-        prev_pub_port = self.node.pub_port
-        prev_nat_type = self.node.nat_type
-
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = \
-            get_external_address(self.listen_port)
-
-        if prev_pub_addr != self.node.pub_addr or \
-           prev_pub_port != self.node.pub_port or \
-           prev_nat_type != self.node.nat_type:
-            self.update_task_signatures()
-
         task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
