@@ -8,8 +8,8 @@ branches:
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7.13"
+    - PYTHON: "C:\\Python36"
+      PYTHON_VERSION: "3.6.1"
       PYTHON_ARCH: "32"
 
       NODEJS_VERSION: "6"
@@ -23,17 +23,7 @@ environment:
       DIR_IPFS: C:\go-ipfs
       DIR_WHEELS: C:\wheels
 
-      WHEEL_SIP: sip-4.19-cp27-cp27m-win32.whl
-      WHEEL_PYQT: PyQt5-5.7.1-cp27-cp27m-win32.whl
-      WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
-      WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
-      WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
-
-      WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1%)
-
       PYWIN32: pywin32-220.win32-py2.7.exe
-
-      WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'
@@ -88,17 +78,6 @@ install:
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
   - easy_install.exe wheel
-
-  # prebuilt packages
-  - for %%w in %WHEELS% do (
-      if not exist %WHEELS_URL%\%%w (
-        appveyor DownloadFile %WHEELS_URL%/%%w &&
-        move %%w %DIR_WHEELS%\%%w
-      ) &&
-      pip install %DIR_WHEELS%\%%w
-    )
-
-  - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 
   # requirements
   - pip install six pytest mock coverage
