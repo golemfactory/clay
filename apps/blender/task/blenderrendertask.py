@@ -137,18 +137,22 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
     @classmethod
     def get_preview(cls, task, single=False):
         result = None
-
         if not task:
             pass
         elif task.use_frames:
             if single:
                 return to_unicode(task.last_preview_path)
             else:
-                return [to_unicode(p) for p in task.preview_task_file_path]
+                previews = [to_unicode(p) for p in task.preview_task_file_path]
+                result = {}
+                for i, f in enumerate(task.frames):
+                    try:
+                        result[to_unicode(f)] = previews[i]
+                    except IndexError:
+                        result[to_unicode(f)] = None
         else:
             result = to_unicode(task.preview_task_file_path or
                                 task.preview_file_path)
-
         return cls._preview_result(result, single=single)
 
     @classmethod
