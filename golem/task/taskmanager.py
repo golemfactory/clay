@@ -4,15 +4,14 @@ import time
 
 from pathlib import Path
 from pydispatch import dispatcher
-from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
+from apps.rendering.task.framerenderingtask import FrameRenderingTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    timeout_to_deadline, to_unicode
+    timeout_to_deadline, to_unicode, update_dict
 from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.core.async import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
@@ -32,6 +31,17 @@ def log_subtask_key_error(*args, **kwargs):
 def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task {}".format(args[1]))
     return None
+
+
+subtask_priority = {
+    None: -1,
+    SubtaskStatus.failure: 0,
+    SubtaskStatus.restarted: 1,
+    SubtaskStatus.resent: 2,
+    SubtaskStatus.starting: 3,
+    SubtaskStatus.downloading: 4,
+    SubtaskStatus.finished: 5
+}
 
 
 class TaskManager(TaskEventListener):
@@ -80,7 +90,8 @@ class TaskManager(TaskEventListener):
                                                      resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
 
-        self.activeStatus = [TaskStatus.computing, TaskStatus.starting, TaskStatus.waiting]
+        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
+                             TaskStatus.waiting, TaskStatus.restarted]
         self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(self.tasks_dir, persist=self.task_persistence)
@@ -90,12 +101,8 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
-    def get_external_address(self):
-        request = AsyncRequest(get_external_address, self.listen_port)
-        return async_run(request)
-
     def create_task(self, dictionary, minimal=False):
-        # FIXME: remove after the new interface has been integrated with
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
         if not isinstance(dictionary, dict):
             return dictionary
 
@@ -117,17 +124,21 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[definition.task_type.lower()]
         return task_type.task_builder_type.build_dictionary(definition)
 
-    @inlineCallbacks
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
             raise RuntimeError("Task has been already added")
         if not self.key_id:
             raise ValueError("'key_id' is not set")
-        if not SocketAddress.is_proper_address(self.listen_address, self.listen_port):
+        if not SocketAddress.is_proper_address(self.listen_address,
+                                               self.listen_port):
             raise IOError("Incorrect socket address")
 
-        prev_pub_addr, prev_pub_port, prev_nat_type = self.node.pub_addr, self.node.pub_port, self.node.nat_type
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = yield self.get_external_address()
+        prev_pub_addr = self.node.pub_addr
+        prev_pub_port = self.node.pub_port
+        prev_nat_type = self.node.nat_type
+
+        self.node.pub_addr, self.node.pub_port, self.node.nat_type = \
+            get_external_address(self.listen_port)
 
         if prev_pub_addr != self.node.pub_addr or \
            prev_pub_port != self.node.pub_port or \
@@ -141,7 +152,8 @@ class TaskManager(TaskEventListener):
         task.header.signature = self.sign_task_header(task.header)
 
         self.dir_manager.clear_temporary(task.header.task_id)
-        self.dir_manager.get_task_temporary_dir(task.header.task_id, create=True)
+        self.dir_manager.get_task_temporary_dir(task.header.task_id,
+                                                create=True)
 
         task.register_listener(self)
         task.task_status = TaskStatus.waiting
@@ -462,15 +474,20 @@ class TaskManager(TaskEventListener):
     def restart_task(self, task_id):
         logger.info("restarting task")
         self.dir_manager.clear_temporary(task_id)
+        task = self.tasks[task_id]
 
-        self.tasks[task_id].restart()
-        self.tasks[task_id].task_status = TaskStatus.waiting
-        self.tasks_states[task_id].status = TaskStatus.waiting
+        task.restart()
+        task.task_status = TaskStatus.restarted
+        self.tasks_states[task_id].status = TaskStatus.restarted
+        task.header.deadline = timeout_to_deadline(
+            task.task_definition.full_task_timeout)
         self.tasks_states[task_id].time_started = time.time()
 
         for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
+
+        task.header.signature = self.sign_task_header(task.header)
 
         self.notice_task_updated(task_id)
 
@@ -508,6 +525,10 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task_id].status = TaskStatus.starting
 
         self.notice_task_updated(task_id)
+
+    @handle_task_key_error
+    def get_output_states(self, task_id):
+        return self.tasks[task_id].get_output_states()
 
     @handle_task_key_error
     def delete_task(self, task_id):
@@ -566,16 +587,26 @@ class TaskManager(TaskEventListener):
 
     def get_task_dict(self, task_id):
         task = self.tasks[task_id]
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+        state = self.tasks_states.get(task.header.task_id)
+        timeout = task.task_definition.full_task_timeout
 
-        # single=True retrieves one preview file. If rendering frames,
-        # it's the preview of the most recently computed frame.
-        dictionary = {u'preview': task.get_preview(single=True)}
-        dictionary.update(self.get_simple_task_dict(task))
-        dictionary.update(self.get_task_definition_dict(task))
-        return dictionary
+        dictionary = {
+            u'duration': max(timeout - state.remaining_time, 0),
+            # single=True retrieves one preview file. If rendering frames,
+            # it's the preview of the most recently computed frame.
+            u'preview': task_type.get_preview(task, single=True)
+        }
+
+        return update_dict(dictionary,
+                           task.to_dictionary(),
+                           state.to_dictionary(),
+                           self.get_task_definition_dict(task))
 
     def get_tasks_dict(self):
-        return [self.get_simple_task_dict(t) for t in self.tasks.itervalues()]
+        return [self.get_task_dict(task_id) for task_id
+                in self.tasks.iterkeys()]
 
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -588,30 +619,23 @@ class TaskManager(TaskEventListener):
         subtasks = task_state.subtask_states
         return [subtask.to_dictionary() for subtask in subtasks.itervalues()]
 
-    def get_subtasks_borders(self, task_id):
+    def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        task_state = self.tasks_states[task_id]
         total_subtasks = task.get_total_tasks()
 
         return {
-            to_unicode(subtask.subtask_id): task_type.get_task_border(
+            to_unicode(subtask_id): task_type.get_task_border(
                 subtask, task.task_definition, total_subtasks, as_path=True
-            ) for subtask in task_state.subtask_states.values()
+            ) for subtask_id, subtask in task.get_subtasks(part).iteritems()
         }
 
-    def get_simple_task_dict(self, task):
-        state = self.tasks_states.get(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
-
-        dictionary = {u'duration': max(timeout - state.remaining_time, 0)}
-        dictionary.update(task.to_dictionary())
-        dictionary.update(state.to_dictionary())
-        return dictionary
-
     def get_task_preview(self, task_id, single=False):
-        return self.tasks[task_id].get_preview(single=single)
+        task = self.tasks[task_id]
+        task_type_name = task.task_definition.task_type.lower()
+        task_type = self.task_types[task_type_name]
+        return task_type.get_preview(task, single=single)
 
     @handle_subtask_key_error
     def set_computation_time(self, subtask_id, computation_time):
@@ -637,6 +661,14 @@ class TaskManager(TaskEventListener):
         for ss in t.subtask_states.values():
             val += ss.value
         return val
+
+    def get_estimated_cost(self, task_type, options):
+        try:
+            subtask_value = options['price'] * options['subtask_time']
+            return options['num_subtasks'] * subtask_value
+        except (KeyError, ValueError):
+            logger.exception("Cannot estimate price, wrong params")
+            return None
 
     def __add_subtask_to_tasks_states(self, node_name, node_id, price, ctd, address):
 

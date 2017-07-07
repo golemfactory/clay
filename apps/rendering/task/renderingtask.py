@@ -1,29 +1,29 @@
 from __future__ import division
-from copy import deepcopy
+
 import logging
 import math
 import os
+from copy import deepcopy
 
-from pathlib import Path
 from PIL import Image, ImageChops
-
-
-from golem.core.common import get_golem_path, timeout_to_deadline
-
-from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.core.fileshelper import format_cmd_line_path
-from golem.docker.job import DockerJob
-from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
+from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verificator import RenderingVerificator
-
+from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.fileshelper import format_cmd_line_path
+from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.job import DockerJob
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
 MIN_TIMEOUT = 2200.0
 SUBTASK_TIMEOUT = 220.0
+PREVIEW_EXT = "PNG"
+PREVIEW_X = 1280
+PREVIEW_Y = 720
 
 logger = logging.getLogger("apps.rendering")
 
@@ -96,8 +96,8 @@ class RenderingTask(CoreTask):
 
         self.collected_file_names = {}
 
-        preview_x = 300
-        preview_y = 200
+        preview_x = PREVIEW_X
+        preview_y = PREVIEW_Y
         if self.res_x != 0 and self.res_y != 0:
             if self.res_x / self.res_y > preview_x / preview_y:
                 self.scale_factor = preview_x / self.res_x
@@ -139,6 +139,9 @@ class RenderingTask(CoreTask):
     # Specific task methods #
     #########################
 
+    def get_subtasks(self, part):
+        return self.subtasks_given
+
     def get_preview_file_path(self):
         return self.preview_file_path
 
@@ -147,7 +150,7 @@ class RenderingTask(CoreTask):
 
         img_current = self._open_preview()
         img_current = ImageChops.add(img_current, img)
-        img_current.save(self.preview_file_path, "BMP")
+        img_current.save(self.preview_file_path, PREVIEW_EXT)
         img.close()
 
     @CoreTask.handle_key_error
@@ -157,13 +160,15 @@ class RenderingTask(CoreTask):
             return
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
-        img.save(self.preview_file_path, "BMP")
+        img.save(self.preview_file_path, PREVIEW_EXT)
 
     def _update_task_preview(self):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        self.preview_task_file_path = "{}".format(os.path.join(self.tmp_dir, "current_task_preview"))
+        preview_name = "current_task_preview.{}".format(PREVIEW_EXT)
+        preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                          preview_name))
 
         img_task = self._open_preview()
 
@@ -174,8 +179,8 @@ class RenderingTask(CoreTask):
                                  SubtaskStatus.restarted]:
                 self._mark_task_area(sub, img_task, failed_color)
 
-        img_task.save(self.preview_task_file_path, "BMP")
-        self._update_preview_task_file_path(self.preview_task_file_path)
+        img_task.save(preview_task_file_path, PREVIEW_EXT)
+        self._update_preview_task_file_path(preview_task_file_path)
 
     def _update_preview_task_file_path(self, preview_task_file_path):
         self.preview_task_file_path = preview_task_file_path
@@ -257,11 +262,14 @@ class RenderingTask(CoreTask):
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
-    def _open_preview(self, mode="RGB", ext="BMP"):
+    def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """
-        if self.preview_file_path is None or not os.path.exists(self.preview_file_path):
-            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir, "current_preview"))
+        if self.preview_file_path is None or not os.path.exists(
+                self.preview_file_path):
+            preview_name = "current_preview.{}".format(ext)
+            self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
+                                                              preview_name))
             img = Image.new(mode, (int(round(self.res_x * self.scale_factor)),
                                    int(round(self.res_y * self.scale_factor))))
             logger.debug('Saving new preview: %r', self.preview_file_path)
@@ -312,6 +320,9 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = filter(lambda res: any(res.lower().endswith(ext.lower())
                                             for ext in extensions),
                             resources)
+        if not candidates:
+            raise Exception("Scene file was not found.")
+
         candidates.sort(key=len)
         return candidates[0]
 
@@ -336,14 +347,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         dictionary = parent.build_dictionary(definition)
         dictionary[u'options'][u'format'] = definition.output_format
         dictionary[u'options'][u'resolution'] = definition.resolution
-        dictionary[u'options'][u'compositing'] = definition.options.compositing
-
         return dictionary
 
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
@@ -353,19 +361,18 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(RenderingTaskBuilder, cls)
-
         options = dictionary['options']
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
-        definition.options.compositing = options['compositing']
         definition.resolution = [int(val) for val in options['resolution']]
-
         return definition
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
-        options = dictionary['options']
-        path = os.path.join(options['output_path'], definition.task_name)
-        return '{}.{}'.format(path, options['format'])
+        parent = super(RenderingTaskBuilder, cls)
+        path = parent.get_output_path(dictionary, definition)
 
+        if definition.legacy:
+            return path
+        return '{}.{}'.format(path, dictionary['options']['format'])

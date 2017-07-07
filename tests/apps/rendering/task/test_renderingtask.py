@@ -8,7 +8,9 @@ from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
-                                               RenderingTaskBuilder, logger)
+                                               RenderingTaskBuilder, logger,
+                                               PREVIEW_EXT, PREVIEW_Y,
+                                               PREVIEW_X)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager, get_tmp_path
@@ -111,15 +113,27 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         for i in range(int(round(rt.res_x * rt.scale_factor))):
             for j in range(int(round(rt.res_y * rt.scale_factor))):
                 img.putpixel((i, j), (1, 255, 255))
-        img.save(rt.preview_file_path, "BMP")
+        img.save(rt.preview_file_path, PREVIEW_EXT)
         img.close()
         rt._remove_from_preview("xxyyzz")
         img = rt._open_preview()
+
+        max_x, max_y = 800 - 1, 600 - 1
+
         assert img.getpixel((0, 0)) == (1, 255, 255)
-        assert img.getpixel((0, 2)) == (0, 0, 0)
-        assert img.getpixel((200, 3)) == (0, 0, 0)
-        assert img.getpixel((199, 4)) == (1, 255, 255)
-        assert img.getpixel((100, 16)) == (1, 255, 255)
+        assert img.getpixel((max_x, 0)) == (1, 255, 255)
+        assert img.getpixel((0, 5)) == (1, 255, 255)
+        assert img.getpixel((max_x, 5)) == (1, 255, 255)
+
+        for i in range(6, 12):
+            assert img.getpixel((0, i)) == (0, 0, 0)
+            assert img.getpixel((max_x, i)) == (0, 0, 0)
+
+        assert img.getpixel((0, 13)) == (1, 255, 255)
+        assert img.getpixel((max_x, 13)) == (1, 255, 255)
+        assert img.getpixel((0, max_y)) == (1, 255, 255)
+        assert img.getpixel((max_x, max_y)) == (1, 255, 255)
+
         img.close()
 
         rt.preview_file_path = []
@@ -146,17 +160,17 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         preview = task._open_preview()
         assert path.isfile(task.preview_file_path)
         assert preview.mode == "RGB"
-        assert preview.size == (267, 200)
+        assert preview.size == (800, 600)
         preview.close()
 
         preview = task._open_preview("RGBA")
         assert preview.mode == "RGB"
-        assert preview.size == (267, 200)
+        assert preview.size == (800, 600)
         preview.close()
         remove(task.preview_file_path)
         preview = task._open_preview("RGBA", "PNG")
         assert preview.mode == "RGBA"
-        assert preview.size == (267, 200)
+        assert preview.size == (800, 600)
         preview.close()
 
     def test_restart_subtask(self):
@@ -354,7 +368,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             {
                 'resources': {"file1.png", "file2.txt", 'file3.jpg',
                               'file4.txt'},
-                'task_type': 'TESTTASK'
+                'task_type': 'TESTTASK',
+                'subtasks': 1
             },
             minimal=True
         )
@@ -362,3 +377,15 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',
                                         'file3.jpg', 'file4.txt'}
+
+    def test_get_output_path(self):
+        td = TaskDefinition()
+        td.legacy = True
+        td.task_name = "MY task"
+        tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               "/dir1/dir2/DEFOUTPUT_FILE.txt"
+        td.legacy = False
+        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+               path.join("/dir3/dir4", "MY task.txt")

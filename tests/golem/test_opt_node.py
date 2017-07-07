@@ -17,6 +17,8 @@ class A(object):
         self.b = "abc"
 
 
+@ci_skip
+@patch('twisted.internet.iocpreactor', create=True)
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
@@ -25,18 +27,16 @@ class TestNode(TestWithDatabase):
     def tearDown(self):
         super(TestNode, self).tearDown()
 
-    @ci_skip
     @patch('twisted.internet.reactor', create=True)
-    def test_help(self, mock_reactor):
+    def test_help(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         self.assertTrue(return_value.output.startswith('Usage'))
         mock_reactor.run.assert_not_called()
 
-    @ci_skip
     @patch('twisted.internet.reactor', create=True)
-    def test_wrong_option(self, mock_reactor):
+    def test_wrong_option(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'],
                                      catch_exceptions=False)
@@ -44,11 +44,11 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.core.common.config_logging')
-    def test_node_address_valid(self, config_logging, mock_reactor, mock_node):
+    def test_node_address_valid(self, config_logging, mock_reactor,
+                                mock_node, *_):
         node_address = '1.2.3.4'
 
         runner = CliRunner()
@@ -64,13 +64,14 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
-    @ci_skip
+    @patch('golem.node.Node.run')
+    @patch('golem.docker.manager.DockerManager')
     @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.core.common.config_logging')
     @patch('golemapp.delete_reactor')
     def test_node_address_passed_to_client(self, delete_reactor, config_logging,
-                                           mock_reactor, mock_client):
+                                           mock_reactor, mock_client, *_):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
@@ -82,11 +83,11 @@ class TestNode(TestWithDatabase):
 
         mock_client.assert_called_with(node_address=node_address,
                                        datadir=self.path,
-                                       transaction_system=True)
+                                       transaction_system=True,
+                                       use_docker_machine_manager=True)
 
-    @ci_skip
     @patch('golem.core.common.config_logging')
-    def test_node_address_invalid(self, config_logging):
+    def test_node_address_invalid(self, config_logging, *_):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -94,17 +95,15 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
 
-    @ci_skip
-    def test_node_address_missing(self):
+    def test_node_address_missing(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
         self.assertEquals(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_single_peer(self, config_logging, mock_node):
+    def test_single_peer(self, config_logging, mock_node, *_):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1],
@@ -120,10 +119,9 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(peer_arg), 1)
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_many_peers(self, config_logging, mock_node):
+    def test_many_peers(self, config_logging, mock_node, *_):
         addr1 = '10.30.10.216:40111'
         addr2 = '10.30.10.214:3333'
         runner = CliRunner()
@@ -140,9 +138,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
         self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
 
-    @ci_skip
     @patch('golemapp.OptNode')
-    def test_bad_peer(self, mock_node):
+    def test_bad_peer(self, *_):
         addr1 = '10.30.10.216:40111'
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', 'bla']
@@ -150,10 +147,9 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_peers(self, config_logging, mock_node):
+    def test_peers(self, config_logging, mock_node, *_):
         runner = CliRunner()
         return_value = runner.invoke(
             start, self.args + ['--peer', u'10.30.10.216:40111',
@@ -172,10 +168,9 @@ class TestNode(TestWithDatabase):
         self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
         self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_rpc_address(self, config_logging, mock_node):
+    def test_rpc_address(self, *_):
         runner = CliRunner()
 
         ok_addresses = [['--rpc-address', u'10.30.10.216:61000'],
@@ -199,9 +194,8 @@ class TestNode(TestWithDatabase):
             )
             assert return_value.exit_code != 0
 
-    @ci_skip
     @patch('golemapp.OptNode')
-    def test_wrong_task(self, mock_node):
+    def test_wrong_task(self, *_):
         runner = CliRunner()
         args = self.args + ['--task', 'testtask.gt']
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -209,10 +203,9 @@ class TestNode(TestWithDatabase):
         assert 'Error' in return_value.output
         assert 'Usage' in return_value.output
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_task(self, config_logging, mock_node):
+    def test_task(self, config_logging, mock_node, *_):
         a = A()
         dump = os.path.join(self.path, 'testcalssdump')
         save(a, dump, False)
@@ -227,10 +220,9 @@ class TestNode(TestWithDatabase):
         self.assertEqual(len(task_arg), 2)
         self.assertIsInstance(task_arg[0], A)
 
-    @ci_skip
     @patch('golemapp.OptNode')
     @patch('golem.core.common.config_logging')
-    def test_task_from_json(self, config_logging, mock_node):
+    def test_task_from_json(self, config_logging, mock_node, *_):
         test_json_file = os.path.join(self.path, 'task.json')
         a1 = A()
         a1.name = 'Jake the Dog'
@@ -256,9 +248,8 @@ class TestNode(TestWithDatabase):
             if os.path.exists(test_json_file):
                 os.remove(test_json_file)
 
-    @ci_skip
     @patch('golemapp.OptNode')
-    def test_task_from_invalid_json(self, mock_node):
+    def test_task_from_invalid_json(self, *_):
         test_json_file = os.path.join(self.path, 'task.json')
         with open(test_json_file, 'w') as f:
             f.write('Clearly this is not a valid json.')
@@ -275,25 +266,41 @@ class TestNode(TestWithDatabase):
                 os.remove(test_json_file)
 
 
+@patch('golem.rpc.router.CrossbarRouter', create=True)
+@patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
-    def setUp(self):
-        super(TestOptNode, self).setUp()
-        self.node = OptNode(self.path)
-
     def tearDown(self):
-        self.node.client.quit()
+        if hasattr(self, 'node'):
+            self.node.client.quit()
         super(TestOptNode, self).tearDown()
 
-    def test_task_builder(self):
+    def test_task_builder(self, reactor, router):
+        self.node = OptNode(self.path, use_docker_machine_manager=False)
         task_def = Mock()
         task_def.task_type = "Blender"
         self.assertIsNotNone(self.node._get_task_builder(task_def))
 
-    @patch('golem.rpc.router.CrossbarRouter', create=True)
-    @patch('twisted.internet.reactor', create=True)
     def test_start_rpc_server(self, reactor, router):
+        self.node = OptNode(self.path, use_docker_machine_manager=False)
         self.node._start_rpc_server('127.0.0.1', 12345)
         assert self.node.rpc_router
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
+
+    @patch('golem.docker.image.DockerImage')
+    @patch('golem.docker.manager.DockerManager')
+    def test_initialize(self, docker_manager, docker_image, reactor, router):
+        self.node = OptNode(self.path, use_docker_machine_manager=False)
+        self.node.client.start = Mock()
+        self.node.client.environments_manager = Mock()
+        self.node.use_docker_machine_manager = False
+        self.node.initialize()
+
+        assert self.node.client.start.called
+        assert not docker_manager.install.called
+
+        self.node.use_docker_machine_manager = True
+        self.node.initialize()
+
+        assert docker_manager.install.called

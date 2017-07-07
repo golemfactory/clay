@@ -103,6 +103,8 @@ class SystemMonitor(object):
         self.sender_thread.start()
 
     def shut_down(self):
+        dispatcher.disconnect(self.dispatch_listener, signal='golem.monitor')
+        dispatcher.disconnect(self.p2p_listener, signal='golem.p2p')
         self.sender_thread.join()
 
     # Public interface

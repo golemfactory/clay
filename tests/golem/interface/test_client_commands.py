@@ -1,5 +1,6 @@
 import os
 import unittest
+import uuid
 from collections import namedtuple
 from contextlib import contextmanager
 
@@ -7,13 +8,14 @@ import jsonpickle
 from ethereum.utils import denoms
 from mock import Mock
 
-from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, BlenderRendererOptions, BlenderRenderTask
-from apps.core.benchmark.benchmark import Benchmark
+from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
+    BlenderRenderTask
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleserializer import DictSerializer
 from golem.interface.client.account import account
+from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
 from golem.interface.client.payments import incomes, payments
@@ -23,6 +25,7 @@ from golem.interface.client.tasks import Subtasks, Tasks
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.rpc.mapping import aliases
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
@@ -244,7 +247,7 @@ class TestPayments(unittest.TestCase):
             {
                 'value': '{}'.format(i),
                 'payer': 'node_{}'.format(i),
-                'status': 'PaymentStatus.waiting',
+                'status': 'waiting',
                 'block_number': 'deadbeef0{}'.format(i)
             } for i in xrange(1, 6)
         ]
@@ -255,7 +258,7 @@ class TestPayments(unittest.TestCase):
                 'value': '0.{}'.format(i),
                 'subtask': 'subtask_{}'.format(i),
                 'payee': 'node_{}'.format(i),
-                'status': 'PaymentStatus.waiting',
+                'status': 'waiting',
             } for i in xrange(1, 6)
         ]
 
@@ -276,7 +279,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                u'6e6f64655f31',
+                u'node_1',
                 u'waiting',
                 u'0.000000 GNT',
                 u'deadbeef01'
@@ -292,7 +295,7 @@ class TestPayments(unittest.TestCase):
 
             assert result.data[1][0][:-1] == [
                 u'subtask_1',
-                u'6e6f64655f31',
+                u'node_1',
                 u'waiting',
                 u'0.000000 GNT',
             ]
@@ -515,6 +518,10 @@ class TestTasks(TempDirFixture):
 
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
+        definition.options.use_frames = True
+        definition.options.frames = [1, 2, 3, 4, 5, 6]
+        definition.options.frames_string = "1-6"
+        definition.total_subtasks = 6
         definition.task_id = "deadbeef"
         definition.task_type = "Blender"
 
@@ -666,3 +673,31 @@ class TestSettings(TempDirFixture):
 
             with self.assertRaises(CommandException):
                 settings.set('num_cores', _cpu_count + 1)
+
+
+class TestDebug(unittest.TestCase):
+
+    def setUp(self):
+        super(TestDebug, self).setUp()
+
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    def test_show(self):
+        client = self.client
+
+        with client_ctx(Debug, client):
+            debug = Debug()
+            task_id = str(uuid.uuid4())
+
+            debug.rpc((aliases.Network.ident,))
+            assert client.get_node.called
+
+            debug.rpc((aliases.Task.task, task_id))
+            client.get_task.assert_called_with(task_id)
+
+            debug.rpc((aliases.Task.subtasks_borders, task_id, 2))
+            client.get_subtasks_borders.assert_called_with(task_id, 2)
+
+            with self.assertRaises(CommandException):
+                debug.rpc((task_id,))

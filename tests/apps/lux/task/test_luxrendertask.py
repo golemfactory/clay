@@ -1,4 +1,6 @@
 import os
+
+from ethereum.utils import denoms
 from pathlib import Path
 import pickle
 import unittest
@@ -18,7 +20,8 @@ from apps.lux.task.luxrendertask import (
     LuxRenderDefaults,
     LuxRenderOptions,
     LuxRenderTaskBuilder,
-    LuxRenderTaskTypeInfo
+    LuxRenderTaskTypeInfo,
+    PREVIEW_EXT
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
@@ -34,9 +37,11 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-    def get_test_lux_task(self):
+    def get_test_lux_task(self, haltspp=20, total_subtasks=10):
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
+        lro.haltspp = haltspp
+        td.total_subtasks = total_subtasks
         td.options = lro
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
@@ -44,10 +49,17 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     def test_luxtask(self):
         luxtask = self.get_test_lux_task()
+        assert luxtask.haltspp == 2
 
         self.__after_test_errors(luxtask)
 
         self.__queries(luxtask)
+        luxtask = self.get_test_lux_task(19, 10)
+        assert luxtask.haltspp == 2
+        luxtask = self.get_test_lux_task(11, 10)
+        assert luxtask.haltspp == 2
+        luxtask = self.get_test_lux_task(10, 10)
+        assert luxtask.haltspp == 1
 
     def test_query_extra_data(self):
         luxtask = self.get_test_lux_task()
@@ -204,7 +216,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert not LuxRenderTaskTypeInfo.get_preview(None)
         # set the path
         luxtask.preview_file_path = "{}".format(
-            os.path.join(luxtask.tmp_dir, "current_preview"))
+            os.path.join(luxtask.tmp_dir, "current_preview.{}".format(
+                PREVIEW_EXT)))
         assert LuxRenderTaskTypeInfo.get_preview(luxtask)
         assert not LuxRenderTaskTypeInfo.get_preview(None)
 
@@ -287,7 +300,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
     def test_init(self):
         typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
         assert isinstance(typeinfo, TaskTypeInfo)
-        assert typeinfo.output_formats == ["exr", "png", "tga"]
+        assert typeinfo.output_formats == ["EXR", "PNG", "TGA"]
         assert typeinfo.output_file_ext == ["lxs"]
         assert typeinfo.name == "LuxRender"
         assert isinstance(typeinfo.defaults, LuxRenderDefaults)
@@ -324,42 +337,42 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
 
         definition.resolution = (300, 300)
         border = typeinfo.get_task_border("subtask1", definition, 10)
-        for i in range(200):
+        for i in range(300):
             assert (i, 0) in border
-            assert (i, 199) in border
-        for j in range(200):
+            assert (i, 299) in border
+        for j in range(300):
             assert (0, j) in border
-            assert (199, j) in border
-        assert (200, 199) not in border
-        assert (199, 200) not in border
-        assert (0, 200) not in border
-        assert (200, 0) not in border
+            assert (299, j) in border
+        assert (300, 299) not in border
+        assert (299, 300) not in border
+        assert (0, 300) not in border
+        assert (300, 0) not in border
 
         definition.resolution = (1000, 100)
         border = typeinfo.get_task_border("subtask1", definition, 10)
         for i in range(300):
             assert (i, 0) in border
-            assert (i, 29) in border
+            assert (i, 99) in border
         for j in range(30):
             assert (0, j) in border
-            assert (299, j) in border
-        assert (30, 299) not in border
-        assert (29, 200) not in border
-        assert (0, 30) not in border
-        assert (300, 0) not in border
+            assert (999, j) in border
+        assert (100, 999) not in border
+        assert (99, 720) not in border
+        assert (0, 100) not in border
+        assert (1280, 0) not in border
 
         definition.resolution = (100, 1000)
         border = typeinfo.get_task_border("subtask1", definition, 10)
         for i in range(20):
             assert (i, 0) in border
-            assert (i, 199) in border
+            assert (i, 719) in border
         for j in range(200):
             assert (0, j) in border
-            assert (19, j) in border
-        assert (20, 199) not in border
-        assert (19, 200) not in border
-        assert (20, 0) not in border
-        assert (0, 200) not in border
+            assert (71, j) in border
+        assert (72, 719) not in border
+        assert (71, 720) not in border
+        assert (72, 0) not in border
+        assert (0, 720) not in border
 
         definition.resolution = (0, 4)
         assert typeinfo.get_task_border("subtask1", definition, 10) == []
@@ -390,3 +403,43 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         definition = RenderingTaskDefinition()
         definition.resolution = (0, 0)
         assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
+
+
+class TestLuxRenderTaskBuilder(TempDirFixture):
+
+    def get_task(self):
+        td = RenderingTaskDefinition()
+        td.task_type = 'LuxRender'
+        td.max_price = 5.0
+        td.total_subtasks = 5
+        td.main_scene_file = os.path.join(self.path, 'scene.lxs')
+        td.options = LuxRenderOptions()
+        td.add_to_resources()
+        lb = LuxRenderTaskBuilder("ABC", td, self.path, DirManager(self.path))
+        return lb.build()
+
+    def test_build_dictionary(self):
+        task = self.get_task()
+
+        dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
+
+        assert dictionary['id'] is not None
+        assert dictionary['subtasks'] == 5
+        assert dictionary['bid'] == 5.0 / denoms.ether
+        assert dictionary['type'] == 'LuxRender'
+        assert dictionary['options']['haltspp'] is not None
+        assert dictionary['options']['output_path'] is not None
+
+    def test_build_definition(self):
+        task = self.get_task()
+
+        dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
+        definition = LuxRenderTaskBuilder.build_definition(
+            LuxRenderTaskTypeInfo(None, None), dictionary
+        )
+
+        assert definition.task_id == dictionary['id']
+        assert definition.task_type == 'LuxRender'
+        assert definition.max_price == dictionary['bid'] * denoms.ether
+        assert definition.total_subtasks == dictionary['subtasks']
+        assert definition.options.haltspp == dictionary['options']['haltspp']
