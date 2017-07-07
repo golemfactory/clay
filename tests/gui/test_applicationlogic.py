@@ -192,6 +192,34 @@ class TestGuiApplicationLogic(DatabaseFixture):
             "1.00000000 GNT")
         ui.depositBalanceLabel.setText.assert_called_once_with("0.30000000 ETH")
 
+    def test_update_stats(self):
+        logic = GuiApplicationLogic()
+        logic.client = Mock()
+        logic.customizer = Mock()
+
+        deferred = Deferred()
+        deferred.callback(None)
+        logic.client.get_task_stats.return_value = deferred
+
+        logic.update_stats()
+        assert not logic.customizer.gui.ui.knownTasks.setText.called
+
+        result = {
+            'in_network': 1,
+            'supported': 2,
+            'subtasks_computed': 3,
+            'subtasks_with_errors': 4,
+            'subtasks_with_timeout': 5,
+        }
+
+        deferred = Deferred()
+        deferred.callback(result)
+        logic.client.get_task_stats.return_value = deferred
+
+        logic.update_stats()
+        logic.customizer.gui.ui.knownTasks.setText.assert_called_with(
+            str(result['in_network']))
+
     def test_start_task(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()
@@ -244,6 +272,16 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         logic.delete_task_preset("Blender", "NewPreset")
         p = logic.get_task_presets("Blender")
         assert p.result == {}
+
+    def test_change_config(self):
+        logic = GuiApplicationLogic()
+        logic.customizer = Mock()
+
+        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
+        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
+
+        logic.client = rpc_client
+        logic.change_config(dict(node_name='node_name'))
 
     def test_add_tasks(self):
         logic = GuiApplicationLogic()

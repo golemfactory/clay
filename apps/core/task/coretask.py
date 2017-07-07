@@ -70,9 +70,14 @@ class TaskTypeInfo(object):
 
     @staticmethod
     def _preview_result(result, single=False):
+        if single:
+            return result
         if result is not None:
-            return result if single else [result]
-        return None if single else []
+            if isinstance(result, dict):
+                return result
+            else:
+                return {u'1': result}
+        return {}
 
 
 class CoreTask(Task):
@@ -183,6 +188,9 @@ class CoreTask(Task):
 
     def get_tasks_left(self):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+
+    def get_subtasks(self, part):
+        return []
 
     def restart(self):
         for subtask_id in self.subtasks_given.keys():

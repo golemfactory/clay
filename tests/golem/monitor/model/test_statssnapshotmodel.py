@@ -22,7 +22,7 @@ class TestStatsSnapshotModel(MonitorTestBaseClass):
             'tasks_requested': random.randint(0, 10**11),
         }
         def _get_stats(name):
-            return (stats_d[name], None)
+            return (None, stats_d[name])
         stats_mock.get_stats = _get_stats
 
         with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:

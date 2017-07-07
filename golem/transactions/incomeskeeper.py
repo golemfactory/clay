@@ -88,3 +88,14 @@ class IncomesKeeper(object):
             subtask=subtask_id,
             value=value
         )
+
+    def get_list_of_all_incomes(self):
+        # TODO: pagination
+        return (
+            ExpectedIncome.select(ExpectedIncome, Income)
+            .join(Income, peewee.JOIN_LEFT_OUTER, on=(
+                (ExpectedIncome.subtask == Income.subtask) &
+                (ExpectedIncome.sender_node == Income.sender_node)
+            ))
+            .order_by(ExpectedIncome.created_date.desc())
+        )

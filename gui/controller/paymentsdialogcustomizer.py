@@ -61,12 +61,11 @@ class PaymentTableElem(object):
         fee = payment_info["fee"]
         value = float(payment_info["value"])
         fee = "{:.1f}%".format(float(fee) * 100 / value) if fee else ""
-        payment_status = PaymentStatus(payment_info["status"])
 
         subtask = SmartTableItem(payment_info["subtask"])
-        payee = SmartTableItem(payment_info["payee"].encode('hex'))
+        payee = SmartTableItem(payment_info["payee"])
         value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
-        status = SmartTableItem(str(payment_status).replace("PaymentStatus.", ""))
+        status = SmartTableItem(payment_info["status"])
         fee = SmartTableItem(fee)
         self.cols = [subtask, payee, status, value, fee]
 
@@ -76,10 +75,9 @@ class PaymentTableElem(object):
 
 class IncomeTableElem(object):
     def __init__(self, income_info):
-        payment_status = PaymentStatus(income_info["status"])
         value = float(income_info["value"])
-        payer = SmartTableItem(income_info["payer"].encode('hex'))
-        status = SmartTableItem(str(payment_status).replace("PaymentStatus.", ""))
+        payer = SmartTableItem(income_info["payer"])
+        status = SmartTableItem(income_info["status"])
         value = SmartTableItem("{:.6f} ETH".format(value / denoms.ether))
         block_number = SmartTableItem(str(income_info["block_number"]))
         self.cols = [payer, status, value, block_number]

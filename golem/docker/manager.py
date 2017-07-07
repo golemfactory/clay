@@ -6,7 +6,8 @@ import time
 from contextlib import contextmanager
 from threading import Thread
 
-from golem.core.common import is_linux, is_windows, is_osx, get_golem_path
+from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
+    DEVNULL
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 
@@ -103,7 +104,7 @@ class DockerManager(DockerConfigManager):
 
         try:
             if is_linux():
-                raise EnvironmentError("native Linux environment")
+                raise EnvironmentError("Linux")
 
             # Check if a supported VM hypervisor is present
             self.hypervisor = self._get_hypervisor()
@@ -113,8 +114,10 @@ class DockerManager(DockerConfigManager):
         except Exception as exc:
 
             self.docker_machine = None
-            logger.warn("Docker machine is not available: {}"
-                        .format(exc))
+
+            if not is_linux():
+                logger.warn("Docker machine is not available: {}"
+                            .format(exc))
 
         else:
 
@@ -270,7 +273,9 @@ class DockerManager(DockerConfigManager):
         return False
 
     @classmethod
-    def command(cls, key, machine_name=None, args=None, check_output=True, shell=False):
+    def command(cls, key, machine_name=None, args=None,
+                check_output=True, shell=False):
+
         command = cls.docker_machine_commands.get(key)
         if not command:
             command = cls.docker_commands.get(key)
@@ -285,8 +290,13 @@ class DockerManager(DockerConfigManager):
         logger.debug('docker_machine_command: %s', command)
 
         if check_output:
-            return subprocess.check_output(command, shell=shell)
-        return subprocess.check_call(command)
+            return subprocess.check_output(command, shell=shell,
+                                           stderr=subprocess.PIPE,
+                                           stdin=DEVNULL)
+        return subprocess.check_call(command, shell=shell,
+                                     stdout=DEVNULL,
+                                     stderr=DEVNULL,
+                                     stdin=DEVNULL)
 
     @property
     def config_dir(self):

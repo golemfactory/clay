@@ -20,7 +20,6 @@ from taskkeeper import TaskHeaderKeeper
 from taskmanager import TaskManager
 from tasksession import TaskSession
 import weakref
-from weakreflist.weakreflist import WeakList
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -46,7 +45,7 @@ class TaskServer(PendingConnectionsServer):
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
-        self.task_sessions_incoming = WeakList()
+        self.task_sessions_incoming = weakref.WeakSet()
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -190,10 +189,27 @@ class TaskServer(PendingConnectionsServer):
                                                                    owner_address, owner_port, owner_key_id, owner)
 
     def new_connection(self, session):
-        self.task_sessions_incoming.append(session)
+        if self.active:
+            self.task_sessions_incoming.add(session)
+        else:
+            session.disconnect(TaskSession.DCRNoMoreMessages)
+
+    def disconnect(self):
+        task_sessions = dict(self.task_sessions)
+        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
+
+        for task_session in task_sessions.itervalues():
+            task_session.dropped()
+
+        for task_session in sessions_incoming:
+            try:
+                task_session.dropped()
+            except Exception as exc:
+                logger.error("Error closing incoming session: %s", exc)
 
     def get_tasks_headers(self):
-        ths = self.task_keeper.get_all_tasks() + self.task_manager.get_tasks_headers()
+        ths = self.task_keeper.get_all_tasks() + \
+              self.task_manager.get_tasks_headers()
         return [th.to_dict() for th in ths]
 
     def add_task_header(self, th_dict_repr):
@@ -816,7 +832,7 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
 
-    def __connection_for_task_result_final_failure(self, conn_id, key_id,
+    def __connection_for_task_result_final_failure(self, conn_id,
                                                    waiting_task_result):
         logger.info("Cannot connect to task {} owner".format(
             waiting_task_result.subtask_id))
@@ -1001,10 +1017,16 @@ class TaskServer(PendingConnectionsServer):
         self.failures_to_send.clear()
 
     def __connection_for_payment_failure(self, *args, **kwargs):
-        self.final_conn_failure(kwargs['conn_id'])
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
 
     def __connection_for_payment_request_failure(self, *args, **kwargs):
-        self.final_conn_failure(kwargs['conn_id'])
+        if 'conn_id' in kwargs:
+            self.final_conn_failure(kwargs['conn_id'])
+        else:
+            logger.warning("There is no connection id for handle failure")
 
     # CONFIGURATION METHODS
     #############################

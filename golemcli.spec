@@ -1,16 +1,12 @@
 # -*- mode: python -*-
 import os
+import sys
 
 block_cipher = None
+icon = None
 
-
-def on_path(app):
-    for path in os.environ["PATH"].split(os.pathsep):
-        app_path = os.path.join(path.strip('"'), app)
-        if os.path.isfile(app_path) and os.access(app_path, os.X_OK):
-            return True
-    return False
-
+if sys.platform == 'win32':
+    icon = os.path.join(os.getcwdu(), 'Installer', 'favicon.ico')
 
 a = Analysis(['golemcli.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
@@ -38,5 +34,6 @@ exe = EXE(pyz,
           name='golemcli',
           debug=False,
           strip=False,
-          upx=on_path('upx'),
+          upx=False,
+          icon=icon,
           console=True)

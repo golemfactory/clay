@@ -66,13 +66,6 @@ class EthereumTransactionSystem(TransactionSystem):
         eth = self.__proc.eth_balance()
         return gnt, av_gnt, eth
 
-    def get_incoming_payments(self):
-        return [{'status': payment.status.value,
-                 'payer': payment.payer,
-                 'value': payment.value,
-                 'block_number': payment.extra['block_number']
-                 } for payment in self.__monitor.get_incoming_payments()]
-
     def sync(self):
         syncing = True
         while syncing:

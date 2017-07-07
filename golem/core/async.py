@@ -1,12 +1,7 @@
 import logging
-
-from gevent.threadpool import ThreadPool
-from twisted.internet.defer import Deferred
+from twisted.internet import threads
 
 log = logging.getLogger(__name__)
-
-
-_thread_pool = ThreadPool(30)
 
 
 class AsyncRequest(object):
@@ -19,26 +14,20 @@ class AsyncRequest(object):
         self.kwargs = kwargs or {}
 
 
-def async_run(async_request, success=None, error=None):
-    deferred = Deferred()
+def default_errback(failure):
+    log.error('Caught async exception:\n%s', failure.getTraceback())
 
+
+def async_run(deferred_call, success=None, error=None):
+    """Execute a deferred job in a separate thread (Twisted)"""
+    deferred = threads.deferToThread(deferred_call.method,
+                                     *deferred_call.args,
+                                     **deferred_call.kwargs)
+    if error is None:
+        error = default_errback
     if success:
         deferred.addCallback(success)
-    if error:
-        deferred.addErrback(error)
-    else:
-        deferred.addErrback(default_errback)
-
-    def wrapper():
-        try:
-            result = async_request.method(*async_request.args,
-                                          **async_request.kwargs)
-        except Exception as exc:
-            deferred.errback(exc)
-        else:
-            deferred.callback(result)
-
-    _thread_pool.spawn(wrapper)
+    deferred.addErrback(error)
     return deferred
 
 

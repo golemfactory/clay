@@ -136,7 +136,8 @@ class MainWindowCustomizer(Customizer):
         with self.lock:
             for i in range(self.gui.ui.taskTableWidget.rowCount()):
                 status = self.gui.ui.taskTableWidget.item(i, ItemMap.Status).text()
-                if status in [TaskStatus.computing, TaskStatus.waiting]:
+                if status in [TaskStatus.computing, TaskStatus.waiting,
+                              TaskStatus.restarted]:
                     l = self.gui.ui.taskTableWidget.item(i, ItemMap.Time).text().split(':')
                     time_ = int(l[0]) * 3600 + int(l[1]) * 60 + int(l[2]) + 1
                     m, s = divmod(time_, 60)

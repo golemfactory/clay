@@ -201,7 +201,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = self._get_frame_task()
         task.frames = range(4)
 
-        frames = task.get_subtask_frames()
+        frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
         assert all(len(f) == 0 for f in frames.values())
 
@@ -212,7 +212,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             }
         }
 
-        frames = task.get_subtask_frames()
+        frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
         assert all(len(f) == 0 for f in frames.values())
 
@@ -225,7 +225,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             }
         }
 
-        frames = task.get_subtask_frames()
+        frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
         assert all(len(f) == 1 for f in frames.values())
 
@@ -238,7 +238,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             }
         }
 
-        frames = task.get_subtask_frames()
+        frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
         assert len(frames[0]) == 1
         assert len(frames[1]) == 2

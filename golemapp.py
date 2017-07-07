@@ -1,18 +1,22 @@
 #!/usr/bin/env python
 import sys
-from multiprocessing import freeze_support
-from golem.core.common import is_windows
-if is_windows():
-    from golem import uvent
-    uvent.install()
-from golem.reactor import geventreactor
-if 'twisted.internet.reactor' in sys.modules:
-    del sys.modules['twisted.internet.reactor']
-geventreactor.install()
-
 import click
-
+from multiprocessing import freeze_support
+import logging
+from ethereum import slogging
+#Monkey patch for ethereum.slogging.
+#SLogger aggressively mess up with python looger.
+#This patch is to settle down this.
+#It should be done before any SLogger is created.
+orig_getLogger = slogging.SManager.getLogger
+def monkey_patched_getLogger(*args, **kwargs):
+    orig_class = logging.getLoggerClass()
+    result = orig_getLogger(*args, **kwargs)
+    logging.setLoggerClass(orig_class)
+    return result
+slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
+
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -47,6 +51,8 @@ from golem.node import OptNode
 def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt,
           version, m, geth_port):
     freeze_support()
+    delete_reactor()
+
     if version:
         from golem.core.variables import APP_VERSION
         print ("GOLEM version: {}".format(APP_VERSION))
@@ -66,18 +72,18 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt,
         start_crossbar_worker(m)
     # Qt GUI
     elif qt:
-        delete_reactor()
         from gui.startgui import start_gui, check_rpc_address
         address = '{}:{}'.format(rpc_address.address, rpc_address.port)
         start_gui(check_rpc_address(ctx=None, param=None,
                                     address=address))
     # Golem
     elif gui:
-        delete_reactor()
         from gui.startapp import start_app
         start_app(rendering=True, geth_port=geth_port, **config)
     # Golem headless
     else:
+        install_reactor()
+
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         node = OptNode(node_address=node_address, geth_port=geth_port, **config)
@@ -91,6 +97,15 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, task, qt,
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
+
+
+def install_reactor():
+    from golem.core.common import is_windows
+    if is_windows():
+        from twisted.internet import iocpreactor
+        iocpreactor.install()
+    from twisted.internet import reactor
+    return reactor
 
 
 def start_crossbar_worker(module):

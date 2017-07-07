@@ -31,8 +31,7 @@ from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 logger = logging.getLogger("app")
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout,
-                         TaskStatus.finished, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.paused]
 
 
 class GuiApplicationLogic(QtCore.QObject, AppLogic):
@@ -213,12 +212,19 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def update_stats(self):
         response = yield self.client.get_task_stats()
+        if not response:
+            return
 
-        self.customizer.gui.ui.knownTasks.setText(str(response['in_network']))
-        self.customizer.gui.ui.supportedTasks.setText(str(response['supported']))
-        self.customizer.gui.ui.computedTasks.setText(str(response['subtasks_computed']))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
+        self.customizer.gui.ui.knownTasks.setText(
+            str(response['in_network']))
+        self.customizer.gui.ui.supportedTasks.setText(
+            str(response['supported']))
+        self.customizer.gui.ui.computedTasks.setText(
+            str(response['subtasks_computed']))
+        self.customizer.gui.ui.tasksWithErrors.setText(
+            str(response['subtasks_with_errors']))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(
+            str(response['subtasks_with_timeout']))
 
     @inlineCallbacks
     def get_config(self):
@@ -248,8 +254,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def change_config(self, cfg_desc, run_benchmarks=False):
-        cfg_dict = DictSerializer.dump(cfg_desc)
-        yield self.client.update_settings(cfg_dict, run_benchmarks=run_benchmarks)
+        cfg_dict = DictSerializer.dump(cfg_desc, typed=False)
+        yield self.client.update_settings(cfg_dict,
+                                          run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_setting('node_name')
         self.customizer.set_name(u"{}".format(self.node_name))
 
