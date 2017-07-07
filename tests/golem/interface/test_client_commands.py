@@ -154,7 +154,7 @@ class TestNetwork(unittest.TestCase):
                 port='2500{}'.format(i),
                 key_id='deadbeef0{}'.format(i) * 8,
                 node_name='node_{}'.format(i),
-                client_ver=u'0.7.0'
+                client_ver=u'0.0.0'
             ) for i in range(1, 1 + 6)
         ]
 
@@ -200,7 +200,7 @@ class TestNetwork(unittest.TestCase):
             result_1 = net.show(None, full=False)
             result_2 = net.show(None, full=True)
 
-            self.__assert_peer_result(result_1, result_2, u'0.7.0')
+            self.__assert_peer_result(result_1, result_2)
 
     def test_dht(self):
         with client_ctx(Network, self.client):
@@ -209,9 +209,9 @@ class TestNetwork(unittest.TestCase):
             result_1 = net.dht(None, full=False)
             result_2 = net.dht(None, full=True)
 
-            self.__assert_peer_result(result_1, result_2, u'None')
+            self.__assert_peer_result(result_1, result_2)
 
-    def __assert_peer_result(self, result_1, result_2, version):
+    def __assert_peer_result(self, result_1, result_2):
         assert result_1.data[1][0] == [
             '10.0.0.1',
             '25001',
