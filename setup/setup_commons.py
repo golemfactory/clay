@@ -69,6 +69,9 @@ class PyInstaller(Command):
         print("> Copying examples")
         cls.copy_examples(dist_dir)
 
+        print("> Copying chain")
+        cls.copy_chain(dist_dir)
+
         if not is_windows():
             print("> Compressing distribution")
             tar_dir = cls.move(dist_dir)
@@ -85,8 +88,20 @@ class PyInstaller(Command):
     def copy_taskcollector(cls, dist_dir):
         import shutil
 
-        taskcollector_dir = path.join('apps', 'rendering', 'resources', 'taskcollector', 'Release')
-        shutil.copytree(taskcollector_dir, path.join(dist_dir, taskcollector_dir))
+        taskcollector_dir = path.join('apps', 'rendering', 'resources',
+                                      'taskcollector', 'Release')
+        shutil.copytree(taskcollector_dir,
+                        path.join(dist_dir, taskcollector_dir))
+
+    @classmethod
+    def copy_chain(cls, dist_dir):
+        from shutil import copy
+        from os import makedirs
+
+        chain_files = path.join('golem', 'ethereum', 'rinkeby.json')
+        dist_dir = path.join(dist_dir, 'golem', 'ethereum')
+        makedirs(dist_dir)
+        copy(chain_files, dist_dir)
 
     @classmethod
     def copy_examples(cls, dist_dir):
@@ -96,8 +111,8 @@ class PyInstaller(Command):
         blender_dir = path.join(examples_dir, 'blender')
         lux_dir = path.join(examples_dir, 'lux')
 
-        blender_example = path.join('apps', 'blender', 'benchmark', 'test_task',
-                                    'scene-Helicopter-27-cycles.blend')
+        blender_example = path.join('apps', 'blender', 'benchmark',
+                                    'test_task', 'bmw27_cpu.blend')
         lux_example = path.join('apps', 'lux', 'benchmark', 'test_task')
 
         if not path.exists(blender_dir):
@@ -118,6 +133,7 @@ class PyInstaller(Command):
 
         shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
+        shutil.move(path.join(dist_dir, 'golem'), ver_dir)
         shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
         shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
@@ -135,7 +151,8 @@ class PyInstaller(Command):
             raise EnvironmentError("Unsupported OS: {}".format(sys.platform))
 
         version = get_version()
-        tar_file = path.join(dist_dir, 'golem-{}-{}.tar.gz'.format(sys_name, version))
+        tar_file = path.join(dist_dir,
+                             'golem-{}-{}.tar.gz'.format(sys_name, version))
 
         with tarfile.open(tar_file, "w:gz") as tar:
             tar.add(src_dir, arcname=path.basename(src_dir))
@@ -203,7 +220,8 @@ def update_variables():
     with open(file_, 'rb') as f_:
         variables = f_.read()
     version = get_version()
-    variables = re.sub(r"APP_VERSION = \".*\"", "APP_VERSION = \"{}\"".format(version), variables)
+    variables = re.sub(r"APP_VERSION = \".*\"",
+                       "APP_VERSION = \"{}\"".format(version), variables)
     with open(file_, 'wb') as f_:
         f_.write(variables)
 
@@ -262,7 +280,9 @@ def file_name():
     else:
         raise SystemError("Incorrect platform: {}".format(platform))
     if commit_id != tag_id:  # devel package
-        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name, commit_id[:4], commit_id[-4:], plat)
+        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name,
+                                                         commit_id[:4],
+                                                         commit_id[-4:], plat)
     else:  # release package
         return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
 
@@ -279,9 +299,11 @@ def get_files():
             continue
         srcs = []
         if root == '.':
-            dst = path.normpath(path.join("../..", root.replace(golem_path, '')))
+            dst = path.normpath(
+                path.join("../..", root.replace(golem_path, '')))
         else:
-            dst = path.normpath(path.join(beginnig, root.replace(golem_path, '')))
+            dst = path.normpath(
+                path.join(beginnig, root.replace(golem_path, '')))
         for name in files:
             f_ = "{}/{}".format(root, name)
             if f_.split('.')[-1] in extensions:

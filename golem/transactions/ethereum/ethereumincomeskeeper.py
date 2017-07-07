@@ -12,6 +12,11 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 class EthereumIncomesKeeper(IncomesKeeper):
     LOG_ID = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'  # noqa
 
+    # Contrary to documentation sqlite3 overflows over signed word (int32_t)
+    # (Documentation writes about double word int64_t)
+    # http://www.sqlite.org/datatype3.html
+    SQLITE3_MAX_INT = 2**31 - 1
+
     def received(self, sender_node_id, task_id, subtask_id, transaction_id,
                  block_number, value):
         my_address = self.processor.eth_address()
@@ -29,7 +34,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
         # signed int
         spent_tokens = model.Income.select(peewee.fn.sum(model.Income.value))\
             .where(model.Income.transaction == transaction_id)\
-            .scalar()
+            .scalar(convert=True)
         if spent_tokens is None:
             spent_tokens = 0
         received_tokens -= spent_tokens
@@ -47,6 +52,15 @@ class EthereumIncomesKeeper(IncomesKeeper):
             # Count tokens only when we're the receiver.
             if receiver == my_address:
                 received_tokens += log_value
+        if received_tokens >= self.SQLITE3_MAX_INT:
+            logger.error(
+                "Too many tokens received in transaction %r!"
+                "%r will overflow db.",
+                transaction_id,
+                received_tokens
+            )
+            desc = "Too many tokens received: {}".format(received_tokens)
+            raise OverflowError(desc)
         if received_tokens < value:
             logger.error(
                 "Not enough tokens received for subtask: %r."

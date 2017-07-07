@@ -70,9 +70,14 @@ class TaskTypeInfo(object):
 
     @staticmethod
     def _preview_result(result, single=False):
+        if single:
+            return result
         if result is not None:
-            return result if single else [result]
-        return None if single else []
+            if isinstance(result, dict):
+                return result
+            else:
+                return {u'1': result}
+        return {}
 
 
 class CoreTask(Task):
@@ -183,6 +188,9 @@ class CoreTask(Task):
 
     def get_tasks_left(self):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+
+    def get_subtasks(self, part):
+        return []
 
     def restart(self):
         for subtask_id in self.subtasks_given.keys():
@@ -424,10 +432,15 @@ class CoreTaskBuilder(TaskBuilder):
     def build_minimal_definition(cls, task_type, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
-        definition.task_id = str(uuid.uuid4())
+        definition.task_id = dictionary.get('id', str(uuid.uuid4()))
         definition.task_type = task_type.name
         definition.resources = set(dictionary['resources'])
+        definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
+
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        definition.legacy = dictionary.get('legacy', False)
+
         return definition
 
     @classmethod
@@ -444,15 +457,14 @@ class CoreTaskBuilder(TaskBuilder):
     def build_full_definition(cls, task_type, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
-        definition.total_subtasks = int(dictionary['subtask_count'])
         definition.max_price = float(dictionary['bid']) * denoms.ether
 
         definition.full_task_timeout = string_to_timeout(
             dictionary['timeout'])
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
+        definition.output_file = cls.get_output_path(dictionary, definition)
 
-        definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
     @classmethod
@@ -462,23 +474,35 @@ class CoreTaskBuilder(TaskBuilder):
         output_path = cls.build_output_path(definition)
 
         return {
+            u'id': to_unicode(definition.task_id),
             u'type': to_unicode(definition.task_type),
             u'name': to_unicode(definition.task_name),
             u'timeout': to_unicode(task_timeout),
             u'subtask_timeout': to_unicode(subtask_timeout),
-            u'subtask_count': definition.total_subtasks,
+            u'subtasks': definition.total_subtasks,
             u'bid': float(definition.max_price) / denoms.ether,
             u'resources': [to_unicode(r) for r in definition.resources],
             u'options': {
                 u'output_path': to_unicode(output_path)
-            }
+            },
+            # FIXME: Backward compatibility only. Remove after upgrading GUI.
+            u'legacy': definition.legacy,
         }
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
+
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if definition.legacy:
+            return options['output_path']
+
         return os.path.join(options['output_path'], definition.task_name)
 
     @staticmethod
     def build_output_path(definition):
+        # FIXME: Backward compatibility only. Remove after upgrading GUI.
+        if definition.legacy:
+            return definition.output_file
+
         return definition.output_file.rsplit(os.path.sep, 1)[0]

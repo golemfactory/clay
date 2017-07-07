@@ -1,3 +1,4 @@
+import collections
 import logging.config
 import os
 import sys
@@ -7,8 +8,16 @@ from datetime import datetime
 import pytz
 from pathlib import Path
 
-
 TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
+DEVNULL = open(os.devnull, 'wb')
+
+
+def is_frozen():
+    """
+    Check if running a frozen script
+    :return: True if executing a frozen script, False otherwise
+    """
+    return hasattr(sys, 'frozen') and sys.frozen
 
 
 def is_windows():
@@ -42,6 +51,22 @@ def to_unicode(value):
         return unicode(value)
     except UnicodeDecodeError:
         return value
+
+
+def update_dict(target, *updates):
+    """
+    Recursively update a dictionary
+    :param target: dictionary to update
+    :param updates: dictionaries to update with
+    :return: updated target dictionary
+    """
+    for update in updates:
+        for key, val in update.iteritems():
+            if isinstance(val, collections.Mapping):
+                target[key] = update_dict(target.get(key, {}), val)
+            else:
+                target[key] = update[key]
+    return target
 
 
 def get_golem_path():
@@ -154,3 +179,14 @@ def config_logging(suffix='', datadir=None):
 
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
+
+    from ethereum import slogging
+    slogging.configure(u':debug')
+    from twisted.python import log
+    observer = log.PythonLoggingObserver(loggerName='twisted')
+    observer.start()
+
+    from txaio import set_global_log_level
+    crossbar_log_lvl = logging.getLevelName(
+        logging.getLogger('golem.rpc.crossbar').level).lower()
+    set_global_log_level(crossbar_log_lvl)

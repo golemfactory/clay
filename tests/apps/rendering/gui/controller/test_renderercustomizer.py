@@ -122,7 +122,7 @@ class TestFrameRendererCustomizer(TestGui):
         controller._set_frames_from_options()
         controller.gui.ui.framesLineEdit.setText.assert_called_with("")
         controller.options.use_frames = True
-        controller.options.frames = range(3, 7)
+        controller.options.frames = "3-6"
         controller._set_frames_from_options()
         controller.gui.ui.framesLineEdit.setText.assert_called_with("3-6")
 

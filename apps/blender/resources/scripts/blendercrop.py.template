@@ -58,8 +58,5 @@ for scene in bpy.data.scenes:
     scene.render.border_max_y = %(border_max_y).3f
     scene.render.use_compositing = bool(%(use_compositing)r)
 
-#then render:
-bpy.ops.render.render()
-
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()

@@ -21,12 +21,18 @@ class Node(object):
     """
 
     def __init__(self, datadir=None, transaction_system=False,
+                 use_docker_machine_manager=True,
                  **config_overrides):
 
         self.default_environments = []
-        self.client = Client(datadir=datadir,
-                             transaction_system=transaction_system,
-                             **config_overrides)
+        self.use_docker_machine_manager = use_docker_machine_manager
+
+        self.client = Client(
+            datadir=datadir,
+            transaction_system=transaction_system,
+            use_docker_machine_manager=use_docker_machine_manager,
+            **config_overrides
+        )
 
         self.rpc_router = None
         self.rpc_session = None
@@ -35,7 +41,14 @@ class Node(object):
         self.logger = logging.getLogger("app")
 
     def initialize(self):
+        from golem.docker.manager import DockerManager
+
+        if self.use_docker_machine_manager:
+            docker_manager = DockerManager.install(self.client.config_desc)
+            docker_manager.check_environment()
+
         self.load_environments(self.default_environments)
+
         self.client.sync()
         self.client.start()
 

@@ -63,7 +63,9 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         super(Session, self).__init__(self.config)
 
-    def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True, log_level='info'):
+    def connect(self, ssl=None, proxy=None, headers=None, auto_reconnect=True,
+                log_level='info'):
+
         runner = ApplicationRunner(
             url=unicode(self.address),
             realm=self.address.realm,
@@ -119,6 +121,9 @@ class Session(ApplicationSession):
             else:
                 logger.error("RPC: Not subscribed to: {}".format(event_name))
 
+    def is_closing(self):
+        return self._goodbye_sent or self._transport_is_closing
+
     @staticmethod
     def _on_error(err):
         logger.error("RPC: Session error: {}".format(err))
@@ -139,20 +144,20 @@ class Client(object):
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.connected:
-            # if 'options' not in kwargs or not kwargs.get('options'):
-            #     kwargs['options'] = types.CallOptions(timeout=self.timeout)
-            deferred = self._session.call(unicode(method_alias), *args, **kwargs)
+            deferred = self._session.call(unicode(method_alias),
+                                          *args, **kwargs)
             deferred.addErrback(self._on_error)
         else:
             deferred = Deferred()
-            deferred.errback(ProtocolError("RPC: session is not yet established"))
-
+            if not self._session.is_closing():
+                deferred.errback(ProtocolError("RPC: session is not "
+                                               "yet established"))
         return deferred
 
-    @staticmethod
-    def _on_error(err):
-        logger.error("RPC: call error: {}".format(err))
-        raise err
+    def _on_error(self, err):
+        if not self._session.is_closing():
+            logger.error("RPC: call error: {}".format(err))
+            raise err
 
 
 class Publisher(object):
@@ -163,8 +168,9 @@ class Publisher(object):
     def publish(self, event_alias, *args, **kwargs):
         if self.session.connected:
             self.session.publish(unicode(event_alias), *args, **kwargs)
-        else:
-            logger.warn("RPC: Cannot publish '{}', session is not yet established"
+        elif not self.session.is_closing():
+            logger.warn("RPC: Cannot publish '{}', "
+                        "session is not yet established"
                         .format(event_alias))
 
 
