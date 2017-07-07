@@ -19,7 +19,7 @@ from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 from golem.core.databuffer import DataBuffer
 from golem.core.variables import LONG_STANDARD_SIZE, BUFF_SIZE, MIN_PORT, MAX_PORT
 from golem.network.transport.message import Message
-from network import Network, SessionProtocol
+from .network import Network, SessionProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +54,16 @@ class SocketAddress(object):
         self.ipv6 = False
         try:
             self.__validate()
-        except ValueError, err:
+        except ValueError as err:
             raise AddressValueError(err.message)
 
     def __validate(self):
-        if type(self.address) is unicode:
+        if type(self.address) is str:
             self.address = self.address.encode()
         if type(self.address) is not str:
             raise TypeError('Address must be a string, not a ' +
                             type(self.address).__name__)
-        if type(self.port) is not int and type(self.port) is not long:
+        if type(self.port) is not int and type(self.port) is not int:
             raise TypeError('Port must be an int, not a ' +
                             type(self.port).__name__)
 
@@ -104,7 +104,7 @@ class SocketAddress(object):
         :param str hostname:
         :returns None
         """
-        if type(hostname) is unicode:
+        if type(hostname) is str:
             hostname = hostname.encode()
 
         if type(hostname) is not str:
@@ -133,7 +133,7 @@ class SocketAddress(object):
         :returns parsed SocketAddress
         :rtype SocketAddress
         """
-        if type(string) is unicode:
+        if type(string) is str:
             string = string.encode()
 
         if type(string) is not str:
@@ -762,9 +762,9 @@ class FileProducer(object):
 
     def _print_progress(self):
         if self.size != 0:
-            print "\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)),
+            print("\rSending progress {} %                       ".format(int(100 * float(self.fh.tell()) / self.size)), end=' ')
         else:
-            print "\rSending progress 100 %                       ",
+            print("\rSending progress 100 %                       ", end=' ')
 
 
 class EncryptFileProducer(FileProducer):
@@ -869,7 +869,7 @@ class FileConsumer(object):
         if percent > 100:
             percent = 100
         if percent > self.last_percent:
-            print "\rFile data receiving {} %                       ".format(percent),
+            print("\rFile data receiving {} %                       ".format(percent), end=' ')
             self.last_percent = percent
 
     def _end_receiving_file(self):
@@ -1019,7 +1019,7 @@ class DataProducer(object):
         else:
             percent = 100
         if percent > self.last_percent:
-            print "\rSending progress {} %                       ".format(percent),
+            print("\rSending progress {} %                       ".format(percent), end=' ')
         self.last_percent = percent
 
     def _prepare_init_data(self):
@@ -1080,7 +1080,7 @@ class DataConsumer(object):
         else:
             percent = 100
         if percent > self.last_percent:
-            print "\rFile data receiving {} %                       ".format(percent),
+            print("\rFile data receiving {} %                       ".format(percent), end=' ')
             self.last_percent = percent
 
     def _end_receiving(self):

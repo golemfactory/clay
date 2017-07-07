@@ -95,7 +95,7 @@ class MockReactorThread(Thread):
                 self.reactor.runUntilCurrent()
                 self.reactor.doIteration(timeout)
             except Exception as e:
-                print "Unexpected error in main loop:", e.message
+                print(("Unexpected error in main loop:", e.message))
         self.done = True
 
 
@@ -111,7 +111,7 @@ class TestWithReactor(unittest.TestCase):
             cls.reactor_thread = MockReactorThread(_reactor)
             cls.reactor_thread.start()
         except Exception as e:
-            print "Reactor exception: ", e
+            print(("Reactor exception: ", e))
 
     @classmethod
     def tearDownClass(cls):

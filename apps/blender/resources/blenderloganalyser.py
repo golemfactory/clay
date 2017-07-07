@@ -8,20 +8,20 @@ def make_log_analyses(log_content, return_data):
     _get_warnings(log_content, return_data)
     rendering_time = find_rendering_time(log_content)
     if rendering_time:
-        return_data[u"rendering_time"] = to_unicode(rendering_time)
+        return_data["rendering_time"] = to_unicode(rendering_time)
     output_path = find_filepath(log_content)
     if output_path:
-        return_data[u"output_path"] = to_unicode(output_path)
+        return_data["output_path"] = to_unicode(output_path)
     frames = find_frames(log_content)
     # FIXME Convert to nice string and to unicode
     if frames:
-        return_data[u"frames"] = frames
+        return_data["frames"] = frames
     resolution = find_resolution(log_content)
     if resolution:
-        return_data[u"resolution"] = resolution
+        return_data["resolution"] = resolution
     file_format = find_file_format(log_content)
     if file_format:
-        return_data[u"file_format"] = to_unicode(file_format)
+        return_data["file_format"] = to_unicode(file_format)
 
 
 def _get_warnings(log_content, return_data):
@@ -33,13 +33,13 @@ def _get_warnings(log_content, return_data):
 
     wrong_engine = find_wrong_renderer_warning(log_content)
     if wrong_engine:
-        warnings.append(u"\n{}\n".format(wrong_engine))
+        warnings.append("\n{}\n".format(wrong_engine))
 
     if warnings:
-        if return_data.get(u"warnings"):
-            return_data[u"warnings"] += u"".join(warnings)
+        if return_data.get("warnings"):
+            return_data["warnings"] += "".join(warnings)
         else:
-            return_data[u"warnings"] = u"".join(warnings)
+            return_data["warnings"] = "".join(warnings)
 
 
 def find_wrong_renderer_warning(log_content):
@@ -62,10 +62,10 @@ def find_missing_files(log_content):
 
 
 def _format_missing_files_warning(missing_files):
-    missing_files = [u"    {}\n".format(missing_file)
+    missing_files = ["    {}\n".format(missing_file)
                      for missing_file in missing_files]
-    ret = u"Additional data is missing:\n" + u"".join(missing_files)
-    ret += u"\nTry to add missing files to resources before " \
+    ret = "Additional data is missing:\n" + "".join(missing_files)
+    ret += "\nTry to add missing files to resources before " \
            "you start rendering."
     return ret
 
@@ -99,7 +99,7 @@ def find_frames(log_content):
         start_frame = int(frames.group(1))
         end_frame = int(frames.group(2))
         frame_step = int(frames.group(3))
-        return range(start_frame, end_frame + 1, frame_step)
+        return list(range(start_frame, end_frame + 1, frame_step))
 
 
 def find_file_format(log_content):

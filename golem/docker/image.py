@@ -2,7 +2,7 @@ import logging
 
 from docker import errors
 
-from client import local_client
+from .client import local_client
 
 log = logging.getLogger(__name__)
 

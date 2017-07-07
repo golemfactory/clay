@@ -33,7 +33,7 @@ class TestStatsSnapshotModel(MonitorTestBaseClass):
                 supported_tasks=supported_tasks,
                 stats=stats_mock,
             )
-            self.assertEquals(mock_send.call_count, 1)
+            self.assertEqual(mock_send.call_count, 1)
             result = mock_send.call_args[0][0].dict_repr()
             for key in ('cliid', 'sessid', 'timestamp'):
                 del result[key]
@@ -43,7 +43,7 @@ class TestStatsSnapshotModel(MonitorTestBaseClass):
                 'supported_tasks': supported_tasks,
             }
             expected.update(stats_d)
-            self.assertEquals(expected, result)
+            self.assertEqual(expected, result)
 
 class TestP2PSnapshotModel(TestCase):
     def test_init(self):

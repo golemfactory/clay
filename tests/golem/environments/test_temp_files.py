@@ -23,7 +23,7 @@ class TestTempFiles(TestDirFixture):
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc.wait()
         out = proc.stdout.read()
-        self.assertEquals(out.rstrip(), 'hello!')
+        self.assertEqual(out.rstrip(), 'hello!')
 
         self.assertTrue(os.path.exists(tmp_file.name))
         self.assertTrue(os.path.join(test_dir, os.path.basename(tmp_file.name)))

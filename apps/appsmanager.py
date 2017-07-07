@@ -1,7 +1,7 @@
-from __future__ import absolute_import
+
 
 import os
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 from collections import OrderedDict
 from importlib import import_module
 
@@ -44,4 +44,4 @@ class AppsManager(object):
             self.apps[section] = app
 
     def get_env_list(self):
-        return [app.env() for app in self.apps.values()]
+        return [app.env() for app in list(self.apps.values())]

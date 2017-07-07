@@ -16,13 +16,15 @@ class TImgRepr(ImgRepr):
     def load_from_file(self, file_):
         super(TImgRepr, self).load_from_file(file_)
 
-    def get_pixel(self, (i, j)):
+    def get_pixel(self, xxx_todo_changeme):
+        (i, j) = xxx_todo_changeme
         super(TImgRepr, self).get_pixel((i, j))
 
     def get_size(self):
         super(TImgRepr, self).get_size()
 
-    def set_pixel(self, (i, j), color):
+    def set_pixel(self, xxx_todo_changeme1, color):
+        (i, j) = xxx_todo_changeme1
         super(TImgRepr, self).set_pixel((i, j), color)
 
     def copy(self):

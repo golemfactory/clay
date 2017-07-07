@@ -8,9 +8,9 @@ class TestSimpleHash(unittest.TestCase):
         dec = "Man is distinguished, not only by his reason, but by this singular passion from other animals, which is a lust of the mind, that by a perseverance of delight in the continued and indefatigable generation of knowledge, exceeds the short vehemence of any carnal pleasure."
         enc = "TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ5IGhpcyByZWFzb24sIGJ1dCBieSB0aGlz\nIHNpbmd1bGFyIHBhc3Npb24gZnJvbSBvdGhlciBhbmltYWxzLCB3aGljaCBpcyBhIGx1c3Qgb2Yg\ndGhlIG1pbmQsIHRoYXQgYnkgYSBwZXJzZXZlcmFuY2Ugb2YgZGVsaWdodCBpbiB0aGUgY29udGlu\ndWVkIGFuZCBpbmRlZmF0aWdhYmxlIGdlbmVyYXRpb24gb2Yga25vd2xlZGdlLCBleGNlZWRzIHRo\nZSBzaG9ydCB2ZWhlbWVuY2Ugb2YgYW55IGNhcm5hbCBwbGVhc3VyZS4=\n"
         enc2 = SimpleHash.base64_encode(dec)
-        self.assertEquals(enc, enc2)
+        self.assertEqual(enc, enc2)
         dec2 = SimpleHash.base64_decode(enc)
-        self.assertEquals(dec, dec2)
+        self.assertEqual(dec, dec2)
 
     def testHash(self):
         ex1 = ""
@@ -22,14 +22,14 @@ class TestSimpleHash(unittest.TestCase):
         b642 = "L9ThxnotKPzthJ7hu3bnORuT6xI=\n"
         hash2 = "/\xd4\xe1\xc6z-(\xfc\xed\x84\x9e\xe1\xbbv\xe79\x1b\x93\xeb\x12"
 
-        self.assertEquals(hash1, SimpleHash.hash(ex1))
-        self.assertEquals(hash2, SimpleHash.hash(ex2))
-        self.assertEquals(hex1, SimpleHash.hash_hex(ex1))
-        self.assertEquals(hex2, SimpleHash.hash_hex(ex2))
-        self.assertEquals(b641, SimpleHash.hash_base64(ex1))
-        self.assertEquals(b642, SimpleHash.hash_base64(ex2))
+        self.assertEqual(hash1, SimpleHash.hash(ex1))
+        self.assertEqual(hash2, SimpleHash.hash(ex2))
+        self.assertEqual(hex1, SimpleHash.hash_hex(ex1))
+        self.assertEqual(hex2, SimpleHash.hash_hex(ex2))
+        self.assertEqual(b641, SimpleHash.hash_base64(ex1))
+        self.assertEqual(b642, SimpleHash.hash_base64(ex2))
 
     def test_fileHash(self):
         file_ = path.join(path.dirname(__file__), 'file.txt')
         b64 = "vkF3aLXDxcHZvLLnwRkZbddrVXA=\n"
-        self.assertEquals(b64, SimpleHash.hash_file_base64(file_))
+        self.assertEqual(b64, SimpleHash.hash_file_base64(file_))

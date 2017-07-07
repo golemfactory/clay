@@ -65,7 +65,7 @@ class TestCLI(unittest.TestCase):
             return lambda *args, **kwargs: self.return_value
 
     @patch('sys.stdout', new_callable=StringIO)
-    @patch('golem.interface.cli.CLI.process', side_effect=lambda x: (u' '.join(x), Mock()))
+    @patch('golem.interface.cli.CLI.process', side_effect=lambda x: (' '.join(x), Mock()))
     @patch('golem.core.common.config_logging', side_effect=_nop)
     def test_execute(self, _, _process, _out):
 
@@ -263,7 +263,7 @@ class TestCLI(unittest.TestCase):
             def choices(_actions):
                 result = {}
                 for action in _actions:
-                    for choice, subparser in action.choices.items():
+                    for choice, subparser in list(action.choices.items()):
                         result[choice] = subparser
                 return result
 
@@ -271,15 +271,15 @@ class TestCLI(unittest.TestCase):
             cli_choices = choices(cli_actions)
 
             self.assertEqual(len(cli_choices), 2)
-            self.assertIn('mock', cli_choices.keys())
-            self.assertIn('outer', cli_choices.keys())
+            self.assertIn('mock', list(cli_choices.keys()))
+            self.assertIn('outer', list(cli_choices.keys()))
 
             mock_actions = actions(cli_choices['mock'])
             mock_choices = choices(mock_actions)
             expected_choices = ['arg_method', 'method_2', 'mock_help', 'id_method', 'outer_2', 'renamed_method']
 
             self.assertEqual(len(mock_choices), len(expected_choices))
-            self.assertTrue(all([c in mock_choices.keys() for c in expected_choices]))
+            self.assertTrue(all([c in list(mock_choices.keys()) for c in expected_choices]))
 
             self.assertTrue(any([a.option_strings == ['--test-flag', '-tf'] and
                                  isinstance(a, argparse._StoreTrueAction)

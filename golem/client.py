@@ -93,7 +93,7 @@ class Client(HardwarePresetsMixin):
         self.config_desc = ClientConfigDescriptor()
         self.config_desc.init_from_app_config(config)
 
-        for key, val in config_overrides.iteritems():
+        for key, val in list(config_overrides.items()):
             if not hasattr(self.config_desc, key):
                 self.quit()  # quit only closes underlying services (for now)
                 raise AttributeError(
@@ -188,7 +188,7 @@ class Client(HardwarePresetsMixin):
     def p2p_listener(self, sender, signal, event='default', **kwargs):
         if event != 'unreachable':
             return
-        self.node.port_status = kwargs.get('description', u'')
+        self.node.port_status = kwargs.get('description', '')
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
@@ -261,7 +261,8 @@ class Client(HardwarePresetsMixin):
                                                       dir_manager,
                                                       self.keys_auth, self)
 
-        def connect((p2p_port, task_port)):
+        def connect(xxx_todo_changeme):
+            (p2p_port, task_port) = xxx_todo_changeme
             log.info('P2P server is listening on port %s', p2p_port)
             log.info('Task server is listening on port %s', task_port)
 
@@ -438,7 +439,7 @@ class Client(HardwarePresetsMixin):
             self.rpc_publisher.publish(
                 Task.evt_task_test_status,
                 TaskTestStatus.error,
-                u"Another test is running"
+                "Another test is running"
             )
         return False
 
@@ -476,7 +477,7 @@ class Client(HardwarePresetsMixin):
     def create_task(self, t_dict):
         try:
             task = self.enqueue_new_task(t_dict)
-            return unicode(task.header.task_id)
+            return str(task.header.task_id)
         except Exception:
             log.exception("Cannot create task {}".format(t_dict))
 
@@ -505,7 +506,7 @@ class Client(HardwarePresetsMixin):
 
     def get_node_name(self):
         name = self.config_desc.node_name
-        return unicode(name) if name else u''
+        return str(name) if name else ''
 
     def get_neighbours_degree(self):
         return self.p2pservice.get_peers_degree()
@@ -520,13 +521,13 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.send_get_resource_peers()
 
     def get_peers(self):
-        return self.p2pservice.peers.values()
+        return list(self.p2pservice.peers.values())
 
     def get_known_peers(self):
         peers = self.p2pservice.incoming_peers or dict()
         return [
             DictSerializer.dump(p['node'], typed=False)
-            for p in peers.itervalues()
+            for p in list(peers.values())
         ]
 
     def get_connected_peers(self):
@@ -558,39 +559,39 @@ class Client(HardwarePresetsMixin):
 
     def get_client_id(self):
         key_id = self.keys_auth.get_key_id()
-        return unicode(key_id) if key_id else None
+        return str(key_id) if key_id else None
 
     def get_node_key(self):
         key = self.node.key
-        return unicode(key) if key else None
+        return str(key) if key else None
 
     def get_settings(self):
         return DictSerializer.dump(self.config_desc)
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
-            raise KeyError(u"Unknown setting: {}".format(key))
+            raise KeyError("Unknown setting: {}".format(key))
 
         value = getattr(self.config_desc, key)
         if key in ConfigApprover.numeric_opt:
-            return unicode(value)
+            return str(value)
         return value
 
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
-            raise KeyError(u"Unknown setting: {}".format(key))
+            raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
 
     def update_settings(self, settings_dict, run_benchmarks=False):
-        for key, value in settings_dict.items():
+        for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
-                raise KeyError(u"Unknown setting: {}".format(key))
+                raise KeyError("Unknown setting: {}".format(key))
             setattr(self.config_desc, key, value)
         self.change_config(self.config_desc, run_benchmarks)
 
     def get_datadir(self):
-        return unicode(self.datadir)
+        return str(self.datadir)
 
     def get_p2p_port(self):
         return self.p2pservice.cur_port
@@ -628,11 +629,11 @@ class Client(HardwarePresetsMixin):
 
     def get_task_stats(self):
         return {
-            u'in_network': self.get_task_count(),
-            u'supported': self.get_supported_task_count(),
-            u'subtasks_computed': self.get_computed_task_count(),
-            u'subtasks_with_errors': self.get_error_task_count(),
-            u'subtasks_with_timeout': self.get_timeout_task_count()
+            'in_network': self.get_task_count(),
+            'supported': self.get_supported_task_count(),
+            'subtasks_computed': self.get_computed_task_count(),
+            'subtasks_with_errors': self.get_error_task_count(),
+            'subtasks_with_timeout': self.get_timeout_task_count()
         }
 
     def get_supported_task_count(self):
@@ -651,7 +652,7 @@ class Client(HardwarePresetsMixin):
 
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
-        return unicode(address) if address else None
+        return str(address) if address else None
 
     @inlineCallbacks
     def get_balance(self):
@@ -659,7 +660,7 @@ class Client(HardwarePresetsMixin):
             req = AsyncRequest(self.transaction_system.get_balance)
             b, ab, d = yield async_run(req)
             if b is not None:
-                returnValue((unicode(b), unicode(ab), unicode(d)))
+                returnValue((str(b), str(ab), str(d)))
         returnValue((None, None, None))
 
     def get_payments_list(self):
@@ -701,7 +702,7 @@ class Client(HardwarePresetsMixin):
             account, _ = Account.get_or_create(node_id=self.get_client_id())
             return account.description
         except Exception as e:
-            return u"An error has occurred {}".format(e)
+            return "An error has occurred {}".format(e)
 
     def change_description(self, description):
         self.get_description()
@@ -791,13 +792,13 @@ class Client(HardwarePresetsMixin):
         )
 
     def get_res_dirs(self):
-        return {u"computing": self.get_computed_files_dir(),
-                u"received": self.get_received_files_dir(),
-                u"distributed": self.get_distributed_files_dir()}
+        return {"computing": self.get_computed_files_dir(),
+                "received": self.get_received_files_dir(),
+                "distributed": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
-        return {unicode(name): unicode(du(d))
-                for name, d in self.get_res_dirs().iteritems()}
+        return {str(name): str(du(d))
+                for name, d in list(self.get_res_dirs().items())}
 
     def get_res_dir(self, dir_type):
         if dir_type == DirectoryType.COMPUTED:
@@ -806,16 +807,16 @@ class Client(HardwarePresetsMixin):
             return self.get_distributed_files_dir()
         elif dir_type == DirectoryType.RECEIVED:
             return self.get_received_files_dir()
-        raise Exception(u"Unknown dir type: {}".format(dir_type))
+        raise Exception("Unknown dir type: {}".format(dir_type))
 
     def get_computed_files_dir(self):
-        return unicode(self.task_server.get_task_computer_root())
+        return str(self.task_server.get_task_computer_root())
 
     def get_received_files_dir(self):
-        return unicode(self.task_server.task_manager.get_task_manager_root())
+        return str(self.task_server.task_manager.get_task_manager_root())
 
     def get_distributed_files_dir(self):
-        return unicode(self.resource_server.get_distributed_resource_root())
+        return str(self.resource_server.get_distributed_resource_root())
 
     def clear_dir(self, dir_type):
         if dir_type == DirectoryType.COMPUTED:
@@ -824,7 +825,7 @@ class Client(HardwarePresetsMixin):
             return self.remove_distributed_files()
         elif dir_type == DirectoryType.RECEIVED:
             return self.remove_received_files()
-        raise Exception(u"Unknown dir type: {}".format(dir_type))
+        raise Exception("Unknown dir type: {}".format(dir_type))
 
     def remove_computed_files(self):
         dir_manager = DirManager(self.datadir)
@@ -846,18 +847,18 @@ class Client(HardwarePresetsMixin):
 
     def get_known_tasks(self):
         headers = {}
-        for key, header in self.task_server.task_keeper.task_headers.iteritems():  # noqa
-            headers[unicode(key)] = DictSerializer.dump(header)
+        for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
+            headers[str(key)] = DictSerializer.dump(header)
         return headers
 
     def get_environments(self):
         envs = copy(self.environments_manager.get_environments())
         return [{
-            u'id': unicode(env.get_id()),
-            u'supported': env.supported(),
-            u'accepted': env.is_accepted(),
-            u'performance': env.get_performance(self.config_desc),
-            u'description': unicode(env.short_description)
+            'id': str(env.get_id()),
+            'supported': env.supported(),
+            'accepted': env.is_accepted(),
+            'performance': env.get_performance(self.config_desc),
+            'description': str(env.short_description)
         } for env in envs]
 
     @inlineCallbacks
@@ -1037,9 +1038,9 @@ class Client(HardwarePresetsMixin):
                 log.debug('Error retrieving balance: {}'.format(exc))
             else:
                 self._publish(Payments.evt_balance, {
-                    u'GNT': unicode(gnt),
-                    u'GNT_available': unicode(av_gnt),
-                    u'ETH': unicode(eth)
+                    'GNT': str(gnt),
+                    'GNT_available': str(av_gnt),
+                    'ETH': str(eth)
                 })
 
     def __make_node_state_snapshot(self, is_running=True):
@@ -1079,22 +1080,22 @@ class Client(HardwarePresetsMixin):
         task_server_port = self.get_task_server_port()
 
         if listen_port == 0 or task_server_port == 0:
-            return u"Application not listening, check config file."
+            return "Application not listening, check config file."
 
         messages = []
 
         if self.node.port_status:
             statuses = self.node.port_status.split('\n')
-            failures = filter(lambda e: e.find('open') == -1, statuses)
-            messages.append(u"Port " + u", ".join(failures) + u".")
+            failures = [e for e in statuses if e.find('open') == -1]
+            messages.append("Port " + ", ".join(failures) + ".")
 
         if self.get_connected_peers():
-            messages.append(u"Connected")
+            messages.append("Connected")
         else:
-            messages.append(u"Not connected to Golem Network, "
-                            u"check seed parameters.")
+            messages.append("Not connected to Golem Network, "
+                            "check seed parameters.")
 
-        return u' '.join(messages)
+        return ' '.join(messages)
 
     def get_metadata(self):
         metadata = dict()
@@ -1117,17 +1118,17 @@ class Client(HardwarePresetsMixin):
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
         if len(progress) > 0:
-            msg = u"Computing {} subtask(s):".format(len(progress))
-            for k, v in progress.iteritems():
-                msg = u"{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
+            msg = "Computing {} subtask(s):".format(len(progress))
+            for k, v in list(progress.items()):
+                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
         elif self.config_desc.accept_tasks:
-            msg = u"Waiting for tasks...\n"
+            msg = "Waiting for tasks...\n"
         else:
-            msg = u"Not accepting tasks\n"
+            msg = "Not accepting tasks\n"
 
         peers = self.p2pservice.get_peers()
 
-        msg += u"Active peers in network: {}\n".format(len(peers))
+        msg += "Active peers in network: {}\n".format(len(peers))
         return msg
 
     def activate_hw_preset(self, name, run_benchmarks=False):

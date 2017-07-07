@@ -11,10 +11,10 @@ from time import time
 import sys
 
 sys.path.append("src")
-from camera import Camera
-from image import Image
-from scene import Scene
-from randommini import Random
+from .camera import Camera
+from .image import Image
+from .scene import Scene
+from .randommini import Random
 
 
 BANNER = '''
@@ -84,9 +84,9 @@ def makePerfTest(filename, cfg_filename, num_cores):
     duration = render_taskable(image, image_file_pathname, camera, scene, iterations)
 
     numSamples = image.width * image.height * iterations
-    print "\nSummary:"
-    print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
-    print "    giving an average speed of {} rays/s".format(float(numSamples) / duration)
+    print("\nSummary:")
+    print(("    Rendering scene with {} rays took {} seconds".format(numSamples, duration)))
+    print(("    giving an average speed of {} rays/s".format(float(numSamples) / duration)))
     cfg_file = open(cfg_filename, 'w')
     average = float(numSamples) / duration
     average = average * num_cores
@@ -117,9 +117,9 @@ def render_orig(image, image_file_pathname, camera, scene, iterations):
                 image_file = open(image_file_pathname, 'wb')
                 image.get_formatted(image_file, frame_no)
                 image_file.close()
-        print '\nfinished'
+        print('\nfinished')
     except KeyboardInterrupt:
-        print '\ninterrupted'
+        print('\ninterrupted')
 
 @timedafunc
 def render_taskable(image, image_file_pathname, camera, scene, num_samples):
@@ -152,17 +152,17 @@ def render_taskable(image, image_file_pathname, camera, scene, num_samples):
         # image.get_formatted(image_file, num_samples)
         # image_file.close()
 
-        print '\nfinished'
+        print('\nfinished')
     except KeyboardInterrupt:
-        print '\ninterrupted'
+        print('\ninterrupted')
 
 
 
 def main():
     if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-        print HELP
+        print(HELP)
     else:
-        print BANNER
+        print(BANNER)
         model_file_pathname = argv[1]
         image_file_pathname = model_file_pathname + '.ppm'
         model_file = open(model_file_pathname, 'r')
@@ -181,9 +181,9 @@ def main():
         duration = render_taskable(image, image_file_pathname, camera, scene, iterations)
 
         numSamples = image.width * image.height * iterations
-        print "\nSummary:"
-        print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
-        print "    giving an average speed of {} rays/s".format(float(numSamples) / duration)
+        print("\nSummary:")
+        print(("    Rendering scene with {} rays took {} seconds".format(numSamples, duration)))
+        print(("    giving an average speed of {} rays/s".format(float(numSamples) / duration)))
         cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
         average = average * multiprocessing.cpu_count()

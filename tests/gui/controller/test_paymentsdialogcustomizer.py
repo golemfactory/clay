@@ -10,24 +10,24 @@ from gui.controller.paymentsdialogcustomizer import PaymentTableElem, IncomeTabl
 class TestTableElem(unittest.TestCase):
     def test_payment_table_elem(self):
         ethereum_address_hex = "aabbccddeeffaabbccddeeffaabbccddeeff0011"
-        a = PaymentTableElem({u"status": unicode(PaymentStatus.awaiting.name),
-                              u"payee": unicode(ethereum_address_hex),
-                              u"subtask": u"ABC",
-                              u"value": unicode(209*10**15),
-                              u"fee": None})
+        a = PaymentTableElem({"status": str(PaymentStatus.awaiting.name),
+                              "payee": str(ethereum_address_hex),
+                              "subtask": "ABC",
+                              "value": str(209*10**15),
+                              "fee": None})
         for i in range(len(a.cols)):
             self.assertIsInstance(a.get_column_item(i), QTableWidgetItem)
-        self.assertEqual(a.get_column_item(0).text(), u"ABC")
+        self.assertEqual(a.get_column_item(0).text(), "ABC")
         self.assertEqual(a.get_column_item(1).text(), ethereum_address_hex)
-        self.assertEqual(a.get_column_item(2).text(), u"awaiting")
-        self.assertEqual(a.get_column_item(3).text(), u"0.209000 ETH")
+        self.assertEqual(a.get_column_item(2).text(), "awaiting")
+        self.assertEqual(a.get_column_item(3).text(), "0.209000 ETH")
 
     def test_income_table_elem(self):
         ethereum_address_hex = "ffbbccddeeffaabbccddeeffaabbccddeeff0088"
-        b = IncomeTableElem({u"status": unicode(PaymentStatus.confirmed.name),
-                             u"value": unicode(211 * 10**16),
-                             u"payer": unicode(ethereum_address_hex),
-                             u"block_number": u"ABB"})
+        b = IncomeTableElem({"status": str(PaymentStatus.confirmed.name),
+                             "value": str(211 * 10**16),
+                             "payer": str(ethereum_address_hex),
+                             "block_number": "ABB"})
         for i in range(len(b.cols)):
             self.assertIsInstance(b.get_column_item(i), QTableWidgetItem)
         self.assertEqual(b.get_column_item(0).text(), ethereum_address_hex)

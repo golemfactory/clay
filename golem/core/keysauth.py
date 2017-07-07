@@ -10,10 +10,10 @@ from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
-from crypto import ECCx
+from .crypto import ECCx
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
-from simpleenv import get_local_datadir
-from simplehash import SimpleHash
+from .simpleenv import get_local_datadir
+from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
@@ -558,7 +558,7 @@ class EllipticalKeysAuth(KeysAuth):
         # FIXME: The same fix is needed for RSAKeysAuth.
         keys_dir = os.path.dirname(private_key_loc)
         if not os.path.isdir(keys_dir):
-            os.makedirs(keys_dir, 0700)
+            os.makedirs(keys_dir, 0o700)
 
         with open(private_key_loc, 'wb') as f:
             f.write(key)

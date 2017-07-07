@@ -48,10 +48,10 @@ class Lottery(object):
         # Payments should be a dictionary. This is quite important to avoid
         # many entries for the same address and therefore hash colisions.
         assert len(payments) > 1
-        self.value = sum(payments.itervalues())
+        self.value = sum(payments.values())
         M = 2**32
         tickets = []
-        for addr, v in payments.iteritems():
+        for addr, v in list(payments.items()):
             l = v * M / self.value
             tickets.append(self.Ticket(addr, 0, l))
 
@@ -86,7 +86,7 @@ class Lottery(object):
             i -= 1
 
         while len(nodes) > 1:
-            for i in xrange(len(nodes) / 2):
+            for i in range(len(nodes) / 2):
                 nodes[i] = self.Node(left=nodes[i], right=nodes[i+1])
                 del nodes[i+1]
 
@@ -111,14 +111,14 @@ class Lottery(object):
         q = [self.root]
         while q:
             node = q.pop(0)
-            print("*", node.hash.encode('hex'),
-                  node.parent.hash.encode('hex')[:6] if node.parent else "")
+            print(("*", node.hash.encode('hex'),
+                  node.parent.hash.encode('hex')[:6] if node.parent else ""))
             if hasattr(node, "value"):
                 v = node.value
-                print("  [{:.2}, {:.2}] {} {}"
+                print(("  [{:.2}, {:.2}] {} {}"
                       .format(v.begin / float(2**32),
                               (v.begin + v.length - 1) / float(2**32),
-                              v.length, v.address.encode('hex')))
+                              v.length, v.address.encode('hex'))))
             else:
                 q.extend((node.left, node.right))
 

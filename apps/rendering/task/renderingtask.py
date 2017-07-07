@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import logging
 import math
@@ -79,7 +79,7 @@ class RenderingTask(CoreTask):
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
-        if isinstance(task_definition.output_file, unicode):
+        if isinstance(task_definition.output_file, str):
             task_definition.output_file = task_definition.output_file.encode('utf-8', 'replace')
         self.outfilebasename = Path(task_definition.output_file).stem
         self.output_file = task_definition.output_file
@@ -172,7 +172,7 @@ class RenderingTask(CoreTask):
 
         img_task = self._open_preview()
 
-        for sub in self.subtasks_given.values():
+        for sub in list(self.subtasks_given.values()):
             if SubtaskStatus.is_computed(sub['status']):
                 self._mark_task_area(sub, img_task, sent_color)
             if sub['status'] in [SubtaskStatus.failure,
@@ -224,7 +224,7 @@ class RenderingTask(CoreTask):
             end_task = self.last_task
             return start_task, end_task
         else:
-            for sub in self.subtasks_given.values():
+            for sub in list(self.subtasks_given.values()):
                 if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']
@@ -317,9 +317,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
-        candidates = filter(lambda res: any(res.lower().endswith(ext.lower())
-                                            for ext in extensions),
-                            resources)
+        candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
+                                            for ext in extensions)]
         if not candidates:
             raise Exception("Scene file was not found.")
 
@@ -345,8 +344,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'format'] = definition.output_format
-        dictionary[u'options'][u'resolution'] = definition.resolution
+        dictionary['options']['format'] = definition.output_format
+        dictionary['options']['resolution'] = definition.resolution
         return dictionary
 
     @classmethod

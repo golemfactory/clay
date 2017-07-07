@@ -384,7 +384,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         self.tm.get_next_subtask("NODEID2", "NODENAME", "xyz", 1000, 100, 10000, 10000)
         task_mock.query_extra_data_return_value.ctd.subtask_id = "ddeeff"
         self.tm.get_next_subtask("NODEID3", "NODENAME", "xyz", 1000, 100, 10000, 10000)
-        self.assertEquals(set(self.tm.get_subtasks("xyz")), {"xxyyzz", "aabbcc", "ddeeff"})
+        self.assertEqual(set(self.tm.get_subtasks("xyz")), {"xxyyzz", "aabbcc", "ddeeff"})
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
 
     @patch("golem.task.taskmanager.get_external_address")
@@ -395,14 +395,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"), "print 'hello world'")
         listener_mock = Mock()
         def listener(sender, signal, event, task_id):
-            self.assertEquals(event, 'task_status_updated')
-            self.assertEquals(task_id, t.header.task_id)
+            self.assertEqual(event, 'task_status_updated')
+            self.assertEqual(task_id, t.header.task_id)
             listener_mock()
         dispatcher.connect(listener, signal='golem.taskmanager')
         try:
             self.tm.add_new_task(t)
             self.tm.resources_send("xyz")
-            self.assertEquals(listener_mock.call_count, 2)
+            self.assertEqual(listener_mock.call_count, 2)
         finally:
             dispatcher.disconnect(listener, signal='golem.taskmanager')
 
@@ -481,13 +481,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             self.tm.get_next_subtask("NODEID", "NODENAME", "xyz", 1000, 100, 10000, 10000)
             t.query_extra_data_return_value.ctd.subtask_id = "xxyyzz2"
             self.tm.get_next_subtask("NODEID2", "NODENAME2", "xyz", 1000, 100, 10000, 10000)
-            self.assertEquals(len(self.tm.tasks_states["xyz"].subtask_states), 2)
+            self.assertEqual(len(self.tm.tasks_states["xyz"].subtask_states), 2)
             with self.assertNoLogs(logger, level="WARNING"):
                 self.tm.restart_task("xyz")
             assert self.tm.tasks["xyz"].task_status == TaskStatus.restarted
             assert self.tm.tasks_states["xyz"].status == TaskStatus.restarted
             assert len(self.tm.tasks_states["xyz"].subtask_states) == 2
-            for ss in self.tm.tasks_states["xyz"].subtask_states.values():
+            for ss in list(self.tm.tasks_states["xyz"].subtask_states.values()):
                 assert ss.subtask_status == SubtaskStatus.restarted
 
     @patch("golem.task.taskmanager.get_external_address")
@@ -562,7 +562,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
         borders = tm.get_subtasks_borders(task_id, 1)
         assert len(borders) == 3
-        assert all(len(b) == 4 for b in borders.values())
+        assert all(len(b) == 4 for b in list(borders.values()))
 
         borders = tm.get_subtasks_borders(task_id, 2)
         assert len(borders) == 0
@@ -638,7 +638,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         subtask_id = None
         previews = [None, 'result', ['result_1', 'result_2']]
 
-        for i in xrange(0, n):
+        for i in range(0, n):
             task_id = str(uuid.uuid4())
 
             definition = Mock()
@@ -653,7 +653,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             definition.resources = [str(uuid.uuid4()) for _ in range(5)]
             definition.output_file = os.path.join(self.tempdir, 'somefile')
             definition.main_scene_file = self.path
-            definition.options.frames = range(i + 1)
+            definition.options.frames = list(range(i + 1))
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
@@ -677,10 +677,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.preview_updaters = [Mock()] * n
             task.use_frames = fixed_frames or i % 2 == 0
 
-            task.frames_subtasks = {"1": subtask_states.keys()}
+            task.frames_subtasks = {"1": list(subtask_states.keys())}
 
             task.subtasks_given = {k: v.extra_data for k, v
-                                   in subtask_states.iteritems()}
+                                   in list(subtask_states.items())}
 
             tm.tasks[task_id] = task
             tm.tasks_states[task_id] = state
@@ -695,7 +695,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         subtasks = dict()
         subtask_id = None
 
-        for i in xrange(0, n):
+        for i in range(0, n):
 
             subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
@@ -715,7 +715,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     @staticmethod
     def __build_subtask2task(tasks):
         subtask2task = dict()
-        for k, t in tasks.items():
-            for sk, st in t.subtask_states.items():
+        for k, t in list(tasks.items()):
+            for sk, st in list(t.subtask_states.items()):
                 subtask2task[st.subtask_id] = t.header.task_id
         return subtask2task

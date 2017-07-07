@@ -45,9 +45,9 @@ def run_dummy_task(data_file, subtask_data, difficulty, result_size):
     :param int result_size: size of the solution string S
     :rtype DummyTaskResult\
     """
-    print '[DUMMY TASK] computation started, data_file = ', data_file, \
+    print(('[DUMMY TASK] computation started, data_file = ', data_file, \
           ', result_size = ', result_size, \
-          ', difficulty = 0x%08x' % difficulty
+          ', difficulty = 0x%08x' % difficulty))
     t0 = time.clock()
 
     with open(data_file, 'r') as f:
@@ -56,5 +56,5 @@ def run_dummy_task(data_file, subtask_data, difficulty, result_size):
     result = '%x' % solution
     assert len(result) == result_size
 
-    print '[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec'
+    print(('[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec'))
     return {'data': result, 'result_type': 0}

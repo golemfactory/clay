@@ -47,5 +47,5 @@ class EthereumAddress(object):
     def __eq__(self, other):
         return self.address == other.address
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.address is not None

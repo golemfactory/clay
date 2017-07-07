@@ -138,7 +138,7 @@ class OpenStackSwiftAPI(object):
         for item in endpoints:
             if 'region' in item and 'url' in item:
                 oss.region_urls[item['region']] = item['url']
-        oss.regions = oss.region_urls.keys()
+        oss.regions = list(oss.region_urls.keys())
 
 
 def api_access(method):

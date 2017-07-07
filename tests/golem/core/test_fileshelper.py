@@ -123,13 +123,13 @@ class TestDirSize(TestDirFixture):
                  ],
                  '/var'),
                 ([
-                    u'/var/log-other/daemon/daemon.log',
+                    '/var/log-other/daemon/daemon.log',
                     '/var/log/daemon.log',
                  ],
                  '/var'),
                 ([
-                    u'/var/log-other/daemon/daemon.log',
-                    u'/var/log/daemon.log',
+                    '/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
                  ],
                  '/var'),
                 ([
@@ -333,8 +333,8 @@ class TestHasExt(TestDirFixture):
         assert has_ext(file_names[0], ".ext", True)
         assert not has_ext(file_names[0], ".exr")
 
-        assert len(filter(lambda x: has_ext(x, ".abc"), file_names)) == 4
-        assert len(filter(lambda x: has_ext(x, ".abc", True), file_names)) == 1
+        assert len([x for x in file_names if has_ext(x, ".abc")]) == 4
+        assert len([x for x in file_names if has_ext(x, ".abc", True)]) == 1
 
         assert has_ext(file_names[6], ".xyz")
         assert not has_ext(file_names[6], ".xyz", True)

@@ -18,9 +18,7 @@ class DiagnosticsOutputFormat(object):
     data = 2
 
 
-class DiagnosticsProvider(object):
-    __metaclass__ = abc.ABCMeta
-
+class DiagnosticsProvider(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_diagnostics(self, output_format):
         pass
@@ -28,7 +26,7 @@ class DiagnosticsProvider(object):
     @staticmethod
     def _format_diagnostics(data, output_format):
         if output_format == DiagnosticsOutputFormat.string:
-            if isinstance(data, basestring):
+            if isinstance(data, str):
                 return data
             return pformat(data)
         elif output_format == DiagnosticsOutputFormat.json:
@@ -73,7 +71,7 @@ class DiagnosticsService(object):
             self._looping_call.stop()
 
     def log_diagnostics(self):
-        for v in self._providers.itervalues():
+        for v in list(self._providers.values()):
             method = v['method']
             data = v['provider'].get_diagnostics(v["output_format"])
 

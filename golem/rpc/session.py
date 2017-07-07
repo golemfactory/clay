@@ -29,7 +29,7 @@ class RPCAddress(object):
         self.protocol = protocol
         self.host = host
         self.port = port
-        self.address = u'{}://{}:{}'.format(self.protocol,
+        self.address = '{}://{}:{}'.format(self.protocol,
                                             self.host, self.port)
 
     def __str__(self):
@@ -42,10 +42,10 @@ class RPCAddress(object):
 class WebSocketAddress(RPCAddress):
 
     def __init__(self, host, port, realm, ssl=False):
-        self.realm = unicode(realm)
+        self.realm = str(realm)
         self.ssl = ssl
 
-        protocol = u'wss' if ssl else u'ws'
+        protocol = 'wss' if ssl else 'ws'
         super(WebSocketAddress, self).__init__(protocol, host, port)
 
 
@@ -67,7 +67,7 @@ class Session(ApplicationSession):
                 log_level='info'):
 
         runner = ApplicationRunner(
-            url=unicode(self.address),
+            url=str(self.address),
             realm=self.address.realm,
             ssl=ssl,
             proxy=proxy,
@@ -101,14 +101,14 @@ class Session(ApplicationSession):
     @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
-            deferred = self.register(method, unicode(rpc_name))
+            deferred = self.register(method, str(rpc_name))
             deferred.addErrback(self._on_error)
             yield deferred
 
     @inlineCallbacks
     def register_events(self, events):
         for method, rpc_name in events:
-            deferred = self.subscribe(method, unicode(rpc_name))
+            deferred = self.subscribe(method, str(rpc_name))
             deferred.addErrback(self._on_error)
             self.subs[rpc_name] = yield deferred
 
@@ -136,15 +136,15 @@ class Client(object):
         self._session = session
         self._timeout = timeout
 
-        for method_name, method_alias in method_map.items():
+        for method_name, method_alias in list(method_map.items()):
             setattr(self, method_name, self._make_call(method_alias))
 
     def _make_call(self, method_alias):
-        return lambda *a, **kw: self._call(unicode(method_alias), *a, **kw)
+        return lambda *a, **kw: self._call(str(method_alias), *a, **kw)
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.connected:
-            deferred = self._session.call(unicode(method_alias),
+            deferred = self._session.call(str(method_alias),
                                           *args, **kwargs)
             deferred.addErrback(self._on_error)
         else:
@@ -167,7 +167,7 @@ class Publisher(object):
 
     def publish(self, event_alias, *args, **kwargs):
         if self.session.connected:
-            self.session.publish(unicode(event_alias), *args, **kwargs)
+            self.session.publish(str(event_alias), *args, **kwargs)
         elif not self.session.is_closing():
             logger.warn("RPC: Cannot publish '{}', "
                         "session is not yet established"
@@ -177,5 +177,5 @@ class Publisher(object):
 def object_method_map(obj, method_map):
     return [
         (getattr(obj, method_name), method_alias)
-        for method_name, method_alias in method_map.items()
+        for method_name, method_alias in list(method_map.items())
     ]

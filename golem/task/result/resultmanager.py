@@ -9,9 +9,7 @@ from .resultpackage import EncryptingTaskResultPackager
 logger = logging.getLogger(__name__)
 
 
-class TaskResultPackageManager(object):
-
-    __metaclass__ = abc.ABCMeta
+class TaskResultPackageManager(object, metaclass=abc.ABCMeta):
 
     def __init__(self, resource_manager):
         self.resource_manager = resource_manager

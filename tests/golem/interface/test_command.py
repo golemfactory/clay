@@ -162,11 +162,11 @@ class TestCommandHelper(unittest.TestCase):
 
             self.assertEqual(CommandStorage.roots, [MockPreClass, MockClass,
                                                     command_root])
-            self.assertEqual(CommandHelper.get_children(MockPreClass).keys(),
+            self.assertEqual(list(CommandHelper.get_children(MockPreClass).keys()),
                              ['mock_2_renamed'])
-            self.assertEqual(CommandHelper.get_children(MockClass).keys(),
+            self.assertEqual(list(CommandHelper.get_children(MockClass).keys()),
                              ['sub_commands', 'mock_1', 'renamed_mc'])
-            self.assertEqual(CommandHelper.get_children(MockSubClass).keys(),
+            self.assertEqual(list(CommandHelper.get_children(MockSubClass).keys()),
                              ['command_msc', 'command'])
 
         with self.assertRaises(TypeError):

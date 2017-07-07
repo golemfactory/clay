@@ -33,9 +33,7 @@ class FileHelper(object):
         self.obj.__exit__(self, exc_type, exc_val, exc_tb)
 
 
-class FileEncryptor(object):
-
-    __metaclass__ = abc.ABCMeta
+class FileEncryptor(object, metaclass=abc.ABCMeta):
 
     __strong_random = StrongRandom()
     __lock = Lock()

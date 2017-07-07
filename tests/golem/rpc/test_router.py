@@ -35,7 +35,7 @@ class MockService(object):
         return number / divisor
 
     def ping(self):
-        return u'pong'
+        return 'pong'
 
     def exception(self):
         n = 2
@@ -153,7 +153,7 @@ class TestRouter(TestDirFixtureWithReactor):
             yield client.exception()
 
         ping_result = yield client.ping()
-        assert ping_result == u'pong'
+        assert ping_result == 'pong'
 
         yield self.state.router.stop()
         self.state.done = True

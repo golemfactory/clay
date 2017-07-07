@@ -8,9 +8,7 @@ from golem.interface.exceptions import CommandException
 from tabulate import tabulate
 
 
-class _CommandResultFormatter(object):
-    __metaclass__ = abc.ABCMeta
-
+class _CommandResultFormatter(object, metaclass=abc.ABCMeta):
     def __init__(self, argument=None, help=None, prettify=True):
         self.argument = argument
         self.help = help
@@ -55,7 +53,7 @@ class CommandFormatter(_CommandResultFormatter):
             if result_type == CommandResult.TABULAR:
                 return tabulate(result[1], headers=result[0], tablefmt="simple")
 
-            elif isinstance(result, basestring):
+            elif isinstance(result, str):
                 return result
 
             elif isinstance(result, CommandException):

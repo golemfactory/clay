@@ -182,15 +182,15 @@ class DockerManager(DockerConfigManager):
 
         if diff:
 
-            for constraint, value in diff.iteritems():
+            for constraint, value in list(diff.items()):
                 min_val = self.min_constraints.get(constraint)
                 diff[constraint] = max(min_val, value)
 
-            for constraint, value in constraints.iteritems():
+            for constraint, value in list(constraints.items()):
                 if constraint not in diff:
                     diff[constraint] = value
 
-            for constraint, value in self.min_constraints.iteritems():
+            for constraint, value in list(self.min_constraints.items()):
                 if constraint not in diff:
                     diff[constraint] = value
 
@@ -304,7 +304,7 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def build_images(cls):
-        cwd = os.getcwdu()
+        cwd = os.getcwd()
 
         for entry in cls._collect_images():
             image, docker_file, tag = entry
@@ -349,7 +349,7 @@ class DockerManager(DockerConfigManager):
     def _diff_constraints(old_values, new_values):
         result = dict()
 
-        for key in CONSTRAINT_KEYS.values():
+        for key in list(CONSTRAINT_KEYS.values()):
             old_value = old_values.get(key)
             new_value = new_values.get(key)
 
@@ -552,7 +552,7 @@ class VirtualBoxHypervisor(Hypervisor):
         result = {}
         try:
             vm = self._machine_from_arg(name)
-            for constraint_key in CONSTRAINT_KEYS.values():
+            for constraint_key in list(CONSTRAINT_KEYS.values()):
                 result[constraint_key] = getattr(vm, constraint_key)
         except Exception as e:
             logger.error("VirtualBox: error reading VM's constraints: {}"
@@ -564,7 +564,7 @@ class VirtualBoxHypervisor(Hypervisor):
         if not vm:
             return
 
-        for name, value in params.iteritems():
+        for name, value in list(params.items()):
             try:
                 setattr(vm, name, value)
             except Exception as e:
@@ -644,7 +644,7 @@ class VirtualBoxHypervisor(Hypervisor):
         return session_obj
 
     def _machine_from_arg(self, machine_obj):
-        if isinstance(machine_obj, basestring):
+        if isinstance(machine_obj, str):
             try:
                 return self.virtualbox.find_machine(machine_obj)
             except Exception as e:

@@ -259,7 +259,7 @@ class CommandHelper(object):
             cls.update_children(interface, children)
             cls.update_arguments(interface, arguments)
 
-            for key, value in kwargs.items():
+            for key, value in list(kwargs.items()):
                 cls.update_property(interface, key, value)
 
         else:
@@ -425,9 +425,9 @@ class CommandHelper(object):
 
     @classmethod
     def debug(cls, elem, level=0):
-        print("{}{} : {}".format("  " * level if level else "",
-                                 cls.get_name(elem), elem))
-        for c in cls.get_children(elem).values():
+        print(("{}{} : {}".format("  " * level if level else "",
+                                 cls.get_name(elem), elem)))
+        for c in list(cls.get_children(elem).values()):
             cls.debug(c, level + 1)
 
 

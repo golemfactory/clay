@@ -54,7 +54,7 @@ def regenerate_ui_files(root_path):
                 raise IOError("Can't open file " + pyuic_path)
 
             cmd = ["python", pyuic_path, os.path.join(root_path, file_)]
-            print cmd
+            print(cmd)
             result = subprocess.check_output(cmd)
             with open(os.path.join(root_path, out_file), 'w') as f:
                 f.write(result)

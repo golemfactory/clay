@@ -49,7 +49,7 @@ class TestStatsKeeper(TestWithDatabase):
                 sk.increase_stat("computed_tasks")
                 n += 1
 
-        threads = [Thread(target=increase_stat) for _ in xrange(n_threads)]
+        threads = [Thread(target=increase_stat) for _ in range(n_threads)]
 
         for t in threads:
             t.start()

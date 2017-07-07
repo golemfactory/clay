@@ -13,7 +13,7 @@ class ParsingException(CommandException):
         self.parser = parser
 
     def __repr__(self):
-        return u"{}".format(self.message)
+        return "{}".format(self.message)
 
 
 class ExecutionException(CommandException):
@@ -24,7 +24,7 @@ class ExecutionException(CommandException):
         self.started = started
 
     def __repr__(self):
-        return u"[{}] ERROR: {}".format(self.time_str(time.time()), self.message)
+        return "[{}] ERROR: {}".format(self.time_str(time.time()), self.message)
 
     @staticmethod
     def time_str(timestamp):

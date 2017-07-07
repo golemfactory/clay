@@ -18,16 +18,16 @@ class TestGNTTest(unittest.TestCase):
     @staticmethod
     def encode_payments(payments):
         args = []
-        value_sum = 0L
+        value_sum = 0
         for idx, v in payments:
             addr = tester.accounts[idx]
             value_sum += v
-            v = long(v)
+            v = int(v)
             assert v < 2**96
             vv = zpad(int_to_big_endian(v), 12)
             mix = vv + addr
             assert len(mix) == 32
-            print encode_hex(mix), "v: ", v, "addr", encode_hex(addr)
+            print((encode_hex(mix), "v: ", v, "addr", encode_hex(addr)))
             args.append(mix)
         return args, value_sum
 

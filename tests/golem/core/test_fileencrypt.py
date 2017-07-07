@@ -18,8 +18,8 @@ class TestAESFileEncryptor(TestDirFixture):
         self.enc_file_path = os.path.join(self.res_dir, 'test_file.enc')
 
         with open(self.test_file_path, 'wb') as f:
-            for i in xrange(0, 100):
-                f.write(bytearray(random.getrandbits(8) for _ in xrange(32)))
+            for i in range(0, 100):
+                f.write(bytearray(random.getrandbits(8) for _ in range(32)))
 
     def test_encrypt(self):
         """ Test encryption procedure """

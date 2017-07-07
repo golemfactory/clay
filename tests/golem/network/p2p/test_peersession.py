@@ -35,19 +35,19 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         self.peer_session.hello()
         send_mock.assert_called_once_with(mock.ANY, mock.ANY)
         expected = {
-            u'CHALLENGE': None,
-            u'CLIENT_KEY_ID': key_id,
-            u'CLI_VER': 0,
-            u'DIFFICULTY': 0,
-            u'METADATA': metadata,
-            u'NODE_INFO': node,
-            u'NODE_NAME': node_name,
-            u'PORT': port,
-            u'PROTO_ID': P2P_PROTOCOL_ID,
-            u'RAND_VAL': self.peer_session.rand_val,
-            u'SOLVE_CHALLENGE': False,
+            'CHALLENGE': None,
+            'CLIENT_KEY_ID': key_id,
+            'CLI_VER': 0,
+            'DIFFICULTY': 0,
+            'METADATA': metadata,
+            'NODE_INFO': node,
+            'NODE_NAME': node_name,
+            'PORT': port,
+            'PROTO_ID': P2P_PROTOCOL_ID,
+            'RAND_VAL': self.peer_session.rand_val,
+            'SOLVE_CHALLENGE': False,
         }
-        self.assertEquals(send_mock.call_args[0][1].dict_repr(), expected)
+        self.assertEqual(send_mock.call_args[0][1].dict_repr(), expected)
 
     def test_encrypt_decrypt(self):
         ps = PeerSession(MagicMock())

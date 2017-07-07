@@ -196,7 +196,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert not task.compositing
         assert not task.use_frames
         assert len(task.frames_given) == 10
-        assert isinstance(task.preview_file_path, basestring)
+        assert isinstance(task.preview_file_path, str)
         assert not task.preview_updaters
         assert task.scale_factor == 0.8
         assert task.src_code

@@ -21,7 +21,7 @@ class UnicodeRecord(logging.LogRecord):
         return u_record
 
     def getMessage(self):
-        if sys.platform == "win32" and isinstance(self.msg, unicode):
+        if sys.platform == "win32" and isinstance(self.msg, str):
             self.msg = self.msg.encode(self.ENCODING, 'replace')
         return super(UnicodeRecord, self).getMessage()
 
@@ -34,6 +34,6 @@ class UnicodeFormatter(logging.Formatter):
     def format(self, record):
         u_record = UnicodeRecord.from_record(record)
         s = super(UnicodeFormatter, self).format(u_record)
-        if not isinstance(s, unicode):
+        if not isinstance(s, str):
             s = s.decode('utf-8', 'replace')
         return s

@@ -1,7 +1,7 @@
 import logging
 import operator
 import random
-from itertools import izip
+
 from threading import Lock
 
 from twisted.internet.task import deferLater
@@ -162,7 +162,7 @@ class Ranking(object):
                 prev_trust = self.prev_loc_rank[loc_rank.node_id]
             else:
                 prev_trust = [float("inf")] * 2
-            if max(map(abs, map(operator.sub, prev_trust, trust))) > self.loc_rank_push_delta:
+            if max(list(map(abs, list(map(operator.sub, prev_trust, trust))))) > self.loc_rank_push_delta:
                 self.client.push_local_rank(loc_rank.node_id, trust)
                 self.prev_loc_rank[loc_rank.node_id] = trust
 
@@ -186,7 +186,7 @@ class Ranking(object):
 
     def __compare_working_vec_and_prev_rank(self):
         aggregated_trust = 0.0
-        for node_id, val in self.working_vec.items():
+        for node_id, val in list(self.working_vec.items()):
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -214,11 +214,11 @@ class Ranking(object):
 
     def __get_neighbours_degree(self):
         degrees = self.client.get_neighbours_degree()
-        self.neighbours = degrees.keys()
+        self.neighbours = list(degrees.keys())
         return degrees
 
     def __make_prev_rank(self):
-        for node_id, val in self.working_vec.items():
+        for node_id, val in list(self.working_vec.items()):
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -229,7 +229,7 @@ class Ranking(object):
             self.prevRank[node_id] = [comp_trust, req_trust]
 
     def __save_working_vec(self):
-        for node_id, val in self.working_vec.items():
+        for node_id, val in list(self.working_vec.items()):
             try:
                 computing, requesting = val
             except (TypeError, ValueError):
@@ -241,9 +241,9 @@ class Ranking(object):
 
     def __prepare_gossip(self):
         gossip_vec = []
-        for node_id, val in self.working_vec.items():
-            comp_trust = map(self.__scale_gossip, val[0])
-            req_trust = map(self.__scale_gossip, val[1])
+        for node_id, val in list(self.working_vec.items()):
+            comp_trust = list(map(self.__scale_gossip, val[0]))
+            req_trust = list(map(self.__scale_gossip, val[1]))
             gossip_vec.append([node_id, [comp_trust, req_trust]])
         return gossip_vec
 
@@ -268,7 +268,7 @@ class Ranking(object):
 
     @staticmethod
     def __sum_gossip(a, b):
-        return map(sum, izip(a, b))
+        return list(map(sum, list(zip(a, b))))
 
     def __send_finished(self):
         self.client.send_stop_gossip()

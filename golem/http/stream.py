@@ -100,7 +100,7 @@ class ChunkStream:
     def read(self, count):
         self.recv_size = count
         try:
-            return self.next()
+            return next(self)
         except StopIteration:
             return None
 
@@ -108,7 +108,7 @@ class ChunkStream:
         logger.debug("Stream cancelled")
         self.cancelled = True
 
-    def next(self):
+    def __next__(self):
         if not self.headers_read:
             self.headers_read = True
             self._read_headers()
@@ -258,7 +258,7 @@ class ChunkStream:
     @staticmethod
     def sublist_index(buf, seq, start_idx=0):
         l_seq = len(seq)
-        for i in xrange(start_idx, len(buf)):
+        for i in range(start_idx, len(buf)):
             if buf[i:i + l_seq] == seq:
                 return i
         return -1
@@ -271,7 +271,7 @@ class ChunkStream:
 
         try:
             self.sock.connect(self.addr)
-        except socket.error, e:
+        except socket.error as e:
             err = e.args[0]
             start = time.time()
 
@@ -324,7 +324,7 @@ class ChunkStream:
             logger.debug("Disconnecting socket: closing socket")
             # dispose of the socket
             self.sock.close()
-        except socket.error, e:
+        except socket.error as e:
             err = e.args[0]
             if err != errno.EBADF:
                 logger.error("Error disconnecting socket: {}"
@@ -341,7 +341,7 @@ class ChunkStream:
 
             try:
                 chunk = self.sock.recv(self.recv_size)
-            except socket.error, e:
+            except socket.error as e:
                 err = e.args[0]
                 if err in self._retry_err_codes:
                     time.sleep(self._read_sleep)
@@ -394,7 +394,7 @@ class StreamMonitor(object):
             now = time.time()
             sleep = cls._sleep
 
-            for unique_id in cls._streams.keys():
+            for unique_id in list(cls._streams.keys()):
                 with cls.__streams_lock:
                     if unique_id in cls._streams:
                         data = cls._streams[unique_id]
@@ -457,7 +457,7 @@ class StreamFileObject:
 
         try:
             self.timestamp = time.time()
-            data = self.source_iter.next()
+            data = next(self.source_iter)
             self.timestamp = time.time()
             if self.timed_out:
                 raise requests.exceptions.ReadTimeout()

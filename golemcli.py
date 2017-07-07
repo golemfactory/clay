@@ -39,7 +39,7 @@ def start():
 
     # process initial arguments
     parser = argparse.ArgumentParser(add_help=False)
-    for flag_name, flag in flags.items():
+    for flag_name, flag in list(flags.items()):
         parser.add_argument(*flag, **flag_options[flag_name])
 
     args = sys.argv[1:]

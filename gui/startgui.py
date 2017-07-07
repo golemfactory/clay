@@ -27,7 +27,7 @@ def install_qt5_reactor():
 
 def register_rendering_task_types(logic):
     from gui.view.widget import TaskWidget
-    for app in apps_manager.apps.values():
+    for app in list(apps_manager.apps.values()):
         task_type = app.task_type_info(TaskWidget(app.widget), app.controller)
         logic.register_new_task_type(task_type)
 
@@ -41,7 +41,7 @@ def check_rpc_address(ctx, param, address):
     except AddressValueError as e:
         return click.BadParameter(
             "Invalid network address specified: {}".format(e.message))
-    return WebSocketAddress(host, port, u'golem')
+    return WebSocketAddress(host, port, 'golem')
 
 
 class GUIApp(object):

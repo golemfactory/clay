@@ -198,7 +198,7 @@ class DummyTask(Task):
             input_data = f.read()
 
         input_data += self.subtask_data[subtask_id]
-        return computation.check_pow(long(result, 16), input_data,
+        return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result, result_type=0):

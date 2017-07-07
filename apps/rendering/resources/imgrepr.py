@@ -9,19 +9,19 @@ from PIL import Image
 logger = logging.getLogger("apps.rendering")
 
 
-class ImgRepr(object):
-    __metaclass__ = abc.ABCMeta
-
+class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_from_file(self, file_):
         return
 
     @abc.abstractmethod
-    def get_pixel(self, (i, j)):
+    def get_pixel(self, xxx_todo_changeme):
+        (i, j) = xxx_todo_changeme
         return
 
     @abc.abstractmethod
-    def set_pixel(self, (i, j), color):
+    def set_pixel(self, xxx_todo_changeme1, color):
+        (i, j) = xxx_todo_changeme1
         return
 
     @abc.abstractmethod
@@ -49,10 +49,12 @@ class PILImgRepr(ImgRepr):
     def get_size(self):
         return self.img.size
 
-    def get_pixel(self, (i, j)):
+    def get_pixel(self, xxx_todo_changeme2):
+        (i, j) = xxx_todo_changeme2
         return list(self.img.getpixel((i, j)))
 
-    def set_pixel(self, (i, j), color):
+    def set_pixel(self, xxx_todo_changeme3, color):
+        (i, j) = xxx_todo_changeme3
         color = tuple(int(c) for c in color)
         self.img.putpixel((i, j), color)
 
@@ -80,12 +82,14 @@ class EXRImgRepr(ImgRepr):
     def get_size(self):
         return len(self.img), len(self.img[0])
 
-    def get_pixel(self, (i, j)):
+    def get_pixel(self, xxx_todo_changeme4):
+        (i, j) = xxx_todo_changeme4
         pix = self.img[i][j]
         return [pix[0], pix[1], pix[2]]
 
-    def set_pixel(self, (i, j), color):
-        for c in xrange(3):
+    def set_pixel(self, xxx_todo_changeme5, color):
+        (i, j) = xxx_todo_changeme5
+        for c in range(3):
             self.img[i][j][c] = max(min(self.max, color[c]), self.min)
 
     def get_rgbf_extrema(self):
@@ -167,7 +171,7 @@ def blend(img1, img2, alpha):
         for y in range(0, res_y):
             p1 = img1.get_pixel((x, y))
             p2 = img2.get_pixel((x, y))
-            p = map(lambda c1, c2: c1 * (1 - alpha) + c2 * alpha, p1, p2)
+            p = list(map(lambda c1, c2: c1 * (1 - alpha) + c2 * alpha, p1, p2))
             img.set_pixel((x, y), p)
 
     return img

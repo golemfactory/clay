@@ -200,18 +200,18 @@ class TestBasicProtocol(LogTestCase):
 
 class TestSocketAddress(TestCase):
     def test_zone_index(self):
-        base_address = u"fe80::3"
-        address = u"fe80::3%eth0"
+        base_address = "fe80::3"
+        address = "fe80::3%eth0"
         port = 1111
         sa = SocketAddress(address, port)
         assert sa.address == base_address
         assert sa.port == port
 
-        address = u"fe80::3%1"
+        address = "fe80::3%1"
         sa = SocketAddress(address, port)
         assert sa.address == base_address
 
-        address = u"fe80::3%en0"
+        address = "fe80::3%en0"
         sa = SocketAddress(address, port)
         assert sa.address == base_address
 

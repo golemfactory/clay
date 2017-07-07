@@ -27,7 +27,7 @@ SYNC_TEST_INTERVAL = 0.01
 
 
 def wait_for(condition, timeout, step=0.1):
-    for _ in xrange(int(timeout / step)):
+    for _ in range(int(timeout / step)):
         if condition():
             return True
         time.sleep(step)
@@ -269,7 +269,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
                         (65, False))
 
         for c in combinations:
-            print("Subtest {}".format(c))
+            print(("Subtest {}".format(c)))
             # Allow reseting the status.
             time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
             self.client.get_peer_count.return_value = 0

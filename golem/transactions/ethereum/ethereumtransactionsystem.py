@@ -25,7 +25,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
-        if not isinstance(node_priv_key, basestring)\
+        if not isinstance(node_priv_key, str)\
                 or len(node_priv_key) != 32:
             raise ValueError("Invalid private key: {}".format(node_priv_key))
         self.__node_address = keys.privtoaddr(node_priv_key)

@@ -24,7 +24,7 @@ class StatsKeeper(object):
 
     @handle_attribute_error
     def init_global_stats(self):
-        for stat in vars(self.global_stats).keys():
+        for stat in list(vars(self.global_stats).keys()):
             with self._lock:
                 val = self._retrieve_stat(stat)
                 if val:
@@ -62,7 +62,7 @@ class IntStatsKeeper(StatsKeeper):
             if global_val is not None:
                 setattr(self.global_stats, stat_name, global_val + increment)
                 try:
-                    Stats.update(value=u"{}".format(global_val+increment)).where(Stats.name == stat_name).execute()
+                    Stats.update(value="{}".format(global_val+increment)).where(Stats.name == stat_name).execute()
                 except Exception as err:
                     logger.error("Exception occured while updating stat %r: %r", stat_name, err)
 

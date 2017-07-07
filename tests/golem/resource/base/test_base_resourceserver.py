@@ -86,7 +86,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
     def testGetDistributedResourceRoot(self):
         resource_dir = self.dir_manager.get_node_dir()
 
-        self.assertEquals(
+        self.assertEqual(
             self.resource_server.get_distributed_resource_root(),
             resource_dir
         )

@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import datetime
 import os
@@ -646,9 +646,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             key_id=key_id,
             conn_id=conn_id
         )
-        self.assertEquals(session.task_id, subtask_id)
-        self.assertEquals(session.key_id, key_id)
-        self.assertEquals(session.conn_id, conn_id)
+        self.assertEqual(session.task_id, subtask_id)
+        self.assertEqual(session.key_id, key_id)
+        self.assertEqual(session.conn_id, conn_id)
         mark_mock.assert_called_once_with(conn_id, session.address, session.port)
 
     @patch('golem.task.taskserver.TaskServer.new_session_prepare')
@@ -734,7 +734,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         subtask_id = str(uuid.uuid4())
 
         # Empty
-        self.assertEquals([], self.ts._find_sessions(subtask_id))
+        self.assertEqual([], self.ts._find_sessions(subtask_id))
 
         # Found task_id
         task_id = 't' + str(uuid.uuid4())
@@ -742,12 +742,12 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         session.task_id = task_id
         self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
         self.ts.task_sessions_incoming.add(session)
-        self.assertEquals([session], self.ts._find_sessions(subtask_id))
+        self.assertEqual([session], self.ts._find_sessions(subtask_id))
 
         # Found in task_sessions
         subtask_session = MagicMock()
         self.ts.task_sessions[subtask_id] = subtask_session
-        self.assertEquals([subtask_session], self.ts._find_sessions(subtask_id))
+        self.assertEqual([subtask_session], self.ts._find_sessions(subtask_id))
 
     @patch("golem.task.taskserver.TaskServer._add_pending_request")
     @patch("golem.task.taskserver.TaskServer._find_sessions")
@@ -791,7 +791,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
-        self.assertEquals(0, len(kwargs['elems_set']))
+        self.assertEqual(0, len(kwargs['elems_set']))
 
         # Test weakref session exists
         import weakref
@@ -803,7 +803,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
-        self.assertEquals(0, len(kwargs['elems_set']))
+        self.assertEqual(0, len(kwargs['elems_set']))
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskmanager.get_external_address")

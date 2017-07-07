@@ -2,7 +2,7 @@ import socket
 import time
 import unittest
 import uuid
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
 from requests.exceptions import HTTPError
@@ -55,7 +55,7 @@ class MockIterator:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         prev_pos = self.pos
         self.pos += self.chunk
 
@@ -177,7 +177,7 @@ class TestStreamFileObject(unittest.TestCase):
 
     def test(self):
         src = ''
-        for _ in xrange(1, 100):
+        for _ in range(1, 100):
             src = str(uuid.uuid4())
 
         iterable = MockIterable(src)

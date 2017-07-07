@@ -60,9 +60,7 @@ class IClient(object):
         raise NotImplementedError
 
 
-class IClientHandler(object):
-    __metaclass__ = abc.ABCMeta
-
+class IClientHandler(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def new_client(self):
         pass
@@ -140,9 +138,8 @@ class ClientOptions(object):
         return kwargs.get('client_options', kwargs.get('options', None))
 
 
-class ClientHandler(IClientHandler):
+class ClientHandler(IClientHandler, metaclass=abc.ABCMeta):
 
-    __metaclass__ = abc.ABCMeta
     __retry_lock = Lock()
 
     timeout_exceptions = (requests.exceptions.ConnectionError,

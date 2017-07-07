@@ -46,7 +46,7 @@ def app(ctx, data_dir, name):
     logging.basicConfig(level=logging.DEBUG)
     geth = Client()
     while not geth.get_peer_count():
-        print "Waiting for peers..."
+        print("Waiting for peers...")
         gevent.sleep(1)
     gevent.sleep(10)  # geth's downloader starts after 10s
     while geth.is_syncing():
@@ -65,13 +65,13 @@ def app(ctx, data_dir, name):
 @click.pass_obj
 def node(o):
     o.me = SimpleAccount(o.dir)
-    print "MY ADDRESS", o.me.address.encode('hex')
+    print(("MY ADDRESS", o.me.address.encode('hex')))
 
 
 @node.command('balance')
 @click.pass_obj
 def node_balance(o):
-    print "BALANCE", o.eth.get_balance('0x' + o.me.address.encode('hex'))
+    print(("BALANCE", o.eth.get_balance('0x' + o.me.address.encode('hex'))))
 
 
 @node.command()
@@ -80,17 +80,17 @@ def node_balance(o):
 @click.argument('value', type=int)
 def direct(o, recipient, value):
     nonce = o.eth.get_transaction_count('0x' + o.me.address.encode('hex'))
-    print "NONCE", nonce
-    print "VALUE", value
+    print(("NONCE", nonce))
+    print(("VALUE", value))
     tx = Transaction(nonce, 1, 21000, to=recipient, value=value,
                      data='')
     tx.sign(o.me.priv)
-    print o.eth.send(tx)
+    print((o.eth.send(tx)))
     gevent.sleep(1)  # FIXME: Wait for confirmed transaction receipt.
 
 
 def encode_payment(to, value):
-    value = long(value)
+    value = int(value)
     max_value = 2**96
     if value >= max_value:
         raise ValueError("value: {}, should be less than: {}".format(value, max_value))
@@ -108,24 +108,24 @@ def encode_payment(to, value):
 @click.pass_obj
 @click.argument('payments', nargs=-1, required=True)
 def multi(o, payments):
-    print "multi payment"
+    print("multi payment")
     encp = []
     value = 0
     for p in payments:
         p = p.split(':')
-        print "->", p[0], p[1]
+        print(("->", p[0], p[1]))
         encp.append(encode_payment(p[0], p[1]))
-        value += long(p[1])
+        value += int(p[1])
 
     nonce = o.eth.get_transaction_count('0x' + o.me.address.encode('hex'))
     translator = abi.ContractTranslator(BankOfDeposit.ABI)
     data = translator.encode('transfer', [encp])
-    print "DATA: ", data.encode('hex')
+    print(("DATA: ", data.encode('hex')))
 
     gas = 21000 + len(encp) * 30000
     tx = Transaction(nonce, 1, gas, to=BANK_ADDR, value=value, data=data)
     tx.sign(o.me.priv)
-    print o.eth.send(tx)
+    print((o.eth.send(tx)))
 
 
 @node.command()
@@ -170,20 +170,20 @@ def history(o):
         balance = o.eth.get_balance('0x' + o.me.address.encode('hex'))
     except web3.utils.compat.compat_stdlib.Timeout:
         balance = "<timeout>"
-    print "BALANCE", balance
+    print(("BALANCE", balance))
 
     for label, l in \
             (
                 ("OUTGOING", outgoing),
                 ("INCOMING", incoming),
             ):
-        print label
+        print(label)
         for p in l:
-            print "[{}] -> {} {}".format(
+            print(("[{}] -> {} {}".format(
                 p['blockNumber'],
                 p['topics'][2][-40:],
                 int(p['data'], 16)
-            )
+            )))
 
 
 @app.group()
@@ -191,7 +191,7 @@ def history(o):
 def faucet(o):
     faucet_addr = '0x' + Faucet.ADDR.encode('hex')
     o.faucet_nonce = o.eth.get_transaction_count(faucet_addr)
-    print "NONCE", o.faucet_nonce
+    print(("NONCE", o.faucet_nonce))
     if o.faucet_nonce == 0:  # Deploy Bank of Deposit contract
         tx = Transaction(o.faucet_nonce, 1, 3141592, to='', value=0,
                          data=BankOfDeposit.INIT_HEX.decode('hex'))
@@ -203,7 +203,7 @@ def faucet(o):
 @faucet.command('balance')
 @click.pass_obj
 def faucet_balance(o):
-    print o.eth.get_balance('0x' + Faucet.ADDR.encode('hex'))
+    print((o.eth.get_balance('0x' + Faucet.ADDR.encode('hex'))))
 
 
 @faucet.command('testgnt')
@@ -214,7 +214,7 @@ def faucet_testgnt(o):
                      data=TestGNT.INIT_HEX.decode('hex'))
     tx.sign(Faucet.PRIVKEY)
     o.eth.send(tx)
-    print "TestGNT: {}".format(tx.creates.encode('hex'))
+    print(("TestGNT: {}".format(tx.creates.encode('hex'))))
     gevent.sleep(10)
 
 
@@ -228,7 +228,7 @@ def faucet_send(o, to, value):
     tx = Transaction(o.faucet_nonce, 1, 21000, to, value, '')
     tx.sign(Faucet.PRIVKEY)
     r = o.eth.send(tx)
-    print "Transaction sent:", r
+    print(("Transaction sent:", r))
     gevent.sleep(10)
 
 

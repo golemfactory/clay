@@ -4,9 +4,9 @@
 #  http://www.hxa.name/minilight
 
 
-from spatialindex import SpatialIndex
-from triangle import Triangle
-from vector3f import Vector3f, ZERO, ONE, MAX
+from .spatialindex import SpatialIndex
+from .triangle import Triangle
+from .vector3f import Vector3f, ZERO, ONE, MAX
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))').search
@@ -17,7 +17,7 @@ class Scene(object):
 
     def __init__(self, in_stream, eye_position):
         for l in in_stream:
-            if type(l) == type(u""):
+            if type(l) == type(""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l

@@ -23,7 +23,7 @@ class PeerKeeper(object):
         :param int k_size: pubkey size
         """
         self.key = key  # peer's public key
-        self.key_num = long(key, 16)  # peer's public key in long format
+        self.key_num = int(key, 16)  # peer's public key in long format
         self.k = K  # bucket size
         self.concurrency = CONCURRENCY  # parallel find node lookup
         self.k_size = k_size  # pubkey size
@@ -43,7 +43,7 @@ class PeerKeeper(object):
         :param hex key: hexadecimal representation of a peer's public key
         """
         self.key = key
-        self.key_num = long(key, 16)
+        self.key_num = int(key, 16)
         self.buckets = [KBucket(0, 2 ** self.k_size - 1, self.k)]
         self.expected_pongs = {}
         self.find_requests = {}
@@ -60,7 +60,7 @@ class PeerKeeper(object):
             logger.warning("Trying to add self to Routing table")
             return
 
-        key_num = long(peer_info.key, 16)
+        key_num = int(peer_info.key, 16)
 
         bucket = self.bucket_for_peer(key_num)
         peer_to_remove = bucket.add_peer(peer_info)
@@ -84,7 +84,7 @@ class PeerKeeper(object):
             return
 
         for i, bucket in enumerate(self.buckets):
-            if bucket.start <= long(key, 16) < bucket.end:
+            if bucket.start <= int(key, 16) < bucket.end:
                 self.buckets[i].last_updated = time.time()
                 break
 
@@ -129,7 +129,7 @@ class PeerKeeper(object):
         :param hex key: other peer public key
         :return long: distance to other peer
         """
-        return self.key_num ^ long(key, 16)
+        return self.key_num ^ int(key, 16)
 
     def sync(self):
         """ Sync peer keeper state. Remove old requests and expected pongs, add new peers if old peers didn't answer
@@ -154,7 +154,7 @@ class PeerKeeper(object):
         neigh = []
         for bucket in self.buckets_by_id_distance(key_num):
             for peer in bucket.peers_by_id_distance(key_num):
-                if long(peer.key, 16) != key_num:
+                if int(peer.key, 16) != key_num:
                     neigh.append(peer)
                     if len(neigh) == alpha * 2:
                         break
@@ -171,8 +171,8 @@ class PeerKeeper(object):
 
     def __remove_old_expected_pongs(self):
         cur_time = time.time()
-        for key, (replacement, time_) in self.expected_pongs.items():
-            key_num = long(key, 16)
+        for key, (replacement, time_) in list(self.expected_pongs.items()):
+            key_num = int(key, 16)
             if cur_time - time_ > self.pong_timeout:
                 peer_info = self.bucket_for_peer(key_num).remove_peer(key_num)
                 if peer_info:
@@ -195,7 +195,7 @@ class PeerKeeper(object):
 
     def __remove_old_requests(self):
         cur_time = time.time()
-        for key_num, time_ in self.find_requests.items():
+        for key_num, time_ in list(self.find_requests.items()):
             if cur_time - time.time() > self.request_timeout:
                 del self.find_requests[key_num]
 
@@ -207,7 +207,7 @@ def node_id_distance(node_info, key_num):
     :param long key_num: other node public key in long format
     :return long: distance between two peers
     """
-    return long(node_info.key, 16) ^ key_num
+    return int(node_info.key, 16) ^ key_num
 
 
 class KBucket(object):
@@ -252,7 +252,7 @@ class KBucket(object):
         :return Node|None: information about peer if it was in this bucket, None otherwise
         """
         for peer in self.peers:
-            if long(peer.key, 16) == key_num:
+            if int(peer.key, 16) == key_num:
                 self.peers.remove(peer)
                 return peer
         return None
@@ -275,7 +275,7 @@ class KBucket(object):
         lower = KBucket(self.start, midpoint, self.k)
         upper = KBucket(midpoint + 1, self.end, self.k)
         for peer in self.peers:
-            if long(peer.key, 16) < midpoint:
+            if int(peer.key, 16) < midpoint:
                 lower.add_peer(peer)
             else:
                 upper.add_peer(peer)

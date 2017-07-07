@@ -59,7 +59,7 @@ class TestClientHandler(unittest.TestCase):
         obj_id = str(uuid.uuid4())
         exc = valid_exceptions[0]()
 
-        for i in xrange(0, config.max_retries):
+        for i in range(0, config.max_retries):
             can_retry = handler._can_retry(exc, ClientCommands.get, obj_id)
             assert can_retry
         assert not handler._can_retry(exc, ClientCommands.get, obj_id)
@@ -71,7 +71,7 @@ class TestClientHandler(unittest.TestCase):
         failure_exc = twisted.python.failure.Failure(exc_value=exc)
 
         def is_class(object):
-            return isinstance(object, (type, types.ClassType))
+            return isinstance(object, type)
 
         assert is_class(ClientHandler._exception_type(failure_exc))
         assert is_class(ClientHandler._exception_type(exc))

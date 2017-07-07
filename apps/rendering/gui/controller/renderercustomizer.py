@@ -70,9 +70,9 @@ class RendererCustomizer(Customizer):
         definition.options = self.options
         definition.resolution = [self.gui.ui.outputResXSpinBox.value(), self.gui.ui.outputResYSpinBox.value()]
         definition.output_file = self._add_ext_to_out_filename()
-        definition.output_format = u"{}".format(
+        definition.output_format = "{}".format(
             self.gui.ui.outputFormatsComboBox.itemText(self.gui.ui.outputFormatsComboBox.currentIndex()))
-        definition.main_scene_file = u"{}".format(
+        definition.main_scene_file = "{}".format(
             self.gui.ui.mainSceneFileLineEdit.text())
 
     def _change_options(self):
@@ -97,10 +97,10 @@ class RendererCustomizer(Customizer):
         ext = ext[1:]
         if self.gui.ui.outputFormatsComboBox.findText(ext) != -1 or \
                         self.gui.ui.outputFormatsComboBox.findText(ext.upper()) != -1:
-            self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(file_name, chosen_ext))
+            self.gui.ui.outputFileLineEdit.setText("{}.{}".format(file_name, chosen_ext))
         else:
-            self.gui.ui.outputFileLineEdit.setText(u"{}.{}".format(out_file_name, chosen_ext))
-        return u"{}".format(str(self.gui.ui.outputFileLineEdit.text()))
+            self.gui.ui.outputFileLineEdit.setText("{}.{}".format(out_file_name, chosen_ext))
+        return "{}".format(str(self.gui.ui.outputFileLineEdit.text()))
 
     def _connect_with_task_settings_changed(self, list_gui_el):
         for gui_el in list_gui_el:
@@ -119,9 +119,9 @@ class RendererCustomizer(Customizer):
             output_file_ext.append(ext.upper())
             output_file_ext.append(ext.lower())
 
-        output_file_types = " ".join([u"*.{}".format(ext) for ext in output_file_ext])
-        filter_ = u"Scene files ({})".format(output_file_types)
-        path = u"{}".format(str(self.load_setting('main_scene_path', os.path.expanduser('~'))))
+        output_file_types = " ".join(["*.{}".format(ext) for ext in output_file_ext])
+        filter_ = "Scene files ({})".format(output_file_types)
+        path = "{}".format(str(self.load_setting('main_scene_path', os.path.expanduser('~'))))
 
         file_name, _ = QFileDialog.getOpenFileName(self.gui,
                                                    "Choose main scene file",
@@ -132,10 +132,10 @@ class RendererCustomizer(Customizer):
             self.gui.ui.mainSceneFileLineEdit.setText(file_name)
 
     def _choose_output_file_button_clicked(self):
-        output_file_type = u"{}".format(self.gui.ui.outputFormatsComboBox.currentText())
-        filter_ = u"{} (*.{})".format(output_file_type, output_file_type)
+        output_file_type = "{}".format(self.gui.ui.outputFormatsComboBox.currentText())
+        filter_ = "{} (*.{})".format(output_file_type, output_file_type)
 
-        path = u"{}".format(str(self.load_setting('output_file_path', os.path.expanduser('~'))))
+        path = "{}".format(str(self.load_setting('output_file_path', os.path.expanduser('~'))))
 
         file_name, _ = QFileDialog.getSaveFileName(self.gui,
                                                    "Choose output file",
@@ -182,8 +182,8 @@ class FrameRendererCustomizer(RendererCustomizer):
             # This is a temporary solution for current interface
             frames_list = FrameRenderingTaskBuilder.string_to_frames(frames)
             if not frames_list:
-                self.show_error_window(u"Wrong frame format. "
-                                       u"Frame list expected, e.g. 1;3;5-12.")
+                self.show_error_window("Wrong frame format. "
+                                       "Frame list expected, e.g. 1;3;5-12.")
                 return
         else:
             frames = "1"

@@ -1,6 +1,6 @@
 import struct
 
-from variables import LONG_STANDARD_SIZE
+from .variables import LONG_STANDARD_SIZE
 
 MAX_BUFFER_SIZE = 2 * 1024 * 1024
 

@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QFrame, QHeaderView
 from PyQt5.QtGui import QPixmap
 from gui.view.gen.ui_AppMainWindow import Ui_MainWindow
 from golem.core.common import get_golem_path
-from mainwindow import MainWindow
+from .mainwindow import MainWindow
 
 
 class AppMainWindow(object):

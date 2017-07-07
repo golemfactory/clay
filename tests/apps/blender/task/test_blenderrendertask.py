@@ -68,9 +68,9 @@ class TestBlenderFrameTask(TempDirFixture):
         return np.array(a, dtype=np.float)
 
     def test_init_preview(self):
-        self.assertEquals(len(self.bt.preview_file_path),
+        self.assertEqual(len(self.bt.preview_file_path),
                           len(self.bt.frames))
-        self.assertEquals(len(self.bt.preview_task_file_path),
+        self.assertEqual(len(self.bt.preview_task_file_path),
                           len(self.bt.frames))
 
     def test_computation_failed_or_finished(self):
@@ -217,7 +217,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertTrue("f1.png" in warnings)
         self.assertTrue("file2.png" in warnings)
         self.assertTrue("file3.png" in warnings)
-        self.assertEquals(warnings.count("file2.png"), 1)
+        self.assertEqual(warnings.count("file2.png"), 1)
         self.assertFalse("file4.png" in warnings)
 
         with open(outlog, 'w') as fd_out:
@@ -251,7 +251,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
-        self.assertEquals(self.bt.main_scene_file,
+        self.assertEqual(self.bt.main_scene_file,
                           path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
         ctd = extra_data.ctd
@@ -262,9 +262,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
 
     def test_get_min_max_y(self):
-        self.assertEquals(self.bt.res_x, 2)
-        self.assertEquals(self.bt.res_y, 300)
-        self.assertEquals(self.bt.total_tasks, 7)
+        self.assertEqual(self.bt.res_x, 2)
+        self.assertEqual(self.bt.res_y, 300)
+        self.assertEqual(self.bt.total_tasks, 7)
         for tasks in [1, 6, 7, 20, 60]:
             self.bt.total_tasks = tasks
             for yres in range(1, 100):
@@ -398,7 +398,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         assert all(os.path.exists(p) for p in preview)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
-        assert isinstance(preview, basestring)
+        assert isinstance(preview, str)
         assert os.path.exists(preview)
 
         preview = BlenderTaskTypeInfo.get_preview(None, single=True)
@@ -419,7 +419,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         color = (0, 0, 255)
 
         # test the case in which a single subtask is a whole frame
-        self.assertEquals(bt.frames, [1, 2])
+        self.assertEqual(bt.frames, [1, 2])
         bt._mark_task_area(None, img_task, color, 0)
         for i in range(0, bt.res_x):
             for j in range(0, bt.res_y):
@@ -529,7 +529,7 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
                 scale_factor = 1.0
 
             pu = PreviewUpdater(preview_file, res_x, res_y, expected_offsets)
-            chunks_list = range(1, chunks + 1)
+            chunks_list = list(range(1, chunks + 1))
             shuffle(chunks_list)
             for i in chunks_list:
                 img = Image.new("RGB", (res_x, chunks_sizes[i]))
@@ -579,7 +579,7 @@ class TestHelpers(unittest.TestCase):
             assert max(border) == (797, offsets[k + 1] - 1)
 
         definition.options.use_frames = True
-        definition.options.frames = range(2)
+        definition.options.frames = list(range(2))
         offsets = generate_expected_offsets(15, 800, 600)
 
         for k in range(1, 31):
@@ -592,7 +592,7 @@ class TestHelpers(unittest.TestCase):
 
         subtask.extra_data = {'start_task': 2, 'end_task': 2}
         definition.options.use_frames = True
-        definition.options.frames = range(30)
+        definition.options.frames = list(range(30))
         if as_path:
             assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                        30, as_path=as_path) == \
@@ -628,14 +628,14 @@ class TestHelpers(unittest.TestCase):
             assert num == k
 
             task_definition.options.use_frames = True
-            task_definition.options.frames = range(30)
+            task_definition.options.frames = list(range(30))
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
                 1, 0, task_definition, 30, k
             )
             assert num == k
 
             i = (k - 1) % 15 + 1
-            task_definition.options.frames = range(2)
+            task_definition.options.frames = list(range(2))
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
                 1, frame_offsets[i] + 3, task_definition, 30, (k - 1) / 15 + 1
             )

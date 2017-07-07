@@ -96,13 +96,13 @@ class BenchmarkRunnerTest(TempDirFixture):
         result_dict = {}
         task_thread.result = (result_dict, None)
         self.instance.task_computed(task_thread)
-        self.assertEquals(self.benchmark.verify_result.call_count, 0)
+        self.assertEqual(self.benchmark.verify_result.call_count, 0)
 
         # result dict without res
         result_dict = {'a': None}
         task_thread.result = (result_dict, None)
         self.instance.task_computed(task_thread)
-        self.assertEquals(self.benchmark.verify_result.call_count, 0)
+        self.assertEqual(self.benchmark.verify_result.call_count, 0)
 
         # result dict with data, but failed verification
         result_dict = {
@@ -114,7 +114,7 @@ class BenchmarkRunnerTest(TempDirFixture):
         self.benchmark.verify_result.return_value = False
         self.instance.task_computed(task_thread)
         self.benchmark.verify_result.assert_called_once_with(result_dict['data'])
-        self.assertEquals(self.instance.success_callback.call_count, 0)
+        self.assertEqual(self.instance.success_callback.call_count, 0)
 
         # result dict with data, and successful verification
         result_dict = {

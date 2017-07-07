@@ -44,7 +44,7 @@ class HyperdriveDaemonManager(object):
             addresses = self.addresses() or dict()
 
         return set(value['port'] for key, value
-                   in addresses.iteritems()
+                   in list(addresses.items())
                    if value and value.get('port'))
 
     def start(self):

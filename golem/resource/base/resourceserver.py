@@ -107,7 +107,7 @@ class BaseResourceServer(object):
     def _download_resources(self, async=True):
         pending = dict(self.pending_resources)
 
-        for task_id, entries in pending.iteritems():
+        for task_id, entries in list(pending.items()):
             for entry in list(entries):
                 if entry.status in [TransferStatus.idle, TransferStatus.failed]:
                     entry.status = TransferStatus.transferring

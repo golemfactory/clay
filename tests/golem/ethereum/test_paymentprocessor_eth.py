@@ -23,12 +23,12 @@ class TestPaymentProcessor(unittest.TestCase):
         # Test with zpad
         expected = ('0x000000000000000000000000'
                     'e1ad9e38fc4bf20e5d4847e00e8a05170c87913f')
-        self.assertEquals(expected, self.payment_processor.eth_address())
+        self.assertEqual(expected, self.payment_processor.eth_address())
 
         # Test without zpad
         expected = '0xe1ad9e38fc4bf20e5d4847e00e8a05170c87913f'
         result = self.payment_processor.eth_address(zpad=False)
-        self.assertEquals(expected, result)
+        self.assertEqual(expected, result)
 
 
 class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
@@ -45,7 +45,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
     @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.eth_balance", return_value=2**100)  # noqa
     @mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.gnt_balance", return_value=2**11)  # noqa
     def test_load_from_db(self, gnt_balance_mock, eth_balance_mock):
-        self.assertEquals([], self.payment_processor._awaiting)
+        self.assertEqual([], self.payment_processor._awaiting)
 
         subtask_id = str(uuid.uuid4())
         value = random.randint(1, 2**5)
@@ -60,10 +60,10 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         self.payment_processor._awaiting = []
         self.payment_processor.load_from_db()
         expected = [payment]
-        self.assertEquals(expected, self.payment_processor._awaiting)
+        self.assertEqual(expected, self.payment_processor._awaiting)
 
         # Sent payments
-        self.assertEquals({}, self.payment_processor._inprogress)
+        self.assertEqual({}, self.payment_processor._inprogress)
         tx_hash = os.urandom(32)
         sent_payment = model.Payment.create(
             subtask='sent' + str(uuid.uuid4()),
@@ -83,4 +83,4 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
         expected = {
             tx_hash: [sent_payment, sent_payment2],
         }
-        self.assertEquals(expected, self.payment_processor._inprogress)
+        self.assertEqual(expected, self.payment_processor._inprogress)

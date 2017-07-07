@@ -1,8 +1,8 @@
-from __future__ import absolute_import
+
 
 
 import datetime
-from ethereum.utils import denoms
+from .ethereum.utils import denoms
 import jsonpickle as json
 import logging
 from enum import Enum
@@ -88,7 +88,7 @@ class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
 
     def db_value(self, value):
-        return unicode(value.encode('hex'))
+        return str(value.encode('hex'))
 
     def python_value(self, value):
         return value.decode('hex')
@@ -100,7 +100,7 @@ class BigIntegerField(CharField):
     """
 
     def db_value(self, value):
-        if type(value) not in (int, long):
+        if type(value) not in (int, int):
             raise TypeError("Value {} is not an integer".format(value))
         return format(value, 'x')
 
@@ -316,10 +316,10 @@ class HardwarePreset(BaseModel):
 
     def to_dict(self):
         return {
-            u'name': unicode(self.name),
-            u'cpu_cores': self.cpu_cores,
-            u'memory': self.memory,
-            u'disk': self.disk
+            'name': str(self.name),
+            'cpu_cores': self.cpu_cores,
+            'memory': self.memory,
+            'disk': self.disk
         }
 
     def apply(self, dictionary):

@@ -27,7 +27,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
 
         # without resource_server
         self.instance.resource_server = None
-        self.assertEquals(test_data, self.instance.encrypt(test_data))
+        self.assertEqual(test_data, self.instance.encrypt(test_data))
 
         # with resource server
         self.instance.resource_server = resource_server = self.connection.server
@@ -42,16 +42,16 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
 
         # without resource_server
         self.instance.resource_server = None
-        self.assertEquals(test_data, self.instance.decrypt(test_data))
+        self.assertEqual(test_data, self.instance.decrypt(test_data))
 
         # with resource server
         self.instance.resource_server = resource_server = self.connection.server
         resource_server.decrypt.return_value = decrypted_test_data
 
-        self.assertEquals(self.instance.decrypt(test_data), decrypted_test_data)
+        self.assertEqual(self.instance.decrypt(test_data), decrypted_test_data)
 
         resource_server.decrypt.side_effect = AssertionError('test')
-        self.assertEquals(self.instance.decrypt(test_data), test_data)
+        self.assertEqual(self.instance.decrypt(test_data), test_data)
 
         resource_server.decrypt.side_effect = Exception('test')
         with self.assertRaises(Exception):
@@ -65,7 +65,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         msg.get_short_hash.return_value = short_hash
         self.connection.server.sign.return_value = test_signature
         self.instance.sign(msg)
-        self.assertEquals(msg.sig, test_signature)
+        self.assertEqual(msg.sig, test_signature)
         msg.get_short_hash.assert_called_once_with()
 
     def test_sign_verification(self):
@@ -84,8 +84,8 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         # connection unverified
         msg = queued_msg = object()
         self.instance.send(msg)
-        self.assertEquals([msg], self.instance.msgs_to_send)
-        self.assertEquals(super_send_mock.call_count, 0)
+        self.assertEqual([msg], self.instance.msgs_to_send)
+        self.assertEqual(super_send_mock.call_count, 0)
 
         msg = object()
         self.instance.send(msg, send_unverified=True)
@@ -133,9 +133,9 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
             mock_args, mock_kwargs = self.instance.send.call_args
             msg = mock_args[0]
             self.assertIsInstance(msg, message.MessageHasResource)
-            self.assertEquals(msg.resource, file_name)
+            self.assertEqual(msg.resource, file_name)
             self.assertFalse(self.instance.confirmation)
-            self.assertEquals(self.instance.copies, 0)
+            self.assertEqual(self.instance.copies, 0)
             self.assertIsNone(self.instance.file_name)
             return file_name
         confirmation_without_copies()
@@ -156,7 +156,7 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         mock_args, mock_kwargs = self.instance.send.call_args
         msg = mock_args[0]
         self.assertIsInstance(msg, message.MessagePullResource)
-        self.assertEquals(msg.resource, resource)
+        self.assertEqual(msg.resource, resource)
         self.instance.send.reset_mock()
 
         # .send_hello()
@@ -171,17 +171,17 @@ class ResourceSessionTestCase(unittest.TestCase, testutils.PEP8MixIn):
         msg = mock_args[0]
 
         expected = {
-            u'CHALLENGE': None,
-            u'CLIENT_KEY_ID': client_key_id,
-            u'CLI_VER': 0,
-            u'DIFFICULTY': 0,
-            u'METADATA': None,
-            u'NODE_INFO': None,
-            u'NODE_NAME': None,
-            u'PORT': 0,
-            u'PROTO_ID': 0,
-            u'RAND_VAL': self.instance.rand_val,
-            u'SOLVE_CHALLENGE': False,
+            'CHALLENGE': None,
+            'CLIENT_KEY_ID': client_key_id,
+            'CLI_VER': 0,
+            'DIFFICULTY': 0,
+            'METADATA': None,
+            'NODE_INFO': None,
+            'NODE_NAME': None,
+            'PORT': 0,
+            'PROTO_ID': 0,
+            'RAND_VAL': self.instance.rand_val,
+            'SOLVE_CHALLENGE': False,
         }
 
-        self.assertEquals(msg.dict_repr(), expected)
+        self.assertEqual(msg.dict_repr(), expected)

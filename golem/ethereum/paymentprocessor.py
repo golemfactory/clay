@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import logging
 import sys
@@ -29,8 +29,8 @@ def _encode_payments(payments):
             paymap[p.payee] = p.value
 
     args = []
-    value = 0L
-    for to, v in paymap.iteritems():
+    value = 0
+    for to, v in list(paymap.items()):
         max_value = 2 ** 96
         if v >= max_value:
             raise ValueError("v should be less than {}".format(max_value))
@@ -161,7 +161,7 @@ class PaymentProcessor(Service):
         # Here we keep the same simple estimation by number of atomic payments.
         # FIXME: This is different than estimation in sendout(). Create
         #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in self._inprogress.values())
+        num_payments = len(self._awaiting) + sum(len(p) for p in list(self._inprogress.values()))
         return num_payments * self.SINGLE_PAYMENT_ETH_COST
 
     def _eth_available(self):
@@ -272,7 +272,7 @@ class PaymentProcessor(Service):
 
     def monitor_progress(self):
         confirmed = []
-        for h, payments in self._inprogress.iteritems():
+        for h, payments in list(self._inprogress.items()):
             hstr = '0x' + h.encode('hex')
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)

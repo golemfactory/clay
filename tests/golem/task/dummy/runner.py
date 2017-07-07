@@ -34,7 +34,7 @@ node_kind = ""
 
 
 def report(msg):
-    print format_msg(node_kind, os.getpid(), msg)
+    print((format_msg(node_kind, os.getpid(), msg)))
 
 
 def override_ip_info(*_, **__):
@@ -175,7 +175,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:
-            print line
+            print(line)
             m = address_re.match(line)
             if m:
                 requestor_address = m.group(1)
@@ -209,7 +209,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
-                print line
+                print(line)
             if line == task_finished_status:
                 task_finished = True
 
@@ -235,7 +235,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
             time.sleep(1)
         return None
     finally:
-        print "Stopping nodes..."
+        print("Stopping nodes...")
 
         for proc in all_procs:
             if proc.poll() is None:
@@ -265,7 +265,7 @@ def dispatch(args):
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
                                    timeout=120)
         if error_msg:
-            print "Dummy task computation failed:", error_msg
+            print(("Dummy task computation failed:", error_msg))
             sys.exit(1)
 
 

@@ -94,7 +94,7 @@ class TestClient(TestWithDatabase):
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
                 modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
             )
-            for i in xrange(n + 1)
+            for i in range(n + 1)
         ]
 
         db = Mock()
@@ -105,15 +105,15 @@ class TestClient(TestWithDatabase):
 
         self.assertEqual(len(received_payments), len(payments))
 
-        for i in xrange(len(payments)):
+        for i in range(len(payments)):
             self.assertEqual(received_payments[i]['subtask'],
-                             unicode(payments[n - i].subtask))
+                             str(payments[n - i].subtask))
             self.assertEqual(received_payments[i]['status'],
                              payments[n - i].status.name)
             self.assertEqual(received_payments[i]['payee'],
-                             unicode(payments[n - i].payee.encode('hex')))
+                             str(payments[n - i].payee.encode('hex')))
             self.assertEqual(received_payments[i]['value'],
-                             unicode(payments[n - i].value))
+                             str(payments[n - i].value))
 
     def test_get_incomes(self, *_):
         self.client = Client(datadir=self.path,
@@ -133,7 +133,7 @@ class TestClient(TestWithDatabase):
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
                 modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
             )
-            for i in xrange(n + 1)
+            for i in range(n + 1)
         ]
 
         for income in incomes:
@@ -142,15 +142,15 @@ class TestClient(TestWithDatabase):
         received_incomes = self.client.get_incomes_list()
         self.assertEqual(len(received_incomes), len(incomes))
 
-        for i in xrange(len(incomes)):
+        for i in range(len(incomes)):
             self.assertEqual(received_incomes[i]['subtask'],
-                             unicode(incomes[n - i].subtask))
+                             str(incomes[n - i].subtask))
             self.assertEqual(received_incomes[i]['status'],
-                             unicode(PaymentStatus.awaiting.name))
+                             str(PaymentStatus.awaiting.name))
             self.assertEqual(received_incomes[i]['payer'],
-                             unicode(incomes[n - i].sender_node))
+                             str(incomes[n - i].sender_node))
             self.assertEqual(received_incomes[i]['value'],
-                             unicode(incomes[n - i].value))
+                             str(incomes[n - i].value))
 
     def test_payment_address(self, *_):
         self.client = Client(datadir=self.path, transaction_system=True,
@@ -158,7 +158,7 @@ class TestClient(TestWithDatabase):
                              use_docker_machine_manager=False, use_monitor=False)
 
         payment_address = self.client.get_payment_address()
-        self.assertIsInstance(payment_address, unicode)
+        self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
@@ -235,7 +235,7 @@ class TestClient(TestWithDatabase):
                              use_monitor=False)
 
         self.assertEqual(self.client.get_description(), "")
-        desc = u"ADVANCE DESCRIPTION\n\tSOME TEXT"
+        desc = "ADVANCE DESCRIPTION\n\tSOME TEXT"
         self.client.change_description(desc)
         self.assertEqual(self.client.get_description(), desc)
 
@@ -540,12 +540,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsInstance(c.get_node(), dict)
         self.assertIsInstance(DictSerializer.load(c.get_node()), Node)
 
-        self.assertIsInstance(c.get_node_key(), unicode)
+        self.assertIsInstance(c.get_node_key(), str)
         self.assertIsNotNone(c.get_node_key())
 
         c.node.key = None
 
-        self.assertNotIsInstance(c.get_node_key(), unicode)
+        self.assertNotIsInstance(c.get_node_key(), str)
         self.assertIsNone(c.get_node_key())
 
         self.assertIsInstance(c.get_public_key(), bytes)
@@ -557,7 +557,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server = ResourceServer.__new__(ResourceServer)
         c.resource_server.dir_manager = c.task_server.task_computer.dir_manager
 
-        self.assertIsInstance(c.get_datadir(), unicode)
+        self.assertIsInstance(c.get_datadir(), str)
         self.assertIsInstance(c.get_dir_manager(), DirManager)
 
         res_dirs = c.get_res_dirs()
@@ -565,16 +565,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertIsInstance(res_dirs, dict)
         self.assertTrue(len(res_dirs) == 3)
 
-        for key, value in res_dirs.iteritems():
-            self.assertIsInstance(key, unicode)
-            self.assertIsInstance(value, unicode)
+        for key, value in list(res_dirs.items()):
+            self.assertIsInstance(key, str)
+            self.assertIsInstance(value, str)
             self.assertTrue(self.path in value)
 
         res_dir_sizes = c.get_res_dirs_sizes()
 
-        for key, value in res_dir_sizes.iteritems():
-            self.assertIsInstance(key, unicode)
-            self.assertIsInstance(value, unicode)
+        for key, value in list(res_dir_sizes.items()):
+            self.assertIsInstance(key, str)
+            self.assertIsInstance(value, str)
             self.assertTrue(key in res_dirs)
 
     def test_get_estimated_cost(self, *_):
@@ -683,8 +683,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         result = (1, 1, None)
         deferred.result = result
         balance = sync_wait(c.get_balance())
-        assert balance == (u"1", u"1", u"None")
-        assert all(isinstance(entry, unicode) for entry in balance)
+        assert balance == ("1", "1", "None")
+        assert all(isinstance(entry, str) for entry in balance)
 
         c.transaction_system = None
         balance = sync_wait(c.get_balance())
@@ -831,19 +831,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # not connected
         self.assertTrue(c.connection_status()
-                        .startswith(u"Application not listening"))
+                        .startswith("Application not listening"))
 
         # status without peers
         c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
 
         # status without peers
-        self.assertTrue(c.connection_status().startswith(u"Not connected"))
+        self.assertTrue(c.connection_status().startswith("Not connected"))
 
         # peers
         c.p2pservice.incoming_peers = {str(i): self.__new_incoming_peer()
-                                       for i in xrange(3)}
-        c.p2pservice.peers = {str(i): self.__new_session() for i in xrange(4)}
+                                       for i in range(3)}
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
 
         known_peers = c.get_known_peers()
         self.assertEqual(len(known_peers), 3)
@@ -854,11 +854,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(all(peer for peer in connected_peers))
 
         # status with peers
-        self.assertTrue(c.connection_status().startswith(u"Connected"))
+        self.assertTrue(c.connection_status().startswith("Connected"))
 
         # status without ports
         c.p2pservice.cur_port = 0
-        self.assertTrue(c.connection_status().startswith(u"Application not listening"))
+        self.assertTrue(c.connection_status().startswith("Application not listening"))
 
     def test_port_status(self, *_):
         from pydispatch import dispatcher

@@ -136,4 +136,4 @@ if __name__ == '__main__':
     st = time.time()
     times = 100
     recover_1kb(times=times)
-    print 'took %.5f per recovery' % ((time.time() - st) / times)
+    print(('took %.5f per recovery' % ((time.time() - st) / times)))

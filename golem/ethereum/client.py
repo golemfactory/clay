@@ -139,7 +139,7 @@ class Client(object):
         :return: filter id
         """
         if topics is not None:
-            for i in xrange(len(topics)):
+            for i in range(len(topics)):
                 topics[i] = Client.__add_padding(topics[i])
         obj = {
             'fromBlock': from_block,
@@ -169,7 +169,7 @@ class Client(object):
         Each topic can also be an array of DATA with "or" options
         :return: Returns log entries described by filter options
         """
-        for i in xrange(len(topics)):
+        for i in range(len(topics)):
             topics[i] = Client.__add_padding(topics[i])
         filter_id = self.new_filter(from_block, to_block, Client.__add_padding(address), topics)
         return self.web3.eth.getFilterLogs(filter_id)
@@ -183,7 +183,7 @@ class Client(object):
         """
         if address is None:
             return address
-        elif isinstance(address, basestring):
+        elif isinstance(address, str):
             if address.startswith('0x'):
                 return address
             return '0x' + zpad(address, 32)

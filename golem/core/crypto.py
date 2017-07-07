@@ -40,10 +40,10 @@ else:
             if CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
                 break
 if 'pyelliptic' not in dir() or not CIPHERNAMES.issubset(set(pyelliptic.Cipher.get_all_cipher())):
-    print 'required ciphers %r not available in openssl library' % CIPHERNAMES
+    print(('required ciphers %r not available in openssl library' % CIPHERNAMES))
     if sys.platform == 'darwin':
-        print 'use homebrew or macports to install newer openssl'
-        print '> brew install openssl / > sudo port install openssl'
+        print('use homebrew or macports to install newer openssl')
+        print('> brew install openssl / > sudo port install openssl')
     sys.exit(1)
 
 import bitcoin
@@ -243,7 +243,7 @@ def lzpad32(x):
 
 
 def _encode_sig(v, r, s):
-    assert isinstance(v, (int, long))
+    assert isinstance(v, int)
     assert v in (27, 28)
     vb, rb, sb = chr(v - 27), bitcoin.encode(r, 256), bitcoin.encode(s, 256)
     return lzpad32(rb) + lzpad32(sb) + vb

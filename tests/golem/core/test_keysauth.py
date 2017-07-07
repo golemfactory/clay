@@ -56,14 +56,14 @@ class KeysAuthTest(TestWithKeysAuth):
         with self.assertRaises(ArithmeticError):
             get_random(30, 10)
         self.assertEqual(10, get_random(10, 10))
-        for _ in xrange(10):
+        for _ in range(10):
             a = randint(10, 100)
             b = randint(a + 1, 2 * a)
             r = get_random(a, b)
             self.assertGreaterEqual(r, a)
             self.assertGreaterEqual(b, r)
 
-        for _ in xrange(10):
+        for _ in range(10):
             r = get_random_float()
             self.assertGreater(r, 0)
             self.assertGreater(1, r)

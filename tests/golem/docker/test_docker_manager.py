@@ -211,7 +211,7 @@ class TestDockerManager(unittest.TestCase):
         assert dmm._config == dmm.defaults
 
         dmm.build_config(None)
-        assert all([val == dmm.defaults[key] for key, val in dmm._config.iteritems()])
+        assert all([val == dmm.defaults[key] for key, val in list(dmm._config.items())])
 
         config = MockConfig(0, 768, 512)
 
@@ -681,7 +681,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         self.hypervisor.constrain(machine, **constraints)
 
         read = self.hypervisor.constraints(MACHINE_NAME)
-        for key, value in constraints.iteritems():
+        for key, value in list(constraints.items()):
             assert value == read[key]
 
         # errors
