@@ -23,6 +23,7 @@ class TCPServer(Server):
         :param TCPNetwork network: network that server will use
         """
         Server.__init__(self, config_desc, network)
+        self.active = True
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ipv4_networks()
@@ -63,6 +64,12 @@ class TCPServer(Server):
         if self.network and self.cur_port:
             self.network.stop_listening(TCPListeningInfo(self.cur_port))
             self.cur_port = None
+
+    def pause(self):
+        self.active = False
+
+    def resume(self):
+        self.active = True
 
     def _stopped_callback(self):
         logger.debug("Stopped listening on previous port")
@@ -139,6 +146,9 @@ class PendingConnectionsServer(TCPServer):
             logger.debug("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+        if not self.active:
+            return
+
         logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
         # FIXME key_id is ignored
         sockets = [sock for sock in

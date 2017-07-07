@@ -32,14 +32,14 @@ DefaultDirName={pf}\{#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile={#Repository}\LICENSE.txt
 OutputDir={#Repository}\Installer\Installer_Win
-OutputBaseFilename=setup
+OutputBaseFilename={#MyAppName}_win_{#MyAppVersion}
 SetupIconFile={#Repository}\Installer\{#AppIcon}
 Compression=lzma
 SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: string; ValueName: "GOLEM"; ValueData: "{app}\golemapp.exe"; Flags: uninsdeletevalue;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\"; Check: NeedsAddPath('{app}\')
 
 ; Append Docker to PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('{sd}\Program Files\Docker Toolbox')
@@ -59,18 +59,19 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
                                                
 [Files]
-Source: "{#Repository}\dist\*"; DestDir: {app};
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion; 
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.5.9-a07539fb.exe"; DestDir: "{tmp}"; Flags: ignoreversion;      
-Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;    
+Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
-Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
-Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golemapp.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
+Name: "{commonprograms}\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: desktopicon
+Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\golem.exe"; IconFilename: "{app}\{#AppIcon}"; Tasks: quicklaunchicon
 
 [Run]
 ; Install runtime
@@ -81,7 +82,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.5.9-a07539fb.exe"; StatusMsg: "Installing geth"; Description: "Install geth"       
+Filename: "{tmp}\geth-windows-amd64-1.6.5-cf87713d.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
 
 [Code]
                                                                               
