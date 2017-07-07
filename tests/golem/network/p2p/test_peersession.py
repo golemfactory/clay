@@ -37,7 +37,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         expected = {
             'CHALLENGE': None,
             'CLIENT_KEY_ID': key_id,
-            'CLI_VER': 0,
+            'CLI_VER': u'0.7.0',
             'DIFFICULTY': 0,
             'METADATA': metadata,
             'NODE_INFO': node,
