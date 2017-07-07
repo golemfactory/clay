@@ -48,9 +48,11 @@ CORE_METHOD_MAP = dict(
     save_task_preset=       Task.tasks_save_preset,
     get_task_presets=       Task.tasks_load_presets,
     delete_task_preset=     Task.tasks_remove_preset,
+    get_estimated_cost=     Task.tasks_estimated_cost,
 
     get_task=               Task.task,
     get_task_cost=          Task.task_cost,
+    get_task_preview=       Task.task_preview,
     query_task_state=       Task.task_state,
     create_task=            Task.task_create,
     delete_task=            Task.task_delete,
@@ -60,8 +62,11 @@ CORE_METHOD_MAP = dict(
     resume_task=            Task.task_resume,
 
     get_subtasks=           Task.subtasks,
+    get_subtasks_borders=   Task.subtasks_borders,
+    get_subtasks_frames=    Task.subtasks_frames,
     get_subtask=            Task.subtask,
     restart_subtask=        Task.subtask_restart,
+    restart_frame_subtasks= Task.subtasks_frame_restart,
 
     get_res_dirs=           Resources.directories,
     get_res_dir=            Resources.directory,
@@ -79,6 +84,8 @@ CORE_METHOD_MAP = dict(
     get_payments_list=      Payments.payments,
     get_incomes_list=       Payments.incomes,
 
-    quit=                   UI.quit
+    quit=                   UI.quit,
+    resume=                 UI.start,
+    pause=                  UI.stop
 )
 

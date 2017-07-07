@@ -23,6 +23,7 @@ class TCPServer(Server):
         :param TCPNetwork network: network that server will use
         """
         Server.__init__(self, config_desc, network)
+        self.active = True
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ipv4_networks()
@@ -54,9 +55,21 @@ class TCPServer(Server):
             if listening_failure:
                 listening_failure()
 
-        listen_info = TCPListenInfo(self.config_desc.start_port, self.config_desc.end_port,
+        listen_info = TCPListenInfo(self.config_desc.start_port,
+                                    self.config_desc.end_port,
                                     established, failure)
         self.network.listen(listen_info)
+
+    def stop_accepting(self):
+        if self.network and self.cur_port:
+            self.network.stop_listening(TCPListeningInfo(self.cur_port))
+            self.cur_port = None
+
+    def pause(self):
+        self.active = False
+
+    def resume(self):
+        self.active = True
 
     def _stopped_callback(self):
         logger.debug("Stopped listening on previous port")
@@ -133,7 +146,11 @@ class PendingConnectionsServer(TCPServer):
             logger.debug("Connection {} is unknown".format(conn_id))
 
     def _add_pending_request(self, req_type, task_owner, port, key_id, args):
+        if not self.active:
+            return
+
         logger.debug('_add_pending_request(%r, %r, %r, %r, %r)', req_type, task_owner, port, key_id, args)
+        # FIXME key_id is ignored
         sockets = [sock for sock in
                    self.get_socket_addresses(task_owner, port, key_id) if
                    self._is_address_accessible(sock)]
@@ -156,6 +173,7 @@ class PendingConnectionsServer(TCPServer):
         :param socket_addr: A destination address
         :return: bool
         """
+        logger.debug('_is_address_accessible(%r)', socket_addr)
         if not socket_addr:
             return False
         elif socket_addr.ipv6:
@@ -163,7 +181,9 @@ class PendingConnectionsServer(TCPServer):
 
         addr = socket_addr.address
         if ip_address_private(addr):
+            logger.debug('_is_address_accessible(%r) PRIVATE', socket_addr)
             return self._is_address_in_network(addr, self.ipv4_networks)
+        logger.debug('_is_address_accessible(%r) PUBLIC', socket_addr)
         return True
 
     @staticmethod
@@ -208,7 +228,13 @@ class PendingConnectionsServer(TCPServer):
                 del self.open_listenings[ol_id]
 
     def get_socket_addresses(self, node_info, port, key_id):
-        return PendingConnectionsServer._node_info_to_socket_addresses(node_info, port)
+        socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
+        if node_info.pub_addr is None:
+            return socket_addresses
+        if node_info.pub_port:
+            port = node_info.pub_port
+        socket_addresses.append(SocketAddress(node_info.pub_addr, port))
+        return socket_addresses
 
     def _set_conn_established(self):
         pass
@@ -233,16 +259,6 @@ class PendingConnectionsServer(TCPServer):
             if ad in pc.socket_addresses:
                 pc.socket_addresses.remove(ad)
             pc.socket_addresses = [ad] + pc.socket_addresses
-
-    @staticmethod
-    def _node_info_to_socket_addresses(node_info, port):
-        socket_addresses = [SocketAddress(i, port) for i in node_info.prv_addresses]
-        if node_info.pub_addr is None:
-            return socket_addresses
-        if node_info.pub_port:
-            port = node_info.pub_port
-        socket_addresses.append(SocketAddress(node_info.pub_addr, port))
-        return socket_addresses
 
 
 class PenConnStatus(object):

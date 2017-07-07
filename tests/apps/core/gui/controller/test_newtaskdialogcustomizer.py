@@ -4,17 +4,18 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtTest import QTest
 from mock import Mock, patch
 
+from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
+from apps.core.gui.controller.newtaskdialogcustomizer import (
+    logger, NewTaskDialogCustomizer
+)
+from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretaskstate import (
+    TaskDefinition, CoreTaskDefaults, Options
+)
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-from apps.core.gui.controller.newtaskdialogcustomizer import (logger, NewTaskDialogCustomizer)
-from apps.core.task.coretask import TaskTypeInfo
-from apps.core.task.coretaskstate import TaskDefinition, CoreTaskDefaults, Options
-from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, RendererDefaults
-
-
 from gui.application import Gui
 from gui.applicationlogic import GuiApplicationLogic
 from gui.startapp import register_task_types
@@ -90,8 +91,9 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         name = "{}".format(customizer.gui.ui.taskNameLineEdit.text())
         assert re.match(reg, name) is not None, "Task name does not match: {}".format(name)
 
+    @patch('gui.applicationlogic.TestingTaskProgressDialog')
     @patch('apps.core.gui.controller.newtaskdialogcustomizer.QFileDialog')
-    def test_customizer(self, file_dialog_mock):
+    def test_customizer(self, file_dialog_mock, test_task_dialog_mock):
         self.logic.client = Mock()
         self.logic.client.config_desc = Mock()
         self.logic.client.config_desc.max_price = 0
@@ -131,11 +133,13 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
 
         options = Options()
         customizer.set_options(options)
-        assert customizer.logic.options == options
+        assert all(hasattr(customizer.logic.options, key)
+                   for key in options.__dict__)
 
         customizer._NewTaskDialogCustomizer__test_task_button_clicked()
         customizer.test_task_computation_finished(True, 103139)
-        self.assertEqual(customizer.task_state.definition.estimated_memory, 103139)
+        self.assertEqual(customizer.task_state.definition.estimated_memory,
+                         103139)
         self.assertTrue(customizer.gui.ui.finishButton.isEnabled())
         customizer._show_add_resource_dialog()
         self.assertFalse(customizer.gui.ui.finishButton.isEnabled())

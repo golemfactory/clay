@@ -1,3 +1,7 @@
+import collections
+
+from golem.core.common import to_unicode
+
 
 class TaskState(object):
     def __init__(self):
@@ -16,6 +20,13 @@ class TaskState(object):
 
     def __repr__(self):
         return '<TaskStatus: %r %.2f>' % (self.status, self.progress)
+
+    def to_dictionary(self):
+        return {
+            u'time_started': self.time_started,
+            u'time_remaining': self.remaining_time,
+            u'status': to_unicode(self.status)
+        }
 
 
 class ComputerState(object):
@@ -47,6 +58,23 @@ class SubtaskState(object):
 
         self.computer = ComputerState()
 
+    def to_dictionary(self):
+        return {
+            u'subtask_id': to_unicode(self.subtask_id),
+            u'node_name': to_unicode(self.computer.node_name),
+            u'node_id': to_unicode(self.computer.node_id),
+            u'node_performance': to_unicode(self.computer.performance),
+            u'node_ip_address': to_unicode(self.computer.ip_address),
+            u'node_port': self.computer.port,
+            u'status': to_unicode(self.subtask_status),
+            u'progress': self.subtask_progress,
+            u'time_started': self.time_started,
+            u'time_remaining': self.subtask_rem_time,
+            u'results': [to_unicode(r) for r in self.results],
+            u'stderr': to_unicode(self.stderr),
+            u'stdout': to_unicode(self.stdout)
+        }
+
 
 class TaskStatus(object):
     notStarted = u"Not started"
@@ -58,6 +86,7 @@ class TaskStatus(object):
     aborted = u"Aborted"
     timeout = u"Timeout"
     paused = u"Paused"
+    restarted = u"Restart"
 
 
 class SubtaskStatus(object):

@@ -54,19 +54,14 @@ def session_call(resolve_fn):
     return call
 
 
+@patch('twisted.internet.iocpreactor', create=True)
 class TestStartAppFunc(TestDirFixtureWithReactor):
-    def test_load_environments(self):
-        envs = load_environments()
-        for el in envs:
-            assert isinstance(el, Environment)
-        assert len(envs) >= 2
 
     def _start_client(self, router_fails=False, session_fails=False, expected_result=None):
 
         queue = Queue()
 
         @patch('gui.startapp.start_gui')
-        @patch('golem.reactor.geventreactor.install')
         @patch('golem.client.Client.start', side_effect=lambda *_: queue.put(u"Success"))
         @patch('golem.client.Client.sync')
         @patch('gui.startapp.start_error', side_effect=lambda err: queue.put(err))
@@ -212,7 +207,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                         expected_result=u"Session error")
 
     @patch('twisted.internet.reactor')
-    def test_stop_reactor(self, reactor):
+    def test_stop_reactor(self, reactor, *_):
         reactor.running = False
         stop_reactor()
         assert not reactor.stop.called
@@ -222,12 +217,18 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         assert reactor.stop.called
 
     @patch('gui.startapp.start_client')
-    def test_start_app(self, _start_client):
+    def test_start_app(self, _start_client, *_):
 
         start_app(datadir=self.tempdir)
-        _start_client.assert_called_with(True, self.tempdir, False)
+        _start_client.assert_called_with(False, self.tempdir, False)
 
-    def test_start_gui_subprocess(self):
+    def test_load_environments(self, *_):
+        envs = load_environments()
+        for el in envs:
+            assert isinstance(el, Environment)
+        assert len(envs) >= 2
+
+    def test_start_gui_subprocess(self, *_):
 
         from gui.startapp import start_gui as _start_gui
 
@@ -236,22 +237,31 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         with patch('gui.startgui.install_qt5_reactor', side_effect=self._get_reactor):
 
-            with patch('subprocess.Popen') as popen:
+            expected_kwargs = dict(
+                startupinfo=ANY,
+                stdout=-1,
+                stderr=-1,
+                stdin=ANY
+            )
 
+            with patch('subprocess.Popen') as popen:
                 _start_gui(rpc_address)
                 popen.assert_called_with([sys.executable, ANY,
-                                          '--qt', '-r', address_str])
+                                          '--qt', '-r', address_str],
+                                         **expected_kwargs)
 
             with patch('subprocess.Popen') as popen, \
                  patch.object(sys, 'executable', 'python_binary'):
 
                 _start_gui(rpc_address)
                 popen.assert_called_with(['python_binary', ANY,
-                                          '--qt', '-r', address_str])
+                                          '--qt', '-r', address_str],
+                                         **expected_kwargs)
 
             with patch('subprocess.Popen') as popen, \
                  patch.object(sys, 'frozen', True, create=True):
 
                 _start_gui(rpc_address)
                 popen.assert_called_with([sys.executable,
-                                          '--qt', '-r', address_str])
+                                          '--qt', '-r', address_str],
+                                         **expected_kwargs)

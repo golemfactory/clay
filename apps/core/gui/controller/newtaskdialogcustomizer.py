@@ -9,6 +9,8 @@ from ethereum.utils import denoms
 from PyQt5.QtWidgets import QFileDialog
 from twisted.internet.defer import inlineCallbacks
 
+from apps.rendering.task.framerenderingtask import FrameRenderingTaskBuilder
+from golem.core.common import to_unicode
 from golem.task.taskstate import TaskStatus
 
 from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDialogCustomizer
@@ -122,8 +124,8 @@ class NewTaskDialogCustomizer(Customizer):
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
         default_task = self.logic.get_default_task_type()
-        self.logic.options = default_task.options()
         task_item = self.gui.ui.taskTypeComboBox.findText(default_task.name)
+        self.set_options(default_task.options())
         if task_item >= 0:
             self.gui.ui.taskTypeComboBox.setCurrentIndex(task_item)
         else:
@@ -219,9 +221,9 @@ class NewTaskDialogCustomizer(Customizer):
                 "Should be TaskDefinition".format(type(task_definition)))
 
         definition = deepcopy(task_definition)
-        self.logic.options = deepcopy(definition.options)
         definition.resources = {os.path.normpath(res)
                                 for res in definition.resources}
+        self.set_options(definition.options)
         self.gui.ui.taskIdLabel.setText(self._generate_new_task_uid())
         self._load_basic_task_params(definition)
         self.task_customizer.load_task_definition(definition)
@@ -231,7 +233,13 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_payment_params(definition)
 
     def set_options(self, options):
-        self.logic.options = options
+        self.logic.options = deepcopy(options)
+        if not hasattr(self.logic.options, 'frames'):
+            return
+        if not isinstance(self.logic.options.frames, basestring):
+            frames = self.logic.options.frames
+            frames = FrameRenderingTaskBuilder.frames_to_string(frames)
+            self.logic.options.frames = to_unicode(frames)
 
     def task_settings_changed(self):
         self._change_finish_state(False)
@@ -284,7 +292,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._load_options(definition)
 
     def _load_options(self, definition):
-        self.logic.options = deepcopy(definition.options)
+        self.set_options(definition.options)
 
     def _load_task_type(self, definition):
         try:
@@ -334,7 +342,7 @@ class NewTaskDialogCustomizer(Customizer):
         self._read_price_params(definition)
         self._read_task_name(definition)
         self.get_task_specific_options(definition)
-        self.logic.options = definition.options
+        self.set_options(definition.options)
         self._read_resource_params(definition)
         self._read_advanced_verification_params(definition)  # FIMXE
 
@@ -393,7 +401,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _task_type_value_changed(self, name):
         task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
-        self.logic.options = deepcopy(task.options)
+        self.set_options(task.options)
         self._update_options("{}".format(name))
 
         if PRESETS_GUI_ENABLED:
@@ -408,11 +416,24 @@ class NewTaskDialogCustomizer(Customizer):
             if self.gui.ui.optimizeTotalCheckBox.isChecked():
                 self.gui.ui.pessimisticCostLabel.setText("unknown")
             else:
-                time_ = get_subtask_hours(self.gui) * float(self.gui.ui.totalSpinBox.value())
-                cost = price * time_
-                self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(cost))
-        except ValueError:
+                self._get_estimated_cost(price)
+
+        except Exception as ex:
             self.gui.ui.pessimisticCostLabel.setText("unknown")
+
+    @inlineCallbacks
+    def _get_estimated_cost(self, price):
+        subtask_time = get_subtask_hours(self.gui)
+        num_subtasks = float(self.gui.ui.totalSpinBox.value())
+        type = self.__get_current_task_type_name()
+        options = {
+            u'price': price,
+            u'num_subtasks': num_subtasks,
+            u'subtask_time': subtask_time
+        }
+        cost = yield self.logic.get_estimated_cost(type, options)
+        self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(
+            cost))
 
     def _advance_settings_button_clicked(self):
         self.gui.ui.advanceNewTaskWidget.setVisible(not self.gui.ui.advanceNewTaskWidget.isVisible())
@@ -422,7 +443,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _update_options(self, name):
         task_type = self.logic.get_task_type(name)
         self.logic.set_current_task_type(name)
-        self.logic.options = task_type.options()
+        self.set_options(task_type.options())
         self._change_task_widget(name)
         set_time_spin_boxes(self.gui, task_type.defaults.full_task_timeout, task_type.defaults.subtask_timeout)
         self.gui.ui.totalSpinBox.setRange(task_type.defaults.min_subtasks, task_type.defaults.max_subtasks)
@@ -452,13 +473,13 @@ class NewTaskDialogCustomizer(Customizer):
         self.task_state.status = TaskStatus.notStarted
         self.task_state.definition = self._query_task_definition()
 
-        if not self.logic.run_test_task(self.task_state):
+        if not self.logic.run_test_task(self.task_state.definition):
             logger.error("Task not tested properly")
 
     def __reset_to_defaults(self):
         task_type = self.__get_current_task_type()
 
-        self.logic.options = task_type.options()
+        self.set_options(task_type.options())
         self.logic.set_current_task_type(task_type.name)
 
         self.task_customizer.load_data()
@@ -478,7 +499,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
-        return self.gui.ui.taskTypeComboBox.itemText(index)
+        return unicode(self.gui.ui.taskTypeComboBox.itemText(index))
 
     def __get_current_preset_name(self):
         index = self.gui.ui.presetComboBox.currentIndex()

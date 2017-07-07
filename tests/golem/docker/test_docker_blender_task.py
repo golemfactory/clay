@@ -81,7 +81,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         ctd.deadline = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = OptNode(datadir=self.path)
+        self.node = OptNode(datadir=self.path, use_docker_machine_manager=False)
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
         self.node.client.p2pservice = Mock()
@@ -198,7 +198,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert len(task.frames_given) == 10
         assert isinstance(task.preview_file_path, basestring)
         assert not task.preview_updaters
-        assert task.scale_factor == 0.33
+        assert task.scale_factor == 0.8
         assert task.src_code
         assert isinstance(task.header, TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
@@ -215,7 +215,6 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert task.header.docker_images[0].tag == '1.3'
         assert task.header.max_price == 10.2
         assert not task.header.signature
-        assert task.undeletable == []
         assert task.listeners == []
         assert len(task.task_resources) == 1
         assert task.task_resources[0].endswith('scene-Helicopter-27-cycles.blend')

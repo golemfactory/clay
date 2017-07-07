@@ -1,16 +1,18 @@
 import logging
 import os
+import shutil
 import subprocess
 
 import ipfsapi
-import shutil
 from enum import Enum
 from ipfsapi.exceptions import CommunicationError, EncoderError
 from requests import HTTPError
 
+from golem.core.common import DEVNULL
 from golem.core.hostaddress import ip_address_private
 from golem.network.transport.tcpnetwork import SocketAddress
-from golem.resource.client import ClientConfig, ClientHandler, IClient, ClientOptions
+from golem.resource.client import ClientConfig, ClientHandler, IClient, \
+    ClientOptions
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +192,10 @@ class IPFSAddress(object):
 
 def ipfs_running():
     try:
-        result = subprocess.check_call(['ipfs', 'swarm', 'peers'])
+        result = subprocess.check_call(['ipfs', 'swarm', 'peers'],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE,
+                                       stdin=DEVNULL)
     except Exception:
         return False
     return result == 0

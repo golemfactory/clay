@@ -3,14 +3,15 @@ import os
 import subprocess
 import sys
 
+from twisted.internet.error import ReactorAlreadyRunning
+
 from apps.appsmanager import AppsManager
 from golem.client import Client
-from golem.core.common import config_logging
+from golem.core.common import config_logging, DEVNULL, is_windows, is_frozen
 from golem.core.common import get_golem_path
 from golem.core.deferred import install_unhandled_error_logger
 from golem.rpc.mapping.core import CORE_METHOD_MAP
 from golem.rpc.session import Session, object_method_map
-from twisted.internet.error import ReactorAlreadyRunning
 
 apps_manager = AppsManager()
 apps_manager.load_apps()
@@ -38,13 +39,25 @@ def start_error(err):
 
 
 def start_gui(address):
-    if hasattr(sys, 'frozen') and sys.frozen:
+    if is_frozen():
         runner = [sys.executable]
     else:
         runner = [sys.executable,
                   os.path.join(get_golem_path(), sys.argv[0])]
-    return subprocess.Popen(runner + ['--qt', '-r',
-                                      '{}:{}'.format(address.host, address.port)])
+
+    if is_windows():
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags &= ~subprocess.STARTF_USESHOWWINDOW
+    else:
+        startupinfo = None
+
+    return subprocess.Popen(
+        runner + ['--qt', '-r', '{}:{}'.format(address.host, address.port)],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        stdin=DEVNULL,
+        startupinfo=startupinfo
+    )
 
 
 def start_client(start_ranking, datadir=None,
@@ -56,6 +69,10 @@ def start_client(start_ranking, datadir=None,
     install_unhandled_error_logger()
 
     if not reactor:
+        from golem.core.common import is_windows
+        if is_windows():
+            from twisted.internet import iocpreactor
+            iocpreactor.install()
         from twisted.internet import reactor
 
     process_monitor = None
@@ -64,7 +81,6 @@ def start_client(start_ranking, datadir=None,
     from golem.docker.manager import DockerManager
     from golem.rpc.router import CrossbarRouter
 
-    process_monitor = None
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system, **config_overrides)
 
@@ -128,7 +144,7 @@ def start_client(start_ranking, datadir=None,
         process_monitor.exit()
 
 
-def start_app(start_ranking=True, datadir=None,
+def start_app(start_ranking=False, datadir=None,
               transaction_system=False, rendering=False, **config_overrides):
     start_client(start_ranking, datadir,
                  transaction_system, **config_overrides)

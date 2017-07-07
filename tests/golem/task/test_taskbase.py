@@ -1,9 +1,12 @@
+from unittest import TestCase
+
 from mock import Mock
 
 from golem.core.simpleserializer import CBORSerializer, SimpleSerializer
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, TaskEventListener, logger
+from golem.task.taskbase import (Task, TaskBuilder, TaskHeader,
+                                 TaskEventListener, logger)
 from golem.tools.assertlogs import LogTestCase
 
 
@@ -78,3 +81,8 @@ class TestTaskBase(LogTestCase):
         bin_deserialized = CBORSerializer.loads(bin_serialized)
 
         assert bin_deserialized == task_header_bin
+
+
+class TestTaskBuilder(TestCase):
+    def test_build_definition(self):
+        TaskBuilder.build_definition(u"testtask", {"resources": []})

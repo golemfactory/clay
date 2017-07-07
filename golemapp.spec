@@ -7,14 +7,6 @@ import sys
 block_cipher = None
 
 
-def on_path(app):
-    for path in os.environ["PATH"].split(os.pathsep):
-        app_path = os.path.join(path.strip('"'), app)
-        if os.path.isfile(app_path) and os.access(app_path, os.X_OK):
-            return True
-    return False
-
-
 def tree(directory):
 
     def glob_dir(_dir):
@@ -41,7 +33,11 @@ hidden_imports = [
     'Imath'
 ]
 
-if sys.platform == 'win32':
+is_windows = sys.platform == 'win32'
+icon = None
+
+if is_windows:
+    icon = os.path.join(os.getcwdu(), 'Installer', 'favicon.ico')
     try:
         import vboxapi
     except ImportError:
@@ -74,5 +70,6 @@ exe = EXE(pyz,
           name='golemapp',
           debug=False,
           strip=False,
-          upx=on_path('upx'),
-          console=True)
+          upx=False,
+          icon=icon,
+          console=not is_windows)

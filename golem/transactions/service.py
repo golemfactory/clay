@@ -1,6 +1,6 @@
 import logging
 
-from golem.resource.client import AsyncRequest, async_run
+from golem.core.async import AsyncRequest, async_run
 from twisted.internet.task import LoopingCall
 
 log = logging.getLogger("golem")

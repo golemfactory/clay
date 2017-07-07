@@ -1,7 +1,7 @@
 import os
 import uuid
 
-from golem.resource.base.resourcesmanager import TestResourceManager
+from golem.resource.base import resourcesmanager
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
@@ -76,8 +76,10 @@ class TestEncryptedResultPackageManager(TestDirFixture):
 
         self.task_id = str(uuid.uuid4())
         self.dir_manager = DirManager(self.path)
-        self.resource_manager = TestResourceManager(self.dir_manager,
-                                                    resource_dir_method=self.dir_manager.get_task_output_dir)
+        self.resource_manager = resourcesmanager.TestResourceManager(
+            self.dir_manager,
+            resource_dir_method=self.dir_manager.get_task_output_dir
+        )
 
     def testGenSecret(self):
         manager = EncryptedResultPackageManager(self.resource_manager)
@@ -129,8 +131,10 @@ class TestEncryptedResultPackageManager(TestDirFixture):
             self.fail("Error downloading package: {}".format(exc))
 
         dir_manager = DirManager(self.path)
-        resource_manager = TestResourceManager(dir_manager,
-                                               resource_dir_method=dir_manager.get_task_temporary_dir)
+        resource_manager = resourcesmanager.TestResourceManager(
+            dir_manager,
+            resource_dir_method=dir_manager.get_task_temporary_dir
+        )
 
         new_manager = EncryptedResultPackageManager(resource_manager)
         new_manager.pull_package(multihash, self.task_id, self.task_id,

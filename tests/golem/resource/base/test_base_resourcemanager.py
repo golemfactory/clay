@@ -4,9 +4,17 @@ import uuid
 
 from mock import patch
 
-from golem.resource.base.resourcesmanager import ResourceCache, ResourceStorage, TestResourceManager, FileResource
+from golem.resource.base import resourcesmanager
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
+
+
+def get_resource_paths(storage, target_resources, task_id):
+    resource_paths = []
+    for resource in target_resources:
+        path = storage.get_path(resource, task_id)
+        resource_paths.append(path)
+    return resource_paths
 
 
 class _Common(object):
@@ -48,7 +56,7 @@ class _Common(object):
 class TestResourceCache(unittest.TestCase):
 
     def setUp(self):
-        self.cache = ResourceCache()
+        self.cache = resourcesmanager.ResourceCache()
         self.resource_path = unicode(os.path.join('abstract', 'prefix', 'path'))
         self.resource_name = u'\0!abstract_name\0!'
         self.resource_hash = str(uuid.uuid4())
@@ -57,8 +65,12 @@ class TestResourceCache(unittest.TestCase):
 
     def test_prefix(self):
         self.cache.set_prefix(self.task_id, self.prefix)
-        resource = FileResource(self.resource_name, self.resource_hash,
-                                task_id=self.task_id, path=self.resource_path)
+        resource = resourcesmanager.FileResource(
+            self.resource_name,
+            self.resource_hash,
+            task_id=self.task_id,
+            path=self.resource_path
+        )
 
         assert self.cache.get_prefix(resource.task_id) == self.prefix
         assert self.cache.get_prefix(str(uuid.uuid4())) == ''
@@ -69,12 +81,24 @@ class TestResourceCache(unittest.TestCase):
         assert self.cache.get_prefix(resource.task_id) == ''
 
     def test_resources(self):
-        resource = FileResource(self.resource_name, self.resource_hash,
-                                task_id=self.task_id, path=self.resource_path)
+        resource = resourcesmanager.FileResource(
+            self.resource_name,
+            self.resource_hash,
+            task_id=self.task_id,
+            path=self.resource_path
+        )
         new_task_id = str(uuid.uuid4())
-        new_resource = FileResource('new_name', str(uuid.uuid4()), new_task_id)
+        new_resource = resourcesmanager.FileResource(
+            'new_name',
+            str(uuid.uuid4()),
+            new_task_id
+        )
         tmp_task_id = str(uuid.uuid4())
-        tmp_resource = FileResource('tmp_name', str(uuid.uuid4()), tmp_task_id)
+        tmp_resource = resourcesmanager.FileResource(
+            'tmp_name',
+            str(uuid.uuid4()),
+            tmp_task_id
+        )
 
         self.cache.add_resource(resource)
         self.cache.add_resource(new_resource)
@@ -103,8 +127,12 @@ class TestResourceCache(unittest.TestCase):
         new_hash = str(uuid.uuid4())
         new_path = '/other/path'
         new_task = str(uuid.uuid4())
-        new_resource = FileResource(new_path, new_hash,
-                                    task_id=new_task, path=new_path)
+        new_resource = resourcesmanager.FileResource(
+            new_path,
+            new_hash,
+            task_id=new_task,
+            path=new_path
+        )
 
         self._add_all()
         self.cache.add_resource(new_resource)
@@ -121,8 +149,12 @@ class TestResourceCache(unittest.TestCase):
         assert self._all_default_empty()
 
     def _add_all(self):
-        resource = FileResource(self.resource_path, self.resource_hash,
-                                task_id=self.task_id, path=self.resource_path)
+        resource = resourcesmanager.FileResource(
+            self.resource_path,
+            self.resource_hash,
+            task_id=self.task_id,
+            path=self.resource_path
+        )
         self.cache.add_resource(resource)
         self.cache.set_prefix(self.task_id, self.prefix)
 
@@ -137,8 +169,10 @@ class TestResourceStorage(_Common.ResourceSetUp):
 
     def setUp(self):
         _Common.ResourceSetUp.setUp(self)
-        self.storage = ResourceStorage(self.dir_manager,
-                                       self.dir_manager.get_task_resource_dir)
+        self.storage = resourcesmanager.ResourceStorage(
+            self.dir_manager,
+            self.dir_manager.get_task_resource_dir
+        )
 
     def test_get_root(self):
         dir_manager_root = self.dir_manager.get_node_dir().rstrip(os.path.sep)
@@ -199,7 +233,7 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
 
     def setUp(self):
         _Common.ResourceSetUp.setUp(self)
-        self.resource_manager = TestResourceManager(self.dir_manager)
+        self.resource_manager = resourcesmanager.TestResourceManager(self.dir_manager)  # noqa
 
     def test_copy_files(self):
         old_resource_dir = self.resource_manager.storage.get_root()
@@ -252,7 +286,11 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
         storage = self.resource_manager.storage
         storage.clear_cache()
 
-        resource_paths = [storage.get_path(r, self.task_id) for r in self.target_resources]
+        resource_paths = get_resource_paths(
+            self.resource_manager.storage,
+            self.target_resources,
+            self.task_id
+        )
 
         self.resource_manager._add_task(resource_paths, self.task_id)
         resources = storage.get_resources(self.task_id)
@@ -271,7 +309,11 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
     def test_remove_task(self):
         self.resource_manager.storage.clear_cache()
 
-        resource_paths = [self.resource_manager.storage.get_path(r, self.task_id) for r in self.target_resources]
+        resource_paths = get_resource_paths(
+            self.resource_manager.storage,
+            self.target_resources,
+            self.task_id
+        )
         self.resource_manager._add_task(resource_paths, self.task_id)
         self.resource_manager.remove_task(self.task_id)
 
@@ -280,15 +322,23 @@ class TestAbstractResourceManager(_Common.ResourceSetUp):
 
     def test_command_failed(self):
         with patch('golem.resource.base.resourcesmanager.logger') as logger:
-            self.resource_manager.command_failed(Exception('Unknown error'),
-                                                 self.resource_manager.commands.id,
-                                                 str(uuid.uuid4()))
+            self.resource_manager.command_failed(
+                Exception('Unknown error'),
+                self.resource_manager.commands.id,
+                str(uuid.uuid4())
+            )
             assert logger.error.called
 
     def test_to_from_wire(self):
-
-        entries = [FileResource(r, str(uuid.uuid4()), task_id="task", path=r)
-                   for r in self.joined_resources]
+        entries = []
+        for resource in self.joined_resources:
+            manager = resourcesmanager.FileResource(
+                resource,
+                str(uuid.uuid4()),
+                task_id="task",
+                path=resource
+            )
+            entries.append(manager)
 
         resources_split = self.resource_manager.to_wire(entries)
         resources_joined = self.resource_manager.from_wire(resources_split)

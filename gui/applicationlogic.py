@@ -1,21 +1,19 @@
 from __future__ import division
 
-import jsonpickle
 import logging
 import os
-
-from PyQt5.QtCore import Qt
-from ethereum.utils import denoms
 from PyQt5 import QtCore
+
+import jsonpickle
 from PyQt5.QtCore import QObject
-from PyQt5.QtWidgets import QTableWidgetItem, QMessageBox
+from PyQt5.QtWidgets import QTableWidgetItem
+from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
-
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
@@ -24,15 +22,16 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskState, TaskTestStatus
 from golem.task.taskstate import TaskStatus
-
-from gui.controller.testingtaskprogresscustomizer import TestingTaskProgressDialogCustomizer
-from gui.controller.updatingconfigdialogcustomizer import UpdatingConfigDialogCustomizer
+from gui.controller.testingtaskprogresscustomizer import \
+    TestingTaskProgressDialogCustomizer
+from gui.controller.updatingconfigdialogcustomizer import \
+    UpdatingConfigDialogCustomizer
 from gui.view.dialog import TestingTaskProgressDialog, UpdatingConfigDialog
 
 logger = logging.getLogger("app")
 
 
-task_to_remove_status = [TaskStatus.aborted, TaskStatus.timeout, TaskStatus.finished, TaskStatus.paused]
+task_to_remove_status = [TaskStatus.aborted, TaskStatus.paused]
 
 
 class GuiApplicationLogic(QtCore.QObject, AppLogic):
@@ -213,12 +212,19 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     @inlineCallbacks
     def update_stats(self):
         response = yield self.client.get_task_stats()
+        if not response:
+            return
 
-        self.customizer.gui.ui.knownTasks.setText(str(response['in_network']))
-        self.customizer.gui.ui.supportedTasks.setText(str(response['supported']))
-        self.customizer.gui.ui.computedTasks.setText(str(response['subtasks_computed']))
-        self.customizer.gui.ui.tasksWithErrors.setText(str(response['subtasks_with_errors']))
-        self.customizer.gui.ui.tasksWithTimeouts.setText(str(response['subtasks_with_timeout']))
+        self.customizer.gui.ui.knownTasks.setText(
+            str(response['in_network']))
+        self.customizer.gui.ui.supportedTasks.setText(
+            str(response['supported']))
+        self.customizer.gui.ui.computedTasks.setText(
+            str(response['subtasks_computed']))
+        self.customizer.gui.ui.tasksWithErrors.setText(
+            str(response['subtasks_with_errors']))
+        self.customizer.gui.ui.tasksWithTimeouts.setText(
+            str(response['subtasks_with_timeout']))
 
     @inlineCallbacks
     def get_config(self):
@@ -248,8 +254,9 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
 
     @inlineCallbacks
     def change_config(self, cfg_desc, run_benchmarks=False):
-        cfg_dict = DictSerializer.dump(cfg_desc)
-        yield self.client.update_settings(cfg_dict, run_benchmarks=run_benchmarks)
+        cfg_dict = DictSerializer.dump(cfg_desc, typed=False)
+        yield self.client.update_settings(cfg_dict,
+                                          run_benchmarks=run_benchmarks)
         self.node_name = yield self.client.get_setting('node_name')
         self.customizer.set_name(u"{}".format(self.node_name))
 
@@ -410,46 +417,55 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def config_changed(self):
         self.customizer.configuration_dialog_customizer.load_data()
 
-    def run_test_task(self, task_state):
-        if self._validate_task_state(task_state):
+    def run_test_task(self, task_def):
+        def on_abort():
+            self.progress_dialog_customizer.show_message("Aborting test...")
+            self.abort_test_task()
 
-            def on_abort():
-                self.progress_dialog_customizer.show_message("Aborting test...")
-                self.abort_test_task()
+        self.progress_dialog = TestingTaskProgressDialog(
+            self.customizer.gui.window)
+        self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(
+            self.progress_dialog, self)
+        # disable 'ok' button
+        self.progress_dialog_customizer.enable_ok_button(False)
+        # disable 'abort' button
+        self.progress_dialog_customizer.enable_abort_button(False)
+        # prevent from closing
+        self.progress_dialog_customizer.enable_close(False)
+        self.progress_dialog_customizer.show_message("Preparing test...")
+        self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(
+            on_abort)
+        self.customizer.gui.setEnabled('new_task', False)
+        # disable everything on 'new task' tab
+        self.progress_dialog.show()
 
-            self.progress_dialog = TestingTaskProgressDialog(self.customizer.gui.window)
-            self.progress_dialog_customizer = TestingTaskProgressDialogCustomizer(self.progress_dialog, self)
-            self.progress_dialog_customizer.enable_ok_button(False)    # disable 'ok' button
-            self.progress_dialog_customizer.enable_abort_button(False) # disable 'abort' button
-            self.progress_dialog_customizer.enable_close(False)        # prevent from closing
-            self.progress_dialog_customizer.show_message("Preparing test...")
-            self.progress_dialog_customizer.gui.ui.abortButton.clicked.connect(on_abort)
-            self.customizer.gui.setEnabled('new_task', False)  # disable everything on 'new task' tab
-            self.progress_dialog.show()
-
-            try:
-                self.client.run_test_task(self.build_and_serialize_task(task_state))
-                return True
-            except Exception as ex:
-                self.test_task_computation_error(ex)
+        try:
+            self.client.run_test_task(self.prepare_dict_for_test(task_def))
+            return True
+        except Exception as ex:
+            self.test_task_computation_error(ex)
 
         return False
 
+    def prepare_dict_for_test(self, task_def):
+        return {
+            u'type': task_def.task_type,
+            u'subtasks': 1,
+            u'resources': list(task_def.resources)
+        }
+
     def build_and_serialize_task(self, task_state, cbk=None):
-        tb = self.get_builder(task_state)
-        t = Task.build_task(tb)
-        t.header.max_price = str(t.header.max_price)
-        t_serialized = DictSerializer.dump(t)
-        if 'task_definition' in t_serialized:
-            t_serialized_def = t_serialized['task_definition']
-            t_serialized_def['resources'] = list(t_serialized_def['resources'])
-            if 'max_price' in t_serialized_def:
-                t_serialized_def['max_price'] = str(t_serialized_def['max_price'])
-        from pprint import pformat
-        logger.debug('task serialized: %s', pformat(t_serialized))
+        task_builder = self.get_builder(task_state)
+        task = Task.build_task(task_builder)
+        task.header.max_price = str(task.header.max_price)
+
+        definition = task_state.definition
+        definition.legacy = True
+        serialized = task_builder.build_dictionary(definition)
+
         if cbk:
-            cbk(t)
-        return t_serialized
+            cbk(task)
+        return serialized
 
     def test_task_started(self, success):
         self.progress_dialog_customizer.show_message("Testing...")
@@ -542,10 +558,10 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.progress_dialog_customizer.enable_abort_button(False)
 
         logger.debug("After test: {}".format(after_test_data))
-        if after_test_data.get("warnings") is not None:
+        if after_test_data.get(u"warnings") is not None:
             self.progress_dialog.close()
             self.customizer.show_warning_window(u"{}".format(
-                after_test_data["warnings"]
+                after_test_data[u"warnings"]
             ))
         else:
             msg = u"Task tested successfully - time %.2f" % time_spent
@@ -637,6 +653,11 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
                 logger.exception("Cannot unpickle preset")
                 self.client.delete_task_preset(task_type, preset_name)
         returnValue(unpacked_presets)
+
+    @inlineCallbacks
+    def get_estimated_cost(self, task_type, options):
+        cost = yield self.client.get_estimated_cost(task_type, options)
+        returnValue(cost)
 
     def delete_task_preset(self, task_type, preset_name):
         self.client.delete_task_preset(task_type, preset_name)

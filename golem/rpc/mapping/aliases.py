@@ -77,9 +77,11 @@ class Task(object):
     tasks_save_preset       = 'comp.tasks.preset.save'
     tasks_load_presets      = 'comp.tasks.preset.get'
     tasks_remove_preset     = 'comp.tasks.preset.delete'
+    tasks_estimated_cost    = 'comp.tasks.estimated.cost'
 
     task                    = 'comp.task'
     task_cost               = 'comp.task.cost'
+    task_preview            = 'comp.task.preview'
     task_state              = 'comp.task.state'
     task_create             = 'comp.task.create'
     task_delete             = 'comp.task.delete'
@@ -87,10 +89,14 @@ class Task(object):
     task_restart            = 'comp.task.restart'
     task_pause              = 'comp.task.pause'
     task_resume             = 'comp.task.resume'
+    task_outputs_states     = 'comp.task.outputs.states'
     # task_price              = 'comp.task.price'
     # task_price_update       = 'comp.task.price.update'
 
     subtasks                = 'comp.task.subtasks'
+    subtasks_borders        = 'comp.task.subtasks.borders'
+    subtasks_frames         = 'comp.task.subtasks.frames'
+    subtasks_frame_restart  = 'comp.task.subtasks.frame.restart'
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 
@@ -142,6 +148,8 @@ class Payments(object):
 class UI(object):
 
     quit                    = 'ui.quit'
+    start                   = 'ui.start'
+    stop                    = 'ui.stop'
 
     evt_lock_config         = 'evt.ui.widget.config.lock'
 

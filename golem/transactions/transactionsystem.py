@@ -1,4 +1,5 @@
-from golem.model import Payment
+from golem.core.common import datetime_to_timestamp, to_unicode
+from golem.model import Payment, PaymentStatus
 
 from paymentskeeper import PaymentsKeeper
 from incomeskeeper import IncomesKeeper
@@ -15,13 +16,6 @@ class TransactionSystem(object):
         self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
         self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
 
-    def get_income(self, addr_info, value):
-        """ Increase information about budget with reward
-        :param str addr_info: return information about address of a node that send this payment
-        :param int value: value of the payment
-        """
-        self.incomes_keeper.get_income(addr_info, value)
-
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask.
         :param str task_id:    ID if a task the payment is related to.
@@ -34,7 +28,14 @@ class TransactionSystem(object):
         payee = account_info.eth_account.address
         if len(payee) != 20:
             raise ValueError("Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        return Payment.create(subtask=subtask_id, payee=payee, value=value)
+        return Payment.create(
+            subtask=subtask_id,
+            payee=payee,
+            value=value,
+            details={
+                'node_info': account_info.node_info,
+            }
+        )
 
     def get_payments_list(self):
         """ Return list of all planned and made payments
@@ -48,15 +49,29 @@ class TransactionSystem(object):
         """
         return self.incomes_keeper.get_list_of_all_incomes()
 
-    def add_to_waiting_payments(self, task_id, node_id, value):
-        return self.incomes_keeper.add_waiting_payment(task_id, node_id, expected_value=value)
-
-    def pay_for_task(self, task_id, payments):
-        """ Pay for task using specific system. This method should be implemented in derived classes
-        :param str task_id: finished task
-        :param payments: payments representation
+    def get_incoming_payments(self):
+        """Returns preprocessed list of pending & confirmed incomes.
+        It's optimised for electron GUI.
         """
-        raise NotImplementedError
+        incomes = self.incomes_keeper.get_list_of_all_incomes()
+
+        def item(o):
+            status = PaymentStatus.confirmed if o.income.transaction \
+                     else PaymentStatus.awaiting
+
+            return {
+                u"task": to_unicode(o.task),
+                u"subtask": to_unicode(o.subtask),
+                u"payer": to_unicode(o.sender_node),
+                u"value": to_unicode(o.value),
+                u"status": to_unicode(status.name),
+                u"block_number": to_unicode(o.income.block_number),
+                u"transaction": to_unicode(o.income.transaction),
+                u"created": datetime_to_timestamp(o.created_date),
+                u"modified": datetime_to_timestamp(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def check_payments(self):
         # TODO Some code from taskkeeper
@@ -68,6 +83,7 @@ class TransactionSystem(object):
         #         del self.completed[subtask_id]
         # return after_deadline
 
+        self.incomes_keeper.run_once()
         return []
 
     def sync(self):

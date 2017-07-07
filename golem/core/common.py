@@ -1,3 +1,4 @@
+import collections
 import logging.config
 import os
 import sys
@@ -6,6 +7,17 @@ from datetime import datetime
 
 import pytz
 from pathlib import Path
+
+TIMEOUT_FORMAT = u'{}:{:0=2d}:{:0=2d}'
+DEVNULL = open(os.devnull, 'wb')
+
+
+def is_frozen():
+    """
+    Check if running a frozen script
+    :return: True if executing a frozen script, False otherwise
+    """
+    return hasattr(sys, 'frozen') and sys.frozen
 
 
 def is_windows():
@@ -39,6 +51,22 @@ def to_unicode(value):
         return unicode(value)
     except UnicodeDecodeError:
         return value
+
+
+def update_dict(target, *updates):
+    """
+    Recursively update a dictionary
+    :param target: dictionary to update
+    :param updates: dictionaries to update with
+    :return: updated target dictionary
+    """
+    for update in updates:
+        for key, val in update.iteritems():
+            if isinstance(val, collections.Mapping):
+                target[key] = update_dict(target.get(key, {}), val)
+            else:
+                target[key] = update[key]
+    return target
 
 
 def get_golem_path():
@@ -81,6 +109,19 @@ def timestamp_to_datetime(ts):
 
 def datetime_to_timestamp(then):
     return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
+
+
+def timeout_to_string(timeout):
+    hours = int(timeout / 3600)
+    timeout -= hours * 3600
+    minutes = int(timeout / 60)
+    timeout -= minutes * 60
+    return TIMEOUT_FORMAT.format(hours, minutes, timeout)
+
+
+def string_to_timeout(string):
+    values = string.split(':')
+    return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 
 
 class HandleError(object):
@@ -138,3 +179,14 @@ def config_logging(suffix='', datadir=None):
 
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
+
+    from ethereum import slogging
+    slogging.configure(u':debug')
+    from twisted.python import log
+    observer = log.PythonLoggingObserver(loggerName='twisted')
+    observer.start()
+
+    from txaio import set_global_log_level
+    crossbar_log_lvl = logging.getLevelName(
+        logging.getLogger('golem.rpc.crossbar').level).lower()
+    set_global_log_level(crossbar_log_lvl)

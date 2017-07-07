@@ -3,8 +3,7 @@ import logging
 import os
 
 from golem.core.fileencrypt import FileEncryptor
-from golem.resource.client import async_run
-from golem.resource.client import AsyncRequest
+from golem.core.async import AsyncRequest, async_run
 from .resultpackage import EncryptingTaskResultPackager
 
 logger = logging.getLogger(__name__)

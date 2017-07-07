@@ -123,15 +123,21 @@ class PaymentProcessor(Service):
 
         return True
 
+    def eth_address(self, zpad=True):
+        address = keys.privtoaddr(self.__privkey)
+        # TODO: Hack RPC client to allow using raw address.
+        if zpad:
+            address = utils.zpad(address, 32)
+        address = '0x' + address.encode('hex')
+        return address
+
     def balance_known(self):
         return self.__gnt_balance is not None and self.__eth_balance is not None
 
     def eth_balance(self, refresh=False):
         # FIXME: The balance must be actively monitored!
         if self.__eth_balance is None or refresh:
-            addr = keys.privtoaddr(self.__privkey)
-            # TODO: Hack RPC client to allow using raw address.
-            addr = '0x' + addr.encode('hex')
+            addr = self.eth_address(zpad=False)
             self.__eth_balance = self.__client.get_balance(addr)
             log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
         return self.__eth_balance
@@ -287,10 +293,22 @@ class PaymentProcessor(Service):
                         p.details['block_hash'] = block_hash
                         p.details['fee'] = fee
                         p.save()
-                        dispatcher.send(signal='golem.monitor', event='payment',
-                                        addr=p.payee.encode('hex'), value=p.value)
-                        log.debug("- {:.6} confirmed fee {:.6f}".format(p.subtask,
-                                                                        fee / denoms.ether))
+                        dispatcher.send(
+                            signal='golem.monitor',
+                            event='payment',
+                            addr=p.payee.encode('hex'),
+                            value=p.value
+                        )
+                        dispatcher.send(
+                            signal='golem.paymentprocessor',
+                            event='payment.confirmed',
+                            payment=p
+                        )
+                        log.debug(
+                            "- %.6f confirmed fee %.6f",
+                            p.subtask,
+                            fee / denoms.ether
+                        )
                 confirmed.append(h)
         for h in confirmed:
             # Delete in progress entry.

@@ -158,4 +158,13 @@ class TaskContextMenuCustomizer:
             enabled["Change Timeouts"] = False
             enabled["Show Result"] = False
 
+        if task_status == TaskStatus.restarted:
+            enabled["Abort Task"] = True
+            enabled["Restart"] = False
+            enabled["Start Task"] = False
+            enabled["Pause"] = False
+            enabled["Resume"] = False
+            enabled["Change Timeouts"] = False
+            enabled["Show Result"] = False
+
         return enabled
