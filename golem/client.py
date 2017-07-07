@@ -486,6 +486,9 @@ class Client(HardwarePresetsMixin):
     def restart_task(self, task_id):
         self.task_server.task_manager.restart_task(task_id)
 
+    def restart_frame_subtasks(self, task_id, frame):
+        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
+
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)
 
