@@ -154,7 +154,7 @@ class TestNetwork(unittest.TestCase):
                 port='2500{}'.format(i),
                 key_id='deadbeef0{}'.format(i) * 8,
                 node_name='node_{}'.format(i),
-                version=u'0.7.0'
+                client_ver=u'0.7.0'
             ) for i in range(1, 1 + 6)
         ]
 
