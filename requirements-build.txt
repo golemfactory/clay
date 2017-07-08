@@ -1,0 +1,4 @@
+vboxapi
+pycryptodome
+PyInstaller
+-r requirements.txt
