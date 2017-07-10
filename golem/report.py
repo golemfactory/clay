@@ -73,7 +73,7 @@ def report_call(component, method, stage=None):
         StatePublisher.publish(component, method, Stage.pre)
     try:
         yield
-    except Exception as e:
+    except BaseException as e:
         # Publish and re-raise exceptions
         StatePublisher.publish(component, method, Stage.exception, unicode(e))
         raise
