@@ -402,9 +402,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertTrue(img.size == (300, 200))
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
-        assert isinstance(preview, list)
-        assert len(preview) == 1
-        assert all(os.path.exists(p) for p in preview)
+        assert isinstance(preview, dict)
+        assert len(preview) == 4
+        assert all(p is None or os.path.exists(p) for p in preview.values())
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
         assert isinstance(preview, basestring)
@@ -505,9 +505,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt._update_preview(preview, 3)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
-        assert isinstance(preview, list)
+        assert isinstance(preview, dict)
         assert len(preview) == 1
-        assert all(os.path.exists(p) for p in preview)
+        assert all(os.path.exists(p) for p in preview.values())
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
         assert os.path.exists(preview)
