@@ -76,7 +76,7 @@ class TaskTypeInfo(object):
             if isinstance(result, dict):
                 return result
             else:
-                return {u'1': result}
+                return {'1': result}
         return {}
 
 

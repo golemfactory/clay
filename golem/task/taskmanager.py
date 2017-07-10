@@ -509,7 +509,7 @@ class TaskManager(TaskEventListener):
         if not subtasks:
             return
 
-        for subtask_id in subtasks.iterkeys():
+        for subtask_id in subtasks.keys():
             task.restart_subtask(subtask_id)
             subtask_state = task_state.subtask_states[subtask_id]
             subtask_state.subtask_status = SubtaskStatus.restarted

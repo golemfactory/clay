@@ -686,18 +686,18 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         _, subtask_id = self.__build_tasks(tm, 3)
 
         # Successful call
-        for task_id in tm.tasks.iterkeys():
+        for task_id in tm.tasks.keys():
             for i in range(3):
                 tm.restart_frame_subtasks(task_id, i + 1)
         assert tm.notice_task_updated.called
 
         subtask_states = {}
 
-        for task in tm.tasks.itervalues():
+        for task in tm.tasks.values():
             task_state = tm.tasks_states[task.header.task_id]
             subtask_states.update(task_state.subtask_states)
 
-        for subtask_id, subtask_state in subtask_states.iteritems():
+        for subtask_id, subtask_state in subtask_states.items():
             assert subtask_state.subtask_status == SubtaskStatus.restarted
 
     def __build_tasks(self, tm, n, fixed_frames=False):
@@ -750,12 +750,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
 
             task.frames_subtasks = {str(k): [] for k in
                                     definition.options.frames}
-            task.frames_subtasks["1"] = subtask_states.keys()
+            task.frames_subtasks["1"] = list(subtask_states.keys())
 
             task.subtask_states = subtask_states
             task.subtasks_given = dict()
 
-            for key, entry in subtask_states.iteritems():
+            for key, entry in subtask_states.items():
                 new_item = dict(entry.extra_data)
                 new_item['frames'] = definition.options.frames
                 new_item['status'] = definition.subtask_status
