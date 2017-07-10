@@ -17,9 +17,6 @@ class Node(object):
     def __init__(self, datadir=None, peers=None, transaction_system=False,
                  use_docker_machine_manager=True, **config_overrides):
 
-        import logging
-        self.logger = logging.getLogger("app")
-
         self.client = Client(
             datadir=datadir,
             transaction_system=transaction_system,
@@ -32,6 +29,9 @@ class Node(object):
 
         self._peers = peers or []
         self._apps_manager = None
+
+        import logging
+        self.logger = logging.getLogger("app")
 
     def run(self, use_rpc=False):
         from twisted.internet import reactor
@@ -58,7 +58,13 @@ class Node(object):
             self.client.connect(peer)
 
         self.client.sync()
-        self.client.start()
+
+        try:
+            self.client.start()
+        except SystemExit:
+            from twisted.internet import reactor
+            reactor.callFromThread(lambda _: self.client.quit(),
+                                   reactor.stop())
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter
