@@ -4,6 +4,7 @@ import shutil
 from threading import Lock
 import time
 
+from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import get_test_task_path, get_test_task_tmp_path
 from golem.resource.resource import TaskResourceHeader, decompress_dir
@@ -55,7 +56,7 @@ class LocalComputer(object):
 
         except Exception as exc:
             logger.warning("{}: {}".format(self.comp_failed_warning, exc))
-            self.error_callback(str(exc))
+            self.error_callback(to_unicode(exc))
 
     def end_comp(self):
         if self.tt:
@@ -91,7 +92,7 @@ class LocalComputer(object):
         if task_thread.error_msg:
             logger_msg += " " + task_thread.error_msg
         logger.warning(logger_msg)
-        self.error_callback(task_thread.error_msg)
+        self.error_callback(to_unicode(task_thread.error_msg))
 
     def _get_time_spent(self):
         try:
