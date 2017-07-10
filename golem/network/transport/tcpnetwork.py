@@ -12,7 +12,7 @@ from twisted.internet.endpoints import TCP4ServerEndpoint, TCP4ClientEndpoint, T
     TCP6ClientEndpoint
 from twisted.internet.interfaces import IPullProducer
 from twisted.internet.protocol import connectionDone
-from zope.interface import implements
+from zope.interface import implements, implementer
 
 from ipaddress import IPv6Address, IPv4Address, ip_address, AddressValueError
 
@@ -670,11 +670,10 @@ class MidAndFilesProtocol(FilesProtocol):
 # Producers #
 #############
 
-
+@implementer(IPullProducer)
 class FileProducer(object):
     """ Files producer that helps to send list of files to consumer in chunks"""
 
-    implements(IPullProducer)
 
     def __init__(self, file_list, session, buff_size=BUFF_SIZE, extra_data=None):
         """ Create file producer
@@ -945,11 +944,10 @@ class DecryptFileConsumer(FileConsumer):
         self.recv_chunk_size = 0
         FileConsumer._end_receiving_file(self)
 
-
+@implementer(IPullProducer)
 class DataProducer(object):
     """ Data producer that helps to receive stream of data in chunks"""
 
-    implements(IPullProducer)
 
     def __init__(self, data_to_send, session, buff_size=BUFF_SIZE, extra_data=None):
         """ Create data producer
