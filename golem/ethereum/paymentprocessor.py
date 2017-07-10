@@ -75,7 +75,7 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
+        self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()

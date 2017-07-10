@@ -175,7 +175,8 @@ class SimpleConfig(object):
 
     @staticmethod
     def __write_option(cfg, property_):
-        return cfg.set(property_.section(), property_.key(), property_.value())
+        return cfg.set(property_.section(), property_.key(),
+                       str(property_.value()))
 
     def __read_options(self, cfg):
         for prop in self.get_node_config().properties():

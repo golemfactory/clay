@@ -2,43 +2,22 @@ import abc
 import logging
 import os
 from hashlib import sha256
-from _pysha3 import sha3_256, keccak_256
 
-import bitcoin
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
-from devp2p.crypto import ECCx
+from devp2p.crypto import ECCx, mk_privkey
+from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
-
-def sha3(seed):
-    """ Return sha3-256 of seed in digest
-    :param str seed: data that should be hashed
-    :return str: binary hashed data
-    """
-    return sha3_256(seed).digest()
-
-
 def sha2(seed):
     return int("0x" + sha256(seed).hexdigest(), 16)
-
-
-def mk_privkey(seed):
-    return keccak_256(seed).digest()
-
-
-def privtopub(raw_privkey):
-    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey), 'bin_electrum')
-    assert len(raw_pubkey) == 64
-    return raw_pubkey
-
 
 def get_random(min_value=0, max_value=None):
     """
@@ -47,16 +26,17 @@ def get_random(min_value=0, max_value=None):
     :param max_value: Maximum value
     :return: Random number in range <min_value, max_value>
     """
-    from os import urandom
-    from sys import getsizeof, maxint
+
+    from Crypto.Random.random import randrange
+    from sys import maxsize
+
     if max_value is None:
-        max_value = maxint
+        max_value = maxsize
     if min_value > max_value:
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
         return min_value
-    return int((int(urandom(getsizeof(max_value)).encode('hex'), 16) % (max_value - min_value)) + min_value)
-
+    return randrange(min_value, max_value)
 
 def get_random_float():
     """
@@ -412,7 +392,7 @@ class EllipticalKeysAuth(KeysAuth):
         :param public_key: public key that will be used to generate id
         :return str: new id
         """
-        return public_key.encode('hex')
+        return encode_hex(public_key)
 
     def encrypt(self, data, public_key=None):
         """ Encrypt given data with ECIES
@@ -424,7 +404,7 @@ class EllipticalKeysAuth(KeysAuth):
         if public_key is None:
             public_key = self.public_key
         if len(public_key) == 128:
-            public_key = public_key.decode('hex')
+            public_key = decode_hex(public_key)
         return ECCx.ecies_encrypt(data, public_key)
 
     def decrypt(self, data):
@@ -458,7 +438,7 @@ class EllipticalKeysAuth(KeysAuth):
             if public_key is None:
                 public_key = self.public_key
             if len(public_key) == 128:
-                public_key = public_key.decode('hex')
+                public_key = decode_hex(public_key)
             ecc = ECCx(public_key)
             return ecc.verify(sig, sha3(data))
         except AssertionError:

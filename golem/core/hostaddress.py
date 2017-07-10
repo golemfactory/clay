@@ -5,7 +5,7 @@ import os
 import socket
 
 import ipaddress
-import stun
+from golem.network.stun import pystun as stun
 
 from .variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
 

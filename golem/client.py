@@ -54,7 +54,7 @@ from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
-
+from ethereum.utils import encode_hex, decode_hex
 
 log = logging.getLogger("golem.client")
 
@@ -151,7 +151,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, self.keys_auth._private_key)
+                datadir, encode_hex(self.keys_auth._private_key))
         else:
             self.transaction_system = None
 
@@ -169,7 +169,7 @@ class Client(HardwarePresetsMixin):
         self.get_resource_peers_interval = 5.0
         self.use_monitor = use_monitor
         self.monitor = None
-        self.session_id = uuid.uuid4().get_hex()
+        self.session_id = str(uuid.uuid4())
 
         dispatcher.connect(
             self.p2p_listener,

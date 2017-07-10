@@ -85,7 +85,7 @@ class NodeProcess(object):
             **self.SUBPROCESS_PIPES
         ).communicate()
 
-        match = re.search("Version: (\d+\.\d+\.\d+)", output).group(1)
+        match = re.search("Version: (\d+\.\d+\.\d+)", str(output,'utf-8')).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
             e_description =\
