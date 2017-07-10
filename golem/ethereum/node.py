@@ -15,12 +15,15 @@ import requests
 from devp2p.crypto import privtopub
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
-from ethereum.utils import privtoaddr
+from ethereum.keys import privtoaddr
+import threading
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
 from golem.environments.utils import find_program
-from golem.utils import encode_hex, decode_hex, find_free_net_port
+from golem.utils import encode_hex, decode_hex
+from golem.utils import find_free_net_port
+from golem.utils import tee_target
 
 log = logging.getLogger('golem.ethereum')
 
@@ -114,7 +117,10 @@ class NodeProcess(object):
         chain = 'rinkeby'
         init_file = os.path.join(this_dir, chain + '.json')
         log.info("init file: {}".format(init_file))
-        logfilename = os.path.join(self.datadir, "logs", "geth.log")
+        geth_log_dir = os.path.join(self.datadir, "logs")
+        if not os.path.exists(geth_log_dir):
+            os.makedirs(geth_log_dir)
+        geth_log_path = os.path.join(geth_log_dir, "geth.log")
         geth_datadir = os.path.join(self.datadir, 'ethereum', chain)
         datadir_arg = '--datadir={}'.format(geth_datadir)
         genesis_args = [self.__prog, datadir_arg,
@@ -122,7 +128,6 @@ class NodeProcess(object):
         init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
-            log.critical("geth init failed with code {}".format(init_subp.returncode))
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
@@ -148,26 +153,18 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
 
-        # close_fds=True does not work on Windows if stderr is redirected.
-        # and disabling close_fds breaks things. Instead use tee and it's
-        # PowerShell counterpart
-        if not is_windows():
-            args = args + [
-                '2>&1 |', # redirect stderr to stdout, pipe stdout
-                'tee',
-                '-a',
-                '"{}"'.format(logfilename)
-            ]
-        else:
-            pshell = ['powershell.exe']
-            args = pshell + args + [
-                '*>&1 |', # redirect all to first stream stdout and pipe it
-                'Tee-Object',
-                '-Append',
-                '"{}"'.format(logfilename)
-            ]
+        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
 
-        self.__ps = subprocess.Popen(" ".join(args), shell=True, close_fds=True)
+        tee_kwargs = {
+            'prefix': 'geth: ',
+            'proc': self.__ps,
+            'path': geth_log_path,
+        }
+        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
+                                      kwargs=tee_kwargs)
+        tee_thread.start()
+
         atexit.register(lambda: self.stop())
 
         if is_windows():
