@@ -117,7 +117,7 @@ def start_client(start_ranking, datadir=None,
             client.start()
             logger.debug('after client.start()')
         except SystemExit:
-            raise
+            reactor.callFromThread(client.quit)
         except Exception as exc:
             logger.exception("Client process error: {}"
                              .format(exc))
