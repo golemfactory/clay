@@ -59,7 +59,7 @@ class SocketAddress(object):
 
     def __validate(self):
         if type(self.address) is str:
-            self.address = self.address.encode()
+            self.address = self.address
         if type(self.address) is not str:
             raise TypeError('Address must be a string, not a ' +
                             type(self.address).__name__)
@@ -73,12 +73,12 @@ class SocketAddress(object):
                 # Address with zone index
                 self.address = self.address[:self.address.find("%")]
 
-            IPv6Address(self.address.decode('utf8'))
+            IPv6Address(self.address)
             self.ipv6 = True
         else:
             # If it's all digits then guess it's an IPv4 address
             if self._all_numeric_pattern.match(self.address):
-                IPv4Address(self.address.decode('utf8'))
+                IPv4Address(self.address)
             else:
                 SocketAddress.validate_hostname(self.address)
 
@@ -319,7 +319,7 @@ class TCPNetwork(Network):
 
         use_ipv6 = False
         try:
-            ip = ip_address(address.decode())
+            ip = ip_address(address)
             use_ipv6 = ip.version == 6
         except ValueError:
             logger.warning("{} address is invalid".format(address))
@@ -374,7 +374,7 @@ class TCPNetwork(Network):
         TCPNetwork.__call_established_callback(established_callback, port, **kwargs)
 
     def __listening_failure(self, err_desc, port, max_port, established_callback, failure_callback, **kwargs):
-        err = err_desc.value.message
+        err = str(err_desc.value)
         if port < max_port:
             port += 1
             self.__try_to_listen_on_port(port, max_port, established_callback, failure_callback, **kwargs)
