@@ -1,22 +1,19 @@
-
-
 import atexit
+from devp2p.crypto import privtopub
+from ethereum.keys import privtoaddr
+from ethereum.transactions import Transaction
+from ethereum.utils import normalize_address, denoms
+from datetime import datetime
+from distutils.version import StrictVersion
 import logging
 import os
 import re
+import requests
 import subprocess
 import sys
 import tempfile
-import time
-from datetime import datetime
-from distutils.version import StrictVersion
-
-import requests
-from devp2p.crypto import privtopub
-from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms
-from ethereum.keys import privtoaddr
 import threading
+import time
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
@@ -128,7 +125,6 @@ class NodeProcess(object):
         init_subp = subprocess.Popen(genesis_args, **pipes)
         init_subp.wait()
         if init_subp.returncode != 0:
-            log.critical("geth init failed with code {}".format(init_subp.returncode))
             raise OSError(
                 "geth init failed with code {}".format(init_subp.returncode))
 
@@ -153,6 +149,18 @@ class NodeProcess(object):
         ]
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
+        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE)
+
+        tee_kwargs = {
+            'prefix': 'geth: ',
+            'proc': self.__ps,
+            'path': geth_log_path,
+        }
+        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
+                                      kwargs=tee_kwargs)
+        tee_thread.start()
+
         self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
 
