@@ -217,12 +217,12 @@ def generate_ui():
 def update_variables():
     import re
     file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
-    with open(file_, 'rb') as f_:
+    with open(file_, 'r') as f_:
         variables = f_.read()
     version = get_version()
-    variables = re.sub(r"APP_VERSION = \".*\"",
-                       "APP_VERSION = \"{}\"".format(version), variables)
-    with open(file_, 'wb') as f_:
+    variables = re.sub('APP_VERSION = .*',
+                       'APP_VERSION = "{}"'.format(version), variables)
+    with open(file_, 'w') as f_:
         f_.write(variables)
 
 

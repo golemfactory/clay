@@ -12,13 +12,13 @@ from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
-from ethereum.keys import privtoaddr
+from ethereum.utils import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
-from golem.core.crypto import privtopub
+from devp2p.crypto import privtopub
 from golem.environments.utils import find_program
 from golem.utils import find_free_net_port
 
@@ -45,7 +45,7 @@ def ropsten_faucet_donate(addr):
 
 
 class Faucet(object):
-    PRIVKEY = "{:32}".format("Golem Faucet")
+    PRIVKEY = bytearray("{:32}".format("Golem Faucet"),'utf-8')
     PUBKEY = privtopub(PRIVKEY)
     ADDR = privtoaddr(PRIVKEY)
 

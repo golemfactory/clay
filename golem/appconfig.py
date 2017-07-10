@@ -3,7 +3,7 @@
 import logging
 from os import path
 
-from .ethereum.utils import denoms
+from ethereum.utils import denoms
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
