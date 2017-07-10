@@ -126,25 +126,15 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task):
         if task.header.task_id in self.tasks:
-            raise RuntimeError("Task has been already added")
+            raise RuntimeError("Task {} has been already added"
+                               .format(task.header.task_id))
         if not self.key_id:
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        prev_pub_addr = self.node.pub_addr
-        prev_pub_port = self.node.pub_port
-        prev_nat_type = self.node.nat_type
-
-        self.node.pub_addr, self.node.pub_port, self.node.nat_type = \
-            get_external_address(self.listen_port)
-
-        if prev_pub_addr != self.node.pub_addr or \
-           prev_pub_port != self.node.pub_port or \
-           prev_nat_type != self.node.nat_type:
-            self.update_task_signatures()
-
+        task.task_status = TaskStatus.notStarted
         task.header.task_owner_address = self.listen_address
         task.header.task_owner_port = self.listen_port
         task.header.task_owner_key_id = self.key_id
@@ -155,18 +145,27 @@ class TaskManager(TaskEventListener):
         self.dir_manager.get_task_temporary_dir(task.header.task_id,
                                                 create=True)
 
-        task.register_listener(self)
-        task.task_status = TaskStatus.waiting
-
-        self.tasks[task.header.task_id] = task
-
         ts = TaskState()
-        ts.status = TaskStatus.waiting
+        ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
 
+        self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
+
+    @handle_task_key_error
+    def start_task(self, task_id):
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+
+        if task_state.status != TaskStatus.notStarted:
+            raise RuntimeError("Task {} has already been started"
+                               .format(task_id))
+
+        task.task_status = TaskStatus.waiting
+        task_state.status = TaskStatus.waiting
+        task.register_listener(self)
 
         if self.task_persistence:
             self.dump_task(task.header.task_id)
@@ -487,6 +486,8 @@ class TaskManager(TaskEventListener):
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
+        task.header.signature = self.sign_task_header(task.header)
+
         self.notice_task_updated(task_id)
 
     @handle_subtask_key_error
@@ -497,6 +498,24 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task_id].subtask_states[subtask_id].subtask_status = SubtaskStatus.restarted
         self.tasks_states[task_id].subtask_states[subtask_id].stderr = "[GOLEM] Restarted"
 
+        self.notice_task_updated(task_id)
+
+    @handle_task_key_error
+    def restart_frame_subtasks(self, task_id, frame):
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+        subtasks = task.get_subtasks(frame)
+
+        if not subtasks:
+            return
+
+        for subtask_id in subtasks.iterkeys():
+            task.restart_subtask(subtask_id)
+            subtask_state = task_state.subtask_states[subtask_id]
+            subtask_state.subtask_status = SubtaskStatus.restarted
+            subtask_state.stderr = "[GOLEM] Restarted"
+
+        task.status = TaskStatus.computing
         self.notice_task_updated(task_id)
 
     @handle_task_key_error

@@ -14,24 +14,12 @@ CrossbarRouterOptions = namedtuple('CrossbarRouterOptions', ['cbdir', 'logdir', 
                                                              'argv', 'config'])
 
 
-class LoggerBridge(object):
-
-    def __getattr__(self, item):
-        def bridge(_msg, *_, **kwargs):
-            attr = 'error' if not hasattr(logger, item) else item
-            kwargs = {k: v for k, v in kwargs.iteritems()
-                      if '{{{k}}}'.format(k=k) in _msg}
-            return getattr(logger, attr)(_msg.format(**kwargs))
-        return bridge
-
-
 class CrossbarRouter(object):
 
     serializers = [u'msgpack']
 
     def __init__(self, host='localhost', port=61000, realm=u'golem',
                  datadir=None, crossbar_dir='crossbar', crossbar_log_level='trace'):
-
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
         else:
@@ -67,12 +55,10 @@ class CrossbarRouter(object):
 
     def _start_node(self, options, reactor):
         self.node = Node(options.cbdir, reactor=reactor)
-        self.node.log = LoggerBridge()
         self.pubkey = self.node.maybe_generate_key(options.cbdir)
 
         checkconfig.check_config(self.config)
         self.node._config = self.config
-
         return self.node.start()
 
     def _build_options(self, argv=None, config=None):

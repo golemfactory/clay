@@ -314,6 +314,32 @@ class Client(HardwarePresetsMixin):
             self.task_server.stop_accepting()
             self.task_server.disconnect()
 
+    def pause(self):
+        if self.do_work_task.running:
+            self.do_work_task.stop()
+        if self.publish_task.running:
+            self.publish_task.stop()
+
+        if self.p2pservice:
+            self.p2pservice.pause()
+            self.p2pservice.disconnect()
+        if self.task_server:
+            self.task_server.pause()
+            self.task_server.disconnect()
+            self.task_server.task_computer.quit()
+
+    def resume(self):
+        if not self.do_work_task.running:
+            self.do_work_task.start(1, False)
+        if not self.publish_task.running:
+            self.publish_task.start(1, True)
+
+        if self.p2pservice:
+            self.p2pservice.resume()
+            self.p2pservice.connect_to_network()
+        if self.task_server:
+            self.task_server.resume()
+
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
         self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
@@ -374,6 +400,7 @@ class Client(HardwarePresetsMixin):
 
         resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
+        task_manager.add_new_task(task)
 
         task_id = task.header.task_id
         key_id = self.keys_auth.key_id
@@ -382,7 +409,7 @@ class Client(HardwarePresetsMixin):
         files = task.get_resources(None, resource_types["hashes"])
 
         def add_task(_):
-            request = AsyncRequest(task_manager.add_new_task, task)
+            request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
         def error(e):
@@ -468,6 +495,9 @@ class Client(HardwarePresetsMixin):
 
     def restart_task(self, task_id):
         self.task_server.task_manager.restart_task(task_id)
+
+    def restart_frame_subtasks(self, task_id, frame):
+        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
 
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)

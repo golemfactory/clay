@@ -66,6 +66,7 @@ CORE_METHOD_MAP = dict(
     get_subtasks_frames=    Task.subtasks_frames,
     get_subtask=            Task.subtask,
     restart_subtask=        Task.subtask_restart,
+    restart_frame_subtasks= Task.subtasks_frame_restart,
 
     get_res_dirs=           Resources.directories,
     get_res_dir=            Resources.directory,
@@ -84,7 +85,7 @@ CORE_METHOD_MAP = dict(
     get_incomes_list=       Payments.incomes,
 
     quit=                   UI.quit,
-    start=                  UI.start,
-    stop=                   UI.stop
+    resume=                 UI.start,
+    pause=                  UI.stop
 )
 
