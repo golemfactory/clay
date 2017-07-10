@@ -26,7 +26,7 @@ class ProcessMonitor(Thread):
         self.working = True
 
         while self.working:
-            for i in xrange(len(self._child_processes) - 1, -1, -1):
+            for i in reversed(xrange(len(self._child_processes))):
                 process = self._child_processes[i]
 
                 if not self.is_process_alive(process):

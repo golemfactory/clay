@@ -1,24 +1,15 @@
-import os
-
 from click.testing import CliRunner
-from mock import patch, call, Mock
+from mock import patch, Mock
 
-from golem.core.compress import save
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, OptNode
 
 
-class A(object):
-    def __init__(self):
-        self.a = 2
-        self.b = "abc"
-
-
 @ci_skip
 @patch('twisted.internet.iocpreactor', create=True)
+@patch('golem.core.common.config_logging')
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
@@ -44,11 +35,9 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
-    @patch('golemapp.OptNode')
     @patch('twisted.internet.reactor', create=True)
-    @patch('golem.core.common.config_logging')
-    def test_node_address_valid(self, config_logging, mock_reactor,
-                                mock_node, *_):
+    @patch('golemapp.OptNode')
+    def test_node_address_valid(self, mock_node, *_):
         node_address = '1.2.3.4'
 
         runner = CliRunner()
@@ -66,12 +55,10 @@ class TestNode(TestWithDatabase):
 
     @patch('golem.node.Node.run')
     @patch('golem.docker.manager.DockerManager')
-    @patch('golem.node.Client')
     @patch('twisted.internet.reactor', create=True)
-    @patch('golem.core.common.config_logging')
     @patch('golemapp.delete_reactor')
-    def test_node_address_passed_to_client(self, delete_reactor, config_logging,
-                                           mock_reactor, mock_client, *_):
+    @patch('golem.node.Client')
+    def test_node_address_passed_to_client(self, mock_client, *_):
         """Test that with '--node-address <addr>' arg the client is started with
         a 'config_desc' arg such that 'config_desc.node_address' is <addr>.
         """
@@ -86,8 +73,7 @@ class TestNode(TestWithDatabase):
                                        transaction_system=True,
                                        use_docker_machine_manager=True)
 
-    @patch('golem.core.common.config_logging')
-    def test_node_address_invalid(self, config_logging, *_):
+    def test_node_address_invalid(self, *_):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -102,41 +88,29 @@ class TestNode(TestWithDatabase):
         self.assertIn('Error: --node-address', return_value.output)
 
     @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
-    def test_single_peer(self, config_logging, mock_node, *_):
+    def test_single_peer(self, mock_node, *_):
+        mock_node.return_value = mock_node
         addr1 = '10.30.10.216:40111'
+
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1],
                                      catch_exceptions=False)
         self.assertTrue(mock_node.called)
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True),
-                                   call().add_tasks([])], any_order=True)
-        call_names = [name for name, arg, kwarg in mock_node.mock_calls]
-        self.assertTrue('().connect_with_peers' in call_names)
-        peer_num = call_names.index('().connect_with_peers')
-        peer_arg = mock_node.mock_calls[peer_num][1][0]
-        self.assertEqual(len(peer_arg), 1)
-        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
-    def test_many_peers(self, config_logging, mock_node, *_):
+    def test_many_peers(self, mock_node, *_):
+        mock_node.return_value = mock_node
         addr1 = '10.30.10.216:40111'
         addr2 = '10.30.10.214:3333'
+
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', addr2]
         return_value = runner.invoke(start, args, catch_exceptions=False)
+
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True),
-                                   call().add_tasks([])], any_order=True)
-        call_names = [name for name, arg, kwarg in mock_node.mock_calls]
-        self.assertTrue('().connect_with_peers' in call_names)
-        peer_num = call_names.index('().connect_with_peers')
-        peer_arg = mock_node.mock_calls[peer_num][1][0]
-        self.assertEqual(len(peer_arg), 2)
-        self.assertEqual(peer_arg[0], SocketAddress.parse(addr1))
-        self.assertEqual(peer_arg[1], SocketAddress.parse(addr2))
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.OptNode')
     def test_bad_peer(self, *_):
@@ -148,37 +122,35 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid peer address' in return_value.output)
 
     @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
-    def test_peers(self, config_logging, mock_node, *_):
+    def test_peers(self, mock_node, *_):
+        mock_node.return_value = mock_node
         runner = CliRunner()
         return_value = runner.invoke(
-            start, self.args + ['--peer', u'10.30.10.216:40111',
-                                u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                                '--peer', '[::ffff:0:0:0]:96'],
-            catch_exceptions=False
+            start, self.args + [
+                '--peer', u'10.30.10.216:40111',
+                u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+                '--peer', '[::ffff:0:0:0]:96'
+            ], catch_exceptions=False
         )
         self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True), call().add_tasks([])], any_order=True)
-        call_names = [name for name, arg, kwarg in mock_node.mock_calls]
-        self.assertTrue('().connect_with_peers' in call_names)
-        peer_num = call_names.index('().connect_with_peers')
-        peer_arg = mock_node.mock_calls[peer_num][1][0]
-        self.assertEqual(len(peer_arg), 3)
-        self.assertEqual(peer_arg[0], SocketAddress('10.30.10.216', 40111))
-        self.assertEqual(peer_arg[1], SocketAddress('2001:db8:85a3:8d3:1319:8a2e:370:7348', 443))
-        self.assertEqual(peer_arg[2], SocketAddress('::ffff:0:0:0', 96))
+        mock_node.run.assert_called_with(use_rpc=True)
 
     @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
     def test_rpc_address(self, *_):
         runner = CliRunner()
 
-        ok_addresses = [['--rpc-address', u'10.30.10.216:61000'],
-                        ['--rpc-address', '[::ffff:0:0:0]:96'],
-                        [u'--rpc-address', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']]
-        bad_addresses = [['--rpc-address', u'10.30.10.216:91000'],
-                         ['--rpc-address', '[::ffff:0:0:0]:96999']]
-        skip_addresses = [[u'--rpc-address', u'']]
+        ok_addresses = [
+            ['--rpc-address', u'10.30.10.216:61000'],
+            ['--rpc-address', '[::ffff:0:0:0]:96'],
+            [u'--rpc-address', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']
+        ]
+        bad_addresses = [
+            ['--rpc-address', u'10.30.10.216:91000'],
+            ['--rpc-address', '[::ffff:0:0:0]:96999']
+        ]
+        skip_addresses = [
+            [u'--rpc-address', u'']
+        ]
 
         for address in ok_addresses + skip_addresses:
             return_value = runner.invoke(
@@ -194,77 +166,6 @@ class TestNode(TestWithDatabase):
             )
             assert return_value.exit_code != 0
 
-    @patch('golemapp.OptNode')
-    def test_wrong_task(self, *_):
-        runner = CliRunner()
-        args = self.args + ['--task', 'testtask.gt']
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 2)
-        assert 'Error' in return_value.output
-        assert 'Usage' in return_value.output
-
-    @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
-    def test_task(self, config_logging, mock_node, *_):
-        a = A()
-        dump = os.path.join(self.path, 'testcalssdump')
-        save(a, dump, False)
-        args = self.args + ['--task', dump, '--task', dump]
-        return_value = CliRunner().invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
-        mock_node.assert_has_calls([call().run(use_rpc=True)])
-        call_names = [name for name, arg, kwarg in mock_node.mock_calls]
-        self.assertTrue('().add_tasks' in call_names)
-        task_num = call_names.index('().add_tasks')
-        task_arg = mock_node.mock_calls[task_num][1][0]
-        self.assertEqual(len(task_arg), 2)
-        self.assertIsInstance(task_arg[0], A)
-
-    @patch('golemapp.OptNode')
-    @patch('golem.core.common.config_logging')
-    def test_task_from_json(self, config_logging, mock_node, *_):
-        test_json_file = os.path.join(self.path, 'task.json')
-        a1 = A()
-        a1.name = 'Jake the Dog'
-        a2 = A()
-        a2.child = a1
-
-        save(a2, test_json_file, False)
-        try:
-            runner = CliRunner()
-            args = self.args + ['--task', test_json_file]
-            return_value = runner.invoke(start, args, catch_exceptions=False)
-            self.assertEqual(return_value.exit_code, 0)
-
-            mock_node.assert_has_calls([call().run(use_rpc=True)])
-            call_names = [name for name, arg, kwarg in mock_node.mock_calls]
-            self.assertTrue('().add_tasks' in call_names)
-            add_tasks_num = call_names.index('().add_tasks')
-            (task_arg,) = mock_node.mock_calls[add_tasks_num][1][0]
-            self.assertIsInstance(task_arg, A)
-            self.assertEqual(task_arg.child.name, 'Jake the Dog')
-
-        finally:
-            if os.path.exists(test_json_file):
-                os.remove(test_json_file)
-
-    @patch('golemapp.OptNode')
-    def test_task_from_invalid_json(self, *_):
-        test_json_file = os.path.join(self.path, 'task.json')
-        with open(test_json_file, 'w') as f:
-            f.write('Clearly this is not a valid json.')
-
-        try:
-            runner = CliRunner()
-            args = self.args + ['--task', test_json_file]
-            return_value = runner.invoke(start, args, catch_exceptions=False)
-            self.assertEqual(return_value.exit_code, 2)
-            self.assertIn('Invalid value for "--task"', return_value.output)
-
-        finally:
-            if os.path.exists(test_json_file):
-                os.remove(test_json_file)
-
 
 @patch('golem.rpc.router.CrossbarRouter', create=True)
 @patch('twisted.internet.reactor', create=True)
@@ -275,32 +176,55 @@ class TestOptNode(TempDirFixture):
             self.node.client.quit()
         super(TestOptNode, self).tearDown()
 
-    def test_task_builder(self, reactor, router):
-        self.node = OptNode(self.path, use_docker_machine_manager=False)
-        task_def = Mock()
-        task_def.task_type = "Blender"
-        self.assertIsNotNone(self.node._get_task_builder(task_def))
+    def test_start_rpc_router(self, reactor, router):
+        from golem.rpc.session import WebSocketAddress
 
-    def test_start_rpc_server(self, reactor, router):
-        self.node = OptNode(self.path, use_docker_machine_manager=False)
-        self.node._start_rpc_server('127.0.0.1', 12345)
+        self.node = OptNode(self.path, use_docker_machine_manager=False,
+                            rpc_address='127.0.0.1', rpc_port=12345)
+
+        config = self.node.client.config_desc
+
+        router.return_value = router
+        router.address = WebSocketAddress(config.rpc_address,
+                                          config.rpc_port,
+                                          realm=u'test_realm')
+        self.node._setup_rpc()
+        self.node._start_rpc_router()
+
         assert self.node.rpc_router
         assert self.node.rpc_router.start.called
         assert reactor.addSystemEventTrigger.called
 
     @patch('golem.docker.image.DockerImage')
-    @patch('golem.docker.manager.DockerManager')
-    def test_initialize(self, docker_manager, docker_image, reactor, router):
-        self.node = OptNode(self.path, use_docker_machine_manager=False)
+    def test_setup_without_docker(self, *_):
+
+        self.parsed_peer = OptNode.parse_peer(None, None, ['10.0.0.10:40104'])
+        self.node = OptNode(self.path, use_docker_machine_manager=False,
+                            peers=self.parsed_peer)
+
+        self.node._setup_docker = Mock()
+        self.node.client.connect = Mock()
         self.node.client.start = Mock()
         self.node.client.environments_manager = Mock()
-        self.node.use_docker_machine_manager = False
-        self.node.initialize()
+        self.node.run()
 
         assert self.node.client.start.called
-        assert not docker_manager.install.called
+        assert self.node._apps_manager is not None
+        assert not self.node._setup_docker.called
+        self.node.client.connect.assert_called_with(self.parsed_peer[0])
 
-        self.node.use_docker_machine_manager = True
-        self.node.initialize()
+    @patch('golem.docker.image.DockerImage')
+    def test_setup_with_docker(self, docker_manager, *_):
+        docker_manager.return_value = docker_manager
 
-        assert docker_manager.install.called
+        self.node = OptNode(self.path, use_docker_machine_manager=True)
+
+        self.node._setup_docker = Mock()
+        self.node.client.connect = Mock()
+        self.node.client.start = Mock()
+        self.node.client.environments_manager = Mock()
+        self.node.run()
+
+        assert self.node.client.start.called
+        assert self.node._apps_manager is not None
+        assert self.node._setup_docker.called
