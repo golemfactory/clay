@@ -63,8 +63,7 @@ class Node(object):
             self.client.start()
         except SystemExit:
             from twisted.internet import reactor
-            reactor.callFromThread(lambda _: self.client.quit(),
-                                   reactor.stop())
+            reactor.callFromThread(reactor.stop)
 
     def _setup_rpc(self):
         from golem.rpc.router import CrossbarRouter
@@ -98,7 +97,10 @@ class Node(object):
         from twisted.internet import reactor
 
         reactor.addSystemEventTrigger("before", "shutdown",
+                                      self.client.quit)
+        reactor.addSystemEventTrigger("before", "shutdown",
                                       self.rpc_router.stop)
+
         self.rpc_router.start(reactor, self._rpc_router_ready, self._rpc_error)
 
     def _rpc_router_ready(self, *_):

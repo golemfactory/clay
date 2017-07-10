@@ -117,7 +117,7 @@ def start_client(start_ranking, datadir=None,
             client.start()
             logger.debug('after client.start()')
         except SystemExit:
-            reactor.callFromThread(client.quit)
+            reactor.callFromThread(reactor.stop)
         except Exception as exc:
             logger.exception("Client process error: {}"
                              .format(exc))
@@ -129,6 +129,7 @@ def start_client(start_ranking, datadir=None,
         logger.info('Starting process monitor...')
         process_monitor.start()
 
+    reactor.addSystemEventTrigger("before", "shutdown", client.quit)
     reactor.addSystemEventTrigger("before", "shutdown", router.stop)
     router.start(reactor, router_ready, start_error)
 
