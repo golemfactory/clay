@@ -153,17 +153,25 @@ class NodeProcess(object):
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))
 
-        self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE)
+        if is_windows():
+            # Not closing fds causes error in web3 communication:
+            # Cannot connect to geth at
+            # \\.\pipe\c:\users\appveyor\appdata\local\temp\1\rinkeby-1237
+            # Unfortunately on windows close_fds can't be coupled with piping
+            # stdout and stderr...
+            self.__ps = subprocess.Popen(args, close_fds=True)
+        else:
+            self.__ps = subprocess.Popen(args, stdout=subprocess.PIPE,
+                                         stderr=subprocess.PIPE)
 
-        tee_kwargs = {
-            'prefix': 'geth: ',
-            'proc': self.__ps,
-            'path': geth_log_path,
-        }
-        tee_thread = threading.Thread(name='geth-tee', target=tee_target,
-                                      kwargs=tee_kwargs)
-        tee_thread.start()
+            tee_kwargs = {
+                'prefix': 'geth: ',
+                'proc': self.__ps,
+                'path': geth_log_path,
+            }
+            tee_thread = threading.Thread(name='geth-tee', target=tee_target,
+                                          kwargs=tee_kwargs)
+            tee_thread.start()
 
         atexit.register(lambda: self.stop())
 
