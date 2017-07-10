@@ -80,6 +80,7 @@ class HyperdriveDaemonManager(object):
                             "Make sure path is correct and check "
                             "if it starts correctly.",
                             ' '.join(self._command))
+            reactor.callFromThread(reactor.stop)
             sys.exit(1)
 
         if process.poll() is None:
