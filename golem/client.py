@@ -392,6 +392,7 @@ class Client(HardwarePresetsMixin):
 
         resource_manager = self.resource_server.resource_manager
         task_manager = self.task_server.task_manager
+        task_manager.add_new_task(task)
 
         task_id = task.header.task_id
         key_id = self.keys_auth.key_id
@@ -400,7 +401,7 @@ class Client(HardwarePresetsMixin):
         files = task.get_resources(None, resource_types["hashes"])
 
         def add_task(_):
-            request = AsyncRequest(task_manager.add_new_task, task)
+            request = AsyncRequest(task_manager.start_task, task_id)
             async_run(request, None, error)
 
         def error(e):
@@ -486,6 +487,9 @@ class Client(HardwarePresetsMixin):
 
     def restart_task(self, task_id):
         self.task_server.task_manager.restart_task(task_id)
+
+    def restart_frame_subtasks(self, task_id, frame):
+        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
 
     def restart_subtask(self, subtask_id):
         self.task_server.task_manager.restart_subtask(subtask_id)
