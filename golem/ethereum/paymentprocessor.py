@@ -1,12 +1,12 @@
-
-
 import logging
 import sys
 import time
+import codecs
+import json
 
-from ethereum import abi, keys, utils
+from ethereum import abi, utils
 from ethereum.transactions import Transaction
-from ethereum.utils import denoms
+from ethereum.utils import denoms, privtoaddr
 from pydispatch import dispatcher
 
 from golem.model import db
@@ -17,8 +17,8 @@ from .node import ropsten_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
-gnt_contract = abi.ContractTranslator(TestGNT.ABI)
-
+gnt_contract = abi.ContractTranslator(json.loads(TestGNT.ABI))
+decode_hex = codecs.getdecoder("hex_codec")
 
 def _encode_payments(payments):
     paymap = {}
@@ -59,7 +59,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = "7295bB8709EC1C22b758A8119A4214fFEd016323".decode('hex')
+    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -124,7 +124,7 @@ class PaymentProcessor(Service):
         return True
 
     def eth_address(self, zpad=True):
-        address = keys.privtoaddr(self.__privkey)
+        address = privtoaddr(self.__privkey)
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             address = utils.zpad(address, 32)
@@ -144,7 +144,7 @@ class PaymentProcessor(Service):
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            addr = keys.privtoaddr(self.__privkey)
+            addr = privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
             r = self.__client.call(_from='0x' + addr.encode('hex'),
                                    to='0x' + self.TESTGNT_ADDR.encode('hex'),
@@ -232,7 +232,7 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
+        addr = privtoaddr(self.__privkey)  # TODO: Should be done once?
         nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
@@ -316,7 +316,7 @@ class PaymentProcessor(Service):
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 10**15:
-            addr = keys.privtoaddr(self.__privkey)
+            addr = privtoaddr(self.__privkey)
             ropsten_faucet_donate(addr)
             return False
         return True
@@ -324,7 +324,7 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = keys.privtoaddr(self.__privkey)
+            addr = privtoaddr(self.__privkey)
             nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,

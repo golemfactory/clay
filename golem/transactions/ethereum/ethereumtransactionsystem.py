@@ -1,7 +1,7 @@
 import logging
 
 from time import sleep
-from ethereum import keys
+from ethereum.utils import privtoaddr
 
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -28,7 +28,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if not isinstance(node_priv_key, str)\
                 or len(node_priv_key) != 32:
             raise ValueError("Invalid private key: {}".format(node_priv_key))
-        self.__node_address = keys.privtoaddr(node_priv_key)
+        self.__node_address = privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         self.__eth_node = self.incomes_keeper.eth_node = Client(datadir)
