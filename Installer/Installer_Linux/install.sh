@@ -26,7 +26,7 @@ function release_url()
 # CONSTANTS
 declare -r HOME=$(readlink -f ~)
 declare -r CONFIG="$HOME/.local/.golem_version"
-declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
+declare -r golem_package=$(release_url "https://api.github.com/repos/golemfactory/golem/releases")
 declare -r docker_checksum='d41d8cd98f00b204e9800998ecf8427e'
 declare -r docker_script='docker_install.sh'
 declare -r version_file='version'
