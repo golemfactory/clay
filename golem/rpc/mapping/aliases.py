@@ -17,9 +17,6 @@ class Environment(object):
     preset_update           = 'env.hw.preset.update'
     preset_delete           = 'env.hw.preset.delete'
 
-    # FIXME: description is saved in DB, not config file
-    opt_description         = 'env.opt.description'
-    opt_description_update  = 'env.opt.description.update'
     # FIXME: refactor
     use_ranking             = 'env.use_ranking'
     use_transaction_system  = 'env.use_transaction_system'
@@ -174,4 +171,3 @@ NAMESPACES = [
     Applications,
     UI,
 ]
-

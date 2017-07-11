@@ -13,8 +13,7 @@ class TestSystemMonitor(TestCase):
         random.seed()
 
     def test_monitor_messages(self):
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
-                                ClientConfigDescriptor())
+        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ClientConfigDescriptor())
         m = MONITOR_CONFIG.copy()
         m['HOST'] = "http://localhost/88881"
         monitor = SystemMonitor(nmm, m)
@@ -27,8 +26,7 @@ class TestSystemMonitor(TestCase):
                                   {"node_id": "second node", "port": 3193}])
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
-        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", "Random description\n\t with additional data",
-                                ccd)
+        nmm = NodeMetadataModel("CLIID", "SESSID", "win32", "1.3", ccd)
         monitor.on_config_update(nmm)
         monitor.on_logout()
         monitor.shut_down()

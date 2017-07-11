@@ -254,28 +254,6 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         LogTestCase.tearDown(self)
         DatabaseFixture.tearDown(self)
 
-    def test_change_description(self):
-        logic = GuiApplicationLogic()
-        logic.customizer = Mock()
-
-        rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
-        rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
-
-        description = u"New description"
-
-        logic.client = rpc_client
-        logic.change_description(description)
-        self.assertEqual(self.client.get_description(), description)
-
-        p = logic.get_task_presets("Blender")
-        assert p.result == {}
-        logic.save_task_preset("NewPreset", "Blender", "Some data")
-        p = logic.get_task_presets("Blender")
-        assert p.result == {'NewPreset': "Some data"}
-        logic.delete_task_preset("Blender", "NewPreset")
-        p = logic.get_task_presets("Blender")
-        assert p.result == {}
-
     def test_change_config(self):
         logic = GuiApplicationLogic()
         logic.customizer = Mock()

@@ -84,7 +84,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         config_dict = yield client.get_settings()
         client_id = yield client.get_key_id()
         payment_address = yield client.get_payment_address()
-        description = yield client.get_description()
 
         config = DictSerializer.load(config_dict)
 
@@ -94,7 +93,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         self.dir_manager = DirManager(self.datadir)
 
         self.customizer.init_config()
-        self.customizer.set_options(config, client_id, payment_address, description)
+        self.customizer.set_options(config, client_id, payment_address)
 
         if not self.node_name:
             self.customizer.prompt_node_name(self.node_name)
@@ -230,9 +229,6 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def get_config(self):
         config_dict = yield self.client.get_settings()
         returnValue(DictSerializer.load(config_dict))
-
-    def change_description(self, description):
-        self.client.change_description(description)
 
     def quit(self):
         self.client.quit()

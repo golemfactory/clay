@@ -10,7 +10,7 @@ from golem.monitorconfig import MONITOR_CONFIG
 def meta_data():
     cliid = uuid4().get_hex()
     sessid = uuid4().get_hex()
-    return NodeMetadataModel(cliid, sessid, sys.platform, 'app_version', 'description', ClientConfigDescriptor())
+    return NodeMetadataModel(cliid, sessid, sys.platform, 'app_version', ClientConfigDescriptor())
 
 class MonitorTestBaseClass(unittest.TestCase):
     def setUp(self):

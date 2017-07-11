@@ -102,8 +102,6 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 return self.path
             elif alias == aliases.Environment.opts:
                 return DictSerializer.dump(ClientConfigDescriptor())
-            elif alias == aliases.Environment.opt_description:
-                return u'test description'
             elif alias == aliases.Payments.ident:
                 return u'0xdeadbeef'
             elif alias == aliases.Crypto.key_id:

@@ -84,7 +84,7 @@ class MainWindowCustomizer(Customizer):
         self.new_task_dialog_customizer = NewTaskDialogCustomizer(self.gui,
                                                                   self.logic)
 
-    def set_options(self, cfg_desc, id_, eth_address, description):
+    def set_options(self, cfg_desc, id_, eth_address):
         # Footer options
         self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
 
@@ -92,8 +92,6 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
         self.gui.ui.golemIdLabel.setCursorPosition(0)
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
-        self.gui.ui.descriptionTextEdit.clear()
-        self.gui.ui.descriptionTextEdit.appendPlainText(u"{}".format(description))
 
         self.set_name(cfg_desc.node_name)
 
@@ -234,8 +232,6 @@ class MainWindowCustomizer(Customizer):
         self.gui.ui.listWidget.currentItemChanged.connect(self.change_page)
         self.gui.ui.paymentsButton.clicked.connect(self._show_payments_clicked)
         self.gui.ui.environmentsButton.clicked.connect(self._show_environments)
-        self.gui.ui.editDescriptionButton.clicked.connect(self._edit_description)
-        self.gui.ui.saveDescriptionButton.clicked.connect(self._save_description)
 
     def _set_error_label(self):
         palette = QPalette()
@@ -334,17 +330,6 @@ class MainWindowCustomizer(Customizer):
         task_id = "{}".format(self.gui.ui.taskTableWidget.item(row, ItemMap.Id).text())
         self.show_details_dialog(task_id)
 
-    def _edit_description(self):
-        self.gui.ui.editDescriptionButton.setEnabled(False)
-        self.gui.ui.saveDescriptionButton.setEnabled(True)
-        self.gui.ui.descriptionTextEdit.setEnabled(True)
-
-    def _save_description(self):
-        self.gui.ui.editDescriptionButton.setEnabled(True)
-        self.gui.ui.saveDescriptionButton.setEnabled(False)
-        self.gui.ui.descriptionTextEdit.setEnabled(False)
-        self.logic.change_description(u"{}".format(self.gui.ui.descriptionTextEdit.toPlainText()))
-
     def _set_icons(self):
         icons = get_icons_list()
         for i, icon_path in enumerate(icons):
@@ -414,4 +399,3 @@ class MainWindowCustomizer(Customizer):
     def __set_memory_params(self, t):
         mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
-
