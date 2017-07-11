@@ -104,9 +104,6 @@ class SocketAddress(object):
         :param str hostname:
         :returns None
         """
-        if type(hostname) is str:
-            hostname = hostname.encode()
-
         if type(hostname) is not str:
             raise TypeError('Expected string argument, not ' +
                             type(hostname).__name__)
@@ -133,8 +130,6 @@ class SocketAddress(object):
         :returns parsed SocketAddress
         :rtype SocketAddress
         """
-        if type(string) is str:
-            string = string.encode()
 
         if type(string) is not str:
             raise TypeError('Expected string argument, not ' +
@@ -497,7 +492,7 @@ class BasicProtocol(SessionProtocol):
 
         db = DataBuffer()
         db.append_len_prefixed_string(ser_msg)
-        return db.read_all()
+        return db.read_all().encode('utf-8')
 
     def _can_receive(self):
         return self.opened and isinstance(self.db, DataBuffer)
@@ -567,7 +562,7 @@ class SafeProtocol(ServerProtocol):
 
         db = DataBuffer()
         db.append_len_prefixed_string(enc_msg)
-        return db.read_all()
+        return db.read_all().encode('utf-8')
 
     def _data_to_messages(self):
         if not isinstance(self.db, DataBuffer):
@@ -662,7 +657,7 @@ class MidAndFilesProtocol(FilesProtocol):
     ############################
     def _prepare_msg_to_send(self, msg):
         if self.session.is_middleman:
-            return msg
+            return msg.encode('utf-8')
         else:
             return FilesProtocol._prepare_msg_to_send(self, msg)
 

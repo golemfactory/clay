@@ -1,4 +1,5 @@
 import struct
+from golem.core.common import to_unicode
 
 from .variables import LONG_STANDARD_SIZE
 
@@ -18,7 +19,7 @@ class DataBuffer:
         """
         if num < 0:
             raise AttributeError("num must be grater than 0")
-        str_num_rep = struct.pack("!L", num)
+        str_num_rep = to_unicode(struct.pack("!L", num))
         self.buffered_data = "".join([self.buffered_data, str_num_rep])
         return str_num_rep
 
@@ -28,6 +29,7 @@ class DataBuffer:
         :param overflow_prefix: string to prepend on overflow
         :param str data: string to append
         """
+        data = to_unicode(data)
         new_size = self.data_size() + len(data)
         if check_size and new_size > MAX_BUFFER_SIZE:
             self.buffered_data = "".join([overflow_prefix or '', data])
@@ -47,7 +49,7 @@ class DataBuffer:
         if len(self.buffered_data) < LONG_STANDARD_SIZE:
             raise ValueError("buffer_data is shorter than {}".format(LONG_STANDARD_SIZE))
 
-        (ret_val,) = struct.unpack("!L", self.buffered_data[0:LONG_STANDARD_SIZE])
+        (ret_val,) = struct.unpack("!L", self.buffered_data[0:LONG_STANDARD_SIZE].encode('utf-8'))
         return ret_val
 
     def read_ulong(self):
