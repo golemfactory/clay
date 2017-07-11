@@ -2,7 +2,7 @@ import logging
 import uuid
 import time
 
-from stun import FullCone, OpenInternet
+from golem.network.stun.pystun import FullCone, OpenInternet
 from collections import deque
 
 from golem.core.hostaddress import ip_address_private, ip_network_contains, ipv4_networks
