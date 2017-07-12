@@ -59,7 +59,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
+    TESTGNT_ADDR = "7295bB8709EC1C22b758A8119A4214fFEd016323"
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -128,7 +128,7 @@ class PaymentProcessor(Service):
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             address = utils.zpad(address, 32)
-        address = '0x' + address.encode('hex')
+        address = '0x' + address.hex()
         return address
 
     def balance_known(self):
@@ -146,9 +146,9 @@ class PaymentProcessor(Service):
         if self.__gnt_balance is None or refresh:
             addr = privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
-            r = self.__client.call(_from='0x' + addr.encode('hex'),
-                                   to='0x' + self.TESTGNT_ADDR.encode('hex'),
-                                   data='0x' + data.encode('hex'),
+            r = self.__client.call(_from='0x' + addr.hex(),
+                                   to='0x' + self.TESTGNT_ADDR,
+                                   data='0x' + data.hex(),
                                    block='pending')
             if r is None or r == '0x':
                 self.__gnt_balance = 0
@@ -325,7 +325,7 @@ class PaymentProcessor(Service):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
             addr = privtoaddr(self.__privkey)
-            nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
+            nonce = self.__client.get_transaction_count('0x' + addr.hex())
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)

@@ -28,7 +28,7 @@ log = logging.getLogger('golem.ethereum')
 def ropsten_faucet_donate(addr):
     addr = normalize_address(addr)
     URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
-    request = URL_TEMPLATE.format(addr.encode('hex'))
+    request = URL_TEMPLATE.format(addr.hex())
     response = requests.get(request)
     if response.status_code != 200:
         log.error("Ropsten Faucet error code {}".format(response.status_code))
