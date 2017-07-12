@@ -1,5 +1,3 @@
-
-
 import datetime
 import os
 import random
@@ -8,7 +6,6 @@ from collections import deque
 from math import ceil
 
 from mock import Mock, MagicMock, patch, ANY
-from stun import FullCone
 
 from golem import model
 from golem import testutils
@@ -17,6 +14,7 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
+from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TASK_CONN_TYPES
