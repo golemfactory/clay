@@ -3,6 +3,7 @@ import logging
 import random
 import operator
 from collections import deque
+import math
 
 logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
@@ -262,7 +263,7 @@ class KBucket(object):
         :param long key_num:  other node public key in long format
         :return long: distance from a middle of this bucket to a given key
         """
-        return ((self.start + self.end) / 2) ^ key_num
+        return math.floor((self.start + self.end) / 2) ^ key_num
 
     def peers_by_id_distance(self, key_num):
         return sorted(self.peers, key=lambda p: node_id_distance(p, key_num))
