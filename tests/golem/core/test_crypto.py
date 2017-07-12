@@ -27,7 +27,7 @@
 
 import random
 from unittest import TestCase
-from golem.core import crypto
+from devp2p import crypto
 
 
 def get_ecc(secret=''):

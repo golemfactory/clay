@@ -1,25 +1,22 @@
-import mock
 import random
 import time
 import unittest
-import requests
 from os import urandom
 
-from mock import patch, Mock
-
-from twisted.internet.task import Clock
-
-from ethereum import tester
-from ethereum.keys import privtoaddr
-from ethereum.processblock import apply_transaction
+import mock
+import requests
+from ethereum.messages import apply_transaction
+from ethereum.tools import tester, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from mock import patch, Mock
 from rlp.utils import decode_hex
+from twisted.internet.task import Clock
 
 from golem.ethereum import Client
+from golem.ethereum.contracts import TestGNT
 from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.ethereum.contracts import TestGNT
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 

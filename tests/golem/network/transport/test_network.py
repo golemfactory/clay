@@ -38,7 +38,7 @@ class ASession(object):
             return msg[len("ASessionEncrypt"):]
 
 
-class AProtocol(object, SessionProtocol):
+class AProtocol(SessionProtocol):
     def __init__(self, server):
         self.server = server
 

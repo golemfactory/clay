@@ -1,4 +1,3 @@
-from ethereum import keys
 from mock import patch, MagicMock
 
 from golem import testutils
