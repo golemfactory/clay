@@ -3,9 +3,11 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from apps.appsmanager import AppsManager
+from apps.core.task.coretaskstate import TaskDesc
 from apps.core.task.coretaskstate import TaskDefinition
 
 from golem.core.deferred import sync_wait
+from golem.core.simpleenv import get_local_datadir
 from golem.interface.command import doc, group, command, Argument, CommandResult
 from golem.interface.client.logic import AppLogic
 from golem.resource.dirmanager import DirManager
@@ -120,6 +122,105 @@ class Tasks:
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
+    @command(arguments=(file_name, task_type), 
+             help="Create a new task file")
+    def create(self, file_name, task_type):
+
+        file_path = "{}/{}".format(self.__get_save_dir(), file_name)
+        
+        # error if file exists
+        # TODO: re-use apps.core.task.coretaskstate._check_output_file?
+        try:
+            file_exist = path.exists(file_path)
+            with open(file_path, 'a'):
+                pass
+            if not file_exist:
+                os.remove(file_path)
+            else:
+                return CommandResult(error="File {} already exists"
+                                           .format(file_path))
+        except IOError:
+            return CommandResult(error="Cannot open output file: {}"
+                                       .format(file_path))
+        except (OSError, TypeError) as err:
+            return CommandResult(error="Output file {} is not properly set: {}"
+                                       .format(file_path, err))
+
+        # create new task definition
+        task = TaskDesc()
+
+        # TODO: check if input params are valid
+        # if not task.definition.is_valid():
+        #     return CommandResult(error="Task state invalid: {}"
+        #                                .format(task_state))
+
+        # save to file
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if not path.endswith("."):
+                file_path += "."
+            file_path += "gt"
+        with open(file_path, "wb") as f:
+            data = jsonpickle.dumps(task.definition)
+            f.write(data)
+
+        return CommandResult("Task created in file: '{}'. "
+                             "Add main_program_file and output_file as minimal."
+                             .format(file_path))
+
+    @command(arguments=(file_name, skip_test), help="Load a task from file")
+    def load(self, file_name, skip_test):
+
+        try:
+            definition = self.__read_from_file(file_name)
+        except Exception as exc:
+            return CommandResult(error="Error reading task from file '{}': {}"
+                                       .format(file_name, exc))
+
+        if hasattr(definition, 'resources'):
+            definition.resources = {os.path.normpath(res)
+                                    for res in definition.resources}
+        datadir = sync_wait(Tasks.client.get_datadir())
+
+        # TODO: unify GUI and CLI logic
+
+        rendering_task_state = TaskDesc()
+        rendering_task_state.definition = definition
+        rendering_task_state.task_state.status = TaskStatus.starting
+
+        if not Tasks.application_logic:
+            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client,
+                                                                  datadir)
+
+        task_builder = Tasks.application_logic.get_builder(rendering_task_state)
+        task = Task.build_task(task_builder)
+        rendering_task_state.task_state.outputs = task.get_output_names()
+        rendering_task_state.task_state.total_subtasks = task.get_total_tasks()
+        task.header.task_id = str(uuid.uuid4())
+
+        if not skip_test:
+
+            test_task = Task.build_task(task_builder)
+            test_task.header.task_id = str(uuid.uuid4())
+            queue = Queue()
+
+            TaskTester(
+                test_task, datadir,
+                success_callback=lambda *a, **kw: queue.put(True),
+                error_callback=lambda *a, **kw: queue.put(a)
+            ).run()
+
+            test_result = queue.get()
+            if test_result is not True:
+                return CommandResult(error="Test failed: {}"
+                                           .format(test_result))
+
+        task_dict = DictSerializer.dump(task)
+        task_def = task_dict['task_definition']
+        task_def['resources'] = list(task_def.get('task_definition', []))
+        deferred = Tasks.client.create_task(task_dict)
+        return sync_wait(deferred, timeout=1800)
+
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
@@ -177,6 +278,15 @@ class Tasks:
                 print(template_str, file=dest)
         else:
             print(template_str)
+    
+
+    @staticmethod
+    def __get_save_dir():
+        save_dir = get_local_datadir("save")
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
+        return save_dir
+
 
     @staticmethod
     def __progress_str(progress):
