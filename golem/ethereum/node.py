@@ -141,7 +141,7 @@ class NodeProcess(object):
 
         args = [
             self.__prog,
-            '--datadir="{}"'.format(geth_datadir),
+            datadir_arg,
             '--cache=32',
             '--syncmode=light',
             '--rinkeby',
