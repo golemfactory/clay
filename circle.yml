@@ -1,6 +1,8 @@
 machine:
   node:
     version: 6.9.5
+  python:
+    version: 3.6.0
   services:
     - docker
   post:
@@ -11,6 +13,8 @@ checkout:
     - git submodule update --init
 
 dependencies:
+  override:
+    - pip3 install -r requirements.txt
   pre:
     - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
