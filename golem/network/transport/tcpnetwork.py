@@ -492,7 +492,7 @@ class BasicProtocol(SessionProtocol):
 
         db = DataBuffer()
         db.append_len_prefixed_string(ser_msg)
-        return db.read_all().encode('utf-8')
+        return db.read_all()
 
     def _can_receive(self):
         return self.opened and isinstance(self.db, DataBuffer)
@@ -562,7 +562,7 @@ class SafeProtocol(ServerProtocol):
 
         db = DataBuffer()
         db.append_len_prefixed_string(enc_msg)
-        return db.read_all().encode('utf-8')
+        return db.read_all()
 
     def _data_to_messages(self):
         if not isinstance(self.db, DataBuffer):
@@ -657,7 +657,7 @@ class MidAndFilesProtocol(FilesProtocol):
     ############################
     def _prepare_msg_to_send(self, msg):
         if self.session.is_middleman:
-            return msg.encode('utf-8')
+            return msg
         else:
             return FilesProtocol._prepare_msg_to_send(self, msg)
 

@@ -48,7 +48,7 @@ def to_unicode(value):
     if value is None:
         return None
     try:
-        if value is bytes:
+        if isinstance(value, bytes):
             return value.decode('utf-8')
         else:
             return str(value)
