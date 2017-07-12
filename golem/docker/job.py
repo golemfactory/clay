@@ -94,14 +94,14 @@ class DockerJob(object):
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
-        with open(params_file_path, "w") as params_file:
+        with open(params_file_path, "wb") as params_file:
             for key, value in list(self.parameters.items()):
                 line = "{} = {}\n".format(key, repr(value))
                 params_file.write(bytearray(line, encoding='utf-8'))
 
         # Save the script in work_dir/TASK_SCRIPT
         task_script_path = self._get_host_script_path()
-        with open(task_script_path, "w") as script_file:
+        with open(task_script_path, "wb") as script_file:
             script_file.write(bytearray(self.script_src, "utf-8"))
 
         # Setup volumes for the container
@@ -288,7 +288,7 @@ class DockerJob(object):
 
         def dump_stream(stream, path):
             logger.debug('dump_stream(%r, %r)', stream, path)
-            with open(path, "w") as f:
+            with open(path, "wb") as f:
                 for line in stream:
                     f.write(line)
                 f.flush()

@@ -55,7 +55,7 @@ class SocketAddress(object):
         try:
             self.__validate()
         except ValueError as err:
-            raise AddressValueError(err.message)
+            raise AddressValueError(err)
 
     def __validate(self):
         if type(self.address) is str:

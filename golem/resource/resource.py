@@ -422,7 +422,7 @@ valid_filename_chars = "-_.() %s%s" % (string.ascii_letters, string.digits)
 
 
 def remove_disallowed_filename_chars(filename):
-    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore')
+    cleaned_filename = unicodedata.normalize('NFKD', filename).encode('ASCII', 'ignore').decode('utf-8')
     return ''.join(c for c in cleaned_filename if c in valid_filename_chars)
 
 
