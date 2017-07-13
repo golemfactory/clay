@@ -24,11 +24,12 @@ class Component(object):
     ethereum = 'ethereum'
 
 
-class StatePublisher(object):
+class StatusPublisher(object):
     """
     Publishes method execution stages via RPC.
     """
     _rpc_publisher = None
+    _last_status = None
 
     @classmethod
     def publish(cls, component, method, stage, data=None):
@@ -44,11 +45,17 @@ class StatePublisher(object):
         :return: None
         """
         if cls._rpc_publisher:
-            cls._rpc_publisher.publish(Golem.evt_component_state,
-                                       to_unicode(component),
-                                       to_unicode(method),
-                                       to_unicode(stage),
-                                       data)
+            cls._last_status = (to_unicode(component),
+                                to_unicode(method),
+                                to_unicode(stage),
+                                data)
+
+            cls._rpc_publisher.publish(Golem.evt_golem_status,
+                                       *cls._last_status)
+
+    @classmethod
+    def last_status(cls):
+        return cls._last_status
 
     @classmethod
     def set_publisher(cls, rpc_publisher):
@@ -70,17 +77,17 @@ def report_call(component, method, stage=None):
 
     # Publish a pre-execution event
     if not stage or stage == Stage.pre:
-        StatePublisher.publish(component, method, Stage.pre)
+        StatusPublisher.publish(component, method, Stage.pre)
     try:
         yield
     except BaseException as e:
         # Publish and re-raise exceptions
-        StatePublisher.publish(component, method, Stage.exception, unicode(e))
+        StatusPublisher.publish(component, method, Stage.exception, unicode(e))
         raise
     else:
         # Publish a post-execution event
         if not stage or stage == Stage.post:
-            StatePublisher.publish(component, method, Stage.post)
+            StatusPublisher.publish(component, method, Stage.post)
 
 
 def report_calls(component, method, stage=None, once=False):
