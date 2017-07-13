@@ -2,6 +2,7 @@ import abc
 import logging
 import os
 from hashlib import sha256
+from _pysha3 import sha3_256 as _sha3_256
 
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
@@ -9,15 +10,29 @@ from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
 from devp2p.crypto import ECCx, mk_privkey
-from ethereum.utils import encode_hex, decode_hex, sha3, privtopub
+from ethereum.utils import encode_hex, decode_hex, privtopub
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
+
+def sha3(seed):
+    """ Return sha3-256 (NOT keccak) of seed in digest
+    :param str seed: data that should be hashed
+    :return str: binary hashed data
+    """
+    if isinstance(seed, str):
+        seed = seed.encode()
+    return _sha3_256(seed).hexdigest()
+
+
 def sha2(seed):
+    if isinstance(seed, str):
+        seed = seed.encode()
     return int("0x" + sha256(seed).hexdigest(), 16)
+
 
 def get_random(min_value=0, max_value=None):
     """
@@ -37,6 +52,7 @@ def get_random(min_value=0, max_value=None):
     if min_value == max_value:
         return min_value
     return randrange(min_value, max_value)
+
 
 def get_random_float():
     """
