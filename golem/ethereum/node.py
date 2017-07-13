@@ -12,6 +12,7 @@ from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
+from eth_utils import encode_hex, decode_hex
 from ethereum.utils import privtoaddr
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
@@ -51,15 +52,14 @@ class Faucet(object):
 
     @staticmethod
     def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
+        nonce = ethnode.get_transaction_count(encode_hex(Faucet.ADDR))
         addr = normalize_address(addr)
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       '0x' + addr.encode(
-                                                           'hex'), h))
-        h = h[2:].decode('hex')
+                                                       encode_hex(addr), h))
+        h = decode_hex(h[2:])
         return h
 
 

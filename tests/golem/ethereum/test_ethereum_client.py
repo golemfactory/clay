@@ -1,5 +1,6 @@
 import logging
 
+from eth_utils import encode_hex
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 
@@ -26,7 +27,7 @@ class EthereumClientTest(TempDirFixture):
         assert type(s) is bool
         addr = b'FakeEthereumAddress!'
         assert len(addr) == 20
-        hex_addr = '0x' + addr.encode('hex')
+        hex_addr = encode_hex(addr)
         c = client.get_transaction_count(hex_addr)
         assert type(c) is int
         assert c == 0
@@ -67,8 +68,8 @@ class EthereumClientTest(TempDirFixture):
         assert not client.node.is_running()
 
     def test_get_logs(self):
-        addr = '0x' + zpad('deadbeef', 32).encode('hex')
-        log_id = '0x' + zpad('beefbeef', 32).encode('hex')
+        addr = encode_hex(zpad('deadbeef', 32))
+        log_id = encode_hex(zpad('beefbeef', 32))
         client = self.client
         logs = client.get_logs(from_block='latest', to_block='latest',
                                topics=[log_id, addr])

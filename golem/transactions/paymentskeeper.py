@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 
+from eth_utils import encode_hex
+
 from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment
 
@@ -81,7 +83,7 @@ class PaymentsKeeper(object):
         # This data is used by UI.
         return [{
             "subtask": to_unicode(payment.subtask),
-            "payee": to_unicode(payment.payee.encode('hex')),
+            "payee": to_unicode(encode_hex(payment.payee)),
             "value": to_unicode(payment.value),
             "status": to_unicode(payment.status.name),
             "fee": to_unicode(payment.details.get('fee')),

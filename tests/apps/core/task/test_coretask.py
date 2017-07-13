@@ -254,6 +254,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     @staticmethod
     def __compress_and_dump_file(file_name, data):
+        if isinstance(data, str):
+            data = data.encode()
         file_data = zlib.compress(data, 9)
         return CBORSerializer.dumps((os.path.basename(file_name), file_data))
 

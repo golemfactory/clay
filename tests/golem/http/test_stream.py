@@ -14,7 +14,7 @@ class MockHttpServer(BaseHTTPRequestHandler):
     wait = 5
     port = 22333
     server_version = "BaseHTTP/1.1"
-    default_request_version = "HTTP/1.1"
+    default_request_version = b"HTTP/1.1"
 
     def _set_headers(self):
         self.send_response(200)
@@ -24,7 +24,7 @@ class MockHttpServer(BaseHTTPRequestHandler):
     def do_GET(self):
         time.sleep(self.wait)
         self._set_headers()
-        self.wfile.write("GET")
+        self.wfile.write(b"GET")
 
     def do_HEAD(self):
         time.sleep(self.wait)
@@ -33,11 +33,11 @@ class MockHttpServer(BaseHTTPRequestHandler):
     def do_POST(self):
         time.sleep(self.wait)
         self._set_headers()
-        self.wfile.write("POST")
+        self.wfile.write(b"POST")
 
     @staticmethod
     def serve():
-        server_address = ('', MockHttpServer.port)
+        server_address = (b'', MockHttpServer.port)
         httpd = HTTPServer(server_address, MockHttpServer)
         thread = Thread(target=httpd.serve_forever)
         thread.daemon = True
@@ -164,8 +164,8 @@ class TestSocketStream(unittest.TestCase):
 
         stream.connect()
 
-        with self.assertRaises(HTTPError):
-            stream.read(1024)
+        read = stream.read(1024)
+        assert read is None
 
         stream.disconnect()
 

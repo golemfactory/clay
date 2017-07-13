@@ -3,6 +3,7 @@ import time
 import unittest
 import uuid
 
+from eth_utils import decode_hex, encode_hex
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
@@ -89,7 +90,7 @@ class TestClient(TestWithDatabase):
             Payment(
                 subtask=uuid.uuid4(),
                 status=PaymentStatus.awaiting,
-                payee=random_hex_str().decode('hex'),
+                payee=decode_hex(random_hex_str()),
                 value=i * 10 ** 18,
                 created_date=timestamp_to_datetime(i).replace(tzinfo=None),
                 modified_date=timestamp_to_datetime(i).replace(tzinfo=None)
@@ -111,7 +112,7 @@ class TestClient(TestWithDatabase):
             self.assertEqual(received_payments[i]['status'],
                              payments[n - i].status.name)
             self.assertEqual(received_payments[i]['payee'],
-                             str(payments[n - i].payee.encode('hex')))
+                             encode_hex(payments[n - i].payee))
             self.assertEqual(received_payments[i]['value'],
                              str(payments[n - i].value))
 

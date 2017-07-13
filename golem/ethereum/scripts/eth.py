@@ -8,6 +8,7 @@ import sys
 
 import click
 import gevent
+from eth_utils import encode_hex, decode_hex
 from ethereum import keys, abi
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
@@ -31,8 +32,9 @@ class SimpleAccount:
         self.address = keys.privtoaddr(self.priv)
 
 
-SERVER_ENODE = "enode://" + Faucet.PUBKEY.encode('hex') + "@golemproject.org:30900"
-BANK_ADDR = "cfdc7367e9ece2588afe4f530a9adaa69d5eaedb".decode('hex')
+SERVER_ENODE = "enode://" + encode_hex(Faucet.PUBKEY) + \
+               "@golemproject.org:30900"
+BANK_ADDR = decode_hex("cfdc7367e9ece2588afe4f530a9adaa69d5eaedb")
 
 
 @click.group()

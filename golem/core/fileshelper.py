@@ -188,7 +188,7 @@ def du(path):
     """
     try:
         size, _ = subprocess.check_output(['du', '-sh', path]).split()
-        unit = dict(K='kB', B='B').get(size[-1], size[-1] + 'B')
+        unit = dict(K='kB', B='B').get(size[-1], str(size[-1]) + 'B')
         return "{} {}".format(float(size[:-1]), unit)
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:

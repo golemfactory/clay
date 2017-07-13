@@ -310,7 +310,7 @@ class TaskHeaderKeeper(object):
             if not is_correct:
                 raise TypeError(err)
 
-            if id_ not in list(self.removed_tasks.keys()):  # not removed recently
+            if id_ not in list(self.removed_tasks.keys()):  # not recent
                 self.task_headers[id_] = TaskHeader.from_dict(th_dict_repr)
                 is_supported = self.is_supported(th_dict_repr)
 

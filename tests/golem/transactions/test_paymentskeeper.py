@@ -1,4 +1,6 @@
 from copy import deepcopy
+
+from eth_utils import encode_hex
 from peewee import IntegrityError
 from os import urandom
 
@@ -26,7 +28,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         addr = urandom(20)
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", "info", addr)
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             self.assertEqual(0, pd.get_payment_value(pi))
         self.assertTrue(any("not exist" in log for log in l.output))
         pd.add_payment(pi)
@@ -55,7 +57,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi4 = deepcopy(pi)
         pi4.computer.eth_account.address = "GHI"
         pi4.subtask_id = "ghighi"
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             self.assertIsNone(pd.get_state(pi4))
         pd.add_payment(pi3)
         pd.add_payment(pi4)
@@ -131,15 +133,15 @@ class TestPaymentsKeeper(TestWithDatabase):
         all_payments = pk.get_list_of_all_payments()
         self.assertEqual(len(all_payments), 5)
         self.assertEqual(all_payments[0]["subtask"], "xxxxxx")
-        self.assertEqual(all_payments[0]["payee"], str(addr).encode('hex'))
+        self.assertEqual(all_payments[0]["payee"], encode_hex(addr))
         self.assertEqual(all_payments[0]["value"], str(10))
         self.assertEqual(all_payments[0]["status"], PaymentStatus.awaiting.name)
         self.assertEqual(all_payments[1]["subtask"], "zzzzzz")
-        self.assertEqual(all_payments[1]["payee"], str(addr).encode('hex'))
+        self.assertEqual(all_payments[1]["payee"], encode_hex(addr))
         self.assertEqual(all_payments[1]["value"], str(10))
         self.assertEqual(all_payments[1]["status"], PaymentStatus.awaiting.name)
         self.assertEqual(all_payments[2]["subtask"], "xxxyyy")
-        self.assertEqual(all_payments[2]["payee"], str(addr2).encode('hex'))
+        self.assertEqual(all_payments[2]["payee"], encode_hex(addr2))
         self.assertEqual(all_payments[2]["value"], str(2023))
         self.assertEqual(all_payments[2]["status"], PaymentStatus.awaiting.name)
         pi3.subtask_id = "whaooa!"

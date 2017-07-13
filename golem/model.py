@@ -1,4 +1,6 @@
 import datetime
+
+from eth_utils import encode_hex, decode_hex
 from ethereum.utils import denoms
 import jsonpickle as json
 import logging
@@ -85,10 +87,10 @@ class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
 
     def db_value(self, value):
-        return str(value.encode('hex'))
+        return str(encode_hex(value))
 
     def python_value(self, value):
-        return value.decode('hex')
+        return decode_hex(value)
 
 
 class BigIntegerField(CharField):

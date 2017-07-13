@@ -49,7 +49,7 @@ class TestDirSize(TestDirFixture):
                 errors = []
                 get_dir_size(self.testdir, report_error=errors.append)
                 self.assertEqual(len(errors), 1)
-                self.assertIs(type(errors[0]), OSError)
+                self.assertIs(type(errors[0]), PermissionError)
 
     def testOuterInnerDir(self):
         path = os.path.join('dir', 'subdir', 'file')
@@ -243,7 +243,7 @@ class TestDu(TestDirFixture):
             size = float(res)
         except ValueError:
             size, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreater(size, 0)
+        self.assertGreater(float(size), 0)
 
 
 class TestFindAndCopy(TestDirFixture):

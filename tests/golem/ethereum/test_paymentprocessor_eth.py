@@ -4,6 +4,8 @@ import random
 import unittest
 import uuid
 
+from eth_utils import encode_hex
+
 from golem import model
 from golem import testutils
 from golem.ethereum import paymentprocessor
@@ -49,7 +51,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
 
         subtask_id = str(uuid.uuid4())
         value = random.randint(1, 2**5)
-        payee = os.urandom(32).encode('hex')
+        payee = encode_hex(str(os.urandom(32)))
         payment = model.Payment.create(
             subtask=subtask_id,
             payee=payee,
@@ -69,14 +71,14 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
             subtask='sent' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details={'tx': tx_hash.encode('hex')},
+            details={'tx': encode_hex(tx_hash)},
             status=model.PaymentStatus.sent
         )
         sent_payment2 = model.Payment.create(
             subtask='sent2' + str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details={'tx': tx_hash.encode('hex')},
+            details={'tx': encode_hex(tx_hash)},
             status=model.PaymentStatus.sent
         )
         self.payment_processor.load_from_db()

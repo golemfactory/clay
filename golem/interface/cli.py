@@ -132,7 +132,7 @@ class CLI(object):
         except ParsingException as exc:
             parser = exc.parser or self.parser
 
-            if exc.message:
+            if exc:
                 result = "{}\n\n{}".format(exc or "Invalid command", parser.format_help())
             else:
                 result = parser.format_help()

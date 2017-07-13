@@ -11,7 +11,7 @@ class TestCompress(TestDirFixture):
         logging.basicConfig(level=logging.DEBUG)
 
     def test_compress(self):
-        text = "12334231234434123452341234"
+        text = b"12334231234434123452341234"
         c = compress(text)
         self.assertEqual(text, decompress(c))
 
@@ -28,7 +28,8 @@ class TestCompress(TestDirFixture):
         Helper function. Saves data, then loads them and compare
         :param bool gzip:
         """
-        text = "123afha  afhakjfh ajkajl 34 2 \n ajrfow 31\r \\ 23443a 4123452341234"
+        text = b"123afha  afhakjfh ajkajl 34 2 \n ajrfow " \
+               b"31\r \\ 23443a 4123452341234"
         c = compress(text)
         self.assertEqual(text, decompress(c))
         file_ = os.path.join(self.path, 'tezt.gt')

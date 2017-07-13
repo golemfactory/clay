@@ -9,7 +9,10 @@ from os import path
 
 import docker.errors
 import requests
+import txaio
 from mock import patch, mock
+
+txaio.use_twisted()
 
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
@@ -17,7 +20,7 @@ from golem.core.simpleenv import get_local_datadir
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
-from test_docker_image import DockerTestCase
+from tests.golem.docker.test_docker_image import DockerTestCase
 
 config_logging('docker_test')
 
@@ -138,7 +141,7 @@ class TestBaseDockerJob(TestDockerJob):
             script_path = job._get_host_script_path()
             self.assertTrue(path.isfile(script_path))
             with open(script_path, 'r') as f:
-                script = str(f.read(), "utf-8")
+                script = f.read()
             self.assertEqual(task_script, script)
 
     def test_script_saved(self):

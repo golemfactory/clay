@@ -36,8 +36,8 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': get_some_id(),
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
-            'value': random.randint(10, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
+            'value': random.randint(10, int(SQLITE3_MAX_INT / 2)),
         }
         # Not in blockchain
         self.instance.received(**received_kwargs)
@@ -103,7 +103,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': 2147483647,
         }
         self.instance.eth_node.get_logs.return_value = [
@@ -125,7 +125,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'task_id': get_some_id(),
             'subtask_id': 's1' + get_some_id()[:-2],
             'transaction_id': get_some_id(),
-            'block_number': random.randint(0, SQLITE3_MAX_INT / 2),
+            'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': SQLITE3_MAX_INT - 1,
         }
 

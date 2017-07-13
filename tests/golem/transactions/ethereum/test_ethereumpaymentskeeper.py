@@ -77,13 +77,13 @@ class TestEthereumAddress(LogTestCase):
         e2 = EthereumAddress(addr2)
         self.assertEqual(addr1, e2.get_str_addr())
         addr3 = "0x0121121"
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             e = EthereumAddress(addr3)
         assert any("Invalid" in log for log in l.output)
         self.assertIsNone(e.address)
         # We may think about allowing to add address in such formats in the future
         addr4 = bin(int(addr1, 16))[2:].zfill(160)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             e = EthereumAddress(addr4)
         assert any("Invalid" in log for log in l.output)
         self.assertIsNone(e.address)

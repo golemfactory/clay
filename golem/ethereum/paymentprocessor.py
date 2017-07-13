@@ -1,9 +1,9 @@
 import logging
 import sys
 import time
-import codecs
 import json
 
+from eth_utils import encode_hex, decode_hex
 from ethereum import abi, utils
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms, privtoaddr
@@ -18,7 +18,7 @@ from .node import ropsten_faucet_donate
 log = logging.getLogger("golem.pay")
 
 gnt_contract = abi.ContractTranslator(json.loads(TestGNT.ABI))
-decode_hex = codecs.getdecoder("hex_codec")
+
 
 def _encode_payments(payments):
     paymap = {}
@@ -179,7 +179,7 @@ class PaymentProcessor(Service):
             for sent_payment in Payment\
                     .select()\
                     .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = sent_payment.details['tx'].decode('hex')
+                transaction_hash = decode_hex(sent_payment.details['tx'])
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
@@ -192,9 +192,9 @@ class PaymentProcessor(Service):
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError("Invalid payment status: {}".format(payment.status))
 
-        log.info("Payment {:.6} to {:.6} ({:.6f})".format(
+        log.info("Payment {:.6} to {:.8} ({:.6f})".format(
             payment.subtask,
-            payment.payee.encode('hex'),
+            encode_hex(payment.payee),
             payment.value / denoms.ether))
 
         # Check if enough ETH available to pay the gas cost.
@@ -233,7 +233,7 @@ class PaymentProcessor(Service):
         self._awaiting = []
         self.deadline = sys.maxsize
         addr = privtoaddr(self.__privkey)  # TODO: Should be done once?
-        nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
+        nonce = self.__client.get_transaction_count(encode_hex(addr))
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
         gas = 21000 + 800 + len(p) * 30000
@@ -241,8 +241,8 @@ class PaymentProcessor(Service):
                          value=0, data=data)
         tx.sign(self.__privkey)
         h = tx.hash
-        log.info("Batch payments: {:.6}, value: {:.6f}"
-                 .format(h.encode('hex'), value / denoms.ether))
+        log.info("Batch payments: {:.8}, value: {:.6f}"
+                 .format(encode_hex(h), value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -251,17 +251,18 @@ class PaymentProcessor(Service):
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent
-                payment.details['tx'] = h.encode('hex')
+                payment.details['tx'] = encode_hex(h)
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
                     payment.subtask,
-                    payment.payee.encode('hex'),
+                    encode_hex(payment),
                     payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
-            if tx_hash[2:].decode('hex') != h:  # FIXME: Improve Client.
+            tx_hex = decode_hex(tx_hash[2:])
+            if tx_hex != h:  # FIXME: Improve Client.
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
-                                   .format(tx_hash[2:].decode('hex'), h))
+                                   .format(tx_hex, h))
 
             self._inprogress[h] = payments
 
@@ -273,7 +274,7 @@ class PaymentProcessor(Service):
     def monitor_progress(self):
         confirmed = []
         for h, payments in list(self._inprogress.items()):
-            hstr = '0x' + h.encode('hex')
+            hstr = encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
@@ -296,7 +297,7 @@ class PaymentProcessor(Service):
                         dispatcher.send(
                             signal='golem.monitor',
                             event='payment',
-                            addr=p.payee.encode('hex'),
+                            addr=encode_hex(p),
                             value=p.value
                         )
                         dispatcher.send(

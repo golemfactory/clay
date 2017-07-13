@@ -89,7 +89,7 @@ class ChunkStream:
         req_headers = 'GET {} HTTP/1.1{}'.format(self.url, self.short_sep) + self._req_headers
 
         self.__connect()
-        self.sock.sendall(req_headers)
+        self.sock.sendall(req_headers.encode())
 
     def disconnect(self):
         self.__disconnect()

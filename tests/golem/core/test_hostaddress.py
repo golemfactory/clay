@@ -78,7 +78,7 @@ class TestHostAddress(unittest.TestCase):
         self.assertTrue(0 < port < 65535, "Incorrect port number")
         self.assertIn(nat, nats, "Incorrect nat type")
 
-    @patch('stun.get_ip_info')
+    @patch('golem.network.stun.pystun.get_ip_info')
     def test_get_external_address_argument(self, stun):
         stun.return_value = ('2607:f0d0:1002:51::4', 1234, "Open Internet")
         address, port, nat = get_external_address(9876)

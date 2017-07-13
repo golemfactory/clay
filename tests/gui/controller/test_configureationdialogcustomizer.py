@@ -56,11 +56,11 @@ class TestConfigurationDialogCustomizer(LogTestCase):
         self.assertEqual(ccd.min_price, int(0.0011 * denoms.ether))
         self.assertEqual(round(float(ccd.max_price) / denoms.ether), 1)
         customizer.gui.ui.maxPriceLineEdit.setText("ABCDEF")
-        with self.assertLogs(logger, level=1):
+        with self.assertLogs(logger, level='WARNING'):
             self.__click_ok(customizer)
         customizer.gui.ui.maxPriceLineEdit.setText("{}".format(0.3))
         customizer.gui.ui.minPriceLineEdit.setText("0.1 ETH")
-        with self.assertLogs(logger, level=1):
+        with self.assertLogs(logger, level='WARNING'):
             self.__click_ok(customizer)
 
     @patch('gui.controller.configurationdialogcustomizer.QMessageBox')

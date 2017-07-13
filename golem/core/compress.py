@@ -15,7 +15,7 @@ def save(obj, filename, gzip=True):
     else:
         file_ = open(filename, 'wb')
     try:
-        json_str = json.encode(obj)
+        json_str = json.encode(obj).encode()
         file_.write(json_str)
     finally:
         file_.close()

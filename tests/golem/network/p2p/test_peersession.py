@@ -65,7 +65,7 @@ class TestPeerSession(TestWithKeysAuth, LogTestCase, testutils.PEP8MixIn):
         data = "abcdefghijklm" * 1000
         self.assertEqual(ps2.decrypt(ps.encrypt(data)), data)
         self.assertEqual(ps.decrypt(ps2.encrypt(data)), data)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             self.assertEqual(ps2.decrypt(data), data)
         self.assertTrue(any("not encrypted" in log for log in l.output))
 
