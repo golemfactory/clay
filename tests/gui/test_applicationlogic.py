@@ -148,6 +148,9 @@ class MockRPCSession(object):
 
         return deferred
 
+    def is_open(self):
+        return self.connected
+
 
 class MockRPCPublisher(object):
 

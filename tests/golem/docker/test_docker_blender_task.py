@@ -85,7 +85,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         self.node.client.ranking = Mock()
         self.node.client.start = Mock()
         self.node.client.p2pservice = Mock()
-        self.node.initialize()
+        self.node._run()
 
         ccd = ClientConfigDescriptor()
         ccd.estimated_blender_performance = 2000.0

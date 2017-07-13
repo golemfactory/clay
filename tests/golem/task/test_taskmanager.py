@@ -686,18 +686,18 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
         _, subtask_id = self.__build_tasks(tm, 3)
 
         # Successful call
-        for task_id in tm.tasks.keys():
+        for task_id in list(tm.tasks.keys()):
             for i in range(3):
                 tm.restart_frame_subtasks(task_id, i + 1)
         assert tm.notice_task_updated.called
 
         subtask_states = {}
 
-        for task in tm.tasks.values():
+        for task in list(tm.tasks.values()):
             task_state = tm.tasks_states[task.header.task_id]
             subtask_states.update(task_state.subtask_states)
 
-        for subtask_id, subtask_state in subtask_states.items():
+        for subtask_id, subtask_state in list(subtask_states.items()):
             assert subtask_state.subtask_status == SubtaskStatus.restarted
 
     def __build_tasks(self, tm, n, fixed_frames=False):
@@ -755,7 +755,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             task.subtask_states = subtask_states
             task.subtasks_given = dict()
 
-            for key, entry in subtask_states.items():
+            for key, entry in list(subtask_states.items()):
                 new_item = dict(entry.extra_data)
                 new_item['frames'] = definition.options.frames
                 new_item['status'] = definition.subtask_status
