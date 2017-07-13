@@ -1,3 +1,7 @@
+class Golem(object):
+    evt_component_state     = 'evt.component.state'
+
+
 class Environment(object):
 
     opts                    = 'env.opts'
@@ -160,6 +164,7 @@ class Applications(object):
 
 
 NAMESPACES = [
+    Golem,
     Environment,
     Crypto,
     Network,

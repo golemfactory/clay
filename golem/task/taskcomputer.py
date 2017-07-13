@@ -12,7 +12,7 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from golem.core.common import deadline_to_timeout
+from golem.core.common import deadline_to_timeout, to_unicode
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -272,7 +272,7 @@ class TaskComputer(object):
         def error_callback(err_msg):
             logger.error("Unable to run lux benchmark: {}".format(err_msg))
             if error:
-                error(err_msg)
+                error(to_unicode(err_msg))
 
         client = self.task_server.client
         node_name = client.get_node_name()
@@ -296,7 +296,7 @@ class TaskComputer(object):
         def error_callback(err_msg):
             logger.error("Unable to run blender benchmark: {}".format(err_msg))
             if error:
-                error(err_msg)
+                error(to_unicode(err_msg))
 
         client = self.task_server.client
         node_name = client.get_node_name()

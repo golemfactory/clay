@@ -85,19 +85,8 @@ def start_client(start_ranking, datadir=None,
         client = Client(datadir=datadir, transaction_system=transaction_system,
                         geth_port=geth_port, **config_overrides)
 
-    docker_manager = DockerManager.install(client.config_desc)
-    docker_manager.check_environment()
-    environments = load_environments()
-
-    client.sync()
-
-    for env in environments:
-        client.environments_manager.add_environment(env)
-    client.environments_manager.load_config(client.datadir)
-
     config = client.config_desc
     methods = object_method_map(client, CORE_METHOD_MAP)
-
     router = CrossbarRouter(
         host=config.rpc_address,
         port=config.rpc_port,
@@ -110,15 +99,25 @@ def start_client(start_ranking, datadir=None,
 
     def session_ready(*_):
         global process_monitor
+        client.configure_rpc(session)
+
+        docker_manager = DockerManager.install(client.config_desc)
+        docker_manager.check_environment()
+        environments = load_environments()
+
+        for env in environments:
+            client.environments_manager.add_environment(env)
+        client.environments_manager.load_config(client.datadir)
 
         logger.info('Router session ready. Starting client...')
         try:
-            client.configure_rpc(session)
+            logger.debug('client.sync()')
+            client.sync()
             logger.debug('client.start()')
             client.start()
             logger.debug('after client.start()')
         except SystemExit:
-            raise
+            reactor.callFromThread(reactor.stop)
         except Exception as exc:
             logger.exception("Client process error: {}"
                              .format(exc))
@@ -130,6 +129,7 @@ def start_client(start_ranking, datadir=None,
         logger.info('Starting process monitor...')
         process_monitor.start()
 
+    reactor.addSystemEventTrigger("before", "shutdown", client.quit)
     reactor.addSystemEventTrigger("before", "shutdown", router.stop)
     router.start(reactor, router_ready, start_error)
 
