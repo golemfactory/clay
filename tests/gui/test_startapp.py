@@ -15,6 +15,7 @@ from golem.rpc.session import WebSocketAddress
 from golem.tools.ci import ci_patch
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from gui.startapp import load_environments, start_client, stop_reactor, start_app
+from twisted.python import failure
 
 
 def router_start(fail_on_start):
@@ -31,7 +32,7 @@ def session_connect(fail_on_start):
     def connect(instance, *args, **kwargs):
         deferred = Deferred()
         if fail_on_start:
-            deferred.errback("Session error")
+            deferred.errback(failure.Failure(ValueError("Session error")))
         else:
             instance.connected = True
             deferred.callback(Mock())
@@ -79,11 +80,14 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                 thread = Thread(target=lambda: start_client(start_ranking=False,
                                                             client=client,
                                                             reactor=self._get_reactor()))
+
                 thread.daemon = True
                 thread.start()
-
                 message = queue.get(True, 10)
-                assert str(message).find(expected_result) != -1
+                if isinstance(message, failure.Failure):
+                    assert message.getErrorMessage().find(expected_result) != -1
+                else:
+                    assert str(message).find(expected_result) != -1
             except Exception as exc:
                 self.fail("Cannot start client process: {}".format(exc))
             finally:
@@ -151,7 +155,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
                             raise Exception("Invalid result: {}".format(logger.error.call_args))
 
                         message = logger.error.call_args[0][0]
-                        assert str(message).find(expected_result) != -1
+                        if isinstance(message, failure.Failure):
+                            assert message.getErrorMessage().find(
+                                expected_result) != -1
+                        else:
+                            assert message.find(expected_result) != -1
                         break
 
                     elif time.time() > deadline:
