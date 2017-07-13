@@ -4,13 +4,14 @@ import os
 from hashlib import sha256
 from _pysha3 import sha3_256 as _sha3_256
 
+import bitcoin
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
 from Crypto.Hash import SHA256
 from Crypto.Cipher import PKCS1_OAEP
 from abc import abstractmethod
 from devp2p.crypto import ECCx, mk_privkey
-from ethereum.utils import encode_hex, decode_hex, privtopub
+from ethereum.utils import encode_hex, decode_hex
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
@@ -32,6 +33,13 @@ def sha2(seed):
     if isinstance(seed, str):
         seed = seed.encode()
     return int("0x" + sha256(seed).hexdigest(), 16)
+
+
+def privtopub(raw_privkey):
+    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey),
+                                       'bin_electrum')
+    assert len(raw_pubkey) == 64
+    return raw_pubkey
 
 
 def get_random(min_value=0, max_value=None):
@@ -219,7 +227,7 @@ class RSAKeysAuth(KeysAuth):
         :param public_key: public key that will be used to generate id
         :return str: new id
         """
-        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:])
+        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:]).encode()
 
     def encrypt(self, data, public_key=None):
         """ Encrypt given data with RSA
@@ -280,9 +288,9 @@ class RSAKeysAuth(KeysAuth):
         pub_key = priv_key.publickey()
         priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
         pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(priv_key_loc, 'w') as f:
+        with open(priv_key_loc, 'wb') as f:
             f.write(priv_key.exportKey('PEM'))
-        with open(pub_key_loc, 'w') as f:
+        with open(pub_key_loc, 'wb') as f:
             f.write(pub_key.exportKey())
         self.public_key = pub_key.exportKey()
         self._private_key = priv_key.exportKey('PEM')
@@ -325,9 +333,9 @@ class RSAKeysAuth(KeysAuth):
             return False
 
         try:
-            with open(private_key_loc, 'w') as f:
+            with open(private_key_loc, 'wb') as f:
                 f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'w') as f:
+            with open(public_key_loc, 'wb') as f:
                 f.write(self.public_key.exportKey())
                 return True
         except IOError:
@@ -369,9 +377,9 @@ class RSAKeysAuth(KeysAuth):
     def _generate_keys(private_key_loc, public_key_loc):
         key = RSA.generate(2048)
         pub_key = key.publickey()
-        with open(private_key_loc, 'w') as f:
+        with open(private_key_loc, 'wb') as f:
             f.write(key.exportKey('PEM'))
-        with open(public_key_loc, 'w') as f:
+        with open(public_key_loc, 'wb') as f:
             f.write(pub_key.exportKey())
 
     def _set_and_save(self, private_key, public_key):
@@ -380,9 +388,9 @@ class RSAKeysAuth(KeysAuth):
         self.key_id = self.cnt_key_id(self.public_key)
         private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
         public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(private_key_loc, 'w') as f:
+        with open(private_key_loc, 'wb') as f:
             f.write(private_key.exportKey('PEM'))
-        with open(public_key_loc, 'w') as f:
+        with open(public_key_loc, 'wb') as f:
             f.write(public_key.exportKey())
 
 
