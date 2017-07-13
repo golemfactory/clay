@@ -122,7 +122,7 @@ class OptNode(Node):
                 return value
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid network address specified: {}".format(e.message))
+                    "Invalid network address specified: {}".format(e))
         return ''
 
     @staticmethod
@@ -134,7 +134,7 @@ class OptNode(Node):
                 return SocketAddress.parse(value)
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid RPC address specified: {}".format(e.message))
+                    "Invalid RPC address specified: {}".format(e))
 
     @staticmethod
     def parse_peer(ctx, param, value):
@@ -145,5 +145,5 @@ class OptNode(Node):
                 addresses.append(SocketAddress.parse(arg))
             except AddressValueError as e:
                 raise click.BadParameter(
-                    "Invalid peer address specified: {}".format(e.message))
+                    "Invalid peer address specified: {}".format(e))
         return addresses

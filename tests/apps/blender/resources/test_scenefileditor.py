@@ -1,3 +1,6 @@
+import builtins
+from importlib import reload
+
 import mock
 
 from apps.blender.resources import scenefileeditor
@@ -78,7 +81,7 @@ True'''
             if args[0] == 'bpy':
                 return bpy_m
             return __import__(*args, **kwargs)
-        hacked_builtins = dict(__builtins__)
+        hacked_builtins = dict(builtins.__dict__)
         hacked_builtins['__import__'] = hacked_import
 
         exec(result, {'__builtins__': hacked_builtins})

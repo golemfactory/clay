@@ -18,7 +18,7 @@ class Example(object):
             return False
         if self.list != exm2.list:
             return False
-        if cmp(self.dict, exm2.dict) != 0:
+        if self.dict != exm2.dict:
             return False
         return True
 

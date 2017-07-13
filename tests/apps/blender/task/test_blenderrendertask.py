@@ -96,7 +96,7 @@ class TestBlenderFrameTask(TempDirFixture):
             os.makedirs(file_dir)
 
         file1 = path.join(file_dir, 'result1')
-        img = Image.new("RGB", (self.bt.res_x, self.bt.res_y / 2))
+        img = Image.new("RGB", (self.bt.res_x, int(self.bt.res_y / 2)))
         img.save(file1, "PNG")
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
