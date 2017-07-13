@@ -25,7 +25,7 @@ def sha3(seed):
     """
     if isinstance(seed, str):
         seed = seed.encode()
-    return _sha3_256(seed).hexdigest()
+    return _sha3_256(seed).digest()
 
 
 def sha2(seed):
