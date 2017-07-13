@@ -186,16 +186,12 @@ class NodeProcess(object):
         log.info("Node started in %ss: `%s`", wait_time, " ".join(args))
 
     def stop(self):
-        print("called node.stop")
         if self.__ps:
             start_time = time.clock()
 
             try:
-                print("called __ps.terminate")
                 self.__ps.terminate()
-                print("called __ps.wait")
                 self.__ps.wait()
-                print("__ps.wait done")
             except subprocess.NoSuchProcess:
                 log.warn("Cannot terminate node: process {} no longer exists"
                          .format(self.__ps.pid))
