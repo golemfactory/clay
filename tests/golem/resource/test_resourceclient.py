@@ -37,21 +37,11 @@ class TestClientHandler(unittest.TestCase):
         handler = MockClientHandler(ClientCommands, config)
         value_exc = valid_exceptions[0]()
 
-        def init(instance, exc, *args, **kwargs):
-            instance.value = exc
-            instance.exc_value = exc
-            exc.frames = ['frame']
-
         for exc_class in valid_exceptions:
-            org_init = exc_class.__init__
-            exc_class.__init__ = init
-
             try:
                 exc = exc_class(value_exc)
             except:
-                exc = None
-
-            exc_class.__init__ = org_init
+                exc = exc_class.__new__(exc_class)
 
             assert handler._can_retry(exc, ClientCommands.get, str(uuid.uuid4()))
         assert not handler._can_retry(Exception(value_exc), ClientCommands.get, str(uuid.uuid4()))

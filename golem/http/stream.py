@@ -20,19 +20,19 @@ IDLE_STREAM_TIMEOUT = 90
 class ChunkStream:
 
     # short separator: \r\n
-    short_sep_list = ["\r", "\n"]
+    short_sep_list = [b"\r", b"\n"]
     short_sep_len = len(short_sep_list)
-    short_sep = "".join(short_sep_list)
+    short_sep = b"".join(short_sep_list)
 
     # long separator: \r\n\r\n
     long_sep_list = short_sep_list * 2
     long_sep_list_len = len(long_sep_list)
-    long_sep = "".join(long_sep_list)
+    long_sep = b"".join(long_sep_list)
 
     # end of chunk: 0\r\n\r\n
-    _eoc_list = ["0"] + long_sep_list
+    _eoc_list = [b"0"] + long_sep_list
     _eoc_len = len(_eoc_list)
-    _eoc = "".join(_eoc_list)
+    _eoc = b"".join(_eoc_list)
 
     _conn_sleep = 0.1
     _read_sleep = 0.1
@@ -47,12 +47,12 @@ class ChunkStream:
     _conn_retry_err_codes = [errno.EINPROGRESS] + _retry_err_codes
 
     _req_headers = short_sep.join([
-        'Connection: keep-alive',
-        'Host: 127.0.0.1',
-        'Accept-Encoding: gzip, deflate, sdch, identity',
-        'Accept: application/octet-stream, text/plain',
-        'Accept-Language: en-US, en;',
-        '', ''
+        b'Connection: keep-alive',
+        b'Host: 127.0.0.1',
+        b'Accept-Encoding: gzip, deflate, sdch, identity',
+        b'Accept: application/octet-stream, text/plain',
+        b'Accept-Language: en-US, en;',
+        b'', b''
     ])
 
     def __init__(self, addr, url, timeouts=None):
@@ -86,10 +86,13 @@ class ChunkStream:
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
         self.sock.setblocking(0)
 
-        req_headers = 'GET {} HTTP/1.1{}'.format(self.url, self.short_sep) + self._req_headers
+        req_headers = (
+            'GET {} HTTP/1.1'.format(self.url).encode() +
+            self.short_sep + self._req_headers
+        )
 
         self.__connect()
-        self.sock.sendall(req_headers.encode())
+        self.sock.sendall(req_headers)
 
     def disconnect(self):
         self.__disconnect()
@@ -141,7 +144,7 @@ class ChunkStream:
     @classmethod
     def _split_headers(cls, header_data):
         headers = {}
-        header_lines = ''.join(header_data).split(cls.short_sep)
+        header_lines = header_data.split(cls.short_sep)
 
         if not len(header_lines):
             raise HTTPError('Empty HTTP headers')
@@ -150,33 +153,32 @@ class ChunkStream:
 
         for header_line in header_lines:
             if header_line:
-                split_line = header_line.lower().split(':')
+                split_line = header_line.lower().split(b':')
                 if len(split_line) >= 2:
                     key = split_line[0]
-                    value = ''.join(split_line[1:]).strip()
+                    value = b''.join(split_line[1:]).strip()
                     headers[key] = value
 
         return status, headers
 
     @staticmethod
     def _assert_status(entry):
-        status = entry.split(' ')
+        status = entry.split(b' ')
         if len(status) < 3:
             raise HTTPError('Invalid HTTP status: {}'
                             .format(status))
-        if status[0] != 'http/1.1':
+        if status[0] != b'http/1.1':
             raise HTTPError('Invalid HTTP version: {}'
                             .format(status[0]))
-        if status[1] != '200':
+        if status[1] != b'200':
             raise HTTPError('HTTP error: {}'
                             .format(status[1]))
 
     @staticmethod
     def _assert_transfer_encoding(headers):
-        value = 'chunked'
-        transfer_encoding = headers.get('transfer-encoding', None)
+        transfer_encoding = headers.get(b'transfer-encoding', None)
 
-        if transfer_encoding != value:
+        if transfer_encoding != b'chunked':
             raise HTTPError('Invalid transfer encoding: {}'
                             .format(transfer_encoding))
 

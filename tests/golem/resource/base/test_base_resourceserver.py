@@ -100,7 +100,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         )
         decrypted = self.resource_server.decrypt(encrypted)
 
-        self.assertEqual(decrypted, to_encrypt)
+        self.assertEqual(decrypted, to_encrypt.encode())
 
     def _resources(self):
         existing_dir = self.dir_manager.get_task_resource_dir(self.task_id)

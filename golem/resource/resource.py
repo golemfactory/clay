@@ -24,8 +24,8 @@ class TaskResourceHeader(object):
             return False
         if len(self.sub_dir_headers) != len(other.sub_dir_headers):
             return False
-        sub1 = sorted(self.sub_dir_headers, lambda x: x.dir_name)
-        sub2 = sorted(other.sub_dir_headers, lambda x: x.dir_name)
+        sub1 = sorted(self.sub_dir_headers, key=lambda x: x.dir_name)
+        sub2 = sorted(other.sub_dir_headers, key=lambda x: x.dir_name)
         for i in range(len(self.sub_dir_headers)):
             if not (sub1[i] == sub2[i]):
                 return False

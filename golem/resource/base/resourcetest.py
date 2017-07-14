@@ -1,6 +1,7 @@
 import os
 import uuid
 
+from ethereum.utils import encode_hex
 from mock import Mock
 
 from golem.client import Client
@@ -38,7 +39,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 os.makedirs(d)
 
             with open(resource, 'wb') as f:
-                f.write(str(uuid.uuid4()) * 256)
+                f.write(str(uuid.uuid4()).encode() * 256)
 
         return resources_relative, resources
 
@@ -153,4 +154,4 @@ class AddGetResources(TempDirFixture, LogTestCase):
             sha_256_1 = file_sha_256(location_1)
             sha_256_2 = file_sha_256(location_2)
             assert sha_256_1 == sha_256_2, '{} != {}'.format(
-                sha_256_1.encode('hex'), sha_256_2.encode('hex'))
+                encode_hex(sha_256_1), encode_hex(sha_256_2))

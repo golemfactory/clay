@@ -1,18 +1,18 @@
 import abc
 import hashlib
+import inspect
 import logging
 import os
 import shutil
 import socket
-import types
 import uuid
+from enum import Enum
 from threading import Lock
 
 import base58
 import multihash
 import requests
 import twisted
-from enum import Enum
 from requests.packages.urllib3.exceptions import MaxRetryError, TimeoutError, \
     ReadTimeoutError, ConnectTimeoutError, ConnectionError
 from twisted.internet import threads
@@ -41,7 +41,7 @@ def file_sha_256(file_path):
 def file_multihash(file_path):
     h = file_sha_256(file_path)
     encoded = multihash.encode(h, multihash.SHA2_256)
-    return base58.b58encode(str(encoded))
+    return base58.b58encode(bytes(encoded))
 
 
 class IClient(object):
@@ -211,7 +211,7 @@ class ClientHandler(IClientHandler, metaclass=abc.ABCMeta):
         if isinstance(exc, twisted.python.failure.Failure):
             exc = exc.value
         exc_type = type(exc)
-        if exc_type is types.InstanceType:
+        if not inspect.isclass(exc_type):
             exc_type = exc.__class__
         return exc_type
 

@@ -117,44 +117,36 @@ class TestSocketStream(unittest.TestCase):
         assert stream.done
 
     def testHeaders(self):
-        rn = "\r\n"
+        rn = ChunkStream.short_sep
 
         with self.assertRaises(HTTPError):
             ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.0 200 ok'
-                ])
+                b'HTTP/1.0 200 ok'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 404 Not Found'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 200'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 200 ok'
             )
         with self.assertRaises(HTTPError):
             ChunkStream._assert_headers(
                 rn.join([
-                    'HTTP/1.1 404 Not Found'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200 ok'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200 OK',
-                    'Transfer-Encoding: qwerty'
+                    b'HTTP/1.1 200 OK',
+                    b'Transfer-Encoding: qwerty'
                 ])
             )
         ChunkStream._assert_headers(
             rn.join([
-                'hTTp/1.1 200 OK',
-                'Ignored: property',
-                'Transfer-Encoding: Chunked'
+                b'hTTp/1.1 200 OK',
+                b'Ignored: property',
+                b'Transfer-Encoding: Chunked'
             ])
         )
 
