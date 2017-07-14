@@ -30,6 +30,8 @@ from golem.tools.ci import ci_skip
 
 
 class TestBlenderDefaults(unittest.TestCase):
+
+
     def test_init(self):
         bd = BlenderDefaults()
         self.assertTrue(path.isfile(bd.main_program_file))

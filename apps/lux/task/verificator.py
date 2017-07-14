@@ -57,7 +57,7 @@ class LuxRenderVerificator(RenderingVerificator):
         ref_imgs = []
         dm = task.dirManager
 
-        for i in range(0, task.referenceRuns):
+        for i in range(0, task.reference_runs):
             dir = os.path.join(
                 dm.get_ref_data_dir(task.header.task_id, counter=i),
                 dm.tmp,
