@@ -75,12 +75,12 @@ class EXRImgRepr(ImgRepr):
         self.rgb = None
 
     def load_from_file(self, file_):
-        self.img = imageio.imread(file_, 'exr-fi')
+        self.img = imageio.imread(file_, 'sgi-fi')
         self.rgb = Image.fromarray(self.img, "RGB").split()
         self.file_path = file_
 
     def get_size(self):
-        return len(self.img), len(self.img[0])
+        return len(self.img[0]), len(self.img)
 
     def get_pixel(self, xxx_todo_changeme4):
         (i, j) = xxx_todo_changeme4

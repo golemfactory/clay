@@ -59,13 +59,16 @@ class TestBlenderFrameTask(TempDirFixture):
 
     @staticmethod
     def make_array(x, y, default=1.0):
+        #import array
+        #data = array.array('f', [1.0] * (x * y))
         a = []
         for i in range(y):
             b = []
             for j in range(x):
                 b.append([default, default, default])
             a.append(b)
-        return np.array(a, dtype=np.float)
+        #return np.array([data[1:],data[1:], data[1:]], dtype=np.float32)
+        return np.array(a, dtype=np.float32)
 
     def test_init_preview(self):
         self.assertEqual(len(self.bt.preview_file_path),
@@ -364,10 +367,10 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         imageio.imsave(uri=file1,
                        im=TestBlenderFrameTask.make_array(bt.res_x, 99),
-                       format='EXR-FI')
+                       format='SGI-FI')
         imageio.imsave(uri=file2,
                        im=TestBlenderFrameTask.make_array(bt.res_x, 101),
-                       format='EXR-FI')
+                       format='SGI-FI')
 
         bt._update_frame_preview(file1, 1, part=1)
         assert bt.preview_updaters[0].perfect_match_area_y == 99
@@ -384,7 +387,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         imageio.imsave(uri=file1,
                        im=TestBlenderFrameTask.make_array(bt.res_x, 99),
-                       format='EXR-FI')
+                       format='SGI-FI')
 
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
@@ -619,7 +622,6 @@ class TestHelpers(unittest.TestCase):
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
         task_definition.resolution = [1920, 1080]
-
         for k in range(1, 31):
             task_definition.options.use_frames = False
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
@@ -637,7 +639,7 @@ class TestHelpers(unittest.TestCase):
             i = (k - 1) % 15 + 1
             task_definition.options.frames = list(range(2))
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, frame_offsets[i] + 3, task_definition, 30, (k - 1) / 15 + 1
+                1, frame_offsets[i] + 3, task_definition, 30, int((k - 1) / 15) + 1
             )
             assert num == k
 
