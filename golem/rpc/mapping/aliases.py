@@ -1,3 +1,7 @@
+class Golem(object):
+    evt_component_state     = 'evt.component.state'
+
+
 class Environment(object):
 
     opts                    = 'env.opts'
@@ -96,6 +100,7 @@ class Task(object):
     subtasks                = 'comp.task.subtasks'
     subtasks_borders        = 'comp.task.subtasks.borders'
     subtasks_frames         = 'comp.task.subtasks.frames'
+    subtasks_frame_restart  = 'comp.task.subtasks.frame.restart'
     subtask                 = 'comp.task.subtask'
     subtask_restart         = 'comp.task.subtask.restart'
 
@@ -159,6 +164,7 @@ class Applications(object):
 
 
 NAMESPACES = [
+    Golem,
     Environment,
     Crypto,
     Network,

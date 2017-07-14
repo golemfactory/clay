@@ -70,9 +70,14 @@ class TaskTypeInfo(object):
 
     @staticmethod
     def _preview_result(result, single=False):
+        if single:
+            return result
         if result is not None:
-            return result if single else [result]
-        return None if single else []
+            if isinstance(result, dict):
+                return result
+            else:
+                return {u'1': result}
+        return {}
 
 
 class CoreTask(Task):

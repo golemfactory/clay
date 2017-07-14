@@ -457,6 +457,18 @@ class TestClient(TestWithDatabase):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
+    def test_restart_by_frame(self, *_):
+        self.client = Client(datadir=self.path, transaction_system=False,
+                             connect_to_known_hosts=False,
+                             use_docker_machine_manager=False,
+                             use_monitor=False)
+
+        self.client.task_server = Mock()
+        self.client.restart_frame_subtasks('tid', 10)
+
+        self.client.task_server.task_manager.restart_frame_subtasks.\
+            assert_called_with('tid', 10)
+
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")
         Client.save_task_preset("Preset2", "TaskType1", "data2")
@@ -586,8 +598,11 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         c = self.client
+
         c.resource_server = Mock()
-        c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.start_task = Mock()
+        c.task_server.task_manager.listen_address = '127.0.0.1'
+        c.task_server.task_manager.listen_port = 40103
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
 
@@ -602,16 +617,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             .assert_called_with(c.keys_auth.key_id)
 
         assert c.resource_server.add_task.called
-        assert not c.task_server.task_manager.add_new_task.called
+        assert not c.task_server.task_manager.start_task.called
 
         deferred = Deferred()
         deferred.callback(True)
+        c.task_server.task_manager.tasks.pop(task.header.task_id, None)
 
         c.resource_server.add_task.called = False
         c.resource_server.add_task.return_value = deferred
 
         c.enqueue_new_task(task)
-        assert c.resource_server.add_task.called
+        assert c.task_server.task_manager.start_task.called
 
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task_dict(self, *_):
@@ -641,6 +657,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.keys_auth = Mock()
         c.keys_auth.key_id = str(uuid.uuid4())
         c.task_server.task_manager.add_new_task = Mock()
+        c.task_server.task_manager.start_task = Mock()
 
         task = c.enqueue_new_task(t_dict)
         assert isinstance(task, Task)
@@ -649,7 +666,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.resource_manager.build_client_options\
             .assert_called_with(c.keys_auth.key_id)
         assert c.resource_server.add_task.called
-        assert not c.task_server.task_manager.add_new_task.called
+        assert c.task_server.task_manager.add_new_task.called
+        assert not c.task_server.task_manager.start_task.called
 
         task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task

@@ -32,23 +32,23 @@ DefaultDirName={pf}\{#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile={#Repository}\LICENSE.txt
 OutputDir={#Repository}\Installer\Installer_Win
-OutputBaseFilename=setup
+OutputBaseFilename={#MyAppName}_win_{#MyAppVersion}
 SetupIconFile={#Repository}\Installer\{#AppIcon}
 Compression=lzma
 SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\"; Flags: uninsdeletevalue; Check: NeedsAddPath('{app}\')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\"; Flags: createvalueifdoesntexist;
 
 ; Append Docker to PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('{sd}\Program Files\Docker Toolbox')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Flags: createvalueifdoesntexist;
 
 ; Add OpenSSL to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('{sd}\OpenSSL')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Flags: createvalueifdoesntexist;
     
 ; Add HyperG to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('{pf}\HyperG')
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Flags: createvalueifdoesntexist;
 
 ; @todo do we need any more languages? It can be confusing
 [Languages]
@@ -61,11 +61,11 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
-Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion;
-Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\vcredist_x86.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
+Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#SetupSetting("SetupIconFile")}"; DestDir: "{app}"; Flags: ignoreversion;
 
 [Icons]
@@ -167,6 +167,31 @@ function PreviousInstallationExists : Boolean;
 begin
   // Check if not equal '<>' to empty string and return result
   Result := (GetUninstallString() <> '');
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  sys_path: String;
+begin
+  case CurUninstallStep of
+    usUninstall:
+      begin
+        if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then
+        begin
+          RegWriteExpandStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup', sys_path)
+        end;
+      end;
+    usDone:
+      begin
+        if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup', sys_path) then
+        begin
+          if RegWriteExpandStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then
+          begin
+            RegDeleteValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup')
+          end;
+        end;
+      end;
+    end;
 end;
 
 // This Event function runs before setup is initialized

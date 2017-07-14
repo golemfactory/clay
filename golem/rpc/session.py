@@ -98,6 +98,10 @@ class Session(ApplicationSession):
             self.ready.errback(details or "Unknown error occurred")
         super(Session, self).onLeave(details)
 
+    def onDisconnect(self):
+        self.connected = False
+        super(Session, self).onDisconnect()
+
     @inlineCallbacks
     def register_methods(self, methods):
         for method, rpc_name in methods:
@@ -121,6 +125,9 @@ class Session(ApplicationSession):
             else:
                 logger.error("RPC: Not subscribed to: {}".format(event_name))
 
+    def is_open(self):
+        return self.connected and self.is_attached() and not self.is_closing()
+
     def is_closing(self):
         return self._goodbye_sent or self._transport_is_closing
 
@@ -143,7 +150,7 @@ class Client(object):
         return lambda *a, **kw: self._call(unicode(method_alias), *a, **kw)
 
     def _call(self, method_alias, *args, **kwargs):
-        if self._session.connected:
+        if self._session.is_open():
             deferred = self._session.call(unicode(method_alias),
                                           *args, **kwargs)
             deferred.addErrback(self._on_error)
@@ -166,7 +173,7 @@ class Publisher(object):
         self.session = session
 
     def publish(self, event_alias, *args, **kwargs):
-        if self.session.connected:
+        if self.session.is_open():
             self.session.publish(unicode(event_alias), *args, **kwargs)
         elif not self.session.is_closing():
             logger.warn("RPC: Cannot publish '{}', "
