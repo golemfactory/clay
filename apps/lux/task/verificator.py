@@ -97,13 +97,13 @@ class LuxRenderVerificator(RenderingVerificator):
                                "but couldn't find flm for merging test!")
                 logger.warning("No merge verification")
 
-            imgVerificator = ImgVerificator()
+            img_verificator = ImgVerificator()
             ref_imgs = self._get_reference_imgs(task)
 
             cropped_ref_imgs = []
             for ref_img in ref_imgs:
                 cropped_ref_img = \
-                    imgVerificator.crop_img_relative(
+                    img_verificator.crop_img_relative(
                         ref_img, task.random_crop_window_for_verification)
                 cropped_ref_imgs.append(cropped_ref_img)
                 # cropped_ref_img.img.save('aaa' + cropped_ref_img.get_name())
@@ -116,13 +116,13 @@ class LuxRenderVerificator(RenderingVerificator):
             for png_file, flm_file in zip(tr_png_files, tr_flm_files):
                 img = PILImgRepr()
                 img.load_from_file(png_file)
-                cropped_img = imgVerificator.crop_img_relative(
+                cropped_img = img_verificator.crop_img_relative(
                     img, task.random_crop_window_for_verification)
                 # cropped_img.img.save('aaa' + cropped_img.get_name())
                 imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
 
                 self.ver_states[subtask_id] = \
-                    imgVerificator.is_valid_against_reference(
+                    img_verificator.is_valid_against_reference(
                         imgstat, reference_stats)
 
                 if self.ver_states[subtask_id] == \
