@@ -118,7 +118,6 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         source = "test string"
         result = to_unicode(source)
         assert type(result) is str
-        assert result is not source
         assert result == source
 
         source = None

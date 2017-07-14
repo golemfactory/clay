@@ -14,6 +14,8 @@ from golem.tools.testwithreactor import TestWithReactor
 
 class ASession(object):
     def __init__(self, conn):
+        self.address = '127.0.0.1'
+        self.port = 40102
         self.conn = conn
         self.dropped_called = False
         self.msgs = []
@@ -29,13 +31,14 @@ class ASession(object):
         return msg
 
     def encrypt(self, msg):
-        return "ASessionEncrypt{}".format(msg)
+        return b"ASessionEncrypt" + bytes(msg)
 
     def decrypt(self, msg):
-        if os.path.commonprefix([msg, "ASessionEncrypt"]) != "ASessionEncrypt":
+        args = [msg, b"ASessionEncrypt"]
+        if os.path.commonprefix(args) != b"ASessionEncrypt":
             return None
         else:
-            return msg[len("ASessionEncrypt"):]
+            return msg[len(b"ASessionEncrypt"):]
 
 
 class AProtocol(SessionProtocol):

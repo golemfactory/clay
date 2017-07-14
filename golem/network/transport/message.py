@@ -55,7 +55,8 @@ class Message(object):
     def _sort_dict(self, dictionary, filter_properties=False):
         result = dict()
         for k, v in list(dictionary.items()):
-            if filter_properties and (k.startswith('_') or isinstance(v, collections.Callable)):
+            if filter_properties and (k.startswith('_') or
+                                      isinstance(v, collections.Callable)):
                 continue
             result[to_unicode(k)] = self._sort_obj(v)
         return sorted(result.items())

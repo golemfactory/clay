@@ -63,7 +63,7 @@ class SocketAddress(object):
         if type(self.address) is not str:
             raise TypeError('Address must be a string, not a ' +
                             type(self.address).__name__)
-        if type(self.port) is not int and type(self.port) is not int:
+        if type(self.port) is not int:
             raise TypeError('Port must be an int, not a ' +
                             type(self.port).__name__)
 
@@ -808,7 +808,7 @@ class FileConsumer(object):
         self.extra_data["result"] = self.final_file_list
 
         self.last_percent = 0
-        self.last_data = ""
+        self.last_data = bytes()
 
     def dataReceived(self, data):
         """ Receive new chunk of data
@@ -824,7 +824,7 @@ class FileConsumer(object):
         self.recv_size += len(loc_data)
         if self.recv_size <= self.file_size:
             self.fh.write(loc_data)
-            self.last_data = ""
+            self.last_data = bytes()
         else:
             last_data = len(loc_data) - (self.recv_size - self.file_size)
             self.fh.write(loc_data[:last_data])
@@ -1080,7 +1080,7 @@ class DataConsumer(object):
         self.session.conn.data_mode = False
         self.data_size = -1
         self.recv_size = 0
-        self.extra_data["result"] = "".join(self.loc_data)
+        self.extra_data["result"] = b"".join(self.loc_data)
         self.loc_data = []
         self.session.full_data_received(extra_data=self.extra_data)
 
@@ -1119,7 +1119,7 @@ class DecryptDataConsumer(DataConsumer):
     def __init__(self, session, extra_data):
         self.chunk_size = 0
         self.recv_chunk_size = 0
-        self.last_data = ""
+        self.last_data = bytes()
         DataConsumer.__init__(self, session, extra_data)
 
     def dataReceived(self, data):

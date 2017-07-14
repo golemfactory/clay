@@ -193,12 +193,13 @@ class TestP2PService(testutils.DatabaseFixture, testutils.PEP8MixIn):
         # try to add more than max, we already have at least 1
         pub_prefix = '2.2.3.'
         prv_prefix = '172.1.2.'
+        key_id_str = key_id.decode('utf-8')
         for i in range(1, MAX_STORED_HOSTS + 6):
             i_str = str(i)
             pub = pub_prefix + i_str
             prv = prv_prefix + i_str
             n = Node(
-                i_str, key_id + i_str,
+                i_str, key_id_str + i_str,
                 pub_addr=pub,
                 prv_addr=prv,
                 pub_port=10000,

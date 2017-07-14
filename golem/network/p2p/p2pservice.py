@@ -502,7 +502,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             )
             self.connect(socket_address)
         except AddressValueError as err:
-            logger.error("Invalid seed address: " + err.message)
+            logger.error("Invalid seed address: %s", err)
 
     def encrypt(self, data, public_key):
         """Encrypt data with given public_key. If no public_key is given,
