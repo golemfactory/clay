@@ -10,7 +10,7 @@ class TestEthereumAbi(unittest.TestCase):
         enc = encode_hex(encode_abi(
             ['uint32', 'uint32[]', 'bytes10', 'bytes'],
             [int(0x123), [int(0x456), int(0x789)],
-             "1234567890", "Hello, world!"]
+             b"1234567890", b"Hello, world!"]
         ))
         data = "0000000000000000000000000000000000000000000000000000000000000" \
                "1230000000000000000000000000000000000000000000000000000000000" \

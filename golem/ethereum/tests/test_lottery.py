@@ -1,7 +1,7 @@
 import unittest
 from os import urandom
 
-from ethereum.tools import tester
+from ethereum import tester
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex
 from ethereum.utils import int_to_big_endian, denoms, sha3, zpad

@@ -50,8 +50,8 @@ class EthereumClientTest(TempDirFixture):
 
     def test_send_transaction(self):
         client = self.client
-        addr = '\xff' * 20
-        priv = '\xee' * 32
+        addr = b'\xff' * 20
+        priv = b'\xee' * 32
         tx = Transaction(1, 20 * 10**9, 21000, to=addr, value=0, data=b'')
         tx.sign(priv)
         with self.assertRaisesRegex(ValueError, "[Ii]nsufficient funds"):
@@ -68,8 +68,8 @@ class EthereumClientTest(TempDirFixture):
         assert not client.node.is_running()
 
     def test_get_logs(self):
-        addr = encode_hex(zpad('deadbeef', 32))
-        log_id = encode_hex(zpad('beefbeef', 32))
+        addr = encode_hex(zpad(b'deadbeef', 32))
+        log_id = encode_hex(zpad(b'beefbeef', 32))
         client = self.client
         logs = client.get_logs(from_block='latest', to_block='latest',
                                topics=[log_id, addr])

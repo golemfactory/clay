@@ -1,7 +1,7 @@
 import unittest
 from os import urandom
 from rlp.utils import decode_hex, encode_hex
-from ethereum.tools import tester
+from ethereum import tester
 from ethereum.utils import int_to_big_endian, zpad
 from golem.ethereum.contracts import TestGNT
 

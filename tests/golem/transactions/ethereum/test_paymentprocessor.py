@@ -1,3 +1,4 @@
+import json
 import random
 import time
 import unittest
@@ -5,8 +6,8 @@ from os import urandom
 
 import mock
 import requests
-from ethereum.messages import apply_transaction
-from ethereum.tools import tester, keys
+from ethereum import tester
+from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms, privtoaddr
 from mock import patch, Mock
@@ -21,6 +22,7 @@ from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
 
 SYNC_TEST_INTERVAL = 0.01
+TEST_GNT_ABI = json.loads(TestGNT.ABI)
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -331,7 +333,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         balance_eth = 1 * denoms.ether
         balance_gnt = 99 * denoms.ether
         self.client.get_balance.return_value = balance_eth
-        self.client.call.return_value = hex(balance_gnt)[:-1]  # Skip L suffix.
+        self.client.call.return_value = hex(balance_gnt)
 
         assert self.pp._gnt_reserved() == 0
         assert self.pp._gnt_available() == balance_gnt
@@ -359,7 +361,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         # Check payment status in the Blockchain
         self.client.get_transaction_receipt.return_value = None
-        self.client.call.return_value = hex(balance_gnt - gnt_value)[:-1]  # Skip L suffix.
+        self.client.call.return_value = hex(balance_gnt - gnt_value)
         self.pp.monitor_progress()
         assert len(inprogress) == 1
         assert tx.hash in inprogress
@@ -394,9 +396,10 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
     def setUp(self):
         DatabaseFixture.setUp(self)
         self.state = tester.state()
-        gnt_addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
+        gnt_evm_addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
+        gnt_addr = encode_hex(gnt_evm_addr)
         self.state.mine()
-        self.gnt = tester.ABIContract(self.state, TestGNT.ABI, gnt_addr)
+        self.gnt = tester.ABIContract(self.state, TEST_GNT_ABI, gnt_addr)
         PaymentProcessor.TESTGNT_ADDR = gnt_addr
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
@@ -546,7 +549,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         payee = urandom(20)
         b = self.pp.gnt_balance()
-        value = b / 5 - 100
+        value = b // 5 - 100
         for i in range(5):
             subtask_id = 's{}'.format(i)
             p = Payment.create(subtask=subtask_id, payee=payee, value=value)
