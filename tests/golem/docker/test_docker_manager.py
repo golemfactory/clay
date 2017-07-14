@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError
 
 import mock
+import sys
+
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
     Hypervisor, logger
 from golem.testutils import TempDirFixture
@@ -302,9 +304,9 @@ class TestDockerManager(unittest.TestCase):
 
     def test_command(self):
         dmm = MockDockerManager(use_parent_methods=True)
-        dmm.docker_machine_commands['test'] = ['python', '--version']
+        dmm.docker_machine_commands['test'] = [sys.executable, '--version']
 
-        assert dmm.command('test', check_output=True) == ""
+        assert dmm.command('test', check_output=True).startswith(b'Python')
         assert dmm.command('test', check_output=False) == 0
         assert not dmm.command('deadbeef')
 
