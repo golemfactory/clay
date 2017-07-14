@@ -21,14 +21,15 @@ def calculate_psnr(mse, max_=255):
         raise ValueError("MSE & MAX_ must be higher than 0")
     return 20 * math.log10(max_) - 10 * math.log10(mse)
 
+
 def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
     """
-    :param img1: 
-    :param img2: 
-    :param start1: 
-    :param start2: 
+    :param img1:
+    :param img2:
+    :param start1:
+    :param start2:
     :param box: describes side lengths of the box
-    :return: 
+    :return:
     """
     mse = 0
     if not isinstance(img1, ImgRepr) or not isinstance(img2, ImgRepr):
@@ -40,7 +41,9 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
         if img1.get_size() == img2.get_size():
             (res_x, res_y) = img1.get_size()
         else:
-             raise ValueError('img1 and img2 are of different sizes and there is no cropping box provided.')
+            raise ValueError(
+                 'img1 and img2 are of different sizes '
+                 'and there is no cropping box provided.')
 
     for i in range(0, res_x):
         for j in range(0, res_y):
@@ -55,9 +58,6 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
 
     mse /= res_x * res_y * 3
     return mse
-
-
-
 
 
 def compare_imgs(img1, img2, max_col=255, start1=(0, 0),
@@ -97,10 +97,10 @@ def compare_exr_imgs(file1, file2):
         return False
 
 
-
 # this one is used by BlenderRender
 def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
                        cmp_start_box):
+
     try:
         img = load_img(file_)
         cmp_img = load_img(compare_file)
@@ -116,10 +116,10 @@ def advance_verify_img(file_, res_x, res_y, start_box, box_size, compare_file,
             return box[0] > res_x or box[1] > res_y
 
         if _box_too_small(box_size) or _box_too_big(box_size):
-            logger.error("Wrong box size for advanced verification " \
+            logger.error("Wrong box size for advanced verification "
                          "{}".format(box_size))
 
-        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr): #
+        if isinstance(img, PILImgRepr) and isinstance(cmp_img, PILImgRepr):
             return compare_imgs(img, cmp_img, start1=start_box,
                                 start2=cmp_start_box, box=box_size)
         else:

@@ -36,7 +36,6 @@ class CoreVerificator(object):
         else:
             self.advanced_verification = True
 
-
     def is_verified(self, subtask_id):
         return self.ver_states.get(subtask_id) == SubtaskVerificationState.VERIFIED
 

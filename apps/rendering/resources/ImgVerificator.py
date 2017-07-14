@@ -11,7 +11,7 @@ from ssim import compute_ssim
 logger = logging.getLogger("apps.rendering")
 
 
-class ImgStatistics:
+class ImgStatistics(object):
     def __init__(self, base_img, img):
         if not isinstance(base_img, ImgRepr) or not isinstance(img, ImgRepr):
             raise TypeError("base_img and img must be ImgRepr")
@@ -91,7 +91,7 @@ class ImgStatistics:
         return self.ssim, self.mse, self.norm_mse, self.mse_bw, self.psnr
 
 
-class ImgVerificator:
+class ImgVerificator(object):
     def __init__(self):
         pass
 

@@ -13,8 +13,6 @@ from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 
 from golem.resource.dirmanager import DirManager
-
-
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 from apps.blender.blenderenvironment import BlenderEnvironment

@@ -22,10 +22,10 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
-from apps.lux.resources.scenefilereader import make_scene_analysis
+import apps.lux.resources.scenefilereader as sfr
+
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
-from apps.rendering.resources.ImgVerificator import ImgVerificator
 from apps.rendering.task import renderingtask
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
 from apps.rendering.task import renderingtaskstate
@@ -157,34 +157,14 @@ class LuxTask(renderingtask.RenderingTask):
             self.scene_file_src = ""
 
         self.random_crop_window_for_verification = \
-            self._get_random_crop_window_for_verification(self.scene_file_src)
+            sfr.get_random_crop_window_for_verification(self.scene_file_src)
 
         self.output_file, _ = os.path.splitext(self.output_file)
         self.output_format = self.output_format.lower()
         self.num_add = 0
 
         self.preview_exr = None
-        self.referenceRuns = 2
-
-    def _get_random_crop_window_for_verification(self,
-                                                 source_lux_config_file_lxs):
-
-        if "float cropwindow" in source_lux_config_file_lxs:
-            start = source_lux_config_file_lxs.find('float cropwindow')
-            start_bracket = source_lux_config_file_lxs.find('[', start)
-            end_bracket = source_lux_config_file_lxs.find(']', start)
-            line = source_lux_config_file_lxs[start_bracket + 1: end_bracket]
-            window = [float(w) for w in line.split()]
-
-            # make smaller_window from window for verification
-            crop_window = \
-                ImgVerificator().get_random_crop_window(
-                    coverage=0.5,
-                    window=window)
-            return crop_window
-
-        crop_window = ImgVerificator().get_random_crop_window()
-        return crop_window
+        self.reference_runs = 2
 
     def __getstate__(self):
         state = super(LuxTask, self).__getstate__()
@@ -377,7 +357,7 @@ class LuxTask(renderingtask.RenderingTask):
         if flm is None:
             return_data[u'warnings'] = FLM_NOT_FOUND_MSG
             logger.warning(return_data[u"warnings"])
-        make_scene_analysis(self.scene_file_src, return_data)
+            sfr.make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 
     def query_extra_data_for_merge(self):
@@ -533,7 +513,7 @@ class LuxTask(renderingtask.RenderingTask):
         img_current.close()
 
     def create_reference_data_for_task_validation(self):
-        for i in range(0, self.referenceRuns):
+        for i in range(0, self.reference_runs):
             path = \
                 self.dirManager.get_ref_data_dir(self.header.task_id, counter=i)
 

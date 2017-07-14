@@ -20,7 +20,8 @@ logger = logging.getLogger("apps.rendering")
 
 class RenderingVerificator(CoreVerificator):
     def __init__(self, verification_options=None, advanced_verification=False):
-        super(RenderingVerificator, self).__init__(verification_options, advanced_verification)
+        super(RenderingVerificator, self).\
+            __init__(verification_options, advanced_verification)
         self.tmp_dir = None
         self.res_x = 0
         self.res_y = 0
@@ -46,14 +47,19 @@ class RenderingVerificator(CoreVerificator):
 
         file_for_adv_ver = self._choose_adv_ver_file(tr_files, subtask_info)
         if file_for_adv_ver:
-            if not self.make_advance_verification(file_for_adv_ver, subtask_info, subtask_id, task):
+            if not self.make_advance_verification(
+                    file_for_adv_ver,
+                    subtask_info,
+                    subtask_id, task):
                 return False
             else:
-                self.verified_clients.append(subtask_info['node_id'])
+                self.verified_clients.append(
+                    subtask_info['node_id'])
 
         return True
 
-    def make_advance_verification(self, img_file, subtask_info, subtask_id, task):
+    def make_advance_verification(self,
+                                  img_file, subtask_info, subtask_id, task):
         start_box = self._get_box_start(*self._get_part_img_size(subtask_info))
         logger.debug('testBox: {}'.format(start_box))
         cmp_file, cmp_start_box = self._get_cmp_file(img_file, start_box,
@@ -82,21 +88,27 @@ class RenderingVerificator(CoreVerificator):
     def _choose_adv_ver_file(self, tr_files, subtask_info):
         adv_test_file = None
         if self.advanced_verification:
-            if self.__use_adv_verification(subtask_info):
+            if self.__use_adv_verification(
+                    subtask_info):
                 adv_test_file = random.choice(tr_files)
         return adv_test_file
 
     def _get_part_img_size(self, subtask_info):
-        num_task = subtask_info['start_task']  # verification method reacts to key error
-        if self.total_tasks == 0 or num_task > self.total_tasks:
-            logger.error("Wrong total tasks number ({}) for subtask number {}".format(
-                self.total_tasks, num_task))
+        # verification method reacts to key error
+        num_task = subtask_info['start_task']
+        if self.total_tasks == 0 \
+                or num_task > self.total_tasks:
+            logger.error("Wrong total tasks number ({}) "
+                         "for subtask number {}".format(
+                            self.total_tasks, num_task))
             return 0, 0, 0, 0
+
         img_height = int(math.floor(self.res_y / self.total_tasks))
         return 0, (num_task - 1) * img_height, self.res_x, num_task * img_height
 
     def _get_cmp_file(self, tr_file, start_box, subtask_id, subtask_info, task):
-        extra_data, new_start_box = self.change_scope(subtask_id, start_box, tr_file, subtask_info)
+        extra_data, new_start_box = \
+            self.change_scope(subtask_id, start_box, tr_file, subtask_info)
         cmp_file = self._run_task(extra_data, task)
 
         return cmp_file, new_start_box
@@ -104,7 +116,8 @@ class RenderingVerificator(CoreVerificator):
     def change_scope(self, subtask_id, start_box, tr_file, subtask_info):
         extra_data = copy(subtask_info)
         extra_data['outfilebasename'] = str(uuid.uuid4())
-        extra_data['tmp_path'] = os.path.join(self.tmp_dir, str(subtask_info['start_task']))
+        extra_data['tmp_path'] = \
+            os.path.join(self.tmp_dir, str(subtask_info['start_task']))
         ensure_dir_exists(extra_data['tmp_path'])
         return extra_data, start_box
 
@@ -112,8 +125,9 @@ class RenderingVerificator(CoreVerificator):
         computer = LocalComputer(task, self.root_path,
                                  self.__box_rendered,
                                  self.__box_render_error,
-                                 lambda: self.query_extra_data_for_advanced_verification(
-                                     extra_data),
+                                 lambda:
+                                 self.query_extra_data_for_advanced_verification
+                                     (extra_data),
                                  additional_resources=[])
         computer.run()
         results = None
@@ -122,7 +136,8 @@ class RenderingVerificator(CoreVerificator):
             results = computer.tt.result.get("data")
         if results:
             commonprefix = os.path.commonprefix(results)
-            img = find_file_with_ext(commonprefix, ["." + extra_data['output_format']])
+            img = find_file_with_ext(
+                commonprefix, ["." + extra_data['output_format']])
             if img is None:
                 logger.error("No image file created")
             return img
@@ -153,7 +168,8 @@ class RenderingVerificator(CoreVerificator):
 class FrameRenderingVerificator(RenderingVerificator):
 
     def __init__(self, *args, **kwargs):
-        super(FrameRenderingVerificator, self).__init__(*args, **kwargs)
+        super(FrameRenderingVerificator, self).\
+            __init__(*args, **kwargs)
         self.use_frames = False
         self.frames = []
 
@@ -161,16 +177,22 @@ class FrameRenderingVerificator(RenderingVerificator):
         if self.use_frames and self.total_tasks <= len(self.frames):
             frames_list = subtask_info['frames']
             if len(tr_files) < len(frames_list):
-                self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
+                self.ver_states[subtask_id] = \
+                    SubtaskVerificationState.WRONG_ANSWER
                 return
-        if not self._verify_imgs(subtask_id, subtask_info, tr_files, task):
+        if not self._verify_imgs(
+                subtask_id,
+                subtask_info,
+                tr_files,
+                task):
             self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
         else:
             self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
 
     def _get_part_img_size(self, subtask_info):
         if not self.use_frames or self.__full_frames():
-            return super(FrameRenderingVerificator, self)._get_part_img_size(subtask_info)
+            return super(FrameRenderingVerificator, self)\
+                ._get_part_img_size(subtask_info)
         else:
             start_task = subtask_info['start_task']
             parts = subtask_info['parts']

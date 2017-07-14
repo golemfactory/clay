@@ -2,19 +2,11 @@ import os
 
 from PIL import Image
 
-
-# from apps.rendering.resources.imgcompare import (advance_verify_img,
-#                                                  check_size, compare_exr_imgs,
-#                                                  compare_imgs,
-#                                                  compare_pil_imgs,
-#                                                  calculate_mse,
-#                                                  calculate_psnr, logger)
-
 from apps.rendering.resources.imgcompare import *
 
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
@@ -22,7 +14,11 @@ from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
 
 
 
-class TestCompareImgFunctions(TempDirFixture, LogTestCase):
+class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/resources/imgcompare.py',
+    ]
+
     def test_check_size(self):
         file1 = self.temp_file_name('img.png')
         for y in [10, 11]:

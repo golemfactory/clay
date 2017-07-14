@@ -5,7 +5,7 @@ from mock import patch, Mock
 
 from golem.core.common import is_linux
 from golem.task.taskbase import Task
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
@@ -13,7 +13,11 @@ from apps.rendering.task.verificator import RenderingVerificator, logger, FrameR
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
-class TestRenderingVerificator(TempDirFixture, LogTestCase):
+class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/task/verificator.py',
+    ]
+
     def test_box_start(self):
         rv = RenderingVerificator()
 
