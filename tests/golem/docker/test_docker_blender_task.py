@@ -19,7 +19,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
-from test_docker_image import DockerTestCase
+from .test_docker_image import DockerTestCase
 
 
 @ci_skip

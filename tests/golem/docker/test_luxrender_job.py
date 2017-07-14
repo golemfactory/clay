@@ -5,7 +5,7 @@ from os import path
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import find_task_script
 from golem.tools.ci import ci_skip
-from test_docker_job import TestDockerJob
+from .test_docker_job import TestDockerJob
 
 
 @ci_skip
