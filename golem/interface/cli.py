@@ -257,7 +257,7 @@ class CLI(object):
     def _read_arguments(cls, interactive):
         if interactive:
             try:
-                line = eval(input('>> '))
+                line = input('>> ')
             except ValueError:
                 cls.working = False
             else:

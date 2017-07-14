@@ -528,7 +528,7 @@ class TestTasks(TempDirFixture):
         task_file_name = os.path.join(self.path, 'task_file.gt')
 
         with open(task_file_name, 'wb') as task_file:
-            task_file.write(jsonpickle.dumps(definition))
+            task_file.write(jsonpickle.dumps(definition).encode())
 
         return task_file_name
 
