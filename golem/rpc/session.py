@@ -30,7 +30,7 @@ class RPCAddress(object):
         self.host = host
         self.port = port
         self.address = '{}://{}:{}'.format(self.protocol,
-                                            self.host, self.port)
+                                           self.host, self.port)
 
     def __str__(self):
         return str(self.address)
@@ -164,7 +164,7 @@ class Client(object):
     def _on_error(self, err):
         if not self._session.is_closing():
             logger.error("RPC: call error: {}".format(err))
-            raise err
+            return err
 
 
 class Publisher(object):
@@ -176,9 +176,9 @@ class Publisher(object):
         if self.session.is_open():
             self.session.publish(str(event_alias), *args, **kwargs)
         elif not self.session.is_closing():
-            logger.warn("RPC: Cannot publish '{}', "
-                        "session is not yet established"
-                        .format(event_alias))
+            logger.warning("RPC: Cannot publish '{}', "
+                           "session is not yet established"
+                           .format(event_alias))
 
 
 def object_method_map(obj, method_map):
