@@ -46,7 +46,7 @@ def ropsten_faucet_donate(addr):
 
 
 class Faucet(object):
-    PRIVKEY = bytearray("{:32}".format("Golem Faucet"),'utf-8')
+    PRIVKEY = "{:32}".format("Golem Faucet").encode()
     PUBKEY = privtopub(PRIVKEY)
     ADDR = privtoaddr(PRIVKEY)
 

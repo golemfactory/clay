@@ -13,8 +13,8 @@ from golem.ethereum import paymentprocessor
 
 class TestPaymentProcessor(unittest.TestCase):
     def setUp(self):
-        privkey = ('!\xcd!^\xfe#\x82-#!Z]b\xb4\x8ce[\n\xfbN\x18V\x8c\x1dA'
-                   '\xea\x8c\xe8ZO\xc9\xdb')
+        privkey = (b'!\xcd!^\xfe#\x82-#!Z]b\xb4\x8ce[\n\xfbN\x18V\x8c\x1dA'
+                   b'\xea\x8c\xe8ZO\xc9\xdb')
         with mock.patch("golem.ethereum.paymentprocessor.PaymentProcessor.load_from_db"):  # noqa
             self.payment_processor = paymentprocessor.PaymentProcessor(
                 client=mock.MagicMock(),

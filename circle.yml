@@ -2,11 +2,11 @@ machine:
   node:
     version: 6.9.5
   python:
-    version: 3.6.0
+    version: 3.5.2
   services:
     - docker
   post:
-    - pyenv global 3.6.0
+    - pyenv global 3.5.2
 
 checkout:
   post:

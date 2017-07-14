@@ -28,7 +28,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         addr = urandom(20)
         ai = EthAccountInfo("DEF", 20400, "10.0.0.1", "node1", "info", addr)
         pi = PaymentInfo("xyz", "xxyyzz", 20, ai)
-        with self.assertLogs(logger, level='WARNING') as l:
+        with self.assertLogs(logger, level='DEBUG') as l:
             self.assertEqual(0, pd.get_payment_value(pi))
         self.assertTrue(any("not exist" in log for log in l.output))
         pd.add_payment(pi)

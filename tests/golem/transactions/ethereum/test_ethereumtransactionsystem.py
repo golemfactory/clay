@@ -7,7 +7,7 @@ from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem
 )
 
-PRIV_KEY = '\7' * 32
+PRIV_KEY = '07' * 32
 
 
 class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,

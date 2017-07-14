@@ -161,7 +161,8 @@ class PaymentProcessor(Service):
         # Here we keep the same simple estimation by number of atomic payments.
         # FIXME: This is different than estimation in sendout(). Create
         #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in list(self._inprogress.values()))
+        num_payments = len(self._awaiting) + sum(len(p) for p in
+                                                 self._inprogress.values())
         return num_payments * self.SINGLE_PAYMENT_ETH_COST
 
     def _eth_available(self):
@@ -255,11 +256,11 @@ class PaymentProcessor(Service):
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
                     payment.subtask,
-                    encode_hex(payment),
+                    encode_hex(payment.payee),
                     payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
-            tx_hex = decode_hex(tx_hash[2:])
+            tx_hex = decode_hex(tx_hash)
             if tx_hex != h:  # FIXME: Improve Client.
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
                                    .format(tx_hex, h))
@@ -297,7 +298,7 @@ class PaymentProcessor(Service):
                         dispatcher.send(
                             signal='golem.monitor',
                             event='payment',
-                            addr=encode_hex(p),
+                            addr=encode_hex(p.payee),
                             value=p.value
                         )
                         dispatcher.send(

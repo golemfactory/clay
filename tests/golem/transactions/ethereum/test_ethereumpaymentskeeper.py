@@ -61,9 +61,9 @@ class TestEthAccountInfo(TempDirFixture):
         c.key_id = k.get_key_id()
         self.assertNotEqual(a, c)
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
-        b.eth_account = addr2
+        b.eth_account = EthereumAddress(addr2)
         self.assertNotEqual(a, b)
-        a.eth_account = addr2
+        a.eth_account = EthereumAddress(addr2)
         self.assertEqual(a, b)
 
 

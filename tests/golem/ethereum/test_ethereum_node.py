@@ -42,7 +42,7 @@ class RopstenFaucetTest(unittest.TestCase):
         get.return_value = response
         assert ropsten_faucet_donate(addr) is True
         assert get.call_count == 1
-        assert encode_hex(addr) in get.call_args[0][0]
+        assert encode_hex(addr)[2:] in get.call_args[0][0]
 
 
 class EthereumNodeTest(TempDirFixture):

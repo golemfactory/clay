@@ -99,7 +99,7 @@ class BigIntegerField(CharField):
     """
 
     def db_value(self, value):
-        if type(value) not in (int, int):
+        if not isinstance(value, int):
             raise TypeError("Value {} is not an integer".format(value))
         return format(value, 'x')
 
