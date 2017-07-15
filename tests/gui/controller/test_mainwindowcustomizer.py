@@ -190,7 +190,7 @@ class TestMainWindowCustomizer(TestGui):
         f = Mock()
         f.read.return_value = '[{"key": "value"}]'
 
-        with patch('__builtin__.open') as mock_open:
+        with patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 
@@ -205,7 +205,7 @@ class TestMainWindowCustomizer(TestGui):
         f.read = _raise
         customizer._load_new_task_from_definition.called = False
 
-        with patch('__builtin__.open') as mock_open:
+        with patch('builtins.open', create=True) as mock_open:
             mock_open.return_value = f
             customizer._load_task(task_path)
 

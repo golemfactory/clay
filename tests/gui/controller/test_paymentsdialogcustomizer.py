@@ -77,10 +77,3 @@ class TestSmartTableItem(unittest.TestCase):
         i1 = SmartTableItem("123 ETH")
         i2 = SmartTableItem("")
         self.assertTrue(i2 < i1)
-        
-        i1 = None
-        self.assertTrue(i1 < i2)
-        
-        i1 = SmartTableItem("123 ETH")
-        i2 = None
-        self.assertTrue(i2 < i1)

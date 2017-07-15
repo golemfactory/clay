@@ -130,7 +130,8 @@ class MainWindowCustomizer(Customizer):
     def __update_payment(self, task_id, i):
         price = yield self.logic.get_cost_for_task_id(task_id)
         if price:
-            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price / denoms.ether))
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost)\
+                .setText("{0:.6f}".format(price / denoms.ether))
 
     def update_time(self):
         with self.lock:
@@ -412,6 +413,8 @@ class MainWindowCustomizer(Customizer):
             self.gui.ui.timeStarted.setText(time_string)
 
     def __set_memory_params(self, t):
-        mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
+        mem, index = resource_size_to_display(int(
+            t.definition.estimated_memory / 1024
+        ))
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))
 
