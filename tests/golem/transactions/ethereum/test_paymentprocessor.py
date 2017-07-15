@@ -443,9 +443,10 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.clock = Clock()
         self.pp._loopingCall.clock = self.clock
 
+    # FIXME: what is the purpose of this test?
     def test_initial_eth_balance(self):
         # ethereum.tester assigns this amount to predefined accounts.
-        assert self.pp.eth_balance() == 1000000000000000000000
+        assert self.pp.eth_balance() == 1000000000000000000000000
 
     def check_synchronized(self):
         assert not self.pp.synchronized()
