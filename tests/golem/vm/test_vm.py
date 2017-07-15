@@ -62,7 +62,7 @@ class TestPythonVM(TestCase):
 
     def test_no_output(self):
         vm = PythonVM()
-        code = "print 'hello hello'"
+        code = "print('hello hello')"
         result, err = vm.run_task(code, {})
         self.assertIsNone(result)
         self.assertIsNone(err)

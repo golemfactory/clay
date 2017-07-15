@@ -111,6 +111,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
+        ts.client.get_requesting_trust.return_value = ts.max_trust
         results = {"data": "", "result_type": 0}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
@@ -824,6 +825,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
@@ -865,6 +867,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)

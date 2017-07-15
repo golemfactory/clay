@@ -54,7 +54,7 @@ class DummyTask(Task):
         :param DummyTaskParameters params: task parameters
         1024 hashes on average
         """
-        task_id = SimpleAuth.generate_uuid().get_hex()
+        task_id = str(SimpleAuth.generate_uuid())
         owner_address = ''
         owner_port = 0
         owner_key_id = ''
@@ -143,7 +143,7 @@ class DummyTask(Task):
         :rtype: ComputeTaskDef"""
 
         # create new subtask_id
-        subtask_id = uuid.uuid4().get_hex()
+        subtask_id = str(uuid.uuid4())
 
         with self._lock:
             # check if a task has been assigned to this node

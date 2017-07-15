@@ -38,14 +38,14 @@ def report(msg):
 
 
 def override_ip_info(*_, **__):
-    from stun import OpenInternet
+    from golem.network.stun.pystun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
 
 
 def create_client(datadir):
     # executed in a subprocess
-    import stun
-    stun.get_ip_info = override_ip_info
+    from golem.network.stun import pystun
+    pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
     return Client(datadir=datadir,
@@ -165,13 +165,14 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     # Start the requesting node in a separate process
     reqdir = path.join(datadir, REQUESTING_NODE_KIND)
     requesting_proc = subprocess.Popen(
-        ["python", "-u", __file__, REQUESTING_NODE_KIND, reqdir, str(num_subtasks)],
+        [sys.executable, "-u", __file__, REQUESTING_NODE_KIND, reqdir,
+         str(num_subtasks)],
         bufsize=1,  # line buffered
         env=env,
         stdout=subprocess.PIPE)
 
     # Scan the requesting node's stdout for the address
-    address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
+    address_re = re.compile(b".+REQUESTOR.+Listening on (.+)")
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:

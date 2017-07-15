@@ -163,7 +163,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
                                                         10203, "key", "owner", "ABC")
 
         ctd.subtask_id = "aabbcc2"
-        ctd.src_code = "print 'Hello world'"
+        ctd.src_code = "print('Hello world')"
         ctd.timeout = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
