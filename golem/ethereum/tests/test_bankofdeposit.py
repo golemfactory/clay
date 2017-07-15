@@ -1,6 +1,6 @@
 import json
 import unittest
-from ethereum import tester
+from ethereum import tester, processblock
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
 from ethereum.utils import int_to_big_endian, denoms, zpad
@@ -9,6 +9,10 @@ try:
     from golem.ethereum.contracts import BankOfDeposit
 except ImportError:
     from BankOfDeposit import BankOfDeposit
+
+
+# FIXME: upgrade to pyethereum 2.x
+setattr(processblock, 'unicode', str)
 
 BANK_OF_DEPOSIT_ABI = json.loads(BankOfDeposit.ABI)
 eth = denoms.ether

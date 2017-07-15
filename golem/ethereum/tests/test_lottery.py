@@ -3,7 +3,7 @@ import unittest
 from collections import OrderedDict
 from os import urandom
 
-from ethereum import tester
+from ethereum import tester, processblock
 tester.serpent = True  # tester tries to load serpent module, prevent that.
 from rlp.utils import decode_hex, encode_hex
 from ethereum.utils import int_to_big_endian, denoms, sha3, zpad
@@ -13,6 +13,9 @@ try:
 except ImportError:
     from Lottery import Lottery as LotteryContract
 
+
+# FIXME: upgrade to pyethereum 2.x
+setattr(processblock, 'unicode', str)
 
 LOTTERY_CONTRACT_ABI = json.loads(LotteryContract.ABI)
 eth = denoms.ether

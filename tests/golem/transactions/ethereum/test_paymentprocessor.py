@@ -6,12 +6,11 @@ from os import urandom
 
 import mock
 import requests
-from ethereum import tester
+from ethereum import tester, processblock
 from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
-from ethereum.utils import denoms, privtoaddr
+from ethereum.utils import denoms, privtoaddr, encode_hex, decode_hex
 from mock import patch, Mock
-from rlp.utils import decode_hex, encode_hex
 from twisted.internet.task import Clock
 
 from golem.ethereum import Client
@@ -23,6 +22,9 @@ from golem.testutils import DatabaseFixture
 
 SYNC_TEST_INTERVAL = 0.01
 TEST_GNT_ABI = json.loads(TestGNT.ABI)
+
+# FIXME: upgrade to pyethereum 2.x
+setattr(processblock, 'unicode', str)
 
 
 def wait_for(condition, timeout, step=0.1):
@@ -72,7 +74,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         b = self.pp.eth_balance()
         assert b == expected_balance
         addr_hex = encode_hex(self.addr)
-        self.client.get_balance.assert_called_once_with('0x' + addr_hex)
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
     def test_gnt_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
@@ -91,7 +93,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         b = self.pp.eth_balance()
         assert b == expected_balance
         addr_hex = encode_hex(self.addr)
-        self.client.get_balance.assert_called_once_with('0x' + addr_hex)
+        self.client.get_balance.assert_called_once_with(addr_hex)
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         assert self.client.get_balance.call_count == 2
@@ -102,7 +104,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         addr_hex = encode_hex(self.addr)
-        self.client.get_balance.assert_called_once_with('0x' + addr_hex)
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance += random.randint(0, 2**127 - 1)
         self.client.get_balance.return_value = expected_balance
@@ -117,7 +119,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
         addr_hex = encode_hex(self.addr)
-        self.client.get_balance.assert_called_once_with('0x' + addr_hex)
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance -= random.randint(0, expected_balance)
         assert expected_balance >= 0
@@ -146,8 +148,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_balance.return_value = 0
         assert self.pp.add(p1) is False
         assert self.pp.add(p2) is False
-        self.client.get_balance.assert_called_once_with('0x' +
-                                                        encode_hex(self.addr))
+        addr_hex = encode_hex(self.addr)
+        self.client.get_balance.assert_called_once_with(addr_hex)
 
         assert p1.status is PaymentStatus.awaiting
         assert p2.status is PaymentStatus.awaiting
@@ -167,7 +169,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
         pp.get_ether_from_faucet()
         assert get.call_count == 1
-        assert encode_hex(self.addr) in get.call_args[0][0]
+        assert encode_hex(self.addr).decode('utf-8') in get.call_args[0][0]
 
     def test_gnt_faucet(self):
         self.client.call.return_value = '0x00'
@@ -269,7 +271,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
                         (65, False))
 
         for c in combinations:
-            print(("Subtest {}".format(c)))
+            print("Subtest {}".format(c))
             # Allow reseting the status.
             time.sleep(1.5 * PaymentProcessor.SYNC_CHECK_INTERVAL)
             self.client.get_peer_count.return_value = 0
@@ -400,24 +402,25 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         gnt_addr = encode_hex(gnt_evm_addr)
         self.state.mine()
         self.gnt = tester.ABIContract(self.state, TEST_GNT_ABI, gnt_addr)
-        PaymentProcessor.TESTGNT_ADDR = gnt_addr
+        PaymentProcessor.TESTGNT_ADDR = gnt_addr.decode('utf-8')
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
         self.client.get_peer_count.return_value = 0
         self.client.is_syncing.return_value = False
         self.client.get_transaction_count.side_effect = \
-            lambda addr: self.state.block.get_nonce(decode_hex(addr[2:]))
+            lambda a: self.state.block.get_nonce(a)
         self.client.get_balance.side_effect = \
-            lambda addr: self.state.block.get_balance(decode_hex(addr[2:]))
+            lambda a: self.state.block.get_balance(a)
 
         def call(_from, to, data, **kw):
             # pyethereum does not have direct support for non-mutating calls.
-            # The implemenation just copies the state and discards it after.
+            # The implementation just copies the state and discards it after.
             # Here we apply real transaction, but with gas price 0.
             # We assume the transaction does not modify the state, but nonce
             # will be bumped no matter what.
-            _from = decode_hex(_from[2:])
-            data = decode_hex(data[2:])
+            _from = decode_hex(_from)
+            to = decode_hex(to)
+            data = decode_hex(data)
             nonce = self.state.block.get_nonce(_from)
             value = kw.get('value', 0)
             tx = Transaction(nonce, 0, 100000, to, value, data)
@@ -442,7 +445,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
     def test_initial_eth_balance(self):
         # ethereum.tester assigns this amount to predefined accounts.
-        assert self.pp.eth_balance() == 1000000000000000000000000
+        assert self.pp.eth_balance() == 1000000000000000000000
 
     def check_synchronized(self):
         assert not self.pp.synchronized()
