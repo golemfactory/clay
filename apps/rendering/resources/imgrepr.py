@@ -1,9 +1,9 @@
+import os
 import abc
 import logging
-import os
 from copy import deepcopy
-
-import imageio
+import OpenEXR
+import Imath
 from PIL import Image
 
 logger = logging.getLogger("apps.rendering")
@@ -15,13 +15,11 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
-    def get_pixel(self, xxx_todo_changeme):
-        (i, j) = xxx_todo_changeme
+    def get_pixel(self, xy):
         return
 
     @abc.abstractmethod
-    def set_pixel(self, xxx_todo_changeme1, color):
-        (i, j) = xxx_todo_changeme1
+    def set_pixel(self, xy, color):
         return
 
     @abc.abstractmethod
@@ -49,14 +47,12 @@ class PILImgRepr(ImgRepr):
     def get_size(self):
         return self.img.size
 
-    def get_pixel(self, xxx_todo_changeme2):
-        (i, j) = xxx_todo_changeme2
-        return list(self.img.getpixel((i, j)))
+    def get_pixel(self, xy):
+        return list(self.img.getpixel(xy))
 
-    def set_pixel(self, xxx_todo_changeme3, color):
-        (i, j) = xxx_todo_changeme3
+    def set_pixel(self, xy, color):
         color = tuple(int(c) for c in color)
-        self.img.putpixel((i, j), color)
+        self.img.putpixel(xy, color)
 
     def copy(self):
         return deepcopy(self)
@@ -69,28 +65,31 @@ class EXRImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
         self.type = "EXR"
+        self.dw = None
+        self.pt = Imath.PixelType(Imath.PixelType.FLOAT)
+        self.rgb = None
         self.min = 0.0
         self.max = 1.0
         self.file_path = None
-        self.rgb = None
 
     def load_from_file(self, file_):
-        self.img = imageio.imread(file_, 'sgi-fi')
-        self.rgb = Image.fromarray(self.img, "RGB").split()
+        self.img = OpenEXR.InputFile(file_)
+        self.dw = self.img.header()['dataWindow']
+        self.rgb = [Image.frombytes("F", self.get_size(),
+                                    self.img.channel(c, self.pt))
+                    for c in "RGB"]
         self.file_path = file_
 
     def get_size(self):
-        return len(self.img[0]), len(self.img)
+        return self.dw.max.x - self.dw.min.x + 1, \
+               self.dw.max.y - self.dw.min.y + 1
 
-    def get_pixel(self, xxx_todo_changeme4):
-        (i, j) = xxx_todo_changeme4
-        pix = self.img[i][j]
-        return [pix[0], pix[1], pix[2]]
+    def get_pixel(self, xy):
+        return [c.getpixel(xy) for c in self.rgb]
 
-    def set_pixel(self, xxx_todo_changeme5, color):
-        (i, j) = xxx_todo_changeme5
-        for c in range(3):
-            self.img[i][j][c] = max(min(self.max, color[c]), self.min)
+    def set_pixel(self, xy, color):
+        for c in range(0, len(self.rgb)):
+            self.rgb[c].putpixel(xy, max(min(self.max, color[c]), self.min))
 
     def get_rgbf_extrema(self):
         extrema = [im.getextrema() for im in self.rgb]
@@ -106,7 +105,7 @@ class EXRImgRepr(ImgRepr):
             darkest = self.min
 
         if lightest == darkest:
-            lightest += 0.1
+            lightest = 0.1 + darkest
         scale = 255.0 / (lightest - darkest)
 
         def normalize_0_255(v):
@@ -122,6 +121,7 @@ class EXRImgRepr(ImgRepr):
     def copy(self):
         e = EXRImgRepr()
         e.load_from_file(self.file_path)
+        e.dw = deepcopy(self.dw)
         e.rgb = deepcopy(self.rgb)
         e.min = self.min
         e.max = self.max
@@ -154,6 +154,7 @@ def load_as_pil(file_):
      :return Image.Image | None: return PIL Image represantion or None 
      if there was an error
     """
+
     img = load_img(file_)
     if img:
         return img.to_pil()

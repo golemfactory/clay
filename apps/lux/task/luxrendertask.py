@@ -305,7 +305,7 @@ class LuxTask(renderingtask.RenderingTask):
 
     def query_extra_data_for_final_flm(self):
         files = [
-            os.path.basename(x) for x in list(self.collected_file_names.values())
+            os.path.basename(x) for x in self.collected_file_names.values()
         ]
         return self.__get_merge_ctd(files)
 

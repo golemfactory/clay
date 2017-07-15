@@ -60,6 +60,7 @@ class TestRendererCustomizer(TestGui):
     def test_load_task_definition(self):
         gui = self.gui.get_main_window()
         gui.ui = Mock()
+        gui.ui.outputFormatsComboBox.findText.return_value = 0
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
 

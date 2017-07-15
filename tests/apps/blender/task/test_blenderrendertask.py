@@ -1,10 +1,10 @@
-import numpy as np
+import OpenEXR
+import array
 import os
 import unittest
 from os import path
 from random import randrange, shuffle
 
-import imageio
 from PIL import Image
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
@@ -57,24 +57,11 @@ class TestBlenderFrameTask(TempDirFixture):
         dm = DirManager(self.path)
         self.bt.initialize(dm)
 
-    @staticmethod
-    def make_array(x, y, default=1.0):
-        #import array
-        #data = array.array('f', [1.0] * (x * y))
-        a = []
-        for i in range(y):
-            b = []
-            for j in range(x):
-                b.append([default, default, default])
-            a.append(b)
-        #return np.array([data[1:],data[1:], data[1:]], dtype=np.float32)
-        return np.array(a, dtype=np.float32)
-
     def test_init_preview(self):
         self.assertEqual(len(self.bt.preview_file_path),
-                          len(self.bt.frames))
+                         len(self.bt.frames))
         self.assertEqual(len(self.bt.preview_task_file_path),
-                          len(self.bt.frames))
+                         len(self.bt.frames))
 
     def test_computation_failed_or_finished(self):
         assert self.bt.total_tasks == 6
@@ -87,8 +74,8 @@ class TestBlenderFrameTask(TempDirFixture):
 
         self.bt.computation_failed(extra_data.ctd.subtask_id)
         self.bt.computation_finished(extra_data.ctd.subtask_id, [], 0)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id][
-                   'status'] == SubtaskStatus.failure
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.failure
 
         # Successful computation
 
@@ -99,12 +86,12 @@ class TestBlenderFrameTask(TempDirFixture):
             os.makedirs(file_dir)
 
         file1 = path.join(file_dir, 'result1')
-        img = Image.new("RGB", (self.bt.res_x, int(self.bt.res_y / 2)))
+        img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id][
-                   'status'] == SubtaskStatus.finished
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.finished
 
         extra_data = self.bt.query_extra_data(1000, 2, "FFF", "fff")
         assert extra_data.ctd is not None
@@ -114,8 +101,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
-        assert self.bt.subtasks_given[extra_data.ctd.subtask_id][
-                   'status'] == SubtaskStatus.finished
+        assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
+               SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
 
@@ -144,10 +131,12 @@ class TestBlenderFrameTask(TempDirFixture):
             y = randrange(1, 100)
             res_y += y
             file1 = self.temp_file_name('chunk{}.exr'.format(i))
-            imageio.imwrite(uri=file1,
-                            im=TestBlenderFrameTask.make_array(self.bt.res_x,
-                                                               y))
-            self.bt.frames_given["7"][i - 1] = file1
+            exr = OpenEXR.OutputFile(file1, OpenEXR.Header(self.bt.res_x, y))
+            data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
+            exr.writePixels({'R': data, 'G': data, 'B': data,
+                             'F': data, 'A': data})
+            exr.close()
+            self.bt.frames_given["7"][i-1] = file1
         self.bt._put_frame_together(7, 2)
 
 
@@ -255,7 +244,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertEqual(self.bt.main_scene_file,
-                          path.join(self.path, "example.blend"))
+                         path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
         ctd = extra_data.ctd
         assert ctd.extra_data['start_task'] == 1
@@ -295,8 +284,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 y = randrange(1, 100)
                 res_y += y
                 file1 = self.temp_file_name('chunk{}.exr'.format(i))
-                imageio.imwrite(uri=file1, im=TestBlenderFrameTask.make_array(
-                    self.bt.res_x, y))
+                exr = OpenEXR.OutputFile(file1,
+                                         OpenEXR.Header(self.bt.res_x, y))
+                data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
+                exr.writePixels({'R': data, 'G': data, 'B': data,
+                                 'F': data, 'A': data})
+                exr.close()
                 self.bt.collected_file_names[i] = file1
             self.bt.res_y = res_y
             self.bt._put_image_together()
@@ -321,8 +314,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 y = randrange(1, 100)
                 res_y += y
                 file1 = self.temp_file_name('chunk{}.exr'.format(i))
-                imageio.imwrite(uri=file1, im=TestBlenderFrameTask.make_array(
-                    self.bt.res_x, y))
+                exr = OpenEXR.OutputFile(file1,
+                                         OpenEXR.Header(self.bt.res_x, y))
+                data = array.array('f', [1.0] * (self.bt.res_x * y)).tostring()
+                exr.writePixels({'R': data, 'G': data, 'B': data,
+                                 'F': data, 'A': data})
+                exr.close()
                 self.bt.collected_file_names[i] = file1
             self.bt.res_y = res_y
             self.bt._put_image_together()
@@ -365,12 +362,17 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                                               {1: 0, 2: 99})
                                for f in [file1, file2, file3, file4]]
 
-        imageio.imsave(uri=file1,
-                       im=TestBlenderFrameTask.make_array(bt.res_x, 99),
-                       format='SGI-FI')
-        imageio.imsave(uri=file2,
-                       im=TestBlenderFrameTask.make_array(bt.res_x, 101),
-                       format='SGI-FI')
+        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(bt.res_x, 99))
+        data = array.array('f', [1.0] * (bt.res_x * 99)).tostring()
+        img1.writePixels({'R': data, 'G': data, 'B': data,
+                          'F': data, 'A': data})
+        img1.close()
+
+        img2 = OpenEXR.OutputFile(file2, OpenEXR.Header(bt.res_x, 101))
+        data = array.array('f', [1.0] * (bt.res_x * 101)).tostring()
+        img2.writePixels({'R': data, 'G': data, 'B': data,
+                          'F': data, 'A': data})
+        img2.close()
 
         bt._update_frame_preview(file1, 1, part=1)
         assert bt.preview_updaters[0].perfect_match_area_y == 99
@@ -385,9 +387,11 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt.preview_task_file_path = []
         bt.preview_task_file_path.append(file4)
 
-        imageio.imsave(uri=file1,
-                       im=TestBlenderFrameTask.make_array(bt.res_x, 99),
-                       format='SGI-FI')
+        img1 = OpenEXR.OutputFile(file1, OpenEXR.Header(bt.res_x, 99))
+        data = array.array('f', [1.0] * (bt.res_x * 99)).tostring()
+        img1.writePixels({'R': data, 'G': data, 'B': data,
+                          'F': data, 'A': data})
+        img1.close()
 
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = Image.open(file3)
@@ -398,7 +402,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
         assert len(preview) == 4
-        assert all(p is None or os.path.exists(p) for p in list(preview.values()))
+        assert all(p is None or os.path.exists(p) for p in preview.values())
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
         assert isinstance(preview, str)
@@ -422,6 +426,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         color = (0, 0, 255)
 
         # test the case in which a single subtask is a whole frame
+
         self.assertEqual(bt.frames, [1, 2])
         bt._mark_task_area(None, img_task, color, 0)
         for i in range(0, bt.res_x):
@@ -430,6 +435,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 self.assertTrue(pixel == color)
 
         # test the case with frames divided into multiple subtasks
+
         bt = self.build_bt(600, 200, 4, frames=[2, 3])
         subtask = {"start_task": 2, "end_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
@@ -482,8 +488,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         img = Image.new("RGB", (task.res_x, task.res_y))
         img.save(file_, "BMP")
         task.computation_finished(ed.ctd.subtask_id, [file_], 1)
-        assert task.subtasks_given[ed.ctd.subtask_id][
-                   'status'] == SubtaskStatus.failure
+        assert task.subtasks_given[ed.ctd.subtask_id]['status'] == \
+               SubtaskStatus.failure
 
     def test_update_preview(self):
         bt = self.build_bt(300, 200, 10)
@@ -498,7 +504,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
         assert len(preview) == 1
-        assert all(os.path.exists(p) for p in list(preview.values()))
+        assert all(os.path.exists(p) for p in preview.values())
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=True)
         assert os.path.exists(preview)
@@ -622,6 +628,7 @@ class TestHelpers(unittest.TestCase):
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
         task_definition.resolution = [1920, 1080]
+
         for k in range(1, 31):
             task_definition.options.use_frames = False
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
@@ -639,7 +646,7 @@ class TestHelpers(unittest.TestCase):
             i = (k - 1) % 15 + 1
             task_definition.options.frames = list(range(2))
             num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, frame_offsets[i] + 3, task_definition, 30, int((k - 1) / 15) + 1
+                1, frame_offsets[i] + 3, task_definition, 30, (k - 1) // 15 + 1
             )
             assert num == k
 
