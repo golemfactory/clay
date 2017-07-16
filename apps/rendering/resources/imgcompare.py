@@ -38,6 +38,7 @@ def calculate_mse(img1, img2, start1=(0, 0), start2=(0, 0), box=None):
             mse += (r1 - r2) * (r1 - r2) + \
                    (g1 - g2) * (g1 - g2) + \
                    (b1 - b2) * (b1 - b2)
+
     if res_x <= 0 or res_y <= 0:
         raise ValueError("Image or box resolution must be greater than 0")
     mse /= res_x * res_y * 3

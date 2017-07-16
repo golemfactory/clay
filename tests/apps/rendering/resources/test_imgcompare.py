@@ -150,11 +150,11 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase):
         assert calculate_mse(img1, img2, start1=(5, 5), box=(5, 5)) == 0
 
         img2 = get_pil_img_repr(img2_path, (10, 10), (253, 0, 0))
-        assert calculate_mse(img1, img2) == 1
+        assert int(calculate_mse(img1, img2)) == 1
 
         img2 = get_pil_img_repr(img2_path, (10, 10))
         img2.set_pixel((0, 0), (0, 0, 0))
-        assert calculate_mse(img1, img2) == 216
+        assert int(calculate_mse(img1, img2)) == 216
 
         assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
 
