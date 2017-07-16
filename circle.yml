@@ -20,9 +20,11 @@ dependencies:
     - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
     - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5
-    - wget http://golem.network/FreeImage.zip && unzip FreeImage.zip && cd FreeImage && make && sudo make install && make clean && cd .. && cd apps/rendering/resources/taskcollector && make && cd ../../../../..
+    - wget https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/FreeImage.zip
+    - unzip FreeImage.zip && cd FreeImage && make && sudo make install && make clean && cd ..
+    - cd apps/rendering/resources/taskcollector && make && cd ../../../../..
     - pip3 install six
-    - pip3 install https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels/OpenEXR-1.3.0-cp35-cp35m-linux_x86_64.whl
+    - pip3 install https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels/OpenEXR-1.3.0-cp35-cp35m-manylinux1_x86_64.whl
     - if [ ! -e /usr/local/bin/ipfs ]; then wget https://dist.ipfs.io/go-ipfs/v0.4.5/go-ipfs_v0.4.5_linux-amd64.tar.gz; tar xvfz go-ipfs_v0.4.5_linux-amd64.tar.gz; sudo mv go-ipfs/ipfs /usr/local/bin/ipfs; /usr/local/bin/ipfs init; fi
     - git clone https://github.com/mfranciszkiewicz/golem-hyperdrive --depth 1; cd golem-hyperdrive; npm install --save; cd -
     - /usr/local/bin/ipfs config --json Bootstrap "[]"
