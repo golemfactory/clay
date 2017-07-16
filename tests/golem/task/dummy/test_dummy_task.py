@@ -1,18 +1,15 @@
-from unittest import skip
-
-import runner
 import unittest
 
+from tests.golem.task.dummy import runner
 
-#FIXME: test times out
-@skip('TODO: Fix timeout')
+
 class TestDummyTask(unittest.TestCase):
     """Tests for the dummy task computation using the runner script"""
 
     def test_dummy_task_computation(self, *mocks):
         error_msg = runner.run_simulation(
             num_computing_nodes=2, num_subtasks=3, timeout=420)
-        self.assertIsNone(error_msg)
+        self.assertIn(error_msg, [None, "Node exited with return code 0"])
 
     def test_dummy_task_computation_timeout(self, *mocks):
         error_msg = runner.run_simulation(timeout=5)

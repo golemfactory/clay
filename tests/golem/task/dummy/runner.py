@@ -20,7 +20,7 @@ from twisted.internet import reactor
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.network.transport.tcpnetwork import SocketAddress
-from task import DummyTask, DummyTaskParameters
+from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -63,6 +63,8 @@ def run_requesting_node(datadir, num_subtasks=3):
     def shutdown():
         client and client.quit()
         logging.shutdown()
+        reactor.running and reactor.callFromThread(reactor.stop)
+
     atexit.register(shutdown)
 
     global node_kind
@@ -187,7 +189,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     for n in range(0, num_computing_nodes):
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
-            "python", "-u", __file__, COMPUTING_NODE_KIND, compdir, requestor_address]
+            sys.executable, "-u", __file__, COMPUTING_NODE_KIND,
+            compdir, requestor_address
+        ]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
             cmdline.append(str(node_failure_times[n]))
@@ -266,7 +270,7 @@ def dispatch(args):
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,
                                    timeout=120)
         if error_msg:
-            print(("Dummy task computation failed:", error_msg))
+            print("Dummy task computation failed:", error_msg)
             sys.exit(1)
 
 
