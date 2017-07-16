@@ -122,16 +122,17 @@ class Tasks:
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
-    @command(arguments=(file_name, task_type), 
-             help="Create a new task file")
-    def create(self, file_name, task_type):
+    @command(argument=file_name, help="Create a new task file")
+    def create(self, file_name):
+
+        # TODO: Add task_type as argument.
 
         file_path = "{}/{}".format(self.__get_save_dir(), file_name)
-        
+
         # error if file exists
-        # TODO: re-use apps.core.task.coretaskstate._check_output_file?
+        # TODO: Unify apps.core.task.coretaskstate._check_output_file()
         try:
-            file_exist = path.exists(file_path)
+            file_exist = os.path.exists(file_path)
             with open(file_path, 'a'):
                 pass
             if not file_exist:
@@ -149,12 +150,8 @@ class Tasks:
         # create new task definition
         task = TaskDesc()
 
-        # TODO: check if input params are valid
-        # if not task.definition.is_valid():
-        #     return CommandResult(error="Task state invalid: {}"
-        #                                .format(task_state))
-
         # save to file
+        # TODO: Unify gui.applicationlogic._save_task()
         path = u"{}".format(file_path)
         if not path.endswith(".gt"):
             if not path.endswith("."):
@@ -164,8 +161,7 @@ class Tasks:
             data = jsonpickle.dumps(task.definition)
             f.write(data)
 
-        return CommandResult("Task created in file: '{}'. "
-                             "Add main_program_file and output_file as minimal."
+        return CommandResult("Task created in file: '{}'."
                              .format(file_path))
 
     @command(arguments=(file_name, skip_test), help="Load a task from file")
