@@ -86,6 +86,10 @@ class DockerManager(DockerConfigManager):
 
     def check_environment(self):
 
+        if is_windows():
+            import pythoncom
+            pythoncom.CoInitialize()
+
         try:
             # We're checking the availability of "docker" command line utility
             # (other commands may result in an error if docker env variables
