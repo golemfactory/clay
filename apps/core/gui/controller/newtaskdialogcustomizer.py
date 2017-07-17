@@ -263,7 +263,8 @@ class NewTaskDialogCustomizer(Customizer):
 
         model = self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model()
 
-        common_prefix = os.path.commonprefix(definition.resources)
+        resource_list = list(definition.resources)
+        common_prefix = os.path.commonprefix(resource_list)
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.setExpanded(model.index(common_prefix), True)
 
         for res in definition.resources:
