@@ -24,7 +24,7 @@ class Triangle(object):
             else:
                 line = l
             if not line.isspace():
-                v0, v1, v2, r, e = SEARCH(line).groups()
+                v0, v1, v2, r, e = SEARCH(line.decode('utf-8')).groups()
                 self.vertexs = list(map(Vector3f, [v0, v1, v2]))
                 self.edge0 = Vector3f(v1) - Vector3f(v0)
                 self.edge3 = Vector3f(v2) - Vector3f(v0)

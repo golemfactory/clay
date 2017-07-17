@@ -85,7 +85,7 @@ class PeerKeeper(object):
             return
 
         for i, bucket in enumerate(self.buckets):
-            if bucket.start <= int(key, 16) < bucket.end:
+            if bucket.start <= int(key.hex(), 16) < bucket.end:
                 self.buckets[i].last_updated = time.time()
                 break
 

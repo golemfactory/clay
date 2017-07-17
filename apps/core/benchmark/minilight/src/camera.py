@@ -23,7 +23,7 @@ class Camera(object):
             else:
                 line = l
             if not line.isspace():
-                p, d, a = SEARCH(line).groups()
+                p, d, a = SEARCH(line.decode('utf-8')).groups()
                 self.view_position = Vector3f(p)
                 self.view_direction = Vector3f(d).unitize()
                 if self.view_direction.is_zero():

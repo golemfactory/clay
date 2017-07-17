@@ -69,7 +69,7 @@ def makePerfTest(filename, cfg_filename, num_cores):
     model_file_pathname = filename
     image_file_pathname = model_file_pathname + '.ppm'
     model_file = open(model_file_pathname, 'r')
-    if model_file.next().strip() != MODEL_FORMAT_ID:
+    if model_file.readline().strip() != MODEL_FORMAT_ID:
         raise 'invalid model file'
     for line in model_file:
         if not line.isspace():

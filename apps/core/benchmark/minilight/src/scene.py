@@ -22,7 +22,7 @@ class Scene(object):
             else:
                 line = l
             if not line.isspace():
-                s, g = SEARCH(line).groups()
+                s, g = SEARCH(line.decode('utf-8')).groups()
                 self.sky_emission = Vector3f(s).clamped(ZERO, MAX)
                 self.ground_reflection = Vector3f(g).clamped(ZERO, ONE)
                 self.triangles = []
