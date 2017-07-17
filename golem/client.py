@@ -10,13 +10,14 @@ from threading import Lock
 
 from pydispatch import dispatcher
 from twisted.internet import task
-from twisted.internet.defer import inlineCallbacks, returnValue, gatherResults,\
-    Deferred
+from twisted.internet.defer import (inlineCallbacks, returnValue, gatherResults,
+                                    Deferred)
 
-from golem.appconfig import AppConfig, PUBLISH_BALANCE_INTERVAL, \
-    PUBLISH_TASKS_INTERVAL
+from golem.appconfig import (AppConfig, PUBLISH_BALANCE_INTERVAL,
+                             PUBLISH_TASKS_INTERVAL)
 from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
 from golem.config.presets import HardwarePresetsMixin
+from golem.core.async import AsyncRequest, async_run
 from golem.core.common import to_unicode
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -41,21 +42,20 @@ from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatePublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
-from golem.core.async import AsyncRequest, async_run
 from golem.resource.dirmanager import DirManager, DirectoryType
 # noqa
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc.mapping.aliases import Task, Network, Environment, UI, Payments
 from golem.rpc.session import Publisher
-from golem.task.taskbase import resource_types
 from golem.task import taskpreset
+from golem.task.taskbase import resource_types
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
-from ethereum.utils import encode_hex
+from golem.utils import encode_hex
 
 log = logging.getLogger("golem.client")
 
@@ -152,7 +152,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key).decode('utf-8')
+                datadir, encode_hex(self.keys_auth._private_key)
             )
         else:
             self.transaction_system = None

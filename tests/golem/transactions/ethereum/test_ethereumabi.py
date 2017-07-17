@@ -1,7 +1,8 @@
 import unittest
 
-from eth_utils import encode_hex
 from ethereum.abi import encode_abi
+
+from golem.utils import encode_hex
 
 
 class TestEthereumAbi(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestEthereumAbi(unittest.TestCase):
                "0000000000000000007890000000000000000000000000000000000000000" \
                "00000000000000000000000d48656c6c6f2c20776f726c642100000000000" \
                "000000000000000000000000000"
-        self.assertEqual(enc, '0x' + data)
+        self.assertEqual(enc, data)
 
     def testAddress(self):
         addr = '407d73d8a49eeb85d32cf465507dd71d507100c1'

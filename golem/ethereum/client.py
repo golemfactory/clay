@@ -184,7 +184,9 @@ class Client(object):
         if address is None:
             return address
         elif isinstance(address, str):
-            if address.startswith('0x'):
+            address = address.encode()
+        if isinstance(address, bytes):
+            if address.startswith(b'0x'):
                 return address
-            return '0x' + zpad(address, 32)
-        raise TypeError('Address must be a string')
+            return b'0x' + zpad(address, 32)
+        raise TypeError('Address must be a string or a byte string')

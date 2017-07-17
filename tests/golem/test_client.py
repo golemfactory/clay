@@ -3,7 +3,6 @@ import time
 import unittest
 import uuid
 
-from eth_utils import decode_hex, encode_hex
 from mock import Mock, MagicMock, patch
 from twisted.internet.defer import Deferred
 
@@ -11,9 +10,9 @@ from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timestamp_to_datetime
+from golem.core.deferred import sync_wait
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.simpleserializer import DictSerializer
-from golem.core.deferred import sync_wait
 from golem.model import Payment, PaymentStatus, ExpectedIncome
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -22,12 +21,12 @@ from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
 from golem.task.taskbase import Task, TaskHeader, resource_types
 from golem.task.taskcomputer import TaskComputer
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 from golem.tools.testwithdatabase import TestWithDatabase
+from golem.utils import decode_hex, encode_hex
 
 
 def mock_async_run(req, success, error):

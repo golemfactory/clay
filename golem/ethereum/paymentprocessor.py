@@ -5,12 +5,12 @@ import json
 
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
-from ethereum.utils import denoms, encode_hex, decode_hex
+from ethereum.utils import denoms
 from pydispatch import dispatcher
 
-from golem.model import db
-from golem.model import Payment, PaymentStatus
+from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
+from golem.utils import decode_hex, encode_hex
 from .contracts import TestGNT
 from .node import ropsten_faucet_donate
 
@@ -127,7 +127,7 @@ class PaymentProcessor(Service):
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             address = utils.zpad(address, 32)
-        return encode_hex(address)
+        return '0x' + encode_hex(address)
 
     def balance_known(self):
         return self.__gnt_balance is not None and self.__eth_balance is not None
@@ -144,9 +144,9 @@ class PaymentProcessor(Service):
         if self.__gnt_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
-            r = self.__client.call(_from=encode_hex(addr),
-                                   to=encode_hex(self.TESTGNT_ADDR),
-                                   data=encode_hex(data),
+            r = self.__client.call(_from='0x' + encode_hex(addr),
+                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
+                                   data='0x' + encode_hex(data),
                                    block='pending')
             if r is None or r == '0x':
                 self.__gnt_balance = 0
@@ -178,7 +178,7 @@ class PaymentProcessor(Service):
             for sent_payment in Payment\
                     .select()\
                     .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = decode_hex(sent_payment.details['tx'][2:])
+                transaction_hash = decode_hex(sent_payment.details['tx'])
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
@@ -193,7 +193,7 @@ class PaymentProcessor(Service):
 
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
             payment.subtask,
-            encode_hex(payment.payee).decode('utf-8'),
+            encode_hex(payment.payee),
             payment.value / denoms.ether))
 
         # Check if enough ETH available to pay the gas cost.
@@ -231,8 +231,8 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
-        nonce = self.__client.get_transaction_count(encode_hex(addr))
+        addr = keys.privtoaddr(self.__privkey)
+        nonce = self.__client.get_transaction_count('0x' + encode_hex(addr))
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
         gas = 21000 + 800 + len(p) * 30000
@@ -241,7 +241,7 @@ class PaymentProcessor(Service):
         tx.sign(self.__privkey)
         h = tx.hash
         log.info("Batch payments: {:.6}, value: {:.6f}"
-                 .format(encode_hex(h).decode('utf-8'), value / denoms.ether))
+                 .format(encode_hex(h), value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -273,7 +273,7 @@ class PaymentProcessor(Service):
     def monitor_progress(self):
         confirmed = []
         for h, payments in list(self._inprogress.items()):
-            hstr = encode_hex(h).decode('utf-8')
+            hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
@@ -324,8 +324,8 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = keys.privtoaddr(self.__privkey)
-            nonce = self.__client.get_transaction_count(encode_hex(addr))
+            addr = encode_hex(keys.privtoaddr(self.__privkey))
+            nonce = self.__client.get_transaction_count('0x' + addr)
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)

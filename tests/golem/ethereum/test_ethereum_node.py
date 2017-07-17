@@ -2,11 +2,11 @@ import unittest
 from os import urandom
 
 import requests
-from eth_utils import encode_hex
 from mock import patch, Mock
 
 from golem.ethereum.node import NodeProcess, ropsten_faucet_donate
 from golem.testutils import TempDirFixture
+from golem.utils import encode_hex
 
 
 class MockPopen(Mock):

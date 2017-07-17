@@ -1,15 +1,15 @@
 import logging
-
 from time import sleep
+
 from ethereum.utils import privtoaddr
 
 from golem.ethereum import Client
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.report import report_calls, Component
-from golem.transactions.transactionsystem import TransactionSystem
-from golem.transactions.ethereum.ethereumincomeskeeper\
+from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
-from ethereum.utils import encode_hex
+from golem.transactions.transactionsystem import TransactionSystem
+from golem.utils import encode_hex
 
 log = logging.getLogger('golem.pay')
 
@@ -30,7 +30,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if not isinstance(node_priv_key, str)\
                 or len(node_priv_key) != 64:
             raise ValueError("Invalid private key: {}".format(node_priv_key))
-        self.__node_address = privtoaddr(node_priv_key)
+        self.__node_address = b'0x' + privtoaddr(node_priv_key)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         self.__eth_node = self.incomes_keeper.eth_node = Client(datadir)
@@ -58,7 +58,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
-        return encode_hex(self.__node_address).decode('utf-8')
+        return '0x' + encode_hex(self.__node_address)
 
     def get_balance(self):
         if not self.__proc.balance_known():

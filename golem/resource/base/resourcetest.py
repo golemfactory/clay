@@ -1,7 +1,6 @@
 import os
 import uuid
 
-from ethereum.utils import encode_hex
 from mock import Mock
 
 from golem.client import Client
@@ -14,6 +13,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasksession import TaskSession
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.utils import encode_hex
 
 
 class AddGetResources(TempDirFixture, LogTestCase):

@@ -1,18 +1,19 @@
 import abc
 import logging
 import os
-from hashlib import sha256
 from _pysha3 import sha3_256 as _sha3_256
+from abc import abstractmethod
+from hashlib import sha256
 
 import bitcoin
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from Crypto.Hash import SHA256
-from Crypto.Cipher import PKCS1_OAEP
-from abc import abstractmethod
 from devp2p.crypto import ECCx, mk_privkey
-from ethereum.utils import encode_hex, decode_hex
+
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
+from golem.utils import encode_hex, decode_hex
 from .simpleenv import get_local_datadir
 from .simplehash import SimpleHash
 

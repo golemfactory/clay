@@ -1,11 +1,11 @@
 import logging
 
-from eth_utils import encode_hex
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 
 from golem.ethereum import Client
 from golem.testutils import TempDirFixture
+from golem.utils import encode_hex
 
 
 class EthereumClientTest(TempDirFixture):

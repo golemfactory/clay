@@ -83,6 +83,8 @@ class PeerKeeper(object):
         """
         if not key:
             return
+        if isinstance(key, str):
+            key = key.encode()
 
         for i, bucket in enumerate(self.buckets):
             if bucket.start <= int(key.hex(), 16) < bucket.end:

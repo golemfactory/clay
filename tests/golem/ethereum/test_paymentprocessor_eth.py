@@ -1,14 +1,14 @@
-import mock
 import os
 import random
 import unittest
 import uuid
 
-from eth_utils import encode_hex
+import mock
 
 from golem import model
 from golem import testutils
 from golem.ethereum import paymentprocessor
+from golem.utils import encode_hex
 
 
 class TestPaymentProcessor(unittest.TestCase):
@@ -23,12 +23,12 @@ class TestPaymentProcessor(unittest.TestCase):
 
     def test_eth_address(self):
         # Test with zpad
-        expected = (b'000000000000000000000000e1ad9e38fc4bf20e5d4847e00e8a0517'
-                    b'0c87913f')
+        expected = ('0x000000000000000000000000e1ad9e38fc4bf20e5'
+                    'd4847e00e8a05170c87913f')
         self.assertEqual(expected, self.payment_processor.eth_address())
 
         # Test without zpad
-        expected = b'e1ad9e38fc4bf20e5d4847e00e8a05170c87913f'
+        expected = '0xe1ad9e38fc4bf20e5d4847e00e8a05170c87913f'
         result = self.payment_processor.eth_address(zpad=False)
         self.assertEqual(expected, result)
 
@@ -51,7 +51,7 @@ class TestPaymentProcessorWithDB(testutils.DatabaseFixture):
 
         subtask_id = str(uuid.uuid4())
         value = random.randint(1, 2**5)
-        payee = encode_hex(str(os.urandom(32)))
+        payee = encode_hex(os.urandom(32))
         payment = model.Payment.create(
             subtask=subtask_id,
             payee=payee,

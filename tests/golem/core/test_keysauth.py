@@ -3,12 +3,13 @@ from os import path
 from random import random, randint
 
 from devp2p.crypto import ECCx
-from eth_utils import encode_hex, decode_hex
 
-from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, get_random, get_random_float, sha2, sha3
+from golem.core.keysauth import KeysAuth, EllipticalKeysAuth, RSAKeysAuth, \
+    get_random, get_random_float, sha2, sha3
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.transport.message import MessageWantToComputeTask
 from golem.tools.testwithappconfig import TestWithKeysAuth
+from golem.utils import encode_hex, decode_hex
 
 
 class KeysAuthTest(TestWithKeysAuth):
@@ -18,8 +19,8 @@ class KeysAuthTest(TestWithKeysAuth):
         test_str = "qaz123WSX"
         expected_sha2 = int("0x47b151cede6e6a05140af0da56cb889c40adaf4fddd9f1"
                             "7435cdeb5381be0a62", 16)
-        expected_sha3 = "0xa99ad773ebfc9712d00a9b9760b879a3aa05054a182d0ba41" \
-                        "36c5252f5a85203"
+        expected_sha3 = ("a99ad773ebfc9712d00a9b9760b879a3aa05054a182d0ba41"
+                         "36c5252f5a85203")
         self.assertEqual(sha2(test_str), expected_sha2)
         self.assertEqual(encode_hex(sha3(test_str)), expected_sha3)
 

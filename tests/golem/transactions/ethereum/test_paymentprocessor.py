@@ -2,6 +2,7 @@ import json
 import random
 import time
 import unittest
+import rlp
 from os import urandom
 
 import mock
@@ -9,7 +10,7 @@ import requests
 from ethereum import tester, processblock
 from ethereum.processblock import apply_transaction
 from ethereum.transactions import Transaction
-from ethereum.utils import denoms, privtoaddr, encode_hex, decode_hex
+from ethereum.utils import denoms, privtoaddr
 from mock import patch, Mock
 from twisted.internet.task import Clock
 
@@ -19,6 +20,7 @@ from golem.ethereum.node import Faucet
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.model import Payment, PaymentStatus
 from golem.testutils import DatabaseFixture
+from golem.utils import encode_hex, decode_hex
 
 SYNC_TEST_INTERVAL = 0.01
 TEST_GNT_ABI = json.loads(TestGNT.ABI)
@@ -59,7 +61,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.addr = privtoaddr(self.privkey)
         self.client = mock.MagicMock(spec=Client)
         self.client.get_balance.return_value = 0
-        self.client.send.side_effect = lambda tx: encode_hex(tx.hash)
+        self.client.send.side_effect = lambda tx: '0x' + encode_hex(tx.hash)
         self.nonce = random.randint(0, 9999)
         self.client.get_transaction_count.return_value = self.nonce
         # FIXME: PaymentProcessor should be started and stopped!
@@ -73,7 +75,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert b == expected_balance
         b = self.pp.eth_balance()
         assert b == expected_balance
-        addr_hex = encode_hex(self.addr)
+        addr_hex = '0x' + encode_hex(self.addr)
         self.client.get_balance.assert_called_once_with(addr_hex)
 
     def test_gnt_balance(self):
@@ -92,7 +94,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_balance.return_value = expected_balance
         b = self.pp.eth_balance()
         assert b == expected_balance
-        addr_hex = encode_hex(self.addr)
+        addr_hex = '0x' + encode_hex(self.addr)
         self.client.get_balance.assert_called_once_with(addr_hex)
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
@@ -103,7 +105,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_balance.return_value = expected_balance
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
-        addr_hex = encode_hex(self.addr)
+        addr_hex = '0x' + encode_hex(self.addr)
         self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance += random.randint(0, 2**127 - 1)
@@ -118,7 +120,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_balance.return_value = expected_balance
         b = self.pp.eth_balance(refresh=True)
         assert b == expected_balance
-        addr_hex = encode_hex(self.addr)
+        addr_hex = '0x' + encode_hex(self.addr)
         self.client.get_balance.assert_called_once_with(addr_hex)
 
         expected_balance -= random.randint(0, expected_balance)
@@ -148,7 +150,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.client.get_balance.return_value = 0
         assert self.pp.add(p1) is False
         assert self.pp.add(p2) is False
-        addr_hex = encode_hex(self.addr)
+        addr_hex = '0x' + encode_hex(self.addr)
         self.client.get_balance.assert_called_once_with(addr_hex)
 
         assert p1.status is PaymentStatus.awaiting
@@ -169,7 +171,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         pp = PaymentProcessor(self.client, self.privkey, faucet=True)
         pp.get_ether_from_faucet()
         assert get.call_count == 1
-        assert encode_hex(self.addr).decode('utf-8') in get.call_args[0][0]
+        assert encode_hex(self.addr) in get.call_args[0][0]
 
     def test_gnt_faucet(self):
         self.client.call.return_value = '0x00'
@@ -400,17 +402,18 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
         self.state = tester.state()
         gnt_evm_addr = self.state.evm(decode_hex(TestGNT.INIT_HEX))
         gnt_addr = encode_hex(gnt_evm_addr)
+        print('gnt_addr %s', gnt_addr)
         self.state.mine()
         self.gnt = tester.ABIContract(self.state, TEST_GNT_ABI, gnt_addr)
-        PaymentProcessor.TESTGNT_ADDR = gnt_addr.decode('utf-8')
+        PaymentProcessor.TESTGNT_ADDR = decode_hex(gnt_addr)
         self.privkey = tester.k1
         self.client = mock.MagicMock(spec=Client)
         self.client.get_peer_count.return_value = 0
         self.client.is_syncing.return_value = False
         self.client.get_transaction_count.side_effect = \
-            lambda a: self.state.block.get_nonce(a)
+            lambda a: self.state.block.get_nonce(decode_hex(a))
         self.client.get_balance.side_effect = \
-            lambda a: self.state.block.get_balance(a)
+            lambda a: self.state.block.get_balance(decode_hex(a))
 
         def call(_from, to, data, **kw):
             # pyethereum does not have direct support for non-mutating calls.
@@ -418,9 +421,8 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
             # Here we apply real transaction, but with gas price 0.
             # We assume the transaction does not modify the state, but nonce
             # will be bumped no matter what.
-            _from = decode_hex(_from)
-            to = decode_hex(to)
-            data = decode_hex(data)
+            _from = decode_hex(_from[2:])
+            data = decode_hex(data[2:])
             nonce = self.state.block.get_nonce(_from)
             value = kw.get('value', 0)
             tx = Transaction(nonce, 0, 100000, to, value, data)
@@ -430,12 +432,12 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
             assert block == 'pending'
             success, output = apply_transaction(self.state.block, tx)
             assert success
-            return encode_hex(output)
+            return '0x' + encode_hex(output)
 
         def send(tx):
             success, _ = apply_transaction(self.state.block, tx)
             assert success  # What happens in real RPC eth_send?
-            return encode_hex(tx.hash)
+            return '0x' + encode_hex(tx.hash)
 
         self.client.call.side_effect = call
         self.client.send.side_effect = send
@@ -553,7 +555,7 @@ class PaymentProcessorFunctionalTest(DatabaseFixture):
 
         payee = urandom(20)
         b = self.pp.gnt_balance()
-        value = b // 5 - 100
+        value = int(b / 5 - 100)
         for i in range(5):
             subtask_id = 's{}'.format(i)
             p = Payment.create(subtask=subtask_id, payee=payee, value=value)

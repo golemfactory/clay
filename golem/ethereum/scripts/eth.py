@@ -3,20 +3,20 @@
 import json
 import logging
 import os
-from os import path
 import sys
+from os import path
 
 import click
 import gevent
 from ethereum import keys, abi
 from ethereum.transactions import Transaction
-from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad, \
-    encode_hex, decode_hex
+from ethereum.utils import normalize_address, denoms, int_to_big_endian, zpad
 
 from golem.core.simpleenv import get_local_datadir
 from golem.ethereum import Client
 from golem.ethereum.contracts import BankOfDeposit, TestGNT
 from golem.ethereum.node import Faucet
+from golem.utils import encode_hex, decode_hex
 
 
 class SimpleAccount:

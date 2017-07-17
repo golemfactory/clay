@@ -12,16 +12,15 @@ from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
-from eth_utils import encode_hex, decode_hex
-from ethereum.utils import privtoaddr
+from devp2p.crypto import privtopub
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
+from ethereum.utils import privtoaddr
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
-from devp2p.crypto import privtopub
 from golem.environments.utils import find_program
-from golem.utils import find_free_net_port
+from golem.utils import encode_hex, decode_hex, find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
 

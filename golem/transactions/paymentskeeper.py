@@ -1,10 +1,9 @@
 import logging
 from datetime import datetime
 
-from eth_utils import encode_hex
-
 from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment
+from golem.utils import encode_hex
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,5 @@
 from copy import deepcopy
 
-from eth_utils import encode_hex
 from peewee import IntegrityError
 from os import urandom
 
@@ -13,6 +12,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, logger, \
     PaymentsKeeper
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import encode_hex
 
 
 class TestPaymentsDatabase(LogTestCase, TestWithDatabase):

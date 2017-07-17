@@ -1,16 +1,15 @@
 import datetime
-
-from eth_utils import encode_hex, decode_hex
-from ethereum.utils import denoms
-import jsonpickle as json
 import logging
 from enum import Enum
 from os import path
 
+import jsonpickle as json
+from ethereum.utils import denoms
 from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     DateTimeField, TextField, CompositeKey, BooleanField,
                     SmallIntegerField)
 
+from golem.utils import encode_hex, decode_hex
 
 log = logging.getLogger('golem.db')
 
