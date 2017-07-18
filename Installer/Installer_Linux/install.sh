@@ -161,7 +161,7 @@ function install_dependencies()
     declare -a packages=( openssl pkg-config libjpeg-dev libopenexr-dev \
                libssl-dev autoconf libgmp-dev libtool qt5-default libffi-dev \
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
-               ethereum docker-engine )
+               ethereum docker-ce )
     echo -e "\e[91m"
     for package in ${packages[*]}; do
         sudo apt-get install -q -y ${package} >/dev/null
