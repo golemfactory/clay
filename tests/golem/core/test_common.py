@@ -67,7 +67,7 @@ class TestTimestamps(unittest.TestCase):
         ts = get_timestamp_utc()
         assert ts
         dt = timestamp_to_datetime(ts)
-        assert datetime_to_timestamp(dt) == ts
+        assert round(datetime_to_timestamp(dt), 5) == round(ts, 5)
 
     def test_deadline_to_timeout(self):
         timeout = 10**10

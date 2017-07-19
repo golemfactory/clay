@@ -1,6 +1,8 @@
+import os
 import unittest
-from os import path
+
 from golem.core.simplehash import SimpleHash
+from golem.testutils import TempDirFixture
 
 
 class TestSimpleHash(unittest.TestCase):
@@ -40,7 +42,15 @@ class TestSimpleHash(unittest.TestCase):
         self.assertEqual(b641, SimpleHash.hash_base64(ex1))
         self.assertEqual(b642, SimpleHash.hash_base64(ex2))
 
-    def test_fileHash(self):
-        file_ = path.join(path.dirname(__file__), 'file.txt')
+
+# git newline conversion affected the old version of test,
+# where a file was included in the repo
+class TestFileHash(TempDirFixture):
+
+    def test(self):
+        file_path = os.path.join(self.path, 'file.txt')
+        with open(file_path, 'wb') as out:
+            out.write(b'The quick brown fox jumps over the lazy dog\n')
+
         b64 = b"vkF3aLXDxcHZvLLnwRkZbddrVXA=\n"
-        self.assertEqual(b64, SimpleHash.hash_file_base64(file_))
+        self.assertEqual(b64, SimpleHash.hash_file_base64(file_path))
