@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from threading import Thread
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
-    DEVNULL
+    DEVNULL, to_unicode
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.config_manager import DockerConfigManager
 from golem.report import report_calls, Component
@@ -288,16 +288,17 @@ class DockerManager(DockerConfigManager):
             command += args
         if machine_name:
             command += [machine_name]
+
         logger.debug('docker_machine_command: %s', command)
+        params = dict(shell=shell, stdin=DEVNULL)
 
         if check_output:
-            return subprocess.check_output(command, shell=shell,
-                                           stderr=subprocess.PIPE,
-                                           stdin=DEVNULL)
-        return subprocess.check_call(command, shell=shell,
-                                     stdout=DEVNULL,
-                                     stderr=DEVNULL,
-                                     stdin=DEVNULL)
+            output = subprocess.check_output(command, stderr=subprocess.PIPE,
+                                             **params)
+            return to_unicode(output)
+
+        return subprocess.check_call(command, stdout=DEVNULL, stderr=DEVNULL,
+                                     **params)
 
     @property
     def config_dir(self):

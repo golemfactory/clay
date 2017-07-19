@@ -9,10 +9,7 @@ from os import path
 
 import docker.errors
 import requests
-import txaio
 from mock import patch, mock
-
-txaio.use_twisted()
 
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
@@ -113,11 +110,11 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertTrue(job._get_host_script_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
-        with open(path, 'r') as f:
+        with open(path, 'rb') as f:
             lines = f.readlines()
         dict = {}
         for l in lines:
-            key, val = l.split("=")
+            key, val = l.decode('utf-8').split("=")
             dict[key.strip()] = eval(val.strip())
         return dict
 
@@ -140,8 +137,8 @@ class TestBaseDockerJob(TestDockerJob):
         with self._create_test_job(script=task_script) as job:
             script_path = job._get_host_script_path()
             self.assertTrue(path.isfile(script_path))
-            with open(script_path, 'r') as f:
-                script = f.read()
+            with open(script_path, 'rb') as f:
+                script = f.read().decode('utf-8')
             self.assertEqual(task_script, script)
 
     def test_script_saved(self):
@@ -321,8 +318,8 @@ class TestBaseDockerJob(TestDockerJob):
             job.wait()
             out_file = path.join(self.output_dir, "stdout.log")
             job.dump_logs(stdout_file=out_file)
-        with open(out_file, "r") as out:
-            line = out.readline().strip()
+        with open(out_file, "rb") as out:
+            line = out.readline().decode('utf-8').strip()
         self.assertEqual(line, DockerJob.WORK_DIR)
 
     def test_copy_job(self):
