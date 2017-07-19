@@ -183,6 +183,8 @@ def config_logging(suffix='', datadir=None):
     logging.config.dictConfig(LOGGING)
     logging.captureWarnings(True)
 
+    import txaio
+    txaio.use_twisted()
     from ethereum import slogging
     slogging.configure(':debug')
     from twisted.python import log

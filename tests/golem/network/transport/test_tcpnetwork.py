@@ -1,26 +1,25 @@
 import logging
-import math
 import os
 import struct
 from unittest import TestCase
 
-import txaio
 from mock import MagicMock
 
 from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
 from golem.network.transport import message
-from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
-                                                EncryptFileProducer, DecryptFileConsumer,
-                                                EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
+from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
+                                                FileProducer, FileConsumer,
+                                                EncryptFileProducer,
+                                                DecryptFileConsumer,
+                                                EncryptDataProducer,
+                                                DecryptDataConsumer,
+                                                BasicProtocol,
                                                 logger, SocketAddress)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
-
-
-txaio.use_twisted()
 
 
 class TestDataProducerAndConsumer(TestWithKeysAuth):
