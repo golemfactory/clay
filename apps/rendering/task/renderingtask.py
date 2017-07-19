@@ -35,11 +35,13 @@ class RenderingTask(CoreTask):
     @classmethod
     def _get_task_collector_path(cls):
         if is_windows():
-            task_collector_name = "taskcollector.exe"
+            build_path = os.path.join("x64", "Release", "taskcollector.exe")
         else:
-            task_collector_name = "taskcollector"
-        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
-                                             "taskcollector", "Release", task_collector_name))
+            build_path = os.path.join("Release", "taskcollector")
+
+        return os.path.normpath(os.path.join(get_golem_path(), "apps",
+                                             "rendering", "resources",
+                                             "taskcollector", build_path))
 
     ################
     # Task methods #

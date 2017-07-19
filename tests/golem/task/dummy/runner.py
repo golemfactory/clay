@@ -34,7 +34,7 @@ node_kind = ""
 
 
 def report(msg):
-    print((format_msg(node_kind, os.getpid(), msg)))
+    print(format_msg(node_kind, os.getpid(), msg))
 
 
 def override_ip_info(*_, **__):
@@ -57,13 +57,19 @@ def create_client(datadir):
                   estimated_blender_performance=1000.0)
 
 
+def cleanup():
+    logging.shutdown()
+    import gc
+    gc.collect()
+
+
 def run_requesting_node(datadir, num_subtasks=3):
     client = None
 
     def shutdown():
         client and client.quit()
-        logging.shutdown()
         reactor.running and reactor.callFromThread(reactor.stop)
+        cleanup()
 
     atexit.register(shutdown)
 
@@ -103,7 +109,9 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     def shutdown():
         client and client.quit()
-        logging.shutdown()
+        reactor.running and reactor.callFromThread(reactor.stop)
+        cleanup()
+
     atexit.register(shutdown)
 
     global node_kind
@@ -174,10 +182,11 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         stdout=subprocess.PIPE)
 
     # Scan the requesting node's stdout for the address
-    address_re = re.compile(b".+REQUESTOR.+Listening on (.+)")
+    address_re = re.compile(".+REQUESTOR.+Listening on (.+)")
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:
+            line = line.decode('utf-8')
             print(line)
             m = address_re.match(line)
             if m:
@@ -214,6 +223,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
+                line = line.decode('utf-8')
                 print(line)
             if line == task_finished_status:
                 task_finished = True

@@ -146,7 +146,7 @@ class SocketAddress(object):
                 addr_str, port_str = string.split(':')
             port = int(port_str)
         except ValueError:
-            raise AddressValueError('Invalid address: port missing or invalid')
+            raise AddressValueError('Invalid address "{}"'.format(string))
 
         return SocketAddress(addr_str, port)
 

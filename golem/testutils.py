@@ -51,8 +51,11 @@ class TempDirFixture(unittest.TestCase):
         try:
             self.__remove_files()
         except OSError:
+            # Tie up loose ends.
+            import gc
+            gc.collect()
             # On windows there's sometimes a problem with syncing all threads.
-            # Try again after 3 secons
+            # Try again after 3 seconds
             sleep(3)
             self.__remove_files()
 
