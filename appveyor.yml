@@ -44,6 +44,9 @@ cache:
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
   - C:\ProgramData\chocolatey -> appveyor.yml
 
+init:
+  - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
+
 install:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
 
@@ -116,5 +119,6 @@ after_test:
   - codecov
 
 on_finish:
+  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
   - ps: Stop-Process -Id $IPFSProcess.Id
   - ps: Stop-Process -Id $HyperdriveProcess.Id
