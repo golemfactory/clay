@@ -127,7 +127,8 @@ class Tasks:
 
         # TODO: Add task_type as argument.
 
-        file_path = "{}/{}".format(self.__get_save_dir(), file_name)
+        # transform user input to full path
+        file_path = self.__get_save_path(file_name)
 
         # error if file exists
         # TODO: Unify apps.core.task.coretaskstate._check_output_file()
@@ -152,11 +153,6 @@ class Tasks:
 
         # save to file
         # TODO: Unify gui.applicationlogic._save_task()
-        path = u"{}".format(file_path)
-        if not path.endswith(".gt"):
-            if not path.endswith("."):
-                file_path += "."
-            file_path += "gt"
         with open(file_path, "wb") as f:
             data = jsonpickle.dumps(task.definition)
             f.write(data)
@@ -164,14 +160,47 @@ class Tasks:
         return CommandResult("Task created in file: '{}'."
                              .format(file_path))
 
-    @command(arguments=(file_name, skip_test), help="Load a task from file")
-    def load(self, file_name, skip_test):
+    @command(argument=file_name, help="Test a task from file")
+    def test(self, file_name):
+
+        file_path = self.__get_save_path(file_name)
 
         try:
-            definition = self.__read_from_file(file_name)
+            definition = self.__read_from_file(file_path)
         except Exception as exc:
             return CommandResult(error="Error reading task from file '{}': {}"
                                        .format(file_name, exc))
+
+        if hasattr(definition, 'resources'):
+            definition.resources = {os.path.normpath(res)
+                                    for res in definition.resources}
+
+        datadir = sync_wait(Tasks.client.get_datadir())
+
+        # TODO: unify GUI and CLI logic
+
+        rendering_task_state = TaskDesc()
+        rendering_task_state.definition = definition
+        task_builder = Tasks.__get_task_builder(rendering_task_state, datadir)
+
+        test_result = Tasks.__test_task(task_builder, datadir)
+        if test_result is not True:
+            return CommandResult(error="Test failed: {}"
+                                       .format(test_result))
+
+        return CommandResult("Test success: '{}'."
+                             .format(test_result))
+
+    @command(arguments=(file_name, skip_test), help="Load a task from file")
+    def load(self, file_name, skip_test):
+
+        file_path = Tasks.__get_save_path(file_name)
+
+        try:
+            definition = self.__read_from_file(file_path)
+        except Exception as exc:
+            return CommandResult(error="Error reading task from file '{}': {}"
+                                       .format(file_path, exc))
 
         if hasattr(definition, 'resources'):
             definition.resources = {os.path.normpath(res)
@@ -184,29 +213,14 @@ class Tasks:
         rendering_task_state.definition = definition
         rendering_task_state.task_state.status = TaskStatus.starting
 
-        if not Tasks.application_logic:
-            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client,
-                                                                  datadir)
-
-        task_builder = Tasks.application_logic.get_builder(rendering_task_state)
+        task_builder = Tasks.__get_task_builder(rendering_task_state, datadir)
         task = Task.build_task(task_builder)
         rendering_task_state.task_state.outputs = task.get_output_names()
         rendering_task_state.task_state.total_subtasks = task.get_total_tasks()
         task.header.task_id = str(uuid.uuid4())
 
         if not skip_test:
-
-            test_task = Task.build_task(task_builder)
-            test_task.header.task_id = str(uuid.uuid4())
-            queue = Queue()
-
-            TaskTester(
-                test_task, datadir,
-                success_callback=lambda *a, **kw: queue.put(True),
-                error_callback=lambda *a, **kw: queue.put(a)
-            ).run()
-
-            test_result = queue.get()
+            test_result = self.__test_task(task_builder, datadir)
             if test_result is not True:
                 return CommandResult(error="Test failed: {}"
                                            .format(test_result))
@@ -274,7 +288,6 @@ class Tasks:
                 print(template_str, file=dest)
         else:
             print(template_str)
-    
 
     @staticmethod
     def __get_save_dir():
@@ -282,6 +295,48 @@ class Tasks:
         if not os.path.exists(save_dir):
             os.mkdir(save_dir)
         return save_dir
+
+    @staticmethod
+    def __get_save_path(file_name):
+        name = u"{}".format(file_name)
+        if name.startswith("/"):
+            file_path = file_name
+        else:
+            file_path = "{}/{}".format(Tasks.__get_save_dir(), file_name)
+
+        # TODO: Unify gui.applicationlogic._save_task()
+        path = u"{}".format(file_path)
+        if not path.endswith(".gt"):
+            if not path.endswith("."):
+                file_path += "."
+            file_path += "gt"
+
+        return file_path
+
+    @staticmethod
+    def __get_task_builder(task_state, datadir):
+        if not Tasks.application_logic:
+            Tasks.application_logic = CommandAppLogic.instantiate(Tasks.client,
+                                                                  datadir)
+        task_builder = Tasks.application_logic.get_builder(task_state)
+
+        return task_builder
+
+    @staticmethod
+    def __test_task(task_builder, datadir):
+
+        test_task = Task.build_task(task_builder)
+        test_task.header.task_id = str(uuid.uuid4())
+        queue = Queue()
+
+        TaskTester(
+            test_task, datadir,
+            success_callback=lambda *a, **kw: queue.put(True),
+            error_callback=lambda *a, **kw: queue.put(a)
+        ).run()
+
+        test_result = queue.get()
+        return test_result
 
 
     @staticmethod
