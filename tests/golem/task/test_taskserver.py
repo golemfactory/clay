@@ -805,10 +805,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         self.assertEqual(0, len(kwargs['elems_set']))
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
-    @patch("golem.task.taskmanager.get_external_address")
     @patch("golem.task.taskserver.Trust")
-    def test_results(self, trust, mock_addr, dump_mock):
-        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
+    def test_results(self, trust, dump_mock):
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
@@ -845,10 +843,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
-    @patch("golem.task.taskmanager.get_external_address")
     @patch("golem.task.taskserver.Trust")
-    def test_results_no_payment_addr(self, trust, mock_addr, dump_mock):
-        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
+    def test_results_no_payment_addr(self, *_):
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
