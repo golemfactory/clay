@@ -23,7 +23,5 @@ class LuxRenderEnvironment(DockerEnvironment):
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "LuxRender (www.luxrender.net)"
-        self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)
-
-    def get_performance(self, cfg_desc):
-        return cfg_desc.estimated_lux_performance
+        self.main_program_file = find_task_script(self.APP_DIR,
+                                                  self.SCRIPT_NAME)

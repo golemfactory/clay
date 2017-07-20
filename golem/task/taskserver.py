@@ -114,11 +114,12 @@ class TaskServer(PendingConnectionsServer):
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
-                performance = env.get_performance(self.config_desc)
+                performance = env.get_performance()
             else:
                 performance = 0.0
             if self.should_accept_requestor(theader.task_owner_key_id):
-                self.task_manager.add_comp_task_request(theader, self.config_desc.min_price)
+                min_price = self.config_desc.min_price
+                self.task_manager.add_comp_task_request(theader, min_price)
                 args = {
                     'node_name': self.config_desc.node_name,
                     'key_id': theader.task_owner_key_id,
@@ -129,7 +130,11 @@ class TaskServer(PendingConnectionsServer):
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
                 }
-                self._add_pending_request(TASK_CONN_TYPES['task_request'], theader.task_owner, theader.task_owner_port, theader.task_owner_key_id, args)
+                self._add_pending_request(TASK_CONN_TYPES['task_request'],
+                                          theader.task_owner,
+                                          theader.task_owner_port,
+                                          theader.task_owner_key_id,
+                                          args)
 
                 return theader.task_id
         except Exception as err:

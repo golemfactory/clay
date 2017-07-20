@@ -869,7 +869,7 @@ class Client(HardwarePresetsMixin):
             u'id': unicode(env.get_id()),
             u'supported': env.supported(),
             u'accepted': env.is_accepted(),
-            u'performance': env.get_performance(self.config_desc),
+            u'performance': env.get_performance(),
             u'description': unicode(env.short_description)
         } for env in envs]
 

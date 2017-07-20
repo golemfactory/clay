@@ -3,6 +3,7 @@ from os import path
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.docker.environment import DockerEnvironment
+from golem.model import Performance
 from golem.resource.dirmanager import find_task_script
 
 
@@ -24,10 +25,5 @@ class BlenderEnvironment(DockerEnvironment):
         DockerEnvironment.__init__(self, [image])
 
         self.short_description = "Blender (www.blender.org)"
-        self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)
-
-    def get_performance(self, cfg_desc):
-        return cfg_desc.estimated_blender_performance
-
-
-
+        self.main_program_file = find_task_script(self.APP_DIR,
+                                                  self.SCRIPT_NAME)

@@ -147,7 +147,8 @@ class Payment(BaseModel):
     """ Represents payments that nodes on this machine make to other nodes
     """
     subtask = CharField(primary_key=True)
-    status = EnumField(enum_type=PaymentStatus, index=True, default=PaymentStatus.awaiting)
+    status = EnumField(enum_type=PaymentStatus, index=True,
+                       default=PaymentStatus.awaiting)
     payee = RawCharField()
     value = BigIntegerField()
     details = JsonField()

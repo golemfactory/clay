@@ -1,6 +1,8 @@
 import sys
 from os import path
 
+from golem.model import Performance
+
 
 class Environment(object):
     @classmethod
@@ -13,10 +15,12 @@ class Environment(object):
     def __init__(self):
         self.software = []  # list of software that should be installed
         self.caps = []  # list of hardware requirements
-        self.short_description = "Default environment for generic tasks without any additional requirements."
+        self.short_description = "Default environment for generic tasks " \
+                                 "without any additional requirements."
         self.long_description = ""
         self.accept_tasks = False
-        self.allow_custom_main_program_file = False  # Check if tasks can define the source code
+        # Check if tasks can define the source code
+        self.allow_custom_main_program_file = False
         self.main_program_file = None
 
     def check_software(self):
@@ -24,7 +28,8 @@ class Environment(object):
         :return bool:
         """
         if not self.allow_custom_main_program_file:
-            return self.main_program_file and path.isfile(self.main_program_file)
+            return self.main_program_file and path.isfile(
+                self.main_program_file)
         return True
 
     def check_caps(self):
@@ -44,12 +49,18 @@ class Environment(object):
         :return bool:
         """
         return self.accept_tasks
-    
-    def get_performance(self, cfg_desc):
-        """ Return performance index associated with the environment
+
+    @classmethod
+    def get_performance(cls):
+        """ Return performance index associated with the environment. Return
+        0.0 if performance is unknown
         :return float:
         """
-        return cfg_desc.estimated_performance
+        try:
+            perf = Performance.get(Performance.environment_id == cls.get_id())
+        except Performance.DoesNotExist:
+            return 0.0
+        return perf.value
 
     def description(self):
         """ Return long description of this environment
@@ -71,12 +82,6 @@ class Environment(object):
         if self.long_description:
             desc += "Additional informations:\n" + self.long_description
         return desc
-
-    def is_windows(self):
-        return sys.platform == 'win32'
-
-    def is_linux(self):
-        return sys.platform.startswith('linux')
 
     def get_source_code(self):
         if self.main_program_file and path.isfile(self.main_program_file):

@@ -7,7 +7,7 @@ from golem.testutils import DatabaseFixture, PEP8MixIn, TempDirFixture
 
 
 class TestDatabase(TempDirFixture, PEP8MixIn):
-    PEP8_FILES = ["golem.model.py"]
+    PEP8_FILES = ["golem/model.py"]
 
     def test_init(self):
         db = m.Database(self.path)
