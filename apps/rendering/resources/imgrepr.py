@@ -47,19 +47,17 @@ class PILImgRepr(ImgRepr):
         self.img = self.img.convert('RGB')
         self.img.name = os.path.basename(file_)
 
-    def load_from_pil_object(self,pil_img, name=None):
+    def load_from_pil_object(self,pil_img, name="noname.png"):
         import PIL
         if not isinstance(pil_img, PIL.Image.Image):
             raise TypeError("img must be an instance of PIL.Image.Image")
 
-        self.img =pil_img
+        self.img = pil_img
         self.img = self.img.convert('RGB')
         self.img.name=name
 
-
     def get_name(self):
         return self.img.name
-
 
     def get_size(self):
         return self.img.size
@@ -100,6 +98,7 @@ class EXRImgRepr(ImgRepr):
                                     self.img.channel(c, self.pt))
                     for c in "RGB"]
         self.file_path = file_
+        self.name = os.path.basename(file_)
 
     def get_size(self):
         return self.dw.max.x - self.dw.min.x + 1, \

@@ -288,7 +288,7 @@ class LuxTask(renderingtask.RenderingTask):
             haltspp=self.haltspp,
             writeinterval=write_interval,
             crop=self.random_crop_window_for_verification,
-            output_format="png")
+            output_format=self.output_format) #GG todo  "png")
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
         # self._temp_save("refscenejob.txt", scene_src)

@@ -170,9 +170,14 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         flm = find_file_with_ext(dirname, [".flm"])
         png = find_file_with_ext(dirname, [".png"])
+        exr = find_file_with_ext(dirname, [".exr"])
 
         assert path.isfile(flm)
-        assert path.isfile(png)
+
+        if task.output_format == "exr":
+            path.isfile(exr)
+        else:
+            assert path.isfile(png)
 
         ##
         # self.assertFalse(path.isfile(task._LuxTask__get_test_flm()) )
@@ -189,22 +194,41 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         new_flm_file =  self._change_file_location(test_file,
                                                    path.join(new_file_dir, "newflmfile.flm"))
 
-        new_png_file = self._change_file_location(png,
-                                                   path.join(new_file_dir, "newpngfile.png"))
+
+        if task.output_format == "exr":
+            new_file = self._change_file_location(exr,
+                                               path.join(new_file_dir, "newexrfile.exr"))
+        else:
+            new_file = self._change_file_location(png,
+                                               path.join(new_file_dir, "newpngfile.png"))
 
 
-        return new_flm_file, new_png_file
+
+        return new_flm_file, new_file
 
 
-
-    def test_luxrender_real_task(self):
+    def test_luxrender_real_task_png(self):
         task = self._test_task()
-        task.res_y = 25
-        task.res_x = 25
-        task.haltspp = 100
+        task.output_format = "png"
+        task.res_y = 100
+        task.res_x = 100
+        task.haltspp = 50
         task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
-        ctd = task.query_extra_data(10000).ctd
 
+        self._test_luxrender_real_task(task)
+
+    def test_luxrender_real_task_exr(self):
+        task = self._test_task()
+        task.output_format = "exr"
+        task.res_y = 100
+        task.res_x = 100
+        task.haltspp = 50
+        task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+
+        self._test_luxrender_real_task(task)
+
+    def _test_luxrender_real_task(self, task):
+        ctd = task.query_extra_data(10000).ctd
         ## act
         computer = LocalComputer(
             task,
@@ -217,13 +241,13 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         computer.run()
         computer.tt.join()
 
-        new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
+        new_flm_file, new_preview_file = self._extract_results(computer, task, ctd.subtask_id)
 
         task.create_reference_data_for_task_validation()
 
         ## assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
+        task.computation_finished(ctd.subtask_id, [new_flm_file, new_preview_file],
                                   result_type=result_types["files"])
 
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
@@ -233,7 +257,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ## assert bad results - should fail
         bad_flm_file = path.join(path.dirname(new_flm_file),"badfile.flm")
         ctd = task.query_extra_data(10000).ctd
-        task.computation_finished(ctd.subtask_id, [bad_flm_file, new_png_file],
+        task.computation_finished(ctd.subtask_id, [bad_flm_file, new_preview_file],
                                   result_type=result_types["files"])
 
         self.assertFalse(task.verify_subtask(ctd.subtask_id))

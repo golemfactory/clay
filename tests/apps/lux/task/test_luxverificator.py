@@ -26,7 +26,6 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         lrv._check_files("SUBTASK2", {}, ["not existing"], Mock())
         assert lrv.get_verification_state("SUBTASK2") == SubtaskVerificationState.WRONG_ANSWER
 
-
     @patch("apps.lux.task.verificator.LocalComputer")
     def test_merge_flm_files_failure(self, mock_lc):
         mock_lc.return_value.tt = None
