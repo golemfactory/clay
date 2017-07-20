@@ -59,6 +59,7 @@ class Database:
             ReceivedPayment,
             Stats,
             TaskPreset,
+            Performance,
         ]
         version = Database._get_user_version()
         if version != Database.SCHEMA_VERSION:
@@ -331,6 +332,11 @@ class HardwarePreset(BaseModel):
         database = db
 
 
+##############
+# APP MODELS #
+##############
+
+
 class TaskPreset(BaseModel):
     name = CharField(null=False)
     task_type = CharField(null=False, index=True)
@@ -339,3 +345,12 @@ class TaskPreset(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_type', 'name')
+
+
+class Performance(BaseModel):
+    """ Keeps information about benchmark performance """
+    environment_id = CharField(null=False, index=True, unique=True)
+    value = FloatField(default=0.0)
+
+    class Meta:
+        database = db
