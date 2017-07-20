@@ -142,8 +142,9 @@ class OptNode(Node):
         addresses = []
         for arg in value:
             try:
-                addresses.append(SocketAddress.parse(arg))
-            except AddressValueError as e:
+                node_id, sock_addr = arg.split('@', 1)
+                addresses.append([SocketAddress.parse(sock_addr), node_id])
+            except (AddressValueError, ValueError) as e:
                 raise click.BadParameter(
                     "Invalid peer address specified: {}".format(e))
         return addresses

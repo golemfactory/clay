@@ -26,6 +26,8 @@ from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.tools.assertlogs import LogTestCase
 
+from golem.network.transport.message import init_messages
+init_messages()
 
 class TestTaskSession(LogTestCase, testutils.TempDirFixture,
                       testutils.PEP8MixIn):
@@ -141,6 +143,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
+        n.prv_addresses = []
         wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)

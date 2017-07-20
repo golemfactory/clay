@@ -13,6 +13,8 @@ from golemapp import start, OptNode
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
+        self.exampleNodeID = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3dd60d8\
+954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3714060e8"
         self.args = ['--nogui', '--datadir', self.path]
 
     def tearDown(self):
@@ -90,8 +92,7 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node, *_):
         mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
-
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--peer', addr1],
                                      catch_exceptions=False)
@@ -102,9 +103,8 @@ class TestNode(TestWithDatabase):
     @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
-        addr2 = '10.30.10.214:3333'
-
+        addr1 = self.exampleNodeID + '@10.30.10.216:40111'
+        addr2 = self.exampleNodeID + '@10.30.10.214:3333'
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', addr2]
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -114,7 +114,7 @@ class TestNode(TestWithDatabase):
 
     @patch('golemapp.OptNode')
     def test_bad_peer(self, *_):
-        addr1 = '10.30.10.216:40111'
+        addr1 = self.exampleNodeID + "@10.30.10.216:40111"
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', 'bla']
         return_value = runner.invoke(start, args, catch_exceptions=False)
@@ -127,9 +127,9 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         return_value = runner.invoke(
             start, self.args + [
-                '--peer', '10.30.10.216:40111',
-                '--peer', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                '--peer', '[::ffff:0:0:0]:96'
+                '--peer', self.exampleNodeID + '@10.30.10.216:40111',
+                '--peer', self.exampleNodeID + '@[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+                '--peer', self.exampleNodeID + '@[::ffff:0:0:0]:96'
             ], catch_exceptions=False
         )
         self.assertEqual(return_value.exit_code, 0)

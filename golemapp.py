@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 import sys
+
+from golem.network.transport.message import init_messages
+init_messages()
+
 import click
 from multiprocessing import freeze_support
 import logging
@@ -28,7 +32,7 @@ from golem.node import OptNode
 @click.option('--rpc-address', '-r', multiple=False, callback=OptNode.parse_rpc_address,
               help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
-              help="Connect with given peer: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
+              help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or <node_id>@<ipv6_addr>:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
 @click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
@@ -81,8 +85,11 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version, 
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
+        node = OptNode(node_address=node_address, **config)
+        node.connect_with_peers(peer)
+        node.initialize()
 
-        node = OptNode(peers=peer, node_address=node_address, **config)
+        node.add_tasks(task)
         node.run(use_rpc=True)
 
 
@@ -92,10 +99,8 @@ def delete_reactor():
 
 
 def install_reactor():
-    from golem.core.common import is_windows
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install()
     from twisted.internet import reactor
     return reactor
 
