@@ -152,5 +152,5 @@ if __name__ == "__main__":
     import random
 
     id__ = ps.register_self()
-    print(("Registered id {}".format(id__)))
+    print("Registered id {}".format(id__))
     time.sleep(5.0 + 10.0 * random.random())

@@ -35,7 +35,7 @@ def register_task_types(logic):
 
 
 def start_error(err):
-    print(("Startup error: {}".format(err)))
+    print("Startup error: {}".format(err))
 
 
 def start_gui(address):

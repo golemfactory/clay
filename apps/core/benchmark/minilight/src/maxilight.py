@@ -82,8 +82,11 @@ if __name__ == '__main__':
             expectedTime = totalSamples / avgSpeed
 
             print("\nSummary:")
-            print(("    Rendering scene with {} rays took {} seconds".format(numSamples, duration)))
-            print(("    giving an average speed of {} rays/s".format(avgSpeed)))
-            print(("    estimated time for the whole scene is {} seconds".format(expectedTime)))
+            print("    Rendering scene with {} rays took {} seconds"
+                  .format(numSamples, duration))
+            print("    giving an average speed of {} rays/s"
+                  .format(avgSpeed))
+            print("    estimated time for the whole scene is {} seconds"
+                  .format(expectedTime))
             
     main()
