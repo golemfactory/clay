@@ -69,10 +69,8 @@ def start_client(start_ranking, datadir=None,
     install_unhandled_error_logger()
 
     if not reactor:
-        from golem.core.common import is_windows
-        if is_windows():
-            from twisted.internet import iocpreactor
-            iocpreactor.install()
+        from twisted.internet import asyncioreactor
+        asyncioreactor.install()
         from twisted.internet import reactor
 
     process_monitor = None
