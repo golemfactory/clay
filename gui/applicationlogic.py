@@ -646,7 +646,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
     def get_task_presets(self, task_type):
         presets = yield self.client.get_task_presets(task_type)
         unpacked_presets = {}
-        for preset_name, preset_value in list(presets.items()):
+        for preset_name, preset_value in presets.items():
             try:
                 unpacked_presets[preset_name] = jsonpickle.loads(preset_value)
             except Exception:

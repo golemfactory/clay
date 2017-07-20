@@ -908,7 +908,7 @@ class TaskServer(PendingConnectionsServer):
     def __remove_old_sessions(self):
         cur_time = time.time()
         sessions_to_remove = []
-        for subtask_id, session in list(self.task_sessions.items()):
+        for subtask_id, session in self.task_sessions.items():
             if cur_time - session.last_message_time > self.last_message_time_threshold:
                 sessions_to_remove.append(subtask_id)
         for subtask_id in sessions_to_remove:

@@ -159,7 +159,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     def disconnect(self):
         peers = dict(self.peers)
-        for peer in list(peers.values()):
+        for peer in peers.values():
             peer.dropped()
 
     def pause(self):
@@ -230,7 +230,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     def get_diagnostics(self, output_format):
         peer_data = []
-        for peer in list(self.peers.values()):
+        for peer in self.peers.values():
             peer = PeerSessionInfo(peer).get_simplified_repr()
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
@@ -585,7 +585,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param dict peers_to_find: list of nodes that should be find with
                                    their closest neighbours list
         """
-        for node_key_id, neighbours in list(peers_to_find.items()):
+        for node_key_id, neighbours in peers_to_find.items():
             for neighbour in neighbours:
                 peer = self.peers.get(neighbour.key)
                 if peer:
@@ -658,7 +658,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         resource_peers_info = []
         resource_peers = dict(self.resource_peers)
-        for key_id, additional_items in list(resource_peers.items()):
+        for key_id, additional_items in resource_peers.items():
             [addr, port, node_name, node_info] = additional_items
             resource_peers_info.append({
                 'node_name': node_name,

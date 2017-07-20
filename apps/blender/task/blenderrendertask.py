@@ -549,7 +549,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
-            for file in list(self.collected_file_names.values()):
+            for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
@@ -585,7 +585,7 @@ class BlenderRenderTask(FrameRenderingTask):
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
             collector = CustomCollector(paste=True, width=self.res_x, height=self.res_y)
-            for file in list(collected.values()):
+            for file in collected.values():
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:

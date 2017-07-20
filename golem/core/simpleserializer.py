@@ -18,7 +18,7 @@ class DictCoder(object):
     cls_key = 'py/object'
     deep_serialization = True
 
-    builtin_types = [i for i in list(types.__dict__.values()) if isinstance(i, type)]
+    builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
     @classmethod
     def to_dict(cls, obj, typed=True):

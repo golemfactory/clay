@@ -1,5 +1,3 @@
-
-
 import logging
 import math
 import pickle
@@ -99,7 +97,7 @@ class CompTaskKeeper(object):
 
     def add_request(self, theader, price):
         logger.debug('CT.add_request()')
-        if not type(price) in (int, int):
+        if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
                 " Should be int or long".format(type(price))
@@ -145,7 +143,7 @@ class CompTaskKeeper(object):
     @handle_key_error
     def get_value(self, task_id, computing_time):
         price = self.active_tasks[task_id].price
-        if not type(price) in (int, int):
+        if not isinstance(price, int):
             raise TypeError(
                 "Incorrect 'price' type: {}."
                 " Should be int or long".format(type(price))
@@ -290,7 +288,7 @@ class TaskHeaderKeeper(object):
             return
         self.min_price = config_desc.min_price
         self.supported_tasks = []
-        for id_, th in list(self.task_headers.items()):
+        for id_, th in self.task_headers.items():
             if self.is_supported(th.__dict__):
                 self.supported_tasks.append(id_)
 

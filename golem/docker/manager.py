@@ -183,15 +183,15 @@ class DockerManager(DockerConfigManager):
 
         if diff:
 
-            for constraint, value in list(diff.items()):
+            for constraint, value in diff.items():
                 min_val = self.min_constraints.get(constraint)
                 diff[constraint] = max(min_val, value)
 
-            for constraint, value in list(constraints.items()):
+            for constraint, value in constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
-            for constraint, value in list(self.min_constraints.items()):
+            for constraint, value in self.min_constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
@@ -376,7 +376,7 @@ class DockerManager(DockerConfigManager):
     def _diff_constraints(old_values, new_values):
         result = dict()
 
-        for key in list(CONSTRAINT_KEYS.values()):
+        for key in CONSTRAINT_KEYS.values():
             old_value = old_values.get(key)
             new_value = new_values.get(key)
 
@@ -582,7 +582,7 @@ class VirtualBoxHypervisor(Hypervisor):
         result = {}
         try:
             vm = self._machine_from_arg(name)
-            for constraint_key in list(CONSTRAINT_KEYS.values()):
+            for constraint_key in CONSTRAINT_KEYS.values():
                 result[constraint_key] = getattr(vm, constraint_key)
         except Exception as e:
             logger.error("VirtualBox: error reading VM's constraints: {}"
@@ -594,7 +594,7 @@ class VirtualBoxHypervisor(Hypervisor):
         if not vm:
             return
 
-        for name, value in list(params.items()):
+        for name, value in params.items():
             try:
                 setattr(vm, name, value)
             except Exception as e:

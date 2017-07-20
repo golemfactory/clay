@@ -164,7 +164,7 @@ class Settings(object):
 
     settings_message = '\n'.join([
         '\t{:32} {:>32}\t{}'.format(k, s.type, s.help)
-        for k, s in list(settings.items())
+        for k, s in settings.items()
     ])
     invalid_key_message =\
 """Invalid key
@@ -196,19 +196,19 @@ class Settings(object):
 
         if basic:
             result.update({
-                k: v for k, v in list(config.items())
+                k: v for k, v in config.items()
                 if k in Settings.basic_settings
             })
 
         if requestor:
             result.update({
-                k: v for k, v in list(config.items())
+                k: v for k, v in config.items()
                 if k in Settings.requestor_settings
             })
 
         if provider:
             result.update({
-                k: v for k, v in list(config.items())
+                k: v for k, v in config.items()
                 if k not in Settings.basic_settings
                 and k not in Settings.requestor_settings
             })

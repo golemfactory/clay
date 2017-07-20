@@ -111,7 +111,7 @@ class FrameRenderingTask(RenderingTask):
     def get_output_states(self):
         if self.use_frames:
             result = []
-            for k, v in list(self.frames_state.items()):
+            for k, v in self.frames_state.items():
                 insort(result, (k, v.serialize()))
             return result
         return []
@@ -120,7 +120,7 @@ class FrameRenderingTask(RenderingTask):
         if self.task_definition.options.use_frames:
             subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
         else:
-            subtask_ids = iter(list(self.subtasks_given.keys()))
+            subtask_ids = self.subtasks_given.keys()
 
         subtasks = dict()
 
@@ -156,7 +156,7 @@ class FrameRenderingTask(RenderingTask):
     def get_frames_to_subtasks(self):
         frames = OrderedDict((frame_num, []) for frame_num in self.frames)
 
-        for subtask_id, subtask in list(self.subtasks_given.items()):
+        for subtask_id, subtask in self.subtasks_given.items():
             if subtask and subtask['frames']:
                 for frame in subtask['frames']:
                     frames[frame].append(subtask_id)
@@ -213,8 +213,9 @@ class FrameRenderingTask(RenderingTask):
             counters[subtask['status']] += 1
 
         # Count statuses different from 'finished' and 'failure'
-        computing = len([x for x in list(counters.keys()) if x not in [SubtaskStatus.finished,
-                                                   SubtaskStatus.failure]])
+        computing = len([x for x in counters.keys()
+                         if x not in [SubtaskStatus.finished,
+                                      SubtaskStatus.failure]])
 
         # Finished if at least n subtasks >= parts were finished
         if counters[SubtaskStatus.finished] >= parts:
@@ -254,7 +255,7 @@ class FrameRenderingTask(RenderingTask):
         sent_color = (0, 255, 0)
         failed_color = (255, 0, 0)
 
-        for sub in list(self.subtasks_given.values()):
+        for sub in self.subtasks_given.values():
             if SubtaskStatus.is_computed(sub['status']):
                 for frame in sub['frames']:
                     self.__mark_sub_frame(sub, frame, sent_color)
@@ -307,7 +308,7 @@ class FrameRenderingTask(RenderingTask):
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
-            for file in list(self.collected_file_names.values()):
+            for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
@@ -322,7 +323,7 @@ class FrameRenderingTask(RenderingTask):
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
             collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
-            for file in list(collected.values()):
+            for file in collected.values():
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
