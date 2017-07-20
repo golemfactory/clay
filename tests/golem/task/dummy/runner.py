@@ -64,6 +64,7 @@ def run_requesting_node(datadir, num_subtasks=3):
         client and client.quit()
         reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
+        shutil.rmtree(datadir)
 
     atexit.register(shutdown)
 
@@ -105,6 +106,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
         client and client.quit()
         reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
+        shutil.rmtree(datadir)
 
     atexit.register(shutdown)
 
@@ -253,7 +255,6 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                 del proc
 
         time.sleep(1)
-        shutil.rmtree(datadir)
 
 
 def dispatch(args):
