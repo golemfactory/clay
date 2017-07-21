@@ -72,7 +72,8 @@ class TestNode(TestWithDatabase):
                                        datadir=self.path,
                                        transaction_system=True,
                                        use_docker_machine_manager=True,
-                                       geth_port=None)
+                                       geth_port=None,
+                                       use_monitor=True)
 
     def test_node_address_invalid(self, *_):
         runner = CliRunner()
