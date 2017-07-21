@@ -155,9 +155,6 @@ class AppConfig:
             max_price=MAX_PRICE,
             requesting_trust=REQUESTING_TRUST,
             computing_trust=COMPUTING_TRUST,
-            # benchmarks
-            estimated_lux_performance="0",
-            estimated_blender_performance="0",
             # intervals
             pings_interval=PINGS_INTERVALS,
             getting_peers_interval=GETTING_PEERS_INTERVAL,

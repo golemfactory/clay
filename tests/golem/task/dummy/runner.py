@@ -52,9 +52,7 @@ def create_client(datadir):
                   use_monitor=False,
                   transaction_system=False,
                   connect_to_known_hosts=False,
-                  use_docker_machine_manager=False,
-                  estimated_lux_performance=1000.0,
-                  estimated_blender_performance=1000.0)
+                  use_docker_machine_manager=False)
 
 
 def run_requesting_node(datadir, num_subtasks=3):

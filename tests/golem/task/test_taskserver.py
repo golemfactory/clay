@@ -893,6 +893,4 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
-        ccd.estimated_lux_performance = 2000.0
-        ccd.estimated_blender_performance = 2000.0
         return ccd
