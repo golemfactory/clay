@@ -17,6 +17,7 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.model import Performance
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.taskbase import Task
@@ -74,16 +75,11 @@ class TaskComputer(object):
             self.docker_manager.check_environment()
 
         try:
-            lux_perf = float(task_server.config_desc.estimated_lux_performance)
-            blender_perf = float(task_server.config_desc.estimated_blender_performance)
-        except:
-            lux_perf = 0
-            blender_perf = 0
-        
-        if int(lux_perf) == 0 or int(blender_perf) == 0:
-            run_benchmarks = True
-        else:
+            _ = Performance.get(environment_id="LUXRENDER")
+            _ = Performance.get(environment_id="BLENDER")
             run_benchmarks = False
+        except Performance.DoesNotExist:
+            run_benchmarks = True
 
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
@@ -262,10 +258,14 @@ class TaskComputer(object):
     def run_lux_benchmark(self, success=None, error=None):
 
         def success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_lux_performance = performance
-            client.change_config(cfg_desc)
-            self.config_changed()
+            env_id = "LUXRENDER"
+            try:
+                perf = Performance.get(Performance.environment_id == env_id)
+                perf.value = performance
+                perf.save()
+            except Performance.DoesNotExist:
+                perf = Performance(environment_id=env_id, value=performance)
+                perf.save()
             if success:
                 success(performance)
 
@@ -286,10 +286,14 @@ class TaskComputer(object):
     def run_blender_benchmark(self, success=None, error=None):
 
         def success_callback(performance):
-            cfg_desc = client.config_desc
-            cfg_desc.estimated_blender_performance = performance
-            client.change_config(cfg_desc)
-            self.config_changed()
+            env_id = "BLENDER"
+            try:
+                perf = Performance.get(Performance.environment_id == env_id)
+                perf.value = performance
+                perf.save()
+            except Performance.DoesNotExist:
+                perf = Performance(environment_id=env_id, value=performance)
+                perf.save()
             if success:
                 success(performance)
 
