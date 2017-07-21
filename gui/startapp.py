@@ -59,11 +59,9 @@ def start_gui(address):
         startupinfo=startupinfo
     )
 
-
-def start_client(start_ranking, datadir=None,
-                 transaction_system=False, client=None,
-                 reactor=None, geth_port=None, **config_overrides):
-
+def start_client(start_ranking, datadir=None, transaction_system=False,
+                 use_monitor=True, client=None, reactor=None, geth_port=None,
+                 **config_overrides):
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
@@ -83,7 +81,8 @@ def start_client(start_ranking, datadir=None,
 
     if not client:
         client = Client(datadir=datadir, transaction_system=transaction_system,
-                        geth_port=geth_port, **config_overrides)
+                        use_monitor=use_monitor, geth_port=geth_port,
+                        **config_overrides)
 
     config = client.config_desc
     methods = object_method_map(client, CORE_METHOD_MAP)
@@ -145,8 +144,9 @@ def start_client(start_ranking, datadir=None,
         process_monitor.exit()
 
 
-def start_app(start_ranking=False, datadir=None,
-              transaction_system=False, rendering=False, geth_port=None,
+def start_app(start_ranking=False, datadir=None, transaction_system=False,
+              rendering=False, use_monitor=True, geth_port=None,
               **config_overrides):
-    start_client(start_ranking, datadir,
-                 transaction_system, geth_port=geth_port, **config_overrides)
+    start_client(start_ranking, datadir, transaction_system,
+                 use_monitor=use_monitor, geth_port=geth_port,
+                 **config_overrides)

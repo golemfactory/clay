@@ -221,7 +221,7 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
 
         start_app(datadir=self.tempdir)
         _start_client.assert_called_with(False, self.tempdir, False,
-                                         geth_port=None)
+                                         use_monitor=True, geth_port=None)
 
     def test_load_environments(self, *_):
         envs = load_environments()

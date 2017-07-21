@@ -21,6 +21,7 @@ from golem.node import OptNode
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
+@click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
@@ -49,8 +50,8 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version,
-          m, geth_port):
+def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
+          qt, version, m, geth_port):
     freeze_support()
     delete_reactor()
 
@@ -65,6 +66,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version,
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
+
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
@@ -80,7 +82,8 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version,
     # Golem
     elif gui:
         from gui.startapp import start_app
-        start_app(rendering=True, geth_port=geth_port, **config)
+        start_app(rendering=True, use_monitor=monitor, geth_port=geth_port,
+                  **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
@@ -88,7 +91,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version,
         install_reactor()
 
         node = OptNode(peers=peer, node_address=node_address,
-                       geth_port=geth_port, **config)
+                       use_monitor=monitor, geth_port=geth_port, **config)
         node.run(use_rpc=True)
 
 
