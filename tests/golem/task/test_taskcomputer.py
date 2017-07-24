@@ -8,23 +8,23 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.testutils import DatabaseFixture, TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testdirfixture import TestDirFixture
 
 
 @ci_skip
-class TestTaskComputer(TestDirFixture, LogTestCase):
+class TestTaskComputer(DatabaseFixture, LogTestCase):
     def test_init(self):
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.use_waiting_for_task_timeout = True
         task_server.config_desc.waiting_for_task_timeout = 1
@@ -71,7 +71,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_resource_failure(self):
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         task_id = 'xyz'
@@ -91,7 +91,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_computation(self):
         task_server = mock.MagicMock()
         task_server.get_task_computer_root.return_value = self.path
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         ctd = ComputeTaskDef()
@@ -101,23 +101,31 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.return_port = 10203
         ctd.key_id = "key"
         ctd.task_owner = "owner"
-        ctd.src_code = "cnt=0\nfor i in range(10000):\n\tcnt += 1\noutput={'data': cnt, 'result_type': 0}"
+        ctd.src_code = "cnt=0\nfor i in range(10000):\n\tcnt += 1\n" \
+                       "output={'data': cnt, 'result_type': 0}"
         ctd.extra_data = {}
         ctd.short_description = "add cnt"
         ctd.deadline = timeout_to_deadline(10)
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline, timeout_to_deadline(10))
+        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"].deadline,
+                             timeout_to_deadline(10))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
+        rr = tc.task_server.request_resource
+        rr.assert_called_with("xyz",
+                              tc.resource_manager.get_resource_header("xyz"),
+                              "10.10.10.10", 10203, "key", "owner")
         assert tc.task_resource_collected("xyz")
-        tc.task_server.unpack_delta.assert_called_with(tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
+        tc.task_server.unpack_delta.assert_called_with(
+            tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert len(tc.current_computations) == 0
         assert tc.assigned_subtasks.get("xxyyzz") is None
-        task_server.send_task_failed.assert_called_with("xxyyzz", "xyz", "Host direct task not supported",
-                                                        "10.10.10.10", 10203, "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with("xxyyzz", "xyz",
+                                                        "Host direct task " +
+                                                        "not supported",
+                                                        "10.10.10.10", 10203,
+                                                        "key", "owner", "ABC")
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -149,18 +157,24 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         ctd.deadline = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline, timeout_to_deadline(5))
+        self.assertLessEqual(tc.assigned_subtasks["aabbcc"].deadline,
+                             timeout_to_deadline(5))
         self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
-        tc.task_server.request_resource.assert_called_with("xyz",  tc.resource_manager.get_resource_header("xyz"),
-                                                           "10.10.10.10", 10203, "key", "owner")
+        rr = tc.task_server.request_resource
+        rr.assert_called_with("xyz",
+                              tc.resource_manager.get_resource_header("xyz"),
+                              "10.10.10.10", 10203, "key", "owner")
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertFalse(tc.counting_task)
         self.assertEqual(len(tc.current_computations), 0)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
-        task_server.send_task_failed.assert_called_with("aabbcc", "xyz", 'some exception', "10.10.10.10",
-                                                        10203, "key", "owner", "ABC")
+        task_server.send_task_failed.assert_called_with("aabbcc", "xyz",
+                                                        'some exception',
+                                                        "10.10.10.10",
+                                                        10203, "key", "owner",
+                                                        "ABC")
 
         ctd.subtask_id = "aabbcc2"
         ctd.src_code = "print 'Hello world'"
@@ -169,7 +183,9 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
-        task_server.send_task_failed.assert_called_with("aabbcc2", "xyz", "Wrong result format", "10.10.10.10", 10203,
+        task_server.send_task_failed.assert_called_with("aabbcc2", "xyz",
+                                                        "Wrong result format",
+                                                        "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
 
         ctd.subtask_id = "xxyyzz2"
@@ -179,7 +195,9 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
         tt = tc.current_computations[0]
         tc.task_computed(tc.current_computations[0])
         self.assertEqual(len(tc.current_computations), 0)
-        task_server.send_task_failed.assert_called_with("xxyyzz2", "xyz", "Wrong result format", "10.10.10.10", 10203,
+        task_server.send_task_failed.assert_called_with("xxyyzz2", "xyz",
+                                                        "Wrong result format",
+                                                        "10.10.10.10", 10203,
                                                         "key", "owner", "ABC")
         tt.end_comp()
         time.sleep(0.5)
@@ -188,7 +206,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
     def test_change_config(self):
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
 
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
         tc.docker_manager = mock.Mock()
@@ -211,7 +229,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
     def test_event_listeners(self):
         client = mock.Mock()
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
+        task_server.config_desc = ClientConfigDescriptor()
         tc = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
 
         tc.lock_config(True)
@@ -238,32 +256,38 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
 
 
 @ci_skip
-class TestTaskThread(TestDirFixture):
+class TestTaskThread(DatabaseFixture):
     def test_thread(self):
         files_ = self.additional_dir_content([0, [1], [1], [1], [1]])
         ts = mock.MagicMock()
-        ts.config_desc = config_desc()
+        ts.config_desc = ClientConfigDescriptor()
         tc = TaskComputer("ABC", ts, use_docker_machine_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
-        tt = PyTaskThread(tc, "xxyyzz", self.path, "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt", {},
-                          "hello thread", os.path.dirname(files_[0]), os.path.dirname(files_[1]), 20)
+        code = "cnt=0\nfor i in range(1000000):\n\tcnt += 1\noutput=cnt"
+        tt = PyTaskThread(tc, "xxyyzz", self.path, code, {}, "hello thread",
+                          os.path.dirname(files_[0]),
+                          os.path.dirname(files_[1]), 20)
         tt.run()
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
         self.assertTrue(tc.counting_task)
 
 
-class TestTaskMonitor(TestDirFixture):
+class TestTaskMonitor(DatabaseFixture):
     def test_task_computed(self):
         """golem.monitor signal"""
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", config_desc()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix",
+                                                  "3.1337", "Descr",
+                                                  ClientConfigDescriptor()),
+                                MONITOR_CONFIG)
         task_server = mock.MagicMock()
-        task_server.config_desc = config_desc()
-        task = TaskComputer("ABC", task_server, use_docker_machine_manager=False)
+        task_server.config_desc = ClientConfigDescriptor()
+        task = TaskComputer("ABC", task_server,
+                            use_docker_machine_manager=False)
 
         task_thread = mock.MagicMock()
         task_thread.start_time = time.time()
@@ -277,7 +301,8 @@ class TestTaskMonitor(TestDirFixture):
             task_thread.subtask_id = subtask_id
 
         def check(expected):
-            with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
+            with mock.patch('golem.monitor.monitor.SenderThread.send') \
+                    as mock_send:
                 task.task_computed(task_thread)
                 self.assertEquals(mock_send.call_count, 1)
                 result = mock_send.call_args[0][0].dict_repr()
@@ -299,17 +324,11 @@ class TestTaskMonitor(TestDirFixture):
         prepare()
         task_thread.error = False
         task_thread.error_msg = None
-        task_thread.result = {'data': 'oh senora!!!', 'result_type': 'Cadencia da Vila'}
+        task_thread.result = {'data': 'oh senora!!!',
+                              'result_type': 'Cadencia da Vila'}
         check(True)
 
         # default case (error)
         prepare()
         task_thread.result = None
         check(False)
-
-
-def config_desc():
-    ccd = ClientConfigDescriptor()
-    ccd.estimated_blender_performance = 2000.0
-    ccd.estimated_lux_performance = 2000.0
-    return ccd
