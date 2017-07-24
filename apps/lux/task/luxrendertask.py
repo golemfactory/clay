@@ -254,7 +254,7 @@ class LuxTask(renderingtask.RenderingTask):
             haltspp=1,
             writeinterval=0.5,
             crop=[0, 1, 0, 1],
-            output_format="png")
+            output_format=self.output_format)
 
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
 
@@ -264,7 +264,7 @@ class LuxTask(renderingtask.RenderingTask):
             "end_task": 1,
             "total_tasks": 1,
             "outfilebasename": "reference_merging_task",
-            "output_format": "png",
+            "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
         }
@@ -299,7 +299,7 @@ class LuxTask(renderingtask.RenderingTask):
             "end_task": 1,
             "total_tasks": 1,
             "outfilebasename": "".join(["reference_task", str(counter)]),
-            "output_format": "png",
+            "output_format": self.output_format,
             "scene_file_src": scene_src,
             "scene_dir": scene_dir,
         }
