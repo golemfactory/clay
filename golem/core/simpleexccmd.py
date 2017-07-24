@@ -30,4 +30,4 @@ def exec_cmd(cmd, nice=20, wait=True):
         stdout, stderr = pc.communicate()
     if wait:
         pc.wait()
-    print((str(stderr) + "\n" + str(stdout)))
+    print(str(stderr) + "\n" + str(stdout))

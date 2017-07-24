@@ -27,7 +27,7 @@ class TestLogging(unittest.TestCase, PEP8MixIn):
             # This helps in debugging. Call list will be empty if test succeeds.
             args, kwargs = call
             record = args[0]
-            print(("handleError() %s:lno%d" % (record.filename, record.lineno, )))
+            print("handleError() %s:lno%d" % (record.filename, record.lineno, ))
         self.assertEqual(handleError_mock.call_count, 0)
 
         correct_ascii = 'Connection failure: %s'

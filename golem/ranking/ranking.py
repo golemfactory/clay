@@ -162,7 +162,7 @@ class Ranking(object):
                 prev_trust = self.prev_loc_rank[loc_rank.node_id]
             else:
                 prev_trust = [float("inf")] * 2
-            if max(list(map(abs, list(map(operator.sub, prev_trust, trust))))) > self.loc_rank_push_delta:
+            if max(map(abs, map(operator.sub, prev_trust, trust))) > self.loc_rank_push_delta:
                 self.client.push_local_rank(loc_rank.node_id, trust)
                 self.prev_loc_rank[loc_rank.node_id] = trust
 
@@ -268,7 +268,7 @@ class Ranking(object):
 
     @staticmethod
     def __sum_gossip(a, b):
-        return list(map(sum, list(zip(a, b))))
+        return list(map(sum, zip(a, b)))
 
     def __send_finished(self):
         self.client.send_stop_gossip()

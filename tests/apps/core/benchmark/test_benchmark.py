@@ -53,7 +53,7 @@ class TestBenchmark(TempDirFixture):
             self.assertEqual(mocks['verify_img'].call_count, 0)
             self.assertEqual(mocks['verify_log'].call_count, 0)
 
-            for m in list(mocks.values()):
+            for m in mocks.values():
                 m.return_value = True
             paths = [
                 '/mnt/dummy/image.png',
@@ -63,7 +63,7 @@ class TestBenchmark(TempDirFixture):
             mocks['verify_img'].assert_called_once_with(paths[0])
             mocks['verify_log'].assert_called_once_with(paths[1])
 
-            for m in list(mocks.values()):
+            for m in mocks.values():
                 m.reset_mock()
                 m.return_value = False
 

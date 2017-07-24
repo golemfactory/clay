@@ -272,7 +272,7 @@ class PaymentProcessor(Service):
 
     def monitor_progress(self):
         confirmed = []
-        for h, payments in list(self._inprogress.items()):
+        for h, payments in self._inprogress.items():
             hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)

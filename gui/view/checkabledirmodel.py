@@ -49,7 +49,7 @@ class CheckableDirModel(QtWidgets.QFileSystemModel):
     def setData(self, index, value, role):
         if role == QtCore.Qt.CheckStateRole and index.column() == 0:
             self.layoutAboutToBeChanged.emit()
-            for i, v in list(self.checks.items()):
+            for i, v in self.checks.items():
                 if are_parent_and_child(index, i):
                     if self._isStartFile(i):
                         self._remove_from_start_files(i)
@@ -72,7 +72,7 @@ class CheckableDirModel(QtWidgets.QFileSystemModel):
 
     def export_checked(self):
         selection = []
-        for index in list(self.checks.keys()):
+        for index in self.checks.keys():
             if self.checks[index] == QtCore.Qt.Checked:
                 if os.path.isfile(str(self.filePath(index))):
                     selection.append(os.path.normpath(str(self.filePath(index))))

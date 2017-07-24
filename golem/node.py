@@ -16,7 +16,8 @@ class Node(object):
     """
 
     def __init__(self, datadir=None, peers=None, transaction_system=False,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_monitor=False, use_docker_machine_manager=True,
+                 **config_overrides):
 
         self.client = Client(
             datadir=datadir,
@@ -55,13 +56,12 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
-        for peer in self._peers:
-            self.client.connect(peer)
-
         self.client.sync()
 
         try:
             self.client.start()
+            for peer in self._peers:
+                self.client.connect(peer)
         except SystemExit:
             from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)

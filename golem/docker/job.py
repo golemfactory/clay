@@ -95,7 +95,7 @@ class DockerJob(object):
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
         with open(params_file_path, "wb") as params_file:
-            for key, value in list(self.parameters.items()):
+            for key, value in self.parameters.items():
                 line = "{} = {}\n".format(key, repr(value))
                 params_file.write(bytearray(line, encoding='utf-8'))
 

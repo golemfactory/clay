@@ -388,7 +388,8 @@ class CoreTask(Task):
         return os.path.join(output_dir, tr[0])
 
     def _get_resources_root_dir(self):
-        prefix = os.path.commonprefix(self.task_resources)
+        task_resources = list(self.task_resources)
+        prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
     def _accept_client(self, node_id):

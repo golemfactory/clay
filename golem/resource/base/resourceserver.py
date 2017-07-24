@@ -1,10 +1,6 @@
-import copy
 import logging
-from collections import namedtuple
-from threading import Lock
-
 from enum import Enum
-from twisted.internet.defer import Deferred
+from threading import Lock
 
 logger = logging.getLogger(__name__)
 

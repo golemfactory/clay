@@ -224,11 +224,11 @@ class TestStartAppFunc(TestDirFixtureWithReactor):
         stop_reactor()
         assert reactor.stop.called
 
+    @patch('golem.docker.manager.DockerManager.command')
     @patch('gui.startapp.start_client')
     def test_start_app(self, _start_client, *_):
-
         start_app(datadir=self.tempdir)
-        _start_client.assert_called_with(False, self.tempdir, False)
+        _start_client.assert_called_with(False, self.tempdir, False, True)
 
     def test_load_environments(self, *_):
         envs = load_environments()

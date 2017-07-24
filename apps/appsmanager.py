@@ -1,5 +1,3 @@
-
-
 import os
 from configparser import ConfigParser
 from collections import OrderedDict
@@ -44,4 +42,4 @@ class AppsManager(object):
             self.apps[section] = app
 
     def get_env_list(self):
-        return [app.env() for app in list(self.apps.values())]
+        return [app.env() for app in self.apps.values()]

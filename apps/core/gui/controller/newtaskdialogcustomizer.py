@@ -120,7 +120,7 @@ class NewTaskDialogCustomizer(Customizer):
 
         self.gui.ui.resourceFilesLabel.setText("0")
         task_types = self.logic.get_task_types()
-        for t in list(task_types.values()):
+        for t in task_types.values():
             self.gui.ui.taskTypeComboBox.addItem(t.name)
 
         default_task = self.logic.get_default_task_type()
@@ -210,7 +210,7 @@ class NewTaskDialogCustomizer(Customizer):
             self.__get_current_task_type_name())
         if not presets:
             return
-        for preset_name in list(presets.keys()):
+        for preset_name in presets.keys():
             self.gui.ui.presetComboBox.addItem(preset_name)
         self.presets = presets
 

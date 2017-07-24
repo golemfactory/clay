@@ -140,7 +140,7 @@ class Task(object):
             self.should_wait = should_wait
             self.ctd = ctd
 
-            for key, value in list(kwargs.items()):
+            for key, value in kwargs.items():
                 setattr(self, key, value)
 
     @classmethod

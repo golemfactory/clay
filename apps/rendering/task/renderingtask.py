@@ -172,7 +172,7 @@ class RenderingTask(CoreTask):
 
         img_task = self._open_preview()
 
-        for sub in list(self.subtasks_given.values()):
+        for sub in self.subtasks_given.values():
             if SubtaskStatus.is_computed(sub['status']):
                 self._mark_task_area(sub, img_task, sent_color)
             if sub['status'] in [SubtaskStatus.failure,
@@ -224,7 +224,7 @@ class RenderingTask(CoreTask):
             end_task = self.last_task
             return start_task, end_task
         else:
-            for sub in list(self.subtasks_given.values()):
+            for sub in self.subtasks_given.values():
                 if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
                     end_task = sub['end_task']

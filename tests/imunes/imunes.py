@@ -92,8 +92,8 @@ def prepare_task_resources(task):
 
 
 def start_simulation(network_file):
-    print(("Starting simulation, using network topology from {}...".format(
-        network_file)))
+    print("Starting simulation, using network topology from {}...".format(
+        network_file))
 
     # Run imunes in the background
     subprocess.check_call(["imunes", "-e", EXPERIMENT_NAME, "-b", network_file])
@@ -107,7 +107,7 @@ def start_simulation(network_file):
     # Give IMUNES some time to set up the network
     time.sleep(2.0)
 
-    print(("Imunes experiment '{}' started".format(EXPERIMENT_NAME)))
+    print("Imunes experiment '{}' started".format(EXPERIMENT_NAME))
     return node_names
 
 
@@ -123,12 +123,12 @@ def create_node_infos(node_names, args):
         is_supernode = node in args.supernode
         disable_blender = node in args.disable_blender
         node_infos[node] = NodeInfo(address, is_supernode, disable_blender)
-        print(("\t{}: {}{}{}{}{}".format(
+        print("\t{}: {}{}{}{}{}".format(
                 node, address,
                 ", super node" if is_supernode else "",
                 ", seed node" if node in args.seed else "",
                 ", requestor" if node is args.requestor else "",
-                ", blender disabled" if disable_blender else "")))
+                ", blender disabled" if disable_blender else ""))
         if node in args.seed:
             peer_addrs.append(address)
 
@@ -169,7 +169,7 @@ def copy_file(node_name, src_file, target_file):
     :param str target_file: absolute path of the target file
     :return:
     """
-    print(("Copying file {} to {}:{}".format(src_file, node_name, target_file)))
+    print("Copying file {} to {}:{}".format(src_file, node_name, target_file))
 
     # Make sure that the target dir exists
     if target_file.find("/") != -1:
@@ -201,7 +201,7 @@ def start_golem(node_infos, seed_names):
         cmd = "xterm -title '{} ({})' -geom 150x30 -e " \
               "himage {} /bin/sh -c '{} 2>&1 | tee /log/golem.log' &".format(
                   name, himage_cmd, name, himage_cmd)
-        print(("Running '{}' on {}...".format(himage_cmd, name)))
+        print("Running '{}' on {}...".format(himage_cmd, name))
         info.pid = subprocess.Popen(cmd, shell=True)
         time.sleep(1)
 
@@ -242,7 +242,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_ADDED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print(("Task {} added".format(task_id)))
+                print("Task {} added".format(task_id))
                 if task_id in started_tasks:
                     raise IllegalStateException(
                         "Task {} already started".format(task_id))
@@ -251,7 +251,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = RESOURCES_SEND_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print(("Resources for task {} sent".format(task_id)))
+                print("Resources for task {} sent".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))
@@ -259,7 +259,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_ACCEPTED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print(("Task {} accepted".format(task_id)))
+                print("Task {} accepted".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))
@@ -268,7 +268,7 @@ def wait_for_task_completion(requestor_name, num_tasks=1):
             m = TASK_NOT_ACCEPTED_RE.match(line)
             if m:
                 task_id = m.group(1)
-                print(("Task {} not accepted".format(task_id)))
+                print("Task {} not accepted".format(task_id))
                 if task_id not in started_tasks:
                     raise IllegalStateException(
                         "Task {} not started yet".format(task_id))

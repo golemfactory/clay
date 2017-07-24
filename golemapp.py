@@ -25,17 +25,20 @@ from golem.node import OptNode
 @click.command()
 @click.option('--gui/--nogui', default=True)
 @click.option('--payments/--nopayments', default=True)
+@click.option('--monitor/--nomonitor', default=True)
 @click.option('--datadir', '-d', type=click.Path())
 @click.option('--node-address', '-a', multiple=False, type=click.STRING,
               callback=OptNode.parse_node_addr,
               help="Network address to use for this node")
-@click.option('--rpc-address', '-r', multiple=False, callback=OptNode.parse_rpc_address,
+@click.option('--rpc-address', '-r', multiple=False,
+              callback=OptNode.parse_rpc_address,
               help="RPC server address to use: <ipv4_addr>:<port> or [<ipv6_addr>]:<port>")
 @click.option('--peer', '-p', multiple=True, callback=OptNode.parse_peer,
               help="Connect with given peer: <node_id>@<ipv4_addr>:<port> or <node_id>@<ipv6_addr>:<port>")
 @click.option('--qt', is_flag=True, default=False,
               help="Spawn Qt GUI only")
-@click.option('--version', '-v', is_flag=True, default=False, help="Show Golem version information")
+@click.option('--version', '-v', is_flag=True, default=False,
+              help="Show Golem version information")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('-u', is_flag=True, default=False, expose_value=False)
@@ -48,13 +51,14 @@ from golem.node import OptNode
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)
 @click.option('--title', expose_value=False)
-def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version, m):
+def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
+          qt, version, m):
     freeze_support()
     delete_reactor()
 
     if version:
         from golem.core.variables import APP_VERSION
-        print(("GOLEM version: {}".format(APP_VERSION)))
+        print("GOLEM version: {}".format(APP_VERSION))
         return 0
 
     # Workarounds for pyinstaller executable
@@ -63,6 +67,7 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version, 
     sys.modules['win32com.gen_py.pythoncom'] = None
 
     config = dict(datadir=datadir, transaction_system=payments)
+
     if rpc_address:
         config['rpc_address'] = rpc_address.address
         config['rpc_port'] = rpc_address.port
@@ -79,17 +84,14 @@ def start(gui, payments, datadir, node_address, rpc_address, peer, qt, version, 
     # Golem
     elif gui:
         from gui.startapp import start_app
-        start_app(rendering=True, **config)
+        start_app(rendering=True, use_monitor=monitor, **config)
     # Golem headless
     else:
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
-        node = OptNode(node_address=node_address, **config)
-        node.connect_with_peers(peer)
-        node.initialize()
-
-        node.add_tasks(task)
+                node = OptNode(peers=peer, node_address=node_address,
+		               use_monitor=monitor, **config)
         node.run(use_rpc=True)
 
 

@@ -76,12 +76,12 @@ class PyInstaller(Command):
             print("> Compressing distribution")
             tar_dir = cls.move(dist_dir)
             tar_file = cls.compress(tar_dir, dist_dir)
-            print(("> Archive saved: '{}'".format(tar_file)))
+            print("> Archive saved: '{}'".format(tar_file))
 
     @classmethod
     def banner(cls, msg):
         print("\n> --------------------------------")
-        print(("> {}".format(msg)))
+        print("> {}".format(msg))
         print("> --------------------------------\n")
 
     @classmethod
@@ -248,8 +248,8 @@ def get_version():
             semantic_version.Version(tag.name)
             versions.append(tag.name)
         except Exception as exc:
-            print(("Tag {} is not a valid release version: {}".format(
-                tag, exc)))
+            print("Tag {} is not a valid release version: {}".format(
+                  tag, exc))
 
     if not versions:
         raise EnvironmentError("No git version tag found "

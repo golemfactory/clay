@@ -126,7 +126,7 @@ class TaskResourceHeader(object):
         abs_dirs = split_path(absolute_root)
         delta_parts = []
 
-        for file_, parts in list(res_parts.items()):
+        for file_, parts in res_parts.items():
             dir_, file_name = os.path.split(file_)
             dirs = split_path(dir_)[len(abs_dirs):]
 

@@ -85,8 +85,10 @@ def makePerfTest(filename, cfg_filename, num_cores):
 
     numSamples = image.width * image.height * iterations
     print("\nSummary:")
-    print(("    Rendering scene with {} rays took {} seconds".format(numSamples, duration)))
-    print(("    giving an average speed of {} rays/s".format(float(numSamples) / duration)))
+    print("    Rendering scene with {} rays took {} seconds"
+          .format(numSamples, duration))
+    print("    giving an average speed of {} rays/s"
+          .format(float(numSamples) / duration))
     cfg_file = open(cfg_filename, 'w')
     average = float(numSamples) / duration
     average = average * num_cores
@@ -182,8 +184,10 @@ def main():
 
         numSamples = image.width * image.height * iterations
         print("\nSummary:")
-        print(("    Rendering scene with {} rays took {} seconds".format(numSamples, duration)))
-        print(("    giving an average speed of {} rays/s".format(float(numSamples) / duration)))
+        print("    Rendering scene with {} rays took {} seconds"
+              .format(numSamples, duration))
+        print("    giving an average speed of {} rays/s"
+              .format(float(numSamples) / duration))
         cfg_file = open('minilight.ini', 'w')
         average = float(numSamples) / duration
         average = average * multiprocessing.cpu_count()

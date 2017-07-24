@@ -35,7 +35,7 @@ class TestGNTTest(unittest.TestCase):
             vv = zpad(int_to_big_endian(v), 12)
             mix = vv + addr
             assert len(mix) == 32
-            print((encode_hex(mix), "v: ", v, "addr", encode_hex(addr)))
+            print(encode_hex(mix), "v: ", v, "addr", encode_hex(addr))
             args.append(mix)
         return args, value_sum
 

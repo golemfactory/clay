@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
         if time.time() - lastPrint > 2.0:
             lastPrint = time.time()
-            print(("Active worker count {}".format(pool.activeCount())))
+            print("Active worker count {}".format(pool.activeCount()))
             tr.printStats()
 
     pool.joinAll()
@@ -52,5 +52,5 @@ if __name__ == "__main__":
     tr.printStats()
 
     print("All tasks finished gracefully")
-    print(("Writing result image {}".format(IMG_NAME)))
+    print("Writing result image {}".format(IMG_NAME))
     save_image(IMG_NAME, INPUT_W, INPUT_H, tr.getResult(), SAMPLES)

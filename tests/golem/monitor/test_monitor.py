@@ -2,13 +2,17 @@ import mock
 import random
 from unittest import TestCase
 
+from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 
 
-class TestSystemMonitor(TestCase):
+class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
+    PEP8_FILES = (
+        "golem/monitor/monitor.py",
+    )
     def setUp(self):
         random.seed()
 
