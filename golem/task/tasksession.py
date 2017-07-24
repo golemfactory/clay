@@ -22,8 +22,8 @@ from golem.task.taskbase import ComputeTaskDef, result_types, resource_types
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
-# GG remove in release
-TASK_PROTOCOL_ID = 15666
+
+TASK_PROTOCOL_ID = 15
 
 
 def drop_after_attr_error(*args, **kwargs):

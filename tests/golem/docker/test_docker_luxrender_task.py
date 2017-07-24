@@ -272,7 +272,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             task = self._test_task()
             task.res_y = 100
             task.res_x = 100
-            task.haltspp = 200
+            task.haltspp = 50
+            task.output_format = "exr"
             ctd = task.query_extra_data(10000).ctd
 
             ## act

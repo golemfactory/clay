@@ -112,7 +112,7 @@ class LuxRenderVerificator(RenderingVerificator):
                     cropped_img = img_verificator.crop_img_relative(
                         img, task.random_crop_window_for_verification)
                     # cropped_img.img.save('aaa'
-                    # + cropped_img.get_name()) #
+                    # + cropped_img.get_name())
                     imgstat = ImgStatistics(cropped_ref_imgs[0], cropped_img)
 
                     is_valid_against_reference = \
