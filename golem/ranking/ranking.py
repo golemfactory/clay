@@ -117,17 +117,17 @@ class Ranking(object):
             logger.debug("Using local rank {}".format(local_trust))
             return local_trust
         # FIXME Check weights values
-        rank, weight_sum = tm.computed_neighbours_rank(node_id, self.neighbours)
-        global_rank = dm.get_global_rank(node_id)
-        if global_rank is not None:
-            if weight_sum + global_rank.gossip_weight_computing != 0:
-                logger.debug("Using gossipRank + neighboursRank")
-                return (rank + global_rank.computing_trust_value) / float(
-                    weight_sum + global_rank.gossip_weight_computing)
-        elif weight_sum != 0:
-            logger.debug("Using neighboursRank")
-            return rank / float(weight_sum)
-        return UNKNOWN_TRUST
+        # rank, weight_sum = tm.computed_neighbours_rank(node_id, self.neighbours)
+        # global_rank = dm.get_global_rank(node_id)
+        # if global_rank is not None:
+        #     if weight_sum + global_rank.gossip_weight_computing != 0:
+        #         logger.debug("Using gossipRank + neighboursRank")
+        #         return (rank + global_rank.computing_trust_value) / float(
+        #             weight_sum + global_rank.gossip_weight_computing)
+        # elif weight_sum != 0:
+        #     logger.debug("Using neighboursRank")
+        #     return rank / float(weight_sum)
+        # return UNKNOWN_TRUST
 
     def get_requesting_trust(self, node_id):
         local_trust = tm.requested_node_trust_local(node_id)
@@ -135,17 +135,17 @@ class Ranking(object):
             logger.debug("Using local rank {}".format(local_trust))
             return local_trust
         # FIXME Check weights values
-        rank, weight_sum = tm.requested_neighbours_rank(node_id, self.neighbours) # GG: return sum_trust, sum_weight
-        global_rank = dm.get_global_rank(node_id)
-        if global_rank is not None:
-            if global_rank.gossip_weight_requesting != 0:
-                logger.debug("Using gossipRank + neighboursRank")
-                return (rank + global_rank.requesting_trust_value) / float(
-                    weight_sum + global_rank.gossip_weight_requesting)
-        elif weight_sum != 0:
-            logger.debug("Using neighboursRank")
-            return rank / float(weight_sum)
-        return UNKNOWN_TRUST
+        # rank, weight_sum = tm.requested_neighbours_rank(node_id, self.neighbours)
+        # global_rank = dm.get_global_rank(node_id)
+        # if global_rank is not None:
+        #     if global_rank.gossip_weight_requesting != 0:
+        #         logger.debug("Using gossipRank + neighboursRank")
+        #         return (rank + global_rank.requesting_trust_value) / float(
+        #             weight_sum + global_rank.gossip_weight_requesting)
+        # elif weight_sum != 0:
+        #     logger.debug("Using neighboursRank")
+        #     return rank / float(weight_sum)
+        # return UNKNOWN_TRUST
 
     def sync_network(self):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
