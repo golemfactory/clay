@@ -39,16 +39,16 @@ SolidCompression=yes
 
 [Registry]
 ; Set environment variable to point to company installation
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\"; Flags: createvalueifdoesntexist;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{app}\"; Check: NeedsAddPath('Golem'); Flags: uninsdeletevalue;
 
 ; Append Docker to PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Flags: createvalueifdoesntexist;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\Program Files\Docker Toolbox"; Check: NeedsAddPath('Docker');
 
 ; Add OpenSSL to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Flags: createvalueifdoesntexist;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{sd}\OpenSSL"; Check: NeedsAddPath('OpenSSL');
     
 ; Add HyperG to the PATH
-Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Flags: createvalueifdoesntexist;
+Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
 
 ; @todo do we need any more languages? It can be confusing
 [Languages]
@@ -75,76 +75,44 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 
 [Run]
 ; Install runtime
-Filename: "{tmp}\vcredist_x86.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime"
+Filename: "{tmp}\vcredist_x86.exe"; StatusMsg: "Installing runtime"; Description: "Install runtime";
                                      
 ; Install Docker @todo is this check enough
-Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled 
+Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installing Docker Toolbox"; Description: "Install Docker Toolbox"; Check: IsDockerInstalled;
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.6.5-cf87713d.exe"; StatusMsg: "Installing geth"; Description: "Install geth"
+Filename: "{tmp}\geth-windows-amd64-1.6.5-cf87713d.exe"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
 
 [Code]
-                                                                              
+////////////////////////////////////////////////////////////////////////////////////////////////////                                                                              
 // This function checks the registry for an existing Docker installation
 function IsDockerInstalled: boolean;
 begin
    Result := not RegKeyExists(HKCU64, 'Environment\DOCKER_TOOLBOX_INSTALL_PATH' );                                                                                                                         
 end;
- 
+
+//////////////////////////////////////////////////////////////////////////////////////////////////// 
 // This function will return True if the Param already exists in the system PATH
 function NeedsAddPath(Param: String): Boolean;
 var
   OrigPath: String;
- 
 begin
-  if not RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'PATH', OrigPath) then
-  begin
+  if not RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', OrigPath) then begin
     Result := True;
     exit;
   end;
-  
   // look for the path with leading and trailing semicolon; Pos() returns 0 if not found
-  Result := Pos(';' + Param + ';', ';' + OrigPath + ';') = 0;
+  Result := Pos(Param, OrigPath) = 0;
 end;
  
  
-// Check for working internet connection
-function CheckInternetConnection(Param: String) : Boolean;
- 
-var
-  WinHttpReq : Variant;
- 
-begin
-  try
-    // Create COM object to handle net connection attempt
-    WinHttpReq := CreateOleObject('WinHttp.WinHttpRequest.5.1');
-    WinHttpReq.Open('GET', Param, false);
-    WinHttpReq.Send();
-  except
-    MsgBox('Could not connect to: ' + Param + '!' + #13#10 + 'Ensure that this computer has a working internet connection!', mbError, MB_OK);
-end;
- 
- // Check for timeout
- if WinHttpReq.Status <> 200 then begin
-    MsgBox('Could not connect to' + Param + '! Connection timed out!', mbError, MB_OK);
-    Result := False;
-  end;
- 
- if Length(WinHttpReq.ResponseText) > 0 then begin
-    Result := True;
- end;
- 
-end;
- 
- 
+//////////////////////////////////////////////////////////////////////////////////////////////////// 
 // This method checks for presence of uninstaller entries in the registry and returns the path to the uninstaller executable.
 function GetUninstallString: String;
- 
 var
   uninstallerPath: String;
   uninstallerString: String;
- 
 begin
   Result := '';
   // Get the uninstallerPath from the registry
@@ -155,13 +123,10 @@ begin
     RegQueryStringValue(HKCU, uninstallerPath, 'UninstallString', uninstallerString);
     // Return path of uninstaller to run  
     Result := uninstallerString;
- 
 end;
 
 
-// This function install dependencies which couldn't be normally installed via pip on Windows
- 
- 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // This method checks if a previous version has been installed
 function PreviousInstallationExists : Boolean;
 begin
@@ -169,74 +134,91 @@ begin
   Result := (GetUninstallString() <> '');
 end;
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Split string
+procedure Explode(var Dest: TArrayOfString; Text: String; Separator: String);
+var
+  i : Integer;
+  p : Integer;
+begin
+  i := 0;
+  repeat
+    SetArrayLength(Dest, i+1);
+    p := Pos(Separator,Text);
+    if p > 0 then begin
+      Dest[i] := Copy(Text, 1, p-1);
+      Text := Copy(Text, p + Length(Separator), Length(Text));
+      i := i + 1;
+    end else begin
+      Dest[i] := Text;
+      Text := '';
+    end;
+  until Length(Text)=0;
+end;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Backup path with removing Golem (fix for old bug)
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  sys_path: String;
+  sys_path   : String;
+  tmp_string : String;
+  strArray   : TArrayOfString;
+  i          : Integer;
 begin
   case CurUninstallStep of
     usUninstall:
       begin
-        if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then
-        begin
+        if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then begin
           RegWriteExpandStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup', sys_path)
         end;
       end;
     usDone:
       begin
-        if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup', sys_path) then
-        begin
-          if RegWriteExpandStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then
-          begin
-            RegDeleteValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup')
+        if not RegValueExists(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path') then begin
+          if RegQueryStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup', tmp_string) then begin
+            // Remove golem from backup_path
+            Explode(strArray, tmp_string, ';')
+            sys_path := '';
+            for i:=0 to GetArrayLength(strArray)-1 do begin
+              if Pos('Golem', strArray[i]) = 0 then begin
+                sys_path := sys_path + strArray[i] + ';';
+              end
+            end;
+            if RegWriteExpandStringValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path', sys_path) then begin
+              RegDeleteValue(HKLM64, 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment', 'Path_backup')
+            end;
           end;
         end;
       end;
     end;
 end;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // This Event function runs before setup is initialized
 function InitializeSetup(): Boolean;
-
 var
-  checkNetCxn : Boolean;
   uninstallChoiceResult: Boolean;
   uninstallPath : String;
   iResultCode : Integer;
   previouslyInstalledCheck : Boolean;
-
 begin
-  // Connect to Python package dist server
-  checkNetCxn := CheckInternetConnection('https://pypi.python.org/pypi');
-  if not checkNetCxn then
-  begin
-    MsgBox('Please ensure that this computer has a working internet connection and try again!', mbError, MB_OK)
-    Result := False;
-    Exit;
-  end;
- 
   // Now check if previous version was installed
   previouslyInstalledCheck := PreviousInstallationExists;
-  if previouslyInstalledCheck then
-  begin
+  if previouslyInstalledCheck then begin
     uninstallChoiceResult := MsgBox('A previous installation was detected. Do you want to uninstall the previous version first? (Recommended)', mbInformation, MB_YESNO) = IDYES;
-   
     // If user chooses, uninstall the previous version and wait until it has finished before allowing installation to proceed
-    if uninstallChoiceResult then
-    begin
+    if uninstallChoiceResult then begin
       uninstallPath := RemoveQuotes(GetUninstallString());
       Exec(ExpandConstant(uninstallPath), '', '', SW_SHOW, ewWaitUntilTerminated, iResultCode);
- 
       Result := True;
     end
- 
-    else
-    begin
+    else begin
       Result := True;
       Exit;
     end;
   end
- 
   else
     Result := True;
- 
 end;
