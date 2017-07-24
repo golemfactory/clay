@@ -56,13 +56,12 @@ class Node(object):
             self._setup_docker()
         self._setup_apps()
 
-        for peer in self._peers:
-            self.client.connect(peer)
-
         self.client.sync()
 
         try:
             self.client.start()
+            for peer in self._peers:
+                self.client.connect(peer)
         except SystemExit:
             from twisted.internet import reactor
             reactor.callFromThread(reactor.stop)
