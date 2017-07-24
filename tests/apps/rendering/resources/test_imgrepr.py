@@ -8,8 +8,8 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_as_pil, load_img, logger,
-                                              PILImgRepr)
+                                              load_as_pil, load_img, load_as_PILImgRepr,
+                                              logger, PILImgRepr)
 
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
@@ -281,3 +281,12 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         exr_path = get_test_exr()
         img = load_as_pil(exr_path)
         assert isinstance(img, Image.Image)
+
+    def test_load_as_PILImgRepr(self):
+        img_path = self.temp_file_name("path1.png")
+        make_test_img(img_path)
+        img = load_as_PILImgRepr(img_path)
+        assert isinstance(img, PILImgRepr)
+        exr_path = get_test_exr()
+        img = load_as_PILImgRepr(exr_path)
+        assert isinstance(img, PILImgRepr)

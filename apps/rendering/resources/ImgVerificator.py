@@ -163,11 +163,3 @@ class ImgVerificator(object):
             return VerificationState.UNKNOWN
 
         return VerificationState.WRONG_ANSWER
-
-    def find_outliers(self, imgStats):
-        """
-
-        :param imgStats: list of imgStats
-        :return:
-        """
-        pass

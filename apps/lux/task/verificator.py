@@ -12,7 +12,7 @@ from apps.rendering.task.verificator import RenderingVerificator
 
 from apps.rendering.resources.ImgVerificator import \
     ImgStatistics, ImgVerificator
-from apps.rendering.resources.imgrepr import PILImgRepr, EXRImgRepr
+from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 
 logger = logging.getLogger("apps.lux")
 
@@ -49,71 +49,20 @@ class LuxRenderVerificator(RenderingVerificator):
 
             f = glob.glob(os.path.join(dir, '*.' + task.output_format))
 
-            def img_type(argument):
-                switcher = {
-                    "exr": lambda: EXRImgRepr(),
-                    "png": lambda: PILImgRepr(),
-                }
-                # Get the function from switcher dictionary
-                func = switcher.get(argument)
-                # Execute the function
-                if func is not None:
-                    return func()
-                else:
-                    raise TypeError("Unsupported output format: "
-                                    .join(str(argument)))
-
-            ref_img = img_type(task.output_format)
-
-            ref_img.load_from_file(f.pop())
-            ref_img = ref_img.to_pil()
-
-            ref_img_pil = PILImgRepr()
-            ref_img_pil.load_from_pil_object(ref_img)
+            ref_img_pil = load_as_PILImgRepr(f.pop())
             ref_imgs.append(ref_img_pil)
 
         return ref_imgs
 
     def _extract_tr_files(self, tr_files, task):
-
         tr_preview_files = []
-
         tr_preview_paths = [os.path.normpath(f)
                             for f in tr_files
                             if has_ext(f, '.' + task.output_format)]
 
-        def load_exr():
-            for f in tr_preview_paths:
-                ref_img = EXRImgRepr()
-                ref_img.load_from_file(f)
-                ref_img = ref_img.to_pil()
-
-                ref_img_pil = PILImgRepr()
-                ref_img_pil.load_from_pil_object(ref_img)
-                tr_preview_files.append(ref_img_pil)
-
-        def load_png():
-            for f in tr_preview_paths:
-                ref_img_pil = PILImgRepr()
-                ref_img_pil.load_from_file(f)
-                tr_preview_files.append(ref_img_pil)
-
-        def load_imgs_by_type(argument):
-            switcher = {
-                "exr": load_exr,
-                "png": load_png,
-
-            }
-            # Get the function from switcher dictionary
-            func = switcher.get(argument)
-            # Execute the function
-            if func is not None:
-                return func()
-            else:
-                raise TypeError("Unsupported output format: "
-                                .join(str(argument)))
-
-        load_imgs_by_type(task.output_format)
+        for f in tr_preview_paths:
+            ref_img_pil = load_as_PILImgRepr(f)
+            tr_preview_files.append(ref_img_pil)
 
         tr_flm_files = [os.path.normpath(f)
                         for f in tr_files if has_ext(f, '.flm')]
@@ -138,8 +87,10 @@ class LuxRenderVerificator(RenderingVerificator):
                 cropped_ref_imgs = []
                 for ref_img in ref_imgs:
                     if task.output_format == "exr":
+                        # exr comes already cropped
                         cropped_ref_img = ref_img
                     elif task.output_format == "png":
+                        # crop manually
                         cropped_ref_img = \
                             img_verificator.crop_img_relative(
                                 ref_img,

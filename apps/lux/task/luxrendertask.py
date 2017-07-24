@@ -223,7 +223,6 @@ class LuxTask(renderingtask.RenderingTask):
             self.output_format
         )
         scene_dir = os.path.dirname(self._get_scene_file_rel_path())
-        # self._temp_save("provscenejob.txt", scene_src)
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,

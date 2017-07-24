@@ -168,7 +168,6 @@ def load_img(file_):
         logger.warning("Can't verify img file {}:{}".format(file_, err))
         return None
 
-
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
      :param str file_: path to the file 
@@ -180,6 +179,16 @@ def load_as_pil(file_):
     if img:
         return img.to_pil()
 
+def load_as_PILImgRepr(file_):
+    img = load_img(file_)
+
+    if isinstance(img, EXRImgRepr):
+        img_pil = PILImgRepr()
+        img_pil. \
+            load_from_pil_object(img.to_pil())
+        img = img_pil
+
+    return img
 
 def blend(img1, img2, alpha):
     (res_x, res_y) = img1.get_size()
