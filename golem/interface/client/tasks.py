@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -131,14 +132,8 @@ class Tasks:
         file_path = self.__get_save_path(file_name)
 
         # error if file exists
-        # TODO: Unify apps.core.task.coretaskstate._check_output_file()
         try:
-            file_exist = os.path.exists(file_path)
-            with open(file_path, 'a'):
-                pass
-            if not file_exist:
-                os.remove(file_path)
-            else:
+            if not self.__is_file_writeable(file_path):
                 return CommandResult(error="File {} already exists"
                                            .format(file_path))
         except IOError:
@@ -152,10 +147,7 @@ class Tasks:
         task = TaskDesc()
 
         # save to file
-        # TODO: Unify gui.applicationlogic._save_task()
-        with open(file_path, "wb") as f:
-            data = jsonpickle.dumps(task.definition)
-            f.write(data)
+        self.__save_task_def(file_path, task.definition)
 
         return CommandResult("Task created in file: '{}'."
                              .format(file_path))
@@ -163,6 +155,10 @@ class Tasks:
     @command(argument=file_name, help="Test a task from file")
     def test(self, file_name):
 
+        def __error(msg):
+            return CommandResult(error="Test failed: {}".format(msg))
+
+        # convert name into full path
         file_path = self.__get_save_path(file_name)
 
         try:
@@ -177,16 +173,133 @@ class Tasks:
 
         datadir = sync_wait(Tasks.client.get_datadir())
 
+        # TODO: allow empty frames inside test?
+        # default frames to 1 and keep old_frames for later
+        old_frames = definition.options.frames
+        if not old_frames:
+            definition.options.frames = "1"
+
         # TODO: unify GUI and CLI logic
 
         rendering_task_state = TaskDesc()
         rendering_task_state.definition = definition
         task_builder = Tasks.__get_task_builder(rendering_task_state, datadir)
 
-        test_result = Tasks.__test_task(task_builder, datadir)
-        if test_result is not True:
-            return CommandResult(error="Test failed: {}"
-                                       .format(test_result))
+        test_result_raw = Tasks.__test_task(task_builder, datadir)
+        test_result = test_result_raw[0]
+        # print test_result
+        if not test_result:
+            return __error(test_result)
+
+        # reset frames to old_frames from the original file
+        definition.options.frames = old_frames
+
+        # read stdout file
+        stdout_file_path = test_result["data"][0]
+        with open(stdout_file_path, 'r') as f:
+            stdout = f.read()
+
+        # print stdout
+
+        # parse output data
+        prog = "Resolution: (\d+) x (\d+)$.+Frames: (\d+)-(\d+);"
+        m = re.search(prog, stdout, re.S | re.M)
+
+        width = int(m.group(1))
+        height = int(m.group(2))
+        frames_min = int(m.group(3))
+        frames_max = int(m.group(4))
+
+        # print "width : {}".format(width)
+        # print "height : {}".format(height)
+        # print "frames_min : {}".format(frames_min)
+        # print "frames_max : {}".format(frames_max)
+
+        # validate result vs definition
+        # print jsonpickle.dumps(definition)
+        # print definition.resolution
+
+        # validate resolution
+        if definition.resolution and len(definition.resolution) > 1:
+
+            if width > definition.resolution[0]:
+                return __error("width ({}) > resolution[0] ({})"
+                               .format(width, definition.resolution[0]))
+
+            if height > definition.resolution[1]:
+                return __error("height ({}) > resolution[1] ({})"
+                               .format(height, definition.resolution[1]))
+        else:
+            # set default resolution
+            definition.resolution = [width, height]
+
+        # validate frames & frames_string
+        if definition.options.frames_string:
+            frames_test = definition.options.frames_string.split("-")
+            max_index = len(frames_test) - 1
+
+            if frames_max < int(frames_test[max_index]):
+                return __error("frames_max ({}) < last(frames_test) ({})"
+                               .format(frames_max, frames_test[max_index]))
+
+            if frames_min > int(frames_test[0]):
+                return __error("frames_min ({}) > first(frames_test) ({})"
+                               .format(frames_min, frames_test[0]))
+        else:
+            # set default frame_string
+            definition.options.frames_string = "{}-{}".format(frames_min,
+                                                              frames_max)
+
+        max_frames = frames_max - frames_min + 1
+        if definition.options.frames:
+            if max_frames < int(definition.options.frames):
+                return __error("max_frames ({}) < options.frames ({})"
+                               .format(max_frames, definition.options.frames))
+        else:
+            # set default frames
+            definition.options.frames = "{}".format(max_frames)
+
+        # validate output_format & output_file
+        if definition.output_format:
+            # TODO: check values
+            print "Validate: {}".format(definition.output_format)
+        else:
+            # set default output_format
+            # TODO: find the default for task type.
+            definition.output_format = "EXR"
+
+        if definition.output_file:
+            # make sure file is writeable
+            try:
+                if not self.__is_file_writeable(definition.output_file):
+                    return __error("File {} already exists"
+                                   .format(definition.output_file))
+            except IOError:
+                return __error("Cannot open output file: {}"
+                               .format(definition.output_file))
+            except (OSError, TypeError) as err:
+                return __error("Output file {} is not properly set: {}"
+                               .format(definition.output_file, err))
+        else:
+            # set default output_file
+            msf = os.path.normpath(definition.main_scene_file)
+            scene_name = msf[msf.rfind('/')+1:msf.rfind('.')]
+            # TODO: find default output_dir
+            output_path = "{}{}.{}".format("/tmp/",
+                                           scene_name,
+                                           definition.output_format)
+
+            definition.output_file = output_path
+
+        # TODO: validate and set defaults:
+        #  - subtasks
+        #  - compositing
+        #  - timeouts
+
+        # print jsonpickle.dumps(definition)
+
+        # testing complete, save task ( TODO: if updated? )
+        self.__save_task_def(file_path, definition)
 
         return CommandResult("Test success: '{}'."
                              .format(test_result))
@@ -323,21 +436,16 @@ class Tasks:
         return task_builder
 
     @staticmethod
-    def __test_task(task_builder, datadir):
-
-        test_task = Task.build_task(task_builder)
-        test_task.header.task_id = str(uuid.uuid4())
-        queue = Queue()
-
-        TaskTester(
-            test_task, datadir,
-            success_callback=lambda *a, **kw: queue.put(True),
-            error_callback=lambda *a, **kw: queue.put(a)
-        ).run()
-
-        test_result = queue.get()
-        return test_result
-
+    def __is_file_writeable(file_path):
+        # TODO: Unify apps.core.task.coretaskstate._check_output_file()
+        file_exist = os.path.exists(file_path)
+        with open(file_path, 'a'):
+            pass
+        if not file_exist:
+            os.remove(file_path)
+        else:
+            return False
+        return True
 
     @staticmethod
     def __progress_str(progress):
@@ -354,6 +462,33 @@ class Tasks:
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred)
 
+    @staticmethod
+    def __read_from_file(file_name):
+        with open(file_name) as task_file:
+            return jsonpickle.loads(task_file.read())
+
+    @staticmethod
+    def __save_task_def(file_path, task_def):
+        # TODO: Unify gui.applicationlogic._save_task()
+        with open(file_path, "wb") as f:
+            data = jsonpickle.dumps(task_def)
+            f.write(data)
+
+    @staticmethod
+    def __test_task(task_builder, datadir):
+
+        test_task = Task.build_task(task_builder)
+        test_task.header.task_id = str(uuid.uuid4())
+        queue = Queue()
+
+        TaskTester(
+            test_task, datadir,
+            success_callback=lambda *a, **kw: queue.put(a),
+            error_callback=lambda *a, **kw: queue.put(a)
+        ).run()
+
+        test_result = queue.get()
+        return test_result
 
 @group(help="Manage subtasks")
 class Subtasks:
