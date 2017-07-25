@@ -136,14 +136,13 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         self.keys_auth = EllipticalKeysAuth(self.datadir)
 
-        self.connect(None)
+        self.connect()
 
         # NETWORK
         self.node = Node(node_name=self.config_desc.node_name,
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.get_key_id())
 
-        self.p2pservice = None
         self.diag_service = None
 
         self.task_server = None
@@ -231,7 +230,6 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         self.do_work_task.start(1, False)
         self.publish_task.start(1, True)
-        BaseApp.start(self)
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
@@ -309,14 +307,13 @@ class Client(BaseApp, HardwarePresetsMixin):
         log.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+        BaseApp.start(self)
 
     def stop_network(self):
-        if self.p2pservice:
-            self.p2pservice.stop_accepting()
-            self.p2pservice.disconnect()
         if self.task_server:
             self.task_server.stop_accepting()
             self.task_server.disconnect()
+        BaseApp.stop(self)
 
     def pause(self):
         if self.do_work_task.running:
@@ -324,13 +321,11 @@ class Client(BaseApp, HardwarePresetsMixin):
         if self.publish_task.running:
             self.publish_task.stop()
 
-        if self.p2pservice:
-            self.p2pservice.pause()
-            self.p2pservice.disconnect()
         if self.task_server:
             self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        BaseApp.stop(self)
 
     def resume(self):
         if not self.do_work_task.running:
@@ -338,11 +333,9 @@ class Client(BaseApp, HardwarePresetsMixin):
         if not self.publish_task.running:
             self.publish_task.start(1, True)
 
-        if self.p2pservice:
-            self.p2pservice.resume()
-            self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        BaseApp.start(self)
 
     def init_monitor(self):
         metadata = self.__get_nodemetadatamodel()
@@ -359,7 +352,7 @@ class Client(BaseApp, HardwarePresetsMixin):
         self.monitor.shut_down()
         self.diag_service.stop_looping_call()
 
-    def connect(self, socket_address, node_id=""):
+    def connect(self, socket_address=None, node_id=""):
         devp2plog.info("Paased in socket address {}".format(socket_address))
         if socket_address is None:
             log.info("bootstrap node")
@@ -384,16 +377,15 @@ class Client(BaseApp, HardwarePresetsMixin):
 
         if socket_address is None:
             self.configp2p['discovery']['bootstrap_nodes'].append(
-                "enode://%s@%s:%s" % (self.configp2p['node']['pubkey_hex'],
-                                      "127.0.0.1",
-                                      port)
+                str("enode://%s@%s:%s" % (self.configp2p['node']['pubkey_hex'],
+                    "127.0.0.1", port)).encode('utf-8')
             )
         else:
             devp2plog.info("Not bootstrap adding, so adding correct bootstrap"
                            " to list")
             self.configp2p['discovery']['bootstrap_nodes'].append(
-                "enode://%s@%s:%s" % (node_id, socket_address.address,
-                                      socket_address.port))
+                str("enode://%s@%s:%s" % (node_id, socket_address.address,
+                    socket_address.port)).encode('utf-8'))
 
         devp2plog.info(self.configp2p['discovery']['bootstrap_nodes'])
 
@@ -563,8 +555,7 @@ class Client(BaseApp, HardwarePresetsMixin):
     def get_known_peers(self):
         peers = self.get_peers()
         return [
-            DictSerializer.dump(p['node'], typed=False)
-            for p in list(peers.values())
+            DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
         ]
 
     def get_connected_peers(self):

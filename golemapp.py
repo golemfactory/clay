@@ -90,8 +90,8 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         from golem.core.common import config_logging
         config_logging(datadir=datadir)
         install_reactor()
-                node = OptNode(peers=peer, node_address=node_address,
-		               use_monitor=monitor, **config)
+        node = OptNode(peers=peer, node_address=node_address,
+	        use_monitor=monitor, **config)
         node.run(use_rpc=True)
 
 

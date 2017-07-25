@@ -477,29 +477,23 @@ class TestClient(TestWithDatabase):
         assert presets.get("Preset1") is None
 
     @patch('golem.client.SystemMonitor')
-    @patch('golem.client.P2PService.connect_to_network')
-    def test_start_stop(self, connect_to_network, *_):
+    def test_start_stop(self, *_):
         self.client = Client(datadir=self.path, transaction_system=False,
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False)
-
-        deferred = Deferred()
-        connect_to_network.side_effect = lambda *_: deferred.callback(True)
-
         self.client.start()
-        sync_wait(deferred)
+        for service in self.client.services:
+            assert not self.client.services[service].is_stopped
 
-        p2p_disc = self.client.p2pservice.disconnect
         task_disc = self.client.task_server.disconnect
 
-        self.client.p2pservice.disconnect = Mock()
-        self.client.p2pservice.disconnect.side_effect = p2p_disc
         self.client.task_server.disconnect = Mock()
         self.client.task_server.disconnect.side_effect = task_disc
 
         self.client.stop()
 
-        assert self.client.p2pservice.disconnect.called
+        for service in self.client.services:
+            assert self.client.services[service].is_stopped
         assert self.client.task_server.disconnect.called
 
 
@@ -840,13 +834,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                         .startswith("Application not listening"))
 
         # status without peers
-        c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
 
         # status without peers
         self.assertTrue(c.connection_status().startswith("Not connected"))
 
-        c.services.peermanager.peers = {self.__new_session() for i in xrange(4)}
+        c.services.peermanager.peers = {self.__new_session() for i in range(4)}
 
         known_peers = c.get_known_peers()
         self.assertEqual(len(known_peers), 4)
@@ -858,10 +851,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         # status with peers
         self.assertTrue(c.connection_status().startswith("Connected"))
-
-        # status without ports
-        c.p2pservice.cur_port = 0
-        self.assertTrue(c.connection_status().startswith("Application not listening"))
 
     def test_port_status(self, *_):
         from pydispatch import dispatcher

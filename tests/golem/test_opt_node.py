@@ -21,6 +21,7 @@ class TestNode(TestWithDatabase):
         super(TestNode, self).tearDown()
 
     @patch('twisted.internet.reactor', create=True)
+    @patch('golemapp.install_reactor')
     def test_help(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
@@ -29,6 +30,7 @@ class TestNode(TestWithDatabase):
         mock_reactor.run.assert_not_called()
 
     @patch('twisted.internet.reactor', create=True)
+    @patch('golemapp.install_reactor')
     def test_wrong_option(self, mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'],
@@ -38,6 +40,7 @@ class TestNode(TestWithDatabase):
         mock_reactor.run.assert_not_called()
 
     @patch('twisted.internet.reactor', create=True)
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_node_address_valid(self, mock_node, *_):
         node_address = '1.2.3.4'
@@ -59,6 +62,7 @@ class TestNode(TestWithDatabase):
     @patch('golem.docker.manager.DockerManager')
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.delete_reactor')
+    @patch('golemapp.install_reactor')
     @patch('golem.node.Client')
     def test_node_address_passed_to_client(self, mock_client, *_):
         """Test that with '--node-address <addr>' arg the client is started with
@@ -75,6 +79,7 @@ class TestNode(TestWithDatabase):
                                        transaction_system=True,
                                        use_docker_machine_manager=True)
 
+    @patch('golemapp.install_reactor')
     def test_node_address_invalid(self, *_):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
@@ -83,12 +88,14 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
 
+    @patch('golemapp.install_reactor')
     def test_node_address_missing(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node, *_):
         mock_node.return_value = mock_node
@@ -100,6 +107,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
@@ -112,6 +120,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_bad_peer(self, *_):
         addr1 = self.exampleNodeID + "@10.30.10.216:40111"
@@ -121,6 +130,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_peers(self, mock_node, *_):
         mock_node.return_value = mock_node
@@ -135,6 +145,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
+    @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_rpc_address(self, *_):
         runner = CliRunner()
@@ -197,8 +208,11 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.docker.image.DockerImage')
     def test_setup_without_docker(self, *_):
-
-        self.parsed_peer = OptNode.parse_peer(None, None, ['10.0.0.10:40104'])
+        exampleNodeID = "84447c7d60f95f7108e85310622d0dbdea61b0763898d6bf3\
+        dd60d8954b9c07f9e0cc156b5397358048000ac4de63c12250bc6f1081780add091e0d3\
+        714060e8"
+        self.parsed_peer = OptNode.parse_peer(None, None, [exampleNodeID +
+                                                           '@10.0.0.10:40104'])
         self.node = OptNode(self.path, use_docker_machine_manager=False,
                             peers=self.parsed_peer)
 
