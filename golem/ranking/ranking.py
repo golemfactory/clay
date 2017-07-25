@@ -127,7 +127,7 @@ class Ranking(object):
         # elif weight_sum != 0:
         #     logger.debug("Using neighboursRank")
         #     return rank / float(weight_sum)
-        # return UNKNOWN_TRUST
+        return UNKNOWN_TRUST
 
     def get_requesting_trust(self, node_id):
         local_trust = tm.requested_node_trust_local(node_id)
@@ -145,7 +145,7 @@ class Ranking(object):
         # elif weight_sum != 0:
         #     logger.debug("Using neighboursRank")
         #     return rank / float(weight_sum)
-        # return UNKNOWN_TRUST
+        return UNKNOWN_TRUST
 
     def sync_network(self):
         neighbours_loc_ranks = self.client.collect_neighbours_loc_ranks()
