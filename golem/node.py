@@ -15,7 +15,8 @@ class Node(object):
     """
 
     def __init__(self, datadir=None, peers=None, transaction_system=False,
-                 use_docker_machine_manager=True, **config_overrides):
+                 use_monitor=False, use_docker_machine_manager=True,
+                 **config_overrides):
 
         self.client = Client(
             datadir=datadir,
