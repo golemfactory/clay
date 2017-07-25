@@ -35,7 +35,7 @@ class TestSystemMonitor(TestCase):
         """Test wether correct protocol versions were sent."""
         from golem.network.p2p.peersession import P2P_PROTOCOL_ID
         from golem.task.tasksession import TASK_PROTOCOL_ID
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", ClientConfigDescriptor()), MONITOR_CONFIG)
 
         def check(f, msg_type):
             with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
@@ -58,7 +58,7 @@ class TestSystemMonitor(TestCase):
 
     def test_ping_request(self):
         from pydispatch import dispatcher
-        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", "Descr", ClientConfigDescriptor()), MONITOR_CONFIG)
+        monitor = SystemMonitor(NodeMetadataModel("CLIID", "SESSID", "hackix", "3.1337", ClientConfigDescriptor()), MONITOR_CONFIG)
         port = random.randint(20, 50000)
         with mock.patch('requests.post') as post_mock:
             post_mock.return_value = response_mock = mock.MagicMock()
