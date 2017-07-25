@@ -9,7 +9,7 @@ ipaddress>=1.0.18
 ipfsapi==0.4.0
 netifaces==0.10.4
 peewee>=2.8.1
-Pillow==3.0.0
+Pillow==4.2.1
 psutil==5.2.1
 pycodestyle
 pyelliptic==1.5.7
