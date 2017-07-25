@@ -1,3 +1,4 @@
+--extra-index-url https://builds.golem.network
 setuptools==34.3.3
 appdirs>=1.4
 click>=4.0
@@ -48,5 +49,5 @@ zope.interface==4.3.3
 incremental==16.10.1
 OpenEXR
 devp2p==0.9.2
-pyqt5
+PyQt5
 pycparser==2.17
