@@ -185,6 +185,9 @@ def parse_requirements(my_path):
     dependency_links = []
     for line in open(path.join(my_path, 'requirements.txt')):
         line = line.strip()
+        if line.startswith('-') or line.startswith('#'):
+            continue
+
         m = re.match('.+#egg=(?P<package>.+)$', line)
         if m:
             requirements.append(m.group('package'))
