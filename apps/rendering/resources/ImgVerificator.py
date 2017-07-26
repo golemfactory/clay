@@ -12,7 +12,7 @@ logger = logging.getLogger("apps.rendering")
 
 
 class ImgStatistics(object):
-    def __init__(self, base_img, img):
+    def __init__(self, base_img: ImgRepr, img: ImgRepr):
         if not isinstance(base_img, ImgRepr) or not isinstance(img, ImgRepr):
             raise TypeError("base_img and img must be ImgRepr")
 
@@ -28,14 +28,14 @@ class ImgStatistics(object):
         self.psnr = self._calculate_psnr(self.mse)
 
     @property
-    def name(self):
+    def name(self) -> str:
         name = None
         if isinstance(self.img, PILImgRepr):
             name = self.img.get_name()
 
         return name
 
-    def _calculate_greyscale_normalized_mse(self, img1, img2):
+    def _calculate_greyscale_normalized_mse(self, img1: ImgRepr, img2: ImgRepr):
         (res_x, res_y) = img1.get_size()
 
         img1_bw = img1.to_pil().convert('L')  # makes it greyscale
