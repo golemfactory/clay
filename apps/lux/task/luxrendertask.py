@@ -22,6 +22,7 @@ from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
+from apps.lux.resources.scenefilereader import make_scene_analysis
 import apps.lux.resources.scenefilereader as sfr
 
 from apps.lux.task.verificator import LuxRenderVerificator
