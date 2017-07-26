@@ -25,39 +25,6 @@ from golem.core.common import get_golem_path
 
 class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
     PEP8_FILES = ['apps/rendering/resources/ImgVerificator.py',]
-    # def test_display_img_stats(self):
-    #     """
-    #     Uncomment this test to display img stats...
-    #     :return:
-    #     """
-    #     test_path = os.getcwd()
-    #     folder_path = os.path.join(test_path, 'imgs_for_verification_tests')
-    #
-    #     base_img_name = '300x400spp25_run0.png'
-    #     base_img =  PILImgRepr()
-    #     base_img.load_from_file(os.path.join(folder_path, base_img_name))
-    #
-    #     (res_x, res_y) = base_img.get_size()
-    #
-    #     images = list()
-    #     for file_name in os.listdir(folder_path):
-    #         if file_name.endswith(".png") and base_img_name not in file_name:
-    #             p = PILImgRepr()
-    #             p.load_from_file(os.path.join(folder_path, file_name))
-    #             r=p.img.resize( (res_x, res_y), PIL.Image.ANTIALIAS) # make it same size as base img
-    #             p.load_from_pil_object(r,file_name)
-    #             images.append(p)
-    #
-    #
-    #     print 'SSIM \t MSE \t MSE_norm \t PSNR'
-    #
-    #     imgstats = []
-    #     for img in images:
-    #         imgstat = ImgStatistics(base_img, img)
-    #         imgstats.append(imgstat)
-    #         print imgstat.name,  imgstat.get_stats()
-    #
-    #     pass
 
     def test_get_random_crop_window(self):
         import random

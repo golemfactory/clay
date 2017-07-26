@@ -10,9 +10,7 @@ from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import (LogTestCase)
 
-from .imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
-
-
+from tests.apps.rendering.resources.imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
 
 class TImgRepr(ImgRepr):
     def load_from_file(self, file_):
