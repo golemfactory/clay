@@ -83,10 +83,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
-    from golem.core.common import config_logging
-    config_logging(datadir=datadir)
     client = create_client(datadir)
-    client.connect(None, "NoBoostrap")
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
@@ -209,6 +206,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     while True:
         line = requesting_proc.stdout.readline().strip()
         if line:
+            line = line.decode('utf-8')
             print(line)
             m = node_id_re.match(line)
             if m:

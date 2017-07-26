@@ -162,7 +162,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
         for i, peer in enumerate(peers):
             table.setItem(i, 0, QTableWidgetItem(peer['ip_port'][0]))
             table.setItem(i, 1, QTableWidgetItem(str(peer['ip_port'][1])))
-            table.setItem(i, 2, QTableWidgetItem(encode_hex(peer['remote_pubkey'])))
+            table.setItem(i, 2, QTableWidgetItem(encode_hex(peer['remote_pubkey']).decode('utf-8')))
             if 'node_name' in peer:
                 table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
 

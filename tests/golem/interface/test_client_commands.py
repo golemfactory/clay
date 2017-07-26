@@ -154,6 +154,7 @@ class TestNetwork(unittest.TestCase):
             dict(
                 ip_port=['10.0.0.{}'.format(i),'2500{}'.format(i)],
                 remote_pubkey='deadbeef0{}'.format(i) * 8,
+                node_name='node_' + str(i)
             ) for i in range(1, 1 + 6)
         ]
 
@@ -216,14 +217,14 @@ class TestNetwork(unittest.TestCase):
         assert result_1.data[1][0] == [
             '10.0.0.1',
             '25001',
-            '6465616462656566...6164626565663031',
+            b'6465616462656566...6164626565663031',
             'node_1'
         ]
 
         assert result_2.data[1][0] == [
             '10.0.0.1',
             '25001',
-            '64656164626565663031' * 8,
+            b'64656164626565663031' * 8,
             'node_1'
         ]
 

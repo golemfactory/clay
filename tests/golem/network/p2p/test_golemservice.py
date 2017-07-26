@@ -42,7 +42,7 @@ class TestGolemService(unittest.TestCase):
         peer.connect_service(gservice)
         self.client.services.peermanager.peers.append(peer)
         gservice.get_tasks()
-        pkt = Packet(prioritize=False, payload='\xc0', cmd_id=0, protocol_id=18317)
+        pkt = Packet(prioritize=False, payload=b'\xc0', cmd_id=0, protocol_id=18317)
         peer.stop()
         peer.send_packet.assert_called_once_with(pkt)
         gservice.on_wire_protocol_start.assert_called_once()

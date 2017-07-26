@@ -63,7 +63,8 @@ class Network(object):
             values.append([
                 str(ip),
                 port,
-                Network.__key_id(encode_hex(peer['remote_pubkey']), full)
+                Network.__key_id(encode_hex(peer['remote_pubkey']), full),
+                str(peer['node_name'])
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,
@@ -80,4 +81,4 @@ class Network(object):
     def __key_id(key_id, full=False):
         if full:
             return key_id
-        return key_id[:16] + "..." + key_id[-16:]
+        return key_id[:16] + b"..." + key_id[-16:]

@@ -658,7 +658,6 @@ def mock_tester_run(self):
     self.tt.join()
 
 
-@patch('golem.client.P2PService.start_accepting')
 @patch('golem.client.TaskServer.start_accepting')
 @patch('golem.client.async_run', side_effect=mock_async_run)
 @patch.object(golem.client.TaskTester, 'run', mock_tester_run)
