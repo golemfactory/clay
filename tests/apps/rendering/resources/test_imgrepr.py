@@ -4,8 +4,8 @@ import unittest
 from PIL import Image
 
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_as_pil, load_img, logger,
-                                              PILImgRepr)
+                                              load_as_pil, load_img, load_as_PILImgRepr,
+                                              logger, PILImgRepr)
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import (LogTestCase)

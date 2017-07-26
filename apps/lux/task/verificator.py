@@ -137,7 +137,7 @@ class LuxRenderVerificator(RenderingVerificator):
 
         except TypeError as e:
             logger.info("Exception during verification of subtask: "
-                        + str(subtask_id) + " " + e.message)
+                        + str(subtask_id) + " " + str(e))
 
     def query_extra_data_for_advanced_verification(self, new_flm):
         files = [os.path.basename(new_flm), os.path.basename(self.test_flm)]
@@ -162,7 +162,9 @@ class LuxRenderVerificator(RenderingVerificator):
             return False
         commonprefix = common_dir(computer.tt.result['data'])
         flm = find_file_with_ext(commonprefix, [".flm"])
-        stderr = [x for x in computer.tt.result['data'] if os.path.basename(x) == "stderr.log"]
+        stderr = [x for x in computer.tt.result['data']
+                  if os.path.basename(x) == "stderr.log"]
+
         if flm is None or len(stderr) == 0:
             return False
         else:
