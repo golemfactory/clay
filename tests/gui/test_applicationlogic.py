@@ -127,7 +127,7 @@ class MockRPCSession(object):
         self.method_map = method_map
         self.reverse_map = dict()
 
-        for k, v in method_map.iteritems():
+        for k, v in list(method_map.items()):
             self.reverse_map[v] = k
 
     def call(self, alias, *args, **kwargs):
@@ -261,7 +261,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
         rpc_session = MockRPCSession(self.client, CORE_METHOD_MAP)
         rpc_client = rpc.session.Client(rpc_session, CORE_METHOD_MAP)
 
-        description = u"New description"
+        description = "New description"
 
         logic.client = rpc_client
         logic.change_description(description)
@@ -451,7 +451,7 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         n = self.app.main_window.ui.taskTableWidget.columnCount()
 
         set_width = self.app.main_window.ui.taskTableWidget.setColumnWidth
-        set_width.assert_has_calls([call(i, ANY) for i in xrange(0, n)])
+        set_width.assert_has_calls([call(i, ANY) for i in range(0, n)])
 
     def test_update_peers_view(self):
         logic = self.logic
@@ -529,23 +529,23 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         m = Mock()
 
         broken_benchmark = BlenderBenchmark()
-        broken_benchmark.task_definition.main_program_file = u'Bździągwa'
+        broken_benchmark.task_definition.main_program_file = 'Bździągwa'
         logic.customizer.show_error_window = Mock()
         logic.run_benchmark(broken_benchmark, m, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(
-            u"Main program file does not exist: Bździągwa")
+            "Main program file does not exist: Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
-        broken_benchmark.task_definition.output_file = u'/x/y/Bździągwa'
+        broken_benchmark.task_definition.output_file = '/x/y/Bździągwa'
         logic.run_benchmark(broken_benchmark, m, m)
         logic.progress_dialog.close()
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(
-            u"Cannot open output file: /x/y/Bździągwa")
+            "Cannot open output file: /x/y/Bździągwa")
 
         broken_benchmark = BlenderBenchmark()
         broken_benchmark.task_definition.main_scene_file = "NOT EXISTING"
@@ -556,26 +556,26 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         if logic.br.tt:
             logic.br.tt.join()
         logic.customizer.show_error_window.assert_called_with(
-            u"Main scene file NOT EXISTING is not properly set")
+            "Main scene file NOT EXISTING is not properly set")
 
-        logic.test_task_computation_error(u"Bździągwa")
+        logic.test_task_computation_error("Bździągwa")
         text = logic.progress_dialog_customizer.gui.ui.message.text()
-        assert text == u"Task test computation failure. Bździągwa"
-        logic.test_task_computation_error(u"500 server error")
+        assert text == "Task test computation failure. Bździągwa"
+        logic.test_task_computation_error("500 server error")
         text = logic.progress_dialog_customizer.gui.ui.message.text()
-        assert text == u"Task test computation failure. [500 server error] " \
-            u"There is a chance that you RAM limit is too low. " \
-            u"Consider increasing max memory usage"
+        assert text == "Task test computation failure. [500 server error] " \
+            "There is a chance that you RAM limit is too low. " \
+            "Consider increasing max memory usage"
         logic.test_task_computation_error(None)
         text = logic.progress_dialog_customizer.gui.ui.message.text()
-        assert text == u"Task test computation failure. "
+        assert text == "Task test computation failure. "
         logic.test_task_computation_success([], 10000, 1021, {})
         text = logic.progress_dialog_customizer.gui.ui.message.text()
-        assert text.startswith(u"Task tested successfully")
+        assert text.startswith("Task tested successfully")
         logic.test_task_computation_success([], 10000, 1021,
                                             {"warnings": "Warning message"})
         text = logic.progress_dialog_customizer.gui.ui.message.text()
-        assert text.startswith(u"Task tested successfully")
+        assert text.startswith("Task tested successfully")
         logic.customizer.show_warning_window.assert_called_with(
             "Warning message")
 
@@ -584,16 +584,16 @@ class TestGuiApplicationLogicWithGUI(DatabaseFixture, LogTestCase):
         self.assertFalse(logic._validate_task_state(rts))
 
         self.assertEqual(logic._format_stats_message(("STAT1", 2424)),
-                         u"Session: STAT1; All time: 2424")
-        self.assertEqual(logic._format_stats_message(["STAT1"]), u"Error")
-        self.assertEqual(logic._format_stats_message(13131), u"Error")
+                         "Session: STAT1; All time: 2424")
+        self.assertEqual(logic._format_stats_message(["STAT1"]), "Error")
+        self.assertEqual(logic._format_stats_message(13131), "Error")
 
         ts = TaskDesc()
         ts.definition.task_type = "Blender"
         ts.definition.main_program_file = "nonexisting"
         self.assertFalse(logic._validate_task_state(ts))
         logic.customizer.show_error_window.assert_called_with(
-            u"Main program file does not exist: nonexisting")
+            "Main program file does not exist: nonexisting")
 
         with self.assertLogs(logger, level="WARNING"):
             logic.set_current_task_type("unknown task")
@@ -708,7 +708,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
         task_type = Mock()
         ttb = TTaskBuilder(self.path)
         task_type.task_builder_type.return_value = ttb
-        self.client.task_server.task_manager.task_types[u"testtask"] = task_type
+        self.client.task_server.task_manager.task_types["testtask"] = task_type
 
         logic.customizer = MainWindowCustomizer(gui.main_window, logic)
         logic.customizer.new_task_dialog_customizer = Mock()
@@ -773,7 +773,7 @@ class TestApplicationLogicTestTask(TestDirFixtureWithReactor):
                 load_task_definition.call_args[0][0], ts.definition)
 
         ttb = TTaskBuilder(self.path, TTaskWithDef)
-        self.client.task_server.task_manager.task_types[u"testtask"] = ttb
+        self.client.task_server.task_manager.task_types["testtask"] = ttb
 
         assert logic.run_test_task(ts.definition)
         assert not logic.run_test_task(None)

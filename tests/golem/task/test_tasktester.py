@@ -49,7 +49,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         tt.task_computed(task_thread)
 
         task_thread = MemTaskThread(None, 30210, "Some error")
-        with self.assertLogs(logger, level=1):
+        with self.assertLogs(logger, level='WARNING'):
             tt.task_computed(task_thread)
         tt.error_callback.assert_called_with("Some error")
 

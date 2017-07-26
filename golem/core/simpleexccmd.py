@@ -1,5 +1,5 @@
 import subprocess
-from common import is_windows, DEVNULL
+from .common import is_windows, DEVNULL
 
 
 def exec_cmd(cmd, nice=20, wait=True):
@@ -25,9 +25,9 @@ def exec_cmd(cmd, nice=20, wait=True):
         command = ""
         for c in cmd:
             command += " " + c
-        print command
+        print(command)
         pc = subprocess.Popen(["/bin/sh", "-c", command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = pc.communicate()
     if wait:
         pc.wait()
-    print str(stderr) + "\n" + str(stdout)
+    print(str(stderr) + "\n" + str(stdout))

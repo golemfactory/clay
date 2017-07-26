@@ -1,7 +1,7 @@
 import logging
 import time
 
-from golem.core.crypto import ECIESDecryptionError
+from devp2p.crypto import ECIESDecryptionError
 from golem.network.transport import message
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol

@@ -1,7 +1,6 @@
 import abc
 import logging
 import time
-from copy import deepcopy
 
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.core.variables import APP_VERSION
@@ -133,7 +132,7 @@ class Task(object):
             self.should_wait = should_wait
             self.ctd = ctd
 
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 setattr(self, key, value)
 
     @classmethod

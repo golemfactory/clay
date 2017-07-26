@@ -18,12 +18,12 @@ class TestTempFiles(TestDirFixture):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", dir=test_dir, delete=False) as tmp_file:
             name = tmp_file.name
             self.assertTrue(os.path.exists(name))
-            tmp_file.write("print 'hello!'")
+            tmp_file.write("print('hello!')")
         cmd = ['python', name]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc.wait()
         out = proc.stdout.read()
-        self.assertEquals(out.rstrip(), 'hello!')
+        self.assertEqual(out.rstrip(), b'hello!')
 
         self.assertTrue(os.path.exists(tmp_file.name))
         self.assertTrue(os.path.join(test_dir, os.path.basename(tmp_file.name)))

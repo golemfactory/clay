@@ -1,5 +1,5 @@
 from golem.monitor.serialization import defaultserializer
-from modelbase import BasicModel
+from .modelbase import BasicModel
 
 
 class NodeMetadataModel(BasicModel):

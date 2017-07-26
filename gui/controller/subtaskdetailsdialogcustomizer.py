@@ -1,8 +1,8 @@
-from __future__ import division
+
 
 from ethereum.utils import denoms
 
-from customizer import Customizer
+from .customizer import Customizer
 
 
 class SubtaskDetailsDialogCustomizer(Customizer):
@@ -29,7 +29,7 @@ class SubtaskDetailsDialogCustomizer(Customizer):
         self.gui.ui.subtaskDefinitionTextEdit.setPlainText(self.subtask_state.subtask_definition)
         self.gui.ui.subtaskOutputLogTextEdit.setPlainText(self.subtask_state.stdout)
         self.gui.ui.subtaskErrorLogTextEdit.setPlainText(self.subtask_state.stderr)
-        self.gui.ui.priceLabel.setText(u"{:.6f} ETH".format(self.subtask_state.value / denoms.ether))
+        self.gui.ui.priceLabel.setText("{:.6f} ETH".format(self.subtask_state.value / denoms.ether))
         self.gui.ui.nodeIpAddressLabel.setText(self.subtask_state.computer.ip_address)
         self.__update_results()
 

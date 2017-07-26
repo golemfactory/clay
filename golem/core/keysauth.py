@@ -1,41 +1,44 @@
 import abc
 import logging
 import os
+from _pysha3 import sha3_256 as _sha3_256
+from abc import abstractmethod
 from hashlib import sha256
-from _pysha3 import sha3_256, keccak_256
 
 import bitcoin
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature.pkcs1_15 import PKCS115_SigScheme
-from Crypto.Hash import SHA256
-from Crypto.Cipher import PKCS1_OAEP
-from abc import abstractmethod
-from crypto import ECCx
+from devp2p.crypto import ECCx, mk_privkey
+
 from golem.core.variables import PRIVATE_KEY, PUBLIC_KEY
-from simpleenv import get_local_datadir
-from simplehash import SimpleHash
+from golem.utils import encode_hex, decode_hex
+from .simpleenv import get_local_datadir
+from .simplehash import SimpleHash
 
 logger = logging.getLogger(__name__)
 
 
 def sha3(seed):
-    """ Return sha3-256 of seed in digest
+    """ Return sha3-256 (NOT keccak) of seed in digest
     :param str seed: data that should be hashed
     :return str: binary hashed data
     """
-    return sha3_256(seed).digest()
+    if isinstance(seed, str):
+        seed = seed.encode()
+    return _sha3_256(seed).digest()
 
 
 def sha2(seed):
+    if isinstance(seed, str):
+        seed = seed.encode()
     return int("0x" + sha256(seed).hexdigest(), 16)
 
 
-def mk_privkey(seed):
-    return keccak_256(seed).digest()
-
-
 def privtopub(raw_privkey):
-    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey), 'bin_electrum')
+    raw_pubkey = bitcoin.encode_pubkey(bitcoin.privtopub(raw_privkey),
+                                       'bin_electrum')
     assert len(raw_pubkey) == 64
     return raw_pubkey
 
@@ -47,15 +50,17 @@ def get_random(min_value=0, max_value=None):
     :param max_value: Maximum value
     :return: Random number in range <min_value, max_value>
     """
-    from os import urandom
-    from sys import getsizeof, maxint
+
+    from Crypto.Random.random import randrange
+    from sys import maxsize
+
     if max_value is None:
-        max_value = maxint
+        max_value = maxsize
     if min_value > max_value:
         raise ArithmeticError("max_value should be greater than min_value")
     if min_value == max_value:
         return min_value
-    return int((int(urandom(getsizeof(max_value)).encode('hex'), 16) % (max_value - min_value)) + min_value)
+    return randrange(min_value, max_value)
 
 
 def get_random_float():
@@ -223,7 +228,7 @@ class RSAKeysAuth(KeysAuth):
         :param public_key: public key that will be used to generate id
         :return str: new id
         """
-        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:])
+        return SimpleHash.hash_hex(public_key.exportKey("OpenSSH")[8:]).encode()
 
     def encrypt(self, data, public_key=None):
         """ Encrypt given data with RSA
@@ -284,9 +289,9 @@ class RSAKeysAuth(KeysAuth):
         pub_key = priv_key.publickey()
         priv_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
         pub_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(priv_key_loc, 'w') as f:
+        with open(priv_key_loc, 'wb') as f:
             f.write(priv_key.exportKey('PEM'))
-        with open(pub_key_loc, 'w') as f:
+        with open(pub_key_loc, 'wb') as f:
             f.write(pub_key.exportKey())
         self.public_key = pub_key.exportKey()
         self._private_key = priv_key.exportKey('PEM')
@@ -329,9 +334,9 @@ class RSAKeysAuth(KeysAuth):
             return False
 
         try:
-            with open(private_key_loc, 'w') as f:
+            with open(private_key_loc, 'wb') as f:
                 f.write(self._private_key.exportKey('PEM'))
-            with open(public_key_loc, 'w') as f:
+            with open(public_key_loc, 'wb') as f:
                 f.write(self.public_key.exportKey())
                 return True
         except IOError:
@@ -373,9 +378,9 @@ class RSAKeysAuth(KeysAuth):
     def _generate_keys(private_key_loc, public_key_loc):
         key = RSA.generate(2048)
         pub_key = key.publickey()
-        with open(private_key_loc, 'w') as f:
+        with open(private_key_loc, 'wb') as f:
             f.write(key.exportKey('PEM'))
-        with open(public_key_loc, 'w') as f:
+        with open(public_key_loc, 'wb') as f:
             f.write(pub_key.exportKey())
 
     def _set_and_save(self, private_key, public_key):
@@ -384,9 +389,9 @@ class RSAKeysAuth(KeysAuth):
         self.key_id = self.cnt_key_id(self.public_key)
         private_key_loc = RSAKeysAuth._get_private_key_loc(self.private_key_name)
         public_key_loc = RSAKeysAuth._get_public_key_loc(self.public_key_name)
-        with open(private_key_loc, 'w') as f:
+        with open(private_key_loc, 'wb') as f:
             f.write(private_key.exportKey('PEM'))
-        with open(public_key_loc, 'w') as f:
+        with open(public_key_loc, 'wb') as f:
             f.write(public_key.exportKey())
 
 
@@ -412,7 +417,7 @@ class EllipticalKeysAuth(KeysAuth):
         :param public_key: public key that will be used to generate id
         :return str: new id
         """
-        return public_key.encode('hex')
+        return encode_hex(public_key)
 
     def encrypt(self, data, public_key=None):
         """ Encrypt given data with ECIES
@@ -424,7 +429,7 @@ class EllipticalKeysAuth(KeysAuth):
         if public_key is None:
             public_key = self.public_key
         if len(public_key) == 128:
-            public_key = public_key.decode('hex')
+            public_key = decode_hex(public_key)
         return ECCx.ecies_encrypt(data, public_key)
 
     def decrypt(self, data):
@@ -458,7 +463,7 @@ class EllipticalKeysAuth(KeysAuth):
             if public_key is None:
                 public_key = self.public_key
             if len(public_key) == 128:
-                public_key = public_key.decode('hex')
+                public_key = decode_hex(public_key)
             ecc = ECCx(public_key)
             return ecc.verify(sig, sha3(data))
         except AssertionError:
@@ -558,7 +563,7 @@ class EllipticalKeysAuth(KeysAuth):
         # FIXME: The same fix is needed for RSAKeysAuth.
         keys_dir = os.path.dirname(private_key_loc)
         if not os.path.isdir(keys_dir):
-            os.makedirs(keys_dir, 0700)
+            os.makedirs(keys_dir, 0o700)
 
         with open(private_key_loc, 'wb') as f:
             f.write(key)

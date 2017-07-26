@@ -25,7 +25,7 @@ sort_payments = Argument(
 
 
 def __value(value):
-    return u"{:.6f} GNT".format(float(value) / denoms.ether)
+    return "{:.6f} GNT".format(float(value) / denoms.ether)
 
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
@@ -58,10 +58,10 @@ def payments(sort):
     for payment in result:
 
         payment_value = float(payment["value"])
-        payment_fee = payment["fee"] or u""
+        payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = u"{:.1f}%".format(float(payment_fee) * 100 /
+            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
                                             payment_value)
 
         entry = [

@@ -19,7 +19,7 @@ class ClientConfigDescriptor(object):
         self.pings_interval = 0.0
         self.use_ipv6 = 0
 
-        self.seed_host = u""
+        self.seed_host = ""
         self.seed_port = 0
 
         self.getting_peers_interval = 0.0
@@ -111,7 +111,7 @@ class ConfigApprover(object):
             k: ncd_dict[k]
             for k in self._opts_to_change if k in self._opts_to_change
         }
-        for key, val in change_dict.iteritems():
+        for key, val in list(change_dict.items()):
             change_dict[key] = self._actions[key](val, key)
         self.config_desc.__dict__.update(change_dict)
         return self.config_desc

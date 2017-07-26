@@ -15,7 +15,7 @@ def save(obj, filename, gzip=True):
     else:
         file_ = open(filename, 'wb')
     try:
-        json_str = json.encode(obj)
+        json_str = json.encode(obj).encode()
         file_.write(json_str)
     finally:
         file_.close()
@@ -33,7 +33,7 @@ def load(filename, gzip=True):
     else:
         file_ = open(filename, 'rb')
     try:
-        json_str = file_.read()
+        json_str = file_.read().decode('utf-8')
         obj = json.decode(json_str)
     finally:
         file_.close()

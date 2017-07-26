@@ -19,7 +19,7 @@ class TestCustomizer(unittest.TestCase):
     def test_show_file(self, mock_os, mock_is_windows, mock_is_osx, mock_subprocess):
         with tempfile.NamedTemporaryFile(prefix="golem", delete=False) as file_:
             file_name = file_.name
-        print file_name
+        print(file_name)
         try:
             mock_is_windows.return_value = True
             mock_is_osx.return_value = False

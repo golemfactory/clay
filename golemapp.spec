@@ -37,12 +37,12 @@ is_windows = sys.platform == 'win32'
 icon = None
 
 if is_windows:
-    icon = os.path.join(os.getcwdu(), 'Installer', 'favicon.ico')
+    icon = os.path.join(os.getcwd(), 'Installer', 'favicon.ico')
     try:
         import vboxapi
     except ImportError:
-        print 'Error importing VirtualBox API. You can install it with:'
-        print 'python "%VBOX_MSI_INSTALL_PATH%\\sdk\\install\\vboxapisetup.py" install'
+        print('Error importing VirtualBox API. You can install it with:')
+        print('python "%VBOX_MSI_INSTALL_PATH%\\sdk\\install\\vboxapisetup.py" install')
         sys.exit(1)
 
     hidden_imports += ['vboxapi']

@@ -8,7 +8,7 @@ from os import makedirs, path, remove
 from mock import Mock
 
 from golem.tools.ci import ci_skip
-from test_docker_image import DockerTestCase
+from .test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext

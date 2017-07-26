@@ -6,9 +6,7 @@ class ClosedAdapterError(Exception):
         return "Adapter's connection closed"
 
 
-class Adapter(object):
-    __metaclass__ = abc.ABCMeta
-
+class Adapter(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def connect(self, host_info, **kwargs):
         return

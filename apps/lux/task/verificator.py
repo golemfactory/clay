@@ -10,8 +10,7 @@ from golem.task.localcomputer import LocalComputer
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator
 
-from apps.rendering.resources.ImgVerificator import \
-    ImgStatistics, ImgVerificator
+
 from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 
 logger = logging.getLogger("apps.lux")
@@ -160,12 +159,8 @@ class LuxRenderVerificator(RenderingVerificator):
         if self.verification_error:
             return False
         commonprefix = common_dir(computer.tt.result['data'])
-        flm = find_file_with_ext(
-            commonprefix, [".flm"])
-
-        stderr = filter(lambda x:
-                        os.path.basename(x) == "stderr.log",
-                        computer.tt.result['data'])
+        flm = find_file_with_ext(commonprefix, [".flm"])
+        stderr = [x for x in computer.tt.result['data'] if os.path.basename(x) == "stderr.log"]
         if flm is None or len(stderr) == 0:
             return False
         else:

@@ -43,7 +43,7 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         args = self.args + ['--node-address', node_address]
         return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEquals(return_value.exit_code, 0)
+        self.assertEqual(return_value.exit_code, 0)
 
         self.assertGreater(len(mock_node.mock_calls), 0)
         init_call = mock_node.mock_calls[0]
@@ -66,7 +66,7 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         args = self.args + ['--node-address', node_address]
         return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEquals(return_value.exit_code, 0)
+        self.assertEqual(return_value.exit_code, 0)
 
         mock_client.assert_called_with(node_address=node_address,
                                        datadir=self.path,
@@ -77,14 +77,14 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         args = self.args + ['--node-address', '10.30.10.2555']
         return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEquals(return_value.exit_code, 2)
+        self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid value for "--node-address"' in
                         return_value.output)
 
     def test_node_address_missing(self, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, self.args + ['--node-address'])
-        self.assertEquals(return_value.exit_code, 2)
+        self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
     @patch('golemapp.OptNode')
@@ -127,8 +127,8 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         return_value = runner.invoke(
             start, self.args + [
-                '--peer', u'10.30.10.216:40111',
-                u'--peer', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+                '--peer', '10.30.10.216:40111',
+                '--peer', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
                 '--peer', '[::ffff:0:0:0]:96'
             ], catch_exceptions=False
         )
@@ -139,17 +139,17 @@ class TestNode(TestWithDatabase):
     def test_rpc_address(self, *_):
         runner = CliRunner()
 
-        ok_addresses = [
-            ['--rpc-address', u'10.30.10.216:61000'],
+        ok_addresses = [ 
+            ['--rpc-address', '10.30.10.216:61000'],
             ['--rpc-address', '[::ffff:0:0:0]:96'],
-            [u'--rpc-address', u'[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']
+            ['--rpc-address', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443']
         ]
         bad_addresses = [
-            ['--rpc-address', u'10.30.10.216:91000'],
+            ['--rpc-address', '10.30.10.216:91000'],
             ['--rpc-address', '[::ffff:0:0:0]:96999']
         ]
         skip_addresses = [
-            [u'--rpc-address', u'']
+            ['--rpc-address', '']
         ]
 
         for address in ok_addresses + skip_addresses:
@@ -187,7 +187,7 @@ class TestOptNode(TempDirFixture):
         router.return_value = router
         router.address = WebSocketAddress(config.rpc_address,
                                           config.rpc_port,
-                                          realm=u'test_realm')
+                                          realm='test_realm')
         self.node._setup_rpc()
         self.node._start_rpc_router()
 

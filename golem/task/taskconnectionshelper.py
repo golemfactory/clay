@@ -50,10 +50,14 @@ class TaskConnectionsHelper(object):
         if cur_time - self.last_remove_old <= self.remove_old_interval:
             return
         self.last_remove_old = cur_time
-        self.conn_to_set = dict(filter(lambda (y, z): cur_time - z[3] < self.remove_old_interval,
-                                       self.conn_to_set.items()))
-        self.conn_to_start = dict(filter(lambda(y, z): cur_time - z[2] < self.remove_old_interval,
-                                         self.conn_to_start.items()))
+        self.conn_to_set = dict([
+            y_z for y_z in list(self.conn_to_set.items())
+            if cur_time - y_z[1][3] < self.remove_old_interval
+        ])
+        self.conn_to_start = dict([
+            y_z1 for y_z1 in list(self.conn_to_start.items())
+            if cur_time - y_z1[1][2] < self.remove_old_interval
+        ])
 
     def cannot_start_task_session(self, conn_id):
         """ Inform task server that cannot pass request with given conn id

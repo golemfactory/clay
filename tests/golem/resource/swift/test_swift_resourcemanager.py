@@ -22,14 +22,14 @@ class TestSwiftClient(TempDirFixture):
         self.dst_file_path = self.tempdir
 
         with open(self.src_file, 'w') as f:
-            for _ in xrange(100):
+            for _ in range(100):
                 f.write(str(uuid.uuid4()))
 
     def test(self):
         client = OpenStackSwiftClient()
 
         max_retries = 10
-        for i in xrange(0, max_retries):
+        for i in range(0, max_retries):
             try:
                 options = client.build_options('node_id')
             except Exception as exc:
@@ -44,7 +44,7 @@ class TestSwiftClient(TempDirFixture):
 
         result_dict = results[0]
 
-        filename, multihash = result_dict[u'Name'], result_dict[u'Hash']
+        filename, multihash = result_dict['Name'], result_dict['Hash']
 
         assert filename
         assert multihash

@@ -5,9 +5,9 @@ import os
 import socket
 
 import ipaddress
-import stun
+from golem.network.stun import pystun as stun
 
-from variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
+from .variables import DEFAULT_CONNECT_TO, DEFAULT_CONNECT_TO_PORT
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +49,8 @@ def ipv4_networks():
         if not ip:
             continue
         for addrInfo in ip:
-            addr = unicode(addrInfo.get('addr'))
-            mask = unicode(addrInfo.get('netmask', '255.255.255.0'))
+            addr = str(addrInfo.get('addr'))
+            mask = str(addrInfo.get('netmask', '255.255.255.0'))
 
             try:
                 ip_addr = ipaddress.ip_network((addr, mask), strict=False)
@@ -59,7 +59,7 @@ def ipv4_networks():
                 continue
 
             if addr != '127.0.0.1':
-                split = unicode(ip_addr).split('/')
+                split = str(ip_addr).split('/')
                 addresses.append((split[0], split[1]))
     return addresses
 
@@ -71,13 +71,13 @@ get_host_addresses = ip_addresses
 def ip_address_private(address):
     if address.find(':') != -1:
         try:
-            return ipaddress.IPv6Address(unicode(address)).is_private
+            return ipaddress.IPv6Address(str(address)).is_private
         except Exception as exc:
             logger.error("Cannot parse IPv6 address {}: {}"
                          .format(address, exc))
             return False
     try:
-        return ipaddress.IPv4Address(unicode(address)).is_private
+        return ipaddress.IPv4Address(str(address)).is_private
     except Exception as exc:
         logger.error("Cannot parse IPv4 address {}: {}"
                      .format(address, exc))
@@ -86,7 +86,7 @@ def ip_address_private(address):
 
 def ip_network_contains(network, mask, address):
     return ipaddress.ip_network((network, mask), strict=False) == \
-           ipaddress.ip_network((unicode(address), mask), strict=False)
+           ipaddress.ip_network((str(address), mask), strict=False)
 
 
 def get_host_address_from_connection(connect_to=DEFAULT_CONNECT_TO, connect_to_port=DEFAULT_CONNECT_TO_PORT,

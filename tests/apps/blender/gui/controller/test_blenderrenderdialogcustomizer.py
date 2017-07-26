@@ -52,15 +52,15 @@ class TestBlenderRenderDialogCustomizer(TestDirFixture):
         assert customizer.options.frames == '1-10'
         customizer.gui.ui.framesCheckBox.setChecked(True)
         customizer.gui.ui.framesLineEdit.setText(
-            u"{}".format("1;3;5-12"))
+            "{}".format("1;3;5-12"))
         customizer._change_options()
         assert customizer.options.frames == "1;3;5-12"
         customizer.gui.ui.framesLineEdit.setText(
-            u"{}".format("Not proper frames"))
+            "{}".format("Not proper frames"))
         customizer._change_options()
         assert customizer.options.frames == "1;3;5-12"
         mock_messagebox.assert_called_with(
             mock_messagebox.Critical, "Error",
-            u"Wrong frame format. Frame list expected, e.g. 1;3;5-12.",
+            "Wrong frame format. Frame list expected, e.g. 1;3;5-12.",
             ANY, ANY
         )

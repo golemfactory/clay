@@ -138,7 +138,7 @@ class OpenStackSwiftAPI(object):
         for item in endpoints:
             if 'region' in item and 'url' in item:
                 oss.region_urls[item['region']] = item['url']
-        oss.regions = oss.region_urls.keys()
+        oss.regions = list(oss.region_urls.keys())
 
 
 def api_access(method):
@@ -191,10 +191,8 @@ class OpenStackSwiftAPIClient(object):
     def get_region_url_for_node(self, node_id):
         if node_id:
             total = len(OpenStackSwiftAPI.region_urls)
-            c = 0
-            for i in node_id:
-                c += ord(i)
-            return OpenStackSwiftAPI.regions[c % total]
+            as_bytes = node_id.encode() if isinstance(node_id, str) else node_id
+            return OpenStackSwiftAPI.regions[sum(as_bytes) % total]
         return random.choice(OpenStackSwiftAPI.regions)
 
     @api_access

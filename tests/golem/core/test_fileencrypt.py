@@ -1,6 +1,8 @@
 import os
 import random
 
+from io import IOBase
+
 from golem.core.fileencrypt import FileHelper, FileEncryptor, AESFileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.tools.testdirfixture import TestDirFixture
@@ -18,8 +20,8 @@ class TestAESFileEncryptor(TestDirFixture):
         self.enc_file_path = os.path.join(self.res_dir, 'test_file.enc')
 
         with open(self.test_file_path, 'wb') as f:
-            for i in xrange(0, 100):
-                f.write(bytearray(random.getrandbits(8) for _ in xrange(32)))
+            for i in range(0, 100):
+                f.write(bytearray(random.getrandbits(8) for _ in range(32)))
 
     def test_encrypt(self):
         """ Test encryption procedure """
@@ -59,7 +61,8 @@ class TestAESFileEncryptor(TestDirFixture):
         self.assertEqual(os.path.getsize(self.test_file_path),
                          os.path.getsize(decrypted_path))
 
-        with open(self.test_file_path) as f1, open(decrypted_path) as f2:
+        with open(self.test_file_path, 'rb') as f1, \
+             open(decrypted_path, 'rb') as f2:
 
             while True:
                 chunk1 = f1.read(32)
@@ -72,7 +75,7 @@ class TestAESFileEncryptor(TestDirFixture):
 
         AESFileEncryptor.decrypt(self.enc_file_path,
                                  decrypted_path,
-                                 secret + "0")
+                                 secret + b"0")
 
         decrypted = True
 
@@ -80,7 +83,9 @@ class TestAESFileEncryptor(TestDirFixture):
             decrypted = False
         else:
 
-            with open(self.test_file_path) as f1, open(decrypted_path) as f2:
+            with open(self.test_file_path, 'rb') as f1, \
+                 open(decrypted_path, 'rb') as f2:
+
                 while True:
                     chunk1 = f1.read(32)
                     chunk2 = f2.read(32)
@@ -118,18 +123,18 @@ class TestFileHelper(TestDirFixture):
         self.dir_manager = DirManager(self.path)
         self.res_dir = self.dir_manager.get_task_temporary_dir('test_task')
         self.test_file_path = os.path.join(self.res_dir, 'test_file')
-        open(self.test_file_path, 'w').close()
+        open(self.test_file_path, 'wb').close()
 
     def test_file_helper(self):
         """ Test opening file with FileHelper """
-        mode = 'r'
+        mode = 'rb'
         # Test opening with file path
         with FileHelper(self.test_file_path, mode) as f:
-            self.assertIsInstance(f, file)
+            self.assertIsInstance(f, IOBase)
             self.assertEqual(f.mode, mode)
 
         # Test opening with file
         with open(self.test_file_path, mode) as file_:
             with FileHelper(file_, mode) as f:
-                self.assertIsInstance(f, file)
+                self.assertIsInstance(f, IOBase)
                 self.assertEqual(f.mode, mode)

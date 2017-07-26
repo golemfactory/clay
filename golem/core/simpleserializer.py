@@ -15,7 +15,7 @@ logger = logging.getLogger('golem.core.simpleserializer')
 
 class DictCoder(object):
 
-    cls_key = u'py/object'
+    cls_key = 'py/object'
     deep_serialization = True
 
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
@@ -43,14 +43,14 @@ class DictCoder(object):
     def obj_from_dict(cls, dictionary):
         cls_path = dictionary.pop(cls.cls_key)
 
-        _idx = cls_path.rfind(u'.')
+        _idx = cls_path.rfind('.')
         module_name, cls_name = cls_path[:_idx], cls_path[_idx+1:]
         module = sys.modules[module_name]
         sub_cls = getattr(module, cls_name)
 
         obj = sub_cls.__new__(sub_cls)
 
-        for k, v in dictionary.iteritems():
+        for k, v in list(dictionary.items()):
             if cls._is_class(v):
                 setattr(obj, k, cls.obj_from_dict(v))
             else:
@@ -60,17 +60,17 @@ class DictCoder(object):
     @classmethod
     def _to_dict_traverse_dict(cls, dictionary, typed=True):
         result = dict()
-        for k, v in dictionary.iteritems():
-            if (isinstance(k, basestring) and k.startswith('_')) or callable(v):
+        for k, v in list(dictionary.items()):
+            if (isinstance(k, str) and k.startswith('_')) or isinstance(v, collections.Callable):
                 continue
-            result[unicode(k)] = cls._to_dict_traverse_obj(v, typed)
+            result[str(k)] = cls._to_dict_traverse_obj(v, typed)
         return result
 
     @classmethod
     def _to_dict_traverse_obj(cls, obj, typed=True):
         if isinstance(obj, dict):
             return cls._to_dict_traverse_dict(obj, typed)
-        elif isinstance(obj, basestring):
+        elif isinstance(obj, str):
             return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             if isinstance(obj, (set, frozenset)):
@@ -84,7 +84,7 @@ class DictCoder(object):
     @classmethod
     def _from_dict_traverse_dict(cls, dictionary):
         result = dict()
-        for k, v in dictionary.iteritems():
+        for k, v in list(dictionary.items()):
             result[k] = cls._from_dict_traverse_obj(v)
         return result
 
@@ -94,7 +94,7 @@ class DictCoder(object):
             if cls._is_class(obj):
                 return cls.obj_from_dict(obj)
             return cls._from_dict_traverse_dict(obj)
-        elif isinstance(obj, basestring):
+        elif isinstance(obj, str):
             return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
@@ -110,7 +110,7 @@ class DictCoder(object):
 
     @staticmethod
     def module_and_class(obj):
-        fmt = u'{}.{}'
+        fmt = '{}.{}'
         if inspect.isclass(obj):
             return fmt.format(obj.__module__, obj.__name__)
         return fmt.format(obj.__module__, obj.__class__.__name__)

@@ -55,7 +55,7 @@ class PreviewController(Customizer):
         self.gui.ui.previewsSlider.valueChanged.connect(self._update_slider_preview)
 
     def _set_preview(self, task_desc):
-        self.gui.ui.outputFile.setText(u"{}".format(task_desc.definition.output_file))
+        self.gui.ui.outputFile.setText("{}".format(task_desc.definition.output_file))
         self.__update_output_file_color()
         self.gui.ui.previewsSlider.setVisible(False)
         if "result_preview" in task_desc.task_state.extra_data and \
@@ -96,7 +96,7 @@ class PreviewController(Customizer):
             self.gui.ui.outputFile.setText(self.maincontroller.current_task_highlighted.task_state.outputs[num])
         else:
             logger.warning("Output file name for {} output result hasn't been set yet".format(num))
-            self.gui.ui.outputFile.setText(u"")
+            self.gui.ui.outputFile.setText("")
 
     def __pixmap_clicked(self, event):
         x = event.pos().x()
@@ -111,7 +111,7 @@ class PreviewController(Customizer):
 
     def __get_subtask(self, num):
         task = self.logic.get_task(self.maincontroller.current_task_highlighted.definition.task_id)
-        subtasks = [sub for sub in task.task_state.subtask_states.values() if
+        subtasks = [sub for sub in list(task.task_state.subtask_states.values()) if
                     sub.extra_data['start_task'] <= num <= sub.extra_data['end_task']]
         if len(subtasks) > 0:
             return min(subtasks, key=lambda x: subtasks_priority(x))

@@ -1,5 +1,4 @@
 import logging
-import math
 import os
 import struct
 from unittest import TestCase
@@ -10,24 +9,27 @@ from golem.core.common import config_logging
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import BUFF_SIZE
 from golem.network.transport import message
-from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer, FileProducer, FileConsumer,
-                                                EncryptFileProducer, DecryptFileConsumer,
-                                                EncryptDataProducer, DecryptDataConsumer, BasicProtocol,
+from golem.network.transport.tcpnetwork import (DataProducer, DataConsumer,
+                                                FileProducer, FileConsumer,
+                                                EncryptFileProducer,
+                                                DecryptFileConsumer,
+                                                EncryptDataProducer,
+                                                DecryptDataConsumer,
+                                                BasicProtocol,
                                                 logger, SocketAddress)
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.captureoutput import captured_output
 from golem.tools.testwithappconfig import TestWithKeysAuth
 
 
-
 class TestDataProducerAndConsumer(TestWithKeysAuth):
 
     def test_progress(self):
 
-        long_string = "abcdefghijklmn opqrstuvwxyz"
+        long_string = b"abcdefghijklmn opqrstuvwxyz"
         datas = (
-            ("", None),
-            ("abcde", None),
+            (b"", None),
+            (b"abcde", None),
             (long_string, 8),
             (long_string * 1000, 16),
             (long_string * 1000, 128),
@@ -63,10 +65,13 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
         with captured_output() as (out, err):
             while session.conn.transport.unregisterProducer.call_count == 0:
                 d.resumeProducing()
-        min_num = math.floor(len(data) / buff_size)
+
+        min_num = len(data) // buff_size
+
+        split = out.getvalue().strip().split("\r")
         self.assertGreaterEqual(session.conn.transport.write.call_count, min_num)
-        self.assertEqual(out.getvalue().strip().split("\r")[-1], producer_progress_value)
-        self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)
+        self.assertEqual(split[-1], producer_progress_value)
+        self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
 
         extra_data = {}
@@ -75,9 +80,10 @@ class TestDataProducerAndConsumer(TestWithKeysAuth):
             for chunk in session.conn.transport.write.call_args_list:
                 c.dataReceived(chunk[0][0])
 
+        split = out.getvalue().strip().split("\r")
         self.assertEqual(extra_data["result"], data)
-        self.assertEqual(out.getvalue().strip().split("\r")[-1], consumer_progress_value)
-        self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)
+        self.assertEqual(split[-1], consumer_progress_value)
+        self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
 
 
@@ -135,42 +141,53 @@ class TestFileProducerAndConsumer(TestWithKeysAuth):
                                  file_consumer_cls=FileConsumer, session=MagicMock()):
         producer_progress_value = "Sending progress 100 %"
         consumer_progress_value = "File data receiving 100 %"
+        consumer_list = ["consumer{}".format(i + 1) for i in
+                         range(len(file_list))]
+
+        print('-' * 64)
+
         if buff_size:
             p = file_producer_cls(file_list, session, buff_size)
         else:
             p = file_producer_cls(file_list, session)
             buff_size = BUFF_SIZE
+
         with captured_output() as (out, err):
             while session.conn.transport.unregisterProducer.call_count == 0:
                 p.resumeProducing()
+
         min_num = 0
         for file in file_list:
-            with open(file) as f:
+            with open(file, 'rb') as f:
                 data = f.read()
-            min_num += math.floor(len(data)/buff_size)
-        self.assertGreaterEqual(session.conn.transport.write.call_count, min_num)
+            min_num += len(data) // buff_size
+
+        transport = session.conn.transport
+        self.assertGreaterEqual(transport.write.call_count, min_num)
+        self.assertGreaterEqual(len(transport.write.call_args_list), min_num)
+
+        split = out.getvalue().strip().split("\r")
         if len(file_list) > 0:
-            self.assertEqual(out.getvalue().strip().split("\r")[-1], producer_progress_value)
-            self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)
+            self.assertEqual(split[-1], producer_progress_value)
+            self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
 
-        consumer_list = ["consumer{}".format(i + 1) for i in range(len(file_list))]
         c = file_consumer_cls(consumer_list, self.path, session)
-
         with captured_output() as (out, err):
             for chunk in session.conn.transport.write.call_args_list:
                 c.dataReceived(chunk[0][0])
 
         for prod, cons in zip(file_list, consumer_list):
-
             with open(prod) as f:
                 prod_data = f.read()
             with open(os.path.join(self.path, cons)) as f:
                 cons_data = f.read()
             self.assertEqual(prod_data, cons_data)
+
+        split = out.getvalue().strip().split("\r")
         if len(consumer_list) > 0:
-            self.assertEqual(out.getvalue().strip().split("\r")[-1], consumer_progress_value)
-            self.assertGreaterEqual(out.getvalue().strip().split("\r"), min_num)
+            self.assertEqual(split[-1], consumer_progress_value)
+            self.assertGreaterEqual(len(split), min(min_num, 100))
         self.assertEqual(err.getvalue().strip(), "")
 
 
@@ -181,7 +198,7 @@ class TestBasicProtocol(LogTestCase):
         self.assertFalse(protocol.opened)
 
     def test_dataReceived(self):
-        data = "abc"
+        data = b"abc"
         protocol = BasicProtocol()
         self.assertIsNone(protocol.dataReceived(data))
         protocol.opened = True
@@ -200,18 +217,18 @@ class TestBasicProtocol(LogTestCase):
 
 class TestSocketAddress(TestCase):
     def test_zone_index(self):
-        base_address = u"fe80::3"
-        address = u"fe80::3%eth0"
+        base_address = "fe80::3"
+        address = "fe80::3%eth0"
         port = 1111
         sa = SocketAddress(address, port)
         assert sa.address == base_address
         assert sa.port == port
 
-        address = u"fe80::3%1"
+        address = "fe80::3%1"
         sa = SocketAddress(address, port)
         assert sa.address == base_address
 
-        address = u"fe80::3%en0"
+        address = "fe80::3%en0"
         sa = SocketAddress(address, port)
         assert sa.address == base_address
 

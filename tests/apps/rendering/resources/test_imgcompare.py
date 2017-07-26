@@ -228,3 +228,5 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
                                       img_path, (0, 0))
         assert not advance_verify_img(img_path, 10, 10, (0, 0), (2, 2),
                                       exr_path, (0, 0))
+
+

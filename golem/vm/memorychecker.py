@@ -10,20 +10,21 @@ class MemoryChecker(Thread):
         self.max_mem = 0
         self.min_mem = self.start_mem
         self.pid = 0
-        self._stop = Event()
+        self.working = False
 
     def stop(self):
-        self._stop.set()
+        self.working = False
         if self.max_mem - self.start_mem > 0:
             return self.max_mem - self.start_mem
         else:
             return max(0, self.max_mem - self.min_mem)
 
     def stopped(self):
-        return self._stop.isSet()
+        return self._is_stopped
 
     def run(self):
-        while not self.stopped():
+        self.working = True
+        while not self._is_stopped and self.working:
             mem = psutil.virtual_memory().used
             if mem > self.max_mem:
                 self.max_mem = mem

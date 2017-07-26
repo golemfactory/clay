@@ -1,6 +1,6 @@
 def __count_time(timeout):
-    hours = timeout / 3600
-    minutes = (timeout % 3600) / 60
+    hours = int(timeout / 3600)
+    minutes = int((timeout % 3600) / 60)
     seconds = timeout % 60
     return hours, minutes, seconds
 

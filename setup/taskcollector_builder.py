@@ -47,9 +47,9 @@ class TaskCollectorBuilder:
         :return: None if taskcollector is built. Error message otherwise
         """
         if isfile(self.build_path):
-            print "Task Collector already built"
+            print("Task Collector already built")
             return None
-        print "Try to build TaskCollector"
+        print("Try to build TaskCollector")
         try:
             check_call(['make', '--version'])
             p = Popen(['make', '-C', self.task_collector_path], stdout=PIPE, stderr=PIPE)

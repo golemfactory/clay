@@ -1,5 +1,3 @@
-from __future__ import division
-
 import datetime
 import os
 import random
@@ -8,7 +6,6 @@ from collections import deque
 from math import ceil
 
 from mock import Mock, MagicMock, patch, ANY
-from stun import FullCone
 
 from golem import model
 from golem import testutils
@@ -17,6 +14,7 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import EllipticalKeysAuth
 from golem.core.variables import APP_VERSION
 from golem.network.p2p.node import Node
+from golem.network.stun.pystun import FullCone
 from golem.task import tasksession
 from golem.task.taskbase import ComputeTaskDef, TaskHeader
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -113,6 +111,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ts.verify_header_sig = lambda x: True
         self.ts = ts
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
+        ts.client.get_requesting_trust.return_value = ts.max_trust
         results = {"data": "", "result_type": 0}
         task_header = get_example_task_header()
         task_header["task_id"] = "xyz"
@@ -646,9 +645,9 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
             key_id=key_id,
             conn_id=conn_id
         )
-        self.assertEquals(session.task_id, subtask_id)
-        self.assertEquals(session.key_id, key_id)
-        self.assertEquals(session.conn_id, conn_id)
+        self.assertEqual(session.task_id, subtask_id)
+        self.assertEqual(session.key_id, key_id)
+        self.assertEqual(session.conn_id, conn_id)
         mark_mock.assert_called_once_with(conn_id, session.address, session.port)
 
     @patch('golem.task.taskserver.TaskServer.new_session_prepare')
@@ -734,7 +733,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         subtask_id = str(uuid.uuid4())
 
         # Empty
-        self.assertEquals([], self.ts._find_sessions(subtask_id))
+        self.assertEqual([], self.ts._find_sessions(subtask_id))
 
         # Found task_id
         task_id = 't' + str(uuid.uuid4())
@@ -742,12 +741,12 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         session.task_id = task_id
         self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
         self.ts.task_sessions_incoming.add(session)
-        self.assertEquals([session], self.ts._find_sessions(subtask_id))
+        self.assertEqual([session], self.ts._find_sessions(subtask_id))
 
         # Found in task_sessions
         subtask_session = MagicMock()
         self.ts.task_sessions[subtask_id] = subtask_session
-        self.assertEquals([subtask_session], self.ts._find_sessions(subtask_id))
+        self.assertEqual([subtask_session], self.ts._find_sessions(subtask_id))
 
     @patch("golem.task.taskserver.TaskServer._add_pending_request")
     @patch("golem.task.taskserver.TaskServer._find_sessions")
@@ -791,7 +790,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
-        self.assertEquals(0, len(kwargs['elems_set']))
+        self.assertEqual(0, len(kwargs['elems_set']))
 
         # Test weakref session exists
         import weakref
@@ -803,13 +802,11 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         find_sessions_mock.reset_mock()
         session_cbk.assert_called_once_with(session, elem)
         session_cbk.reset_mock()
-        self.assertEquals(0, len(kwargs['elems_set']))
+        self.assertEqual(0, len(kwargs['elems_set']))
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
-    @patch("golem.task.taskmanager.get_external_address")
     @patch("golem.task.taskserver.Trust")
-    def test_results(self, trust, mock_addr, dump_mock):
-        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
+    def test_results(self, trust, dump_mock):
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
                         use_docker_machine_manager=False)
@@ -826,6 +823,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)
@@ -845,10 +843,8 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
-    @patch("golem.task.taskmanager.get_external_address")
     @patch("golem.task.taskserver.Trust")
-    def test_results_no_payment_addr(self, trust, mock_addr, dump_mock):
-        mock_addr.return_value = ("10.10.10.10", 1111, "Full NAT")
+    def test_results_no_payment_addr(self, *_):
         # FIXME: This test is too heavy, it starts up whole Golem Client.
         ccd = self._get_config_desc()
         ts = TaskServer(Node(), ccd, EllipticalKeysAuth(self.path), self.client,
@@ -867,6 +863,7 @@ class TestTaskServer2(TestWithKeysAuth, TestDirFixtureWithReactor):
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock.get_trust_mod.return_value = ts.max_trust
         task_mock.query_extra_data.return_value = extra_data
 
         ts.task_manager.add_new_task(task_mock)

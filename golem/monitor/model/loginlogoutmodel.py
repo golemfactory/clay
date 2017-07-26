@@ -2,7 +2,7 @@ from golem.monitorconfig import MONITOR_CONFIG
 from golem.network.p2p.peersession import P2P_PROTOCOL_ID
 from golem.task.tasksession import TASK_PROTOCOL_ID
 
-from modelbase import BasicModel
+from .modelbase import BasicModel
 
 class LoginLogoutBaseModel(BasicModel):
     def __init__(self, metadata):

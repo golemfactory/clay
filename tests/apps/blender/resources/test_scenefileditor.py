@@ -1,3 +1,6 @@
+import builtins
+from importlib import reload
+
 import mock
 
 from apps.blender.resources import scenefileeditor
@@ -74,14 +77,12 @@ True'''
         bpy_m.data.scenes = [scene_m]
         bpy_m.ops.render.render.return_value = None
         bpy_m.ops.file.report_missing_files.return_value = None
-        def hacked_import(*args, **kwargs):
-            if args[0] == 'bpy':
-                return bpy_m
-            return __import__(*args, **kwargs)
-        hacked_builtins = dict(__builtins__)
-        hacked_builtins['__import__'] = hacked_import
 
-        exec(result, {'__builtins__': hacked_builtins})
+        result = result.replace('import bpy', '')
+        globs = dict(globals())
+        globs['bpy'] = bpy_m
+
+        exec(result, globs)
 
         # test scene attributes
         for name in expected_attributes:
