@@ -6,13 +6,12 @@ from PIL import Image
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
                                               load_as_pil, load_img, logger,
                                               PILImgRepr)
-from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import (LogTestCase
-                                              load_as_pil, load_img, load_as_PILImgRepr,
-                                              logger, PILImgRepr)
 
-from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
-                       make_test_img)
+from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import (LogTestCase)
+
+from .imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
+
 
 
 class TImgRepr(ImgRepr):

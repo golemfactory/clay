@@ -10,6 +10,8 @@ from golem.task.localcomputer import LocalComputer
 from apps.core.task.verificator import SubtaskVerificationState
 from apps.rendering.task.verificator import RenderingVerificator
 
+from apps.rendering.resources.ImgVerificator import \
+    ImgStatistics, ImgVerificator
 
 from apps.rendering.resources.imgrepr import load_as_PILImgRepr
 

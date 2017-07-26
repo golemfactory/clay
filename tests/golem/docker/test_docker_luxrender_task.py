@@ -301,12 +301,12 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
             # self.assertEqual(task.num_tasks_received, 1)
             # print i, task.num_tasks_received
             results.append(result)
-            print i, result
+            print(i, result)
 
         from collections import Counter
         stats = Counter(results)
-        print results
-        print stats
+        print (results)
+        print (stats)
         pass
 
 

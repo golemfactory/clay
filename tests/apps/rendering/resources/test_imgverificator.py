@@ -135,7 +135,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
 
         reference_stats = ImgStatistics(ref_img0, ref_img1)  # these are img rendered by requestor
 
-        print reference_stats.get_stats()
+        print (reference_stats.get_stats())
 
         # assert
         assert reference_stats.ssim == 0.73004640056084347
@@ -174,9 +174,9 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
         #
         # ref_img0.img.save(('aaa' + ref_img0.get_name() + '.png'))
         # ref_img1.img.save(('aaa' + ref_img1.get_name() + '.png'))
-        print reference_stats.get_stats()
+        print(reference_stats.get_stats())
 
-        print 'SSIM \t\t MSE \t\t MSE_norm \t\t MSE_bw \t\t PSNR'
+        print('SSIM \t\t MSE \t\t MSE_norm \t\t MSE_bw \t\t PSNR')
         imgstats = []
         validation_results ={}
 
@@ -188,7 +188,7 @@ class TestImgVerificator(LogTestCase,testutils.PEP8MixIn):
 
             imgstats.append(imgstat)
             validation_results[imgstat.name] = validation_result
-            print imgstat.name, imgstat.get_stats(), validation_result
+            print(imgstat.name, imgstat.get_stats(), validation_result)
 
 
         # assert
