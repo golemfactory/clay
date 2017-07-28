@@ -23,20 +23,14 @@ environment:
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
       DIR_IPFS: C:\go-ipfs
-      DIR_WHEELS: C:\wheels
 
-      PYWIN32: pywin32-221.win-amd64-py3.5.exe
-
-      WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
       BINARIES_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'
   - '%DIR_IPFS%               -> appveyor.yml'
   - '%DIR_GETH%               -> appveyor.yml'
-  - '%DIR_WHEELS%             -> requirements.txt'
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
-  - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
@@ -74,19 +68,10 @@ install:
   - virtualenv --clear venv
   - venv\Scripts\activate.bat
 
-  # pywin32
-  - if not exist %DIR_WHEELS% (
-      mkdir %DIR_WHEELS%
-    )
-  - if not exist %DIR_WHEELS%\%PYWIN32% (
-      appveyor DownloadFile %WHEELS_URL%/%PYWIN32% &&
-      move %PYWIN32% %DIR_WHEELS%\%PYWIN32%
-    )
-  - easy_install.exe %DIR_WHEELS%\%PYWIN32%
-
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
+  - pip install -r requirements-win.txt
   - python setup.py develop
 
 build_script:
