@@ -5,7 +5,6 @@ branches:
   only:
   - master
   - develop
-  - python3
 
 platform:
   - x64
