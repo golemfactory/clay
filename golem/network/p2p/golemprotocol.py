@@ -11,6 +11,7 @@ log = slogging.get_logger('golem.protocol')
 
 class GolemProtocol(BaseProtocol):
     protocol_id = 18317  # just a random number; not sure what to put here
+    name = b'golem_proto'
 
     def __init__(self, peer, service):
         # required by P2PProtocol
