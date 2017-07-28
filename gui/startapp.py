@@ -59,7 +59,6 @@ def start_gui(address):
         startupinfo=startupinfo
     )
 
-
 def start_client(start_ranking, datadir=None, transaction_system=False,
                  use_monitor=True, client=None, reactor=None,
                  **config_overrides):
@@ -67,10 +66,10 @@ def start_client(start_ranking, datadir=None, transaction_system=False,
     config_logging("client", datadir=datadir)
     logger = logging.getLogger("golem.client")
     install_unhandled_error_logger()
-
+    import gevent
     if not reactor:
         from twisted.internet import asyncioreactor
-        asyncioreactor.install()
+        asyncioreactor.install(gevent.get_hub().loop.aio)
         from twisted.internet import reactor
 
     process_monitor = None

@@ -20,7 +20,14 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 slogging.SManager.getLogger = monkey_patched_getLogger
 from golem.node import OptNode
+import gevent
 
+from twisted.internet import asyncioreactor
+
+
+def monkey_patched_run(self, *args, **kwargs):
+    self.startRunning(installSignalHandlers=True)
+asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 @click.command()
 @click.option('--gui/--nogui', default=True)
@@ -84,7 +91,10 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
     # Golem
     elif gui:
         from gui.startapp import start_app
-        start_app(rendering=True, use_monitor=monitor, **config)
+        gevent.spawn(start_app, rendering=True, use_monitor=monitor, **config)
+        while True:
+            gevent.wait()
+
     # Golem headless
     else:
         from golem.core.common import config_logging
@@ -92,7 +102,9 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
         install_reactor()
         node = OptNode(peers=peer, node_address=node_address,
 	        use_monitor=monitor, **config)
-        node.run(use_rpc=True)
+        gevent.spawn(node.run, use_rpc=True)
+        while True:
+            gevent.wait()
 
 
 def delete_reactor():
@@ -102,7 +114,7 @@ def delete_reactor():
 
 def install_reactor():
     from twisted.internet import asyncioreactor
-    asyncioreactor.install()
+    asyncioreactor.install(gevent.get_hub().loop.aio)
     from twisted.internet import reactor
     return reactor
 
