@@ -50,7 +50,6 @@ def get_haltspp(scene_file_src):
         return int(haltspp.group(1))
 
 def get_random_crop_window_for_verification(source_lux_config_file_lxs):
-
     if "float cropwindow" in source_lux_config_file_lxs:
         start = source_lux_config_file_lxs.find('float cropwindow')
         start_bracket = source_lux_config_file_lxs.find('[', start)

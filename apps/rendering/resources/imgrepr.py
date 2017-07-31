@@ -45,14 +45,14 @@ class PILImgRepr(ImgRepr):
         self.img = self.img.convert('RGB')
         self.img.name = os.path.basename(file_)
 
-    def load_from_pil_object(self,pil_img, name="noname.png"):
+    def load_from_pil_object(self, pil_img, name="noname.png"):
         import PIL
         if not isinstance(pil_img, PIL.Image.Image):
             raise TypeError("img must be an instance of PIL.Image.Image")
 
         self.img = pil_img
         self.img = self.img.convert('RGB')
-        self.img.name=name
+        self.img.name = name
 
     def get_name(self):
         return self.img.name
@@ -62,10 +62,10 @@ class PILImgRepr(ImgRepr):
 
     def get_pixel(self, xy):
         return list(self.img.getpixel(xy))
+
     @property
     def size(self):
         return self.get_size()
-
 
     def set_pixel(self, xy, color):
         color = tuple(int(c) for c in color)
@@ -149,9 +149,9 @@ class EXRImgRepr(ImgRepr):
 def load_img(file_):
     """
     Load image from file path and return ImgRepr
-    :param str file_: path to the file  
-    :return ImgRepr | None: Return ImgRepr for special file type or None 
-    if there was an error 
+    :param str file_: path to the file
+    :return ImgRepr | None: Return ImgRepr for special file type or None
+    if there was an error
     """
     try:
         _, ext = os.path.splitext(file_)
@@ -165,10 +165,11 @@ def load_img(file_):
         logger.warning("Can't verify img file {}:{}".format(file_, err))
         return None
 
+
 def load_as_pil(file_):
     """ Load image from file path and retun PIL Image representation
-     :param str file_: path to the file 
-     :return Image.Image | None: return PIL Image represantion or None 
+     :param str file_: path to the file
+     :return Image.Image | None: return PIL Image represantion or None
      if there was an error
     """
 
@@ -176,7 +177,8 @@ def load_as_pil(file_):
     if img:
         return img.to_pil()
 
-def load_as_PILImgRepr(file_):
+
+def load_as_PILImgRepr(file_) -> PILImgRepr():
     img = load_img(file_)
 
     if isinstance(img, EXRImgRepr):
@@ -186,6 +188,7 @@ def load_as_PILImgRepr(file_):
         img = img_pil
 
     return img
+
 
 def blend(img1, img2, alpha):
     (res_x, res_y) = img1.get_size()

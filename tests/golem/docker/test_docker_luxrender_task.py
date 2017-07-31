@@ -20,7 +20,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 
@@ -76,7 +76,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task_def.output_file = set_root_dir(task_def.output_file)
         return task_def
 
-    def _test_task(self):
+    def _test_task(self):# -> LuxTask():
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
@@ -213,7 +213,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.res_y = 100
         task.res_x = 100
         task.haltspp = 50
-        task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+        # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
 
         self._test_luxrender_real_task(task)
 
@@ -222,8 +222,9 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.output_format = "exr"
         task.res_y = 100
         task.res_x = 100
-        task.haltspp = 50
-        task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+        task.haltspp = 1
+        # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+        # task.random_crop_window_for_verification = (0, 0.5, 0, 0.5)  # to make it deterministic
 
         self._test_luxrender_real_task(task)
 
@@ -266,14 +267,15 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
     def test_run_stats(self):
         results = []
-        return
+        # return
 
         for i in range(0, 10):
             task = self._test_task()
-            task.res_y = 100
-            task.res_x = 100
-            task.haltspp = 50
+            task.res_y = 250
+            task.res_x = 250
+            task.haltspp = 1
             task.output_format = "exr"
+            task.random_crop_window_for_verification = (0, 0.7, 0, 0.7)  # to make it deterministic
             ctd = task.query_extra_data(10000).ctd
 
             ## act

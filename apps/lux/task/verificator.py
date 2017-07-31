@@ -75,7 +75,8 @@ class LuxRenderVerificator(RenderingVerificator):
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
         try:
-            tr_flm_files, tr_png_files = self._extract_tr_files(tr_files, task)
+            tr_flm_files, tr_preview_files = \
+                self._extract_tr_files(tr_files, task)
 
             # hack, advanced verification is enabled by default
             self.advanced_verification = True
@@ -109,7 +110,7 @@ class LuxRenderVerificator(RenderingVerificator):
                     ImgStatistics(cropped_ref_imgs[0], cropped_ref_imgs[1])
 
                 # GG todo render png from flm
-                for img, flm_file in zip(tr_png_files, tr_flm_files):
+                for img, flm_file in zip(tr_preview_files, tr_flm_files):
                     cropped_img = img_verificator.crop_img_relative(
                         img, task.random_crop_window_for_verification)
                     # cropped_img.img.save('aaa'

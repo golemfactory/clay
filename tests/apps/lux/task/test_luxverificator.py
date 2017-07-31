@@ -9,7 +9,6 @@ from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
-from apps.rendering.resources.ImgVerificator import ImgStatistics, ImgVerificator
 
 
 class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
