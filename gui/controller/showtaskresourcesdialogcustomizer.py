@@ -1,4 +1,4 @@
-from customizer import Customizer
+from .customizer import Customizer
 
 
 class ShowTaskResourcesDialogCustomizer(Customizer):

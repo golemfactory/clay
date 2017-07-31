@@ -5,7 +5,10 @@ from PyQt5.QtWidgets import QFrame, QHeaderView
 from PyQt5.QtGui import QPixmap
 from gui.view.gen.ui_AppMainWindow import Ui_MainWindow
 from golem.core.common import get_golem_path
-from mainwindow import MainWindow
+from .mainwindow import MainWindow
+import logging
+
+logger = logging.getLogger("ui_main")
 
 
 class AppMainWindow(object):
@@ -30,8 +33,10 @@ class AppMainWindow(object):
                     width -= 1  # hide the horizontal scrollbar
                 table.setColumnWidth(n, width)
             super(MainWindow, instance).resizeEvent(event)
-
-        self.window.resizeEvent = types.MethodType(window_resize, self.window, MainWindow)
+        try:
+            self.window.resizeEvent = types.MethodType(window_resize, self.window)
+        except Exception as e:
+            logger.error(e)
 
         self.ui.previewLabel.setFrameStyle(QFrame.NoFrame)
         self.ui.previewLabel.setPixmap(QPixmap(path.join(get_golem_path(), "gui", "view", "nopreview.png")))

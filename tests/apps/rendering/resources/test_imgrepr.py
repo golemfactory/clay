@@ -1,33 +1,29 @@
 import os
 import unittest
 
-import Imath
 from PIL import Image
-
-from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
 
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
                                               load_as_pil, load_img, logger,
                                               PILImgRepr)
-
+from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 from imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
 
 
 class TImgRepr(ImgRepr):
-
     def load_from_file(self, file_):
         super(TImgRepr, self).load_from_file(file_)
 
-    def get_pixel(self, (i, j)):
-        super(TImgRepr, self).get_pixel((i, j))
+    def get_pixel(self, xy):
+        super(TImgRepr, self).get_pixel(xy)
 
     def get_size(self):
         super(TImgRepr, self).get_size()
 
-    def set_pixel(self, (i, j), color):
-        super(TImgRepr, self).set_pixel((i, j), color)
+    def set_pixel(self, xy, color):
+        super(TImgRepr, self).set_pixel(xy, color)
 
     def copy(self):
         super(TImgRepr, self).copy()
@@ -37,7 +33,6 @@ class TImgRepr(ImgRepr):
 
 
 class TestImgRepr(unittest.TestCase):
-
     def test_functions(self):
         t = TImgRepr()
         t.load_from_file("file_")
@@ -102,8 +97,6 @@ class TestExrImgRepr(TempDirFixture):
         assert isinstance(img, ImgRepr)
         assert img.img is None
         assert img.type == "EXR"
-        assert img.dw is None
-        assert isinstance(img.pt, Imath.PixelType)
         assert img.rgb is None
         assert img.min == 0.0
         assert img.max == 1.0
@@ -122,7 +115,6 @@ class TestExrImgRepr(TempDirFixture):
     def test_exr_repr(self):
         e = get_exr_img_repr()
         assert e.img is not None
-        assert e.dw is not None
         assert e.rgb is not None
 
         assert e.get_size() == (10, 10)
@@ -196,7 +188,6 @@ class TestExrImgRepr(TempDirFixture):
 
 
 class TestImgFunctions(TempDirFixture, LogTestCase):
-
     def test_load_img(self):
         exr_img = load_img(get_test_exr())
         assert isinstance(exr_img, EXRImgRepr)
@@ -265,7 +256,7 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert exr1.get_pixel((3, 2)) == [0.381103515625,
                                           0.412353515625,
                                           0.42236328125]
-        assert exr2.get_pixel((3, 2)) == [0,  0, 0]
+        assert exr2.get_pixel((3, 2)) == [0, 0, 0]
 
         exr = blend(exr1, exr2, 0.5)
         almost_equal_pixels(exr.get_pixel((3, 2)), [0.1905, 0.206, 0.211])

@@ -8,7 +8,7 @@ from os import path
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
-from client import local_client
+from .client import local_client
 
 __all__ = ['DockerJob']
 
@@ -94,14 +94,14 @@ class DockerJob(object):
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
-        with open(params_file_path, "w") as params_file:
-            for key, value in self.parameters.iteritems():
+        with open(params_file_path, "wb") as params_file:
+            for key, value in self.parameters.items():
                 line = "{} = {}\n".format(key, repr(value))
                 params_file.write(bytearray(line, encoding='utf-8'))
 
         # Save the script in work_dir/TASK_SCRIPT
         task_script_path = self._get_host_script_path()
-        with open(task_script_path, "w") as script_file:
+        with open(task_script_path, "wb") as script_file:
             script_file.write(bytearray(self.script_src, "utf-8"))
 
         # Setup volumes for the container
@@ -197,9 +197,9 @@ class DockerJob(object):
 
     @staticmethod
     def _host_dir_chmod(dst_dir, mod):
-        if isinstance(mod, basestring):
-            mod = 0770 if mod == 'rw' else \
-                  0550 if mod == 'ro' else 0
+        if isinstance(mod, str):
+            mod = 0o770 if mod == 'rw' else \
+                  0o550 if mod == 'ro' else 0
         prev_mod = None
 
         try:
@@ -288,7 +288,7 @@ class DockerJob(object):
 
         def dump_stream(stream, path):
             logger.debug('dump_stream(%r, %r)', stream, path)
-            with open(path, "w") as f:
+            with open(path, "wb") as f:
                 for line in stream:
                     f.write(line)
                 f.flush()

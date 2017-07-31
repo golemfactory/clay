@@ -14,7 +14,7 @@ class Thread(threading.Thread):
                  kwargs=None, verbose=None):
 
         super(Thread, self).__init__(group, target, name,
-                                     args, kwargs, verbose)
+                                     args, kwargs)
         self.working = True
         self.sleep = sleep
         self.secs = secs

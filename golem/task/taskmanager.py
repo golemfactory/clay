@@ -6,10 +6,8 @@ from pathlib import Path
 from pydispatch import dispatcher
 
 from apps.appsmanager import AppsManager
-from apps.rendering.task.framerenderingtask import FrameRenderingTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     timeout_to_deadline, to_unicode, update_dict
-from golem.core.hostaddress import get_external_address
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
@@ -58,7 +56,7 @@ class TaskManager(TaskEventListener):
         self.apps_manager = AppsManager()
         self.apps_manager.load_apps()
 
-        apps = self.apps_manager.apps.values()
+        apps = list(self.apps_manager.apps.values())
         task_types = [app.task_type_info(None, app.controller) for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
@@ -246,10 +244,10 @@ class TaskManager(TaskEventListener):
             if not task.needs_computation():
                 logger.debug('not task.needs_computation')
                 return False
-            if task.header.resource_size > (long(max_resource_size) * 1024):
+            if task.header.resource_size > (int(max_resource_size) * 1024):
                 logger.debug('resources size >')
                 return False
-            if task.header.estimated_memory > (long(max_memory_size) * 1024):
+            if task.header.estimated_memory > (int(max_memory_size) * 1024):
                 logger.debug('estimated memory >')
                 return False
             return True
@@ -289,7 +287,7 @@ class TaskManager(TaskEventListener):
 
     def get_tasks_headers(self):
         ret = []
-        for t in self.tasks.values():
+        for t in list(self.tasks.values()):
             if t.needs_computation() and t.task_status in self.activeStatus:
                 ret.append(t.header)
 
@@ -304,7 +302,7 @@ class TaskManager(TaskEventListener):
             return 0
 
     def update_task_signatures(self):
-        for task in self.tasks.values():
+        for task in list(self.tasks.values()):
             task.header.signature = self.sign_task_header(task.header)
 
     def sign_task_header(self, task_header):
@@ -325,8 +323,9 @@ class TaskManager(TaskEventListener):
             return None
 
     def set_value(self, task_id, subtask_id, value):
-        if type(value) not in (int, long):
-            raise TypeError("Incorrect 'value' type: {}. Should be int or long".format(type(value)))
+        if not isinstance(value, int):
+            raise TypeError("Incorrect 'value' type: {}. Should be int"
+                            .format(type(value)))
         task_state = self.tasks_states.get(task_id)
         if task_state is None:
             logger.warning("This is not my task {}".format(task_id))
@@ -431,7 +430,7 @@ class TaskManager(TaskEventListener):
     # CHANGE TO RETURN KEY_ID (check IF SUBTASK COMPUTER HAS KEY_ID
     def check_timeouts(self):
         nodes_with_timeouts = []
-        for t in self.tasks.values():
+        for t in list(self.tasks.values()):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
@@ -442,7 +441,7 @@ class TaskManager(TaskEventListener):
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 self.notice_task_updated(th.task_id)
             ts = self.tasks_states[th.task_id]
-            for s in ts.subtask_states.values():
+            for s in list(ts.subtask_states.values()):
                 if SubtaskStatus.is_computed(s.subtask_status):
                     if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
@@ -456,7 +455,7 @@ class TaskManager(TaskEventListener):
     def get_progresses(self):
         tasks_progresses = {}
 
-        for t in self.tasks.values():
+        for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
                 ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
                                               t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))
@@ -482,7 +481,7 @@ class TaskManager(TaskEventListener):
             task.task_definition.full_task_timeout)
         self.tasks_states[task_id].time_started = time.time()
 
-        for ss in self.tasks_states[task_id].subtask_states.values():
+        for ss in list(self.tasks_states[task_id].subtask_states.values()):
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
 
@@ -509,7 +508,7 @@ class TaskManager(TaskEventListener):
         if not subtasks:
             return
 
-        for subtask_id in subtasks.iterkeys():
+        for subtask_id in list(subtasks.keys()):
             task.restart_subtask(subtask_id)
             subtask_state = task_state.subtask_states[subtask_id]
             subtask_state.subtask_status = SubtaskStatus.restarted
@@ -523,7 +522,7 @@ class TaskManager(TaskEventListener):
         self.tasks[task_id].abort()
         self.tasks[task_id].task_status = TaskStatus.aborted
         self.tasks_states[task_id].status = TaskStatus.aborted
-        for sub in self.tasks_states[task_id].subtask_states.values():
+        for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
         self.tasks_states[task_id].subtask_states.clear()
 
@@ -549,7 +548,7 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def delete_task(self, task_id):
-        for sub in self.tasks_states[task_id].subtask_states.values():
+        for sub in list(self.tasks_states[task_id].subtask_states.values()):
             del self.subtask2task_mapping[sub.subtask_id]
         self.tasks_states[task_id].subtask_states.clear()
 
@@ -585,7 +584,7 @@ class TaskManager(TaskEventListener):
         if task_id not in self.tasks_states:
             return None
         return [sub.subtask_id for sub in
-                self.tasks_states[task_id].subtask_states.values()]
+                list(self.tasks_states[task_id].subtask_states.values())]
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
@@ -610,10 +609,10 @@ class TaskManager(TaskEventListener):
         timeout = task.task_definition.full_task_timeout
 
         dictionary = {
-            u'duration': max(timeout - state.remaining_time, 0),
+            'duration': max(timeout - state.remaining_time, 0),
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
-            u'preview': task_type.get_preview(task, single=True)
+            'preview': task_type.get_preview(task, single=True)
         }
 
         return update_dict(dictionary,
@@ -623,7 +622,7 @@ class TaskManager(TaskEventListener):
 
     def get_tasks_dict(self):
         return [self.get_task_dict(task_id) for task_id
-                in self.tasks.iterkeys()]
+                in self.tasks.keys()]
 
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -634,7 +633,7 @@ class TaskManager(TaskEventListener):
     def get_subtasks_dict(self, task_id):
         task_state = self.tasks_states[task_id]
         subtasks = task_state.subtask_states
-        return [subtask.to_dictionary() for subtask in subtasks.itervalues()]
+        return [subtask.to_dictionary() for subtask in subtasks.values()]
 
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
@@ -645,7 +644,7 @@ class TaskManager(TaskEventListener):
         return {
             to_unicode(subtask_id): task_type.get_task_border(
                 subtask, task.task_definition, total_subtasks, as_path=True
-            ) for subtask_id, subtask in task.get_subtasks(part).iteritems()
+            ) for subtask_id, subtask in task.get_subtasks(part).items()
         }
 
     def get_task_preview(self, task_id, single=False):
@@ -675,7 +674,7 @@ class TaskManager(TaskEventListener):
     def get_payment_for_task_id(self, task_id):
         val = 0.0
         t = self.tasks_states[task_id]
-        for ss in t.subtask_states.values():
+        for ss in list(t.subtask_states.values()):
             val += ss.value
         return val
 

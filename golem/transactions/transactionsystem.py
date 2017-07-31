@@ -1,8 +1,8 @@
 from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment, PaymentStatus
 
-from paymentskeeper import PaymentsKeeper
-from incomeskeeper import IncomesKeeper
+from .paymentskeeper import PaymentsKeeper
+from .incomeskeeper import IncomesKeeper
 
 
 class TransactionSystem(object):
@@ -60,15 +60,15 @@ class TransactionSystem(object):
                      else PaymentStatus.awaiting
 
             return {
-                u"task": to_unicode(o.task),
-                u"subtask": to_unicode(o.subtask),
-                u"payer": to_unicode(o.sender_node),
-                u"value": to_unicode(o.value),
-                u"status": to_unicode(status.name),
-                u"block_number": to_unicode(o.income.block_number),
-                u"transaction": to_unicode(o.income.transaction),
-                u"created": datetime_to_timestamp(o.created_date),
-                u"modified": datetime_to_timestamp(o.modified_date)
+                "task": to_unicode(o.task),
+                "subtask": to_unicode(o.subtask),
+                "payer": to_unicode(o.sender_node),
+                "value": to_unicode(o.value),
+                "status": to_unicode(status.name),
+                "block_number": to_unicode(o.income.block_number),
+                "transaction": to_unicode(o.income.transaction),
+                "created": datetime_to_timestamp(o.created_date),
+                "modified": datetime_to_timestamp(o.modified_date)
             }
 
         return [item(income) for income in incomes]

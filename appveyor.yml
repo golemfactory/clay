@@ -6,34 +6,29 @@ branches:
   - master
   - develop
 
+platform:
+  - x64
+
 environment:
   matrix:
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7.13"
-      PYTHON_ARCH: "32"
+    - PYTHON: "C:\\Python35-x64"
+      PYTHON_VERSION: "3.5.0"
+      PYTHON_ARCH: "64"
 
       NODEJS_VERSION: "6"
 
-      VER_GETH: geth-windows-amd64-1.6.1-021c3c28
+      VER_GETH: geth-windows-amd64-1.6.7-ab5646c5
       VER_IPFS: go-ipfs_v0.4.4_windows-386
-      VER_OPENSSL: openssl-1.0.2k-i386-win32
 
       DIR_OPENSSL: C:\OpenSSL
       DIR_GETH: C:\%VER_GETH%
       DIR_IPFS: C:\go-ipfs
       DIR_WHEELS: C:\wheels
 
-      WHEEL_SIP: sip-4.19-cp27-cp27m-win32.whl
-      WHEEL_PYQT: PyQt5-5.7.1-cp27-cp27m-win32.whl
-      WHEEL_OPENEXR: OpenEXR-1.2.0-cp27-none-win32.whl
-      WHEEL_PYETHASH: pyethash-0.1.23-cp27-cp27m-win32.whl
-      WHEEL_SECP256K1: secp256k1-0.13.2-cp27-cp27m-win32.whl
-
-      WHEELS: (%WHEEL_SIP% %WHEEL_PYQT% %WHEEL_OPENEXR% %WHEEL_PYETHASH% %WHEEL_SECP256K1%)
-
-      PYWIN32: pywin32-220.win32-py2.7.exe
+      PYWIN32: pywin32-221.win-amd64-py3.5.exe
 
       WHEELS_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/wheels
+      BINARIES_URL: https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries
 
 cache:
   - '%DIR_OPENSSL%            -> appveyor.yml'
@@ -41,16 +36,9 @@ cache:
   - '%DIR_GETH%               -> appveyor.yml'
   - '%DIR_WHEELS%             -> requirements.txt'
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
-  - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
-  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;%DIR_OPENSSL%;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
-
-  # ssl
-  - if not exist %OPENSSL_DIR% (
-      appveyor DownloadFile https://raw.githubusercontent.com/wiki/golemfactory/golem/binaries/%VER_OPENSSL%.zip &&
-      7z x %VER_OPENSSL%.zip -y -aoa -oC:\OpenSSL > NUL
-    )
+  - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
 
   # geth
   - if not exist %DIR_GETH% (
@@ -78,6 +66,13 @@ install:
   # pip
   - pip install --disable-pip-version-check --user --upgrade pip
 
+  # virtualenv
+  - pip install virtualenv
+  - virtualenv --version
+
+  - virtualenv --clear venv
+  - venv\Scripts\activate.bat
+
   # pywin32
   - if not exist %DIR_WHEELS% (
       mkdir %DIR_WHEELS%
@@ -87,31 +82,22 @@ install:
       move %PYWIN32% %DIR_WHEELS%\%PYWIN32%
     )
   - easy_install.exe %DIR_WHEELS%\%PYWIN32%
-  - easy_install.exe wheel
-
-  # prebuilt packages
-  - for %%w in %WHEELS% do (
-      if not exist %WHEELS_URL%\%%w (
-        appveyor DownloadFile %WHEELS_URL%/%%w &&
-        move %%w %DIR_WHEELS%\%%w
-      ) &&
-      pip install %DIR_WHEELS%\%%w
-    )
-
-  - copy NUL > "%PYTHON%\Lib\site-packages\zope\__init__.py"
 
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
+  - pip install -r requirements-win.txt
   - python setup.py develop
 
 build_script:
-  - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - msbuild apps\rendering\resources\taskcollector\taskcollector.sln /p:Configuration=Release /p:Platform=x64 /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
+  - venv\Scripts\activate.bat
   - pytest --cov=golem
 
 after_test:
+  - venv\Scripts\activate.bat
   - codecov
 
 on_finish:

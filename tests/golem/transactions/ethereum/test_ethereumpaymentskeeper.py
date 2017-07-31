@@ -61,9 +61,9 @@ class TestEthAccountInfo(TempDirFixture):
         c.key_id = k.get_key_id()
         self.assertNotEqual(a, c)
         addr2 = "0x7b82fd1672b8020415d269c53cd1a2230fde9386"
-        b.eth_account = addr2
+        b.eth_account = EthereumAddress(addr2)
         self.assertNotEqual(a, b)
-        a.eth_account = addr2
+        a.eth_account = EthereumAddress(addr2)
         self.assertEqual(a, b)
 
 
@@ -77,13 +77,13 @@ class TestEthereumAddress(LogTestCase):
         e2 = EthereumAddress(addr2)
         self.assertEqual(addr1, e2.get_str_addr())
         addr3 = "0x0121121"
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             e = EthereumAddress(addr3)
         assert any("Invalid" in log for log in l.output)
         self.assertIsNone(e.address)
         # We may think about allowing to add address in such formats in the future
         addr4 = bin(int(addr1, 16))[2:].zfill(160)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             e = EthereumAddress(addr4)
         assert any("Invalid" in log for log in l.output)
         self.assertIsNone(e.address)

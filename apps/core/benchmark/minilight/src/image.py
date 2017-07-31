@@ -5,7 +5,7 @@
 
 
 from math import log10
-from vector3f import Vector3f
+from .vector3f import Vector3f
 
 IMAGE_DIM_MAX = 4000
 PPM_ID = 'P6'
@@ -19,8 +19,7 @@ class Image(object):
     def __init__(self, in_stream):
         for line in in_stream:
             if not line.isspace():
-                self.width, self.height = map(lambda dimension:
-                    min(max(1, int(dimension)), IMAGE_DIM_MAX), line.split())
+                self.width, self.height = [min(max(1, int(dimension)), IMAGE_DIM_MAX) for dimension in line.split()]
                 self.pixels = [0.0] * self.width * self.height * 3
                 break
 

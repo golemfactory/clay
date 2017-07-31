@@ -1,10 +1,10 @@
-from __future__ import division
+
 import logging
 import math
 import os
 import random
 from collections import OrderedDict
-from itertools import ifilter
+
 
 import time
 from PIL import Image, ImageChops
@@ -229,10 +229,10 @@ class BlenderTaskTypeInfo(TaskTypeInfo):
 
         upper = offsets[start]
         lower = offsets[end + 1]
-        for i in xrange(upper, lower):
+        for i in range(upper, lower):
             border.append((0, i))
             border.append((x, i))
-        for i in xrange(0, x):
+        for i in range(0, x):
             border.append((i, upper))
             border.append((i, lower))
         return border
@@ -544,7 +544,7 @@ class BlenderRenderTask(FrameRenderingTask):
             self._update_frame_task_preview()
 
     def _put_image_together(self):
-        output_file_name = u"{}".format(self.output_file, self.output_format)
+        output_file_name = "{}".format(self.output_file, self.output_format)
         logger.debug('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -554,7 +554,7 @@ class BlenderRenderTask(FrameRenderingTask):
             collector.finalize().save(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
-                                               self.collected_file_names.values(), "paste")
+                                               list(self.collected_file_names.values()), "paste")
             
     def mark_part_on_preview(self, part, img_task, color, preview_updater, frame_index=0):
         lower = preview_updater.get_offset(part)
@@ -580,7 +580,7 @@ class BlenderRenderTask(FrameRenderingTask):
     def _put_frame_together(self, frame_num, num_start):
         directory = os.path.dirname(self.output_file)
         output_file_name = os.path.join(directory, self._get_output_name(frame_num))
-        frame_key = unicode(frame_num)
+        frame_key = str(frame_num)
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
@@ -589,7 +589,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             collector.finalize().save(output_file_name, self.output_format)
         else:
-            self._put_collected_files_together(output_file_name, collected.values(), "paste")
+            self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
@@ -607,13 +607,13 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         parent = super(BlenderRenderTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'compositing'] = definition.options.compositing
+        dictionary['options']['compositing'] = definition.options.compositing
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(BlenderRenderTaskBuilder, cls)
-        options = dictionary[u'options']
+        options = dictionary['options']
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)

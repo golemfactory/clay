@@ -124,19 +124,19 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv = RenderingVerificator()
         rv.verification_options = AdvanceRenderingVerificationOptions()
         rv.advanced_verification = False
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "nodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "nodeX"}) is None
         rv.advanced_verification = True
         rv.verification_options.type = "forFirst"
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verified_clients.append("NodeX")
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
         rv.verification_options.type = "forAll"
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verification_options.type = "random"
         rv.verification_options.probability = 1.0
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verification_options.probability = 0.0
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
 
     def test_error_in_change_scope(self):
         rv = RenderingVerificator()

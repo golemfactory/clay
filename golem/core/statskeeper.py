@@ -62,7 +62,8 @@ class IntStatsKeeper(StatsKeeper):
             if global_val is not None:
                 setattr(self.global_stats, stat_name, global_val + increment)
                 try:
-                    Stats.update(value=u"{}".format(global_val+increment)).where(Stats.name == stat_name).execute()
+                    Stats.update(value="{}".format(global_val+increment)) \
+                        .where(Stats.name == stat_name).execute()
                 except Exception as err:
                     logger.error("Exception occured while updating stat %r: %r", stat_name, err)
 

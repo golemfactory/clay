@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+
 
 import logging
 from os import path
@@ -15,8 +15,8 @@ MIN_DISK_SPACE = 1000 * 1024
 MIN_MEMORY_SIZE = 1000 * 1024
 MIN_CPU_CORES = 1
 
-DEFAULT_HARDWARE_PRESET_NAME = u"default"
-CUSTOM_HARDWARE_PRESET_NAME = u"custom"
+DEFAULT_HARDWARE_PRESET_NAME = "default"
+CUSTOM_HARDWARE_PRESET_NAME = "custom"
 
 CONFIG_FILENAME = "app_cfg.ini"
 ESTM_FILENAME = "minilight.ini"
@@ -66,7 +66,7 @@ class CommonConfig:
     def __init__(self, section="Common", **kwargs):
         self._section = section
 
-        for k, v in kwargs.iteritems():
+        for k, v in list(kwargs.items()):
             ConfigEntry.create_property(
                 section,
                 k.replace("_", " "),
@@ -75,7 +75,7 @@ class CommonConfig:
                 k
             )
 
-        self.prop_names = kwargs.keys()
+        self.prop_names = list(kwargs.keys())
 
     def section(self):
         return self._section
@@ -104,7 +104,7 @@ class NodeConfig:
             estimated_performance = ESTIMATED_DEFAULT
         kwargs["estimated_performance"] = estimated_performance
 
-        for k, v in kwargs.iteritems():
+        for k, v in list(kwargs.items()):
             ConfigEntry.create_property(
                 self.section(),
                 k.replace("_", " "),
@@ -113,7 +113,7 @@ class NodeConfig:
                 k
             )
 
-        self.prop_names = kwargs.keys()
+        self.prop_names = list(kwargs.keys())
 
     def section(self):
         return self._section
@@ -199,7 +199,7 @@ class AppConfig:
                 .format(type(cfg_desc))
             )
 
-        for var, val in vars(cfg_desc).iteritems():
+        for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
                 logger.info("Cannot set unknown config property: {} = {}"

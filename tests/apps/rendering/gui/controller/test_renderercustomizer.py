@@ -35,31 +35,32 @@ class TestRendererCustomizer(TestGui):
         gui.ui.outputFormatsComboBox.findText.return_value = -1
         gui.ui.outputFileLineEdit.text.return_value = "filename"
         controller._add_ext_to_out_filename()
-        gui.ui.outputFileLineEdit.setText.assert_called_with(u"filename.PNG")
+        gui.ui.outputFileLineEdit.setText.assert_called_with("filename.PNG")
 
         # Output file with proper extension
         gui.ui.outputFormatsComboBox.findText.return_value = 1
         gui.ui.outputFileLineEdit.text.return_value = "filename.PNG"
         controller._add_ext_to_out_filename()
-        gui.ui.outputFileLineEdit.setText.assert_called_with(u"filename.PNG")
+        gui.ui.outputFileLineEdit.setText.assert_called_with("filename.PNG")
 
         # Output file with extension to replace
         gui.ui.outputFormatsComboBox.itemText.return_value = "EXR"
         gui.ui.outputFormatsComboBox.findText.return_value = 1
         gui.ui.outputFileLineEdit.text.return_value = "filename.PNG"
         controller._add_ext_to_out_filename()
-        gui.ui.outputFileLineEdit.setText.assert_called_with(u"filename.EXR")
+        gui.ui.outputFileLineEdit.setText.assert_called_with("filename.EXR")
 
         #Output file with extension that should not be replaced
         gui.ui.outputFormatsComboBox.itemText.return_value = "EXR"
         gui.ui.outputFormatsComboBox.findText.return_value = -1
         gui.ui.outputFileLineEdit.text.return_value = "filename.filename.AND"
         controller._add_ext_to_out_filename()
-        gui.ui.outputFileLineEdit.setText.assert_called_with(u"filename.filename.AND.EXR")
+        gui.ui.outputFileLineEdit.setText.assert_called_with("filename.filename.AND.EXR")
 
     def test_load_task_definition(self):
         gui = self.gui.get_main_window()
         gui.ui = Mock()
+        gui.ui.outputFormatsComboBox.findText.return_value = 0
 
         controller = TestRendererCustomizer.TestRC(gui, self.logic)
 

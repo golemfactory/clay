@@ -25,8 +25,8 @@ class LuxRenderDialogCustomizer(RendererCustomizer):
 
     def _change_halts_values(self):
         set_haltspp = self.options.haltspp > 0
-        self.gui.ui.haltTimeLineEdit.setText(u"{}".format(self.options.halttime))
-        self.gui.ui.haltSppLineEdit.setText(u"{}".format(self.options.haltspp))
+        self.gui.ui.haltTimeLineEdit.setText("{}".format(self.options.halttime))
+        self.gui.ui.haltSppLineEdit.setText("{}".format(self.options.haltspp))
         if self.gui.ui.stopBySppRadioButton.isChecked() and not set_haltspp:
             self.gui.ui.stopByTimeRadioButton.setChecked(True)
         if not self.gui.ui.stopBySppRadioButton.isChecked() and set_haltspp:

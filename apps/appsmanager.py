@@ -1,7 +1,5 @@
-from __future__ import absolute_import
-
 import os
-from ConfigParser import ConfigParser
+from configparser import ConfigParser
 from collections import OrderedDict
 from importlib import import_module
 

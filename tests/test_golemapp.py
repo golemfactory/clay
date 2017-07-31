@@ -7,6 +7,8 @@ from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golemapp import start
 
+from gui import startapp, startgui
+
 
 class TestGolemApp(TempDirFixture):
     @ci_skip
@@ -34,7 +36,6 @@ class TestGolemApp(TempDirFixture):
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 
-
     def setUp(self):
         super(TestGolemApp, self).setUp()
 
@@ -42,7 +43,7 @@ class TestGolemApp(TempDirFixture):
         super(TestGolemApp, self).tearDown()
 
     @ci_skip
-    @patch('gui.startapp.start_app')
+    @patch.object(startapp, 'start_app')
     @patch('twisted.internet.reactor', create=True)
     def test_start_gui(self, reactor, start_app):
         runner = CliRunner()
@@ -53,7 +54,7 @@ class TestGolemApp(TempDirFixture):
 
     @ci_skip
     @patch('golemapp.OptNode')
-    @patch('gui.startgui.start_gui')
+    @patch.object(startgui, 'start_gui')
     @patch.object(sys, 'modules')
     def test_start_node(self, modules, start_gui, node_class):
         runner = CliRunner()

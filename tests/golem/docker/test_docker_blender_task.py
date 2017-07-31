@@ -19,7 +19,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
-from test_docker_image import DockerTestCase
+from .test_docker_image import DockerTestCase
 
 
 @ci_skip
@@ -196,7 +196,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
         assert not task.compositing
         assert not task.use_frames
         assert len(task.frames_given) == 10
-        assert isinstance(task.preview_file_path, basestring)
+        assert isinstance(task.preview_file_path, str)
         assert not task.preview_updaters
         assert task.scale_factor == 0.8
         assert task.src_code

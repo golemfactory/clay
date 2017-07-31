@@ -13,17 +13,17 @@ class TestBenchmark(TempDirFixture):
 
     def test_verify_img(self):
         filepath = self.temp_file_name("img.png")
-        fd = open(filepath, "w")
-
         resolution = self.benchmark.task_definition.resolution
 
-        img = Image.new("RGB", resolution)
-        img.save(fd, "PNG")
-        self.assertTrue(self.benchmark.verify_img(filepath))
+        with open(filepath, "wb") as fd:
+            img = Image.new("RGB", resolution)
+            img.save(fd, "PNG")
+            self.assertTrue(self.benchmark.verify_img(filepath))
 
-        img = Image.new("RGB", (resolution[0]+1, resolution[1]))
-        img.save(fd, "PNG")
-        self.assertFalse(self.benchmark.verify_img(filepath))
+        with open(filepath, "wb") as fd:
+            img = Image.new("RGB", (resolution[0]+1, resolution[1]))
+            img.save(fd, "PNG")
+            self.assertFalse(self.benchmark.verify_img(filepath))
 
     def test_broken_image(self):
         filepath = self.temp_file_name("broken.png")
@@ -74,4 +74,4 @@ class TestBenchmark(TempDirFixture):
 
     def test_find_resources(self):
         """Simplistic test of basic implementation."""
-        self.assertEquals(self.benchmark.find_resources(), set())
+        self.assertEqual(self.benchmark.find_resources(), set())

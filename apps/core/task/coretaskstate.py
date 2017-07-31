@@ -64,7 +64,7 @@ class TaskDefinition(object):
 
     def is_valid(self):
         if not path.exists(self.main_program_file):
-            return False, u"Main program file does not exist: {}".format(
+            return False, "Main program file does not exist: {}".format(
                 self.main_program_file)
         return self._check_output_file(self.output_file)
 
@@ -78,11 +78,11 @@ class TaskDefinition(object):
                 remove(output_file)
                 return True, None
             else:
-                return True, u"File {} may be overwritten".format(output_file)
+                return True, "File {} may be overwritten".format(output_file)
         except IOError:
-            return False, u"Cannot open output file: {}".format(output_file)
+            return False, "Cannot open output file: {}".format(output_file)
         except (OSError, TypeError) as err:
-            return False, u"Output file {} is not properly set: {}".format(
+            return False, "Output file {} is not properly set: {}".format(
                 output_file, err)
 
     def add_to_resources(self):

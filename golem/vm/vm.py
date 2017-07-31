@@ -3,7 +3,7 @@ import logging
 import abc
 import multiprocessing as mp
 
-from memorychecker import MemoryChecker
+from .memorychecker import MemoryChecker
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class PythonVM(GolemVM):
     """
     def _interpret(self):
         try:
-            exec self.src_code in self.scope
+            exec(self.src_code, self.scope)
         except Exception as err:
             self.scope["error"] = str(err)
         return self.scope.get("output"), self.scope.get("error")
@@ -103,7 +103,7 @@ def exec_code(src_code, scope_manager):
     """
     scope = dict(scope_manager)
     try:
-        exec src_code in scope
+        exec(src_code, scope)
     except Exception as err:
         scope_manager["error"] = str(err)
     scope_manager["output"] = scope.get("output")
@@ -116,7 +116,7 @@ class PythonTestVM(GolemVM):
         mc = MemoryChecker()
         mc.start()
         try:
-            exec self.src_code in self.scope
+            exec(self.src_code, self.scope)
         except Exception as err:
             self.scope["error"] = str(err)
         finally:

@@ -5,8 +5,8 @@
 
 
 from math import sqrt
-from vector3f import Vector3f, ZERO, ONE, MAX
-from randommini import Random
+from .vector3f import Vector3f, ZERO, ONE, MAX
+from .randommini import Random
 
 import re
 SEARCH = re.compile('(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))\s*(\(.+\))'
@@ -19,13 +19,13 @@ class Triangle(object):
 
     def __init__(self, in_stream):
         for l in in_stream:
-            if type(l) == type(u""):
+            if type(l) == type(""):
                 line = l.encode('ascii','ignore')
             else:
                 line = l
             if not line.isspace():
-                v0, v1, v2, r, e = SEARCH(line).groups()
-                self.vertexs = map(Vector3f, [v0, v1, v2])
+                v0, v1, v2, r, e = SEARCH(line.decode('utf-8')).groups()
+                self.vertexs = list(map(Vector3f, [v0, v1, v2]))
                 self.edge0 = Vector3f(v1) - Vector3f(v0)
                 self.edge3 = Vector3f(v2) - Vector3f(v0)
                 self.reflectivity = Vector3f(r).clamped(ZERO, ONE)

@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 from golem.model import PaymentStatus
 from gui.controller.customizer import Customizer

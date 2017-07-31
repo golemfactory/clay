@@ -16,7 +16,7 @@ class TestIPFSDaemonManager(unittest.TestCase):
     def testStoreInfo(self):
         dm = IPFSDaemonManager(connect_to_bootstrap_nodes=False)
         ipfs_id = dm.store_client_info()
-        self.assertIsInstance(ipfs_id, basestring)
+        self.assertIsInstance(ipfs_id, str)
         from base58 import b58decode
         b58decode(ipfs_id)
 
@@ -61,8 +61,8 @@ class TestIPFSDaemonManager(unittest.TestCase):
         ]
         addrs = [(ipv4, port), (ipv6, port)]
 
-        ip4_node = u'/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
-        ip6_node = u'/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
+        ip4_node = '/ip4/{}/tcp/{}/ipfs/{}'.format(ipv4, 4001, node_id)
+        ip6_node = '/ip6/{}/tcp/{}/ipfs/{}'.format(ipv6, 4001, node_id)
 
         dm.remove_bootstrap_node(ip4_node, async=False)
         dm.remove_bootstrap_node(ip6_node, async=False)

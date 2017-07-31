@@ -1,4 +1,4 @@
-from __future__ import division
+
 from copy import copy
 import logging
 import math
