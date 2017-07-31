@@ -1,0 +1,4 @@
+--extra-index-url https://builds.golem.network
+pywin32
+vboxapi
+pyvbox
