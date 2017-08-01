@@ -4,6 +4,12 @@ from PIL import Image
 
 from apps.rendering.resources.imgcompare import *
 
+from apps.rendering.resources.imgcompare import (advance_verify_img,
+                                                 check_size, compare_exr_imgs,
+                                                 compare_imgs,
+                                                 compare_pil_imgs,
+                                                 calculate_mse,
+                                                 calculate_psnr, logger)
 from apps.rendering.resources.imgrepr import load_img, PILImgRepr
 
 from golem.testutils import TempDirFixture, PEP8MixIn

@@ -36,7 +36,6 @@ cache:
   - '%DIR_GETH%               -> appveyor.yml'
   - '%DIR_WHEELS%             -> requirements.txt'
   - '%LOCALAPPDATA%\pip\Cache -> requirements.txt'
-  - C:\ProgramData\chocolatey -> appveyor.yml
 
 install:
   - set PATH=%PYTHON%;%PYTHON%\Scripts;%PYTHON%\Lib\site-packages\PyQt5;C:\OpenSSL-Win64;%DIR_GETH%;%DIR_IPFS%;%SystemRoot%\system32;%PATH%
@@ -87,6 +86,7 @@ install:
   # requirements
   - pip install six pytest mock coverage pytest-cov codecov
   - pip install -r requirements.txt
+  - pip install -r requirements-win.txt
   - python setup.py develop
 
 build_script:
