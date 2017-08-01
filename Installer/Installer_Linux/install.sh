@@ -78,6 +78,9 @@ function info_msg()
 # @return 1 if answer is 'yes', 0 if 'no'
 function ask_user()
 {
+    # if want to install only deps,
+    # we don't have to ask if want to install any dependency
+    [[ ${DEPS_ONLY} -eq 1 ]] && return 1
     while [ 1 ]; do
         read -p "$@ " yn
         case ${yn} in
