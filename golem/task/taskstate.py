@@ -23,9 +23,9 @@ class TaskState(object):
 
     def to_dictionary(self):
         return {
-            u'time_started': self.time_started,
-            u'time_remaining': self.remaining_time,
-            u'status': to_unicode(self.status)
+            'time_started': self.time_started,
+            'time_remaining': self.remaining_time,
+            'status': to_unicode(self.status)
         }
 
 
@@ -60,42 +60,42 @@ class SubtaskState(object):
 
     def to_dictionary(self):
         return {
-            u'subtask_id': to_unicode(self.subtask_id),
-            u'node_name': to_unicode(self.computer.node_name),
-            u'node_id': to_unicode(self.computer.node_id),
-            u'node_performance': to_unicode(self.computer.performance),
-            u'node_ip_address': to_unicode(self.computer.ip_address),
-            u'node_port': self.computer.port,
-            u'status': to_unicode(self.subtask_status),
-            u'progress': self.subtask_progress,
-            u'time_started': self.time_started,
-            u'time_remaining': self.subtask_rem_time,
-            u'results': [to_unicode(r) for r in self.results],
-            u'stderr': to_unicode(self.stderr),
-            u'stdout': to_unicode(self.stdout)
+            'subtask_id': to_unicode(self.subtask_id),
+            'node_name': to_unicode(self.computer.node_name),
+            'node_id': to_unicode(self.computer.node_id),
+            'node_performance': to_unicode(self.computer.performance),
+            'node_ip_address': to_unicode(self.computer.ip_address),
+            'node_port': self.computer.port,
+            'status': to_unicode(self.subtask_status),
+            'progress': self.subtask_progress,
+            'time_started': self.time_started,
+            'time_remaining': self.subtask_rem_time,
+            'results': [to_unicode(r) for r in self.results],
+            'stderr': to_unicode(self.stderr),
+            'stdout': to_unicode(self.stdout)
         }
 
 
 class TaskStatus(object):
-    notStarted = u"Not started"
-    sending = u"Sending"
-    waiting = u"Waiting"
-    starting = u"Starting"
-    computing = u"Computing"
-    finished = u"Finished"
-    aborted = u"Aborted"
-    timeout = u"Timeout"
-    paused = u"Paused"
-    restarted = u"Restart"
+    notStarted = "Not started"
+    sending = "Sending"
+    waiting = "Waiting"
+    starting = "Starting"
+    computing = "Computing"
+    finished = "Finished"
+    aborted = "Aborted"
+    timeout = "Timeout"
+    paused = "Paused"
+    restarted = "Restart"
 
 
 class SubtaskStatus(object):
-    starting = u"Starting"
-    downloading = u"Downloading"
-    resent = u"Failed - Resent"
-    finished = u"Finished"
-    failure = u"Failure"
-    restarted = u"Restart"
+    starting = "Starting"
+    downloading = "Downloading"
+    resent = "Failed - Resent"
+    finished = "Finished"
+    failure = "Failure"
+    restarted = "Restart"
 
     @classmethod
     def is_computed(cls, status):
@@ -103,6 +103,6 @@ class SubtaskStatus(object):
 
 
 class TaskTestStatus(object):
-    started = u'Started'
-    success = u'Success'
-    error = u'Error'
+    started = 'Started'
+    success = 'Success'
+    error = 'Error'

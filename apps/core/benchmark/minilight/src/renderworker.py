@@ -1,9 +1,9 @@
 from math import tan
 
-from rendertask import RenderTaskDesc, RenderTask, RenderTaskResult
-from randommini import Random
-from vector3f import Vector3f
-from raytracer import RayTracer
+from .rendertask import RenderTaskDesc, RenderTask, RenderTaskResult
+from .randommini import Random
+from .vector3f import Vector3f
+from .raytracer import RayTracer
 
 class RenderWorker:
 
@@ -57,7 +57,7 @@ class RenderWorker:
             if self.task.callback:
                 self.task.callback(result)
         else:
-            print "Failed to acquire result"
+            print("Failed to acquire result")
             
         return result
 

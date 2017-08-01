@@ -3,6 +3,7 @@ from datetime import datetime
 
 from golem.core.common import datetime_to_timestamp, to_unicode
 from golem.model import Payment
+from golem.utils import encode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -80,15 +81,15 @@ class PaymentsKeeper(object):
     def get_list_of_all_payments(self):
         # This data is used by UI.
         return [{
-            u"subtask": to_unicode(payment.subtask),
-            u"payee": to_unicode(payment.payee.encode('hex')),
-            u"value": to_unicode(payment.value),
-            u"status": to_unicode(payment.status.name),
-            u"fee": to_unicode(payment.details.get('fee')),
-            u"block_number": to_unicode(payment.details.get('block_number')),
-            u"transaction": to_unicode(payment.details.get('tx')),
-            u"created": datetime_to_timestamp(payment.created_date),
-            u"modified": datetime_to_timestamp(payment.modified_date)
+            "subtask": to_unicode(payment.subtask),
+            "payee": to_unicode(encode_hex(payment.payee)),
+            "value": to_unicode(payment.value),
+            "status": to_unicode(payment.status.name),
+            "fee": to_unicode(payment.details.get('fee')),
+            "block_number": to_unicode(payment.details.get('block_number')),
+            "transaction": to_unicode(payment.details.get('tx')),
+            "created": datetime_to_timestamp(payment.created_date),
+            "modified": datetime_to_timestamp(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
 
     def finished_subtasks(self, payment_info):

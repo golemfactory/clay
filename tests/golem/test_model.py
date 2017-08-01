@@ -35,7 +35,7 @@ class TestPayment(DatabaseFixture):
     def test_create(self):
         p = Payment(payee="DEF", subtask="xyz", value=5,
                     status=PaymentStatus.awaiting)
-        self.assertEquals(p.save(force_insert=True), 1)
+        self.assertEqual(p.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
             Payment.create(payee="DEF", subtask="xyz", value=5, status=PaymentStatus.awaiting)
         Payment.create(payee="DEF", subtask="xyz2", value=4, status=PaymentStatus.confirmed)
@@ -82,7 +82,7 @@ class TestReceivedPayment(DatabaseFixture):
     def test_create(self):
         r = ReceivedPayment(from_node_id="DEF", task="xyz", val=4, expected_val=3131,
                             state="SOMESTATE")
-        self.assertEquals(r.save(force_insert=True), 1)
+        self.assertEqual(r.save(force_insert=True), 1)
         with self.assertRaises(IntegrityError):
             ReceivedPayment.create(from_node_id="DEF", task="xyz", val=5, expected_val=3132,
                                    state="SOMESTATEX")

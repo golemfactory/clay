@@ -185,6 +185,9 @@ def parse_requirements(my_path):
     dependency_links = []
     for line in open(path.join(my_path, 'requirements.txt')):
         line = line.strip()
+        if line.startswith('-') or line.startswith('#'):
+            continue
+
         m = re.match('.+#egg=(?P<package>.+)$', line)
         if m:
             requirements.append(m.group('package'))
@@ -217,12 +220,12 @@ def generate_ui():
 def update_variables():
     import re
     file_ = path.join(get_golem_path(), 'golem', 'core', 'variables.py')
-    with open(file_, 'rb') as f_:
+    with open(file_, 'r') as f_:
         variables = f_.read()
     version = get_version()
-    variables = re.sub(r"APP_VERSION = \".*\"",
-                       "APP_VERSION = \"{}\"".format(version), variables)
-    with open(file_, 'wb') as f_:
+    variables = re.sub('APP_VERSION = .*',
+                       'APP_VERSION = "{}"'.format(version), variables)
+    with open(file_, 'w') as f_:
         f_.write(variables)
 
 
@@ -248,8 +251,8 @@ def get_version():
             semantic_version.Version(tag.name)
             versions.append(tag.name)
         except Exception as exc:
-            print "Tag {} is not a valid release version: {}".format(
-                tag, exc)
+            print("Tag {} is not a valid release version: {}".format(
+                  tag, exc))
 
     if not versions:
         raise EnvironmentError("No git version tag found "

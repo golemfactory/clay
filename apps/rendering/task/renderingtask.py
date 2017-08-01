@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import logging
 import math
@@ -35,11 +35,13 @@ class RenderingTask(CoreTask):
     @classmethod
     def _get_task_collector_path(cls):
         if is_windows():
-            task_collector_name = "taskcollector.exe"
+            build_path = os.path.join("x64", "Release", "taskcollector.exe")
         else:
-            task_collector_name = "taskcollector"
-        return os.path.normpath(os.path.join(get_golem_path(), "apps", "rendering", "resources",
-                                             "taskcollector", "Release", task_collector_name))
+            build_path = os.path.join("Release", "taskcollector")
+
+        return os.path.normpath(os.path.join(get_golem_path(), "apps",
+                                             "rendering", "resources",
+                                             "taskcollector", build_path))
 
     ################
     # Task methods #
@@ -79,8 +81,6 @@ class RenderingTask(CoreTask):
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
-        if isinstance(task_definition.output_file, unicode):
-            task_definition.output_file = task_definition.output_file.encode('utf-8', 'replace')
         self.outfilebasename = Path(task_definition.output_file).stem
         self.output_file = task_definition.output_file
         self.output_format = task_definition.output_format
@@ -317,9 +317,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
-        candidates = filter(lambda res: any(res.lower().endswith(ext.lower())
-                                            for ext in extensions),
-                            resources)
+        candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
+                                            for ext in extensions)]
         if not candidates:
             raise Exception("Scene file was not found.")
 
@@ -345,8 +344,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         parent = super(RenderingTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'format'] = definition.output_format
-        dictionary[u'options'][u'resolution'] = definition.resolution
+        dictionary['options']['format'] = definition.output_format
+        dictionary['options']['resolution'] = definition.resolution
         return dictionary
 
     @classmethod

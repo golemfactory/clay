@@ -26,12 +26,12 @@ class ProcessMonitor(Thread):
         self.working = True
 
         while self.working:
-            for i in reversed(xrange(len(self._child_processes))):
+            for i in reversed(range(len(self._child_processes))):
                 process = self._child_processes[i]
 
                 if not self.is_process_alive(process):
-                    print "Subprocess {} exited with code {}".format(process.pid,
-                                                                     self.exit_code(process))
+                    print("Subprocess {} exited with code {}"
+                          .format(process.pid, self.exit_code(process)))
                     if self.working:
                         self.run_callbacks(process)
                     self._child_processes.pop(i)
@@ -81,7 +81,7 @@ class ProcessMonitor(Thread):
             except Exception as exc:
                 print("Error terminating process {}: {}".format(process, exc))
             else:
-                print "Subprocess {} terminated".format(cls._pid(process))
+                print("Subprocess {} terminated".format(cls._pid(process)))
 
     @staticmethod
     def _pid(process):

@@ -1,4 +1,5 @@
 import ntpath
+import os
 from os import makedirs, path, remove
 
 from mock import Mock, patch, ANY
@@ -311,8 +312,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         with patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
             linux_path = self.task._get_task_collector_path()
             mock_is_windows.return_value = True
-            windows_path = self.task._get_task_collector_path()
-            assert windows_path == linux_path + ".exe"
+
+            prefix, exe = os.path.split(linux_path)
+            prefix, exe_dir = os.path.split(prefix)
+            windows_path = str(self.task._get_task_collector_path())
+            assert windows_path.endswith(os.path.join(
+                prefix, 'x64', exe_dir, exe + '.exe'
+            ))
 
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):

@@ -1,6 +1,6 @@
 import os
 import uuid
-from Queue import Queue
+from queue import Queue
 
 import jsonpickle
 
@@ -32,7 +32,7 @@ class CommandAppLogic(AppLogic):
         logic = CommandAppLogic(client, datadir)
         apps_manager = AppsManager()
         apps_manager.load_apps()
-        for app in apps_manager.apps.values():
+        for app in list(apps_manager.apps.values()):
             logic.register_new_task_type(app.task_type_info(*args))
         return logic
 
@@ -205,7 +205,7 @@ class Tasks(object):
     def __progress_str(progress):
         if progress is None:
             progress = 0
-        elif isinstance(progress, basestring) and progress.endswith('%'):
+        elif isinstance(progress, str) and progress.endswith('%'):
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 

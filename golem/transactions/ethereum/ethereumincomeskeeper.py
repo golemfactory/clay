@@ -42,7 +42,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
             # Should we verify sender address?
             sender = income_log['topics'][1][-40:]
             receiver = income_log['topics'][2][-40:]
-            log_value = long(income_log['data'], 16)
+            log_value = int(income_log['data'], 16)
             logger.debug(
                 'INCOME: from %r to %r v:%r',
                 sender,

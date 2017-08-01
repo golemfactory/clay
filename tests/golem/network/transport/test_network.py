@@ -14,6 +14,8 @@ from golem.tools.testwithreactor import TestWithReactor
 
 class ASession(object):
     def __init__(self, conn):
+        self.address = '127.0.0.1'
+        self.port = 40102
         self.conn = conn
         self.dropped_called = False
         self.msgs = []
@@ -29,16 +31,17 @@ class ASession(object):
         return msg
 
     def encrypt(self, msg):
-        return "ASessionEncrypt{}".format(msg)
+        return b"ASessionEncrypt" + bytes(msg)
 
     def decrypt(self, msg):
-        if os.path.commonprefix([msg, "ASessionEncrypt"]) != "ASessionEncrypt":
+        args = [msg, b"ASessionEncrypt"]
+        if os.path.commonprefix(args) != b"ASessionEncrypt":
             return None
         else:
-            return msg[len("ASessionEncrypt"):]
+            return msg[len(b"ASessionEncrypt"):]
 
 
-class AProtocol(object, SessionProtocol):
+class AProtocol(SessionProtocol):
     def __init__(self, server):
         self.server = server
 
@@ -125,30 +128,30 @@ class TestNetwork(TestWithReactor):
                                     failure_callback=_listen_failure)
         with async_scope(listen_status):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, port)
-        self.assertEquals(len(self.network.active_listeners), 1)
+        self.assertEqual(self.port, port)
+        self.assertEqual(len(self.network.active_listeners), 1)
 
         listen_info = TCPListenInfo(port,
                                     established_callback=_listen_success,
                                     failure_callback=_listen_failure)
         with async_scope(listen_status):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, None)
-        self.assertEquals(len(self.network.active_listeners), 1)
+        self.assertEqual(self.port, None)
+        self.assertEqual(len(self.network.active_listeners), 1)
 
         listen_info = TCPListenInfo(port, port + 1000,
                                     established_callback=_listen_success,
                                     failure_callback=_listen_failure)
         with async_scope(listen_status):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, port + 1)
-        self.assertEquals(len(self.network.active_listeners), 2)
+        self.assertEqual(self.port, port + 1)
+        self.assertEqual(len(self.network.active_listeners), 2)
 
         with async_scope(listen_status):
             self.network.listen(listen_info, a=1, b=2, c=3, d=4, e=5)
-        self.assertEquals(self.port, port + 2)
-        self.assertEquals(self.kwargs_len, 5)
-        self.assertEquals(len(self.network.active_listeners), 3)
+        self.assertEqual(self.port, port + 2)
+        self.assertEqual(self.kwargs_len, 5)
+        self.assertEqual(len(self.network.active_listeners), 3)
 
         # connect
 
@@ -184,7 +187,7 @@ class TestNetwork(TestWithReactor):
             d = self.network.stop_listening(listening_info)
 
         self.assertTrue(d.called)
-        self.assertEquals(len(self.network.active_listeners), 2)
+        self.assertEqual(len(self.network.active_listeners), 2)
         self.assertTrue(self.stop_listening_success)
 
         listening_info = TCPListeningInfo(port,
@@ -192,7 +195,7 @@ class TestNetwork(TestWithReactor):
                                           stopped_errback=_listen_stop_failure)
         with async_scope(listen_status):
             self.network.stop_listening(listening_info)
-        self.assertEquals(len(self.network.active_listeners), 2)
+        self.assertEqual(len(self.network.active_listeners), 2)
         self.assertFalse(self.stop_listening_success)
 
         listening_info = TCPListeningInfo(port + 1,
@@ -201,7 +204,7 @@ class TestNetwork(TestWithReactor):
 
         with async_scope(listen_status):
             self.network.stop_listening(listening_info)
-        self.assertEquals(len(self.network.active_listeners), 1)
+        self.assertEqual(len(self.network.active_listeners), 1)
         self.assertTrue(self.stop_listening_success)
 
         listening_info = TCPListeningInfo(port + 2,
@@ -210,7 +213,7 @@ class TestNetwork(TestWithReactor):
 
         with async_scope(listen_status):
             self.network.stop_listening(listening_info)
-        self.assertEquals(len(self.network.active_listeners), 0)
+        self.assertEqual(len(self.network.active_listeners), 0)
         self.assertTrue(self.stop_listening_success)
 
         # listen on previously closed ports
@@ -221,8 +224,8 @@ class TestNetwork(TestWithReactor):
 
         with async_scope(listen_status):
             self.network.listen(listen_info)
-        self.assertEquals(self.port, port)
-        self.assertEquals(len(self.network.active_listeners), 1)
+        self.assertEqual(self.port, port)
+        self.assertEqual(len(self.network.active_listeners), 1)
 
         listening_info = TCPListeningInfo(port,
                                           stopped_callback=_listen_stop_success,
@@ -230,7 +233,7 @@ class TestNetwork(TestWithReactor):
 
         with async_scope(listen_status):
             self.network.stop_listening(listening_info)
-        self.assertEquals(len(self.network.active_listeners), 0)
+        self.assertEqual(len(self.network.active_listeners), 0)
 
     def __listen_success(self, port, **kwargs):
         self.listen_success = True
@@ -357,10 +360,10 @@ class TestBasicProtocol(unittest.TestCase):
         self.assertEqual(len(p.transport.buff), 1)
         p.dataReceived(p.transport.buff[0])
         self.assertIsInstance(p.session.msgs[0], MessageHello)
-        self.assertEquals(msg.timestamp, p.session.msgs[0].timestamp)
+        self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
         time.sleep(1)
         msg = MessageHello()
-        self.assertNotEquals(msg.timestamp, p.session.msgs[0].timestamp)
+        self.assertNotEqual(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertTrue(p.send_message(msg))
         self.assertEqual(len(p.transport.buff), 2)
         db = DataBuffer()
@@ -377,7 +380,7 @@ class TestServerProtocol(unittest.TestCase):
         session_factory = SessionFactory(ASession)
         p.set_session_factory(session_factory)
         p.connectionMade()
-        self.assertEquals(len(p.server.sessions), 1)
+        self.assertEqual(len(p.server.sessions), 1)
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)
 
@@ -397,7 +400,7 @@ class TestSaferProtocol(unittest.TestCase):
         self.assertEqual(len(p.transport.buff), 1)
         p.dataReceived(p.transport.buff[0])
         self.assertIsInstance(p.session.msgs[0], MessageHello)
-        self.assertEquals(msg.timestamp, p.session.msgs[0].timestamp)
+        self.assertEqual(msg.timestamp, p.session.msgs[0].timestamp)
         self.assertEqual(msg.sig, "ASessionSign")
         p.connectionLost()
         self.assertNotIn('session', p.__dict__)

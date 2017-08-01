@@ -15,16 +15,16 @@ from golem.ranking.helper.trust import Trust
 from golem.task.deny import get_deny_set
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from taskcomputer import TaskComputer
-from taskkeeper import TaskHeaderKeeper
-from taskmanager import TaskManager
-from tasksession import TaskSession
+from .taskcomputer import TaskComputer
+from .taskkeeper import TaskHeaderKeeper
+from .taskmanager import TaskManager
+from .tasksession import TaskSession
 import weakref
 
 logger = logging.getLogger('golem.task.taskserver')
 
 
-tmp_cycler = itertools.cycle(range(550))
+tmp_cycler = itertools.cycle(list(range(550)))
 
 
 class TaskServer(PendingConnectionsServer):
@@ -99,7 +99,7 @@ class TaskServer(PendingConnectionsServer):
         self.__remove_old_tasks()
         self.__remove_old_sessions()
         self._remove_old_listenings()
-        if tmp_cycler.next() == 0:
+        if next(tmp_cycler) == 0:
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r', self.task_manager.tasks_states)
 
@@ -198,7 +198,7 @@ class TaskServer(PendingConnectionsServer):
         task_sessions = dict(self.task_sessions)
         sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
 
-        for task_session in task_sessions.itervalues():
+        for task_session in list(task_sessions.values()):
             task_session.dropped()
 
         for task_session in sessions_incoming:
@@ -219,7 +219,7 @@ class TaskServer(PendingConnectionsServer):
 
             task_id = th_dict_repr["task_id"]
             key_id = th_dict_repr["task_owner_key_id"]
-            task_ids = self.task_manager.tasks.keys()
+            task_ids = list(self.task_manager.tasks.keys())
             new_sig = True
 
             if task_id in self.task_keeper.task_headers:
@@ -250,7 +250,7 @@ class TaskServer(PendingConnectionsServer):
         self.remove_pending_conn(task_session.conn_id)
         self.remove_responses(task_session.conn_id)
 
-        for tsk in self.task_sessions.keys():
+        for tsk in list(self.task_sessions.keys()):
             if self.task_sessions[tsk] == task_session:
                 del self.task_sessions[tsk]
 
@@ -390,19 +390,19 @@ class TaskServer(PendingConnectionsServer):
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
         if not value:
-            logger.info(u"Invaluable subtask: %r value: %r", subtask_id, value)
+            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
 
         if not self.client.transaction_system:
-            logger.info(u"Transaction system not ready. Ignoring payment for subtask: %r", subtask_id)
+            logger.info("Transaction system not ready. Ignoring payment for subtask: %r", subtask_id)
             return
 
         if not account_info.eth_account.address:
-            logger.warning(u"Unknown payment address of %r (%r). Subtask: %r", account_info.node_name, account_info.addr, subtask_id)
+            logger.warning("Unknown payment address of %r (%r). Subtask: %r", account_info.node_name, account_info.addr, subtask_id)
             return
 
         payment = self.client.transaction_system.add_payment_info(task_id, subtask_id, value, account_info)
-        logger.debug(u'Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
+        logger.debug('Result accepted for subtask: %s Created payment: %r', subtask_id, payment)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(task_id)
@@ -529,7 +529,7 @@ class TaskServer(PendingConnectionsServer):
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
-        for key_id, data in self.forwarded_session_requests.items():
+        for key_id, data in list(self.forwarded_session_requests.items()):
             if data:
                 if now - data['time'] >= self.forwarded_session_request_timeout:
                     logger.debug('connection timeout: %s', data)
@@ -908,7 +908,7 @@ class TaskServer(PendingConnectionsServer):
     def __remove_old_sessions(self):
         cur_time = time.time()
         sessions_to_remove = []
-        for subtask_id, session in self.task_sessions.iteritems():
+        for subtask_id, session in self.task_sessions.items():
             if cur_time - session.last_message_time > self.last_message_time_threshold:
                 sessions_to_remove.append(subtask_id)
         for subtask_id in sessions_to_remove:
@@ -983,7 +983,7 @@ class TaskServer(PendingConnectionsServer):
         )
 
     def __send_waiting_results(self):
-        for subtask_id in self.results_to_send.keys():
+        for subtask_id in list(self.results_to_send.keys()):
             wtr = self.results_to_send[subtask_id]
             now = time.time()
 
@@ -1000,7 +1000,7 @@ class TaskServer(PendingConnectionsServer):
                                                   wtr.owner, wtr.owner_port,
                                                   wtr.owner_key_id, args)
 
-        for subtask_id in self.failures_to_send.keys():
+        for subtask_id in list(self.failures_to_send.keys()):
             wtf = self.failures_to_send[subtask_id]
 
             session = self.task_sessions.get(subtask_id, None)

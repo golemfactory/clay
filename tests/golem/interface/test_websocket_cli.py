@@ -30,7 +30,7 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm=u'golem')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
             ws_cli.execute()
 
             assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Client)
@@ -40,7 +40,7 @@ class TestWebSocketCLI(unittest.TestCase):
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm=u'golem')
+            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
             ws_cli.execute()
 
             assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)

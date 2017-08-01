@@ -44,7 +44,8 @@ def group(name=None, parent=None, **kwargs):
     def decorate(cls):
 
         if not inspect.isclass(cls):
-            raise TypeError("'cls' should be class, but is: {}".format(type(cls)))
+            raise TypeError("'cls' should be class, but is: {}"
+                            .format(type(cls)))
 
         CommandHelper.init_instance(cls)
         CommandHelper.init_interface(cls,
@@ -421,7 +422,8 @@ class CommandHelper(object):
 
     @staticmethod
     def _public_method(entry):
-        return inspect.ismethod(entry) and not entry.__name__.startswith('_')
+        return inspect.ismethod(entry) or inspect.isfunction(entry) \
+            and not entry.__name__.startswith('_')
 
     @classmethod
     def debug(cls, elem, level=0):

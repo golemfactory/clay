@@ -1,6 +1,5 @@
 language: generic
 
-
 os: osx
 osx_image: xcode8.3  # OS X 10.12
 
@@ -18,7 +17,7 @@ cache:
     - $HOME/Library/Caches/pip
 
 before_install:
-  - brew install qt@5.7 openexr freeimage
+  - brew install python3 qt5 openexr freeimage
 
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz
   - tar xvf ${GETH_VER}.tar.gz
@@ -28,15 +27,13 @@ before_install:
   - cd golem-hyperdrive && npm install --save && cd ..
   - node golem-hyperdrive/src/index.js &
 
-  - sudo -HE pip install --upgrade pip setuptools six virtualenv pytest-cov codecov
-  - pip install https://github.com/golemfactory/golem/wiki/wheels/sip-4.19-cp27-cp27m-macosx_10_12_x86_64.whl
-  - pip install https://github.com/golemfactory/golem/wiki/wheels/PyQt5-5.7.1-cp27-cp27m-macosx_10_12_x86_64.whl
-  - sudo -HE pip install -r requirements.txt
-  - sudo -HE pip install -r requirements-test.txt
-  - sudo -HE python setup.py develop
+  - sudo -HE pip3 install --upgrade pip setuptools six virtualenv pytest-cov codecov
+  - sudo -HE pip3 install -r requirements.txt
+  - sudo -HE pip3 install -r requirements-test.txt
+  - sudo -HE python3 setup.py develop
 
 script:
-  - pytest --cov=golem
+  - python3 -m pytest --cov=golem
 
 after_success:
-  - codecov
+  - python3 -m codecov

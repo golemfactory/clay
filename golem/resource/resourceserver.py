@@ -93,8 +93,8 @@ class ResourceServer(PendingConnectionsServer):
         if self.keys_auth.get_key_id() in resource_peers:
             del resource_peers[self.keys_auth.get_key_id()]
 
-        for key_id, [addr, port, node_name, node_info] in resource_peers.iteritems():
-            self.add_resource_peer(node_name, addr, port, key_id, node_info)
+        for key_id, [addr, port, name, info] in resource_peers.items():
+            self.add_resource_peer(name, addr, port, key_id, info)
 
     def sync_network(self):
         self._sync_pending()
@@ -110,7 +110,8 @@ class ResourceServer(PendingConnectionsServer):
     def get_resources(self):
         if len(self.resources_to_get) == 0:
             return
-        resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
+        resource_peers = [peer for peer in self.resource_peers.values()
+                          if peer['state'] == 'free']
         random.shuffle(resource_peers)
 
         if len(self.resource_peers) == 0:
@@ -127,7 +128,8 @@ class ResourceServer(PendingConnectionsServer):
         if self.res_send_it >= len(self.resources_to_send):
             self.res_send_it = len(self.resources_to_send) - 1
 
-        resource_peers = [peer for peer in self.resource_peers.values() if peer['state'] == 'free']
+        resource_peers = [peer for peer in self.resource_peers.values()
+                          if peer['state'] == 'free']
 
         for peer in resource_peers:
             name = self.resources_to_send[self.res_send_it][0]
@@ -277,7 +279,7 @@ class ResourceServer(PendingConnectionsServer):
         })
 
     def __free_peer(self, addr, port):
-        for key_id, peer in self.resource_peers.iteritems():
+        for key_id, peer in self.resource_peers.items():
             if peer['addr'] == addr and peer['port'] == port:
                 self.resource_peers[key_id]['state'] = 'free'
                 return key_id
@@ -323,7 +325,7 @@ class ResourceServer(PendingConnectionsServer):
 
     def __remove_client(self, addr, port):
         bad_client = None
-        for key_id, peer in self.resource_peers.iteritems():
+        for key_id, peer in self.resource_peers.items():
             if peer['addr'] == addr and peer['port'] == port:
                 bad_client = key_id
                 break

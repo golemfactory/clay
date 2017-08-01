@@ -49,7 +49,7 @@ class TestDirSize(TestDirFixture):
                 errors = []
                 get_dir_size(self.testdir, report_error=errors.append)
                 self.assertEqual(len(errors), 1)
-                self.assertIs(type(errors[0]), OSError)
+                self.assertIs(type(errors[0]), PermissionError)
 
     def testOuterInnerDir(self):
         path = os.path.join('dir', 'subdir', 'file')
@@ -123,13 +123,13 @@ class TestDirSize(TestDirFixture):
                  ],
                  '/var'),
                 ([
-                    u'/var/log-other/daemon/daemon.log',
+                    '/var/log-other/daemon/daemon.log',
                     '/var/log/daemon.log',
                  ],
                  '/var'),
                 ([
-                    u'/var/log-other/daemon/daemon.log',
-                    u'/var/log/daemon.log',
+                    '/var/log-other/daemon/daemon.log',
+                    '/var/log/daemon.log',
                  ],
                  '/var'),
                 ([
@@ -243,7 +243,7 @@ class TestDu(TestDirFixture):
             size = float(res)
         except ValueError:
             size, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreater(size, 0)
+        self.assertGreater(float(size), 0)
 
 
 class TestFindAndCopy(TestDirFixture):
@@ -333,8 +333,8 @@ class TestHasExt(TestDirFixture):
         assert has_ext(file_names[0], ".ext", True)
         assert not has_ext(file_names[0], ".exr")
 
-        assert len(filter(lambda x: has_ext(x, ".abc"), file_names)) == 4
-        assert len(filter(lambda x: has_ext(x, ".abc", True), file_names)) == 1
+        assert len([x for x in file_names if has_ext(x, ".abc")]) == 4
+        assert len([x for x in file_names if has_ext(x, ".abc", True)]) == 1
 
         assert has_ext(file_names[6], ".xyz")
         assert not has_ext(file_names[6], ".xyz", True)

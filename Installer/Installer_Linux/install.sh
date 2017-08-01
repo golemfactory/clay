@@ -49,6 +49,7 @@ PACKAGE_VERSION="0.1.0"
 # PARAMS
 LOCAL_PACKAGE=""
 UI_PACKAGE=""
+DEPS_ONLY=0
 
 # @brief print error message
 # @param error message
@@ -77,6 +78,9 @@ function info_msg()
 # @return 1 if answer is 'yes', 0 if 'no'
 function ask_user()
 {
+    # if want to install only deps,
+    # we don't have to ask if want to install any dependency
+    [[ ${DEPS_ONLY} -eq 1 ]] && return 1
     while [ 1 ]; do
         read -p "$@ " yn
         case ${yn} in
@@ -281,6 +285,7 @@ function main()
 {
     check_dependencies
     install_dependencies
+    [[ ${DEPS_ONLY} -eq 1 ]] && return
     install_golem
     result=$?
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
@@ -299,6 +304,7 @@ function help_message() {
     echo -e "\e[4mOptions:\e[0m"
     echo -e "   -g, --golem           package with Golem"
     echo -e "   -u, --ui              package with UI"
+    echo -e "   -d, --deps-only       Install only dependencies without Golem"
     echo -e "   -h, --help            print this message"
     echo
 }
@@ -326,6 +332,9 @@ while [[ $# -ge 1 ]]; do
         -h|--help)
         help_message
         exit 0
+        ;;
+        -d|--deps-only)
+        DEPS_ONLY=1
         ;;
         *) # unknown option
         error_msg "Unknown argument: $1"

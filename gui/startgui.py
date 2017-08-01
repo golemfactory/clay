@@ -41,7 +41,7 @@ def check_rpc_address(ctx, param, address):
     except AddressValueError as e:
         return click.BadParameter(
             "Invalid network address specified: {}".format(e.message))
-    return WebSocketAddress(host, port, u'golem')
+    return WebSocketAddress(host, port, 'golem')
 
 
 class GUIApp(object):

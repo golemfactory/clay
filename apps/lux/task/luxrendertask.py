@@ -1,4 +1,4 @@
-from __future__ import division
+
 import logging
 import math
 import os
@@ -87,10 +87,10 @@ class LuxRenderTaskTypeInfo(TaskTypeInfo):
         if as_path:
             border = [(0, 0), (x - 1, 0), (x - 1, y - 1), (0, y - 1)]
         else:
-            border = [(0, i) for i in xrange(y)]
-            border += [(x - 1, i) for i in xrange(y)]
-            border += [(i, 0) for i in xrange(x)]
-            border += [(i, y - 1) for i in xrange(x)]
+            border = [(0, i) for i in range(y)]
+            border += [(x - 1, i) for i in range(y)]
+            border += [(i, 0) for i in range(x)]
+            border += [(i, y - 1) for i in range(x)]
 
         return border
 
@@ -264,12 +264,12 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
     def after_test(self, results, tmp_dir):
-        FLM_NOT_FOUND_MSG = u"Flm file was not found, check scene."
+        FLM_NOT_FOUND_MSG = "Flm file was not found, check scene."
         return_data = dict()
         flm = find_file_with_ext(tmp_dir, [".flm"])
         if flm is None:
-            return_data[u'warnings'] = FLM_NOT_FOUND_MSG
-            logger.warning(return_data[u"warnings"])
+            return_data['warnings'] = FLM_NOT_FOUND_MSG
+            logger.warning(return_data["warnings"])
         make_scene_analysis(self.scene_file_src, return_data)
         return return_data
 
@@ -371,7 +371,7 @@ class LuxTask(renderingtask.RenderingTask):
     @renderingtask.RenderingTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         preview_files = []
-        for sub_id, task in self.subtasks_given.iteritems():
+        for sub_id, task in list(self.subtasks_given.items()):
             if sub_id != subtask_id\
                     and task['status'] == 'Finished'\
                     and 'preview_file' in task:
@@ -466,7 +466,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.__final_flm_failure,
             self.query_extra_data_for_final_flm,
             use_task_resources=False,
-            additional_resources=self.collected_file_names.values()
+            additional_resources=list(self.collected_file_names.values())
         )
         computer.run()
         computer.tt.join()
@@ -516,13 +516,13 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
         parent = super(LuxRenderTaskBuilder, cls)
 
         dictionary = parent.build_dictionary(definition)
-        dictionary[u'options'][u'haltspp'] = definition.options.haltspp
+        dictionary['options']['haltspp'] = definition.options.haltspp
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
         parent = super(LuxRenderTaskBuilder, cls)
-        options = dictionary[u'options']
+        options = dictionary['options']
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.options.haltspp = options.get('haltspp',

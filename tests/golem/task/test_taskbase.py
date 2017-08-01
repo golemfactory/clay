@@ -56,7 +56,7 @@ class TestTaskBase(LogTestCase):
                 id="id_{}".format(i),
                 tag="tag_{}".format(i)
             )
-            for i in xrange(4)
+            for i in range(4)
         ]
 
         task_header = TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
@@ -85,4 +85,4 @@ class TestTaskBase(LogTestCase):
 
 class TestTaskBuilder(TestCase):
     def test_build_definition(self):
-        TaskBuilder.build_definition(u"testtask", {"resources": []})
+        TaskBuilder.build_definition("testtask", {"resources": []})

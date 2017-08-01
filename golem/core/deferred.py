@@ -1,4 +1,4 @@
-from Queue import Queue, Empty
+from queue import Queue, Empty
 
 from twisted.internet.defer import DebugInfo, Deferred, TimeoutError
 from twisted.python.failure import Failure

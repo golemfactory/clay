@@ -76,4 +76,6 @@ class HyperdriveClient(IClient):
                                  data=json.dumps(data),
                                  timeout=self.timeout)
         response.raise_for_status()
-        return json.loads(response.content)
+
+        if response.content:
+            return json.loads(response.content.decode('utf-8'))

@@ -10,6 +10,7 @@ from golem.rpc.session import (
     object_method_map, logger
 )
 from golem.tools.assertlogs import LogTestCase
+import collections
 
 
 class TestRPCAddress(unittest.TestCase):
@@ -17,7 +18,7 @@ class TestRPCAddress(unittest.TestCase):
     def test_str(self):
         address = RPCAddress('test', 'host', 1234)
         assert str(address) == 'test://host:1234'
-        assert unicode(address) == u'test://host:1234'
+        assert str(address) == 'test://host:1234'
 
 
 class TestWebSocketAddress(unittest.TestCase):
@@ -25,13 +26,13 @@ class TestWebSocketAddress(unittest.TestCase):
     def test_default_values(self):
         address = WebSocketAddress('host', 1234, 'realm', ssl=True)
 
-        assert unicode(address) == u'wss://host:1234'
-        assert isinstance(address.realm, unicode)
-        assert address.realm == u'realm'
+        assert str(address) == 'wss://host:1234'
+        assert isinstance(address.realm, str)
+        assert address.realm == 'realm'
 
         address = WebSocketAddress('host', 1234, 'realm')
 
-        assert unicode(address) == u'ws://host:1234'
+        assert str(address) == 'ws://host:1234'
 
 
 class TestObjectMethodMap(unittest.TestCase):
@@ -73,7 +74,7 @@ class TestObjectMethodMap(unittest.TestCase):
 class TestPublisher(LogTestCase):
 
     def test_publish(self):
-        session = Session(WebSocketAddress('localhost', 12345, u'golem'))
+        session = Session(WebSocketAddress('localhost', 12345, 'golem'))
         publisher = Publisher(session)
 
         session.publish = Mock()
@@ -134,8 +135,8 @@ class TestClient(unittest.TestCase):
         client = Client(self.session, self.method_map)
         assert hasattr(client, 'method_1')
         assert hasattr(client, 'method_2')
-        assert callable(getattr(client, 'method_1'))
-        assert callable(getattr(client, 'method_2'))
+        assert isinstance(getattr(client, 'method_1'), collections.Callable)
+        assert isinstance(getattr(client, 'method_2'), collections.Callable)
 
     def test_call_no_session(self, *_):
 
@@ -202,5 +203,5 @@ class TestSession(unittest.TestCase):
         assert isinstance(session.ready, Deferred)
         assert isinstance(session.config, autobahn.wamp.types.ComponentConfig)
 
-        assert session.config.realm == u'realm'
+        assert session.config.realm == 'realm'
         assert not session.ready.called

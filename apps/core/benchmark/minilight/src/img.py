@@ -5,7 +5,7 @@
 
 
 from math import log10
-from vector3f import Vector3f
+from .vector3f import Vector3f
 
 IMAGE_DIM_MAX = 4000
 PPM_ID = 'P6'

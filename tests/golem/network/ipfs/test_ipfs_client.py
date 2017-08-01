@@ -90,7 +90,7 @@ class TestIPFSClient(TestDirFixture):
         client = IPFSClient()
         client_options = {'options': {'option1': 1, 'option2': 'abcd', 'option3': None}}
         option = client.build_options("id", **client_options)
-        print option
+        print(option)
         assert option.client_id == client.CLIENT_ID
         assert option.version == client.VERSION
         with self.assertRaises(ClientError):
@@ -103,7 +103,7 @@ class TestIPFSClient(TestDirFixture):
 
     def _write_test_file(self, n_entries):
         with open(self.test_dir_file, 'w') as f:
-            for i in xrange(0, n_entries):
+            for i in range(0, n_entries):
                 f.write(str(uuid.uuid4()) + "\n")
                 f.flush()
 

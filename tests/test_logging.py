@@ -28,9 +28,9 @@ class TestLogging(unittest.TestCase, PEP8MixIn):
             args, kwargs = call
             record = args[0]
             print("handleError() %s:lno%d" % (record.filename, record.lineno, ))
-        self.assertEquals(handleError_mock.call_count, 0)
+        self.assertEqual(handleError_mock.call_count, 0)
 
-        correct_ascii = u'Connection failure: %s'
-        windows_s = u'Nie można nawiązać połączenia, ponieważ...'.encode('cp1250')
+        correct_ascii = 'Connection failure: %s'
+        windows_s = 'Nie można nawiązać połączenia, ponieważ...'.encode('cp1250')
         logger.warning(correct_ascii, windows_s)
-        self.assertEquals(handleError_mock.call_count, 0)
+        self.assertEqual(handleError_mock.call_count, 0)

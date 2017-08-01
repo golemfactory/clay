@@ -44,7 +44,7 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_frames(self):
         frames = bla.find_frames(self._get_log_file())
-        assert frames == range(0, 101)
+        assert frames == list(range(0, 101))
 
         frames = bla.find_frames("No frames here")
         assert frames is None

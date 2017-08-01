@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import atexit
 import logging
@@ -12,15 +12,15 @@ from datetime import datetime
 from distutils.version import StrictVersion
 
 import requests
-from ethereum.keys import privtoaddr
+from devp2p.crypto import privtopub
 from ethereum.transactions import Transaction
 from ethereum.utils import normalize_address, denoms
+from ethereum.utils import privtoaddr
 from web3 import Web3, IPCProvider
 
 from golem.core.common import is_windows, DEVNULL, is_frozen
-from golem.core.crypto import privtopub
 from golem.environments.utils import find_program
-from golem.utils import find_free_net_port
+from golem.utils import encode_hex, decode_hex, find_free_net_port
 
 log = logging.getLogger('golem.ethereum')
 
@@ -28,7 +28,7 @@ log = logging.getLogger('golem.ethereum')
 def ropsten_faucet_donate(addr):
     addr = normalize_address(addr)
     URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
-    request = URL_TEMPLATE.format(addr.encode('hex'))
+    request = URL_TEMPLATE.format(addr.hex())
     response = requests.get(request)
     if response.status_code != 200:
         log.error("Ropsten Faucet error code {}".format(response.status_code))
@@ -45,21 +45,20 @@ def ropsten_faucet_donate(addr):
 
 
 class Faucet(object):
-    PRIVKEY = "{:32}".format("Golem Faucet")
+    PRIVKEY = "{:32}".format("Golem Faucet").encode()
     PUBKEY = privtopub(PRIVKEY)
     ADDR = privtoaddr(PRIVKEY)
 
     @staticmethod
     def gimme_money(ethnode, addr, value):
-        nonce = ethnode.get_transaction_count('0x' + Faucet.ADDR.encode('hex'))
+        nonce = ethnode.get_transaction_count(encode_hex(Faucet.ADDR))
         addr = normalize_address(addr)
         tx = Transaction(nonce, 1, 21000, addr, value, '')
         tx.sign(Faucet.PRIVKEY)
         h = ethnode.send(tx)
         log.info("Faucet --({} ETH)--> {} ({})".format(value / denoms.ether,
-                                                       '0x' + addr.encode(
-                                                           'hex'), h))
-        h = h[2:].decode('hex')
+                                                       encode_hex(addr), h))
+        h = decode_hex(h[2:])
         return h
 
 
@@ -85,7 +84,8 @@ class NodeProcess(object):
             **self.SUBPROCESS_PIPES
         ).communicate()
 
-        match = re.search("Version: (\d+\.\d+\.\d+)", output).group(1)
+        match = re.search("Version: (\d+\.\d+\.\d+)",
+                          str(output, 'utf-8')).group(1)
         ver = StrictVersion(match)
         if ver < self.MIN_GETH_VERSION or ver > self.MAX_GETH_VERSION:
             e_description =\
@@ -189,11 +189,11 @@ class NodeProcess(object):
     def identify_chain(self):
         """Check what chain the Ethereum node is running."""
         GENESES = {
-        u'0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3':
+        '0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3':
             'mainnet',  # noqa
-        u'0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d':
+        '0x41941023680923e0fe4d74a34bdac8141f2540e3ae90623718e47d66d1ca4a2d':
             'ropsten',  # noqa
-        u'0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177':
+        '0x6341fd3daf94b748c72ced5a5b26028f2474f5f00d824504e4fa37a75767e177':
             'rinkeby',  # noqa
         }
         genesis = self.web3.eth.getBlock(0)['hash']

@@ -2,7 +2,7 @@ import socket
 import time
 import unittest
 import uuid
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
 from requests.exceptions import HTTPError
@@ -14,7 +14,7 @@ class MockHttpServer(BaseHTTPRequestHandler):
     wait = 5
     port = 22333
     server_version = "BaseHTTP/1.1"
-    default_request_version = "HTTP/1.1"
+    default_request_version = b"HTTP/1.1"
 
     def _set_headers(self):
         self.send_response(200)
@@ -24,7 +24,7 @@ class MockHttpServer(BaseHTTPRequestHandler):
     def do_GET(self):
         time.sleep(self.wait)
         self._set_headers()
-        self.wfile.write("GET")
+        self.wfile.write(b"GET")
 
     def do_HEAD(self):
         time.sleep(self.wait)
@@ -33,11 +33,11 @@ class MockHttpServer(BaseHTTPRequestHandler):
     def do_POST(self):
         time.sleep(self.wait)
         self._set_headers()
-        self.wfile.write("POST")
+        self.wfile.write(b"POST")
 
     @staticmethod
     def serve():
-        server_address = ('', MockHttpServer.port)
+        server_address = (b'', MockHttpServer.port)
         httpd = HTTPServer(server_address, MockHttpServer)
         thread = Thread(target=httpd.serve_forever)
         thread.daemon = True
@@ -55,7 +55,7 @@ class MockIterator:
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         prev_pos = self.pos
         self.pos += self.chunk
 
@@ -117,44 +117,36 @@ class TestSocketStream(unittest.TestCase):
         assert stream.done
 
     def testHeaders(self):
-        rn = "\r\n"
+        rn = ChunkStream.short_sep
 
         with self.assertRaises(HTTPError):
             ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.0 200 ok'
-                ])
+                b'HTTP/1.0 200 ok'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 404 Not Found'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 200'
+            )
+        with self.assertRaises(HTTPError):
+            ChunkStream._assert_headers(
+                b'HTTP/1.1 200 ok'
             )
         with self.assertRaises(HTTPError):
             ChunkStream._assert_headers(
                 rn.join([
-                    'HTTP/1.1 404 Not Found'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200 ok'
-                ])
-            )
-        with self.assertRaises(HTTPError):
-            ChunkStream._assert_headers(
-                rn.join([
-                    'HTTP/1.1 200 OK',
-                    'Transfer-Encoding: qwerty'
+                    b'HTTP/1.1 200 OK',
+                    b'Transfer-Encoding: qwerty'
                 ])
             )
         ChunkStream._assert_headers(
             rn.join([
-                'hTTp/1.1 200 OK',
-                'Ignored: property',
-                'Transfer-Encoding: Chunked'
+                b'hTTp/1.1 200 OK',
+                b'Ignored: property',
+                b'Transfer-Encoding: Chunked'
             ])
         )
 
@@ -164,8 +156,8 @@ class TestSocketStream(unittest.TestCase):
 
         stream.connect()
 
-        with self.assertRaises(HTTPError):
-            stream.read(1024)
+        read = stream.read(1024)
+        assert read is None
 
         stream.disconnect()
 
@@ -177,7 +169,7 @@ class TestStreamFileObject(unittest.TestCase):
 
     def test(self):
         src = ''
-        for _ in xrange(1, 100):
+        for _ in range(1, 100):
             src = str(uuid.uuid4())
 
         iterable = MockIterable(src)

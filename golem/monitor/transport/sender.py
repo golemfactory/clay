@@ -1,6 +1,6 @@
 from golem.decorators import log_error
-from httptransport import DefaultHttpSender
-from proto import DefaultProto
+from .httptransport import DefaultHttpSender
+from .proto import DefaultProto
 
 
 class DefaultJSONSender(object):

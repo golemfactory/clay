@@ -4,8 +4,8 @@
 #  http://www.hxa.name/minilight
 
 
-from triangle import Triangle, TOLERANCE
-from vector3f import Vector3f, MAX
+from .triangle import Triangle, TOLERANCE
+from .vector3f import Vector3f, MAX
 
 MAX_LEVELS = 44
 MAX_ITEMS  =  8

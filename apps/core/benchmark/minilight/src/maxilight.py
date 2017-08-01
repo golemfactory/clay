@@ -1,6 +1,6 @@
-from camera import Camera
-from image import Image
-from scene import Scene
+from .camera import Camera
+from .image import Image
+from .scene import Scene
 
 from mtrenderer import RenderWorker
 
@@ -59,9 +59,9 @@ if __name__ == '__main__':
 
     def main():
         if len(argv) < 2 or argv[1] == '-?' or argv[1] == '--help':
-            print HELP
+            print(HELP)
         else:
-            print BANNER
+            print(BANNER)
             model_file_pathname = argv[1]
             image_file_pathname = model_file_pathname + '.ppm'
             model_file = open(model_file_pathname, 'r')
@@ -81,9 +81,12 @@ if __name__ == '__main__':
             avgSpeed = float(numSamples) / duration
             expectedTime = totalSamples / avgSpeed
 
-            print "\nSummary:"
-            print "    Rendering scene with {} rays took {} seconds".format(numSamples, duration)
-            print "    giving an average speed of {} rays/s".format(avgSpeed)
-            print "    estimated time for the whole scene is {} seconds".format(expectedTime)
+            print("\nSummary:")
+            print("    Rendering scene with {} rays took {} seconds"
+                  .format(numSamples, duration))
+            print("    giving an average speed of {} rays/s"
+                  .format(avgSpeed))
+            print("    estimated time for the whole scene is {} seconds"
+                  .format(expectedTime))
             
     main()

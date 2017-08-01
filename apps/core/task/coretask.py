@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import copy
 import logging
@@ -76,7 +76,7 @@ class TaskTypeInfo(object):
             if isinstance(result, dict):
                 return result
             else:
-                return {u'1': result}
+                return {'1': result}
         return {}
 
 
@@ -193,7 +193,7 @@ class CoreTask(Task):
         return []
 
     def restart(self):
-        for subtask_id in self.subtasks_given.keys():
+        for subtask_id in list(self.subtasks_given.keys()):
             self.restart_subtask(subtask_id)
 
     @handle_key_error
@@ -260,11 +260,11 @@ class CoreTask(Task):
 
     def to_dictionary(self):
         return {
-            u'id': to_unicode(self.header.task_id),
-            u'name': to_unicode(self.task_definition.task_name),
-            u'type': to_unicode(self.task_definition.task_type),
-            u'subtasks': self.get_total_tasks(),
-            u'progress': self.get_progress()
+            'id': to_unicode(self.header.task_id),
+            'name': to_unicode(self.task_definition.task_name),
+            'type': to_unicode(self.task_definition.task_type),
+            'subtasks': self.get_total_tasks(),
+            'progress': self.get_progress()
         }
 
     #########################
@@ -388,7 +388,8 @@ class CoreTask(Task):
         return os.path.join(output_dir, tr[0])
 
     def _get_resources_root_dir(self):
-        prefix = os.path.commonprefix(self.task_resources)
+        task_resources = list(self.task_resources)
+        prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
     def _accept_client(self, node_id):
@@ -474,19 +475,19 @@ class CoreTaskBuilder(TaskBuilder):
         output_path = cls.build_output_path(definition)
 
         return {
-            u'id': to_unicode(definition.task_id),
-            u'type': to_unicode(definition.task_type),
-            u'name': to_unicode(definition.task_name),
-            u'timeout': to_unicode(task_timeout),
-            u'subtask_timeout': to_unicode(subtask_timeout),
-            u'subtasks': definition.total_subtasks,
-            u'bid': float(definition.max_price) / denoms.ether,
-            u'resources': [to_unicode(r) for r in definition.resources],
-            u'options': {
-                u'output_path': to_unicode(output_path)
+            'id': to_unicode(definition.task_id),
+            'type': to_unicode(definition.task_type),
+            'name': to_unicode(definition.task_name),
+            'timeout': to_unicode(task_timeout),
+            'subtask_timeout': to_unicode(subtask_timeout),
+            'subtasks': definition.total_subtasks,
+            'bid': float(definition.max_price) / denoms.ether,
+            'resources': [to_unicode(r) for r in definition.resources],
+            'options': {
+                'output_path': to_unicode(output_path)
             },
             # FIXME: Backward compatibility only. Remove after upgrading GUI.
-            u'legacy': definition.legacy,
+            'legacy': definition.legacy,
         }
 
     @classmethod

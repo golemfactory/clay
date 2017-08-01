@@ -5,8 +5,9 @@ import requests
 from mock import patch, Mock
 
 from golem.ethereum.node import log, NodeProcess, ropsten_faucet_donate
-from golem.testutils import TempDirFixture, PEP8MixIn
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.utils import encode_hex
 
 
 class MockPopen(Mock):
@@ -44,7 +45,7 @@ class RopstenFaucetTest(unittest.TestCase, PEP8MixIn):
         get.return_value = response
         assert ropsten_faucet_donate(addr) is True
         assert get.call_count == 1
-        assert addr.encode('hex') in get.call_args[0][0]
+        assert encode_hex(addr)[2:] in get.call_args[0][0]
 
 
 class EthereumNodeTest(TempDirFixture, LogTestCase):
