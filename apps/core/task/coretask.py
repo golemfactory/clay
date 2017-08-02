@@ -6,8 +6,11 @@ import os
 import uuid
 
 from enum import Enum
+from typing import Type
+
 from ethereum.utils import denoms
 
+from apps.core.task.coretaskstate import CoreTaskDefaults, TaskDefinition, Options
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     timeout_to_string, string_to_timeout
@@ -42,8 +45,14 @@ class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
 
-    def __init__(self, name, definition, defaults, options, task_builder_type,
-                 dialog=None, dialog_controller=None):
+    def __init__(self,
+                 name: str,
+                 definition: Type[TaskDefinition],
+                 defaults: CoreTaskDefaults,
+                 options: Type[Options],
+                 task_builder_type: Type[TaskBuilder],
+                 dialog=None,
+                 dialog_controller=None):
         self.name = name
         self.defaults = defaults
         self.options = options
@@ -82,15 +91,22 @@ class TaskTypeInfo(object):
 
 class CoreTask(Task):
 
-    VERIFICATOR_CLASS = CoreVerificator
+    VERIFICATOR_CLASS: Type[CoreVerificator] = CoreVerificator
     handle_key_error = HandleKeyError(log_key_error)
 
     ################
     # Task methods #
     ################
 
-    def __init__(self, src_code, task_definition, node_name, environment, resource_size=0,
-                 owner_address="", owner_port=0, owner_key_id="",
+    def __init__(self,
+                 src_code: str,
+                 task_definition: TaskDefinition,
+                 node_name: str,
+                 environment: str, # environment.get_id()
+                 resource_size=0,
+                 owner_address="",
+                 owner_port=0,
+                 owner_key_id="",
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
         """Create more specific task implementation
 

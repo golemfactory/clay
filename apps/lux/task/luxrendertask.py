@@ -4,32 +4,28 @@ import math
 import os
 import random
 import shutil
-
 from collections import OrderedDict
+
 from PIL import Image, ImageChops, ImageOps
 
-from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
-from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
-
-from golem.resource import dirmanager
-from golem.resource.dirmanager import DirManager, find_task_script
-
-from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ComputeTaskDef
-from golem.task.taskstate import SubtaskStatus
-
+import apps.lux.resources.scenefilereader as sfr
 from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-import apps.lux.resources.scenefilereader as sfr
-
 from apps.lux.task.verificator import LuxRenderVerificator
 from apps.rendering.resources.imgrepr import load_img, blend
 from apps.rendering.task import renderingtask
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
 from apps.rendering.task import renderingtaskstate
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
+from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
+from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
+from golem.resource import dirmanager
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
+from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")
 

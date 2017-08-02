@@ -1,0 +1,55 @@
+{
+  "py/object":"apps.dummy.task.dummytaskstate.DummyTaskDefinition",
+  "options":{
+    "py/object":"apps.dummy.task.dummytaskstate.DummyTaskOptions",
+    "environment":{
+      "py/object":"apps.dummy.dummyenvironment.DummyTaskEnvironment",
+      "docker_images":[
+        {
+          "py/object": "golem.docker.image.DockerImage",
+          "repository": "golemfactory/base",
+          "tag": "1.2",
+          "name": "golemfactory/base:1.2",
+          "id": null
+        }
+      ],
+      "software_name":null,
+      "accept_tasks":false,
+      "caps":[],
+      "short_description":"Dummy task for creating PoW hash",
+      "long_description":"",
+      "software":[
+        "Docker"
+      ]
+    }
+  },
+  "task_id":"540d9636-1848-c85d-19d3-52465d1f23cf",
+  "resources":{
+    "py/set":[
+      "$GOLEM_DIR/apps/dummy/benchmark/test_task/in.data"
+    ]
+  },
+  "shared_data_file":"$GOLEM_DIR/apps/dummy/benchmark/test_task/in.data",
+  "shared_data_size": 36,
+  "subtask_data_size": 2048,
+  "result_size": 256,
+  "out_file_basename": "out",
+  "difficulty": 16777215,
+  "verification_options":null,
+  "estimated_memory":0,
+  "full_task_timeout":14400,
+  "task_type":"Dummy",
+  "main_program_file":"$GOLEM_DIR/apps/dummy/resources/scripts/docker_dummytask.py",
+  "subtask_timeout":1200,
+  "total_subtasks":5,
+  "max_price": 10.2,
+  "docker_images":[
+    {
+      "py/object": "golem.docker.image.DockerImage",
+      "repository": "golemfactory/base",
+      "tag": "1.2",
+      "name": "golemfactory/base:1.2",
+      "id": null
+    }
+  ]
+}

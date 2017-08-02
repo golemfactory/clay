@@ -14,9 +14,22 @@ class TaskHeader(object):
     """ Task header describe general information about task as an request and is propagated in the
         network as an offer for computing nodes
     """
-    def __init__(self, node_name, task_id, task_owner_address, task_owner_port, task_owner_key_id, environment,
-                 task_owner=None, deadline=0.0, subtask_timeout=0.0, resource_size=0, estimated_memory=0,
-                 min_version=APP_VERSION, max_price=0.0, docker_images=None, signature=None):
+    def __init__(self,
+                 node_name: str,
+                 task_id: str,
+                 task_owner_address,
+                 task_owner_port,
+                 task_owner_key_id,
+                 environment: str, # environment.get_id()
+                 task_owner=None,
+                 deadline=0.0,
+                 subtask_timeout=0.0,
+                 resource_size=0,
+                 estimated_memory=0,
+                 min_version=APP_VERSION,
+                 max_price=0.0,
+                 docker_images=None,
+                 signature=None):
         """
         :param float max_price: maximum price that this node may par for an hour of computation
         :param docker_images: docker image specification
