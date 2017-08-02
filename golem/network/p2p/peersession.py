@@ -250,7 +250,7 @@ class PeerSession(BasicSafeSession):
             node_info,
             conn_id,
             super_node_info
-            ):
+    ):
         """ Send request for starting task session with given node
         :param Node node_info: information about this node.
         :param uuid conn_id: connection id for reference
@@ -270,7 +270,7 @@ class PeerSession(BasicSafeSession):
             node_info,
             conn_id,
             super_node_info
-            ):
+    ):
         """Send information that node from node_info want to start task
            session with key_id node
         :param key_id: target node key
@@ -533,9 +533,9 @@ class PeerSession(BasicSafeSession):
         self.send(message.MessagePong())
 
     def __send_hello(self):
-        self.solve_challenge = self.key_id\
-            and self.p2p_service.should_solve_challenge\
-            or False
+        self.solve_challenge = self.key_id \
+                               and self.p2p_service.should_solve_challenge \
+                               or False
         challenge_kwargs = {}
         if self.solve_challenge:
             challenge = self.p2p_service._get_challenge(self.key_id)

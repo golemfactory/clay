@@ -6,7 +6,7 @@ import time
 
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
-from golem.resource.dirmanager import get_test_task_path, get_test_task_tmp_path
+from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
 from golem.task.taskbase import Task, resource_types
 
@@ -28,7 +28,7 @@ class LocalComputer(object):
         self.success = False
         self.lock = Lock()
         self.tt = None
-        self.root_path = root_path
+        self.dir_manager = DirManager(root_path)
         self.get_compute_task_def = get_compute_task_def
         self.error_callback = error_callback
         self.success_callback = success_callback
@@ -47,7 +47,7 @@ class LocalComputer(object):
         try:
             self.start_time = time.time()
             self.__prepare_tmp_dir()
-            self.__prepare_resources()
+            self.__prepare_resources() # makes a copy
 
             ctd = self.get_compute_task_def()
 
@@ -102,16 +102,18 @@ class LocalComputer(object):
 
     def __prepare_resources(self):
 
-        self.test_task_res_path = get_test_task_path(self.root_path)
+        self.test_task_res_path = self.dir_manager.get_task_test_dir("")#self.task.header.task_id)
+        #  get_test_task_path(self.root_path)
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
         else:
             shutil.rmtree(self.test_task_res_path, True)
             os.makedirs(self.test_task_res_path)
 
-        self.test_task_res_dir = get_test_task_path(self.root_path)
+        # self.test_task_res_dir = get_test_task_path(self.root_path)
         if self.use_task_resources:
-            rh = TaskResourceHeader(self.test_task_res_dir)
+            rh = TaskResourceHeader(self.test_task_res_path)
+            # rh = TaskResourceHeader(self.test_task_res_dir)
             res_file = self.task.get_resources(rh, resource_types["zip"], self.tmp_dir)
 
             if res_file:
@@ -122,7 +124,7 @@ class LocalComputer(object):
         return True
 
     def __prepare_tmp_dir(self):
-        self.tmp_dir = get_test_task_tmp_path(self.root_path)
+        self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)

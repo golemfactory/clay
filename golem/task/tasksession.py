@@ -23,7 +23,6 @@ from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
-
 TASK_PROTOCOL_ID = 15
 
 

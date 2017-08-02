@@ -143,6 +143,7 @@ class TaskManager(TaskEventListener):
         self.dir_manager.get_task_temporary_dir(task.header.task_id,
                                                 create=True)
 
+        task.create_reference_data_for_task_validation()
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
@@ -151,6 +152,7 @@ class TaskManager(TaskEventListener):
 
         self.tasks[task.header.task_id] = task
         self.tasks_states[task.header.task_id] = ts
+
 
     @handle_task_key_error
     def start_task(self, task_id):

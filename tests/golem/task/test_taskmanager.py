@@ -30,6 +30,7 @@ class TaskMock(Task):
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
 
+
     def __getstate__(self):
         state = super(TaskMock, self).__getstate__()
         del state['query_extra_data_return_value']
