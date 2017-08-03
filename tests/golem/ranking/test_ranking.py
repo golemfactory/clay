@@ -98,6 +98,20 @@ class TestRankingDatabase(TestWithDatabase):
 
 class TestRanking(TestWithDatabase, LogTestCase):
 
+    def test_count_trust(self):
+        from golem.ranking.helper import min_max_utility
+
+
+        result = min_max_utility.count_trust(600,200)
+        self.assertEqual(result, 0.2)
+
+        result = min_max_utility.count_trust(999999999, 1)
+        self.assertLessEqual(result, min_max_utility.MAX_TRUST)
+
+        result = min_max_utility.count_trust(1, 999999999)
+        self.assertGreaterEqual(result, min_max_utility.MIN_TRUST)
+
+
     def test_increase_trust_thread_safety(self):
         c = MagicMock(spec=Client)
         r = Ranking(c)
@@ -126,6 +140,37 @@ class TestRanking(TestWithDatabase, LogTestCase):
         thread4.join()
         result = r.get_computing_trust("ABC")
         self.assertEqual(result, expected)
+
+
+    def test_requesting_trust_thread_safety(self):
+        c = MagicMock(spec=Client)
+        r = Ranking(c)
+
+        def run():
+            for x in range(0, 10):
+                Trust.PAYMENT.increase("ABC", 1)
+                Trust.PAYMENT.decrease("ABC", 1)
+                Trust.PAYMENT.increase("ABC", 1)
+
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread1.join()
+        expected = r.get_requesting_trust("ABC")
+        thread1 = Thread(target=run)
+        thread1.start()
+        thread2 = Thread(target=run)
+        thread2.start()
+        thread3 = Thread(target=run)
+        thread3.start()
+        thread4 = Thread(target=run)
+        thread4.start()
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        thread4.join()
+        result = r.get_requesting_trust("ABC")
+        self.assertEqual(result, expected)
+
 
     def test_without_reactor(self):
         r = Ranking(MagicMock(spec=Client))

@@ -6,17 +6,12 @@ from golem.ranking.manager.database_manager import get_neighbour_loc_rank, get_l
 ############
 # computed #
 ############
-def __computed_trust_positive(rank):
-    return rank.positive_computed
-
-
-def __computed_trust_negative(rank):
-    return rank.negative_computed + rank.wrong_computed
-
 
 def computed_trust_local(local_rank):
-    return count_trust(__computed_trust_positive(local_rank), __computed_trust_negative(local_rank)) \
-        if local_rank is not None else None
+    return count_trust(
+        local_rank.positive_computed,
+        local_rank.negative_computed + local_rank.wrong_computed
+    )
 
 
 def computed_node_trust_local(node_id):
@@ -48,17 +43,12 @@ def computed_neighbours_rank(node_id, neighbours):
 #############
 # requested #
 #############
-def __requested_trust_positive(rank):
-    return rank.positive_payment
-
-
-def __requested_trust_negative(rank):
-    return rank.negative_requested + rank.negative_payment
-
 
 def requested_trust_local(local_rank):
-    return count_trust(__requested_trust_positive(local_rank), __requested_trust_negative(local_rank)) \
-        if local_rank is not None else None
+    return count_trust(
+        local_rank.positive_payment,
+        local_rank.negative_requested + local_rank.negative_payment
+    )
 
 
 def requested_node_trust_local(node_id):
