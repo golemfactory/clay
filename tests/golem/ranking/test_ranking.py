@@ -204,23 +204,25 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         for v in list(r.working_vec.values()):
             assert v[0][1] == 1.0
             assert v[1][1] == 1.0
-        assert r.working_vec["ABC"][0][0] > 0.0
+
+        assert r.working_vec["ABC"][0][0] == 0.02
         assert r.working_vec["ABC"][1][0] == 0.0
-        assert r.working_vec["DEF"][0][0] < 0.0
-        assert r.working_vec["DEF"][1][0] > 0.0
+        assert r.working_vec["DEF"][0][0] == 0.0
+        assert r.working_vec["DEF"][1][0] == 0.02
         assert r.working_vec["GHI"][0][0] == 0.0
         assert r.working_vec["GHI"][1][0] == 0.0
-        assert r.working_vec["XYZ"][0][0] < 0.0
-        assert r.working_vec["XYZ"][1][0] < 0.0
+        assert r.working_vec["XYZ"][0][0] == 0.0
+        assert r.working_vec["XYZ"][1][0] == 0.0
 
-        assert r.prevRank["ABC"][0] > 0
+        assert r.prevRank["ABC"][0] == 0.02
         assert r.prevRank["ABC"][1] == 0
-        assert r.prevRank["DEF"][0] < 0
-        assert r.prevRank["DEF"][1] > 0
+        assert r.prevRank["DEF"][0] == 0
+        assert r.prevRank["DEF"][1] == 0.02
         assert r.prevRank["GHI"][0] == 0
         assert r.prevRank["GHI"][1] == 0
-        assert r.prevRank["XYZ"][0] < 0
-        assert r.prevRank["XYZ"][1] < 0
+        assert r.prevRank["XYZ"][0] == 0
+        assert r.prevRank["XYZ"][1] == 0
+
 
         r._Ranking__new_round()
         assert set(r.neighbours) == {'ABC', 'JKL', 'MNO'}
@@ -231,8 +233,8 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         for gossip in r.received_gossip[0]:
             if gossip[0] == "DEF":
                 found = True
-                assert gossip[1][0][0] < 0
-                assert gossip[1][0][0] > r.working_vec["DEF"][0][0]
+                assert gossip[1][0][0] == 0
+                assert gossip[1][0][0] == r.working_vec["DEF"][0][0]
                 assert gossip[1][0][1] == 0.5
                 assert gossip[1][1][0] > 0
                 assert gossip[1][0][0] < r.working_vec["DEF"][1][0]
