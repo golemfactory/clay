@@ -10,6 +10,7 @@ from peewee import (SqliteDatabase, Model, CharField, IntegerField, FloatField,
                     SmallIntegerField)
 
 from golem.utils import encode_hex, decode_hex
+from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
 log = logging.getLogger('golem.db')
 
