@@ -7,9 +7,10 @@
 #define MyAppExeName "golemapp.exe"
 ; NOTE: if compilation failed, make sure that this variable are set properly and golem is installed from wheel
 ; NOTE 2: make sure that you've got in {#Repository}\Installer\Inetaller_Win\deps:
-;https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2017 vcredist_x86.exe
+;https://www.visualstudio.com/downloads/#build-tools-for-visual-studio-2017 vc_redist.x86.exe
 ; https://www.microsoft.com/en-us/download/details.aspx?id=44266
 ; https://download.docker.com/win/stable/DockerToolbox.exe
+; https://gethstore.blob.core.windows.net/builds/geth-windows-amd64-1.6.7-ab5646c5.exe
 #define Repository "C:\golem"
 #expr Exec("powershell.exe python setup.py pyinstaller", "", Repository, 1)
 #expr Exec("powershell.exe python Installer\Installer_Win\version.py", "", Repository, 1)
@@ -62,7 +63,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Source: "{#Repository}\dist\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\win-unpacked\*"; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: "{#Repository}\Installer\Installer_Win\deps\DockerToolbox.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
-Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.5-cf87713d.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
+Source: "{#Repository}\Installer\Installer_Win\deps\geth-windows-amd64-1.6.7-ab5646c5.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\vc_redist.x86.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall;
 Source: "{#Repository}\Installer\Installer_Win\deps\OpenSSL\*"; DestDir: "{sd}\OpenSSL"; Flags: ignoreversion recursesubdirs replacesameversion;
 Source: "{#Repository}\Installer\Installer_Win\deps\hyperg\*"; DestDir: "{pf}\HyperG"; Flags: ignoreversion recursesubdirs replacesameversion;
@@ -82,7 +83,7 @@ Filename: "{tmp}\DockerToolbox.exe"; Parameters: "/SILENT"; StatusMsg: "Installi
 ; @todo how to install ipfs
 
 ; Install geth
-Filename: "{tmp}\geth-windows-amd64-1.6.5-cf87713d.exe"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
+Filename: "{tmp}\geth-windows-amd64-1.6.7-ab5646c5.exe"; StatusMsg: "Installing geth"; Description: "Install geth"; Check: NeedsAddPath('Geth');
 
 [Code]
 ////////////////////////////////////////////////////////////////////////////////////////////////////                                                                              
