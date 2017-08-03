@@ -1,7 +1,7 @@
 # ###### Monitoring part ######
 
 MONITOR_CONFIG = {
-    'HOST': "http://stats.golem.network:8881/",
+    'HOST': "https://stats.golem.network/",
     'REQUEST_TIMEOUT': 10,
 
     # Increase this number every time any change is made to the protocol

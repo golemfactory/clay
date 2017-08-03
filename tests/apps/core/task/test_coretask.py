@@ -59,11 +59,11 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task.stdout[subtask_id] = "stdout in string"
         task.stderr[subtask_id] = "stderr in string"
-        task.results[subtask_id] = range(10)
+        task.results[subtask_id] = list(range(10))
 
         self.assertEqual(task.get_stdout(subtask_id), task.stdout[subtask_id])
         self.assertEqual(task.get_stderr(subtask_id), task.stderr[subtask_id])
-        self.assertEqual(task.get_results(subtask_id), range(10))
+        self.assertEqual(task.get_results(subtask_id), list(range(10)))
 
         files = self.additional_dir_content([2])
         with open(files[0], 'w') as f:
@@ -254,6 +254,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     @staticmethod
     def __compress_and_dump_file(file_name, data):
+        if isinstance(data, str):
+            data = data.encode()
         file_data = zlib.compress(data, 9)
         return CBORSerializer.dumps((os.path.basename(file_name), file_data))
 

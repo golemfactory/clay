@@ -5,7 +5,7 @@ from mock import patch, Mock
 
 from golem.core.common import is_linux
 from golem.task.taskbase import Task
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
@@ -13,7 +13,11 @@ from apps.rendering.task.verificator import RenderingVerificator, logger, FrameR
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
-class TestRenderingVerificator(TempDirFixture, LogTestCase):
+class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/rendering/task/verificator.py',
+    ]
+
     def test_box_start(self):
         rv = RenderingVerificator()
 
@@ -124,19 +128,19 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase):
         rv = RenderingVerificator()
         rv.verification_options = AdvanceRenderingVerificationOptions()
         rv.advanced_verification = False
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "nodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "nodeX"}) is None
         rv.advanced_verification = True
         rv.verification_options.type = "forFirst"
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verified_clients.append("NodeX")
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
         rv.verification_options.type = "forAll"
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verification_options.type = "random"
         rv.verification_options.probability = 1.0
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) in range(5)
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) in range(5)
         rv.verification_options.probability = 0.0
-        assert rv._choose_adv_ver_file(range(5), {"node_id": "NodeX"}) is None
+        assert rv._choose_adv_ver_file(list(range(5)), {"node_id": "NodeX"}) is None
 
     def test_error_in_change_scope(self):
         rv = RenderingVerificator()

@@ -1,4 +1,4 @@
-from __future__ import division
+
 import logging
 import os
 import time
@@ -143,13 +143,13 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.taskNameLineEdit.setText(self._generate_name(self.gui.ui.taskTypeComboBox.currentText()))
 
     def _generate_name(self, task_type):
-        return u"{}_{}".format(task_type, time.strftime("%H:%M:%S_%Y-%m-%d"))
+        return "{}_{}".format(task_type, time.strftime("%H:%M:%S_%Y-%m-%d"))
 
     @inlineCallbacks
     def _set_max_price(self):
         max_price = yield self.logic.get_max_price()
         max_price = max_price / denoms.ether
-        self.gui.ui.taskMaxPriceLineEdit.setText(u"{:.6f}".format(max_price))
+        self.gui.ui.taskMaxPriceLineEdit.setText("{:.6f}".format(max_price))
         self._set_new_pessimistic_cost()
 
     def _show_add_resource_dialog(self):
@@ -176,7 +176,7 @@ class NewTaskDialogCustomizer(Customizer):
     def _save_preset_button_clicked(self):
         definition = self._query_task_definition()
 
-        name = u"{}".format(self.gui.ui.presetNameLineEdit.text())
+        name = "{}".format(self.gui.ui.presetNameLineEdit.text())
         if name == "":
             self.show_error_window("Preset name cannot be empty")
             return
@@ -236,7 +236,7 @@ class NewTaskDialogCustomizer(Customizer):
         self.logic.options = deepcopy(options)
         if not hasattr(self.logic.options, 'frames'):
             return
-        if not isinstance(self.logic.options.frames, basestring):
+        if not isinstance(self.logic.options.frames, str):
             frames = self.logic.options.frames
             frames = FrameRenderingTaskBuilder.frames_to_string(frames)
             self.logic.options.frames = to_unicode(frames)
@@ -263,7 +263,8 @@ class NewTaskDialogCustomizer(Customizer):
 
         model = self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model()
 
-        common_prefix = os.path.commonprefix(definition.resources)
+        resource_list = list(definition.resources)
+        common_prefix = os.path.commonprefix(resource_list)
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.setExpanded(model.index(common_prefix), True)
 
         for res in definition.resources:
@@ -274,7 +275,7 @@ class NewTaskDialogCustomizer(Customizer):
 
         # TODO Better model management would be nice
         self.add_task_resource_dialog_customizer.gui.ui.folderTreeView.model().addStartFiles(definition.resources)
-        self.gui.ui.resourceFilesLabel.setText(u"{}".format(len(self.add_task_resource_dialog_customizer.resources)))
+        self.gui.ui.resourceFilesLabel.setText("{}".format(len(self.add_task_resource_dialog_customizer.resources)))
 
     def _load_basic_task_params(self, definition):
         self._load_task_type(definition)
@@ -311,8 +312,8 @@ class NewTaskDialogCustomizer(Customizer):
         self.gui.ui.optimizeTotalCheckBox.setChecked(definition.optimize_total)
 
     def _load_payment_params(self, definition):
-        price = int(definition.max_price) / denoms.ether
-        self.gui.ui.taskMaxPriceLineEdit.setText(u"{}".format(price))
+        price = int(definition.max_price / denoms.ether)
+        self.gui.ui.taskMaxPriceLineEdit.setText("{}".format(price))
         self._set_new_pessimistic_cost()
 
     def _finish_button_clicked(self):
@@ -331,7 +332,7 @@ class NewTaskDialogCustomizer(Customizer):
         return "{}".format(uuid.uuid4())
 
     def get_current_task_type(self):
-        task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        task_name = "{}".format(self.gui.ui.taskTypeComboBox.currentText())
         return self.logic.get_task_type(task_name)
 
     def _query_task_definition(self):
@@ -349,7 +350,7 @@ class NewTaskDialogCustomizer(Customizer):
         return definition
 
     def _read_basic_task_params(self, definition):
-        definition.task_id = u"{}".format(self.gui.ui.taskIdLabel.text())
+        definition.task_id = "{}".format(self.gui.ui.taskIdLabel.text())
         definition.full_task_timeout, definition.subtask_timeout = get_time_values(self.gui)
         task_type = self.logic.get_task_type(definition.task_type)
         definition.main_program_file = task_type.defaults.main_program_file
@@ -365,10 +366,10 @@ class NewTaskDialogCustomizer(Customizer):
             definition.resources = set()
 
     def _read_task_type(self, definition):
-        definition.task_type = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        definition.task_type = "{}".format(self.gui.ui.taskTypeComboBox.currentText())
 
     def _read_task_name(self, definition):
-        definition.task_name = u"{}".format(self.gui.ui.taskNameLineEdit.text())
+        definition.task_name = "{}".format(self.gui.ui.taskNameLineEdit.text())
 
     def _read_price_params(self, definition):
         try:
@@ -383,14 +384,14 @@ class NewTaskDialogCustomizer(Customizer):
     def _read_resource_params(self, definition):
         definition.add_to_resources()
         self.logic.customizer.gui.ui.resourceFilesLabel.setText(
-                u"{}".format(len(definition.resources)))
+                "{}".format(len(definition.resources)))
 
     def _optimize_total_check_box_changed(self):
         self.gui.ui.totalSpinBox.setEnabled(not self.gui.ui.optimizeTotalCheckBox.isChecked())
         self._set_new_pessimistic_cost()
 
     def _open_options(self):
-        task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        task_name = "{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
         dialog = task.dialog
         dialog_controller = task.dialog_controller
@@ -399,7 +400,7 @@ class NewTaskDialogCustomizer(Customizer):
         task_dialog.show()
 
     def _task_type_value_changed(self, name):
-        task_name = u"{}".format(self.gui.ui.taskTypeComboBox.currentText())
+        task_name = "{}".format(self.gui.ui.taskTypeComboBox.currentText())
         task = self.logic.get_task_type(task_name)
         self.set_options(task.options)
         self._update_options("{}".format(name))
@@ -427,12 +428,12 @@ class NewTaskDialogCustomizer(Customizer):
         num_subtasks = float(self.gui.ui.totalSpinBox.value())
         type = self.__get_current_task_type_name()
         options = {
-            u'price': price,
-            u'num_subtasks': num_subtasks,
-            u'subtask_time': subtask_time
+            'price': price,
+            'num_subtasks': num_subtasks,
+            'subtask_time': subtask_time
         }
         cost = yield self.logic.get_estimated_cost(type, options)
-        self.gui.ui.pessimisticCostLabel.setText(u"{:.6f} GNT".format(
+        self.gui.ui.pessimisticCostLabel.setText("{:.6f} GNT".format(
             cost))
 
     def _advance_settings_button_clicked(self):
@@ -451,9 +452,9 @@ class NewTaskDialogCustomizer(Customizer):
         self._clear_resources()
 
     def _change_task_widget(self, name):
-        for i in reversed(range(self.gui.ui.taskSpecificLayout.count())):
+        for i in reversed(list(range(self.gui.ui.taskSpecificLayout.count()))):
             self.gui.ui.taskSpecificLayout.itemAt(i).widget().setParent(None)
-        task = self.logic.get_task_type(u"{}".format(name))
+        task = self.logic.get_task_type("{}".format(name))
         self.task_customizer = task.dialog_controller(task.dialog, self.logic)
         self.gui.ui.taskSpecificLayout.addWidget(task.dialog, 0, 0, 1, 1)
 
@@ -499,7 +500,7 @@ class NewTaskDialogCustomizer(Customizer):
 
     def __get_current_task_type_name(self):
         index = self.gui.ui.taskTypeComboBox.currentIndex()
-        return unicode(self.gui.ui.taskTypeComboBox.itemText(index))
+        return str(self.gui.ui.taskTypeComboBox.itemText(index))
 
     def __get_current_preset_name(self):
         index = self.gui.ui.presetComboBox.currentIndex()

@@ -1,6 +1,6 @@
 from io import StringIO
-from camera import Camera
-from scene import Scene
+from .camera import Camera
+from .scene import Scene
 
 class RenderTaskDesc:
 
@@ -19,18 +19,22 @@ class RenderTaskDesc:
 
     def isValid(self):
         if self.x < 0 or self.y < 0 or self.x >= self.w or self.y >= self.h:
-            print "Invalid dimensions loc({}, {}), size({}, {})".format(self.x, self.y, self.w, self.h)
+            print("Invalid dimensions loc({}, {}), size({}, {})"
+                  .format(self.x, self.y, self.w, self.h))
             return False
         
         if self.num_samples < 1 or self.num_pixels < 1:
-            print "Not enough pixels {} or samples {} specified".format(self.num_pixels, self.num_samples)
+            print("Not enough pixels {} or samples {} specified"
+                  .format(self.num_pixels, self.num_samples))
             return False
 
         totalPixels = self.w * self.h
         leftOver = totalPixels - self.w * self.y + self.x
 
         if leftOver < self.num_pixels:
-            print "Too many pixels ({}) specified, for current descriptor at most {} pixels can be rendered".format(self.num_pixels, leftOver)
+            print("Too many pixels ({}) specified, for current "
+                  "descriptor at most {} pixels can be rendered"
+                  .format(self.num_pixels, leftOver))
             return False
 
         return True
@@ -69,8 +73,8 @@ class RenderTask:
             camera  = Camera(data_stream)
             scene   = Scene(data_stream, camera.view_position)
         except Exception as ex:
-            print "Failed to read camera or scene from serialized data"
-            print ex
+            print("Failed to read camera or scene from serialized data")
+            print(ex)
             #if verbose -> dump all data
             return None
 
@@ -103,11 +107,12 @@ class RenderTaskResult:
 
         lenPixels = len(pixelData)
         if lenPixels % 3 != 0:
-            print "Pixel data len not divisible by 3".format(lenPixels)
+            print("Pixel data len not divisible by 3".format(lenPixels))
             return None
 
         if lenPixels // 3 != renderTaskDesc.getNumPixels():
-            print "Pixel data length {} differs from descriptor data length {}".format(lenPixels, renderTaskDesc.getNumPixels())
+            print("Pixel data length {} differs from descriptor data length {}"
+                  .format(lenPixels, renderTaskDesc.getNumPixels()))
             return None
 
         return RenderTaskResult(renderTaskDesc, pixelData)

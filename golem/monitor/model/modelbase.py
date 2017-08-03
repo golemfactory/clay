@@ -2,9 +2,7 @@ import abc
 import time
 
 
-class ModelBase(object):
-    __metaclass__ = abc.ABCMeta
-
+class ModelBase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def dict_repr(self):
         """Returns dictionary representation of the current instance"""

@@ -17,7 +17,7 @@ from golem.core.simpleenv import get_local_datadir
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
-from test_docker_image import DockerTestCase
+from tests.golem.docker.test_docker_image import DockerTestCase
 
 config_logging('docker_test')
 
@@ -45,7 +45,7 @@ class TestDockerJob(DockerTestCase):
         self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
 
         if not is_windows():
-            os.chmod(self.test_dir, 0770)
+            os.chmod(self.test_dir, 0o770)
 
         self.image = DockerImage(self._get_test_repository(), tag=self._get_test_tag())
         self.test_job = None
@@ -67,7 +67,7 @@ class TestDockerJob(DockerTestCase):
         self.assertIsNone(job.container)
         self.assertIsNone(job.container_id)
         self.assertIsNone(job.container_log)
-        self.assertEquals(job.state, 'new')
+        self.assertEqual(job.state, 'new')
         self.assertIsNone(job.logging_thread)
 
     def tearDown(self):
@@ -110,11 +110,11 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertTrue(job._get_host_script_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
-        with open(path, 'r') as f:
+        with open(path, 'rb') as f:
             lines = f.readlines()
         dict = {}
         for l in lines:
-            key, val = l.split("=")
+            key, val = l.decode('utf-8').split("=")
             dict[key.strip()] = eval(val.strip())
         return dict
 
@@ -131,21 +131,21 @@ class TestBaseDockerJob(TestDockerJob):
     def test_params_saved_nonascii(self):
         # key has to be a valid Python ident, so we put nonascii chars
         # only in param values:
-        self._test_params_saved({"length": u"pięćdziesiąt łokci"})
+        self._test_params_saved({"length": "pięćdziesiąt łokci"})
 
     def _test_script_saved(self, task_script):
         with self._create_test_job(script=task_script) as job:
             script_path = job._get_host_script_path()
             self.assertTrue(path.isfile(script_path))
-            with open(script_path, 'r') as f:
-                script = unicode(f.read(), "utf-8")
+            with open(script_path, 'rb') as f:
+                script = f.read().decode('utf-8')
             self.assertEqual(task_script, script)
 
     def test_script_saved(self):
         self._test_script_saved(TestDockerJob.TEST_SCRIPT)
 
     def test_script_saved_nonascii(self):
-        self._test_script_saved(u"print u'Halo? Świeci!'\n")
+        self._test_script_saved("print u'Halo? Świeci!'\n")
 
     def test_container_created(self):
         with self._create_test_job() as job:
@@ -259,7 +259,7 @@ class TestBaseDockerJob(TestDockerJob):
             job.start()
             self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
             exit_code = job.wait()
-            self.assertEquals(exit_code, 0)
+            self.assertEqual(exit_code, 0)
             self.assertEqual(job.get_status(), DockerJob.STATE_EXITED)
 
     def test_wait_timeout(self):
@@ -318,8 +318,8 @@ class TestBaseDockerJob(TestDockerJob):
             job.wait()
             out_file = path.join(self.output_dir, "stdout.log")
             job.dump_logs(stdout_file=out_file)
-        with open(out_file, "r") as out:
-            line = out.readline().strip()
+        with open(out_file, "rb") as out:
+            line = out.readline().decode('utf-8').strip()
         self.assertEqual(line, DockerJob.WORK_DIR)
 
     def test_copy_job(self):

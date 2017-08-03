@@ -68,7 +68,7 @@ class StringContextEntry(ContextEntryType):
         super(StringContextEntry, self).__init__(regex)
 
     def validate(self, key, value):
-        if not isinstance(value, basestring):
+        if not isinstance(value, str):
             raise ValueError("String expected for {}".format(key))
 
         super(StringContextEntry, self).validate(key, value)
@@ -164,7 +164,7 @@ class OrContextEntry(ContextEntryType):
             try:
                 arg.validate(key, value)
             except Exception as ex:
-                print "Error occurred during arguments validation: {}".format(ex)
+                print("Error occurred during arguments validation: {}".format(ex))
             else:
                 result = True
                 break
@@ -213,7 +213,7 @@ class ContextValidator(object):
         required = copy.copy(self._required_entries)
 
         if required:
-            for key, value in context.iteritems():
+            for key, value in context.items():
                 if key in required:
                     del required[key]
 
@@ -263,7 +263,7 @@ class ParamValidator(object):
             if cmd_len < min_len:
                 raise CommandException('Insufficient parameters')
 
-            for key, value in constraints.constraints.iteritems():
+            for key, value in constraints.constraints.items():
                 if key >= cmd_len:
                     raise CommandException('Invalid command param constraints')
                 try:
@@ -272,10 +272,8 @@ class ParamValidator(object):
                     raise CommandException(e.message)
 
 
-class Command(object):
+class Command(object, metaclass=ABCMeta):
     """Simulator command abstraction"""
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, name, desc,
                  context_constraints=None, cmd_constraints=None):
@@ -315,14 +313,14 @@ class NodeNameValidatorMixin(object):
 
 def node_submit_command(node, commands, detached=False):
 
-    print "Node [%r]: %r" % (node, ' '.join(commands))
+    print("Node [%r]: %r" % (node, ' '.join(commands)))
 
     if detached:
         args = ["himage", '-b', node]
     else:
         args = ["himage", node]
 
-    if isinstance(commands, basestring):
+    if isinstance(commands, str):
         args = args + [commands]
     else:
         args.extend(commands)
@@ -385,7 +383,7 @@ class NodeCommand(Command, NodeNameValidatorMixin):
                         capture_data.append(result[:-1])
 
                 except subprocess.CalledProcessError as e:
-                    print ':: Node error:', e.returncode, e.output
+                    print(':: Node error:', e.returncode, e.output)
                     raise NodeExecException(e.message)
 
 
@@ -561,7 +559,7 @@ class NodeExportCommand(Command, NodeNameValidatorMixin):
                 try:
                     result += future.result()
                 except subprocess.CalledProcessError as e:
-                    print ':: Node error:', e.returncode, e.output
+                    print(':: Node error:', e.returncode, e.output)
                     raise NodeExecException(e.message)
 
         variables[variable_name] = result.strip().rstrip("\n") or ''
@@ -670,10 +668,8 @@ class SimulatorState(object):
     stopped = 3
 
 
-class SimulatorCommand(Command):
+class SimulatorCommand(Command, metaclass=ABCMeta):
     """Simulator command abstraction"""
-
-    __metaclass__ = ABCMeta
 
     def __init__(self, name, usage,
                  context_constraints=None, cmd_constraints=None):
@@ -734,7 +730,7 @@ class SimulatorStartCommand(SimulatorCommand):
                 sim_name = subprocess.check_output(["himage", "-v", node])
                 node_map[node] = sim_name.replace("\n", '').strip()
             except Exception as ex:
-                print "Subprocess error: {}".format(ex)
+                print("Subprocess error: {}".format(ex))
 
         context_update = {
             'state': SimulatorState.started,
@@ -827,10 +823,10 @@ class SimulatorHelpCommand(SimulatorCommand):
         if cmd:
             help_for = cmd[0]
             if help_for is not self.name and help_for in commands:
-                print commands.get(help_for).desc
+                print(commands.get(help_for).desc)
                 return
 
-        print commands.keys()
+        print(list(commands.keys()))
 
 
 class SimulatorPrintCommand(SimulatorCommand):
@@ -855,7 +851,7 @@ class SimulatorPrintCommand(SimulatorCommand):
         if capture:
             capture_data.append(data)
 
-        print data
+        print(data)
 
 
 class SimulatorEnvCommand(SimulatorCommand):
@@ -875,9 +871,9 @@ class SimulatorEnvCommand(SimulatorCommand):
         cmd = context.get('cmd')
 
         if cmd:
-            print context.get(cmd[0])
+            print(context.get(cmd[0]))
         else:
-            print "None"
+            print("None")
 
 
 class SimulatorLocalCommand(SimulatorCommand):
@@ -905,7 +901,7 @@ class SimulatorLocalCommand(SimulatorCommand):
                              stdin=subprocess.PIPE)
         else:
             output = subprocess.check_output(cmd)
-            print output,
+            print(output, end=' ')
 
 
 class SimulatorExperimentCommand(SimulatorCommand):
@@ -929,7 +925,7 @@ class SimulatorExperimentCommand(SimulatorCommand):
             context_update = {'experiment': cmd[0]}
             return state, context_update
 
-        print experiment
+        print(experiment)
 
 
 class SimulatorExportCommand(SimulatorCommand):
@@ -1182,7 +1178,7 @@ class SimulatorExecFileCommand(Command):
         cmd = context.get('cmd')
         var = cmd[0]
         variables = context.get('variables')
-        variables[var] = execfile(cmd[1])
+        variables[var] = exec(compile(open(cmd[1]).read(), cmd[1], 'exec'))
 
 
 class Simulator(object):
@@ -1279,30 +1275,30 @@ class Simulator(object):
             if name == 'source':
 
                 if not data:
-                    print ':: No source file specified'
+                    print(':: No source file specified')
                 else:
                     try:
                         with open(data[0]) as source:
                             self._start(source, context)
                     except Exception as e:
-                        print ':: Cannot open file', data[0], e.message
+                        print(':: Cannot open file', data[0], e.message)
 
             elif name in self.commands:
 
                 command = self.commands.get(name)
                 context['cmd'] = self._set_cmd_vars(context, data)
 
-                print '[dbg]', name, ' '.join(context['cmd'] or [])
+                print('[dbg]', name, ' '.join(context['cmd'] or []))
 
                 try:
                     result = command.execute(context)
                 except ExitException:
                     working = False
                 except CommandException as e:
-                    print e
-                    print command.desc
+                    print(e)
+                    print(command.desc)
                 except Exception as e:
-                    print ':: Error executing command: {}'.format(e)
+                    print(':: Error executing command: {}'.format(e))
                     traceback.print_exc()
                     working = False
                 else:
@@ -1310,7 +1306,7 @@ class Simulator(object):
                         context.update(result)
 
             else:
-                print ':: Unknown command: {}'.format(name)
+                print(':: Unknown command: {}'.format(name))
 
         self._cleanup(context)
 
@@ -1399,7 +1395,7 @@ class Simulator(object):
                     value = pprint.pformat(value)
 
                 decorated = self._decorate_var(e)
-                line = line.replace(decorated, unicode(value))
+                line = line.replace(decorated, str(value))
         return line
 
 
@@ -1412,7 +1408,7 @@ def main(args):
 if __name__ == '__main__':
 
     if os.geteuid() != 0:
-        print "This script must be run as root"
+        print("This script must be run as root")
         sys.exit(1)
 
     main(sys.argv)

@@ -2,7 +2,7 @@ from apps.core.task.coretaskstate import TaskDefinition
 
 from gui.controller.customizer import Customizer
 
-from timehelper import set_time_spin_boxes, get_time_values
+from .timehelper import set_time_spin_boxes, get_time_values
 
 import logging
 
@@ -17,14 +17,14 @@ class ChangeTaskDialogCustomizer(Customizer):
 
     def __save_button_clicked(self):
         full_task_timeout, subtask_timeout = get_time_values(self.gui)
-        self.logic.change_timeouts(u"{}".format(self.gui.ui.taskIdLabel.text()), full_task_timeout, subtask_timeout)
+        self.logic.change_timeouts("{}".format(self.gui.ui.taskIdLabel.text()), full_task_timeout, subtask_timeout)
         self.gui.window.close()
 
     def load_task_definition(self, definition):
         if not isinstance(definition, TaskDefinition):
             raise TypeError("Incorrect 'definition' type: {}. Should be: TaskDefinition".format(type(definition)))
 
-        self.gui.ui.taskIdLabel.setText(u"{}".format(definition.task_id))
+        self.gui.ui.taskIdLabel.setText("{}".format(definition.task_id))
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)
 
     def __cancel_button_clicked(self):

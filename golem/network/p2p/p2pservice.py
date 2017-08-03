@@ -15,7 +15,7 @@ from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
 from golem.ranking.manager.gossip_manager import GossipManager
-from peerkeeper import PeerKeeper
+from .peerkeeper import PeerKeeper
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     def disconnect(self):
         peers = dict(self.peers)
-        for peer in peers.itervalues():
+        for peer in peers.values():
             peer.dropped()
 
     def pause(self):
@@ -240,7 +240,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param int interval: will send ping only if time from last ping
                              was longer than interval
         """
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.ping(interval)
 
     def find_peer(self, key_id):
@@ -414,10 +414,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_message_time_threshold = self.config_desc.p2p_session_timeout
 
         if is_node_name_changed:
-            for peer in self.peers.values():
+            for peer in list(self.peers.values()):
                 peer.hello()
 
-        for peer in self.peers.values():
+        for peer in list(self.peers.values()):
             if peer.port == self.config_desc.seed_port\
                     and peer.address == self.config_desc.seed_host:
                 return
@@ -480,7 +480,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return dict: dictionary where peers ids are keys and their
                       degrees are values
         """
-        return {peer.key_id: peer.degree for peer in self.peers.values()}
+        return {peer.key_id: peer.degree for peer in list(self.peers.values())}
 
     def get_key_id(self):
         """ Return node public key in a form of an id """
@@ -492,7 +492,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         restart peer keeper and connect to the network with new key id.
         """
         self.peer_keeper.restart(self.keys_auth.get_key_id())
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.dropped()
 
         try:
@@ -501,8 +501,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 self.config_desc.seed_port
             )
             self.connect(socket_address)
-        except AddressValueError, err:
-            logger.error("Invalid seed address: " + err.message)
+        except AddressValueError as err:
+            logger.error("Invalid seed address: %s", err)
 
     def encrypt(self, data, public_key):
         """Encrypt data with given public_key. If no public_key is given,
@@ -585,7 +585,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param dict peers_to_find: list of nodes that should be find with
                                    their closest neighbours list
         """
-        for node_key_id, neighbours in peers_to_find.iteritems():
+        for node_key_id, neighbours in peers_to_find.items():
             for neighbour in neighbours:
                 peer = self.peers.get(neighbour.key)
                 if peer:
@@ -600,7 +600,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :return list: list of information about closest neighbours
         """
         if node_key_id is None:
-            neighbours = self.peers.values()
+            neighbours = list(self.peers.values())
 
             def _mapper(peer):
                 return {
@@ -649,7 +649,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     def send_get_resource_peers(self):
         """ Request information about resource peers from peers"""
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.send_get_resource_peers()
 
     def get_resource_peers(self):
@@ -658,7 +658,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """
         resource_peers_info = []
         resource_peers = dict(self.resource_peers)
-        for key_id, additional_items in resource_peers.iteritems():
+        for key_id, additional_items in resource_peers.items():
             [addr, port, node_name, node_info] = additional_items
             resource_peers_info.append({
                 'node_name': node_name,
@@ -721,7 +721,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         """ Ask all peers to remove information about given task
         :param str task_id: id of a task that should be removed
         """
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.send_remove_task(task_id)
 
     def want_to_start_task_session(
@@ -767,7 +767,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         msg_snd = False
 
-        for peer in self.peers.values():
+        for peer in list(self.peers.values()):
             if peer.key_id != node_info.key:
                 peer.send_set_task_session(
                     key_id,
@@ -866,7 +866,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     def send_stop_gossip(self):
         """ Send stop gossip message to all peers
         """
-        for peer in self.peers.values():
+        for peer in list(self.peers.values()):
             peer.send_stop_gossip()
 
     def stop_gossip(self, id_):
@@ -887,7 +887,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param list loc_rank: opinion about this node
         :return:
         """
-        for peer in self.peers.values():
+        for peer in list(self.peers.values()):
             peer.send_loc_rank(node_id, loc_rank)
 
     def safe_neighbour_loc_rank(self, neigh_id, about_id, rank):
@@ -940,13 +940,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     #############################
 
     def __send_get_peers(self):
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.send_get_peers()
 
     def __send_message_get_tasks(self):
         if time.time() - self.last_tasks_request > TASK_INTERVAL:
             self.last_tasks_request = time.time()
-            for p in self.peers.values():
+            for p in list(self.peers.values()):
                 p.send_get_tasks()
 
     def __connection_established(self, session, conn_id=None):
@@ -973,10 +973,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             and not self.__is_connected_peer(id_)
 
     def __is_connected_peer(self, id_):
-        return id_ in self.peers or long(id_, 16) == self.get_key_id()
+        return id_ in self.peers or int(id_, 16) == self.get_key_id()
 
     def __remove_old_peers(self):
-        for peer in self.peers.values():
+        for peer in list(self.peers.values()):
             delta = time.time() - peer.last_message_time
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
@@ -987,7 +987,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if cur_time - self.last_refresh_peers > self.refresh_peers_timeout:
             self.last_refresh_peers = cur_time
             if len(self.peers) > 1:
-                peer_id = random.choice(self.peers.keys())
+                peer_id = random.choice(list(self.peers.keys()))
                 peer = self.peers[peer_id]
                 self.refresh_peer(peer)
                 peer.disconnect(PeerSession.DCRRefresh)
@@ -995,7 +995,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
     # TODO: throttle the tx rate of MessageDegree
     def __send_degree(self):
         degree = len(self.peers)
-        for p in self.peers.values():
+        for p in list(self.peers.values()):
             p.send_degree(degree)
 
     def __sync_free_peers(self):

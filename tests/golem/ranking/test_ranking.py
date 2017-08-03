@@ -152,7 +152,7 @@ class TestRanking(TestWithDatabase, LogTestCase):
         assert not r.global_finished
         assert r.step == 0
         assert len(r.finished_neighbours) == 0
-        for v in r.working_vec.values():
+        for v in list(r.working_vec.values()):
             assert v[0][1] == 1.0
             assert v[1][1] == 1.0
         assert r.working_vec["ABC"][0][0] > 0.0

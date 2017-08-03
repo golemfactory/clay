@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import logging
 import multiprocessing
@@ -14,7 +14,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.fileshelper import du
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthereumAddress
 from gui.controller.customizer import Customizer
-from memoryhelper import resource_size_to_display
+from .memoryhelper import resource_size_to_display
 
 logger = logging.getLogger("gui")
 
@@ -68,13 +68,13 @@ class ConfigurationDialogCustomizer(Customizer):
         self.docker_config_changed = True
 
     def __load_basic_config(self, config_desc):
-        self.gui.ui.hostAddressLineEdit.setText(u"{}".format(config_desc.seed_host))
-        self.gui.ui.hostIPLineEdit.setText(u"{}".format(config_desc.seed_port))
-        self.gui.ui.performanceLabel.setText(u"{}".format(config_desc.estimated_performance))
-        self.gui.ui.luxPerformanceLabel.setText(u"{}".format(config_desc.estimated_lux_performance))
-        self.gui.ui.blenderPerformanceLabel.setText(u"{}".format(config_desc.estimated_blender_performance))
+        self.gui.ui.hostAddressLineEdit.setText("{}".format(config_desc.seed_host))
+        self.gui.ui.hostIPLineEdit.setText("{}".format(config_desc.seed_port))
+        self.gui.ui.performanceLabel.setText("{}".format(config_desc.estimated_performance))
+        self.gui.ui.luxPerformanceLabel.setText("{}".format(config_desc.estimated_lux_performance))
+        self.gui.ui.blenderPerformanceLabel.setText("{}".format(config_desc.estimated_blender_performance))
         self.gui.ui.useIp6CheckBox.setChecked(config_desc.use_ipv6)
-        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(config_desc.node_name))
+        self.gui.ui.nodeNameLineEdit.setText("{}".format(config_desc.node_name))
 
         self.__load_num_cores(config_desc)
         self.__load_memory_config(config_desc)
@@ -83,7 +83,7 @@ class ConfigurationDialogCustomizer(Customizer):
     def __load_num_cores(self, config_desc):
         max_num_cores = multiprocessing.cpu_count()
         self.gui.ui.numCoresSpinBox.setMaximum(max_num_cores)
-        self.gui.ui.numCoresRangeLabel.setText(u"Range: 1 - {}".format(max_num_cores))
+        self.gui.ui.numCoresRangeLabel.setText("Range: 1 - {}".format(max_num_cores))
 
         try:
             num_cores = int(config_desc.num_cores)
@@ -97,13 +97,13 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.maxResourceSizeComboBox.addItems(mem_tab)
         self.gui.ui.maxMemoryUsageComboBox.addItems(mem_tab)
         try:
-            max_resource_size = long(config_desc.max_resource_size)
+            max_resource_size = int(config_desc.max_resource_size)
         except (ValueError, AttributeError, TypeError) as err:
             max_resource_size = 250 * 1024
             logger.error("Wrong value for maximum resource size: {}".format(err))
 
         try:
-            max_memory_size = long(config_desc.max_memory_size)
+            max_memory_size = int(config_desc.max_memory_size)
         except (ValueError, AttributeError, TypeError) as err:
             max_memory_size = 250 * 1024
             logger.error("Wrong value for maximum memory usage: {}".format(err))
@@ -141,20 +141,20 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.advanceSettingsWidget.hide()
         self.gui.ui.showAdvanceButton.setText(ConfigurationDialogCustomizer.SHOW_ADVANCE_BUTTON_MESSAGES[0])
 
-        self.gui.ui.optimalPeerNumLineEdit.setText(u"{}".format(config_desc.opt_peer_num))
+        self.gui.ui.optimalPeerNumLineEdit.setText("{}".format(config_desc.opt_peer_num))
         self.__load_checkbox_param(config_desc.use_waiting_for_task_timeout,
                                    self.gui.ui.useWaitingForTaskTimeoutCheckBox, 'waiting for task timeout')
-        self.gui.ui.waitingForTaskTimeoutLineEdit.setText(u"{}".format(config_desc.waiting_for_task_timeout))
+        self.gui.ui.waitingForTaskTimeoutLineEdit.setText("{}".format(config_desc.waiting_for_task_timeout))
 
         self.__load_checkbox_param(config_desc.send_pings, self.gui.ui.sendPingsCheckBox, 'send pings''')
-        self.gui.ui.sendPingsLineEdit.setText(u"{}".format(config_desc.pings_interval))
+        self.gui.ui.sendPingsLineEdit.setText("{}".format(config_desc.pings_interval))
 
-        self.gui.ui.gettingPeersLineEdit.setText(u"{}".format(config_desc.getting_peers_interval))
-        self.gui.ui.gettingTasksIntervalLineEdit.setText(u"{}".format(config_desc.getting_tasks_interval))
-        self.gui.ui.maxSendingDelayLineEdit.setText(u"{}".format(config_desc.max_results_sending_delay))
+        self.gui.ui.gettingPeersLineEdit.setText("{}".format(config_desc.getting_peers_interval))
+        self.gui.ui.gettingTasksIntervalLineEdit.setText("{}".format(config_desc.getting_tasks_interval))
+        self.gui.ui.maxSendingDelayLineEdit.setText("{}".format(config_desc.max_results_sending_delay))
 
-        self.gui.ui.p2pSessionTimeoutLineEdit.setText(u"{}".format(config_desc.p2p_session_timeout))
-        self.gui.ui.taskSessionTimeoutLineEdit.setText(u"{}".format(config_desc.task_session_timeout))
+        self.gui.ui.p2pSessionTimeoutLineEdit.setText("{}".format(config_desc.p2p_session_timeout))
+        self.gui.ui.taskSessionTimeoutLineEdit.setText("{}".format(config_desc.task_session_timeout))
         self.__load_checkbox_param(not config_desc.accept_tasks, self.gui.ui.dontAcceptTasksCheckBox,
                                    "don't accept tasks")
 
@@ -172,11 +172,11 @@ class ConfigurationDialogCustomizer(Customizer):
         check_box.setChecked(checked)
 
     def __load_payment_config(self, config_desc):
-        self.gui.ui.ethAccountLineEdit.setText(u"{}".format(config_desc.eth_account))
+        self.gui.ui.ethAccountLineEdit.setText("{}".format(config_desc.eth_account))
         min_price = config_desc.min_price / denoms.ether
         max_price = config_desc.max_price / denoms.ether
-        self.gui.ui.minPriceLineEdit.setText(u"{:.6f}".format(min_price))
-        self.gui.ui.maxPriceLineEdit.setText(u"{:.6f}".format(max_price))
+        self.gui.ui.minPriceLineEdit.setText("{:.6f}".format(min_price))
+        self.gui.ui.maxPriceLineEdit.setText("{:.6f}".format(max_price))
 
     def __load_resource_config(self):
         self.gui.ui.diskWidget.hide()
@@ -272,39 +272,39 @@ class ConfigurationDialogCustomizer(Customizer):
         self.docker_config_changed = False
 
     def __read_basic_config(self, cfg_desc):
-        cfg_desc.seed_host = u"{}".format(self.gui.ui.hostAddressLineEdit.text())
+        cfg_desc.seed_host = "{}".format(self.gui.ui.hostAddressLineEdit.text())
         try:
             cfg_desc.seed_port = int(self.gui.ui.hostIPLineEdit.text())
         except ValueError:
-            cfg_desc.seed_port = u"{}".format(self.gui.ui.hostIPLineEdit.text())
+            cfg_desc.seed_port = "{}".format(self.gui.ui.hostIPLineEdit.text())
 
-        cfg_desc.num_cores = u"{}".format(self.gui.ui.numCoresSpinBox.value())
-        cfg_desc.estimated_performance = u"{}".format(self.gui.ui.performanceLabel.text())
-        cfg_desc.estimated_lux_performance = u"{}".format(self.gui.ui.luxPerformanceLabel.text())
-        cfg_desc.estimated_blender_performance = u"{}".format(self.gui.ui.blenderPerformanceLabel.text())
+        cfg_desc.num_cores = "{}".format(self.gui.ui.numCoresSpinBox.value())
+        cfg_desc.estimated_performance = "{}".format(self.gui.ui.performanceLabel.text())
+        cfg_desc.estimated_lux_performance = "{}".format(self.gui.ui.luxPerformanceLabel.text())
+        cfg_desc.estimated_blender_performance = "{}".format(self.gui.ui.blenderPerformanceLabel.text())
         max_resource_size = int(self.gui.ui.maxResourceSizeSpinBox.value())
         index = self.gui.ui.maxResourceSizeComboBox.currentIndex()
-        cfg_desc.max_resource_size = u"{}".format(self.__count_resource_size(max_resource_size, index))
+        cfg_desc.max_resource_size = "{}".format(self.__count_resource_size(max_resource_size, index))
         max_memory_size = int(self.gui.ui.maxMemoryUsageSpinBox.value())
         index = self.gui.ui.maxMemoryUsageComboBox.currentIndex()
-        cfg_desc.max_memory_size = u"{}".format(self.__count_resource_size(max_memory_size, index))
+        cfg_desc.max_memory_size = "{}".format(self.__count_resource_size(max_memory_size, index))
         self.__read_trust_config(cfg_desc)
         cfg_desc.use_ipv6 = int(self.gui.ui.useIp6CheckBox.isChecked())
-        cfg_desc.node_name = u"{}".format(self.gui.ui.nodeNameLineEdit.text())
+        cfg_desc.node_name = "{}".format(self.gui.ui.nodeNameLineEdit.text())
         if not cfg_desc.node_name:
-            self.show_error_window(u"Empty node name")
+            self.show_error_window("Empty node name")
 
     def __read_advance_config(self, cfg_desc):
-        cfg_desc.opt_peer_num = u"{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
+        cfg_desc.opt_peer_num = "{}".format(self.gui.ui.optimalPeerNumLineEdit.text())
         cfg_desc.use_waiting_for_task_timeout = int(self.gui.ui.useWaitingForTaskTimeoutCheckBox.isChecked())
-        cfg_desc.waiting_for_task_timeout = u"{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
-        cfg_desc.p2p_session_timeout = u"{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
-        cfg_desc.task_session_timeout = u"{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
+        cfg_desc.waiting_for_task_timeout = "{}".format(self.gui.ui.waitingForTaskTimeoutLineEdit.text())
+        cfg_desc.p2p_session_timeout = "{}".format(self.gui.ui.p2pSessionTimeoutLineEdit.text())
+        cfg_desc.task_session_timeout = "{}".format(self.gui.ui.taskSessionTimeoutLineEdit.text())
         cfg_desc.send_pings = int(self.gui.ui.sendPingsCheckBox.isChecked())
-        cfg_desc.pings_interval = u"{}".format(self.gui.ui.sendPingsLineEdit.text())
-        cfg_desc.getting_peers_interval = u"{}".format(self.gui.ui.gettingPeersLineEdit.text())
-        cfg_desc.getting_tasks_interval = u"{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
-        cfg_desc.max_results_sending_delay = u"{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
+        cfg_desc.pings_interval = "{}".format(self.gui.ui.sendPingsLineEdit.text())
+        cfg_desc.getting_peers_interval = "{}".format(self.gui.ui.gettingPeersLineEdit.text())
+        cfg_desc.getting_tasks_interval = "{}".format(self.gui.ui.gettingTasksIntervalLineEdit.text())
+        cfg_desc.max_results_sending_delay = "{}".format(self.gui.ui.maxSendingDelayLineEdit.text())
         cfg_desc.accept_tasks = int(not self.gui.ui.dontAcceptTasksCheckBox.isChecked())
 
     def __read_trust_config(self, cfg_desc):
@@ -337,7 +337,7 @@ class ConfigurationDialogCustomizer(Customizer):
         self.gui.ui.performanceLabel.setText(str(self.logic.recount_performance(num_cores)))
 
     def __read_payment_config(self, cfg_desc):
-        cfg_desc.eth_account = u"{}".format(self.gui.ui.ethAccountLineEdit.text())
+        cfg_desc.eth_account = "{}".format(self.gui.ui.ethAccountLineEdit.text())
         try:
             min_price = float(self.gui.ui.minPriceLineEdit.text())
             cfg_desc.min_price = int(min_price * denoms.ether)

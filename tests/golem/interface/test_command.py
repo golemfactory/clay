@@ -160,14 +160,24 @@ class TestCommandHelper(unittest.TestCase):
             def command_root():
                 pass
 
-            self.assertEqual(CommandStorage.roots, [MockPreClass, MockClass,
-                                                    command_root])
-            self.assertEqual(CommandHelper.get_children(MockPreClass).keys(),
-                             ['mock_2_renamed'])
-            self.assertEqual(CommandHelper.get_children(MockClass).keys(),
-                             ['sub_commands', 'mock_1', 'renamed_mc'])
-            self.assertEqual(CommandHelper.get_children(MockSubClass).keys(),
-                             ['command_msc', 'command'])
+            self.assertEqual(CommandStorage.roots,
+                             [MockPreClass, MockClass, command_root])
+
+            pre_class_children = CommandHelper.get_children(MockPreClass)
+            pre_class_keys = sorted(pre_class_children.keys())
+
+            class_children = CommandHelper.get_children(MockClass)
+            class_keys = sorted(list(class_children.keys()))
+
+            post_class_children = CommandHelper.get_children(MockSubClass)
+            post_class_keys = sorted(list(post_class_children.keys()))
+
+            for k in ['mock_2_renamed']:
+                assert k in pre_class_keys
+            for k in ['sub_commands', 'mock_1', 'renamed_mc']:
+                assert k in class_keys
+            for k in ['command_msc', 'command']:
+                assert k in post_class_keys
 
         with self.assertRaises(TypeError):
             @group("commands", help="command group")

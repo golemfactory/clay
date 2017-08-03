@@ -37,21 +37,11 @@ class TestClientHandler(unittest.TestCase):
         handler = MockClientHandler(ClientCommands, config)
         value_exc = valid_exceptions[0]()
 
-        def init(instance, exc, *args, **kwargs):
-            instance.value = exc
-            instance.exc_value = exc
-            exc.frames = ['frame']
-
         for exc_class in valid_exceptions:
-            org_init = exc_class.__init__
-            exc_class.__init__ = init
-
             try:
                 exc = exc_class(value_exc)
             except:
-                exc = None
-
-            exc_class.__init__ = org_init
+                exc = exc_class.__new__(exc_class)
 
             assert handler._can_retry(exc, ClientCommands.get, str(uuid.uuid4()))
         assert not handler._can_retry(Exception(value_exc), ClientCommands.get, str(uuid.uuid4()))
@@ -59,7 +49,7 @@ class TestClientHandler(unittest.TestCase):
         obj_id = str(uuid.uuid4())
         exc = valid_exceptions[0]()
 
-        for i in xrange(0, config.max_retries):
+        for i in range(0, config.max_retries):
             can_retry = handler._can_retry(exc, ClientCommands.get, obj_id)
             assert can_retry
         assert not handler._can_retry(exc, ClientCommands.get, obj_id)
@@ -71,7 +61,7 @@ class TestClientHandler(unittest.TestCase):
         failure_exc = twisted.python.failure.Failure(exc_value=exc)
 
         def is_class(object):
-            return isinstance(object, (type, types.ClassType))
+            return isinstance(object, type)
 
         assert is_class(ClientHandler._exception_type(failure_exc))
         assert is_class(ClientHandler._exception_type(exc))

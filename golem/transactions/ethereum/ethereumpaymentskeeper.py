@@ -1,9 +1,9 @@
 import logging
-from rlp.utils import encode_hex
 
 from ethereum.utils import normalize_address
 
 from golem.transactions.paymentskeeper import AccountInfo
+from golem.utils import encode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -47,5 +47,5 @@ class EthereumAddress(object):
     def __eq__(self, other):
         return self.address == other.address
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.address is not None

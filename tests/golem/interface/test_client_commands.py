@@ -173,14 +173,14 @@ class TestNetwork(unittest.TestCase):
             result = Network().status()
 
             assert self.client.connection_status.called
-            assert isinstance(result, basestring)
+            assert isinstance(result, str)
             assert result
             assert result != 'unknown'
 
             self.client.connection_status.return_value = None
             result = Network().status()
 
-            assert isinstance(result, basestring)
+            assert isinstance(result, str)
             assert result == 'unknown'
 
     def test_connect(self):
@@ -215,14 +215,14 @@ class TestNetwork(unittest.TestCase):
             '10.0.0.1',
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
-            u'node_1'
+            'node_1'
         ]
 
         assert result_2.data[1][0] == [
             '10.0.0.1',
             '25001',
             'deadbeef01' * 8,
-            u'node_1'
+            'node_1'
         ]
 
         assert isinstance(result_1, CommandResult)
@@ -249,7 +249,7 @@ class TestPayments(unittest.TestCase):
                 'payer': 'node_{}'.format(i),
                 'status': 'waiting',
                 'block_number': 'deadbeef0{}'.format(i)
-            } for i in xrange(1, 6)
+            } for i in range(1, 6)
         ]
 
         payments_list = [
@@ -259,7 +259,7 @@ class TestPayments(unittest.TestCase):
                 'subtask': 'subtask_{}'.format(i),
                 'payee': 'node_{}'.format(i),
                 'status': 'waiting',
-            } for i in xrange(1, 6)
+            } for i in range(1, 6)
         ]
 
         client = Mock()
@@ -279,10 +279,10 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                u'node_1',
-                u'waiting',
-                u'0.000000 GNT',
-                u'deadbeef01'
+                'node_1',
+                'waiting',
+                '0.000000 GNT',
+                'deadbeef01'
             ]
 
     def test_payments(self):
@@ -294,10 +294,10 @@ class TestPayments(unittest.TestCase):
             assert len(result.data[1]) == self.n_incomes
 
             assert result.data[1][0][:-1] == [
-                u'subtask_1',
-                u'node_1',
-                u'waiting',
-                u'0.000000 GNT',
+                'subtask_1',
+                'node_1',
+                'waiting',
+                '0.000000 GNT',
             ]
             assert result.data[1][0][4]
 
@@ -374,7 +374,7 @@ class TestTasks(TempDirFixture):
                 'subtasks': i + 2,
                 'status': 'waiting',
                 'progress': i / 100.0
-            } for i in xrange(1, 6)
+            } for i in range(1, 6)
         ]
 
         cls.subtasks = [
@@ -384,7 +384,7 @@ class TestTasks(TempDirFixture):
                 'time_remaining': 10 - i,
                 'status': 'waiting',
                 'progress': i / 100.0
-            } for i in xrange(1, 6)
+            } for i in range(1, 6)
         ]
 
         cls.n_tasks = len(cls.tasks)
@@ -528,7 +528,7 @@ class TestTasks(TempDirFixture):
         task_file_name = os.path.join(self.path, 'task_file.gt')
 
         with open(task_file_name, 'wb') as task_file:
-            task_file.write(jsonpickle.dumps(definition))
+            task_file.write(jsonpickle.dumps(definition).encode())
 
         return task_file_name
 
@@ -644,7 +644,7 @@ class TestSettings(TempDirFixture):
             with self.assertRaises(CommandException):
                 settings.set('^^^^^^^^^^^', 17)
 
-            for k, values in _setting_values.items():
+            for k, values in list(_setting_values.items()):
 
                 valid = values.valid
                 invalid = values.invalid

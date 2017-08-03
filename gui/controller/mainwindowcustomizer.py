@@ -1,4 +1,4 @@
-from __future__ import division
+
 import datetime
 import jsonpickle as json
 import logging
@@ -86,10 +86,10 @@ class MainWindowCustomizer(Customizer):
 
     def set_options(self, cfg_desc, id_, eth_address):
         # Footer options
-        self.gui.ui.appVer.setText(u"{} ({})".format(APP_NAME, APP_VERSION))
+        self.gui.ui.appVer.setText("{} ({})".format(APP_NAME, APP_VERSION))
 
         # Account options
-        self.gui.ui.golemIdLabel.setText(u"{}".format(id_))
+        self.gui.ui.golemIdLabel.setText("{}".format(id_))
         self.gui.ui.golemIdLabel.setCursorPosition(0)
         self.gui.ui.ethAddressLabel.setText(u"{}".format(eth_address))
 
@@ -97,9 +97,9 @@ class MainWindowCustomizer(Customizer):
 
     def set_name(self, node_name):
         # Status options
-        self.gui.ui.nodeNameLabel.setText(u"{}".format(node_name))
-        self.gui.ui.nameLabel.setText(u"{}".format(node_name))
-        self.gui.ui.nodeNameLineEdit.setText(u"{}".format(node_name))
+        self.gui.ui.nodeNameLabel.setText("{}".format(node_name))
+        self.gui.ui.nameLabel.setText("{}".format(node_name))
+        self.gui.ui.nodeNameLineEdit.setText("{}".format(node_name))
 
     # Add new task to golem client
     def enqueue_new_task(self, ui_new_task_info):
@@ -108,7 +108,7 @@ class MainWindowCustomizer(Customizer):
     # Updates tasks information in gui
     def update_tasks(self, tasks):
         for i in range(self.gui.ui.taskTableWidget.rowCount()):
-            task_id = u"{}".format(self.gui.ui.taskTableWidget.item(i, ItemMap.Id).text())
+            task_id = "{}".format(self.gui.ui.taskTableWidget.item(i, ItemMap.Id).text())
             task = tasks.get(task_id)
             if task:
                 self.gui.ui.taskTableWidget.item(i, ItemMap.Status).setText(task.task_state.status)
@@ -128,7 +128,8 @@ class MainWindowCustomizer(Customizer):
     def __update_payment(self, task_id, i):
         price = yield self.logic.get_cost_for_task_id(task_id)
         if price:
-            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost).setText("{0:.6f}".format(price / denoms.ether))
+            self.gui.ui.taskTableWidget.item(i, ItemMap.Cost)\
+                .setText("{0:.6f}".format(price / denoms.ether))
 
     def update_time(self):
         with self.lock:
@@ -169,7 +170,7 @@ class MainWindowCustomizer(Customizer):
         if os.path.isfile(file_):
             self.show_file(file_)
         else:
-            self.show_error_window(u"{} is not a file".format(file_))
+            self.show_error_window("{} is not a file".format(file_))
 
     def remove_task(self, task_id):
         for row in range(0, self.gui.ui.taskTableWidget.rowCount()):
@@ -397,5 +398,7 @@ class MainWindowCustomizer(Customizer):
             self.gui.ui.timeStarted.setText(time_string)
 
     def __set_memory_params(self, t):
-        mem, index = resource_size_to_display(t.definition.estimated_memory / 1024)
+        mem, index = resource_size_to_display(int(
+            t.definition.estimated_memory / 1024
+        ))
         self.gui.ui.estimatedMemoryLabel.setText("{} {}".format(mem, translate_resource_index(index)))

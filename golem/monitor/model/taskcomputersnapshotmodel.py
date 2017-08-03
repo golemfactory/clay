@@ -1,4 +1,4 @@
-from modelbase import BasicModel
+from .modelbase import BasicModel
 
 
 class TaskComputerSnapshotModel(BasicModel):
@@ -10,4 +10,4 @@ class TaskComputerSnapshotModel(BasicModel):
         self.counting_task = task_computer.counting_task
         self.task_requested = task_computer.task_requested
         self.compute_task = task_computer.compute_tasks
-        self.assigned_subtasks = task_computer.assigned_subtasks.keys()
+        self.assigned_subtasks = list(task_computer.assigned_subtasks.keys())

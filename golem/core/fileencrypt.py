@@ -5,6 +5,8 @@ from Crypto import Random
 from Crypto.Random.random import StrongRandom
 from threading import Lock
 
+from io import IOBase
+
 
 class abstractclassmethod(classmethod):
 
@@ -23,7 +25,7 @@ class FileHelper(object):
         self.obj = None
 
     def __enter__(self):
-        if isinstance(self.param, file):
+        if isinstance(self.param, IOBase):
             self.obj = self.param
         else:
             self.obj = open(self.param, self.mode)
@@ -33,9 +35,7 @@ class FileHelper(object):
         self.obj.__exit__(self, exc_type, exc_val, exc_tb)
 
 
-class FileEncryptor(object):
-
-    __metaclass__ = abc.ABCMeta
+class FileEncryptor(object, metaclass=abc.ABCMeta):
 
     __strong_random = StrongRandom()
     __lock = Lock()
@@ -60,7 +60,7 @@ class AESFileEncryptor(FileEncryptor):
     aes_mode = AES.MODE_CBC
     block_size = AES.block_size
     chunk_size = 1024
-    salt_prefix = 'salt_'
+    salt_prefix = b'salt_'
     salt_prefix_len = len(salt_prefix)
 
     @classmethod
@@ -71,7 +71,7 @@ class AESFileEncryptor(FileEncryptor):
     def get_key_and_iv(cls, secret, salt, key_len, iv_len):
 
         total_len = key_len + iv_len
-        digest = chunk = str()
+        digest = chunk = bytes()
 
         while len(digest) < total_len:
             chunk = sha256(chunk + secret + salt).digest()
@@ -100,7 +100,7 @@ class AESFileEncryptor(FileEncryptor):
 
                 if chunk_len == 0 or chunk_len_mod != 0:
                     pad_len = (block_size - chunk_len_mod) or block_size
-                    chunk += pad_len * chr(pad_len)
+                    chunk += chr(pad_len).encode() * pad_len
                     working = False
 
                 dst.write(cipher.encrypt(chunk))
@@ -119,14 +119,14 @@ class AESFileEncryptor(FileEncryptor):
             cipher = AES.new(key, cls.aes_mode, iv)
 
             working = True
-            next_chunk = str()
+            next_chunk = bytes()
             while working:
 
                 chunk = next_chunk
                 next_chunk = cipher.decrypt(src.read(cls.chunk_size *
                                                      block_size))
                 if len(next_chunk) == 0:
-                    pad_len = ord(chunk[-1])
+                    pad_len = chunk[-1]
                     chunk = chunk[:-pad_len]
                     working = False
 

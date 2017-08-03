@@ -1,23 +1,14 @@
 # Generating, solving and checking solutions of crypto-puzzles for proof of work system
 
 from random import sample
-from hashlib import sha256
 import time
 
-from golem.core.keysauth import get_random
+from golem.core.keysauth import get_random, sha2
 
 __author__ = 'Magda.Stasiewicz'
 
 CHALLENGE_HISTORY_LIMIT = 100
 MAX_RANDINT = 100000000000000000000000000
-
-
-def sha2(seed):
-    """Returns hash of (string) seed as decimal
-    :param str seed:
-    :return int:
-    """
-    return int("0x" + sha256(seed).hexdigest(), 16)
 
 
 def create_challenge(history, prev):

@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import QMenu
 
 from golem.task.taskstate import ComputerState
 from gui.view.dialog import SubtaskDetailsDialog
-from subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
-from customizer import Customizer
-from subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
+from .subtaskcontextmenucustomizer import SubtaskContextMenuCustomizer
+from .customizer import Customizer
+from .subtaskdetailsdialogcustomizer import SubtaskDetailsDialogCustomizer
 
 from gui.view.subtasktableentry import SubtaskTableElem
 
@@ -46,7 +46,7 @@ class TaskDetailsDialogCustomizer(Customizer):
         dialog.show()
 
     def __get_subtask(self, subtask_id):
-        for subtask in self.task_desc.task_state.subtask_states.itervalues():
+        for subtask in list(self.task_desc.task_state.subtask_states.values()):
             if subtask.subtask_id == subtask_id:
                 return subtask
         return None
@@ -63,7 +63,7 @@ class TaskDetailsDialogCustomizer(Customizer):
                 ss = self.task_desc.task_state.subtask_states[k]
                 self.__add_node(ss.computer.node_name, ss.subtask_id, ss.subtask_status)
 
-        for k, elem in self.subtask_table_elements.items():
+        for k, elem in list(self.subtask_table_elements.items()):
             if elem.subtask_id in self.task_desc.task_state.subtask_states:
                 ss = self.task_desc.task_state.subtask_states[elem.subtask_id]
                 elem.update(ss.subtask_progress, ss.subtask_status, ss.subtask_rem_time)

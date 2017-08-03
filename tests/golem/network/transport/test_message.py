@@ -56,7 +56,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'NUM_CORES': num_cores,
             'PRICE': price,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_report_computed_task(self):
         m = message.MessageReportComputedTask()
@@ -107,7 +107,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         assert not message.Message.deserialize_message(None)
 
     def test_unicode(self):
-        source = unicode("test string")
+        source = str("test string")
         result = to_unicode(source)
         assert result is source
 
@@ -117,8 +117,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
 
         source = "test string"
         result = to_unicode(source)
-        assert type(result) is unicode
-        assert result is not source
+        assert type(result) is str
         assert result == source
 
         source = None
@@ -155,7 +154,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         n_messages = 10
 
         def serialize_messages(_b):
-            for m in [message.MessageHello() for _ in xrange(0, n_messages)]:
+            for m in [message.MessageHello() for _ in range(0, n_messages)]:
                 m.serialize_to_buffer(_b)
 
         serialize_messages(db)
@@ -203,15 +202,15 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         expected = {
             'RAND_VAL': rand_val,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_challenge_solution(self):
-        solution = u'O gajach świętych, z których i drew zwalonych wichrem uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), że świętymi były i zwierzęta chroniące się w nich, tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro zważymy, że dla Litwina gaje takie były rzeczywiście nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż samo donosi w starożytności Strabon o Henetach: były u nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły się zwierzęta i jelenie z wilkami się kupiły; gdy się ludzie zbliżali i dotykali ich, nie uciekały; skoro gonione od psów tu się schroniły, ustawała pogoń”. I bardzo trzeźwi mitografowie uznawali w tych gajach heneckich tylko symbole, „pojęcia o kraju bogów i o czasach rajskich”; przykład litewski poucza zaś dostatecznie, że podanie to, jak tyle innych, które najmylniej symbolicznie tłumaczą, należy rozumieć dosłownie, o prawdziwych gajach i zwierzętach, nie o jakimś raju i towarzyszach Adama; przesada w podaniu naturalnie razić nie może. Badania mitologiczne byłyby już od dawna o wiele głębiej dotarły, gdyby mania symbolizowania wszelkich szczegółów, i dziś jeszcze nie wykorzeniona, nie odwracała ich na manowce.\n-- Aleksander Brückner "Starożytna Litwa"'
+        solution = 'O gajach świętych, z których i drew zwalonych wichrem uprzątnąć się nie godziło, opowiada Długosz (XIII, 160), że świętymi były i zwierzęta chroniące się w nich, tak iż przez ciągły ów zwyczaj czworonożne i ptactwo tych lasów, jakby domowe jakie, nie stroniło od ludzi. Skoro zważymy, że dla Litwina gaje takie były rzeczywiście nietykalnymi, że sam Mindowg nie ważył się w nie wchodzić lub różdżkę w nich ułamać, zrozumiemy to podanie. Toż samo donosi w starożytności Strabon o Henetach: były u nich dwa gaje, Hery i Artemidy, „w gajach tych ułaskawiły się zwierzęta i jelenie z wilkami się kupiły; gdy się ludzie zbliżali i dotykali ich, nie uciekały; skoro gonione od psów tu się schroniły, ustawała pogoń”. I bardzo trzeźwi mitografowie uznawali w tych gajach heneckich tylko symbole, „pojęcia o kraju bogów i o czasach rajskich”; przykład litewski poucza zaś dostatecznie, że podanie to, jak tyle innych, które najmylniej symbolicznie tłumaczą, należy rozumieć dosłownie, o prawdziwych gajach i zwierzętach, nie o jakimś raju i towarzyszach Adama; przesada w podaniu naturalnie razić nie może. Badania mitologiczne byłyby już od dawna o wiele głębiej dotarły, gdyby mania symbolizowania wszelkich szczegółów, i dziś jeszcze nie wykorzeniona, nie odwracała ich na manowce.\n-- Aleksander Brückner "Starożytna Litwa"'
         msg = message.MessageChallengeSolution(solution=solution)
         expected = {
             'SOLUTION': solution,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_no_payload_messages(self):
         for message_class in (
@@ -229,7 +228,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 ):
             msg = message_class()
             expected = {}
-            self.assertEquals(expected, msg.dict_repr())
+            self.assertEqual(expected, msg.dict_repr())
 
     def test_list_messages(self):
         for message_class, key in (
@@ -242,7 +241,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             expected = {
                 key: [],
             }
-            self.assertEquals(expected, msg.dict_repr())
+            self.assertEqual(expected, msg.dict_repr())
 
     def test_int_messages(self):
         for message_class, param_name, key in (
@@ -255,7 +254,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             expected = {
                 key: value,
             }
-            self.assertEquals(expected, msg.dict_repr())
+            self.assertEqual(expected, msg.dict_repr())
 
     def test_uuid_messages(self):
         for message_class, param_name, key in (
@@ -273,7 +272,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             expected = {
                 key: value,
             }
-            self.assertEquals(expected, msg.dict_repr())
+            self.assertEqual(expected, msg.dict_repr())
 
     def test_message_loc_rank(self):
         node_id = 'test-{}'.format(uuid.uuid4())
@@ -283,7 +282,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'LOC_RANK': loc_rank,
             'NODE_ID': node_id,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_want_to_start_task_session(self):
         node_info = 'test-ni-{}'.format(uuid.uuid4())
@@ -295,7 +294,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'CONN_ID': conn_id,
             'SUPER_NODE_INFO': super_node_info,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_set_task_session(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -309,7 +308,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'CONN_ID': conn_id,
             'SUPER_NODE_INFO': super_node_info,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_nat_hole(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -323,7 +322,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'CONN_ID': conn_id,
             'PORT': port,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_inform_about_nat_traverse_failure(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -333,7 +332,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'KEY_ID': key_id,
             'CONN_ID': conn_id,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_get_resource(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
@@ -343,7 +342,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'SUB_TASK_ID': task_id,
             'RESOURCE_HEADER': resource_header,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_delta_parts(self):
         task_id = 'test-ti-{}'.format(uuid.uuid4())
@@ -370,18 +369,18 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'PORT': port,
             'node info': node_info,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_task_failure(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
-        err = u'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
+        err = 'Przesąd ten istnieje po dziś dzień u Mordwy, lecz już tylko symbol tego pozostał, co niegdyś dziki Fin w istocie tworzył.'
 
         msg = message.MessageTaskFailure(subtask_id=subtask_id, err=err)
         expected = {
             'SUBTASK_ID': subtask_id,
             'ERR': err,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_middleman(self):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
@@ -393,7 +392,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'DEST_NODE': dest_node,
             'ASK_CONN_ID': ask_conn_id,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_join_middleman_conn(self):
         key_id = 'test-ki-{}'.format(uuid.uuid4())
@@ -405,7 +404,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'KEY_ID': key_id,
             'DEST_NODE_KEY_ID': dest_node,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_nat_punch(self):
         asking_node = 'test-an-{}'.format(uuid.uuid4())
@@ -417,17 +416,17 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'DEST_NODE': dest_node,
             'ASK_CONN_ID': ask_conn_id,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_cannot_compute_task(self):
         subtask_id = 'test-si-{}'.format(uuid.uuid4())
-        reason = u"Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
+        reason = "Opowiada Hieronim praski o osobliwszej czci, jaką w głębi Litwy cieszył się żelazny młot niezwykłej wielkości; „znaki zodiaka” rozbiły nim wieżę, w której potężny król słońce więził; należy się więc cześć narzędziu, co nam światło odzyskało. Już Mannhardt zwrócił uwagę na kult młotów (kamiennych) na północy; młoty „Tora” (pioruna) wyrabiano w Skandynawii dla czarów jeszcze w nowszych czasach; znajdujemy po grobach srebrne młoteczki jako amulety; hr. Tyszkiewicz opowiadał, jak wysoko chłop litewski cenił własności „kopalnego” młota (zeskrobany proszek z wodą przeciw chorobom służył itd.)."
         msg = message.MessageCannotComputeTask(subtask_id=subtask_id, reason=reason)
         expected = {
             'REASON': reason,
             'SUBTASK_ID': subtask_id,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_push(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
@@ -437,7 +436,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'resource': resource,
             'copies': copies,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     def test_message_pull_answer(self):
         resource = 'test-r-{}'.format(uuid.uuid4())
@@ -447,7 +446,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
                 'resource': resource,
                 'has resource': has_resource,
             }
-            self.assertEquals(expected, msg.dict_repr())
+            self.assertEqual(expected, msg.dict_repr())
 
     def test_message_resource_list(self):
         resources = 'test-rs-{}'.format(uuid.uuid4())
@@ -457,7 +456,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
             'resources': resources,
             'options': options,
         }
-        self.assertEquals(expected, msg.dict_repr())
+        self.assertEqual(expected, msg.dict_repr())
 
     @mock.patch("golem.network.transport.message.MessageRandVal")
     def test_init_messages_error(self, mock_message_rand_val):

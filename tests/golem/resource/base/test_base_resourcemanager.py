@@ -57,11 +57,11 @@ class TestResourceCache(unittest.TestCase):
 
     def setUp(self):
         self.cache = resourcesmanager.ResourceCache()
-        self.resource_path = unicode(os.path.join('abstract', 'prefix', 'path'))
-        self.resource_name = u'\0!abstract_name\0!'
+        self.resource_path = str(os.path.join('abstract', 'prefix', 'path'))
+        self.resource_name = '\0!abstract_name\0!'
         self.resource_hash = str(uuid.uuid4())
-        self.prefix = unicode(os.path.join('abstract', 'prefix'))
-        self.task_id = u'\0!abstract\0!'
+        self.prefix = str(os.path.join('abstract', 'prefix'))
+        self.task_id = '\0!abstract\0!'
 
     def test_prefix(self):
         self.cache.set_prefix(self.task_id, self.prefix)

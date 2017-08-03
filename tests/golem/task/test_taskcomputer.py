@@ -163,7 +163,7 @@ class TestTaskComputer(TestDirFixture, LogTestCase):
                                                         10203, "key", "owner", "ABC")
 
         ctd.subtask_id = "aabbcc2"
-        ctd.src_code = "print 'Hello world'"
+        ctd.src_code = "print('Hello world')"
         ctd.timeout = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
@@ -279,7 +279,7 @@ class TestTaskMonitor(TestDirFixture):
         def check(expected):
             with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
                 task.task_computed(task_thread)
-                self.assertEquals(mock_send.call_count, 1)
+                self.assertEqual(mock_send.call_count, 1)
                 result = mock_send.call_args[0][0].dict_repr()
                 for key in ('cliid', 'sessid', 'timestamp'):
                     del result[key]
@@ -288,7 +288,7 @@ class TestTaskMonitor(TestDirFixture):
                     'success': expected,
                     'value': duration,
                 }
-                self.assertEquals(expected_d, result)
+                self.assertEqual(expected_d, result)
 
         # error case
         prepare()

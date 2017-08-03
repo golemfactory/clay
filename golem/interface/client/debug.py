@@ -6,7 +6,7 @@ from golem.rpc.mapping.core import CORE_METHOD_MAP
 
 def _build_alias_to_method():
     alias_to_method = dict()
-    for method, alias in CORE_METHOD_MAP.iteritems():
+    for method, alias in CORE_METHOD_MAP.items():
         alias_to_method[alias] = method
     return alias_to_method
 

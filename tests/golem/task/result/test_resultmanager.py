@@ -85,7 +85,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         manager = EncryptedResultPackageManager(self.resource_manager)
         secret = manager.gen_secret()
 
-        self.assertIsInstance(secret, basestring)
+        self.assertIsInstance(secret, bytes)
         secret_len = len(secret)
         s_min = EncryptedResultPackageManager.min_secret_len
         s_max = EncryptedResultPackageManager.max_secret_len
@@ -98,7 +98,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
                                                       self.task_id)
         path, multihash = data
 
-        self.assertIsInstance(path, basestring)
+        self.assertIsInstance(path, str)
         self.assertTrue(os.path.isfile(path))
 
     def testExtract(self):

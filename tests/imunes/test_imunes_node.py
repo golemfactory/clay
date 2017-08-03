@@ -54,7 +54,7 @@ class TestNode(DatabaseFixture):
         public_address = '1.0.0.1'
         runner = CliRunner()
         return_value = runner.invoke(immunes_start, ['--public-address', public_address, '-d', self.path])
-        self.assertEquals(return_value.exit_code, 0)
+        self.assertEqual(return_value.exit_code, 0)
         (g_node, ) = mock_run.call_args[0]
         try:
             self.assertEqual(g_node.client.node.pub_addr, public_address)

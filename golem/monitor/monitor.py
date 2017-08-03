@@ -2,14 +2,14 @@ from golem.decorators import log_error
 import logging
 from pydispatch import dispatcher
 import threading
-import Queue
+import queue
 
+from .model.nodemetadatamodel import NodeMetadataModel, NodeInfoModel
+from .model.loginlogoutmodel import LoginModel, LogoutModel
+from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
+from .model.paymentmodel import ExpenditureModel, IncomeModel
+from .transport.sender import DefaultJSONSender as Sender
 from .model import statssnapshotmodel
-from model.nodemetadatamodel import NodeInfoModel
-from model.loginlogoutmodel import LoginModel, LogoutModel
-from model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
-from model.paymentmodel import ExpenditureModel, IncomeModel
-from transport.sender import DefaultJSONSender as Sender
 
 log = logging.getLogger('golem.monitor')
 
@@ -18,7 +18,7 @@ class SenderThread(threading.Thread):
     def __init__(self, node_info, monitor_host, monitor_request_timeout,
                  monitor_sender_thread_timeout, proto_ver):
         super(SenderThread, self).__init__()
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         self.stop_request = threading.Event()
         self.node_info = node_info
         self.sender = Sender(monitor_host, monitor_request_timeout, proto_ver)
@@ -32,7 +32,7 @@ class SenderThread(threading.Thread):
             try:
                 msg = self.queue.get(True, self.monitor_sender_thread_timeout)
                 self.sender.send(msg)
-            except Queue.Empty:
+            except queue.Empty:
                 # send ping message
                 self.sender.send(self.node_info)
 

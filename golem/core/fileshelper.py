@@ -79,15 +79,15 @@ def common_dir(arr, ign_case=None):
         ign_case = is_windows()
 
     def _strip(x):
-        if isinstance(x, unicode):
-            return unicode.strip(x)
+        if isinstance(x, str):
+            return str.strip(x)
         return str.strip(x)
 
     def _format(v):
         while v and v[-1] in seps:
             v = v[:-1]
         return v
-    m = filter(_strip, arr)
+    m = list(filter(_strip, arr))
     s = min(arr, key=len)
     n = len(s)
     si = 0
@@ -131,7 +131,7 @@ def find_file_with_ext(directory, extensions):
                             ie. ".png", ".txt")
     :return str: name of the first file wich extension is in
     """
-    extensions = map(lambda y: y.lower(), extensions)
+    extensions = [y.lower() for y in extensions]
     for root, dirs, files in os.walk(directory):
         for name in files:
             _, ext = os.path.splitext(name)
@@ -188,7 +188,7 @@ def du(path):
     """
     try:
         size, _ = subprocess.check_output(['du', '-sh', path]).split()
-        unit = dict(K='kB', B='B').get(size[-1], size[-1] + 'B')
+        unit = dict(K='kB', B='B').get(size[-1], str(size[-1]) + 'B')
         return "{} {}".format(float(size[:-1]), unit)
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:

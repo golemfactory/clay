@@ -8,7 +8,7 @@ from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.task.taskcomputer import TaskComputer
 from golem.tools.ci import ci_skip
-from test_docker_job import TestDockerJob
+from .test_docker_job import TestDockerJob
 
 
 @ci_skip

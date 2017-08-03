@@ -46,4 +46,4 @@ class ResourceHash:
     def __count_hash(self, data):
         sha = hashlib.sha1()
         sha.update(data)
-        return base64.urlsafe_b64encode(sha.digest())
+        return base64.urlsafe_b64encode(sha.digest()).decode('utf-8')

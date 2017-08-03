@@ -2,6 +2,8 @@ import os
 import subprocess
 from contextlib import contextmanager
 
+import sys
+
 PYUIC_PATH = "pyuic.py"  # Path to Python User Interface Compiler
 
 
@@ -21,10 +23,11 @@ def call_pyrcc(py_file, qrc_file):
         subprocess.check_call('pyrcc5 -o ' + py_file + ' ' + qrc_file, shell=True)
 
 
-def regenerate_ui_files(root_path):
+def regenerate_ui_files(root_path, import_from=None):
     """ Find all files in given directory that ends with ".ui" and have later date than generated user interfaces python
     files and generate new user interface files from them. New files will be placed in root path in gen directory.
     :param dir root_path: directory where interface files are placed
+    :param str import_from: package name for resources
     """
     dirs = [name for name in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, name))]
     files = [name for name in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, name))]
@@ -53,22 +56,26 @@ def regenerate_ui_files(root_path):
             if not os.path.exists(pyuic_path):
                 raise IOError("Can't open file " + pyuic_path)
 
-            cmd = ["python", pyuic_path, os.path.join(root_path, file_)]
-            print cmd
+            cmd = [sys.executable, pyuic_path, os.path.join(root_path, file_)]
+            if import_from:
+                cmd += ['--import-from', import_from]
+
+            print(cmd)
             result = subprocess.check_output(cmd)
-            with open(os.path.join(root_path, out_file), 'w') as f:
+            with open(os.path.join(root_path, out_file), 'wb') as f:
                 f.write(result)
 
 
-def gen_ui_files(path):
+def gen_ui_files(path, import_from=None):
     """ If path doesn't exist throw IOError. Otherwise regenerate all user interface python files that may be
     needed. Find all files in given path that ends with ui and compare their date with generated python user interface
     files with similiar name. If ui files are newer that regenerate python user interface files (generate new if they
     don't exist). If they are older don't do anything.
     :param str path: path to directory where ui files are placed
+    :param str import_from: package name for resources
     """
     if os.path.exists(path):
-        regenerate_ui_files(path)
+        regenerate_ui_files(path, import_from)
     else:
         cwd = os.getcwd()
         raise IOError("uigen: Cannot find {} dir or wrong working directory: {}".format(path, cwd))

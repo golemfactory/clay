@@ -49,7 +49,7 @@ class Settings(object):
         'node_name': Setting(
             'Node name',
             'non-empty string',
-            lambda x: unicode(x) if isinstance(x, basestring) else None,
+            lambda x: str(x) if isinstance(x, str) else None,
             lambda x: x and len(x) > 0
         ),
         'accept_task': Setting(
@@ -164,7 +164,7 @@ class Settings(object):
 
     settings_message = '\n'.join([
         '\t{:32} {:>32}\t{}'.format(k, s.type, s.help)
-        for k, s in settings.iteritems()
+        for k, s in settings.items()
     ])
     invalid_key_message =\
 """Invalid key
@@ -196,19 +196,19 @@ class Settings(object):
 
         if basic:
             result.update({
-                k: v for k, v in config.iteritems()
+                k: v for k, v in config.items()
                 if k in Settings.basic_settings
             })
 
         if requestor:
             result.update({
-                k: v for k, v in config.iteritems()
+                k: v for k, v in config.items()
                 if k in Settings.requestor_settings
             })
 
         if provider:
             result.update({
-                k: v for k, v in config.iteritems()
+                k: v for k, v in config.items()
                 if k not in Settings.basic_settings
                 and k not in Settings.requestor_settings
             })

@@ -23,7 +23,7 @@ class TestBlenderVerificator(TestCase):
         bv.total_tasks = 20
         assert bv._get_part_size({"start_task": 3}) == (800, 30)
         bv.use_frames = True
-        bv.frames = range(40)
+        bv.frames = list(range(40))
         assert bv._get_part_size({"start_task": 3}) == (800, 600)
-        bv.frames = range(10)
+        bv.frames = list(range(10))
         assert bv._get_part_size({"start_task": 3}) == (800, 300)

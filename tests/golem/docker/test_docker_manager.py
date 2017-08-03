@@ -5,6 +5,8 @@ from contextlib import contextmanager
 from subprocess import CalledProcessError
 
 import mock
+import sys
+
 from golem.docker.manager import DockerManager, FALLBACK_DOCKER_MACHINE_NAME, VirtualBoxHypervisor, XhyveHypervisor, \
     Hypervisor, logger
 from golem.testutils import TempDirFixture
@@ -211,7 +213,7 @@ class TestDockerManager(unittest.TestCase):
         assert dmm._config == dmm.defaults
 
         dmm.build_config(None)
-        assert all([val == dmm.defaults[key] for key, val in dmm._config.iteritems()])
+        assert all([val == dmm.defaults[key] for key, val in list(dmm._config.items())])
 
         config = MockConfig(0, 768, 512)
 
@@ -302,9 +304,9 @@ class TestDockerManager(unittest.TestCase):
 
     def test_command(self):
         dmm = MockDockerManager(use_parent_methods=True)
-        dmm.docker_machine_commands['test'] = ['python', '--version']
+        dmm.docker_machine_commands['test'] = [sys.executable, '--version']
 
-        assert dmm.command('test', check_output=True) == ""
+        assert dmm.command('test', check_output=True).startswith('Python')
         assert dmm.command('test', check_output=False) == 0
         assert not dmm.command('deadbeef')
 
@@ -681,7 +683,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         self.hypervisor.constrain(machine, **constraints)
 
         read = self.hypervisor.constraints(MACHINE_NAME)
-        for key, value in constraints.iteritems():
+        for key, value in list(constraints.items()):
             assert value == read[key]
 
         # errors

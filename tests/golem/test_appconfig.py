@@ -26,7 +26,7 @@ class TestNodeConfig(LogTestCase):
 
     def test_read_estimated_performance(self):
         appconfig.ESTM_FILENAME = TestNodeConfig.no_existing_name
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             res = NodeConfig.read_estimated_performance()
 
         self.assertTrue(any("Can't open" in log for log in l.output))
@@ -35,7 +35,7 @@ class TestNodeConfig(LogTestCase):
         appconfig.ESTM_FILENAME = TestNodeConfig.wrong_name
 
         SimpleEnv.env_file_name(appconfig.ESTM_FILENAME)
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
         self.assertTrue(any("Can't open" in log for log in l.output))
@@ -52,14 +52,14 @@ class TestNodeConfig(LogTestCase):
 
         with open(good_file, 'w') as f:
             f.write("")
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
         self.assertTrue(any("to float" in log for log in l.output))
 
         with open(good_file, 'w') as f:
             f.write("abc")
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             res = NodeConfig.read_estimated_performance()
         self.assertEqual(res, 0)
         self.assertTrue(any("to float" in log for log in l.output))

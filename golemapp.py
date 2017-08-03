@@ -54,7 +54,7 @@ def start(gui, payments, monitor, datadir, node_address, rpc_address, peer,
 
     if version:
         from golem.core.variables import APP_VERSION
-        print ("GOLEM version: {}".format(APP_VERSION))
+        print("GOLEM version: {}".format(APP_VERSION))
         return 0
 
     # Workarounds for pyinstaller executable

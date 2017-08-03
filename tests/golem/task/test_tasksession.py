@@ -1,4 +1,4 @@
-import cPickle
+import pickle
 import os
 import random
 import unittest
@@ -41,20 +41,20 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.task_session.conn.server.get_key_id.return_value = key_id = 'key id%d' % (random.random() * 1000, )
         self.task_session.send_hello()
         expected = {
-            u'CHALLENGE': None,
-            u'CLIENT_KEY_ID': key_id,
-            u'CLI_VER': 0,
-            u'DIFFICULTY': 0,
-            u'METADATA': None,
-            u'NODE_INFO': None,
-            u'NODE_NAME': None,
-            u'PORT': 0,
-            u'PROTO_ID': TASK_PROTOCOL_ID,
-            u'RAND_VAL': self.task_session.rand_val,
-            u'SOLVE_CHALLENGE': False,
+            'CHALLENGE': None,
+            'CLIENT_KEY_ID': key_id,
+            'CLI_VER': 0,
+            'DIFFICULTY': 0,
+            'METADATA': None,
+            'NODE_INFO': None,
+            'NODE_NAME': None,
+            'PORT': 0,
+            'PROTO_ID': TASK_PROTOCOL_ID,
+            'RAND_VAL': self.task_session.rand_val,
+            'SOLVE_CHALLENGE': False,
         }
         msg = send_mock.call_args[0][0]
-        self.assertEquals(msg.dict_repr(), expected)
+        self.assertEqual(msg.dict_repr(), expected)
 
     def test_encrypt(self):
         ts = TaskSession(Mock())
@@ -65,7 +65,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.task_server.encrypt.assert_called_with(data, "123")
 
         ts.task_server = None
-        with self.assertLogs(logger, level=1):
+        with self.assertLogs(logger, level='WARNING'):
             self.assertEqual(ts.encrypt(data), data)
 
     def test_decrypt(self):
@@ -77,21 +77,21 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         self.assertIsNotNone(res)
 
         ts.task_server.decrypt = Mock(side_effect=AssertionError("Encrypt error"))
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='INFO') as l:
             res = ts.decrypt(data)
         self.assertTrue(any("maybe it's not encrypted?" in log for log in l.output))
         self.assertFalse(any("Encrypt error" in log for log in l.output))
         self.assertEqual(res, data)
 
         ts.task_server.decrypt = Mock(side_effect=ValueError("Different error"))
-        with self.assertLogs(logger, level=1) as l:
+        with self.assertLogs(logger, level='WARNING') as l:
             res = ts.decrypt(data)
         self.assertTrue(any("Different error" in log for log in l.output))
         self.assertIsNone(res)
 
         ts.task_server = None
         data = "ABC"
-        with self.assertLogs(logger, level=1):
+        with self.assertLogs(logger, level='WARNING'):
             self.assertEqual(ts.encrypt(data), data)
 
     def test_request_task(self):
@@ -216,7 +216,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
 
         extra_data = dict(
             # the result is explicitly serialized using cPickle
-            result=cPickle.dumps({'stdout': 'xyz'}),
+            result=pickle.dumps({'stdout': 'xyz'}),
             result_type=None,
             subtask_id='xxyyzz'
         )
@@ -523,7 +523,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
             'SUB_TASK_ID': payment.subtask,
             'TRANSACTION_ID': transaction_id,
         }
-        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+        self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_request_payment(self, send_mock):
@@ -539,7 +539,7 @@ class TestSessionWithDB(testutils.DatabaseFixture):
         expected = {
             'SUB_TASK_ID': subtask_id,
         }
-        self.assertEquals(send_mock.call_args[0][0].dict_repr(), expected)
+        self.assertEqual(send_mock.call_args[0][0].dict_repr(), expected)
 
     @patch('golem.task.tasksession.TaskSession.inform_worker_about_payment')
     def test_react_to_subtask_payment_request(self, inform_mock):

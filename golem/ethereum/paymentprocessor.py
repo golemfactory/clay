@@ -1,23 +1,22 @@
-from __future__ import division
-
 import logging
 import sys
 import time
+import json
 
-from ethereum import abi, keys, utils
+from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
-from golem.model import db
-from golem.model import Payment, PaymentStatus
+from golem.model import db, Payment, PaymentStatus
 from golem.transactions.service import Service
+from golem.utils import decode_hex, encode_hex
 from .contracts import TestGNT
 from .node import ropsten_faucet_donate
 
 log = logging.getLogger("golem.pay")
 
-gnt_contract = abi.ContractTranslator(TestGNT.ABI)
+gnt_contract = abi.ContractTranslator(json.loads(TestGNT.ABI))
 
 
 def _encode_payments(payments):
@@ -29,8 +28,8 @@ def _encode_payments(payments):
             paymap[p.payee] = p.value
 
     args = []
-    value = 0L
-    for to, v in paymap.iteritems():
+    value = 0
+    for to, v in paymap.items():
         max_value = 2 ** 96
         if v >= max_value:
             raise ValueError("v should be less than {}".format(max_value))
@@ -59,7 +58,7 @@ class PaymentProcessor(Service):
     # TODO: Adjust this value later and add MAX_PAYMENTS limit.
     GAS_RESERVATION = 21000 + 1000 * 50000
 
-    TESTGNT_ADDR = "7295bB8709EC1C22b758A8119A4214fFEd016323".decode('hex')
+    TESTGNT_ADDR = decode_hex("7295bB8709EC1C22b758A8119A4214fFEd016323")
 
     SYNC_CHECK_INTERVAL = 10
 
@@ -75,7 +74,7 @@ class PaymentProcessor(Service):
         self.__sync = False
         self.__temp_sync = False
         self.__faucet = faucet
-        self.__testGNT = abi.ContractTranslator(TestGNT.ABI)
+        self.__testGNT = abi.ContractTranslator(json.loads(TestGNT.ABI))
         self._waiting_for_faucet = False
         self.deadline = sys.maxsize
         self.load_from_db()
@@ -128,8 +127,7 @@ class PaymentProcessor(Service):
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
             address = utils.zpad(address, 32)
-        address = '0x' + address.encode('hex')
-        return address
+        return '0x' + encode_hex(address)
 
     def balance_known(self):
         return self.__gnt_balance is not None and self.__eth_balance is not None
@@ -146,9 +144,9 @@ class PaymentProcessor(Service):
         if self.__gnt_balance is None or refresh:
             addr = keys.privtoaddr(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
-            r = self.__client.call(_from='0x' + addr.encode('hex'),
-                                   to='0x' + self.TESTGNT_ADDR.encode('hex'),
-                                   data='0x' + data.encode('hex'),
+            r = self.__client.call(_from='0x' + encode_hex(addr),
+                                   to='0x' + encode_hex(self.TESTGNT_ADDR),
+                                   data='0x' + encode_hex(data),
                                    block='pending')
             if r is None or r == '0x':
                 self.__gnt_balance = 0
@@ -161,7 +159,8 @@ class PaymentProcessor(Service):
         # Here we keep the same simple estimation by number of atomic payments.
         # FIXME: This is different than estimation in sendout(). Create
         #        helpers for estimation and stick to them.
-        num_payments = len(self._awaiting) + sum(len(p) for p in self._inprogress.values())
+        num_payments = len(self._awaiting) + sum(len(p) for p in
+                                                 self._inprogress.values())
         return num_payments * self.SINGLE_PAYMENT_ETH_COST
 
     def _eth_available(self):
@@ -179,7 +178,7 @@ class PaymentProcessor(Service):
             for sent_payment in Payment\
                     .select()\
                     .where(Payment.status == PaymentStatus.sent):
-                transaction_hash = sent_payment.details['tx'].decode('hex')
+                transaction_hash = decode_hex(sent_payment.details['tx'])
                 if transaction_hash not in self._inprogress:
                     self._inprogress[transaction_hash] = []
                 self._inprogress[transaction_hash].append(sent_payment)
@@ -194,7 +193,7 @@ class PaymentProcessor(Service):
 
         log.info("Payment {:.6} to {:.6} ({:.6f})".format(
             payment.subtask,
-            payment.payee.encode('hex'),
+            encode_hex(payment.payee),
             payment.value / denoms.ether))
 
         # Check if enough ETH available to pay the gas cost.
@@ -232,8 +231,8 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = keys.privtoaddr(self.__privkey)  # TODO: Should be done once?
-        nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
+        addr = keys.privtoaddr(self.__privkey)
+        nonce = self.__client.get_transaction_count('0x' + encode_hex(addr))
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
         gas = 21000 + 800 + len(p) * 30000
@@ -242,7 +241,7 @@ class PaymentProcessor(Service):
         tx.sign(self.__privkey)
         h = tx.hash
         log.info("Batch payments: {:.6}, value: {:.6f}"
-                 .format(h.encode('hex'), value / denoms.ether))
+                 .format(encode_hex(h), value / denoms.ether))
 
         # Firstly write transaction hash to database. We need the hash to be
         # remembered before sending the transaction to the Ethereum node in
@@ -251,17 +250,18 @@ class PaymentProcessor(Service):
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent
-                payment.details['tx'] = h.encode('hex')
+                payment.details['tx'] = encode_hex(h)
                 payment.save()
                 log.debug("- {} send to {} ({:.6f})".format(
                     payment.subtask,
-                    payment.payee.encode('hex'),
+                    encode_hex(payment.payee),
                     payment.value / denoms.ether))
 
             tx_hash = self.__client.send(tx)
-            if tx_hash[2:].decode('hex') != h:  # FIXME: Improve Client.
+            tx_hex = decode_hex(tx_hash)
+            if tx_hex != h:  # FIXME: Improve Client.
                 raise RuntimeError("Incorrect tx hash: {}, should be: {}"
-                                   .format(tx_hash[2:].decode('hex'), h))
+                                   .format(tx_hex, h))
 
             self._inprogress[h] = payments
 
@@ -272,8 +272,8 @@ class PaymentProcessor(Service):
 
     def monitor_progress(self):
         confirmed = []
-        for h, payments in self._inprogress.iteritems():
-            hstr = '0x' + h.encode('hex')
+        for h, payments in self._inprogress.items():
+            hstr = '0x' + encode_hex(h)
             log.info("Checking {:.6} tx [{}]".format(hstr, len(payments)))
             receipt = self.__client.get_transaction_receipt(hstr)
             if receipt:
@@ -296,7 +296,7 @@ class PaymentProcessor(Service):
                         dispatcher.send(
                             signal='golem.monitor',
                             event='payment',
-                            addr=p.payee.encode('hex'),
+                            addr=encode_hex(p.payee),
                             value=p.value
                         )
                         dispatcher.send(
@@ -324,8 +324,8 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = keys.privtoaddr(self.__privkey)
-            nonce = self.__client.get_transaction_count('0x' + addr.encode('hex'))
+            addr = encode_hex(keys.privtoaddr(self.__privkey))
+            nonce = self.__client.get_transaction_count('0x' + addr)
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
