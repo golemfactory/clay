@@ -130,6 +130,8 @@ class Ranking(object):
         return UNKNOWN_TRUST
 
     def get_requesting_trust(self, node_id):
+        from golem.ranking.manager.database_manager import get_neighbour_loc_rank, get_local_rank
+        test_node = get_local_rank(node_id)
         local_trust = tm.requested_node_trust_local(node_id)
         if local_trust is not None:
             logger.debug("Using local rank {}".format(local_trust))
