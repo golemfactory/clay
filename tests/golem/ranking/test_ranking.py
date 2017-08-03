@@ -8,7 +8,7 @@ from golem.ranking.manager import database_manager as dm
 from golem.ranking.ranking import Ranking
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
-
+from golem.testutils import PEP8MixIn
 
 class TestRankingDatabase(TestWithDatabase):
     def test_local_rank(self):
@@ -96,7 +96,11 @@ class TestRankingDatabase(TestWithDatabase):
         self.assertEqual(nr.requesting_trust_value, -0.2)
 
 
-class TestRanking(TestWithDatabase, LogTestCase):
+class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'golem/ranking/ranking.py',
+        'golem/ranking/manager/trust_manager.py',
+    ]
 
     def test_count_trust(self):
         from golem.ranking.helper import min_max_utility

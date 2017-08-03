@@ -11,7 +11,7 @@ from golem.ranking.helper.trust_const import UNKNOWN_TRUST
 from golem.ranking.manager import database_manager as dm
 from golem.ranking.manager import trust_manager as tm
 from golem.ranking.manager.time_manager import TimeManager
-from golem.ranking.manager.database_manager import get_neighbour_loc_rank, get_local_rank
+from golem.ranking.manager.database_manager import get_local_rank
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,9 @@ class Ranking(object):
 
     def run(self, reactor):
         self.reactor = reactor
-        deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
+        deferLater(self.reactor,
+                   self.round_oracle.sec_to_new_stage(),
+                   self.__init_stage)
 
     def __init_stage(self):
         try:
@@ -58,7 +60,9 @@ class Ranking(object):
             self.finished_neighbours = set()
             self.__init_working_vec()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
+            deferLater(self.reactor,
+                       self.round_oracle.sec_to_round(),
+                       self.__new_round)
 
     def __init_working_vec(self):
         with self.lock:
@@ -67,7 +71,8 @@ class Ranking(object):
             for loc_rank in dm.get_local_rank_for_all():
                 comp_trust = tm.computed_trust_local(loc_rank)
                 req_trust = tm.requested_trust_local(loc_rank)
-                self.working_vec[loc_rank.node_id] = [[comp_trust, 1.0], [req_trust, 1.0]]
+                self.working_vec[loc_rank.node_id] = \
+                    [[comp_trust, 1.0], [req_trust, 1.0]]
                 self.prevRank[loc_rank.node_id] = [comp_trust, req_trust]
 
     def __new_round(self):
@@ -81,25 +86,32 @@ class Ranking(object):
                 self.client.send_gossip(gossip, send_to)
             self.received_gossip = [gossip]
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_end_round(), self.__end_round)
+            deferLater(self.reactor,
+                       self.round_oracle.sec_to_end_round(),
+                       self.__end_round)
 
     def __end_round(self):
         logger.debug("End gossip round")
         try:
-            self.received_gossip = self.client.collect_gossip() + self.received_gossip
+            self.received_gossip = \
+                self.client.collect_gossip() + self.received_gossip
             self.__make_prev_rank()
             self.working_vec = {}
             self.__add_gossip()
             self.__check_finished()
         finally:
-            deferLater(self.reactor, self.round_oracle.sec_to_break(), self.__make_break)
+            deferLater(self.reactor,
+                       self.round_oracle.sec_to_break(),
+                       self.__make_break)
 
     def __make_break(self):
         logger.debug("Gossip round finished")
         try:
             self.__check_global_finished()
         except Exception:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
+            deferLater(self.reactor,
+                       self.round_oracle.sec_to_round(),
+                       self.__new_round)
             raise
 
         if self.global_finished:
@@ -108,9 +120,13 @@ class Ranking(object):
                 self.client.collect_stopped_peers()
                 self.__save_working_vec()
             finally:
-                deferLater(self.reactor, self.round_oracle.sec_to_new_stage(), self.__init_stage)
+                deferLater(self.reactor,
+                           self.round_oracle.sec_to_new_stage(),
+                           self.__init_stage)
         else:
-            deferLater(self.reactor, self.round_oracle.sec_to_round(), self.__new_round)
+            deferLater(self.reactor,
+                       self.round_oracle.sec_to_round(),
+                       self.__new_round)
 
     def get_computing_trust(self, node_id):
         local_rank = get_local_rank(node_id)
@@ -118,9 +134,12 @@ class Ranking(object):
         if local_trust is not None:
             logger.debug("Using local rank {}".format(local_trust))
             return local_trust
-        # FIXME Check weights values
-        trust_sum, weight_sum = tm.computed_neighbours_rank(node_id, self.neighbours)
+
+        trust_sum, weight_sum = tm.computed_neighbours_rank(
+            node_id,
+            self.neighbours)
         global_rank = dm.get_global_rank(node_id)
+
         if global_rank is not None:
             if weight_sum + global_rank.gossip_weight_computing != 0:
                 logger.debug("Using gossipRank + neighboursRank")
@@ -137,9 +156,12 @@ class Ranking(object):
         if local_trust is not None:
             logger.debug("Using local rank {}".format(local_trust))
             return local_trust
-        # FIXME Check weights values
-        trust_sum, weight_sum = tm.requested_neighbours_rank(node_id, self.neighbours)
+
+        trust_sum, weight_sum = tm.requested_neighbours_rank(
+            node_id,
+            self.neighbours)
         global_rank = dm.get_global_rank(node_id)
+
         if global_rank is not None:
             if global_rank.gossip_weight_requesting != 0:
                 logger.debug("Using gossipRank + neighboursRank")
@@ -165,7 +187,8 @@ class Ranking(object):
                 prev_trust = self.prev_loc_rank[loc_rank.node_id]
             else:
                 prev_trust = [float("inf")] * 2
-            if max(map(abs, map(operator.sub, prev_trust, trust))) > self.loc_rank_push_delta:
+            if max(map(abs, map(operator.sub, prev_trust, trust))) \
+                    > self.loc_rank_push_delta:
                 self.client.push_local_rank(loc_rank.node_id, trust)
                 self.prev_loc_rank[loc_rank.node_id] = trust
 
@@ -185,7 +208,8 @@ class Ranking(object):
     def __check_global_finished(self):
         self.__mark_finished(self.client.collect_stopped_peers())
         if self.finished:
-            self.global_finished = set(self.neighbours) <= self.finished_neighbours
+            self.global_finished = \
+                set(self.neighbours) <= self.finished_neighbours
 
     def __compare_working_vec_and_prev_rank(self):
         aggregated_trust = 0.0
@@ -202,7 +226,8 @@ class Ranking(object):
                 req_trust_old = self.prevRank[node_id][1]
             else:
                 comp_trust_old, req_trust_old = 0, 0
-            aggregated_trust += abs(comp_trust - comp_trust_old) + abs(req_trust - req_trust_old)
+            aggregated_trust += abs(comp_trust - comp_trust_old)
+            aggregated_trust += abs(req_trust - req_trust_old)
         return aggregated_trust
 
     def __set_k(self):
@@ -240,7 +265,11 @@ class Ranking(object):
                 break
             comp_trust = util.vec_to_trust(computing)
             req_trust = util.vec_to_trust(requesting)
-            dm.upsert_global_rank(node_id, comp_trust, req_trust, computing[1], requesting[1])
+            dm.upsert_global_rank(node_id,
+                                  comp_trust,
+                                  req_trust,
+                                  computing[1],
+                                  requesting[1])
 
     def __prepare_gossip(self):
         gossip_vec = []
@@ -260,8 +289,9 @@ class Ranking(object):
                     node_id, [comp, req] = gossip
                     if node_id in self.working_vec:
                         [prev_comp, prev_req] = self.working_vec[node_id]
-                        self.working_vec[node_id] = [self.__sum_gossip(comp, prev_comp),
-                                                     self.__sum_gossip(req, prev_req)]
+                        self.working_vec[node_id] = [
+                            self.__sum_gossip(comp, prev_comp),
+                            self.__sum_gossip(req, prev_req)]
                     else:
                         self.working_vec[node_id] = [comp, req]
                 except Exception as err:
@@ -278,4 +308,3 @@ class Ranking(object):
 
     def __mark_finished(self, finished):
         self.finished_neighbours |= finished
-
