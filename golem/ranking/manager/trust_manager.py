@@ -11,7 +11,7 @@ def computed_trust_local(local_rank):
     return count_trust(
         local_rank.positive_computed,
         local_rank.negative_computed + local_rank.wrong_computed
-    )
+    )  if local_rank is not None else None
 
 
 def computed_node_trust_local(node_id):
@@ -48,7 +48,7 @@ def requested_trust_local(local_rank):
     return count_trust(
         local_rank.positive_payment,
         local_rank.negative_requested + local_rank.negative_payment
-    )
+    )  if local_rank is not None else None
 
 
 def requested_node_trust_local(node_id):
