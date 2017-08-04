@@ -1,5 +1,7 @@
 import os
 
+from jsonpickle import json
+
 from golem.core.common import HandleKeyError
 from apps.dummy.computing import check_pow
 
@@ -7,6 +9,9 @@ from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 
 
 class DummyTaskVerificator(CoreVerificator):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.verification_options = {}
 
     @CoreVerificator.handle_key_error_for_state
     def verify(self, subtask_id, subtask_info, tr_files, task):
@@ -24,25 +29,26 @@ class DummyTaskVerificator(CoreVerificator):
                 return
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-    def verify_result(self, subtask_info, result):
+    # subtask_info is what sits in the task.subtasks_given[subtask_id"]
+    # it is set in the query_extra_data
+    def verify_result(self, subtask_info, result_data):
         '''
         Actual verification of result happens here
         :param result: Result of the computation
         :return: bool: True if the result was OK
         '''
 
-        if len(result) != self.verification_options.result_size:
+        if len(result_data) != self.verification_options["result_size"]:
             return False
 
-        if self.verification_options.difficulty == 0:
+        if self.verification_options["difficulty"] == 0:
             return True
 
-
-        with open(self.verification_options.shared_data_file, 'r') as f:
+        with open(self.verification_options["shared_data_file"], 'r') as f:
             input_data = f.read()
 
-        input_data += subtask_info.extra_data.subtask_data
+        input_data += subtask_info["subtask_data"]
 
-        return check_pow(long(result, 16),
+        return check_pow(int(result_data, 16),
                          input_data,
-                         self.verification_options.difficulty)
+                         self.verification_options["difficulty"])

@@ -5,16 +5,10 @@ import random
 import time
 
 
-def check_pow(proof, input_data, difficulty):
-    """
-    :param long proof:
-    :param str input_data:
-    :param int difficulty:
-    :rtype bool:
-    """
+def check_pow(proof: int, input_data: str, difficulty: int) -> bool:
     sha = hashlib.sha256()
-    sha.update(input_data)
-    sha.update('%x' % proof)
+    sha.update(input_data.encode())
+    sha.update(('%x' % proof).encode())
     h = int(sha.hexdigest()[0:8], 16)
     return h <= difficulty
 

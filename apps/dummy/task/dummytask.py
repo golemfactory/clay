@@ -5,7 +5,7 @@ from typing import Union
 
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
-                                     TaskTypeInfo)
+                                     TaskTypeInfo, AcceptClientVerdict)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -38,8 +38,8 @@ class DummyTask(CoreTask):
     RESULT_EXTENSION = ".result"
 
     # TODO many things should be used at coretask lvl,
-    # TODO but many of them had to be copied from
-    # TODO renderingtask, do something about it
+    #  but many of them had to be copied from
+    #  renderingtask, do something about it
     def __init__(self,
                  node_name: str,
                  task_definition: DummyTaskDefinition,
@@ -50,7 +50,7 @@ class DummyTask(CoreTask):
                  **kwargs
                  ):
 
-        # TODO check what's going on here? why the test is putting environment in here? (docker-dummy-tst-task.json)
+        # TODO check what's going on here? why the test is putting environment in here? (docker-dummy-test-task.json)
         if "environment" in kwargs and kwargs["environment"]:
             environment = kwargs["environment"]
         else:
@@ -88,11 +88,11 @@ class DummyTask(CoreTask):
         self.root_path = kwargs["root_path"]
 
         # TODO abstract away
-        self.verificator.result_size = self.task_definition.result_size
-        self.verificator.difficulty = self.task_definition.difficulty
-        self.verificator.shared_data_file = \
+        self.verificator.verification_options["result_size"] = self.task_definition.result_size
+        self.verificator.verification_options["difficulty"] = self.task_definition.difficulty
+        self.verificator.verification_options["shared_data_file"] = \
             self.task_definition.shared_data_file
-        self.verificator.result_size = self.task_definition.result_size
+        self.verificator.verification_options["result_size"] = self.task_definition.result_size
         self.dir_manager = DirManager(self.root_path)
 
     def short_extra_data_repr(self, perf_index=None):
@@ -116,25 +116,27 @@ class DummyTask(CoreTask):
 
         # TODO copied from luxrender, do sth about that
         # TODO it's generic, should be in the coretask
-        # verdict = self._accept_client(node_id)
-        # if verdict != AcceptClientVerdict.ACCEPTED:
-        #
-        #     should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-        #     if should_wait:
-        #         logger.warning("Waiting for results from {}"
-        #                        .format(node_name))
-        #     else:
-        #         logger.warning("Client {} banned from this task"
-        #                        .format(node_name))
-        #
-        #     return self.ExtraData(should_wait=should_wait)
-        #
-        # if self.get_progress == 1.0:
-        #     logger.error("Task already computed")
-        #     return self.ExtraData()
+        verdict = self._accept_client(node_id)
+        if verdict != AcceptClientVerdict.ACCEPTED:
+
+            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+            if should_wait:
+                logger.warning("Waiting for results from {}"
+                               .format(node_name))
+            else:
+                logger.warning("Client {} banned from this task"
+                               .format(node_name))
+
+            return self.ExtraData(should_wait=should_wait)
+
+        if self.get_progress == 1.0:
+            logger.error("Task already computed")
+            return self.ExtraData()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
-        data = str(random.getrandbits(self.task_definition.subtask_data_size * 4))
+        sbs = self.task_definition.subtask_data_size
+        data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
+
         shared_data_file_base = os.path.basename(self.task_definition.shared_data_file)
 
         extra_data = {
@@ -142,7 +144,8 @@ class DummyTask(CoreTask):
             'subtask_data': data,
             'difficulty': self.task_definition.difficulty,
             'result_size': self.task_definition.result_size,
-            'result_file': self._get_result_file_name(subtask_id)
+            'result_file': self._get_result_file_name(subtask_id),
+            'subtask_data_size': sbs
         }
 
         ctd = self._new_compute_task_def(subtask_id, extra_data, perf_index)
@@ -154,6 +157,11 @@ class DummyTask(CoreTask):
 
         return self.ExtraData(ctd=ctd)
 
+    # TODO luxrender also increases num_tasks_received, possible refactor
+    def accept_results(self, subtask_id, result_files):
+        super().accept_results(subtask_id, result_files)
+        self.num_tasks_received += 1
+
     def _get_new_subtask_id(self) -> str:
         return "{}".format(random.getrandbits(128))
 
@@ -161,6 +169,7 @@ class DummyTask(CoreTask):
         return self.task_definition.out_file_basename + subtask_id[0:6] + self.RESULT_EXTENSION
 
     def query_extra_data_for_test_task(self):
+
         # TODO refactor this method, should use query_next_data
 
         # TODO copied from luxrender task, do sth about it
@@ -170,15 +179,17 @@ class DummyTask(CoreTask):
 
         subtask_id = self._get_new_subtask_id()
 
-        # create subtask-specific data, 4 bits go for one char (hex digit)
-        data = random.getrandbits(self.task_definition.subtask_data_size * 4)
+        # create subtask-specific data
+        sbs = self.task_definition.subtask_data_size
+        data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
 
         extra_data = {
             'data_file': os.path.basename(self.task_definition.shared_data_file),
             'subtask_data': data,
             'difficulty': self.task_definition.difficulty,
             'result_size': self.task_definition.result_size,
-            'result_file': self._get_result_file_name(subtask_id)
+            'result_file': self._get_result_file_name(subtask_id),
+            'subtask_data_size': sbs
         }
 
         # perf_index for test_task was set to 0 in luxrendertask

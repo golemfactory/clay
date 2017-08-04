@@ -1,30 +1,26 @@
-import jsonpickle as json
 import logging
 import os
 import shutil
 from os import makedirs, path, remove
 
-
+import jsonpickle as json
 from mock import Mock
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-from golem.tools.ci import ci_skip
-from .test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
-
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-
-from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
-from golem.resource.dirmanager import DirManager
-from golem.task.localcomputer import LocalComputer
+from golem.tools.ci import ci_skip
+from .test_docker_image import DockerTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
@@ -35,7 +31,6 @@ logging.getLogger("peewee").setLevel("INFO")
 
 @ci_skip
 class TestDockerDummyTask(TempDirFixture, DockerTestCase):
-
     TASK_FILE = "docker-dummy-test-task.json"
 
     def setUp(self):
@@ -78,17 +73,17 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         return task_def
 
-    def _test_task(self):# -> LuxTask():
+    def _test_task(self) -> DummyTask:
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
         task_builder = DummyTaskBuilder(node_name, task_def, self.tempdir,
-                                            dir_manager)
+                                        dir_manager)
         task: DummyTask = task_builder.build()
         task.max_pending_client_results = 5
         return task
 
-    def _run_docker_task(self, task: DummyTask, timeout=60*5):
+    def _run_docker_task(self, task: DummyTask, timeout=60 * 5):
         task_id = task.header.task_id
         extra_data = task.query_extra_data(1.0)
         ctd = extra_data.ctd
@@ -100,8 +95,6 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.node._run()
 
         ccd = ClientConfigDescriptor()
-        # ccd.estimated_blender_performance = 2000.0
-        # ccd.estimated_lux_performance = 2000.0
 
         task_server = TaskServer(Mock(), ccd, Mock(), self.node.client,
                                  use_docker_machine_manager=False)
@@ -117,8 +110,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
             common_prefix = path.commonprefix(task.task_resources)
             common_prefix = path.dirname(common_prefix)
         else:
-            common_prefix = path.dirname(next(iter(task.task_resources)))
-
+            common_prefix = path.dirname(next(iter(task.task_resources)))  # first elem of set
 
         for res_file in task.task_resources:
             dest_file = path.join(resource_dir,
@@ -149,7 +141,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def _change_file_location(self, filepath, newfilepath ):
+    def _change_file_location(self, filepath, newfilepath):
         if os.path.exists(newfilepath):
             os.remove(newfilepath)
 
@@ -184,37 +176,16 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ## copy to new location
         new_file_dir = path.join(path.dirname(test_file), subtask_id)
 
-        new_result =  self._change_file_location(test_file,
-                                                   path.join(new_file_dir, "new.result"))
-
+        new_result = self._change_file_location(test_file,
+                                                path.join(new_file_dir, "new.result"))
 
         return new_result
 
+    def test_dummy_real_task(self):
 
-    # def test_luxrender_real_task_png(self):
-    #     task = self._test_task()
-    #     task.output_format = "png"
-    #     task.res_y = 200
-    #     task.res_x = 200
-    #     task.haltspp = 25
-    #     # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
-    #
-    #     self._test_luxrender_real_task(task)
-    #
-    # def test_luxrender_real_task_exr(self):
-    #     task = self._test_task()
-    #     task.output_format = "exr"
-    #     task.res_y = 200
-    #     task.res_x = 200
-    #     task.haltspp = 25
-    #     # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
-    #
-    #
-    #     self._test_luxrender_real_task(task)
-
-    def _test_dummy_real_task(self, task: DummyTask):
+        task = self._test_task()
         ctd = task.query_extra_data(1.0).ctd
-        ## act
+
         computer = LocalComputer(
             task,
             self.tempdir,
@@ -240,7 +211,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.assertEqual(task.num_tasks_received, 1)
 
         ## assert bad results - should fail
-        bad_output = path.join(path.dirname(output),"badfile.flm")
+        bad_output = path.join(path.dirname(output), "badfile.result")
         ctd = task.query_extra_data(10000).ctd
         task.computation_finished(ctd.subtask_id, [bad_output],
                                   result_type=result_types["files"])
@@ -248,21 +219,17 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
 
+    def test_dummytask_TaskTester_should_pass(self):
+        task = self._test_task()
 
-    # TODO what is this for?
-    # def test_luxrender_TaskTester_should_pass(self):
-    #     task = self._test_task()
-    #
-    #     computer = TaskTester(task, self.tempdir, Mock(), Mock())
-    #     computer.run()
-    #     computer.tt.join(60.0)
-    #
-    #     dirname = os.path.dirname(computer.tt.result[0]['data'][0])
-    #     flm = find_file_with_ext(dirname, [".flm"])
-    #     png = find_file_with_ext(dirname, [".png"])
-    #
-    #     assert path.isfile(flm)
-    #     assert path.isfile(png)
+        computer = TaskTester(task, self.tempdir, Mock(), Mock())
+        computer.run()
+        computer.tt.join(60.0)
+
+        dirname = os.path.dirname(computer.tt.result[0]['data'][0])
+        result = find_file_with_ext(dirname, [".result"])
+
+        assert path.isfile(result)
 
     def test_dummy_subtask(self):
         task = self._test_task()

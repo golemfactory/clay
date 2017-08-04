@@ -43,6 +43,8 @@ class CoreVerificator(object):
     def get_verification_state(self, subtask_id):
         return self.ver_states[subtask_id]
 
+    # subtask_info is what sits in the task.subtasks_given[subtask_id"]
+    # it is set in the query_extra_data function
     @handle_key_error_for_state
     def verify(self, subtask_id, subtask_info, tr_files, task):
         self._check_files(subtask_id, subtask_info, tr_files, task)
