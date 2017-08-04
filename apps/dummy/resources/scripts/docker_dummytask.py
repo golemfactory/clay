@@ -43,7 +43,9 @@ def find_pow(input_data, difficulty, result_size):
         solution += 1
 
 
-def run_dummy_task(data_file: str, subtask_string: str, difficulty: int, result_size: int):
+# def run_dummy_task(data_file: str, subtask_string: str, difficulty: int, result_size: int):
+# TODO While I don't have my own docker image with python3.6, type hints are impossible
+def run_dummy_task(data_file, subtask_string, difficulty, result_size):
     """Find a string S of result_size bytes such that the hash of the contents
     of the data_file, subtask_data and S produce sha256 hash H such that
     4 leftmost bytes of H is less or equal difficulty.
@@ -58,6 +60,8 @@ def run_dummy_task(data_file: str, subtask_string: str, difficulty: int, result_
           ', difficulty = 0x%08x' % difficulty) # TODO remove that print
     t0 = time.clock()
 
+    # raise Exception(os.listdir("/golem/resources"))
+
     with open(data_file, 'r') as f:
         shared_input = f.read()
     solution = find_pow(shared_input + subtask_string, difficulty, result_size)
@@ -71,14 +75,14 @@ OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work" # we don't need that, all the work is done in memory
 RESOURCES_DIR = "/golem/resources"
 
-def run(data_file, subtask_string, difficulty, result_size, out_file): # TODO types
+def run(data_file, subtask_string, difficulty, result_size, result_file): # TODO types
 
     in_path = os.path.join(RESOURCES_DIR, data_file)
-    out_path = os.path.join(OUTPUT_DIR, out_file)
+    result_path = os.path.join(OUTPUT_DIR, result_file)
 
     solution = run_dummy_task(in_path, subtask_string, difficulty, result_size)
 
-    with open(out_path, "w") as f: #TODO try catch
+    with open(result_path, "w") as f: #TODO try catch
         f.write("{}".format(solution))
 
 # TODO send subtask data as string!

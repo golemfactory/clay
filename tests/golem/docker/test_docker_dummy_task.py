@@ -1,33 +1,41 @@
+import jsonpickle as json
 import logging
 import os
 import shutil
 from os import makedirs, path, remove
 
-import jsonpickle as json
+
 from mock import Mock
 
-from apps.dummy.task.dummytask import DummyTaskBuilder
+from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+from golem.tools.ci import ci_skip
+from .test_docker_image import DockerTestCase
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
-from golem.resource.dirmanager import DirManager
+
 from golem.task.taskbase import result_types
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
-from golem.tools.ci import ci_skip
-from .test_docker_image import DockerTestCase
+
+from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
+from golem.resource.dirmanager import DirManager
+from golem.task.localcomputer import LocalComputer
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
 
-# TODO: extract code common to this class,
-# TestDockerBlenderTask and TestDockerLuxrenderTask to a superclass
+# TODO: extract code common to this class and TestDockerBlenderTask
+# to a superclass
 
 @ci_skip
 class TestDockerDummyTask(TempDirFixture, DockerTestCase):
+
     TASK_FILE = "docker-dummy-test-task.json"
 
     def setUp(self):
@@ -56,7 +64,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self):
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def = json.decode(f.read())
+            task_def: DummyTaskDefinition = json.decode(f.read())
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
@@ -66,24 +74,23 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
-        # task_def.output_file = set_root_dir(task_def.output_file)
+        task_def.shared_data_file = set_root_dir(task_def.shared_data_file)
+
         return task_def
 
-    def _test_task(self):
-
+    def _test_task(self):# -> LuxTask():
         task_def = self._test_task_definition()
         node_name = "0123456789abcdef"
         dir_manager = DirManager(self.path)
-        task_builder = DummyTaskBuilder(node_name=node_name,
-                                        task_definition=task_def,
-                                        root_path=self.tempdir,
-                                        dir_manager=dir_manager)
-        dummy_task = task_builder.build()
-        return dummy_task
+        task_builder = DummyTaskBuilder(node_name, task_def, self.tempdir,
+                                            dir_manager)
+        task: DummyTask = task_builder.build()
+        task.max_pending_client_results = 5
+        return task
 
-    def _run_docker_task(self, dummy_task, timeout=60 * 5):
-        task_id = dummy_task.header.task_id
-        extra_data = dummy_task.query_extra_data(1.0)
+    def _run_docker_task(self, task: DummyTask, timeout=60*5):
+        task_id = task.header.task_id
+        extra_data = task.query_extra_data(1.0)
         ctd = extra_data.ctd
         ctd.deadline = timeout_to_deadline(timeout)
 
@@ -106,10 +113,14 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.dirs_to_remove.append(temp_dir)
 
         # Copy the task resources
-        common_prefix = path.commonprefix(dummy_task.task_definition.resources)
-        common_prefix = path.dirname(common_prefix)
+        if len(task.task_resources) > 1:
+            common_prefix = path.commonprefix(task.task_resources)
+            common_prefix = path.dirname(common_prefix)
+        else:
+            common_prefix = path.dirname(next(iter(task.task_resources)))
 
-        for res_file in dummy_task.task_definition.resources:
+
+        for res_file in task.task_resources:
             dest_file = path.join(resource_dir,
                                   res_file[len(common_prefix) + 1:])
             dest_dirname = path.dirname(dest_file)
@@ -138,18 +149,122 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         return task_thread, self.error_msg, temp_dir
 
-    def test_dummytask_test(self):
-        task = self._test_task()
-        task.max_pending_client_results = 5
-        computer = TaskTester(task, self.tempdir, Mock(), Mock())
+    def _change_file_location(self, filepath, newfilepath ):
+        if os.path.exists(newfilepath):
+            os.remove(newfilepath)
+
+        new_file_dir = os.path.dirname(newfilepath)
+        if not os.path.exists(new_file_dir):
+            os.makedirs(new_file_dir)
+
+        shutil.copy(filepath, newfilepath)
+        return newfilepath
+
+    def _extract_results(self, computer: LocalComputer, task: DummyTask, subtask_id):
+        """
+        Since the local computer uses temp dir, you should copy files out of there before you use local computer again.
+        Otherwise the files would get overwritten (during the verification process).
+        This is a problem only in test suite. In real life provider and requestor are separate machines
+        :param computer:
+        :param task:
+        :return:
+        """
+        dirname = os.path.dirname(computer.tt.result['data'][0])
+
+        result = find_file_with_ext(dirname, [".result"])
+
+        self.assertTrue(path.isfile(result))
+
+        test_file = task._get_test_answer()
+        shutil.copy(result, test_file)
+
+        self.dirs_to_remove.append(path.dirname(test_file))
+        self.assertTrue(path.isfile(task._get_test_answer()))
+
+        ## copy to new location
+        new_file_dir = path.join(path.dirname(test_file), subtask_id)
+
+        new_result =  self._change_file_location(test_file,
+                                                   path.join(new_file_dir, "new.result"))
+
+
+        return new_result
+
+
+    # def test_luxrender_real_task_png(self):
+    #     task = self._test_task()
+    #     task.output_format = "png"
+    #     task.res_y = 200
+    #     task.res_x = 200
+    #     task.haltspp = 25
+    #     # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+    #
+    #     self._test_luxrender_real_task(task)
+    #
+    # def test_luxrender_real_task_exr(self):
+    #     task = self._test_task()
+    #     task.output_format = "exr"
+    #     task.res_y = 200
+    #     task.res_x = 200
+    #     task.haltspp = 25
+    #     # task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
+    #
+    #
+    #     self._test_luxrender_real_task(task)
+
+    def _test_dummy_real_task(self, task: DummyTask):
+        ctd = task.query_extra_data(1.0).ctd
+        ## act
+        computer = LocalComputer(
+            task,
+            self.tempdir,
+            Mock(),
+            Mock(),
+            lambda: ctd
+        )
+
         computer.run()
-        computer.tt.join(60.0)
+        computer.tt.join()
 
-        # here is the result file
-        dirname = os.path.dirname(computer.tt.result[0]['data'][0])
-        # TODO finish the test when luxrender tests are merged
+        output = self._extract_results(computer, task, ctd.subtask_id)
 
-    def test_dummytask_subtask(self):
+        task.create_reference_data_for_task_validation()
+
+        ## assert good results - should pass
+        self.assertEqual(task.num_tasks_received, 0)
+        task.computation_finished(ctd.subtask_id, [output],
+                                  result_type=result_types["files"])
+
+        is_subtask_verified = task.verify_subtask(ctd.subtask_id)
+        self.assertTrue(is_subtask_verified)
+        self.assertEqual(task.num_tasks_received, 1)
+
+        ## assert bad results - should fail
+        bad_output = path.join(path.dirname(output),"badfile.flm")
+        ctd = task.query_extra_data(10000).ctd
+        task.computation_finished(ctd.subtask_id, [bad_output],
+                                  result_type=result_types["files"])
+
+        self.assertFalse(task.verify_subtask(ctd.subtask_id))
+        self.assertEqual(task.num_tasks_received, 1)
+
+
+    # TODO what is this for?
+    # def test_luxrender_TaskTester_should_pass(self):
+    #     task = self._test_task()
+    #
+    #     computer = TaskTester(task, self.tempdir, Mock(), Mock())
+    #     computer.run()
+    #     computer.tt.join(60.0)
+    #
+    #     dirname = os.path.dirname(computer.tt.result[0]['data'][0])
+    #     flm = find_file_with_ext(dirname, [".flm"])
+    #     png = find_file_with_ext(dirname, [".png"])
+    #
+    #     assert path.isfile(flm)
+    #     assert path.isfile(png)
+
+    def test_dummy_subtask(self):
         task = self._test_task()
         task_thread, error_msg, out_dir = self._run_docker_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
@@ -166,4 +281,4 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
             any(path.basename(f) == DockerTaskThread.STDERR_FILE
                 for f in result["data"]))
         self.assertTrue(
-            any("output" in f for f in result["data"]))
+            any(f.endswith(DummyTask.RESULT_EXTENSION) and "out" in f for f in result["data"]))

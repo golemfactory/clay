@@ -35,6 +35,8 @@ class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFICATOR_CLASS = DummyTaskVerificator
 
+    RESULT_EXTENSION = ".result"
+
     # TODO many things should be used at coretask lvl,
     # TODO but many of them had to be copied from
     # TODO renderingtask, do something about it
@@ -97,7 +99,7 @@ class DummyTask(CoreTask):
         return "dummy task " + self.header.task_id
 
     def query_extra_data(self,
-                         perf_index: int,
+                         perf_index: float,
                          num_cores: int = 1,
                          node_id: str = None,
                          node_name: str = None
@@ -133,9 +135,10 @@ class DummyTask(CoreTask):
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
         data = str(random.getrandbits(self.task_definition.subtask_data_size * 4))
+        shared_data_file_base = os.path.basename(self.task_definition.shared_data_file)
 
         extra_data = {
-            'data_file': self.task_definition.shared_data_file,
+            'data_file': shared_data_file_base,
             'subtask_data': data,
             'difficulty': self.task_definition.difficulty,
             'result_size': self.task_definition.result_size,
@@ -151,11 +154,11 @@ class DummyTask(CoreTask):
 
         return self.ExtraData(ctd=ctd)
 
-    def _get_new_subtask_id(self):  # type: () -> str
+    def _get_new_subtask_id(self) -> str:
         return "{}".format(random.getrandbits(128))
 
-    def _get_result_file_name(self, subtask_id):  # type: (str) -> str
-        return self.task_definition.out_file_basename + subtask_id[0:6]
+    def _get_result_file_name(self, subtask_id: str) -> str:
+        return self.task_definition.out_file_basename + subtask_id[0:6] + self.RESULT_EXTENSION
 
     def query_extra_data_for_test_task(self):
         # TODO refactor this method, should use query_next_data
@@ -179,15 +182,15 @@ class DummyTask(CoreTask):
         }
 
         # perf_index for test_task was set to 0 in luxrendertask
-        perf_index = 0  # TODO how to calculate perf_index for local computer?
+        perf_index = 0.0  # TODO how to calculate perf_index for local computer?
 
         return self._new_compute_task_def(subtask_id, extra_data, perf_index)
 
     # TODO copied from renderingtask, do something about it
     def _new_compute_task_def(self,
-                              subtask_id,  # type: str
+                              subtask_id: str,
                               extra_data,
-                              perf_index  # type: int
+                              perf_index: float
                               ):
         ctd = ComputeTaskDef()
         ctd.task_id = self.header.task_id
@@ -203,8 +206,8 @@ class DummyTask(CoreTask):
 
         return ctd
 
-    def __get_test_answer(self):
-        return os.path.join(self.tmp_dir, "in_result")
+    def _get_test_answer(self):
+        return os.path.join(self.tmp_dir, "in" + self.RESULT_EXTENSION)
 
 
 class DummyTaskBuilder(CoreTaskBuilder):

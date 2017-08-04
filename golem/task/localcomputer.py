@@ -3,12 +3,14 @@ import os
 import shutil
 from threading import Lock
 import time
+from typing import Callable
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
-from golem.task.taskbase import Task, resource_types
+from golem.task.taskbase import Task, resource_types, ComputeTaskDef
 
 logger = logging.getLogger("golem.task")
 
@@ -17,9 +19,18 @@ class LocalComputer(object):
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
 
-    def __init__(self, task, root_path, success_callback, error_callback, get_compute_task_def, check_mem=False,
-                 comp_failed_warning=DEFAULT_WARNING, comp_success_message=DEFAULT_SUCCESS, use_task_resources=True,
+    def __init__(self,
+                 task: Task,
+                 root_path: str,
+                 success_callback,
+                 error_callback,
+                 get_compute_task_def: Callable[[], ComputeTaskDef],
+                 check_mem=False,
+                 comp_failed_warning=DEFAULT_WARNING,
+                 comp_success_message=DEFAULT_SUCCESS,
+                 use_task_resources=True,
                  additional_resources=None):
+        # TODO remove this isinstance
         if not isinstance(task, Task):
             raise TypeError("Incorrect task type: {}. Should be: Task".format(type(task)))
         self.task = task
@@ -129,7 +140,7 @@ class LocalComputer(object):
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
 
-    def _get_task_thread(self, ctd):
+    def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         return DockerTaskThread(self,
                                 ctd.subtask_id,
                                 ctd.docker_images,

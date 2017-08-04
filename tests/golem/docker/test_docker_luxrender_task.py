@@ -266,50 +266,50 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
 
     def test_run_stats(self):
-        results = []
-        return
-
-        for i in range(0, 10):
-            task = self._test_task()
-            task.res_y = 250
-            task.res_x = 250
-            task.haltspp = 1
-            task.output_format = "exr"
-            task.random_crop_window_for_verification = (0, 0.7, 0, 0.7)  # to make it deterministic
-            ctd = task.query_extra_data(10000).ctd
-
-            ## act
-            computer = LocalComputer(
-                task,
-                self.tempdir,
-                Mock(),
-                Mock(),
-                lambda: ctd,
-            )
-
-            computer.run()
-            computer.tt.join()
-
-            new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
-
-            task.create_reference_data_for_task_validation()
-
-            ## assert good results - should pass
-            self.assertEqual(task.num_tasks_received, 0)
-            task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
-                                      result_type=result_types["files"])
-
-            result = task.verify_subtask(ctd.subtask_id)
-            # self.assertEqual(task.num_tasks_received, 1)
-            # print i, task.num_tasks_received
-            results.append(result)
-            print(i, result)
-
-        from collections import Counter
-        stats = Counter(results)
-        print (results)
-        print (stats)
         pass
+
+        # results = []
+        # for i in range(0, 10):
+        #     task = self._test_task()
+        #     task.res_y = 250
+        #     task.res_x = 250
+        #     task.haltspp = 1
+        #     task.output_format = "exr"
+        #     task.random_crop_window_for_verification = (0, 0.7, 0, 0.7)  # to make it deterministic
+        #     ctd = task.query_extra_data(10000).ctd
+        #
+        #     ## act
+        #     computer = LocalComputer(
+        #         task,
+        #         self.tempdir,
+        #         Mock(),
+        #         Mock(),
+        #         lambda: ctd,
+        #     )
+        #
+        #     computer.run()
+        #     computer.tt.join()
+        #
+        #     new_flm_file, new_png_file = self._extract_results(computer, task, ctd.subtask_id)
+        #
+        #     task.create_reference_data_for_task_validation()
+        #
+        #     ## assert good results - should pass
+        #     self.assertEqual(task.num_tasks_received, 0)
+        #     task.computation_finished(ctd.subtask_id, [new_flm_file, new_png_file],
+        #                               result_type=result_types["files"])
+        #
+        #     result = task.verify_subtask(ctd.subtask_id)
+        #     # self.assertEqual(task.num_tasks_received, 1)
+        #     # print i, task.num_tasks_received
+        #     results.append(result)
+        #     print(i, result)
+        #
+        # from collections import Counter
+        # stats = Counter(results)
+        # print (results)
+        # print (stats)
+        # pass
 
 
     def test_luxrender_TaskTester_should_pass(self):
