@@ -50,7 +50,6 @@ class DummyTask(CoreTask):
                  owner_port=0,
                  owner_key_id=""
                  ):
-
         super().__init__(
             task_definition=task_definition,
             node_name=node_name,
@@ -73,8 +72,8 @@ class DummyTask(CoreTask):
         return "Dummytask extra_data: {}".format(extra_data)
 
     @coretask.accepting
-    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None) -> Task.ExtraData:
-
+    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str = None,
+                         node_name: str = None) -> Task.ExtraData:
         subtask_id = self._get_new_subtask_id()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
@@ -113,7 +112,6 @@ class DummyTask(CoreTask):
         return self.task_definition.out_file_basename + subtask_id[0:6] + self.RESULT_EXTENSION
 
     def query_extra_data_for_test_task(self):
-
         # TODO refactor this method, should use query_next_data
 
         # TODO copied from luxrender task, do sth about it
@@ -137,7 +135,6 @@ class DummyTask(CoreTask):
         }
 
         return self._new_compute_task_def(subtask_id, extra_data)
-
 
     def _get_test_answer(self):
         return os.path.join(self.tmp_dir, "in" + self.RESULT_EXTENSION)

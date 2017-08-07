@@ -32,15 +32,15 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task_definition.estimated_memory = 1024
         task_definition.full_task_timeout = 3000
         task_definition.subtask_timeout = 30
+        task_cls = CoreTask
+        task_cls.ENVIRONMENT_CLASS = MagicMock()
         task = CoreTask(
-            src_code="src code",
             task_definition=task_definition,
             node_name="ABC",
             owner_address="10.10.10.10",
             owner_port=123,
             owner_key_id="key",
-            environment="environment",
-            resource_size=1024,
+            resource_size=1024
         )
         dm = DirManager(self.path)
         task.initialize(dm)
@@ -466,8 +466,6 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert kwargs["arg2"] == 1380
         assert kwargs["arg3"] == c
         assert kwargs["node_name"] == "Node1"
-        assert kwargs["src_code"] == ""
-        assert kwargs["environment"] is None
         assert isinstance(kwargs["task_definition"], MagicMock)
 
     def test_build(self):
