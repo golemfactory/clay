@@ -119,7 +119,7 @@ class DummyTask(Task):
 
         self.task_resources = [self.shared_data_file]
 
-    def short_extra_data_repr(self, perf_index=None):
+    def short_extra_data_repr(self, extra_data):
         return "dummy task " + self.task_id
 
     def get_trust_mod(self, subtask_id):

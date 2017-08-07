@@ -191,7 +191,7 @@ class Task(object):
         """
         return  # Implement in derived class
 
-    def query_extra_data(self, perf_index, num_cores=1, node_id=None, node_name=None):
+    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None):
         """ Called when a node asks with given parameters asks for a new subtask to compute.
         :param int perf_index: performance that given node declares
         :param int num_cores: number of cores that current node declares
@@ -211,9 +211,9 @@ class Task(object):
         pass
 
     @abc.abstractmethod
-    def short_extra_data_repr(self, perf_index=None):
+    def short_extra_data_repr(self, extra_data):
         """ Should return a short string with general task description that may be used for logging or stats gathering.
-        :param int perf_index: performance index that may affect task description
+        :param extra_data:
         :return str:
         """
         return  # Implement in derived class

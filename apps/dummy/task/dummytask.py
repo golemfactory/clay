@@ -3,6 +3,7 @@ import os
 import random
 from typing import Union
 
+from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      TaskTypeInfo, AcceptClientVerdict)
@@ -43,49 +44,22 @@ class DummyTask(CoreTask):
     def __init__(self,
                  node_name: str,
                  task_definition: DummyTaskDefinition,
+                 root_path=None,
                  # TODO change that when TaskHeader will be updated
                  owner_address="",
                  owner_port=0,
-                 owner_key_id="",
-                 **kwargs
+                 owner_key_id=""
                  ):
 
-        # TODO check what's going on here? why the test is putting environment in here? (docker-dummy-test-task.json)
-        if "environment" in kwargs and kwargs["environment"]:
-            environment = kwargs["environment"]
-        else:
-            environment = self.ENVIRONMENT_CLASS()
-
-        self.main_program_file = environment.main_program_file
-        try:
-            with open(self.main_program_file, "r") as src_file:
-                src_code = src_file.read()
-        except IOError as err:
-            logger.warning("Wrong main program file: {}".format(err))
-            src_code = ""
-
-        super(DummyTask, self).__init__(
-            src_code=src_code,
+        super().__init__(
             task_definition=task_definition,
             node_name=node_name,
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            environment=environment.get_id(),
-            resource_size=task_definition.shared_data_size
+            resource_size=task_definition.shared_data_size,
+            root_path=root_path
         )
-
-        # TODO implemented at renderingtask lvl, but used
-        # on at coretask lvl
-        # It is also needed for test, where I have to manually copy files
-        # but idk if will be needed in real setting
-        # INFO it is needed for query_new_data, used in function get_resources
-        # IMPORTANT it has to be AFTER the super()
-        self.task_resources = set(filter(os.path.isfile, task_definition.resources))
-
-        # TODO very ugly, refactor
-        # IMPORTANT it has to be AFTER the super()
-        self.root_path = kwargs["root_path"]
 
         # TODO abstract away
         self.verificator.verification_options["result_size"] = self.task_definition.result_size
@@ -95,43 +69,13 @@ class DummyTask(CoreTask):
         self.verificator.verification_options["result_size"] = self.task_definition.result_size
         self.dir_manager = DirManager(self.root_path)
 
-    def short_extra_data_repr(self, perf_index=None):
-        return "dummy task " + self.header.task_id
+    def short_extra_data_repr(self, extra_data):
+        return "Dummytask extra_data: {}".format(extra_data)
 
-    def query_extra_data(self,
-                         perf_index: float,
-                         num_cores: int = 1,
-                         node_id: str = None,
-                         node_name: str = None
-                         ) -> Task.ExtraData:
-        """Returns data for the next subtask.
-        :param int perf_index:
-        :param int num_cores:
-        :param str | None node_id:
-        :param str | None node_name:
-        :rtype: ComputeTaskDef"""
+    @coretask.accepting
+    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None) -> Task.ExtraData:
 
-        # create new subtask_id
         subtask_id = self._get_new_subtask_id()
-
-        # TODO copied from luxrender, do sth about that
-        # TODO it's generic, should be in the coretask
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from {}"
-                               .format(node_name))
-            else:
-                logger.warning("Client {} banned from this task"
-                               .format(node_name))
-
-            return self.ExtraData(should_wait=should_wait)
-
-        if self.get_progress == 1.0:
-            logger.error("Task already computed")
-            return self.ExtraData()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
         sbs = self.task_definition.subtask_data_size
@@ -192,30 +136,8 @@ class DummyTask(CoreTask):
             'subtask_data_size': sbs
         }
 
-        # perf_index for test_task was set to 0 in luxrendertask
-        perf_index = 0.0  # TODO how to calculate perf_index for local computer?
+        return self._new_compute_task_def(subtask_id, extra_data)
 
-        return self._new_compute_task_def(subtask_id, extra_data, perf_index)
-
-    # TODO copied from renderingtask, do something about it
-    def _new_compute_task_def(self,
-                              subtask_id: str,
-                              extra_data,
-                              perf_index: float
-                              ):
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = subtask_id
-        ctd.extra_data = extra_data
-        ctd.task_owner = self.header.task_owner
-        ctd.short_description = self.short_extra_data_repr(perf_index)
-        ctd.src_code = self.src_code
-        ctd.performance = perf_index
-        ctd.docker_images = self.header.docker_images
-        ctd.environment = self.header.environment
-        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
-
-        return ctd
 
     def _get_test_answer(self):
         return os.path.join(self.tmp_dir, "in" + self.RESULT_EXTENSION)
@@ -229,8 +151,3 @@ class DummyTaskBuilder(CoreTaskBuilder):
         task = super(DummyTaskBuilder, self).build()
         task.initialize(self.dir_manager)
         return task
-
-    def get_task_kwargs(self, **kwargs):
-        kwargs = super(DummyTaskBuilder, self).get_task_kwargs(**kwargs)
-        kwargs["root_path"] = self.root_path
-        return kwargs

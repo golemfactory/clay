@@ -460,7 +460,7 @@ class TaskManager(TaskEventListener):
         for t in list(self.tasks.values()):
             if t.get_progress() < 1.0:
                 ltss = LocalTaskStateSnapshot(t.header.task_id, t.get_total_tasks(),
-                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0))
+                                              t.get_active_tasks(), t.get_progress(), t.short_extra_data_repr(2200.0)) # FIXME in short_extra_data_repr should there be extra data
                 tasks_progresses[t.header.task_id] = ltss
 
         return tasks_progresses

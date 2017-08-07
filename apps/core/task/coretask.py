@@ -1,3 +1,4 @@
+import abc
 import copy
 import logging
 import os
@@ -15,12 +16,15 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
+from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, \
-    resource_types
+    resource_types, ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+
+from functools import wraps
 
 logger = logging.getLogger("apps.core")
 
@@ -89,6 +93,8 @@ class TaskTypeInfo(object):
 
 class CoreTask(Task):
     VERIFICATOR_CLASS: Type[CoreVerificator] = CoreVerificator
+    ENVIRONMENT_CLASS: Type[Environment] = None # TODO maybe @abstraact @property?
+
     handle_key_error = HandleKeyError(log_key_error)
 
     ################
@@ -96,18 +102,16 @@ class CoreTask(Task):
     ################
 
     def __init__(self,
-                 src_code: str,
                  task_definition: TaskDefinition,
                  node_name: str,
-                 environment: str,  # environment.get_id()
                  owner_address="",
                  owner_port=0,
                  owner_key_id="",
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
-                 resource_size=None # backward compatibility
+                 resource_size=None, # backward compatibility
+                 root_path=None
                  ):
         """Create more specific task implementation
-
         """
 
         self.task_definition = task_definition
@@ -122,13 +126,23 @@ class CoreTask(Task):
         else:
             self.resource_size = resource_size
 
+        self.environment = self.ENVIRONMENT_CLASS()
+
+        self.main_program_file = self.environment.main_program_file
+        try:
+            with open(self.main_program_file, "r") as src_file:
+                src_code = src_file.read()
+        except IOError as err:
+            logger.warning("Wrong main program file: {}".format(err))
+            src_code = ""
+
         th = TaskHeader(
             node_name=node_name,
             task_id=task_definition.task_id,
             task_owner_address=owner_address,
             task_owner_port=owner_port,
             task_owner_key_id=owner_key_id,
-            environment=environment,
+            environment=self.environment.get_id(),
             task_owner=Node(),
             deadline=deadline,
             subtask_timeout=task_definition.subtask_timeout,
@@ -150,7 +164,7 @@ class CoreTask(Task):
         self.full_task_timeout = task_timeout
         self.counting_nodes = {}
 
-        self.root_path = None
+        self.root_path = root_path
 
         self.stdout = {}  # for each subtask keep info about stdout received from computing node
         self.stderr = {}  # for each subtask keep info about stderr received from computing node
@@ -162,7 +176,9 @@ class CoreTask(Task):
         self.max_pending_client_results = max_pending_client_results
 
     def is_docker_task(self):
-        return hasattr(self.header, 'docker_images') and len(self.header.docker_images) > 0
+        return hasattr(self.header, 'docker_images') \
+               and self.header.docker_images \
+               and len(self.header.docker_images) > 0
 
     def initialize(self, dir_manager):
         self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id, create=True)
@@ -287,6 +303,22 @@ class CoreTask(Task):
             'subtasks': self.get_total_tasks(),
             'progress': self.get_progress()
         }
+
+    def _new_compute_task_def(self, hash, extra_data, working_directory=".", perf_index=0):
+        ctd = ComputeTaskDef()
+        ctd.task_id = self.header.task_id
+        ctd.subtask_id = hash
+        ctd.extra_data = extra_data
+        ctd.short_description = self.short_extra_data_repr(extra_data)
+        ctd.src_code = self.src_code
+        ctd.performance = perf_index
+        ctd.working_directory = working_directory
+        ctd.docker_images = self.header.docker_images
+        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
+        ctd.task_owner = self.header.task_owner
+        ctd.environment = self.header.environment
+
+        return ctd
 
     #########################
     # Specific task methods #
@@ -426,6 +458,71 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
+    # def _with_check(f):
+    #     @wraps(f)
+    #     def wrapped(inst, *args, **kwargs):
+    #         if inst.check():
+    #             return
+    #         return f(inst, *args, **kwargs)
+    #     return wrapped
+
+    # def _accepting(query_extra_data_func):
+    #     """
+    #     A decorator for query_extra_data - it wraps the function with verification code
+    #     :param query_extra_data:
+    #     :return:
+    #     """
+    #     @wraps(query_extra_data_func)
+    #     def accepting_qed(self, perf_index: float, num_cores=1, node_id: str = None,
+    #                          node_name: str = None) -> Task.ExtraData:
+    #         verdict = self._accept_client(node_id)
+    #         if verdict != AcceptClientVerdict.ACCEPTED:
+    #
+    #             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+    #             if should_wait:
+    #                 logger.warning("Waiting for results from {}"
+    #                                .format(node_name))
+    #             else:
+    #                 logger.warning("Client {} banned from this task"
+    #                                .format(node_name))
+    #
+    #             return self.ExtraData(should_wait=should_wait)
+    #
+    #         if self.get_progress == 1.0:
+    #             logger.error("Task already computed")
+    #             return self.ExtraData()
+    #
+    #         query_extra_data_func(self, perf_index, num_cores, node_id, node_name)
+    #     return accepting_qed
+
+def accepting(query_extra_data_func):
+    """
+    A decorator for query_extra_data - it wraps the function with verification code
+    :param query_extra_data:
+    :return:
+    """
+    def accepting_qed(self, perf_index: float, num_cores=1, node_id: str = None,
+                         node_name: str = None) -> Task.ExtraData:
+        verdict = self._accept_client(node_id)
+        if verdict != AcceptClientVerdict.ACCEPTED:
+
+            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
+            if should_wait:
+                logger.warning("Waiting for results from {}"
+                               .format(node_name))
+            else:
+                logger.warning("Client {} banned from this task"
+                               .format(node_name))
+
+            return self.ExtraData(should_wait=should_wait)
+
+        if self.get_progress == 1.0:
+            logger.error("Task already computed")
+            return self.ExtraData()
+
+        return query_extra_data_func(self, perf_index, num_cores, node_id, node_name)
+    return accepting_qed
+
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
@@ -444,10 +541,9 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
-        kwargs["src_code"] = self.src_code
         kwargs["task_definition"] = self.task_definition
         kwargs["node_name"] = self.node_name
-        kwargs["environment"] = self.environment
+        kwargs["root_path"] = self.root_path
         return kwargs
 
     @classmethod

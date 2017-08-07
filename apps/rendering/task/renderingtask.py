@@ -34,11 +34,7 @@ logger = logging.getLogger("apps.rendering")
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
-
-    @property
-    @abstractmethod
-    def ENVIRONMENT_CLASS(self) -> Type[DockerEnvironment]:
-        pass
+    ENVIRONMENT_CLASS: Type[DockerEnvironment] = None
 
     @classmethod
     def _get_task_collector_path(cls):
@@ -58,28 +54,17 @@ class RenderingTask(CoreTask):
     def __init__(self, node_name, task_definition, total_tasks, root_path, owner_address="",
                  owner_port=0, owner_key_id=""):
 
-        environment = self.ENVIRONMENT_CLASS()
-        if task_definition.docker_images is None:
-            task_definition.docker_images = environment.docker_images
-
-        main_program_file = environment.main_program_file
-        try:
-            with open(main_program_file, "r") as src_file:
-                src_code = src_file.read()
-        except IOError as err:
-            logger.warning("Wrong main program file: {}".format(err))
-            src_code = ""
-        self.main_program_file = main_program_file
-
         CoreTask.__init__(
             self,
-            src_code=src_code,
             task_definition=task_definition,
             node_name=node_name,
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            environment=environment.get_id())
+            root_path=root_path)
+
+        if task_definition.docker_images is None:
+            task_definition.docker_images = self.environment.docker_images
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
@@ -90,7 +75,6 @@ class RenderingTask(CoreTask):
         self.total_tasks = total_tasks
         self.res_x, self.res_y = task_definition.resolution
 
-        self.root_path = root_path
         self.preview_file_path = None
         self.preview_task_file_path = None
 
@@ -116,18 +100,18 @@ class RenderingTask(CoreTask):
 
     @CoreTask.handle_key_error
     def computation_failed(self, subtask_id):
-        CoreTask.computation_failed(self, subtask_id)
+        super().computation_failed(subtask_id)
         self._update_task_preview()
 
     def restart(self):
-        super(RenderingTask, self).restart()
+        super().restart()
         self.collected_file_names = {}
 
     @CoreTask.handle_key_error
     def restart_subtask(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
             self._remove_from_preview(subtask_id)
-        CoreTask.restart_subtask(self, subtask_id)
+        super().restart_subtask(self, subtask_id)
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:
@@ -138,14 +122,13 @@ class RenderingTask(CoreTask):
     #########################
     # Specific task methods #
     #########################
-    def query_extra_data_for_reference_task(self):
+    def query_extra_data_for_reference_task(self, *args, **kwargs):
         """
         This method will generate extra data for reference task which will be solved on local computer (by requestor)
         in order to obtain reference results.
         The reference results will be used to validate the output given by providers.
         """
         pass
-
 
     def get_subtasks(self, part):
         pass
@@ -212,19 +195,6 @@ class RenderingTask(CoreTask):
                format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
         exec_cmd(cmd)
 
-    def _new_compute_task_def(self, hash, extra_data, working_directory, perf_index):
-        ctd = ComputeTaskDef()
-        ctd.task_id = self.header.task_id
-        ctd.subtask_id = hash
-        ctd.extra_data = extra_data
-        ctd.short_description = self._short_extra_data_repr(perf_index, extra_data)
-        ctd.src_code = self.src_code
-        ctd.performance = perf_index
-        ctd.working_directory = working_directory
-        ctd.docker_images = self.header.docker_images
-        ctd.deadline = timeout_to_deadline(self.header.subtask_timeout)
-        return ctd
-
     def _get_next_task(self):
         if self.last_task != self.total_tasks:
             self.last_task += 1
@@ -265,7 +235,7 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def _short_extra_data_repr(self, perf_index, extra_data):
+    def short_extra_data_repr(self, extra_data):
         l = extra_data
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
@@ -334,11 +304,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return candidates[0]
 
     def get_task_kwargs(self, **kwargs):
-        # super() when ready
-        kwargs['node_name'] = self.node_name
-        kwargs['task_definition'] = self.task_definition
+        kwargs = super().get_task_kwargs(**kwargs)
         kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
-        kwargs['root_path'] = self.root_path
         return kwargs
 
     def build(self):
