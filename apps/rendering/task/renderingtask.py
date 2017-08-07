@@ -3,7 +3,9 @@
 import logging
 import math
 import os
+from abc import abstractproperty, abstractmethod
 from copy import deepcopy
+from typing import Type
 
 from PIL import Image, ImageChops
 from pathlib import Path
@@ -15,6 +17,7 @@ from apps.rendering.task.verificator import RenderingVerificator
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
@@ -31,6 +34,11 @@ logger = logging.getLogger("apps.rendering")
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
+
+    @property
+    @abstractmethod
+    def ENVIRONMENT_CLASS(self) -> Type[DockerEnvironment]:
+        pass
 
     @classmethod
     def _get_task_collector_path(cls):
@@ -63,11 +71,6 @@ class RenderingTask(CoreTask):
             src_code = ""
         self.main_program_file = main_program_file
 
-        resource_size = 0
-        task_resources = set(filter(os.path.isfile, task_definition.resources))
-        for resource in task_resources:
-            resource_size += os.stat(resource).st_size
-
         CoreTask.__init__(
             self,
             src_code=src_code,
@@ -76,8 +79,7 @@ class RenderingTask(CoreTask):
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            environment=environment.get_id(),
-            resource_size=resource_size)
+            environment=environment.get_id())
 
         self.main_scene_file = task_definition.main_scene_file
         self.main_scene_dir = str(Path(task_definition.main_scene_file).parent)
@@ -91,8 +93,6 @@ class RenderingTask(CoreTask):
         self.root_path = root_path
         self.preview_file_path = None
         self.preview_task_file_path = None
-
-        self.task_resources = deepcopy(list(task_resources))
 
         self.collected_file_names = {}
 

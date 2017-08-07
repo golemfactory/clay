@@ -1,5 +1,3 @@
-
-
 import copy
 import logging
 import os
@@ -90,7 +88,6 @@ class TaskTypeInfo(object):
 
 
 class CoreTask(Task):
-
     VERIFICATOR_CLASS: Type[CoreVerificator] = CoreVerificator
     handle_key_error = HandleKeyError(log_key_error)
 
@@ -102,12 +99,13 @@ class CoreTask(Task):
                  src_code: str,
                  task_definition: TaskDefinition,
                  node_name: str,
-                 environment: str, # environment.get_id()
-                 resource_size=0,
+                 environment: str,  # environment.get_id()
                  owner_address="",
                  owner_port=0,
                  owner_key_id="",
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS):
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
+                 resource_size=None # backward compatibility
+                 ):
         """Create more specific task implementation
 
         """
@@ -115,6 +113,15 @@ class CoreTask(Task):
         self.task_definition = task_definition
         task_timeout = task_definition.full_task_timeout
         deadline = timeout_to_deadline(task_timeout)
+
+        self.task_resources = list(set(filter(os.path.isfile, task_definition.resources))) # why is there a set?
+        if resource_size is None:
+            self.resource_size = 0
+            for resource in self.task_resources:
+                self.resource_size += os.stat(resource).st_size
+        else:
+            self.resource_size = resource_size
+
         th = TaskHeader(
             node_name=node_name,
             task_id=task_definition.task_id,
@@ -125,15 +132,13 @@ class CoreTask(Task):
             task_owner=Node(),
             deadline=deadline,
             subtask_timeout=task_definition.subtask_timeout,
-            resource_size=resource_size,
+            resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             docker_images=task_definition.docker_images,
         )
 
         Task.__init__(self, th, src_code)
-
-        self.task_resources = list()
 
         self.total_tasks = 0
         self.last_task = 0

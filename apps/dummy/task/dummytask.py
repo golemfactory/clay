@@ -76,7 +76,7 @@ class DummyTask(CoreTask):
         )
 
         # TODO implemented at renderingtask lvl, but used
-        # TODO on at coretask lvl
+        # on at coretask lvl
         # It is also needed for test, where I have to manually copy files
         # but idk if will be needed in real setting
         # INFO it is needed for query_new_data, used in function get_resources
