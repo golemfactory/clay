@@ -21,7 +21,7 @@ class BlenderEnvironment(DockerEnvironment):
     def __init__(self, tag=BLENDER_DOCKER_TAG, image_id=None):
         image = DockerImage(image_id=id) if image_id \
             else DockerImage(self.BLENDER_DOCKER_IMAGE, tag=tag)
-        DockerEnvironment.__init__(self, [image])
+        super().__init__([image])
 
         self.short_description = "Blender (www.blender.org)"
         self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)

@@ -181,14 +181,12 @@ class LuxTask(renderingtask.RenderingTask):
         return write_interval
 
     @coretask.accepting
-    def query_extra_data(
-            self,
-            perf_index,
-            num_cores=0,
-            node_id=None,
-            node_name=None
-        ):
-
+    def query_extra_data(self,
+                         perf_index,
+                         num_cores=0,
+                         node_id=None,
+                         node_name=None
+                         ):
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             logger.error("Task already computed")

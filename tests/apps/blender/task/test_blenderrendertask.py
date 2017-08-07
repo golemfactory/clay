@@ -27,7 +27,7 @@ from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.ci import ci_skip
-
+from apps.core.task.coretask import logger as logger_core
 
 class TestBlenderDefaults(unittest.TestCase):
 
@@ -465,7 +465,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         # Write log with warning and don't return data or should wait
         # if client was banned
         self.bt.computation_failed(subtask_id)
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_core, level="WARNING"):
             extra_data = self.bt.query_extra_data(100000, num_cores=0,
                                                   node_id='node',
                                                   node_name='node')

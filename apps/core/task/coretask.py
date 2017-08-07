@@ -16,8 +16,10 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
+from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
+from golem.resource.dirmanager import DirManager
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, \
     resource_types, ComputeTaskDef
@@ -118,6 +120,7 @@ class CoreTask(Task):
         task_timeout = task_definition.full_task_timeout
         deadline = timeout_to_deadline(task_timeout)
 
+        # resources stuff
         self.task_resources = list(set(filter(os.path.isfile, task_definition.resources))) # why is there a set?
         if resource_size is None:
             self.resource_size = 0
@@ -128,6 +131,7 @@ class CoreTask(Task):
 
         self.environment = self.ENVIRONMENT_CLASS()
 
+        # src_code stuff
         self.main_program_file = self.environment.main_program_file
         try:
             with open(self.main_program_file, "r") as src_file:
@@ -135,6 +139,13 @@ class CoreTask(Task):
         except IOError as err:
             logger.warning("Wrong main program file: {}".format(err))
             src_code = ""
+
+        # docker_images stuff
+        docker_images = None
+        if task_definition.docker_images:
+            docker_images = task_definition.docker_images
+        elif isinstance(self.environment, DockerEnvironment):
+            docker_images = self.environment.docker_images
 
         th = TaskHeader(
             node_name=node_name,
@@ -149,7 +160,7 @@ class CoreTask(Task):
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
-            docker_images=task_definition.docker_images,
+            docker_images=docker_images,
         )
 
         Task.__init__(self, th, src_code)
@@ -174,6 +185,7 @@ class CoreTask(Task):
         self.tmp_dir = None
         self.verificator = self.VERIFICATOR_CLASS()
         self.max_pending_client_results = max_pending_client_results
+
 
     def is_docker_task(self):
         return hasattr(self.header, 'docker_images') \

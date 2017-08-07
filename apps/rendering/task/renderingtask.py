@@ -30,7 +30,6 @@ PREVIEW_Y = 720
 
 logger = logging.getLogger("apps.rendering")
 
-
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
@@ -111,7 +110,7 @@ class RenderingTask(CoreTask):
     def restart_subtask(self, subtask_id):
         if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
             self._remove_from_preview(subtask_id)
-        super().restart_subtask(self, subtask_id)
+        super().restart_subtask(subtask_id)
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:

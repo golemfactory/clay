@@ -9,9 +9,12 @@ from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import TaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
-                                               RenderingTaskBuilder, logger,
+                                               RenderingTaskBuilder,
                                                PREVIEW_EXT, PREVIEW_Y,
                                                PREVIEW_X)
+from apps.core.task.coretask import logger as logger_core
+from apps.rendering.task.renderingtask import logger as logger_render
+
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 from golem.resource.dirmanager import DirManager
@@ -46,7 +49,7 @@ class RenderingTaskMock(RenderingTask):
 
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_core, level="WARNING"):
             rt = RenderingTaskMock(main_program_file="notexisting",
                                    task_definition=RenderingTaskDefinition(),
                                    node_name="Some name",
@@ -349,19 +352,19 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 18
 
         definition.total_subtasks = 2
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 3
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
         definition.total_subtasks = 34
-        with self.assertLogs(logger, level="WARNING"):
+        with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
         definition.total_subtasks = 33
-        with self.assertNoLogs(logger, level="WARNING"):
+        with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
     def test_build_definition(self):
