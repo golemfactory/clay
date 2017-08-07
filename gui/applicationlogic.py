@@ -164,7 +164,7 @@ class GuiApplicationLogic(QtCore.QObject, AppLogic):
             table.setItem(i, 1, QTableWidgetItem(str(peer['ip_port'][1])))
             table.setItem(i, 2, QTableWidgetItem(encode_hex(peer['remote_pubkey']).decode('utf-8')))
             if 'node_name' in peer:
-                table.setItem(i, 3, QTableWidgetItem(peer['node_name']))
+                table.setItem(i, 3, QTableWidgetItem(peer['node_name'].decode('utf-8')))
 
     def update_payments_view(self):
         self.client.get_balance().addCallbacks(
