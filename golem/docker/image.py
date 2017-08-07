@@ -9,9 +9,9 @@ log = logging.getLogger(__name__)
 
 class DockerImage(rlp.Serializable):
     fields = [
-        ('repository', rlp.sedes.binary),
+        ('repository', CBORSedes),
         ('image_id', CBORSedes),
-        ('tag', rlp.sedes.binary)
+        ('tag', CBORSedes)
     ]
 
     def __init__(self, repository=None, image_id=None, tag=None):
