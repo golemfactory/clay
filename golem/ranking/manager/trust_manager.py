@@ -32,7 +32,8 @@ def computed_neighbours_rank(node_id, neighbours):
     sum_weight = 0.0
     sum_trust = 0.0
     for neighbour in [x for x in neighbours if x != node_id]:
-        neighbour_trust_to_node_id = __computed_neighbour_trust_local(neighbour, node_id)
+        neighbour_trust_to_node_id = \
+            __computed_neighbour_trust_local(neighbour, node_id)
         trust_to_neighbour = computed_trust_local(get_local_rank(neighbour))
         weight = __neighbour_weight(trust_to_neighbour)
         sum_trust += (weight - 1) * neighbour_trust_to_node_id
@@ -60,7 +61,8 @@ def requested_neighbours_rank(node_id, neighbours):
     sum_weight = 0.0
     sum_trust = 0.0
     for neighbour in [x for x in neighbours if x != node_id]:
-        neighbour_trust_to_node_id = __requested_neighbour_trust_local(neighbour, node_id)
+        neighbour_trust_to_node_id = \
+            __requested_neighbour_trust_local(neighbour, node_id)
         trust_to_neighbour = requested_trust_local(get_local_rank(neighbour))
         weight = __neighbour_weight(trust_to_neighbour)
         sum_trust += (weight - 1) * neighbour_trust_to_node_id
