@@ -69,7 +69,7 @@ class DummyTask(CoreTask):
         return "Dummytask extra_data: {}".format(extra_data)
 
     def _extra_data(self, perf_index=0.0):
-        subtask_id = self._get_new_subtask_id()
+        subtask_id = self.__get_new_subtask_id()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
         sbs = self.task_definition.subtask_data_size
@@ -84,7 +84,7 @@ class DummyTask(CoreTask):
             'subtask_data': data,
             'difficulty': self.task_definition.difficulty,
             'result_size': self.task_definition.result_size,
-            'result_file': self._get_result_file_name(subtask_id),
+            'result_file': self.__get_result_file_name(subtask_id),
             'subtask_data_size': sbs
         }
 
@@ -109,14 +109,16 @@ class DummyTask(CoreTask):
         return self.ExtraData(ctd=ctd)
 
     # FIXME quite tricky to know that I should override this method
+    # it isn't really needed, i think
+    # but it is useful from educational point of view
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
         self.num_tasks_received += 1
 
-    def _get_new_subtask_id(self) -> str:
+    def __get_new_subtask_id(self) -> str:
         return "{}".format(random.getrandbits(128))
 
-    def _get_result_file_name(self, subtask_id: str) -> str:
+    def __get_result_file_name(self, subtask_id: str) -> str:
         return "{}{}{}".format(self.task_definition.out_file_basename,
                                subtask_id[0:6],
                                self.RESULT_EXTENSION)
@@ -124,6 +126,7 @@ class DummyTask(CoreTask):
     def query_extra_data_for_test_task(self):
         return self._extra_data()
 
+    # TODO why do I need that? (except for test)
     def _get_test_answer(self):
         return os.path.join(self.tmp_dir, "in" + self.RESULT_EXTENSION)
 
@@ -131,6 +134,7 @@ class DummyTask(CoreTask):
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
+
 
     def build(self):
         task = super(DummyTaskBuilder, self).build()
