@@ -14,17 +14,13 @@ APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 class DummyBenchmark(object):
     def __init__(self):
 
-        #TODO why is it that way? Where is examples/dummy?
-        if hasattr(sys, 'frozen') and sys.frozen:
-            self.dummy_task_path = join(dirname(sys.executable),
-                                      'examples', 'dummy')
-        else:
-            self.dummy_task_path = join(dirname(abspath(__file__)), "test_task")
+        # TODO change that
+        self.dummy_task_path = join(get_golem_path(), "apps", "dummy", "test_data")
 
         td = self.task_definition = DummyTaskDefinition()
 
         td.set_defaults(DummyTaskDefaults())
-        td.shared_data_file = join(self.dummy_task_path, td.shared_data_file)
+        td.shared_data_files = [join(self.dummy_task_path, x) for x in td.shared_data_files]
         td.out_file_basename = join(tempfile.gettempdir(), td.out_file_basename)
         td.options = DummyTaskOptions()
         td.task_id = u"{}".format("dummy_benchmark")

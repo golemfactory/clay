@@ -26,10 +26,17 @@
   "task_id":"540d9636-1848-c85d-19d3-52465d1f23cf",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/apps/dummy/benchmark/test_task/in.data"
+      "$GOLEM_DIR/apps/dummy/test_data/in.data",
+      "$GOLEM_DIR/apps/dummy/resources/code_dir/__init__.py",
+      "$GOLEM_DIR/apps/dummy/resources/code_dir/computing.py"
     ]
   },
-  "shared_data_file":"$GOLEM_DIR/apps/dummy/benchmark/test_task/in.data",
+  "code_files":[
+      "__init__.py",
+      "computing.py"
+    ],
+  "shared_data_files":["$GOLEM_DIR/apps/dummy/test_data/in.data"],
+  "code_dir": "$GOLEM_DIR/apps/dummy/resources/code_dir",
   "shared_data_size": 36,
   "subtask_data_size": 2048,
   "result_size": 256,

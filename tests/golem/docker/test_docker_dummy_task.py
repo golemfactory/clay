@@ -56,7 +56,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         DockerTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
 
-    def _test_task_definition(self):
+    def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
             task_def: DummyTaskDefinition = json.decode(f.read())
@@ -69,7 +69,8 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         task_def.resources = set(set_root_dir(p) for p in task_def.resources)
         task_def.main_program_file = set_root_dir(task_def.main_program_file)
-        task_def.shared_data_file = set_root_dir(task_def.shared_data_file)
+        task_def.shared_data_files = [set_root_dir(x) for x in task_def.shared_data_files]
+        task_def.code_dir = set_root_dir(task_def.code_dir)
 
         return task_def
 
@@ -105,20 +106,31 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         self.dirs_to_remove.append(resource_dir)
         self.dirs_to_remove.append(temp_dir)
 
-        # Copy the task resources
-        if len(task.task_resources) > 1:
-            common_prefix = path.commonprefix(task.task_resources)
-            common_prefix = path.dirname(common_prefix)
+        # Copy the task resources - data
+        td = task.task_definition
+        if len(td.shared_data_files) > 1:
+            common_data_prefix = path.commonprefix(td.shared_data_files)
+            common_data_prefix = path.dirname(common_data_prefix)
         else:
-            common_prefix = path.dirname(next(iter(task.task_resources)))  # first elem of set
+            common_data_prefix = path.dirname(next(iter(td.shared_data_files)))  # first elem of set
 
-        for res_file in task.task_resources:
+        for res_file in td.shared_data_files:
             dest_file = path.join(resource_dir,
-                                  res_file[len(common_prefix) + 1:])
+                                  "data",
+                                  res_file[len(common_data_prefix) + 1:])
             dest_dirname = path.dirname(dest_file)
             if not path.exists(dest_dirname):
                 makedirs(dest_dirname)
             shutil.copyfile(res_file, dest_file)
+
+        for res_file in td.code_files:
+            dest_file = path.join(resource_dir,
+                                  "code",
+                                  res_file)
+            dest_dirname = path.dirname(dest_file)
+            if not path.exists(dest_dirname):
+                makedirs(dest_dirname)
+            shutil.copyfile(os.path.join(td.code_dir, res_file), dest_file)
 
         def send_task_failed(self_, subtask_id, task_id, error_msg, *args):
             self.error_msg = error_msg

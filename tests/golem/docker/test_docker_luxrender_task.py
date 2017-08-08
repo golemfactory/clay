@@ -223,7 +223,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         task.res_y = 300
         task.res_x = 300
         task.haltspp = 25
-        # task.random_crop_window_for_verification = (0, 1, 0, 1) # to make it deterministic
+        task.random_crop_window_for_verification = (0, 1, 0, 1) # to make it deterministic
 
         self._test_luxrender_real_task(task)
 

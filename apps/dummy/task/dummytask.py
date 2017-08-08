@@ -60,7 +60,7 @@ class DummyTask(CoreTask):
         opts = self.verificator.verification_options
         opts["result_size"] = self.task_definition.result_size
         opts["difficulty"] = self.task_definition.difficulty
-        opts["shared_data_file"] = self.task_definition.shared_data_file
+        opts["shared_data_files"] = self.task_definition.shared_data_files
         opts["result_size"] = self.task_definition.result_size
 
         # self.dir_manager = DirManager(self.root_path) # is it needed?
@@ -76,17 +76,17 @@ class DummyTask(CoreTask):
         data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
         # now data is in the format "010010111010011...001"
 
-        shared_data_file_base = os.path.basename(
-            self.task_definition.shared_data_file
-        )
+        shared_data_files_base = [os.path.basename(x) for x in
+            self.task_definition.shared_data_files]
 
         extra_data = {
-            'data_file': shared_data_file_base,
+            'data_files': shared_data_files_base,
             'subtask_data': data,
             'difficulty': self.task_definition.difficulty,
             'result_size': self.task_definition.result_size,
             'result_file': self.__get_result_file_name(subtask_id),
-            'subtask_data_size': sbs
+            'subtask_data_size': sbs,
+            'code_dir': self.task_definition.code_dir
         }
 
         return self._new_compute_task_def(subtask_id,

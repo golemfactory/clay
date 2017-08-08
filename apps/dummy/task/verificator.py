@@ -1,11 +1,7 @@
 import os
 
-from jsonpickle import json
-
-from golem.core.common import HandleKeyError
-from apps.dummy.computing import check_pow
-
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.dummy.resources.code_dir import computing
 
 
 class DummyTaskVerificator(CoreVerificator):
@@ -44,11 +40,11 @@ class DummyTaskVerificator(CoreVerificator):
         if self.verification_options["difficulty"] == 0:
             return True
 
-        with open(self.verification_options["shared_data_file"], 'r') as f:
+        with open(self.verification_options["shared_data_files"][0], 'r') as f:
             input_data = f.read()
 
         input_data += subtask_info["subtask_data"]
 
-        return check_pow(int(result_data, 16),
-                         input_data,
-                         self.verification_options["difficulty"])
+        return computing.check_pow(int(result_data, 16),
+                                   input_data,
+                                   self.verification_options["difficulty"])
