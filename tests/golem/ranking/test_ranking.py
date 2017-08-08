@@ -272,3 +272,27 @@ class TestRanking(TestWithDatabase, LogTestCase, PEP8MixIn):
         r.client.collect_stopped_peers.return_value = {"MNO"}
         r._Ranking__make_break()
         assert r.global_finished
+
+        assert r.get_computing_trust("ABC") == 0.02
+        assert r.get_requesting_trust("ABC") == 0.0
+
+        assert r.get_computing_trust("DEF") == 0.0
+        assert r.get_requesting_trust("DEF") == 0.02
+
+        assert r.get_computing_trust("GHI") == 0.0
+        assert r.get_requesting_trust("GHI") == 0.0
+
+        assert r.get_computing_trust("JKL") == 0.0
+        assert r.get_requesting_trust("JKL") == 0.0
+
+        assert r.get_computing_trust("MNO") == 0.46989967711046415
+        assert r.get_requesting_trust("MNO") == 0.0
+
+        assert r.get_computing_trust("PQR") == 0.0
+        assert r.get_requesting_trust("PQR") == 0.0
+
+        assert r.get_computing_trust("XYZ") == 0.0
+        assert r.get_requesting_trust("XYZ") == 0.0
+
+        assert r.get_computing_trust("UnknownNode") == 0.0
+        assert r.get_requesting_trust("UnknownNode") == 0.0
