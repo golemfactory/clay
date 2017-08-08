@@ -138,7 +138,7 @@ class TaskEventListener(object):
         pass
 
 
-class Task(object):
+class Task(metaclass=abc.ABCMeta):
 
     class ExtraData(object):
         def __init__(self, should_wait=False, ctd=None, **kwargs):
@@ -191,6 +191,7 @@ class Task(object):
         """
         return  # Implement in derived class
 
+    @abc.abstractmethod
     def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None):
         """ Called when a node asks with given parameters asks for a new subtask to compute.
         :param int perf_index: performance that given node declares

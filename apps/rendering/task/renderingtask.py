@@ -310,7 +310,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     def build(self):
         task = super(RenderingTaskBuilder, self).build()
         self._set_verification_options(task)
-        task.initialize(self.dir_manager)
         return task
 
     @classmethod

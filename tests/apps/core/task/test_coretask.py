@@ -3,10 +3,9 @@ import shutil
 import unittest
 import zipfile
 import zlib
-from copy import copy
+from copy import copy, deepcopy
 
 from mock import MagicMock
-
 
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
@@ -25,17 +24,57 @@ from apps.core.task.coretaskstate import TaskDefinition
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
-    def _get_core_task(self):
+
+    # CoreTask is abstract, so in order to be able to instantiate it
+    # we have to override some stuff
+    class CoreTaskDeabstracted(CoreTask):
+        ENVIRONMENT_CLASS = MagicMock()
+        def query_extra_data(self, *args, **kwargs):
+            pass
+        def short_extra_data_repr(self, extra_data):
+            pass
+
+    @staticmethod
+    def _get_core_task_definition():
         task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
         task_definition.full_task_timeout = 3000
         task_definition.subtask_timeout = 30
-        task_cls = CoreTask
-        task_cls.ENVIRONMENT_CLASS = MagicMock()
-        task = CoreTask(
-            task_definition=task_definition,
+        return task_definition
+
+    def test_instantiation(self):
+        task_def = self._get_core_task_definition()
+
+        # abstract class cannot be instantiated
+        with self.assertRaises(TypeError):
+            CoreTask(task_def, "node_name")
+
+        class CoreTaskDeabstacted(CoreTask):
+            def query_extra_data(self, *args, **kwargs):
+                pass
+            def short_extra_data_repr(self, extra_data):
+                pass
+
+        # ENVIRONMENT has to be set
+        with self.assertRaises(TypeError):
+            CoreTaskDeabstacted(task_def, "node_name")
+
+        class CoreTaskDeabstractedEnv(CoreTask):
+            ENVIRONMENT_CLASS = MagicMock()
+            def query_extra_data(self, *args, **kwargs):
+                pass
+            def short_extra_data_repr(self, extra_data):
+                pass
+
+        self.assertTrue(isinstance(
+            CoreTaskDeabstractedEnv(task_def, "node_name"), CoreTask))
+
+    def _get_core_task(self):
+        task_def = TestCoreTask._get_core_task_definition()
+        task = self.CoreTaskDeabstracted(
+            task_definition=task_def,
             node_name="ABC",
             owner_address="10.10.10.10",
             owner_port=123,
@@ -76,7 +115,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.get_stdout(subtask_id), files[0])
         self.assertEqual(task.get_stderr(subtask_id), files[1])
-        
+
         self.assertEqual(task.after_test(None, None), {})
 
         assert len(task.listeners) == 0
@@ -113,9 +152,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
         files_copy = copy(files)
@@ -156,13 +195,13 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
-        res = [self.__compress_and_dump_file(files[0], "abc"*1000),
-               self.__compress_and_dump_file(files[1], "def"*100),
+        res = [self.__compress_and_dump_file(files[0], "abc" * 1000),
+               self.__compress_and_dump_file(files[1], "def" * 100),
                self.__compress_and_dump_file(files[2], "outputlog"),
                self.__compress_and_dump_file(files[3], "errlog"),
                self.__compress_and_dump_file(files[4], "ghi")]
@@ -198,9 +237,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files_dir = os.path.join(task.tmp_dir, subtask_id)
         files = self.additional_dir_content([5], sub_dir=files_dir)
 
-        shutil.move(files[2], files[2]+".log")
+        shutil.move(files[2], files[2] + ".log")
         files[2] += ".log"
-        shutil.move(files[3], files[3]+"err.log")
+        shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
         task.interpret_task_results(subtask_id, files, result_types["files"])
@@ -272,7 +311,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert task._interpret_log(files[0]) == "Some information from log"
         # no access to the file
         if is_linux():
-
             with open(files[1], 'w') as f:
                 f.write("No access to this information")
             os.chmod(files[1], 0o200)
@@ -441,9 +479,8 @@ class TestTaskTypeInfo(unittest.TestCase):
 
 
 class TestCoreTaskBuilder(unittest.TestCase):
-
     def _get_core_task_builder(self):
-        return CoreTaskBuilder("Node1", MagicMock(), "path", "manager")
+        return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())
 
     def test_init(self):
         builder = self._get_core_task_builder()
@@ -452,7 +489,7 @@ class TestCoreTaskBuilder(unittest.TestCase):
         assert builder.task_definition is not None
         assert builder.node_name == "Node1"
         assert builder.root_path == "path"
-        assert builder.dir_manager == "manager"
+        assert isinstance(builder.dir_manager, MagicMock)
 
     def test_get_task_kwargs(self):
         builder = self._get_core_task_builder()
@@ -470,4 +507,6 @@ class TestCoreTaskBuilder(unittest.TestCase):
 
     def test_build(self):
         builder = self._get_core_task_builder()
-        assert isinstance(builder.build(), CoreTask)
+        # CoreTask is now abstract
+        with self.assertRaises(TypeError):
+            builder.build()

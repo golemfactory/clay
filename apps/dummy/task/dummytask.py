@@ -63,7 +63,7 @@ class DummyTask(CoreTask):
         opts["shared_data_file"] = self.task_definition.shared_data_file
         opts["result_size"] = self.task_definition.result_size
 
-        # self.dir_manager = DirManager(self.root_path)
+        # self.dir_manager = DirManager(self.root_path) # is it needed?
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -74,6 +74,7 @@ class DummyTask(CoreTask):
         # create subtask-specific data, 4 bits go for one char (hex digit)
         sbs = self.task_definition.subtask_data_size
         data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
+        # now data is in the format "010010111010011...001"
 
         shared_data_file_base = os.path.basename(
             self.task_definition.shared_data_file
@@ -134,9 +135,3 @@ class DummyTask(CoreTask):
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
-
-
-    def build(self):
-        task = super(DummyTaskBuilder, self).build()
-        task.initialize(self.dir_manager)
-        return task

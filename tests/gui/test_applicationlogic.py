@@ -79,6 +79,7 @@ class TTaskBuilder(CoreTaskBuilder):
         self.task_class = task_class
 
     def build(self):
+        # no initialization here, but it is done in parent method
         t = self.task_class()
         t.header = TaskHeader(
             node_name="node1",

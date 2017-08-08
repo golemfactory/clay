@@ -136,7 +136,7 @@ class CoreTask(Task):
         try:
             with open(self.main_program_file, "r") as src_file:
                 src_code = src_file.read()
-        except IOError as err:
+        except Exception as err:
             logger.warning("Wrong main program file: {}".format(err))
             src_code = ""
 
@@ -359,6 +359,7 @@ class CoreTask(Task):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
+    # TODO why is it here at all?
     def query_extra_data_for_test_task(self):
         return None  # Implement in derived methods
 
@@ -550,6 +551,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     def build(self):
         task = self.TASK_CLASS(**self.get_task_kwargs())
+        task.initialize(self.dir_manager)
         return task
 
     def get_task_kwargs(self, **kwargs):
