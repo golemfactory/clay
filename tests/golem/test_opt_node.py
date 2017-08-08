@@ -39,6 +39,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
         mock_reactor.run.assert_not_called()
 
+    @patch('gevent.wait')
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
@@ -58,6 +59,7 @@ class TestNode(TestWithDatabase):
         self.assertEqual(init_call_args, ())
         self.assertEqual(init_call_kwargs.get('node_address'), node_address)
 
+    @patch('gevent.wait')
     @patch('golem.node.Node.run')
     @patch('golem.docker.manager.DockerManager')
     @patch('twisted.internet.reactor', create=True)
@@ -95,6 +97,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
+    @patch('gevent.wait')
+    @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_single_peer(self, mock_node, *_):
@@ -107,6 +111,9 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
+    @patch('gevent.wait')
+    @patch('twisted.internet.reactor', create=True)
+    @patch('gevent.get_hub')
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_many_peers(self, mock_node, *_):
@@ -130,6 +137,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
 
+    @patch('gevent.wait')
+    @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_peers(self, mock_node, *_):
@@ -145,6 +154,8 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 0)
         mock_node.run.assert_called_with(use_rpc=True)
 
+    @patch('gevent.wait')
+    @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.install_reactor')
     @patch('golemapp.OptNode')
     def test_rpc_address(self, *_):

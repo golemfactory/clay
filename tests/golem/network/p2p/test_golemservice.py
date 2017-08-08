@@ -7,13 +7,13 @@ from devp2p.peer import Peer
 from devp2p.multiplexer import Packet
 
 def override_ip_info(*_, **__):
-    from stun import OpenInternet
+    from golem.network.stun.pystun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
 
 def create_client(datadir):
     # executed in a subprocess
-    import stun
-    stun.get_ip_info = override_ip_info
+    from golem.network.stun import pystun
+    pystun.get_ip_info = override_ip_info
 
     from golem.client import Client
     return Client(datadir=datadir,

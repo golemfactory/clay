@@ -20,8 +20,12 @@ if 'twisted.internet.reactor' in sys.modules:
     del sys.modules['twisted.internet.reactor']
 from twisted.internet import asyncioreactor
 print("Installing reactor")
-asyncioreactor.install()
+asyncioreactor.install(gevent.get_hub().loop.aio)
 from twisted.internet import reactor
+
+def monkey_patched_run(self, *args, **kwargs):
+    self.startRunning(installSignalHandlers=True)
+asyncioreactor.AsyncioSelectorReactor.run = monkey_patched_run
 
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
@@ -105,8 +109,9 @@ def run_requesting_node(datadir, num_subtasks=3):
                 shutdown()
                 return
 
-    reactor.callInThread(report_status)
+    g = gevent.spawn(report_status)
     reactor.run()
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 
@@ -160,8 +165,9 @@ def run_computing_node(datadir, peer_address, node_id, fail_after=None):
                 return
             gevent.sleep(1)
 
-    reactor.callInThread(report_status, fail_after)
+    g = gevent.spawn(report_status, fail_after)
     reactor.run()
+    g.join()
     return client  # Used in tests, with mocked reactor
 
 

@@ -482,8 +482,6 @@ class TestClient(TestWithDatabase):
                              connect_to_known_hosts=False,
                              use_docker_machine_manager=False)
         self.client.start()
-        for service in self.client.services:
-            assert not self.client.services[service].is_stopped
 
         task_disc = self.client.task_server.disconnect
 
@@ -492,8 +490,6 @@ class TestClient(TestWithDatabase):
 
         self.client.stop()
 
-        for service in self.client.services:
-            assert self.client.services[service].is_stopped
         assert self.client.task_server.disconnect.called
 
 

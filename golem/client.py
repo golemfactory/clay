@@ -313,7 +313,6 @@ class Client(BaseApp, HardwarePresetsMixin):
         if self.task_server:
             self.task_server.stop_accepting()
             self.task_server.disconnect()
-        BaseApp.stop(self)
 
     def pause(self):
         if self.do_work_task.running:
@@ -325,7 +324,6 @@ class Client(BaseApp, HardwarePresetsMixin):
             self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
-        BaseApp.stop(self)
 
     def resume(self):
         if not self.do_work_task.running:
