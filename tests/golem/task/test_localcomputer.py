@@ -1,6 +1,6 @@
 from os import path
 
-from mock import Mock
+from mock import Mock, patch
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task, ComputeTaskDef
@@ -11,6 +11,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 
 
 @ci_skip
+@patch.multiple(Task, __abstractmethods__=frozenset())
 class TestLocalComputer(TestDirFixture):
     last_error = None
     last_result = None

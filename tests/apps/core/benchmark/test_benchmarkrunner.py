@@ -170,7 +170,7 @@ class BenchmarkRunnerTest(TempDirFixture):
 
 
 class WrongTask(Task):
-    def query_extra_data(self, perf_index):
+    def query_extra_data(*args, **kwargs):
         raise ValueError("Wrong task")
 
 @mock.patch.multiple(WrongTask, __abstractmethods__=frozenset())

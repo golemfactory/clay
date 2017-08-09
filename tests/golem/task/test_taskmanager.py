@@ -45,6 +45,8 @@ class TestTaskManagerWithPersistance(TestDirFixture, LogTestCase):
         assert any("RESTORE TASKS" in log for log in l.output)
 
 
+@patch.multiple(TaskMock, __abstractmethods__=frozenset())
+@patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
     def setUp(self):
         super(TestTaskManager, self).setUp()

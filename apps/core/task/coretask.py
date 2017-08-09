@@ -96,7 +96,7 @@ class TaskTypeInfo(object):
 class CoreTask(Task):
     VERIFICATOR_CLASS = CoreVerificator # type: Type[CoreVerificator]
 
-    # TODO maybe @ abstraact @ property?
+    # TODO maybe @abstract @property?
     ENVIRONMENT_CLASS = None # type: Type[Environment]
 
     handle_key_error = HandleKeyError(log_key_error)
