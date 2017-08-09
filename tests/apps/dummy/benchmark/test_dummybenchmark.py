@@ -2,7 +2,6 @@ import os
 import tempfile
 import unittest
 
-from apps.core.benchmark.benchmark import Benchmark
 from apps.dummy.benchmark.benchmark import DummyBenchmark
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
 
@@ -19,7 +18,7 @@ class TestDummyBenchmark(unittest.TestCase):
     def test_task_settings(self):
         self.assertTrue(os.path.isdir(self.db.dummy_task_path))
 
-        self.assertTrue(self.db.task_definition.out_file_basename ==\
+        self.assertTrue(self.db.task_definition.out_file_basename == \
                         os.path.join(tempfile.gettempdir(), "out"))
         self.assertTrue(self.db.task_definition.task_id == u"{}".format("dummy_benchmark"))
 

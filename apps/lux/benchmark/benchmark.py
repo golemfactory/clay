@@ -3,18 +3,18 @@ import tempfile
 from os import walk
 from os.path import abspath, dirname, join
 
-from apps.core.benchmark.benchmark import Benchmark
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderOptions
+from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from golem.core.common import get_golem_path
 
 APP_DIR = join(get_golem_path(), 'apps', 'lux')
 
 
-class LuxBenchmark(Benchmark):
+class LuxBenchmark(RenderingBenchmark):
     def __init__(self):
 
-        Benchmark.__init__(self)
+        RenderingBenchmark.__init__(self)
 
         self.normalization_constant = 9910
 

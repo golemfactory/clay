@@ -8,7 +8,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 logger = logging.getLogger("apps.core")
 
 
-class Benchmark(object):
+class RenderingBenchmark(object):
     def __init__(self):
         self.task_definition = RenderingTaskDefinition()
         self.task_definition.max_price = 100

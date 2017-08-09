@@ -1,9 +1,11 @@
+import time
+
+import mock
+
 from apps.core.benchmark import benchmarkrunner
 from golem.task.taskbase import Task
 from golem.testutils import TempDirFixture
-import mock
-import time
-import golem
+
 
 class BenchmarkRunnerTest(TempDirFixture):
 

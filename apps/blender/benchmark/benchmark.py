@@ -1,15 +1,14 @@
+import pathlib
 import sys
 import tempfile
 from os.path import dirname, join
 
-import pathlib
-
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRendererOptions
-from apps.core.benchmark.benchmark import Benchmark
+from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 
 
-class BlenderBenchmark(Benchmark):
+class BlenderBenchmark(RenderingBenchmark):
     def __init__(self):
         super(BlenderBenchmark, self).__init__()
         self.normalization_constant = 9360

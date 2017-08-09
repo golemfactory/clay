@@ -14,11 +14,8 @@ APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 class DummyBenchmark(object):
     def __init__(self):
 
-        # TODO change that
         self.dummy_task_path = join(get_golem_path(), "apps", "dummy", "test_data")
-
         td = self.task_definition = DummyTaskDefinition()
-
         td.set_defaults(DummyTaskDefaults())
         td.shared_data_files = [join(self.dummy_task_path, x) for x in td.shared_data_files]
         td.out_file_basename = join(tempfile.gettempdir(), td.out_file_basename)

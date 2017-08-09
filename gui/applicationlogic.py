@@ -2,18 +2,18 @@
 
 import logging
 import os
-from PyQt5 import QtCore
 
 import jsonpickle
+from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
 from PyQt5.QtWidgets import QTableWidgetItem
 from ethereum.utils import denoms
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
-from apps.core.benchmark.minilight.src.minilight import makePerfTest
 from apps.core.task.coretaskstate import TaskDesc
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
+from apps.rendering.benchmark.minilight.src.minilight import makePerfTest
 from golem.core.common import get_golem_path
 from golem.core.simpleenv import SimpleEnv
 from golem.core.simpleserializer import DictSerializer
