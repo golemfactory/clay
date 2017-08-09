@@ -5,7 +5,7 @@ from golem.environments.utils import find_program
 
 class TestCheckCmd(unittest.TestCase):
     def test_find_program(self):
-        self.assertTrue(find_program('python'))
+        self.assertTrue(find_program('python3'))
         self.assertFalse(find_program('afjaljl'))
 
         if os.name == 'nt':

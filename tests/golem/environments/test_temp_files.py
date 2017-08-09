@@ -19,7 +19,7 @@ class TestTempFiles(TestDirFixture):
             name = tmp_file.name
             self.assertTrue(os.path.exists(name))
             tmp_file.write("print('hello!')")
-        cmd = ['python', name]
+        cmd = ['python3', name]
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         proc.wait()
         out = proc.stdout.read()

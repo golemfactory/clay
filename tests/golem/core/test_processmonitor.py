@@ -141,7 +141,7 @@ class TestProcessMonitor(LogTestCase):
 
     def test_lifecycle_popen(self):
 
-        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        process = subprocess.Popen(['python3', '-c', 'import time; time.sleep(1)'])
         assert ProcessMonitor.is_process_alive(process)
         assert ProcessMonitor._pid(process)
         assert ProcessMonitor.is_supported(process)
@@ -174,7 +174,7 @@ class TestProcessMonitor(LogTestCase):
 
     def test_kill_process_popen(self):
 
-        process = subprocess.Popen(['python', '-c', 'import time; time.sleep(1)'])
+        process = subprocess.Popen(['python3', '-c', 'import time; time.sleep(1)'])
         assert ProcessMonitor.is_process_alive(process)
         ProcessMonitor.kill_process(process)
         assert not ProcessMonitor.is_process_alive(process)
