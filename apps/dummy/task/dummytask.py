@@ -58,11 +58,11 @@ class DummyTask(CoreTask):
             root_path=root_path
         )
 
-        opts = self.verificator.verification_options
-        opts["result_size"] = self.task_definition.result_size
-        opts["difficulty"] = self.task_definition.difficulty
-        opts["shared_data_files"] = self.task_definition.shared_data_files
-        opts["result_size"] = self.task_definition.result_size
+        ver_opts = self.verificator.verification_options
+        ver_opts["result_size"] = self.task_definition.options.result_size
+        ver_opts["difficulty"] = self.task_definition.options.difficulty
+        ver_opts["shared_data_files"] = self.task_definition.shared_data_files
+        ver_opts["result_size"] = self.task_definition.options.result_size
 
         # self.dir_manager = DirManager(self.root_path) # is it needed?
 
@@ -73,7 +73,7 @@ class DummyTask(CoreTask):
         subtask_id = self.__get_new_subtask_id()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
-        sbs = self.task_definition.subtask_data_size
+        sbs = self.task_definition.options.subtask_data_size
         data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
         # now data is in the format "010010111010011...001"
 
@@ -83,8 +83,8 @@ class DummyTask(CoreTask):
         extra_data = {
             'data_files': shared_data_files_base,
             'subtask_data': data,
-            'difficulty': self.task_definition.difficulty,
-            'result_size': self.task_definition.result_size,
+            'difficulty': self.task_definition.options.difficulty,
+            'result_size': self.task_definition.options.result_size,
             'result_file': self.__get_result_file_name(subtask_id),
             'subtask_data_size': sbs,
             'code_dir': self.task_definition.code_dir
@@ -137,24 +137,31 @@ class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
 
-    # def get_task_kwargs(self, **kwargs):
-    #     kwargs = super().get_task_kwargs(**kwargs)
-    #     kwargs['halttime'] = self.task_definition.options.halttime
-    #     kwargs['haltspp'] = self.task_definition.options.haltspp
-    #     return kwargs
-    #
-    # @classmethod
-    # def build_dictionary(cls, definition):
-    #
-    #     dictionary = super().build_dictionary(definition)
-    #     dictionary['options']['haltspp'] = definition.options.haltspp
-    #     return dictionary
-    #
-    # @classmethod
-    # def build_full_definition(cls, task_type, dictionary):
-    #     options = dictionary['options']
-    #
-    #     definition = super().build_full_definition(task_type, dictionary)
-    #     definition.options.haltspp = options.get('haltspp',
-    #                                              definition.options.haltspp)
-    #     return definition
+    def get_task_kwargs(self, **kwargs):
+        kwargs = super().get_task_kwargs(**kwargs)
+        kwargs['subtask_data_size'] = self.task_definition.options.subtask_data_size
+        kwargs['result_size'] = self.task_definition.options.result_size
+        kwargs['difficulty'] = self.task_definition.options.difficulty
+        return kwargs
+
+    @classmethod
+    def build_dictionary(cls, definition):
+        dictionary = super().build_dictionary(definition)
+        dictionary['options']['subtask_data_size'] = definition.options.subtask_data_size
+        dictionary['options']['result_size'] = definition.options.result_size
+        dictionary['options']['difficulty'] = definition.options.difficulty
+
+        return dictionary
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary):
+        options = dictionary['options']
+
+        definition = super().build_full_definition(task_type, dictionary)
+        definition.options.subtask_data_size = options.get('subtask_data_size',
+                                                 definition.options.subtask_data_size)
+        definition.options.result_size = options.get('result_size',
+                                                 definition.options.result_size)
+        definition.options.difficulty = options.get('difficulty',
+                                                 definition.options.difficulty)
+        return definition

@@ -21,7 +21,10 @@
       "software":[
         "Docker"
       ]
-    }
+    },
+  "subtask_data_size": 2048,
+  "result_size": 256,
+  "difficulty": 16777215
   },
   "task_id":"540d9636-1848-c85d-19d3-52465d1f23cf",
   "resources":{
@@ -38,10 +41,7 @@
   "code_dir": "$GOLEM_DIR/apps/dummy/resources/code_dir/",
   "shared_data_files":["$GOLEM_DIR/apps/dummy/test_data/in.data"],
   "shared_data_size": 36,
-  "subtask_data_size": 2048,
-  "result_size": 256,
   "out_file_basename": "out",
-  "difficulty": 16777215,
   "verification_options":null,
   "estimated_memory":0,
   "full_task_timeout":14400,
