@@ -22,7 +22,7 @@ class DummyTaskDefaults(CoreTaskDefaults):
         self.default_subtasks = 5
         self.options = DummyTaskOptions()
 
-        self.code_dir = "code_dir/"
+        self.code_dir = "code_dir"
 
         @property
         def full_task_timeout(self):
@@ -41,24 +41,24 @@ class DummyTaskDefinition(TaskDefinition):
 
         # size of data shared by all subtasks in bytes
         # plus size of "computing" script
-        self._shared_data_size = 0
+        self.shared_data_size = 0
 
         # subtask data
-        self._shared_data_files = []
-        # subtask code
-        self._code_dir = ""
-        self._code_files = []
+        self.shared_data_files = []
+        # subtask code_dir
+        self.code_dir = ""
+        self.code_files = []
 
-        self._subtask_data_size = 0 # size of subtask-specific data in bytes
-        self._result_size = 0 # size of subtask result in bytes
+        self.subtask_data_size = 0 # size of subtask-specific data in bytes
+        self.result_size = 0 # size of subtask result in bytes
 
         # The difficulty is a 4 byte int; 0x00000001 is the greatest and 0xffffffff
         # the least difficulty. For example difficulty = 0x003fffff requires
         # 0xffffffff / 0x003fffff = 1024 hash computations on average.
-        self._difficulty = 0x0
+        self.difficulty = 0x0
 
-        self._shared_data_files = []
-        self._out_file_basename = ""
+        self.shared_data_files = []
+        self.out_file_basename = ""
 
         if defaults:
             self.set_defaults(defaults)
@@ -92,4 +92,3 @@ class DummyTaskOptions(Options):
     def __init__(self):
         super(DummyTaskOptions, self).__init__()
         self.environment = DummyTaskEnvironment() #TODO it shoudn't be there
-        self.hash_type = "sha256" # TODO I will use it later

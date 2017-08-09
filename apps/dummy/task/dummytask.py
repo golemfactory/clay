@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import uuid
 from typing import Union
 
 from apps.core.task import coretask
@@ -135,3 +136,25 @@ class DummyTask(CoreTask):
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
+
+    # def get_task_kwargs(self, **kwargs):
+    #     kwargs = super().get_task_kwargs(**kwargs)
+    #     kwargs['halttime'] = self.task_definition.options.halttime
+    #     kwargs['haltspp'] = self.task_definition.options.haltspp
+    #     return kwargs
+    #
+    # @classmethod
+    # def build_dictionary(cls, definition):
+    #
+    #     dictionary = super().build_dictionary(definition)
+    #     dictionary['options']['haltspp'] = definition.options.haltspp
+    #     return dictionary
+    #
+    # @classmethod
+    # def build_full_definition(cls, task_type, dictionary):
+    #     options = dictionary['options']
+    #
+    #     definition = super().build_full_definition(task_type, dictionary)
+    #     definition.options.haltspp = options.get('haltspp',
+    #                                              definition.options.haltspp)
+    #     return definition

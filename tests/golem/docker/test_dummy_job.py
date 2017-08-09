@@ -25,19 +25,30 @@ class TestDummyTaskDockerJob(TestDockerJob):
         with open(task_script) as f:
             task_script_src = f.read()
 
-        # copy the resources to the resources dir
-        dummy_task_dir = path.join(get_golem_path(),
-                                   "apps", "dummy", "benchmark", "test_task")
+        os.mkdir(os.path.join(self.resources_dir, "data"))
+        os.mkdir(os.path.join(self.resources_dir, "code"))
 
-        for f in os.listdir(dummy_task_dir):
-            task_file = path.join(dummy_task_dir, f)
+        # copy the resources to the resources dir
+        data_dir = path.join(get_golem_path(),
+                                   "apps", "dummy", "test_data")
+
+        for f in os.listdir(data_dir):
+            task_file = path.join(data_dir, f)
             if path.isfile(task_file) or path.isdir(task_file):
-                shutil.copy(task_file, path.join(self.resources_dir, f))
+                shutil.copy(task_file, path.join(self.resources_dir, "data", f))
+
+        code_dir = path.join(get_golem_path(),
+                                   "apps", "dummy", "resources", "code_dir")
+
+        for f in os.listdir(code_dir):
+            task_file = path.join(code_dir, f)
+            if path.isfile(task_file) or path.isdir(task_file):
+                shutil.copy(task_file, path.join(self.resources_dir, "code", f))
 
         # this is the stuff that is available by "params" module
         # in the docker job script
         params = {
-            "data_file": "in.data",
+            "data_files": ["in.data"],
             "subtask_data": "00110011",  # it is kept in string on purpose
             "subtask_data_size": 8,  # subtask_data_size is to double check the size, if we havent
                                      # kept subtask_data in string, we would lose leading zeros

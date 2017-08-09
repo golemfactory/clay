@@ -280,7 +280,7 @@ class CoreTask(Task):
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
             elif resource_type == resource_types["parts"]:
-                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
+                 return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
                                                                                dir_name,
                                                                                self.res_files)
             elif resource_type == resource_types["hashes"]:

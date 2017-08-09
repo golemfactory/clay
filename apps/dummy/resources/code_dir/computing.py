@@ -13,8 +13,8 @@ def check_pow(proof, input_data, difficulty):
     :rtype bool:
     """
     sha = hashlib.sha256()
-    sha.update(input_data)
-    sha.update('%x' % proof)
+    sha.update(input_data.encode())
+    sha.update(('%x' % proof).encode())
     h = int(sha.hexdigest()[0:8], 16)
     return h <= difficulty
 
@@ -57,4 +57,4 @@ def run_dummy_task(data_file, subtask_string, difficulty, result_size):
     assert len(result) == result_size
 
     print('[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec')
-    return {'data': result, 'result_type': 0}
+    return result

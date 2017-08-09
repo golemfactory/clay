@@ -1,4 +1,4 @@
-from mock import Mock
+from mock import Mock, patch
 
 from golem.task.taskbase import Task
 from golem.task.tasktester import TaskTester, logger
@@ -26,7 +26,13 @@ class MemTaskThread(TaskThread):
 
 
 class TestTaskTester(TestDirFixture, LogTestCase):
-    task = Task(Mock(), Mock())
+
+    #noinspection PyUnresolvedReferences
+    @property
+    @patch.multiple(Task, __abstractmethods__=set())
+    def task(self):
+        return Task(Mock(), Mock())
+
     node = 'node1'
     task_name = 'task1'
 
