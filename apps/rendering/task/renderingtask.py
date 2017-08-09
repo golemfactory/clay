@@ -33,7 +33,7 @@ logger = logging.getLogger("apps.rendering")
 class RenderingTask(CoreTask):
 
     VERIFICATOR_CLASS = RenderingVerificator
-    ENVIRONMENT_CLASS: Type[DockerEnvironment] = None
+    ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
 
     @classmethod
     def _get_task_collector_path(cls):

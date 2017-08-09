@@ -59,7 +59,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
     def _test_task_definition(self) -> DummyTaskDefinition:
         task_file = path.join(path.dirname(__file__), self.TASK_FILE)
         with open(task_file, "r") as f:
-            task_def: DummyTaskDefinition = json.decode(f.read())
+            task_def = json.decode(f.read()) # type: DummyTaskDefinition
 
         # Replace $GOLEM_DIR in paths in task definition by get_golem_path()
         golem_dir = get_golem_path()
@@ -80,7 +80,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         dir_manager = DirManager(self.path)
         task_builder = DummyTaskBuilder(node_name, task_def, self.tempdir,
                                         dir_manager)
-        task: DummyTask = task_builder.build()
+        task = task_builder.build() # type: DummyTask
         task.max_pending_client_results = 5
         return task
 

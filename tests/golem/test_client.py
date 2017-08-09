@@ -800,6 +800,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.config_changed()
         rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
 
+    @patch.multiple(Task, __abstractmethods__=frozenset())
     def test_create_task(self, *_):
         c = self.client
         c.enqueue_new_task = Mock()
