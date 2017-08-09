@@ -46,7 +46,10 @@ class RenderingTaskMock(RenderingTask):
         self.ENVIRONMENT_CLASS.main_program_file = main_program_file
         super(RenderingTaskMock, self).__init__(*args, **kwargs)
 
+    def query_extra_data(*args, **kwargs):
+        pass
 
+    
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
         with self.assertLogs(logger_core, level="WARNING"):

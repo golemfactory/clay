@@ -29,6 +29,8 @@ class FrameRenderingTaskMock(FrameRenderingTask):
         self.ENVIRONMENT_CLASS.main_program_file = main_program_file
         super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
+    def query_extra_data(*args, **kwargs):
+        pass
 
 class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 

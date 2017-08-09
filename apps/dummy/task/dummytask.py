@@ -78,7 +78,7 @@ class DummyTask(CoreTask):
         # now data is in the format "010010111010011...001"
 
         shared_data_files_base = [os.path.basename(x) for x in
-            self.task_definition.shared_data_files]
+                                  self.task_definition.shared_data_files]
 
         extra_data = {
             'data_files': shared_data_files_base,
