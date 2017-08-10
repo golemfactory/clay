@@ -52,7 +52,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
             "subtask_data": "00110011",  # it is kept in string on purpose
             "subtask_data_size": 8,  # subtask_data_size is to double check the size, if we havent
                                      # kept subtask_data in string, we would lose leading zeros
-            "difficulty": 0x00ffffff,
+            "difficulty": 10,
             "result_size": 256,
             "result_file": "out.result",
         }

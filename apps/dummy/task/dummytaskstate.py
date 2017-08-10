@@ -16,7 +16,7 @@ class DummyTaskDefaults(CoreTaskDefaults):
         self.options = DummyTaskOptions()
         self.options.subtask_data_size = 2048
         self.options.result_size = 256
-        self.options.difficulty = 0x00ffffff
+        self.options.difficulty = 10 # magic number
 
         self.shared_data_files = ["in.data"]
         self.out_file_basename = "out"
@@ -93,4 +93,4 @@ class DummyTaskOptions(Options):
         # The difficulty is a 4 byte int; 0x00000001 is the greatest and 0xffffffff
         # the least difficulty. For example difficulty = 0x003fffff requires
         # 0xffffffff / 0x003fffff = 1024 hash computations on average.
-        self.difficulty = 0x003fffff
+        self.difficulty = 10 # 32 - log2(0x003fffff)

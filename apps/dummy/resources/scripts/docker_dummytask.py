@@ -19,8 +19,7 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):  # TODO
     # spec = importlib.util.spec_from_file_location("code", code)
     # computing_module = importlib.util.module_from_spec(spec)
     # spec.loader.exec_module(computing_module)
-    if len(subtask_data) == 10:
-        raise Exception(str(difficulty))
+
     # raise Exception(code_file, os.listdir(RESOURCES_DIR))# os.listdir( os.path.join(RESOURCES_DIR, "resources")))#, os.listdir(RESOURCES_DIR + "/resources"), os.listdir(RESOURCES_DIR) + "/resources/code")
     computing = imp.load_source("code", code_file)
 
