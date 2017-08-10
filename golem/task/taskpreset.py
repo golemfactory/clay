@@ -1,6 +1,5 @@
 import logging
 
-import jsonpickle
 from peewee import IntegrityError
 
 from golem.model import TaskPreset
