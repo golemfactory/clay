@@ -132,7 +132,7 @@ class LuxTask(renderingtask.RenderingTask):
     ################
 
     def __init__(self, halttime, haltspp, **kwargs):
-        super(LuxTask, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
         self.dirManager = DirManager(self.root_path)
         self.tmp_dir = \
@@ -614,18 +614,14 @@ class LuxRenderTaskBuilder(renderingtask.RenderingTaskBuilder):
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(LuxRenderTaskBuilder, cls)
-
-        dictionary = parent.build_dictionary(definition)
+        dictionary = super().build_dictionary(definition)
         dictionary['options']['haltspp'] = definition.options.haltspp
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        parent = super(LuxRenderTaskBuilder, cls)
         options = dictionary['options']
-
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = super().build_full_definition(task_type, dictionary)
         definition.options.haltspp = options.get('haltspp',
                                                  definition.options.haltspp)
         return definition

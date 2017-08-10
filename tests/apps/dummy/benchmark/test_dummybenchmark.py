@@ -25,9 +25,7 @@ class TestDummyBenchmark(unittest.TestCase):
         self.assertTrue(all(os.path.isfile(x) for x in self.db.task_definition.shared_data_files))
         self.assertTrue(os.path.isfile(self.db.task_definition.main_program_file))
 
-        self.assertTrue(self.db.task_definition.difficulty == 0x00ffffff)
+        self.assertTrue(self.db.task_definition.options.difficulty == 0x00ffffff)
         self.assertTrue(self.db.task_definition.result_size == 256)
-        self.assertTrue(self.db.task_definition.subtask_data_size == 2048)
-        self.assertTrue(self.db.task_definition.shared_data_size == 36)
+        self.assertTrue(self.db.task_definition.options.subtask_data_size == 2048)
         sizes = sum(os.stat(x).st_size for x in self.db.task_definition.shared_data_files)
-        self.assertTrue(sizes, self.db.task_definition.shared_data_size)

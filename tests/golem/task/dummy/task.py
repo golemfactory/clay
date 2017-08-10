@@ -16,7 +16,6 @@ class DummyTaskParameters(object):
     the least difficulty. For example difficulty = 0x003fffff requires
     0xffffffff / 0x003fffff = 1024 hash computations on average.
 
-    :type shared_data_size: int: size of data shared by all subtasks in bytes
     :type subtask_data_size: int: size of subtask-specific data in bytes
     :type result_size: int: size of subtask result in bytes
     :type difficulty: int: computational difficulty

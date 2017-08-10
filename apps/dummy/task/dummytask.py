@@ -54,15 +54,13 @@ class DummyTask(CoreTask):
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            resource_size=task_definition.shared_data_size,
             root_path=root_path
         )
 
         ver_opts = self.verificator.verification_options
-        ver_opts["result_size"] = self.task_definition.options.result_size
         ver_opts["difficulty"] = self.task_definition.options.difficulty
         ver_opts["shared_data_files"] = self.task_definition.shared_data_files
-        ver_opts["result_size"] = self.task_definition.options.result_size
+        ver_opts["result_size"] = self.task_definition.result_size
 
         # self.dir_manager = DirManager(self.root_path) # is it needed?
 
@@ -84,7 +82,7 @@ class DummyTask(CoreTask):
             'data_files': shared_data_files_base,
             'subtask_data': data,
             'difficulty': self.task_definition.options.difficulty,
-            'result_size': self.task_definition.options.result_size,
+            'result_size': self.task_definition.result_size,
             'result_file': self.__get_result_file_name(subtask_id),
             'subtask_data_size': sbs,
             'code_dir': self.task_definition.code_dir
@@ -137,18 +135,10 @@ class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
 
-    def get_task_kwargs(self, **kwargs):
-        kwargs = super().get_task_kwargs(**kwargs)
-        kwargs['subtask_data_size'] = self.task_definition.options.subtask_data_size
-        kwargs['result_size'] = self.task_definition.options.result_size
-        kwargs['difficulty'] = self.task_definition.options.difficulty
-        return kwargs
-
     @classmethod
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)
         dictionary['options']['subtask_data_size'] = definition.options.subtask_data_size
-        dictionary['options']['result_size'] = definition.options.result_size
         dictionary['options']['difficulty'] = definition.options.difficulty
 
         return dictionary
@@ -160,8 +150,6 @@ class DummyTaskBuilder(CoreTaskBuilder):
         definition = super().build_full_definition(task_type, dictionary)
         definition.options.subtask_data_size = options.get('subtask_data_size',
                                                  definition.options.subtask_data_size)
-        definition.options.result_size = options.get('result_size',
-                                                 definition.options.result_size)
         definition.options.difficulty = options.get('difficulty',
                                                  definition.options.difficulty)
         return definition
