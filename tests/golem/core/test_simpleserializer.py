@@ -1,37 +1,16 @@
 import random
 import unittest
 
-from golem.core.simpleserializer import SimpleSerializer, CBORSerializer, DictCoder, DictSerializer
+from golem.core.simpleserializer import CBORSerializer, DictCoder, DictSerializer, \
+    JSONDictSerializer
 
 
-class Example(object):
-    def __init__(self):
-        self.int = 4
-        self.string = "abcdefghi\\kwa \\bla"
-        self.list = ['a', 'b', 'c']
-        self.dict = {'k': None, 'w': 1.0, 'a': 'bla'}
-
-    def __eq__(self, exm2):
-        if self.int != exm2.int:
-            return False
-        if self.string != exm2.string:
-            return False
-        if self.list != exm2.list:
-            return False
-        if self.dict != exm2.dict:
-            return False
-        return True
-
-
-class TestSimpleSerializer(unittest.TestCase):
-
-    def testSerializer(self):
-        data = Example()
-        ser = SimpleSerializer.dumps(data)
-        self.assertTrue(isinstance(ser, str))
-        data2 = SimpleSerializer.loads(ser)
-        self.assertTrue(isinstance(data2, Example))
-        self.assertEqual(data, data2)
+class TestJSONDictSerializer(unittest.TestCase):
+    def test_jsondict_serializer(self):
+        test_dict = {7: 17, 28: 48}
+        ser = JSONDictSerializer.dumps(test_dict)
+        deser = JSONDictSerializer.loads(ser, int)
+        self.assertEqual(test_dict, deser)
 
 
 class MockSerializationInnerSubject(object):

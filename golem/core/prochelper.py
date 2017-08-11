@@ -1,10 +1,11 @@
-import os
-import psutil
 import fnmatch
-import time
 import logging
+import os
+import time
 
-from .simpleserializer import SimpleSerializer
+import psutil
+
+from .simpleserializer import JSONDictSerializer
 from .simpleenv import SimpleEnv
 from .variables import DEFAULT_PROC_FILE, MAX_PROC_FILE_SIZE
 
@@ -105,10 +106,11 @@ class ProcessService(object):
     def __read_state_snapshot(self):
         os.lseek(self.fd, 0, 0)
         data = os.read(self.fd, self.maxFileSize)
-        self.state = SimpleSerializer.loads(data)
+        # JSON serializes every key as a string, so convert it back to int
+        self.state = JSONDictSerializer.loads(data, int)
 
     def __write_state_snapshot(self):
-        data = SimpleSerializer.dumps(self.state)
+        data = JSONDictSerializer.dumps(self.state)
 
         os.lseek(self.fd, 0, 0)
 
@@ -119,7 +121,7 @@ class ProcessService(object):
 
         hack.close()
 
-    def __update_state(self):
+    def __update_state(self) -> int:
         pids = psutil.pids()
         updated_state = {}
         ids = []

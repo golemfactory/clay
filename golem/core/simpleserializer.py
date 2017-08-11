@@ -1,16 +1,36 @@
 import collections
 import inspect
+import json
 import logging
 import sys
 import types
+from typing import Type
 
 import cbor2
-import jsonpickle
 import pytz
 
 from golem.core.common import to_unicode
 
 logger = logging.getLogger('golem.core.simpleserializer')
+
+
+class JSONDictSerializer:
+    @staticmethod
+    def loads(data: str, key_type: Type) -> dict:
+        """
+        Creates a dict from the JSON formatted data.
+        :param data: the JSON data
+        :param key_type: the type the keys should be converted to
+        """
+        deserialized = json.loads(data)
+        return {key_type(k): v for k, v in deserialized.items()}
+
+    @staticmethod
+    def dumps(obj) -> str:
+        """
+        Dumps the object obj to JSON, if can be easily serialied
+        """
+        return json.dumps(obj)
 
 
 class DictCoder(object):
@@ -137,27 +157,6 @@ class CBORCoder(DictCoder):
         if shareable_index is not None and not cls.disable_value_sharing:
             decoder.shareables[shareable_index] = obj
         return obj
-
-
-class SimpleSerializer(object):
-    """ Simple meta-class that serialize and deserialize objects to a json format"""
-    @classmethod
-    def dumps(cls, obj):
-        """
-        Serialize obj to a JSON format
-        :param obj: object to be serialized
-        :return str: serialized object in json format
-        """
-        return jsonpickle.dumps(obj)
-
-    @classmethod
-    def loads(cls, data):
-        """
-        Deserialize data to a Python object
-        :param str data: json object to be deserialized
-        :return: deserialized Python object
-        """
-        return jsonpickle.loads(data)
 
 
 class DictSerializer(object):
