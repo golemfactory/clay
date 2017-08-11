@@ -40,6 +40,7 @@ class DummyTask(CoreTask):
     RESULT_EXTENSION = ".result"
 
     def __init__(self,
+                 total_tasks: int, # TODO REFACTOR IT AWAY
                  node_name: str,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
@@ -56,6 +57,8 @@ class DummyTask(CoreTask):
             owner_key_id=owner_key_id,
             root_path=root_path
         )
+
+        self.total_tasks = total_tasks # TODO WTF I HAVE TO DO THAT???
 
         ver_opts = self.verificator.verification_options
         ver_opts["difficulty"] = self.task_definition.options.difficulty
@@ -113,10 +116,12 @@ class DummyTask(CoreTask):
     # but it is useful from educational point of view
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        self.num_tasks_received += 1
+        self.num_tasks_received += 1  # TODO WTF???? WHY DO I HAVE TO DO THAT?
+        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()  # TODO WTF???? WHY DO I HAVE TO DO THAT?
+
 
     def __get_new_subtask_id(self) -> str:
-        return "{}".format(random.getrandbits(128))
+        return "{}".format(str(random.getrandbits(128)))
 
     def __get_result_file_name(self, subtask_id: str) -> str:
         return "{}{}{}".format(self.task_definition.out_file_basename,
@@ -135,11 +140,22 @@ class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
 
+    # TODO WTF??
+    # 1st of all: move it to coretask
+    # 2nd of all: why is it using self, when it should be a class method?
+    # (copied from rendering tasks, in theory classmethod, but in practise it uses
+    # _calculate_total(self, ...)
+    # @classmethod
+    def get_task_kwargs(self, **kwargs):
+        kwargs = super().get_task_kwargs(**kwargs)
+        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
+        return kwargs
+
     @classmethod
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)
-        dictionary['options']['subtask_data_size'] = definition.options.subtask_data_size
-        dictionary['options']['difficulty'] = definition.options.difficulty
+        dictionary['options']['subtask_data_size'] = int(definition.options.subtask_data_size)
+        dictionary['options']['difficulty'] = int(definition.options.difficulty)
 
         return dictionary
 
@@ -148,8 +164,8 @@ class DummyTaskBuilder(CoreTaskBuilder):
         options = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
-        definition.options.subtask_data_size = options.get('subtask_data_size',
-                                                 definition.options.subtask_data_size)
-        definition.options.difficulty = options.get('difficulty',
-                                                 definition.options.difficulty)
+        definition.options.subtask_data_size = int(options.get('subtask_data_size',
+                                                 definition.options.subtask_data_size))
+        definition.options.difficulty = int(options.get('difficulty',
+                                                 definition.options.difficulty))
         return definition
