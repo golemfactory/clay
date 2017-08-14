@@ -2,6 +2,8 @@ import tempfile
 from copy import deepcopy
 import os
 
+import enforce
+
 from apps.core.task.coretaskstate import (TaskDefinition,
                                           CoreTaskDefaults,
                                           Options)
@@ -33,6 +35,7 @@ class DummyTaskDefaults(CoreTaskDefaults):
             return 1200
 
 
+@enforce.runtime_validation
 class DummyTaskDefinition(TaskDefinition):
 
     #TODO put defaults switch in base class, create CoreTaskDefinition
@@ -46,6 +49,7 @@ class DummyTaskDefinition(TaskDefinition):
         # subtask code_dir
         self.code_dir =  os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
         self.code_files = []
+
         self.result_size = 256 # size of subtask result in bytes
         self.out_file_basename = "out"
 
@@ -69,20 +73,20 @@ class DummyTaskDefinition(TaskDefinition):
         self.tmp_dir = tempfile.mkdtemp()
         os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
 
-        # common_data_path = os.path.commonpath(self.shared_data_files) # makes sense when len() > 1
+        # common_data_path = os.path.commonpath(self.shared_data_files) # makes sense when len(..) > 1
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])
         os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
 
         self.resources = set(self.ls_R(self.tmp_dir))
 
-    #TODO move it somewhere to the base class (or not?)
+    # TODO move it somewhere to the base class
     def set_defaults(self, defaults):
         self.shared_data_files = deepcopy(defaults.shared_data_files)
         self.out_file_basename = defaults.out_file_basename
         self.default_subtasks = defaults.default_subtasks
         self.options = deepcopy(defaults.options)
         self.code_dir = defaults.code_dir
-        self.result_size = defaults.result_size # size of subtask result in bytes
+        self.result_size = defaults.result_size
 
 class DummyTaskOptions(Options):
     def __init__(self):

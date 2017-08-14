@@ -4,6 +4,8 @@ import random
 import uuid
 from typing import Union
 
+import enforce
+
 from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
@@ -32,7 +34,7 @@ class DummyTaskTypeInfo(TaskTypeInfo):
             customizer
         )
 
-
+@enforce.runtime_validation
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFICATOR_CLASS = DummyTaskVerificator
@@ -112,8 +114,6 @@ class DummyTask(CoreTask):
         return self.ExtraData(ctd=ctd)
 
     # FIXME quite tricky to know that I should override this method
-    # it isn't really needed, i think
-    # but it is useful from educational point of view
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
         self.num_tasks_received += 1  # TODO WTF???? WHY DO I HAVE TO DO THAT?
@@ -140,17 +140,7 @@ class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
     DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
 
-    # TODO WTF??
-    # 1st of all: move it to coretask
-    # 2nd of all: why is it using self, when it should be a class method?
-    # (copied from rendering tasks, in theory classmethod, but in practise it uses
-    # _calculate_total(self, ...)
-    # @classmethod
-    def get_task_kwargs(self, **kwargs):
-        kwargs = super().get_task_kwargs(**kwargs)
-        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
-        return kwargs
-
+    # TODO types should be validated here!!
     @classmethod
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)

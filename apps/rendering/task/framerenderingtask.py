@@ -133,7 +133,7 @@ class FrameRenderingTask(RenderingTask):
         return subtasks
 
     def accept_results(self, subtask_id, result_files):
-        super(FrameRenderingTask, self).accept_results(subtask_id, result_files)
+        super().accept_results(subtask_id, result_files)
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']

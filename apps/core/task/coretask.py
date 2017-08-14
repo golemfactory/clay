@@ -467,57 +467,25 @@ class CoreTask(Task):
 
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or client.started() - finishing >= max_finishing:
+        elif finishing >= max_finishing or \
+                                client.started() - finishing >= max_finishing:
             return AcceptClientVerdict.SHOULD_WAIT
 
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
-    # def _with_check(f):
-    #     @wraps(f)
-    #     def wrapped(inst, *args, **kwargs):
-    #         if inst.check():
-    #             return
-    #         return f(inst, *args, **kwargs)
-    #     return wrapped
-
-    # def _accepting(query_extra_data_func):
-    #     """
-    #     A decorator for query_extra_data - it wraps the function with verification code
-    #     :param query_extra_data:
-    #     :return:
-    #     """
-    #     @wraps(query_extra_data_func)
-    #     def accepting_qed(self, perf_index: float, num_cores=1, node_id: str = None,
-    #                          node_name: str = None) -> Task.ExtraData:
-    #         verdict = self._accept_client(node_id)
-    #         if verdict != AcceptClientVerdict.ACCEPTED:
-    #
-    #             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-    #             if should_wait:
-    #                 logger.warning("Waiting for results from {}"
-    #                                .format(node_name))
-    #             else:
-    #                 logger.warning("Client {} banned from this task"
-    #                                .format(node_name))
-    #
-    #             return self.ExtraData(should_wait=should_wait)
-    #
-    #         if self.get_progress == 1.0:
-    #             logger.error("Task already computed")
-    #             return self.ExtraData()
-    #
-    #         query_extra_data_func(self, perf_index, num_cores, node_id, node_name)
-    #     return accepting_qed
 
 def accepting(query_extra_data_func):
     """
     A decorator for query_extra_data - it wraps the function with verification code
-    :param query_extra_data:
+    :param query_extra_data_func: query_extra_data function from Task
     :return:
     """
-    def accepting_qed(self, perf_index: float, num_cores=1, node_id: str = None,
-                         node_name: str = None) -> Task.ExtraData:
+    def accepting_qed(self,
+                      perf_index: float,
+                      num_cores=1,
+                      node_id: str = None,
+                      node_name: str = None) -> Task.ExtraData:
         verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
 
@@ -557,6 +525,7 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
+        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
         kwargs["task_definition"] = self.task_definition
         kwargs["node_name"] = self.node_name
         kwargs["root_path"] = self.root_path

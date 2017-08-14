@@ -394,7 +394,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.key_changed()
 
     def enqueue_new_task(self, task_dict):
-        # FIXME: Statement only for DummyTask compatibility
+        # FIXME: Statement only for old DummyTask compatibility
         if isinstance(task_dict, dict):
             task = self.task_server.task_manager.create_task(task_dict)
         else:
