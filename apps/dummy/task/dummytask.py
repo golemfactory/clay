@@ -9,7 +9,7 @@ import enforce
 from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
-                                     TaskTypeInfo, AcceptClientVerdict)
+                                     CoreTaskTypeInfo, AcceptClientVerdict)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
@@ -22,7 +22,7 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.dummy")
 
 
-class DummyTaskTypeInfo(TaskTypeInfo):
+class DummyTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super(DummyTaskTypeInfo, self).__init__(
             "Dummy",
@@ -72,7 +72,7 @@ class DummyTask(CoreTask):
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
 
-    def _extra_data(self, perf_index=0.0):
+    def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.__get_new_subtask_id()
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
@@ -128,7 +128,7 @@ class DummyTask(CoreTask):
                                subtask_id[0:6],
                                self.RESULT_EXTENSION)
 
-    def query_extra_data_for_test_task(self):
+    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         return self._extra_data()
 
     # TODO why do I need that? (except for test)

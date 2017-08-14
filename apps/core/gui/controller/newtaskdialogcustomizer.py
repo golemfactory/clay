@@ -17,7 +17,7 @@ from apps.core.gui.controller.addresourcesdialogcustomizer import AddResourcesDi
 from apps.core.gui.verificationparamshelper import (
     load_verification_params, set_verification_widgets_state,
     verification_random_changed, read_advanced_verification_params)
-from apps.core.task.coretaskstate import TaskDefinition, TaskDesc
+from apps.core.task.coretaskstate import CoreTaskDefinition, TaskDesc
 
 from gui.controller.timehelper import set_time_spin_boxes, get_time_values, get_subtask_hours
 from gui.controller.customizer import Customizer
@@ -215,10 +215,10 @@ class NewTaskDialogCustomizer(Customizer):
         self.presets = presets
 
     def load_task_definition(self, task_definition):
-        if not isinstance(task_definition, TaskDefinition):
+        if not isinstance(task_definition, CoreTaskDefinition):
             raise TypeError(
                 "Incorrect task definition type: {}. "
-                "Should be TaskDefinition".format(type(task_definition)))
+                "Should be CoreTaskDefinition".format(type(task_definition)))
 
         definition = deepcopy(task_definition)
         definition.resources = {os.path.normpath(res)

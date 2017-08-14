@@ -19,7 +19,7 @@ from apps.blender.blenderenvironment import BlenderEnvironment
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verificator import BlenderVerificator
-from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict, CoreTask
+from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions
@@ -119,7 +119,7 @@ class PreviewUpdater(object):
             img.close()
 
 
-class BlenderTaskTypeInfo(TaskTypeInfo):
+class BlenderTaskTypeInfo(CoreTaskTypeInfo):
     """ Blender App descryption that can be used by interface to define
     parameters and task build
     """

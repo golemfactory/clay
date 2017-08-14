@@ -10,7 +10,7 @@ from PIL import Image, ImageChops
 from copy import deepcopy
 
 from apps.core.task.coretask import CoreTask
-from apps.core.task.coretaskstate import Options
+from golem.task.taskbasestate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
@@ -19,6 +19,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from apps.rendering.task.verificator import FrameRenderingVerificator
 from golem.core.common import update_dict, to_unicode
+from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -90,7 +91,7 @@ class FrameRenderingTask(RenderingTask):
             self._update_task_preview()
 
     @CoreTask.handle_key_error
-    def computation_finished(self, subtask_id, task_result, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
         super(FrameRenderingTask, self).computation_finished(subtask_id,
                                                              task_result,
                                                              result_type)

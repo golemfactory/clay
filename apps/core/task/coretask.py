@@ -9,7 +9,8 @@ from typing import Type
 
 from ethereum.utils import denoms
 
-from apps.core.task.coretaskstate import CoreTaskDefaults, TaskDefinition, Options
+from apps.core.task.coretaskstate import CoreTaskDefaults, CoreTaskDefinition
+from golem.task.taskbasestate import Options
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     timeout_to_string, string_to_timeout
@@ -21,8 +22,8 @@ from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, result_types, \
-    resource_types, ComputeTaskDef
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
+    ResourceType, ComputeTaskDef
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -45,13 +46,13 @@ class AcceptClientVerdict(Enum):
 MAX_PENDING_CLIENT_RESULTS = 1
 
 
-class TaskTypeInfo(object):
+class CoreTaskTypeInfo(object):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
 
     def __init__(self,
                  name: str,
-                 definition: Type[TaskDefinition],
+                 definition: Type[CoreTaskDefinition],
                  defaults: CoreTaskDefaults,
                  options: Type[Options],
                  task_builder_type: Type[TaskBuilder],
@@ -106,13 +107,13 @@ class CoreTask(Task):
     ################
 
     def __init__(self,
-                 task_definition: TaskDefinition,
+                 task_definition: CoreTaskDefinition,
                  node_name: str,
                  owner_address="",
                  owner_port=0,
                  owner_key_id="",
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
-                 resource_size=None, # backward compatibility
+                 resource_size=None,  # backward compatibility
                  root_path=None
                  ):
         """Create more specific task implementation
@@ -207,7 +208,7 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
@@ -271,21 +272,21 @@ class CoreTask(Task):
             return 0.0
         return self.num_tasks_received / self.total_tasks
 
-    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=ResourceType.zip, tmp_dir=None):
 
         dir_name = self._get_resources_root_dir()
         if tmp_dir is None:
             tmp_dir = self.tmp_dir
 
         if os.path.exists(dir_name):
-            if resource_type == resource_types["zip"]:
+            if resource_type == ResourceType.zip:
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
-            elif resource_type == resource_types["parts"]:
+            elif resource_type == ResourceType.parts:
                  return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
                                                                                dir_name,
                                                                                self.res_files)
-            elif resource_type == resource_types["hashes"]:
+            elif resource_type == ResourceType.hashes:
                 return copy.copy(self.task_resources)
 
         return None
@@ -338,14 +339,14 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type, sort=True):
+    def interpret_task_results(self, subtask_id, task_results, result_type: ResultType, sort=True):
         """Filter out ".log" files from received results. Log files should represent
         stdout and stderr from computing machine. Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
         :param task_results: it may be a list of files, if result_type is equal to
-        result_types["files"] or it may be a cbor serialized zip file containing all files,
-        if result_type is equal to result_types["data"]
-        :param result_type: a number from result_types, it may represents data format or files
+        ResultType.files or it may be a cbor serialized zip file containing all files,
+        if result_type is equal to ResultType.data
+        :param result_type: a number from ResultType, it may represents data format or files
         format
         :param bool sort: *default: True* Sort results, if set to True
         """
@@ -361,25 +362,26 @@ class CoreTask(Task):
         self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    # TODO why is it here at all?
-    def query_extra_data_for_test_task(self):
-        return None  # Implement in derived methods
+    # TODO why is it here and not in the Task?
+    @abc.abstractmethod
+    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
+        pass  # Implement in derived methods
 
-    def load_task_results(self, task_result, result_type, subtask_id):
-        """ Change results to a list of files. If result_type is equal to result_types["files"} this
+    def load_task_results(self, task_result, result_type: ResultType, subtask_id):
+        """ Change results to a list of files. If result_type is equal to ResultType.files this
         function only return task_results without making any changes. If result_type is equal to
-        result_types["data"] tham task_result is cbor and unzipped and files are saved in tmp_dir.
+        ResultType.data tham task_result is cbor and unzipped and files are saved in tmp_dir.
         :param task_result: list of files of cbor serialized ziped file with files
-        :param result_type: result_types element
+        :param result_type: ResultType element
         :param str subtask_id:
         :return:
         """
-        if result_type == result_types['data']:
+        if result_type == ResultType.data:
             output_dir = os.path.join(self.tmp_dir, subtask_id)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
             return [self._unpack_task_result(trp, output_dir) for trp in task_result]
-        elif result_type == result_types['files']:
+        elif result_type == ResultType.files:
             return task_result
         else:
             logger.error("Task result type not supported {}".format(result_type))

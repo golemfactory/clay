@@ -739,7 +739,7 @@ class MessageReportComputedTask(Message):
         """
         Create message with information about finished computation
         :param str subtask_id: finished subtask id
-        :param int result_type: type of a result (from result_types dict)
+        :param int result_type: type of a result (from ResultType dict)
         :param float computation_time: how long does it take to  compute this
                                        subtask
         :param node_name: task result owner name

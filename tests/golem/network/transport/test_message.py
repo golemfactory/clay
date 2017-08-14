@@ -10,6 +10,7 @@ import uuid
 from golem.core.common import to_unicode
 from golem.core.databuffer import DataBuffer
 from golem.network.transport import message
+from golem.task.taskbase import ResultType
 from golem.testutils import PEP8MixIn
 import mock
 
@@ -63,7 +64,7 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
         self.assertIsInstance(m, message.MessageReportComputedTask)
         m = message.MessageReportComputedTask("xxyyzz", 0, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         self.assertEqual(m.subtask_id, "xxyyzz")
-        self.assertEqual(m.result_type, 0)
+        self.assertEqual(m.result_type, ResultType.data)
         self.assertEqual(m.extra_data, {})
         self.assertEqual(m.computation_time, 12034)
         self.assertEqual(m.node_name, "ABC")

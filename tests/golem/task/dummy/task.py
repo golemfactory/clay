@@ -7,7 +7,7 @@ from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.simpleauth import SimpleAuth
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef
+from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, ResourceType, ResultType
 
 
 class DummyTaskParameters(object):
@@ -203,7 +203,7 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result, result_type=0):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
@@ -213,7 +213,7 @@ class DummyTask(Task):
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
-    def get_resources(self, resource_header, resource_type=0, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=ResourceType.zip, tmp_dir=None):
         return self.task_resources
 
     def add_resources(self, resource_parts):

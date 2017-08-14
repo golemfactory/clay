@@ -19,7 +19,7 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourceserver import ResourceServer
 from golem.rpc.mapping.aliases import UI, Environment
-from golem.task.taskbase import Task, TaskHeader, resource_types
+from golem.task.taskbase import Task, TaskHeader, ResourceType
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState
@@ -611,7 +611,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, resource_types["hashes"])
+        task.get_resources.assert_called_with(None, ResourceType.hashes)
 
         c.resource_server.resource_manager.build_client_options \
             .assert_called_with(c.keys_auth.key_id)

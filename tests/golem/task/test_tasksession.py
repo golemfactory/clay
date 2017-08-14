@@ -21,7 +21,7 @@ from golem.network.transport.message import (MessageWantToComputeTask, MessageCa
                                              MessageTaskResultHash, MessageGetTaskResult, MessageCannotComputeTask,
                                              Message)
 from golem.network.transport.tcpnetwork import BasicProtocol
-from golem.task.taskbase import ComputeTaskDef, result_types
+from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskserver import WaitingTaskResult
 from golem.task.tasksession import TaskSession, logger, TASK_PROTOCOL_ID
 from golem.tools.assertlogs import LogTestCase
@@ -141,7 +141,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
         n = Node()
-        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", result_types["data"],
+        wtr = WaitingTaskResult("xyz", "xxyyzz", "result", ResultType.data,
                                 13190, 10, 0, "10.10.10.10",
                                 30102, "key1", n)
 
@@ -149,7 +149,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         ms = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, MessageReportComputedTask)
         self.assertEqual(ms.subtask_id, "xxyyzz")
-        self.assertEqual(ms.result_type, 0)
+        self.assertEqual(ms.result_type, ResultType.data)
         self.assertEqual(ms.computation_time, 13190)
         self.assertEqual(ms.node_name, "ABC")
         self.assertEqual(ms.address, "10.10.10.10")
@@ -228,7 +228,7 @@ class TestTaskSession(LogTestCase, testutils.TempDirFixture,
         assert conn.close.called
 
         extra_data.update(dict(
-            result_type=result_types['data'],
+            result_type=ResultType.data,
         ))
         conn.close.called = False
         ts.msgs_to_send = []

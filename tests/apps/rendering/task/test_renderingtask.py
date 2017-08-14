@@ -4,9 +4,10 @@ from os import makedirs, path, remove
 
 from mock import Mock, patch, ANY
 
-from apps.core.task.coretaskstate import Options, TaskDefinition, TaskState
+from apps.core.task.coretaskstate import CoreTaskDefinition, TaskState
+from golem.task.taskbasestate import Options
 from apps.core.task.coretask import logger as core_logger
-from apps.core.task.coretask import TaskTypeInfo
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
@@ -67,7 +68,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingTask, self).setUp()
         files = self.additional_dir_content([3])
-        task_definition = TaskDefinition()
+        task_definition = CoreTaskDefinition()
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
@@ -373,8 +374,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_build_definition(self):
         defaults_mock = Mock()
         defaults_mock.main_program_file = "src_code.py"
-        tti = TaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
-                           Options, RenderingTaskBuilder)
+        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
+                               Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
         definition = RenderingTaskBuilder.build_definition(
             tti,
@@ -392,7 +393,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
                                         'file3.jpg', 'file4.txt'}
 
     def test_get_output_path(self):
-        td = TaskDefinition()
+        td = CoreTaskDefinition()
         td.legacy = True
         td.task_name = "MY task"
         tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}

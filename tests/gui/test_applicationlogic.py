@@ -11,7 +11,7 @@ from twisted.internet.defer import Deferred
 import golem
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.core.task.coretask import CoreTaskBuilder
-from apps.core.task.coretaskstate import TaskDesc, TaskDefinition
+from apps.core.task.coretaskstate import TaskDesc, CoreTaskDefinition
 from golem import rpc
 from golem.client import Client
 from golem.core.deferred import sync_wait
@@ -66,7 +66,7 @@ class TTask(Task):
 class TTaskWithDef(TTask):
     def __init__(self):
         super(TTaskWithDef, self).__init__()
-        self.task_definition = TaskDefinition()
+        self.task_definition = CoreTaskDefinition()
         self.task_definition.max_price = 100 * denoms.ether
 
 class TTaskBuilder(CoreTaskBuilder):
@@ -402,7 +402,7 @@ class TestGuiApplicationLogicWithClient(DatabaseFixture, LogTestCase):
     @staticmethod
     def _get_task_definition(task_id="xyz", full_task_timeout=100,
                              subtask_timeout=50):
-        td = TaskDefinition()
+        td = CoreTaskDefinition()
         td.task_id = task_id
         td.full_task_timeout = full_task_timeout
         td.subtask_timeout = subtask_timeout

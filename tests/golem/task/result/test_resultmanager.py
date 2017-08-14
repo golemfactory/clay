@@ -5,7 +5,7 @@ from golem.resource.base import resourcesmanager
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
-from golem.task.taskbase import result_types
+from golem.task.taskbase import ResultType
 from golem.tools.testdirfixture import TestDirFixture
 
 
@@ -23,7 +23,7 @@ class MockTaskResult:
                  owner_key_id=None, owner=None):
 
         if result_type is None:
-            result_type = result_types['files']
+            result_type = ResultType.files
         if owner_key_id is None:
             owner_key_id = str(uuid.uuid4())
         if owner is None:

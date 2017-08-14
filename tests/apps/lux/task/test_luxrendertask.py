@@ -14,7 +14,7 @@ from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.task.taskbase import ComputeTaskDef
 
-from apps.core.task.coretask import AcceptClientVerdict, TaskTypeInfo
+from apps.core.task.coretask import AcceptClientVerdict, CoreTaskTypeInfo
 from apps.lux.task.luxrendertask import (
     logger,
     LuxRenderDefaults,
@@ -310,7 +310,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 class TestLuxRenderTaskTypeInfo(TempDirFixture):
     def test_init(self):
         typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
-        assert isinstance(typeinfo, TaskTypeInfo)
+        assert isinstance(typeinfo, CoreTaskTypeInfo)
         assert typeinfo.output_formats == ["EXR", "PNG", "TGA"]
         assert typeinfo.output_file_ext == ["lxs"]
         assert typeinfo.name == "LuxRender"

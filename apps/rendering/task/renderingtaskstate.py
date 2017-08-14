@@ -1,6 +1,6 @@
 from os import path
 
-from apps.core.task.coretaskstate import (TaskDefinition,
+from apps.core.task.coretaskstate import (CoreTaskDefinition,
                                           AdvanceVerificationOptions,
                                           CoreTaskDefaults)
 
@@ -21,9 +21,9 @@ class RendererDefaults(CoreTaskDefaults):
         return self.subtask_timeout * self.default_subtasks
 
 
-class RenderingTaskDefinition(TaskDefinition):
+class RenderingTaskDefinition(CoreTaskDefinition):
     def __init__(self):
-        TaskDefinition.__init__(self)
+        CoreTaskDefinition.__init__(self)
         self.resolution = [0, 0]
         self.renderer = None
         self.options = None

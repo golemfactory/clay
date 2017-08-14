@@ -6,7 +6,7 @@ from PyQt5.QtGui import QPixmap, QPixmapCache
 
 from golem.task.taskstate import SubtaskStatus
 
-from apps.core.task.coretaskstate import TaskDefinition
+from apps.core.task.coretaskstate import CoreTaskDefinition
 
 from gui.controller.customizer import Customizer
 from gui.guidirmanager import get_preview_file
@@ -119,7 +119,7 @@ class PreviewController(Customizer):
     def __get_task_num_from_pixels(self, x, y):
 
         t = self.maincontroller.current_task_highlighted
-        if t is None or not isinstance(t.definition, TaskDefinition) or t.definition.task_type is None:
+        if t is None or not isinstance(t.definition, CoreTaskDefinition) or t.definition.task_type is None:
             return
 
         definition = t.definition
@@ -160,7 +160,7 @@ class PreviewController(Customizer):
 
         task = self.maincontroller.current_task_highlighted
 
-        if not isinstance(task.definition, TaskDefinition):
+        if not isinstance(task.definition, CoreTaskDefinition):
             return
         task_type = self.logic.get_task_type(task.definition.task_type)
 

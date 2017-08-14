@@ -14,7 +14,7 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.node import OptNode
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import result_types
+from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -216,7 +216,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ## assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd.subtask_id, [output],
-                                  result_type=result_types["files"])
+                                  result_type=ResultType.files)
 
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
@@ -226,7 +226,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         bad_output = path.join(path.dirname(output), "badfile.result")
         ctd = task.query_extra_data(10000).ctd
         task.computation_finished(ctd.subtask_id, [bad_output],
-                                  result_type=result_types["files"])
+                                  result_type=ResultType.files)
 
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
@@ -251,7 +251,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        self.assertEqual(result["result_type"], result_types["files"])
+        self.assertEqual(result["result_type"], ResultType.files)
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
             any(path.basename(f) == DockerTaskThread.STDOUT_FILE

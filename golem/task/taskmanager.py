@@ -13,7 +13,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task
+from golem.task.taskbase import ComputeTaskDef, TaskEventListener, Task, ResourceType
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState
@@ -466,7 +466,7 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
-    def get_resources(self, task_id, resource_header, resource_type=0):
+    def get_resources(self, task_id, resource_header, resource_type=ResourceType.zip):
         task = self.tasks[task_id]
         return task.get_resources(resource_header, resource_type)
 

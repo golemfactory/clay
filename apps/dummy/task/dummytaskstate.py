@@ -4,11 +4,19 @@ import os
 
 import enforce
 
-from apps.core.task.coretaskstate import (TaskDefinition,
-                                          CoreTaskDefaults,
-                                          Options)
+from apps.core.task.coretaskstate import (CoreTaskDefinition,
+                                          CoreTaskDefaults)
+from golem.task.taskbasestate import Options
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
+
+# TODO move it somewhere, but idk where
+def ls_R(dir):
+    files = []
+    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
+        for name in filenames:
+            files.append(os.path.join(dirpath, name))
+    return files
 
 
 class DummyTaskDefaults(CoreTaskDefaults):
@@ -35,12 +43,11 @@ class DummyTaskDefaults(CoreTaskDefaults):
             return 1200
 
 
-@enforce.runtime_validation
-class DummyTaskDefinition(TaskDefinition):
+class DummyTaskDefinition(CoreTaskDefinition):
 
     #TODO put defaults switch in base class, create CoreTaskDefinition
     def __init__(self, defaults=None):
-        TaskDefinition.__init__(self)
+        CoreTaskDefinition.__init__(self)
 
         self.options = DummyTaskOptions()
         # subtask data
@@ -56,19 +63,11 @@ class DummyTaskDefinition(TaskDefinition):
         if defaults:
             self.set_defaults(defaults)
 
-    @staticmethod
-    def ls_R(dir):
-        files = []
-        for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
-            for name in filenames:
-                files.append(os.path.join(dirpath, name))
-        return files
-
     def add_to_resources(self):
         super().add_to_resources()
         self.shared_data_files = list(self.resources)
 
-        self.code_files = self.ls_R(self.code_dir)
+        self.code_files = ls_R(self.code_dir)
 
         self.tmp_dir = tempfile.mkdtemp()
         os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
@@ -77,7 +76,7 @@ class DummyTaskDefinition(TaskDefinition):
         common_data_path = os.path.dirname(list(self.shared_data_files)[0])
         os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
 
-        self.resources = set(self.ls_R(self.tmp_dir))
+        self.resources = set(ls_R(self.tmp_dir))
 
     # TODO move it somewhere to the base class
     def set_defaults(self, defaults):

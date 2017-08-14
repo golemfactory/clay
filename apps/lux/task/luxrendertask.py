@@ -9,8 +9,8 @@ from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
 from apps.core.task import coretask
-from apps.core.task.coretask import TaskTypeInfo, AcceptClientVerdict, CoreTask
-from apps.core.task.coretaskstate import Options
+from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
+from golem.task.taskbasestate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
@@ -43,7 +43,7 @@ class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
         self.default_subtasks = 5
 
 
-class LuxRenderTaskTypeInfo(TaskTypeInfo):
+class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
         super(LuxRenderTaskTypeInfo, self).__init__(
             "LuxRender",

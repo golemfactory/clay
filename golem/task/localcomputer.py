@@ -5,12 +5,12 @@ from threading import Lock
 import time
 from typing import Callable
 
-from apps.core.task.coretaskstate import TaskDefinition
+from apps.core.task.coretaskstate import CoreTaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader, decompress_dir
-from golem.task.taskbase import Task, resource_types, ComputeTaskDef
+from golem.task.taskbase import Task, ResourceType, ComputeTaskDef
 
 logger = logging.getLogger("golem.task")
 
@@ -125,7 +125,7 @@ class LocalComputer(object):
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_path)
             # rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(rh, resource_types["zip"], self.tmp_dir)
+            res_file = self.task.get_resources(rh, ResourceType.zip, self.tmp_dir)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)
