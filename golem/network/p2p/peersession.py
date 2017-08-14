@@ -546,16 +546,16 @@ class PeerSession(BasicSafeSession):
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
         msg = message.MessageHello(
-            proto_id=P2P_PROTOCOL_ID,
-            port=self.p2p_service.cur_port,
-            node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.get_key_id(),
-            node_info=self.p2p_service.node,
-            client_ver=APP_VERSION,
-            rand_val=self.rand_val,
-            metadata=self.p2p_service.metadata_manager.get_metadata(),
-            solve_challenge=self.solve_challenge,
-            **challenge_kwargs
+                                   proto_id=P2P_PROTOCOL_ID,
+                                   port=self.p2p_service.cur_port,
+                                   node_name=self.p2p_service.node_name,
+                                   client_key_id=self.p2p_service.keys_auth.get_key_id(),
+                                   node_info=self.p2p_service.node,
+                                   client_ver=APP_VERSION,
+                                   rand_val=self.rand_val,
+                                   metadata=self.p2p_service.metadata_manager.get_metadata(),
+                                   solve_challenge=self.solve_challenge,
+                                   **challenge_kwargs
         )
         self.send(msg, send_unverified=True)
 
