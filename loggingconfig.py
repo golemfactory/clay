@@ -62,6 +62,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'hyperg': {
+            'level': 'INFO',
+            'propagate': True,
+            'handlers': ['console', 'file', ],
+        },
         'golem.rpc.crossbar': {
             'level': 'INFO',
             'propagate': True,
