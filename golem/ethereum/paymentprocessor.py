@@ -123,11 +123,17 @@ class PaymentProcessor(Service):
         return True
 
     def eth_address(self, zpad=True):
-        address = keys.privtoaddr(self.__privkey)
+        return self.enc_address(self.__privkey, zpad)
+
+    def enc_address(self, privkey, zpad=True):
+        raw = self.raw_address(privkey)
         # TODO: Hack RPC client to allow using raw address.
         if zpad:
-            address = utils.zpad(address, 32)
-        return '0x' + encode_hex(address)
+            raw = utils.zpad(raw, 32)
+        return '0x' + encode_hex(raw)
+
+    def raw_address(self, privkey):
+        return keys.privtoaddr(privkey)
 
     def balance_known(self):
         return self.__gnt_balance is not None and self.__eth_balance is not None
@@ -142,7 +148,7 @@ class PaymentProcessor(Service):
 
     def gnt_balance(self, refresh=False):
         if self.__gnt_balance is None or refresh:
-            addr = keys.privtoaddr(self.__privkey)
+            addr = self.raw_address(self.__privkey)
             data = self.__testGNT.encode('balanceOf', (addr, ))
             r = self.__client.call(_from='0x' + encode_hex(addr),
                                    to='0x' + encode_hex(self.TESTGNT_ADDR),
@@ -231,8 +237,8 @@ class PaymentProcessor(Service):
         payments = self._awaiting  # FIXME: Should this list be synchronized?
         self._awaiting = []
         self.deadline = sys.maxsize
-        addr = keys.privtoaddr(self.__privkey)
-        nonce = self.__client.get_transaction_count('0x' + encode_hex(addr))
+        addr = self.enc_address(self.__privkey, zpad=False)
+        nonce = self.__client.get_transaction_count(addr)
         p, value = _encode_payments(payments)
         data = gnt_contract.encode('batchTransfer', [p])
         gas = 21000 + 800 + len(p) * 30000
@@ -316,7 +322,7 @@ class PaymentProcessor(Service):
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 10**15:
-            addr = keys.privtoaddr(self.__privkey)
+            addr = self.raw_address(self.__privkey)
             ropsten_faucet_donate(addr)
             return False
         return True
@@ -324,8 +330,8 @@ class PaymentProcessor(Service):
     def get_gnt_from_faucet(self):
         if self.__faucet and self.gnt_balance(True) < 100 * denoms.ether:
             log.info("Requesting tGNT")
-            addr = encode_hex(keys.privtoaddr(self.__privkey))
-            nonce = self.__client.get_transaction_count('0x' + addr)
+            addr = self.enc_address(self.__privkey, zpad=False)
+            nonce = self.__client.get_transaction_count(addr)
             data = self.__testGNT.encode_function_call('create', ())
             tx = Transaction(nonce, self.GAS_PRICE, 90000, to=self.TESTGNT_ADDR,
                              value=0, data=data)
