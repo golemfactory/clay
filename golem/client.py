@@ -152,7 +152,7 @@ class Client(HardwarePresetsMixin):
             #       modeled as a Service that run independently.
             #       The Client/Application should be a collection of services.
             self.transaction_system = EthereumTransactionSystem(
-                datadir, encode_hex(self.keys_auth._private_key)
+                datadir, self.keys_auth._private_key
             )
         else:
             self.transaction_system = None
