@@ -42,7 +42,8 @@ class TestDummyTaskDockerJob(TestDockerJob):
 
         for f in os.listdir(code_dir):
             task_file = path.join(code_dir, f)
-            if path.isfile(task_file) or path.isdir(task_file):
+            if (path.isfile(task_file) or path.isdir(task_file)) and \
+                            os.path.basename(task_file) != "__pycache__":
                 shutil.copy(task_file, path.join(self.resources_dir, "code", f))
 
         # this is the stuff that is available by "params" module

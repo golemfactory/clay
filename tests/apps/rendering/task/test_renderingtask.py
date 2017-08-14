@@ -50,7 +50,9 @@ class RenderingTaskMock(RenderingTask):
     def query_extra_data(*args, **kwargs):
         pass
 
-    
+    def query_extra_data_for_test_task(self):
+        pass
+
 class TestInitRenderingTask(TestDirFixture, LogTestCase):
     def test_init(self):
         with self.assertLogs(logger_core, level="WARNING"):

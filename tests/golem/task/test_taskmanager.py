@@ -13,7 +13,7 @@ from golem.core.keysauth import EllipticalKeysAuth
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, ComputeTaskDef, \
-    TaskEventListener
+    TaskEventListener, ResultType
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger, subtask_priority
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -269,7 +269,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor):
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result, result_type=0):
+            def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
 

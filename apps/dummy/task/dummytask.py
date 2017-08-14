@@ -34,6 +34,7 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
             customizer
         )
 
+
 @enforce.runtime_validation
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
@@ -42,7 +43,7 @@ class DummyTask(CoreTask):
     RESULT_EXTENSION = ".result"
 
     def __init__(self,
-                 total_tasks: int, # TODO REFACTOR IT AWAY
+                 total_tasks: int,  # TODO REFACTOR IT AWAY
                  node_name: str,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
@@ -60,7 +61,7 @@ class DummyTask(CoreTask):
             root_path=root_path
         )
 
-        self.total_tasks = total_tasks # TODO WTF I HAVE TO DO THAT???
+        self.total_tasks = total_tasks  # TODO WTF I HAVE TO DO THAT???
 
         ver_opts = self.verificator.verification_options
         ver_opts["difficulty"] = self.task_definition.options.difficulty
@@ -117,8 +118,8 @@ class DummyTask(CoreTask):
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
         self.num_tasks_received += 1  # TODO WTF???? WHY DO I HAVE TO DO THAT?
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()  # TODO WTF???? WHY DO I HAVE TO DO THAT?
-
+        self.counting_nodes[
+            self.subtasks_given[subtask_id]['node_id']].accept()  # TODO WTF???? WHY DO I HAVE TO DO THAT?
 
     def __get_new_subtask_id(self) -> str:
         return "{}".format(str(random.getrandbits(128)))
@@ -144,8 +145,9 @@ class DummyTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)
-        dictionary['options']['subtask_data_size'] = int(definition.options.subtask_data_size)
-        dictionary['options']['difficulty'] = int(definition.options.difficulty)
+        opts = dictionary['options']
+        opts['subtask_data_size'] = int(definition.options.subtask_data_size)
+        opts['difficulty'] = int(definition.options.difficulty)
 
         return dictionary
 
@@ -154,8 +156,11 @@ class DummyTaskBuilder(CoreTaskBuilder):
         options = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
-        definition.options.subtask_data_size = int(options.get('subtask_data_size',
-                                                 definition.options.subtask_data_size))
-        definition.options.difficulty = int(options.get('difficulty',
-                                                 definition.options.difficulty))
+
+        definition.options.subtask_data_size = \
+            int(options.get('subtask_data_size', definition.options.subtask_data_size))
+
+        definition.options.difficulty = \
+            int(options.get('difficulty', definition.options.difficulty))
+
         return definition

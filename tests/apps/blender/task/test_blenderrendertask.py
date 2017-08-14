@@ -22,7 +22,7 @@ from apps.rendering.task.renderingtaskstate import (
     AdvanceRenderingVerificationOptions,
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskbase import ComputeTaskDef, ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -75,7 +75,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data.ctd.subtask_id)
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [], 0)
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [], ResultType.data)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
                SubtaskStatus.failure
 
@@ -91,7 +91,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], 1)
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [file1], ResultType.files)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
                SubtaskStatus.finished
 
@@ -102,7 +102,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], 1)
+        self.bt.computation_finished(extra_data.ctd.subtask_id, [file2], ResultType.files)
         assert self.bt.subtasks_given[extra_data.ctd.subtask_id]['status'] == \
                SubtaskStatus.finished
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
@@ -489,7 +489,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         file_ = path.join(tmpdir, 'preview.bmp')
         img = Image.new("RGB", (task.res_x, task.res_y))
         img.save(file_, "BMP")
-        task.computation_finished(ed.ctd.subtask_id, [file_], 1)
+        task.computation_finished(ed.ctd.subtask_id, [file_], ResultType.files)
         assert task.subtasks_given[ed.ctd.subtask_id]['status'] == \
                SubtaskStatus.failure
 

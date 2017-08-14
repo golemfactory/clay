@@ -425,7 +425,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert len(th2.files_data) == 1
         assert th2.sub_dir_headers == []
 
-        assert c.get_resources(th, ResourceType.hashes) is None
+        assert c.get_resources(th, 3) is None
+        assert c.get_resources(th, "aaa") is None
+        assert c.get_resources(th, None) is None
 
     def test_result_incoming(self):
         c = self._get_core_task()

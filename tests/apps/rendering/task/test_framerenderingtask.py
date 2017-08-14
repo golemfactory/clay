@@ -32,6 +32,9 @@ class FrameRenderingTaskMock(FrameRenderingTask):
     def query_extra_data(*args, **kwargs):
         pass
 
+    def query_extra_data_for_test_task(self):
+        pass
+
 class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def _get_frame_task(self, use_frames=True):

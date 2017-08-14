@@ -224,7 +224,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         ## assert bad results - should fail
         bad_output = path.join(path.dirname(output), "badfile.result")
-        ctd = task.query_extra_data(10000).ctd
+        ctd = task.query_extra_data(10000.).ctd
         task.computation_finished(ctd.subtask_id, [bad_output],
                                   result_type=ResultType.files)
 
