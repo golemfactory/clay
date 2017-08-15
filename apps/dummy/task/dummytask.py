@@ -107,7 +107,7 @@ class DummyTask(CoreTask):
 
         return self.ExtraData(ctd=ctd)
 
-    # FIXME quite tricky to know that I should override this method
+    # FIXME quite tricky to know that this method should be overwritten
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
         self.num_tasks_received += 1
