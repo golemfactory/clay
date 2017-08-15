@@ -17,14 +17,14 @@ class TestTaskBase(LogTestCase):
             Task.build_task("Not Task Builder")
         with self.assertRaises(TypeError):
             Task.register_listener("Not Listener")
-        t = Task(Mock(), "")
+        t = Task(Mock(), "", Mock())
         self.assertIsInstance(t, Task)
         self.assertEqual(t.get_stdout("abc"), "")
         self.assertEqual(t.get_stderr("abc"), "")
         self.assertEqual(t.get_results("abc"), [])
 
         t = Task(TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
-                            Node()), "print 'Hello world'")
+                            Node()), "print 'Hello world'", None)
 
         tl1 = TaskEventListener()
         tl2 = TaskEventListener()
