@@ -466,7 +466,7 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
-    def get_resources(self, task_id, resource_header, resource_type=ResourceType.zip):
+    def get_resources(self, task_id, resource_header, resource_type=ResourceType.ZIP):
         task = self.tasks[task_id]
         return task.get_resources(resource_header, resource_type)
 

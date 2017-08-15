@@ -62,9 +62,9 @@ class TestMessages(unittest.TestCase, PEP8MixIn):
     def test_message_report_computed_task(self):
         m = message.MessageReportComputedTask()
         self.assertIsInstance(m, message.MessageReportComputedTask)
-        m = message.MessageReportComputedTask("xxyyzz", ResultType.data, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
+        m = message.MessageReportComputedTask("xxyyzz", ResultType.DATA, 12034, "ABC", "10.10.10.1", 1023, "KEY_ID", "NODE", "ETH", {})
         self.assertEqual(m.subtask_id, "xxyyzz")
-        self.assertEqual(m.result_type, ResultType.data)
+        self.assertEqual(m.result_type, ResultType.DATA)
         self.assertEqual(m.extra_data, {})
         self.assertEqual(m.computation_time, 12034)
         self.assertEqual(m.node_name, "ABC")

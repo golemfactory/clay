@@ -23,7 +23,7 @@ class MockTaskResult:
                  owner_key_id=None, owner=None):
 
         if result_type is None:
-            result_type = ResultType.files
+            result_type = ResultType.FILES
         if owner_key_id is None:
             owner_key_id = str(uuid.uuid4())
         if owner is None:

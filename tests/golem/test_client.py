@@ -611,7 +611,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task.header.task_id = str(uuid.uuid4())
 
         c.enqueue_new_task(task)
-        task.get_resources.assert_called_with(None, ResourceType.hashes)
+        task.get_resources.assert_called_with(None, ResourceType.HASHES)
 
         c.resource_server.resource_manager.build_client_options \
             .assert_called_with(c.keys_auth.key_id)

@@ -163,7 +163,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         files_copy = copy(files)
 
-        task.interpret_task_results(subtask_id, files, ResultType.files, False)
+        task.interpret_task_results(subtask_id, files, ResultType.FILES, False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -177,7 +177,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             with open(f, 'w'):
                 pass
 
-        task.interpret_task_results(subtask_id, files_copy, ResultType.files, False)
+        task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
         self.assertEqual(task.results[subtask_id], [files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
@@ -185,7 +185,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         os.remove(files[0])
         os.makedirs(files[0])
         with self.assertLogs(logger, level="WARNING"):
-            task.interpret_task_results(subtask_id, files_copy, ResultType.files, False)
+            task.interpret_task_results(subtask_id, files_copy, ResultType.FILES, False)
         assert task.results[subtask_id] == [files[1], files[4]]
 
         os.removedirs(files[0])
@@ -210,7 +210,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                self.__compress_and_dump_file(files[3], "errlog"),
                self.__compress_and_dump_file(files[4], "ghi")]
 
-        task.interpret_task_results(subtask_id, res, ResultType.data, False)
+        task.interpret_task_results(subtask_id, res, ResultType.DATA, False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -246,7 +246,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
-        task.interpret_task_results(subtask_id, files, ResultType.files)
+        task.interpret_task_results(subtask_id, files, ResultType.FILES)
 
         sorted_files = sorted([files[0], files[1], files[4]])
 
@@ -407,9 +407,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         in_z = z.namelist()
         assert len(in_z) == 6
 
-        assert c.get_resources(th, ResourceType.hashes) == files[1:]
+        assert c.get_resources(th, ResourceType.HASHES) == files[1:]
 
-        th2, p = c.get_resources(th, ResourceType.parts)
+        th2, p = c.get_resources(th, ResourceType.PARTS)
         assert p == []
         assert th2.files_data == []
         assert th2.sub_dir_headers == []
@@ -420,7 +420,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         drm = DistributedResourceManager(os.path.dirname(files[0]))
         res_files = drm.split_file(files[0])
         c.add_resources({files[0]: res_files})
-        th2, p = c.get_resources(th, ResourceType.parts)
+        th2, p = c.get_resources(th, ResourceType.PARTS)
         assert len(p) == 1
         assert len(th2.files_data) == 1
         assert th2.sub_dir_headers == []
@@ -443,7 +443,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     def test_create_path_in_load_task_result(self):
         c = self._get_core_task()
         assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
-        c.load_task_results(MagicMock(), ResultType.data, "subtask1")
+        c.load_task_results(MagicMock(), ResultType.DATA, "subtask1")
         assert os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
 
 

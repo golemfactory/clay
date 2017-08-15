@@ -169,7 +169,7 @@ class TestDockerBlenderTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        assert result["result_type"] == ResultType.files
+        assert result["result_type"] == ResultType.FILES
         assert len(result["data"]) >= 3
         assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE for f in result["data"])
         assert any(path.basename(f) == DockerTaskThread.STDERR_FILE for f in result["data"])

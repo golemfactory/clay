@@ -210,7 +210,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         ## assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd.subtask_id, [output],
-                                  result_type=ResultType.files)
+                                  result_type=ResultType.FILES)
 
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
@@ -220,7 +220,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
         bad_output = path.join(path.dirname(output), "badfile.result")
         ctd = task.query_extra_data(10000.).ctd
         task.computation_finished(ctd.subtask_id, [bad_output],
-                                  result_type=ResultType.files)
+                                  result_type=ResultType.FILES)
 
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
@@ -245,7 +245,7 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        self.assertEqual(result["result_type"], ResultType.files)
+        self.assertEqual(result["result_type"], ResultType.FILES)
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
             any(path.basename(f) == DockerTaskThread.STDOUT_FILE

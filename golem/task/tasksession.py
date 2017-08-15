@@ -249,7 +249,7 @@ class TaskSession(MiddlemanSafeSession):
             self._reject_subtask_result(subtask_id)
             return
 
-        if result_type == ResultType.data:
+        if result_type == ResultType.DATA:
             try:
                 if decrypt:
                     result = self.decrypt(result)
@@ -365,9 +365,9 @@ class TaskSession(MiddlemanSafeSession):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == ResultType.data:
+        if task_result.result_type == ResultType.DATA:
             extra_data = []
-        elif task_result.result_type == ResultType.files:
+        elif task_result.result_type == ResultType.FILES:
             extra_data = [os.path.basename(x) for x in task_result.result]
         else:
             logger.error(
@@ -872,7 +872,7 @@ class TaskSession(MiddlemanSafeSession):
         res_file_path = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            ResourceType.zip
+            ResourceType.ZIP
         )
 
         if not res_file_path:
@@ -890,7 +890,7 @@ class TaskSession(MiddlemanSafeSession):
         res = self.task_manager.get_resources(
             msg.task_id,
             CBORSerializer.loads(msg.resource_header),
-            ResourceType.parts
+            ResourceType.PARTS
         )
         if res is None:
             return

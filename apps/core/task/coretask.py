@@ -205,7 +205,7 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for {}".format(subtask_id))
             return
@@ -269,21 +269,21 @@ class CoreTask(Task):
             return 0.0
         return self.num_tasks_received / self.total_tasks
 
-    def get_resources(self, resource_header, resource_type=ResourceType.zip, tmp_dir=None):
+    def get_resources(self, resource_header, resource_type=ResourceType.ZIP, tmp_dir=None):
 
         dir_name = self._get_resources_root_dir()
         if tmp_dir is None:
             tmp_dir = self.tmp_dir
 
         if os.path.exists(dir_name):
-            if resource_type == ResourceType.zip:
+            if resource_type == ResourceType.ZIP:
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
-            elif resource_type == ResourceType.parts:
+            elif resource_type == ResourceType.PARTS:
                  return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
                                                                                dir_name,
                                                                                self.res_files)
-            elif resource_type == ResourceType.hashes:
+            elif resource_type == ResourceType.HASHES:
                 return copy.copy(self.task_resources)
 
         return None
@@ -336,7 +336,7 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type: ResultType, sort=True):
+    def interpret_task_results(self, subtask_id, task_results, result_type: int, sort=True):
         """Filter out ".log" files from received results. Log files should represent
         stdout and stderr from computing machine. Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
@@ -364,21 +364,21 @@ class CoreTask(Task):
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         pass  # Implement in derived methods
 
-    def load_task_results(self, task_result, result_type: ResultType, subtask_id):
+    def load_task_results(self, task_result, result_type: int, subtask_id):
         """ Change results to a list of files. If result_type is equal to ResultType.files this
         function only return task_results without making any changes. If result_type is equal to
         ResultType.data tham task_result is cbor and unzipped and files are saved in tmp_dir.
         :param task_result: list of files of cbor serialized ziped file with files
-        :param result_type: ResultType element
+        :param result_type: int, ResultType element
         :param str subtask_id:
         :return:
         """
-        if result_type == ResultType.data:
+        if result_type == ResultType.DATA:
             output_dir = os.path.join(self.tmp_dir, subtask_id)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
             return [self._unpack_task_result(trp, output_dir) for trp in task_result]
-        elif result_type == ResultType.files:
+        elif result_type == ResultType.FILES:
             return task_result
         else:
             logger.error("Task result type not supported {}".format(result_type))

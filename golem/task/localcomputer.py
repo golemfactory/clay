@@ -125,7 +125,7 @@ class LocalComputer(object):
         if self.use_task_resources:
             rh = TaskResourceHeader(self.test_task_res_path)
             # rh = TaskResourceHeader(self.test_task_res_dir)
-            res_file = self.task.get_resources(rh, ResourceType.zip, self.tmp_dir)
+            res_file = self.task.get_resources(rh, ResourceType.ZIP, self.tmp_dir)
 
             if res_file:
                 decompress_dir(self.test_task_res_path, res_file)

@@ -14,16 +14,18 @@ from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
 
+# TODO change types to enums - for now it shows
+# evt.comp.task.test.status Error WAMP message serialization error: unsupported type: <enum 'ResultType'> undefined
 
-class ResultType(enum.Enum):
-    data = 0
-    files = 1
+class ResultType(object): # class ResultType(Enum):
+    DATA = 0
+    FILES = 1
 
 
-class ResourceType(enum.Enum):
-    zip = 0
-    parts = 1
-    hashes = 2
+class ResourceType(object): # class ResourceType(Enum):
+    ZIP = 0
+    PARTS = 1
+    HASHES = 2
 
 
 class TaskHeader(object):
@@ -255,7 +257,7 @@ class Task(metaclass=abc.ABCMeta):
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result, result_type=ResultType.data):
+    def computation_finished(self, subtask_id, task_result, result_type=ResultType.DATA):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
@@ -331,7 +333,7 @@ class Task(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_resources(self,
                       resource_header: TaskResourceHeader,
-                      resource_type: ResourceType=ResourceType.zip,
+                      resource_type: ResourceType=ResourceType.ZIP,
                       tmp_dir: str=None) -> Union[None, str, Tuple[TaskResourceHeader, List]]:
         """ Compare resources that were declared by client in a resource_header and prepare lacking one. Method of
         preparing resources depends from declared resource_type

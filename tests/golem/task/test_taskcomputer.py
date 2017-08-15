@@ -299,7 +299,7 @@ class TestTaskMonitor(TestDirFixture):
         prepare()
         task_thread.error = False
         task_thread.error_msg = None
-        task_thread.result = {'data': 'oh senora!!!', 'result_type': ResultType.data}
+        task_thread.result = {'data': 'oh senora!!!', 'result_type': ResultType.DATA}
         check(True)
 
         # default case (error)

@@ -248,7 +248,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         ## assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd.subtask_id, [new_flm_file, new_preview_file],
-                                  result_type=ResultType.files)
+                                  result_type=ResultType.FILES)
 
         is_subtask_verified = task.verify_subtask(ctd.subtask_id)
         self.assertTrue(is_subtask_verified)
@@ -258,7 +258,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
         bad_flm_file = path.join(path.dirname(new_flm_file),"badfile.flm")
         ctd = task.query_extra_data(10000).ctd
         task.computation_finished(ctd.subtask_id, [bad_flm_file, new_preview_file],
-                                  result_type=ResultType.files)
+                                  result_type=ResultType.FILES)
 
         self.assertFalse(task.verify_subtask(ctd.subtask_id))
         self.assertEqual(task.num_tasks_received, 1)
@@ -333,7 +333,7 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
 
         # Check the number and type of result files:
         result = task_thread.result
-        self.assertEqual(result["result_type"], ResultType.files)
+        self.assertEqual(result["result_type"], ResultType.FILES)
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(
             any(path.basename(f) == DockerTaskThread.STDOUT_FILE
