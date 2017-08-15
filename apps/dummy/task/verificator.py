@@ -9,30 +9,12 @@ class DummyTaskVerificator(CoreVerificator):
         super().__init__(*args, **kwargs)
         self.verification_options = {}
 
-    @CoreVerificator.handle_key_error_for_state
-    def verify(self, subtask_id, subtask_info, tr_files, task):
-
-        self._check_files(subtask_id, subtask_info, tr_files, task)
-        return self.ver_states[subtask_id]
-
-    def _check_files(self, subtask_id, subtask_info, tr_files, task):
-        for tr_file in tr_files:
-            if os.path.isfile(tr_file):
-                with open(tr_file, "r") as f:
-                    result = f.read()
-                    if self.verify_result(subtask_info, result):
-                        self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-                return
-        self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
-
     # subtask_info is what sits in the task.subtasks_given[subtask_id"]
     # it is set in the query_extra_data
-    def verify_result(self, subtask_info, result_data):
-        '''
-        Actual verification of result happens here
-        :param result: Result of the computation
-        :return: bool: True if the result was OK
-        '''
+    def _verify_result(self, subtask_id, subtask_info, file, task):
+
+        with open(file, "r") as f:
+            result_data = f.read()
 
         if len(result_data) != self.verification_options["result_size"]:
             return False

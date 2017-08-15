@@ -53,8 +53,12 @@ class CoreVerificator(object):
     def _check_files(self, subtask_id, subtask_info, tr_files, task):
         for tr_file in tr_files:
             if os.path.isfile(tr_file):
-                self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
-                return
+                if self._verify_result(subtask_id, subtask_info, tr_file, task):
+                    self.ver_states[subtask_id] = SubtaskVerificationState.VERIFIED
+                    return
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-
+    def _verify_result(self, *args, **kwargs):
+        """ Override this to change verification method
+        """
+        return True
