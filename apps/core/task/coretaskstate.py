@@ -1,5 +1,7 @@
 from os import path, remove
 
+from copy import deepcopy
+
 from golem.task.taskbasestate import TaskDefaults, TaskDefinition, Options
 from golem.task.taskstate import TaskState
 
@@ -97,7 +99,6 @@ class CoreTaskDefinition(TaskDefinition):
         self.total_subtasks = preset["total_subtasks"]
         self.optimize_total = preset["optimize_total"]
         self.verification_options = preset["verification_options"]
-
 
 advanceVerificationTypes = ['forAll', 'forFirst', 'random']
 

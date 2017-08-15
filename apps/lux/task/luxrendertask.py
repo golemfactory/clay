@@ -9,8 +9,7 @@ from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
 from apps.core.task import coretask
-from apps.core.task.coretask import CoreTaskTypeInfo, AcceptClientVerdict, CoreTask
-from golem.task.taskbasestate import Options
+from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
@@ -24,6 +23,7 @@ from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
+from golem.task.taskbasestate import Options
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")

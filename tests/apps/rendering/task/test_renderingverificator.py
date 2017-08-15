@@ -164,7 +164,7 @@ class TestRenderingVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
         class MockTask(Task):
             pass
 
-        assert rv._run_task(extra_data, MockTask(Mock(), Mock())) is None
+        assert rv._run_task(extra_data, MockTask(Mock(), Mock(), Mock())) is None
 
 
 class TestFrameRenderingVerificator(TempDirFixture):

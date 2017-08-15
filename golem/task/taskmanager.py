@@ -115,7 +115,7 @@ class TaskManager(TaskEventListener):
 
         return Task.build_task(builder)
 
-    def get_task_definition_dict(self, task):
+    def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
             return task
         definition = task.task_definition

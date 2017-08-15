@@ -809,7 +809,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         t = Task(TaskHeader("node_name", "task_id",
                             "10.10.10.10", 123,
                             "owner_id", "DEFAULT"),
-                 src_code="print('hello')")
+                 src_code="print('hello')",
+                 task_definition=Mock())
 
         c.create_task(DictSerializer.dump(t))
         self.assertTrue(c.enqueue_new_task.called)

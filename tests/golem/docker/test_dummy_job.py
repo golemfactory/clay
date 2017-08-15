@@ -42,8 +42,8 @@ class TestDummyTaskDockerJob(TestDockerJob):
 
         for f in os.listdir(code_dir):
             task_file = path.join(code_dir, f)
-            if (path.isfile(task_file) or path.isdir(task_file)) and \
-                            os.path.basename(task_file) != "__pycache__":
+            if (path.isfile(task_file) or path.isdir(task_file)) \
+                    and os.path.basename(task_file) != "__pycache__":
                 shutil.copy(task_file, path.join(self.resources_dir, "code", f))
 
         # this is the stuff that is available by "params" module
@@ -51,8 +51,9 @@ class TestDummyTaskDockerJob(TestDockerJob):
         params = {
             "data_files": ["in.data"],
             "subtask_data": "00110011",  # it is kept in string on purpose
-            "subtask_data_size": 8,  # subtask_data_size is to double check the size, if we havent
-                                     # kept subtask_data in string, we would lose leading zeros
+            "subtask_data_size": 8,  # subtask_data_size is to double check the size,
+                                     # if we haven't kept subtask_data in string,
+                                     # we would lose leading zeros
             "difficulty": 10,
             "result_size": 256,
             "result_file": "out.result",

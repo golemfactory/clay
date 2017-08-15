@@ -10,7 +10,7 @@ from typing import Type
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import CoreTaskDefaults, CoreTaskDefinition
-from golem.task.taskbasestate import Options
+from golem.task.taskbasestate import Options, TaskTypeInfo, TaskDefinition, TaskDefaults
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     timeout_to_string, string_to_timeout
@@ -46,23 +46,19 @@ class AcceptClientVerdict(Enum):
 MAX_PENDING_CLIENT_RESULTS = 1
 
 
-class CoreTaskTypeInfo(object):
+class CoreTaskTypeInfo(TaskTypeInfo):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
 
     def __init__(self,
                  name: str,
-                 definition: Type[CoreTaskDefinition],
-                 defaults: CoreTaskDefaults,
+                 definition: Type[TaskDefinition],
+                 defaults: TaskDefaults,
                  options: Type[Options],
-                 task_builder_type: Type[TaskBuilder],
+                 builder_type: Type[TaskBuilder],
                  dialog=None,
                  dialog_controller=None):
-        self.name = name
-        self.defaults = defaults
-        self.options = options
-        self.definition = definition
-        self.task_builder_type = task_builder_type
+        super().__init__(name, definition, defaults, options, builder_type)
         self.dialog = dialog
         self.dialog_controller = dialog_controller
         self.output_formats = []
@@ -113,18 +109,18 @@ class CoreTask(Task):
                  owner_port=0,
                  owner_key_id="",
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
-                 resource_size=None,  # backward compatibility
-                 root_path=None
+                 resource_size=None,
+                 root_path=None,
+                 total_tasks=0
                  ):
         """Create more specific task implementation
         """
 
-        self.task_definition = task_definition
         task_timeout = task_definition.full_task_timeout
         deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
-        self.task_resources = list(set(filter(os.path.isfile, task_definition.resources))) # why is there a set?
+        self.task_resources = list(set(filter(os.path.isfile, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -150,6 +146,7 @@ class CoreTask(Task):
         elif isinstance(self.environment, DockerEnvironment):
             docker_images = self.environment.docker_images
 
+
         th = TaskHeader(
             node_name=node_name,
             task_id=task_definition.task_id,
@@ -166,9 +163,9 @@ class CoreTask(Task):
             docker_images=docker_images,
         )
 
-        Task.__init__(self, th, src_code)
+        Task.__init__(self, th, src_code, task_definition)
 
-        self.total_tasks = 0
+        self.total_tasks = total_tasks
         self.last_task = 0
 
         self.num_tasks_received = 0
@@ -534,7 +531,7 @@ class CoreTaskBuilder(TaskBuilder):
         return kwargs
 
     @classmethod
-    def build_minimal_definition(cls, task_type, dictionary):
+    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_id = dictionary.get('id', str(uuid.uuid4()))
@@ -549,7 +546,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_definition(cls, task_type, dictionary, minimal=False):
+    def build_definition(cls, task_type: CoreTaskTypeInfo, dictionary, minimal=False):
         if not minimal:
             definition = cls.build_full_definition(task_type, dictionary)
         else:
@@ -559,7 +556,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
+    def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
         definition.max_price = float(dictionary['bid']) * denoms.ether

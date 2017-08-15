@@ -179,16 +179,10 @@ class TestDockerDummyTask(TempDirFixture, DockerTestCase):
 
         self.assertTrue(path.isfile(result))
 
-        test_file = task._get_test_answer()
-        shutil.copy(result, test_file)
-
-        self.dirs_to_remove.append(path.dirname(test_file))
-        self.assertTrue(path.isfile(task._get_test_answer()))
-
         ## copy to new location
-        new_file_dir = path.join(path.dirname(test_file), subtask_id)
+        new_file_dir = path.join(path.dirname(result), subtask_id)
 
-        new_result = self._change_file_location(test_file,
+        new_result = self._change_file_location(result,
                                                 path.join(new_file_dir, "new.result"))
 
         return new_result

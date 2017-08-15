@@ -29,9 +29,9 @@
   "task_id":"540d9636-1848-c85d-19d3-52465d1f23cf",
   "resources":{
     "py/set":[
-      "$GOLEM_DIR/apps/dummy/test_resources_to_send/data/in.data",
-      "$GOLEM_DIR/apps/dummy/test_resources_to_send/code/__init__.py",
-      "$GOLEM_DIR/apps/dummy/test_resources_to_send/code/computing.py"
+      "$GOLEM_DIR/apps/dummy/test_tmp/data/in.data",
+      "$GOLEM_DIR/apps/dummy/test_tmp/code/__init__.py",
+      "$GOLEM_DIR/apps/dummy/test_tmp/code/computing.py"
     ]
   },
   "code_files":[

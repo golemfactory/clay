@@ -45,7 +45,7 @@ class DummyTaskDefaults(CoreTaskDefaults):
 
 class DummyTaskDefinition(CoreTaskDefinition):
 
-    #TODO put defaults switch in base class, create CoreTaskDefinition
+    # TODO put defaults switch in base class, create CoreTaskDefinition
     def __init__(self, defaults=None):
         CoreTaskDefinition.__init__(self)
 
@@ -78,19 +78,19 @@ class DummyTaskDefinition(CoreTaskDefinition):
 
         self.resources = set(ls_R(self.tmp_dir))
 
-    # TODO move it somewhere to the base class
+    # TODO maybe move it higher - to the CoreTask?
     def set_defaults(self, defaults):
         self.shared_data_files = deepcopy(defaults.shared_data_files)
         self.out_file_basename = defaults.out_file_basename
-        self.default_subtasks = defaults.default_subtasks
-        self.options = deepcopy(defaults.options)
         self.code_dir = defaults.code_dir
         self.result_size = defaults.result_size
+        self.total_subtasks = defaults.default_subtasks
+        self.options = deepcopy(defaults.options)
 
 class DummyTaskOptions(Options):
     def __init__(self):
         super(DummyTaskOptions, self).__init__()
-        self.environment = DummyTaskEnvironment() #TODO it shoudn't be there
+        self.environment = DummyTaskEnvironment()
         self.subtask_data_size = 128 # size of subtask-specific data in bytes
 
         # The difficulty is a 4 byte int; 0x00000001 is the greatest and 0xffffffff

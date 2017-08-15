@@ -60,7 +60,8 @@ class RenderingTask(CoreTask):
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            root_path=root_path)
+            root_path=root_path,
+            total_tasks=total_tasks)
 
         if task_definition.docker_images is None:
             task_definition.docker_images = self.environment.docker_images
@@ -71,7 +72,6 @@ class RenderingTask(CoreTask):
         self.output_file = task_definition.output_file
         self.output_format = task_definition.output_format
 
-        self.total_tasks = total_tasks
         self.res_x, self.res_y = task_definition.resolution
 
         self.preview_file_path = None

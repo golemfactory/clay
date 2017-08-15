@@ -43,7 +43,7 @@ class DummyTask(CoreTask):
     RESULT_EXTENSION = ".result"
 
     def __init__(self,
-                 total_tasks: int,  # TODO REFACTOR IT AWAY
+                 total_tasks: int,
                  node_name: str,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
@@ -58,17 +58,14 @@ class DummyTask(CoreTask):
             owner_address=owner_address,
             owner_port=owner_port,
             owner_key_id=owner_key_id,
-            root_path=root_path
+            root_path=root_path,
+            total_tasks=total_tasks
         )
-
-        self.total_tasks = total_tasks  # TODO WTF I HAVE TO DO THAT???
 
         ver_opts = self.verificator.verification_options
         ver_opts["difficulty"] = self.task_definition.options.difficulty
         ver_opts["shared_data_files"] = self.task_definition.shared_data_files
         ver_opts["result_size"] = self.task_definition.result_size
-
-        # self.dir_manager = DirManager(self.root_path) # is it needed?
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -79,7 +76,7 @@ class DummyTask(CoreTask):
         # create subtask-specific data, 4 bits go for one char (hex digit)
         sbs = self.task_definition.options.subtask_data_size
         data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
-        # now data is in the format "010010111010011...001"
+        # now data is in the format "010010111010011...001": str
 
         shared_data_files_base = [os.path.basename(x) for x in
                                   self.task_definition.shared_data_files]
@@ -117,9 +114,9 @@ class DummyTask(CoreTask):
     # FIXME quite tricky to know that I should override this method
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        self.num_tasks_received += 1  # TODO WTF???? WHY DO I HAVE TO DO THAT?
+        self.num_tasks_received += 1
         self.counting_nodes[
-            self.subtasks_given[subtask_id]['node_id']].accept()  # TODO WTF???? WHY DO I HAVE TO DO THAT?
+            self.subtasks_given[subtask_id]['node_id']].accept()
 
     def __get_new_subtask_id(self) -> str:
         return "{}".format(str(random.getrandbits(128)))
@@ -132,20 +129,16 @@ class DummyTask(CoreTask):
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         return self._extra_data()
 
-    # TODO why do I need that? (except for test)
-    def _get_test_answer(self):
-        return os.path.join(self.tmp_dir, "in" + self.RESULT_EXTENSION)
-
 
 class DummyTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = DummyTask
-    DEFAULTS = DummyTaskDefaults  # TODO may be useful at some point...
 
-    # TODO types should be validated here!!
+    # TODO types should be somehow validated here
     @classmethod
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)
         opts = dictionary['options']
+
         opts['subtask_data_size'] = int(definition.options.subtask_data_size)
         opts['difficulty'] = int(definition.options.difficulty)
 
@@ -153,14 +146,14 @@ class DummyTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        options = dictionary['options']
+        opts = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
 
         definition.options.subtask_data_size = \
-            int(options.get('subtask_data_size', definition.options.subtask_data_size))
+            int(opts.get('subtask_data_size', definition.options.subtask_data_size))
 
         definition.options.difficulty = \
-            int(options.get('difficulty', definition.options.difficulty))
+            int(opts.get('difficulty', definition.options.difficulty))
 
         return definition

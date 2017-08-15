@@ -167,15 +167,17 @@ class Task(metaclass=abc.ABCMeta):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
+    # TODO why do we need that instead of calling .build() directly?
     @classmethod
     def build_task(cls, task_builder: TaskBuilder) -> 'Task':
         if not isinstance(task_builder, TaskBuilder):
             raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
-    def __init__(self, header, src_code):
+    def __init__(self, header: TaskHeader, src_code: str, task_definition: TaskDefinition):
         self.src_code = src_code
         self.header = header
+        self.task_definition = task_definition
 
         self.listeners = []
 
