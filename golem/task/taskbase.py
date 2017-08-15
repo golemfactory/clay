@@ -14,7 +14,7 @@ from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
 
-# TODO change types to enums - for now it shows
+# TODO change types to enums - for now it gets
 # evt.comp.task.test.status Error WAMP message serialization error: unsupported type: <enum 'ResultType'> undefined
 
 class ResultType(object): # class ResultType(Enum):

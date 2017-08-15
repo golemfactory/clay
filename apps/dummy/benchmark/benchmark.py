@@ -1,7 +1,6 @@
-import sys
 import tempfile
 from os import walk
-from os.path import abspath, dirname, join
+from os.path import join
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskOptions, DummyTaskDefinition, DummyTaskDefaults
@@ -9,7 +8,8 @@ from golem.core.common import get_golem_path
 
 APP_DIR = join(get_golem_path(), 'apps', 'dummy')
 
-#TODO copied from LuxBenchmark, abstract away
+
+# TODO copied from LuxBenchmark, abstract away
 
 class DummyBenchmark(object):
     def __init__(self):

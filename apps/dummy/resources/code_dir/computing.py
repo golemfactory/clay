@@ -16,7 +16,7 @@ def check_pow(proof, input_data, difficulty):
     sha.update(input_data.encode())
     sha.update(('%x' % proof).encode())
     h = int(sha.hexdigest()[0:8], 16)
-    return h >= 2**difficulty
+    return h >= 2 ** difficulty
 
 
 def find_pow(input_data, difficulty, result_size):
@@ -47,7 +47,7 @@ def run_dummy_task(data_file, subtask_string, difficulty, result_size):
     """
     print('[DUMMY TASK] computation started, data_file = ', data_file,
           ', result_size = ', result_size,
-          ', difficulty = 0x%08x' % difficulty) # TODO remove that print
+          ', difficulty = 0x%08x' % difficulty)  # TODO remove that print
     t0 = time.clock()
 
     with open(data_file, 'r') as f:

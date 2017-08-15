@@ -36,7 +36,7 @@ from gui.view.appmainwindow import AppMainWindow
 
 class TTask(Task):
     def __init__(self):
-        Task.__init__(self, Mock(), Mock())
+        Task.__init__(self, Mock(), Mock(), Mock())
         self.src_code = ""
         self.extra_data = {}
         self.test_finished = False

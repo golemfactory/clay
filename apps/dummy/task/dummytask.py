@@ -1,21 +1,17 @@
 import logging
 import os
 import random
-import uuid
-from typing import Union
 
 import enforce
 
 from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
-                                     CoreTaskTypeInfo, AcceptClientVerdict)
+                                     CoreTaskTypeInfo)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verificator import DummyTaskVerificator
-from golem.core.common import timeout_to_deadline
-from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef, Task
 from golem.task.taskstate import SubtaskStatus
 

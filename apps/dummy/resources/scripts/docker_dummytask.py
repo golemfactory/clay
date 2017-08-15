@@ -11,7 +11,6 @@ RESOURCES_DIR = "/golem/resources"
 
 
 def run(data_files, subtask_data, difficulty, result_size, result_file):
-
     code_file = os.path.join(RESOURCES_DIR, "code", "computing.py")
     computing = imp.load_source("code", code_file)
 
