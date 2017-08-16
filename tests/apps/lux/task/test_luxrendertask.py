@@ -1,18 +1,11 @@
 import os
-
-from ethereum.utils import denoms
-from pathlib import Path
 import pickle
 import unittest
+from pathlib import Path
 
-from mock import Mock, patch
 from PIL import Image
-
-from golem.core.common import is_linux
-from golem.resource.dirmanager import DirManager
-from golem.testutils import PEP8MixIn, TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem.task.taskbase import ComputeTaskDef
+from ethereum.utils import denoms
+from mock import Mock, patch
 
 from apps.core.task.coretask import AcceptClientVerdict, CoreTaskTypeInfo
 from apps.lux.task.luxrendertask import (
@@ -23,6 +16,11 @@ from apps.lux.task.luxrendertask import (
     LuxRenderTaskTypeInfo,
 )
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from golem.core.common import is_linux
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import ComputeTaskDef
+from golem.testutils import PEP8MixIn, TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 
 
 class TestLuxRenderDefaults(unittest.TestCase):
@@ -36,8 +34,8 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         'apps/lux/task/luxrendertask.py',
     ]
 
-
-    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # since we dont need it, lets patch it to speed up the tests
+    @patch(
+        "apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation")  # since we dont need it, lets patch it to speed up the tests
     def get_test_lux_task(self, create_reference_data_for_task_validation_mock, haltspp=20, total_subtasks=10):
         create_reference_data_for_task_validation_mock.return_value = None
 
@@ -53,7 +51,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         dm = DirManager(self.path)
         lb = LuxRenderTaskBuilder("ABC", td, self.path, dm)
         return lb.build()
-
 
     def test_luxtask(self):
         luxtask = self.get_test_lux_task()
@@ -164,7 +161,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         preview_img = Image.open(luxtask.preview_file_path)
         assert preview_img.getpixel((100, 100)) == (0, 127, 127)
 
-
     def test_accept_results(self):
         luxtask = self.get_test_lux_task()
         luxtask.total_tasks = 20
@@ -213,7 +209,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
             'scene'
         )
 
-        path=DirManager(luxtask.root_path).get_task_test_dir(luxtask.header.task_id)
+        path = DirManager(luxtask.root_path).get_task_test_dir(luxtask.header.task_id)
         os.removedirs(path)
 
         assert not os.path.exists(path)
@@ -243,7 +239,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert any("Cannot find merger script" in log for log in l.output)
 
     def test_update_preview_with_exr(self):
-        p = Path(__file__).parent.parent.parent /\
+        p = Path(__file__).parent.parent.parent / \
             "rendering" / "resources" / "testfile.EXR"
         luxtask = self.get_test_lux_task()
         luxtask.res_x, luxtask.res_y = 10, 10
@@ -298,7 +294,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
             luxtask._LuxTask__final_img_ready(
                 {
                     "data": self.additional_dir_content([1, [2]])
-                    + [diff_output]
+                            + [diff_output]
                 },
                 10
             )
@@ -408,7 +404,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         definition.resolution = (0, 0)
         assert typeinfo.get_task_border("subtask1", definition, 10,
                                         as_path=True) == []
-        
+
     def test_get_task_num_from_pixels(self):
         typeinfo = LuxRenderTaskTypeInfo(None, None)
         definition = RenderingTaskDefinition()
@@ -417,8 +413,8 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
 
 
 class TestLuxRenderTaskBuilder(TempDirFixture):
-
-    @patch("apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation") # since we dont need it, lets patch it to speed up the tests
+    @patch(
+        "apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation")  # since we dont need it, lets patch it to speed up the tests
     def get_task(self, create_reference_data_for_task_validation_mock):
         create_reference_data_for_task_validation_mock.return_value = None
         td = RenderingTaskDefinition()
