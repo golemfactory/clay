@@ -25,7 +25,7 @@ class DummyTaskDefaults(TaskDefaults):
     def __init__(self):
         super(DummyTaskDefaults, self).__init__()
         self.options = DummyTaskOptions()
-        self.options.difficulty = 10  # magic number
+        self.options.difficulty = 6  # magic number
 
         self.shared_data_files = ["in.data"]
         self.out_file_basename = "out"

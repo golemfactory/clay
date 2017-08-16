@@ -11,7 +11,7 @@ class DummyTaskVerificator(CoreVerificator):
 
     # subtask_info is what sits in the task.subtasks_given[subtask_id"]
     # it is set in the query_extra_data
-    def _verify_result(self, subtask_id, subtask_info, file, task):
+    def _verify_result(self, _subtask_id, subtask_info, file, _task):
 
         with open(file, "r") as f:
             result_data = f.read()

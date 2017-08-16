@@ -58,7 +58,7 @@ class CoreVerificator(object):
                     return
         self.ver_states[subtask_id] = SubtaskVerificationState.WRONG_ANSWER
 
-    def _verify_result(self, *args, **kwargs):
+    def _verify_result(self, subtask_id, subtask_info, tr_file, task):
         """ Override this to change verification method
         """
         return True
