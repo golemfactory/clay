@@ -5,7 +5,7 @@ from threading import Lock
 import time
 from typing import Callable
 
-from apps.core.task.coretaskstate import CoreTaskDefinition
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import to_unicode
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager

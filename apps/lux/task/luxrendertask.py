@@ -23,7 +23,7 @@ from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbasestate import Options
+from apps.core.task.coretaskstate import Options
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")

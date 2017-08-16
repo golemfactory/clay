@@ -2,17 +2,34 @@ import abc
 import enum
 import logging
 import time
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Type
 
+from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.core.variables import APP_VERSION
 from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.resource.resource import TaskResourceHeader
-from golem.task.taskbasestate import TaskTypeInfo, TaskDefinition
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
+
+
+class TaskTypeInfo(object):
+    """ Information about task that allows to define and build a new task"""
+
+    def __init__(self,
+                 name: str,
+                 definition: Type[TaskDefinition],
+                 defaults: TaskDefaults,
+                 options: Type[Options],
+                 task_builder_type: 'Type[TaskBuilder]'):
+        self.name = name
+        self.defaults = defaults
+        self.options = options
+        self.definition = definition
+        self.task_builder_type = task_builder_type
+
 
 # TODO change types to enums - for now it gets
 # evt.comp.task.test.status Error WAMP message serialization error: unsupported type: <enum 'ResultType'> undefined
@@ -119,11 +136,11 @@ class TaskBuilder(object):
     def build(self) -> 'Task':
         pass
 
-    # TODO it uses TaskTypeInfo amd CoreTaskDefinition
+    # TODO it uses TaskTypeInfo amd TaskDefinition
     # but the first implementations are on the CoreTask level
     # maybe move that methods somewhere?
     @classmethod
-    def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False) -> TaskDefinition:
+    def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False) -> 'CoreTaskDefinition':
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task
         :param bool minimal: if this option is set too True, then only minimal
@@ -176,7 +193,7 @@ class Task(metaclass=abc.ABCMeta):
             raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
         return task_builder.build()
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition: TaskDefinition):
+    def __init__(self, header: TaskHeader, src_code: str, task_definition: 'CoreTaskDefinition'):
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition

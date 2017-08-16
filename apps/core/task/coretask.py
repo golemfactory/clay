@@ -9,8 +9,7 @@ from typing import Type
 
 from ethereum.utils import denoms
 
-from apps.core.task.coretaskstate import CoreTaskDefaults, CoreTaskDefinition
-from golem.task.taskbasestate import Options, TaskTypeInfo, TaskDefinition, TaskDefaults
+from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     timeout_to_string, string_to_timeout
@@ -23,7 +22,7 @@ from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    ResourceType, ComputeTaskDef
+    ResourceType, ComputeTaskDef, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -52,8 +51,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     def __init__(self,
                  name: str,
-                 definition: Type[TaskDefinition],
-                 defaults: TaskDefaults,
+                 definition: 'Type[TaskDefinition]',
+                 defaults: 'TaskDefaults',
                  options: Type[Options],
                  builder_type: Type[TaskBuilder],
                  dialog=None,
@@ -103,7 +102,7 @@ class CoreTask(Task):
     ################
 
     def __init__(self,
-                 task_definition: CoreTaskDefinition,
+                 task_definition: TaskDefinition,
                  node_name: str,
                  owner_address="",
                  owner_port=0,

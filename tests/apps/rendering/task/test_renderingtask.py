@@ -4,8 +4,7 @@ from os import makedirs, path, remove
 
 from mock import Mock, patch, ANY
 
-from apps.core.task.coretaskstate import CoreTaskDefinition, TaskState
-from golem.task.taskbasestate import Options
+from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
@@ -70,7 +69,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingTask, self).setUp()
         files = self.additional_dir_content([3])
-        task_definition = CoreTaskDefinition()
+        task_definition = TaskDefinition()
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
@@ -395,7 +394,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
                                         'file3.jpg', 'file4.txt'}
 
     def test_get_output_path(self):
-        td = CoreTaskDefinition()
+        td = TaskDefinition()
         td.legacy = True
         td.task_name = "MY task"
         tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}

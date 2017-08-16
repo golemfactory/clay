@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from apps.core.task.coretaskstate import (CoreTaskDefaults, CoreTaskDefinition, TaskDesc)
-from golem.task.taskbasestate import Options
+from apps.core.task.coretaskstate import (TaskDefaults, TaskDefinition, TaskDesc, Options)
 
 from golem.environments.environment import Environment
 from golem.testutils import PEP8MixIn
@@ -15,7 +14,7 @@ class TestTaskDesc(TestCase):
 
 class TestCoreTaskDefautls(TestCase):
     def test_init(self):
-        defaults = CoreTaskDefaults()
+        defaults = TaskDefaults()
         assert defaults.output_format == ""
         assert defaults.main_program_file == ""
         assert defaults.full_task_timeout == 4 * 3600
@@ -44,7 +43,7 @@ class TestCoreTaskStateStyle(TestCase, PEP8MixIn):
 class TestTaskDefinition(TestCase):
 
     def test_preset(self):
-        tdf = CoreTaskDefinition()
+        tdf = TaskDefinition()
         tdf.total_subtasks = 12
         tdf.options.name = "OptionsName"
         tdf.optimize_total = True
@@ -56,7 +55,7 @@ class TestTaskDefinition(TestCase):
         assert preset["total_subtasks"] == 12
         assert preset["optimize_total"]
 
-        tdf2 = CoreTaskDefinition()
+        tdf2 = TaskDefinition()
         assert tdf2.options.name == ""
         assert tdf2.verification_options is None
         assert tdf2.total_subtasks == 0

@@ -20,7 +20,7 @@ from golem.tools.testdirfixture import TestDirFixture
 
 from apps.core.task.coretask import (CoreTask, logger, log_key_error, CoreTaskTypeInfo,
                                      CoreTaskBuilder, AcceptClientVerdict)
-from apps.core.task.coretaskstate import CoreTaskDefinition
+from apps.core.task.coretaskstate import TaskDefinition
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
@@ -38,7 +38,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     @staticmethod
     def _get_core_task_definition():
-        task_definition = CoreTaskDefinition()
+        task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024

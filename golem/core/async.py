@@ -29,7 +29,3 @@ def async_run(deferred_call, success=None, error=None):
         deferred.addCallback(success)
     deferred.addErrback(error)
     return deferred
-
-
-def default_errback(failure):
-    log.error('Caught async exception:\n%s', failure.getTraceback())

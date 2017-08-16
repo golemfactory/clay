@@ -1,4 +1,4 @@
-from apps.core.task.coretaskstate import CoreTaskDefinition
+from apps.core.task.coretaskstate import TaskDefinition
 
 from gui.controller.customizer import Customizer
 
@@ -21,8 +21,8 @@ class ChangeTaskDialogCustomizer(Customizer):
         self.gui.window.close()
 
     def load_task_definition(self, definition):
-        if not isinstance(definition, CoreTaskDefinition):
-            raise TypeError("Incorrect 'definition' type: {}. Should be: CoreTaskDefinition".format(type(definition)))
+        if not isinstance(definition, TaskDefinition):
+            raise TypeError("Incorrect 'definition' type: {}. Should be: TaskDefinition".format(type(definition)))
 
         self.gui.ui.taskIdLabel.setText("{}".format(definition.task_id))
         set_time_spin_boxes(self.gui, definition.full_task_timeout, definition.subtask_timeout)

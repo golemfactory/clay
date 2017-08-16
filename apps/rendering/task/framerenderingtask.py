@@ -10,7 +10,7 @@ from PIL import Image, ImageChops
 from copy import deepcopy
 
 from apps.core.task.coretask import CoreTask
-from golem.task.taskbasestate import Options
+from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector

@@ -2,14 +2,15 @@ import os
 import tempfile
 from copy import deepcopy
 
-from apps.core.task.coretaskstate import (CoreTaskDefinition,
-                                          CoreTaskDefaults)
+from apps.core.task.coretaskstate import (TaskDefinition,
+                                          TaskDefaults, Options)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
-from golem.task.taskbasestate import Options
 
 
 # TODO move it somewhere, but idk where
+
+
 def ls_R(dir):
     files = []
     for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
@@ -18,20 +19,19 @@ def ls_R(dir):
     return files
 
 
-class DummyTaskDefaults(CoreTaskDefaults):
+class DummyTaskDefaults(TaskDefaults):
     """ Suggested default values for dummy task"""
 
     def __init__(self):
         super(DummyTaskDefaults, self).__init__()
         self.options = DummyTaskOptions()
-        self.options.subtask_data_size = 2048
-        self.options.result_size = 256
         self.options.difficulty = 10  # magic number
 
         self.shared_data_files = ["in.data"]
         self.out_file_basename = "out"
         self.default_subtasks = 5
-        self.code_dir = "code_dir"
+        self.code_dir = os.path.join(get_golem_path(),
+                                     "apps", "dummy", "resources", "code_dir")
         self.result_size = 256  # size of subtask result in bytes
 
         @property
@@ -43,16 +43,18 @@ class DummyTaskDefaults(CoreTaskDefaults):
             return 1200
 
 
-class DummyTaskDefinition(CoreTaskDefinition):
+class DummyTaskDefinition(TaskDefinition):
     def __init__(self, defaults=None):
-        CoreTaskDefinition.__init__(self)
+        TaskDefinition.__init__(self)
 
         self.options = DummyTaskOptions()
+
         # subtask data
         self.shared_data_files = []
 
-        # subtask code_dir
-        self.code_dir = os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
+        # subtask code
+        self.code_dir = os.path.join(get_golem_path(),
+                                     "apps", "dummy", "resources", "code_dir")
         self.code_files = []
 
         self.result_size = 256  # size of subtask result in bytes
@@ -63,21 +65,30 @@ class DummyTaskDefinition(CoreTaskDefinition):
 
     def add_to_resources(self):
         super().add_to_resources()
-        self.shared_data_files = list(self.resources)
 
-        self.code_files = ls_R(self.code_dir)
+        # TODO create temp in task directory
+        # but for now TaskDefinition doesn't know root_path
+        # task_root_path = ""
+        # self.tmp_dir = DirManager().get_task_temporary_dir(self.task_id, True)
 
         self.tmp_dir = tempfile.mkdtemp()
+
+        self.shared_data_files = list(self.resources)
+        self.code_files = ls_R(self.code_dir)
+
         os.symlink(self.code_dir, os.path.join(self.tmp_dir, "code"))
 
-        # common_data_path = os.path.commonpath(self.shared_data_files) # makes sense when len(..) > 1
-        common_data_path = os.path.dirname(list(self.shared_data_files)[0]) # but we only have 1 file here
+        # makes sense when len(..) > 1
+        # common_data_path = os.path.commonpath(self.shared_data_files)
+        # but we only have 1 file here
+        common_data_path = os.path.dirname(list(self.shared_data_files)[0])
+
         os.symlink(common_data_path, os.path.join(self.tmp_dir, "data"))
 
         self.resources = set(ls_R(self.tmp_dir))
 
     # TODO maybe move it to the CoreTask?
-    def set_defaults(self, defaults):
+    def set_defaults(self, defaults: DummyTaskDefaults):
         self.shared_data_files = deepcopy(defaults.shared_data_files)
         self.out_file_basename = defaults.out_file_basename
         self.code_dir = defaults.code_dir
@@ -92,7 +103,8 @@ class DummyTaskOptions(Options):
         self.environment = DummyTaskEnvironment()
         self.subtask_data_size = 128  # size of subtask-specific data in bytes
 
-        # The difficulty is a 4 byte int; 0xffffffff = 32 is the greatest and 0x00000000 = 0
-        # the least difficulty. For example difficulty 0x003fffff = (32 - 10) requires
+        # The difficulty is a 4 byte int; 0xffffffff = 32 is the greatest
+        # and 0x00000000 = 0 is the least difficulty.
+        # For example difficulty 0x003fffff = (32 - 10) requires
         # 0xffffffff / 0x003fffff = 1024 hash computations on average.
         self.difficulty = 10  # 32 - log2(0x003fffff)

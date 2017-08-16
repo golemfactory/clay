@@ -147,9 +147,11 @@ class DummyTaskBuilder(CoreTaskBuilder):
         definition = super().build_full_definition(task_type, dictionary)
 
         definition.options.subtask_data_size = \
-            int(opts.get('subtask_data_size', definition.options.subtask_data_size))
+            int(opts.get('subtask_data_size',
+                         definition.options.subtask_data_size))
 
         definition.options.difficulty = \
-            int(opts.get('difficulty', definition.options.difficulty))
+            int(opts.get('difficulty',
+                         definition.options.difficulty))
 
         return definition

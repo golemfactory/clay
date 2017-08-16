@@ -10,9 +10,8 @@ from apps.core.gui.controller.newtaskdialogcustomizer import (
 )
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import (
-    CoreTaskDefinition, CoreTaskDefaults
-)
-from golem.task.taskbasestate import Options
+    TaskDefinition, TaskDefaults,
+    Options)
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_windows
 from golem.testutils import TempDirFixture
@@ -44,7 +43,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         self.logic.dir_manager = Mock()
         self.logic.dir_manager.root_path = self.path
 
-        tti = CoreTaskTypeInfo("Nice task", CoreTaskDefinition, CoreTaskDefaults(), Mock(),
+        tti = CoreTaskTypeInfo("Nice task", TaskDefinition, TaskDefaults(), Mock(),
                                Mock(), Mock(), Mock())
         self.logic.register_new_task_type(tti)
         self.gui.main_window.ui.taskSpecificLayout = Mock()
@@ -57,7 +56,7 @@ class TestNewTaskDialogCustomizer(TempDirFixture, LogTestCase):
         QTest.mouseClick(customizer.gui.ui.showAdvanceNewTaskButton, Qt.LeftButton)
 
         task_name = "Some Nice Task"
-        td = CoreTaskDefinition()
+        td = TaskDefinition()
         td.resources = ["/abc/./def", "/ghi/jik"]
         td.main_program_file = "/a/b/c/"
         td.task_name = task_name
