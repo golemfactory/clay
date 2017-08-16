@@ -24,10 +24,11 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
     def setUp(self):
         super(TestEthereumIncomesKeeper, self).setUp()
         random.seed()
-        self.instance = EthereumIncomesKeeper()
-        self.instance.processor = mock.MagicMock()
-        self.instance.processor.eth_address.return_value = get_some_id()
-        self.instance.eth_node = mock.MagicMock()
+        processor = mock.MagicMock()
+        processor.eth_address.return_value = get_some_id()
+        eth_node = mock.MagicMock()
+
+        self.instance = EthereumIncomesKeeper(processor, eth_node)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):

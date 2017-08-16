@@ -5,6 +5,8 @@ import peewee
 
 from golem import model
 from golem.transactions.incomeskeeper import IncomesKeeper
+from golem.ethereum import Client
+from golem.ethereum.paymentprocessor import PaymentProcessor
 
 logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
@@ -16,6 +18,10 @@ class EthereumIncomesKeeper(IncomesKeeper):
     # (Documentation writes about double word int64_t)
     # http://www.sqlite.org/datatype3.html
     SQLITE3_MAX_INT = 2**31 - 1
+
+    def __init__(self, processor: PaymentProcessor, eth_node: Client):
+        self.processor = processor
+        self.eth_node = eth_node
 
     def received(self, sender_node_id, task_id, subtask_id, transaction_id,
                  block_number, value):

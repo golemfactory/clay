@@ -116,19 +116,3 @@ class PaymentInfo(object):
         self.value = value
         self.computer = computer
 
-
-class AccountInfo(object):
-    """ Information about node's payment account """
-    # FIXME: Remove this class
-
-    def __init__(self, key_id, port, addr, node_name, node_info):
-        self.key_id = key_id
-        self.port = port
-        self.addr = addr
-        self.node_name = node_name
-        self.node_info = node_info
-
-    def __eq__(self, other):
-        if type(other) is type(self):
-            return self.key_id == other.key_id
-        return False

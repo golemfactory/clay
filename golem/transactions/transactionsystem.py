@@ -8,13 +8,13 @@ from .incomeskeeper import IncomesKeeper
 class TransactionSystem(object):
     """ Transaction system. Keeps information about budget, expected payments, etc. """
 
-    def __init__(self, payments_keeper_class=PaymentsKeeper, incomes_keeper_class=IncomesKeeper):
+    def __init__(self, payments_keeper_class=PaymentsKeeper(), incomes_keeper_class=IncomesKeeper()):
         """ Create new transaction system instance.
         :param payments_keeper_class: default PaymentsKeeper, payment keeper class, an instance of this class
         while be used as a payment keeper
         """
-        self.payments_keeper = payments_keeper_class()  # Keeps information about payments to send
-        self.incomes_keeper = incomes_keeper_class()  # Keeps information about received payments
+        self.payments_keeper = payments_keeper_class # Keeps information about payments to send
+        self.incomes_keeper = incomes_keeper_class  # Keeps information about received payments
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask.

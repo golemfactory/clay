@@ -78,18 +78,35 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
-            assert e._EthereumTransactionSystem__proc.start.called
-            assert e._EthereumTransactionSystem__eth_node.node.start.called
+            assert e.incomes_keeper.processor.start.called
+            assert e.incomes_keeper.eth_node.node.start.called
 
             e.stop()
 
-            assert not e._EthereumTransactionSystem__proc.stop.called
-            assert e._EthereumTransactionSystem__eth_node.node.stop.called
+            assert not e.incomes_keeper.processor.stop.called
+            assert e.incomes_keeper.eth_node.node.stop.called
 
-            e._EthereumTransactionSystem__eth_node.node.stop.called = False
-            e._EthereumTransactionSystem__proc._loopingCall.running = True
+            e.incomes_keeper.eth_node.node.stop.called = False
+            e.incomes_keeper.processor._loopingCall.running = True
 
             e.stop()
 
-            assert e._EthereumTransactionSystem__proc.stop.called
-            assert e._EthereumTransactionSystem__eth_node.node.stop.called
+            assert e.incomes_keeper.processor.stop.called
+            assert e.incomes_keeper.eth_node.node.stop.called
+
+
+            # assert e._EthereumTransactionSystem__proc.start.called
+            # assert e._EthereumTransactionSystem__eth_node.node.start.called
+            #
+            # e.stop()
+            #
+            # assert not e._EthereumTransactionSystem__proc.stop.called
+            # assert e._EthereumTransactionSystem__eth_node.node.stop.called
+            #
+            # e._EthereumTransactionSystem__eth_node.node.stop.called = False
+            # e._EthereumTransactionSystem__proc._loopingCall.running = True
+            #
+            # e.stop()
+            #
+            # assert e._EthereumTransactionSystem__proc.stop.called
+            # assert e._EthereumTransactionSystem__eth_node.node.stop.called
