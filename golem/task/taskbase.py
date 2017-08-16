@@ -136,10 +136,8 @@ class TaskBuilder(object):
     def build(self) -> 'Task':
         pass
 
-    # TODO it uses TaskTypeInfo amd TaskDefinition
-    # but the first implementations are on the CoreTask level
-    # maybe move that methods somewhere?
     @classmethod
+    @abc.abstractmethod
     def build_definition(cls, task_type: TaskTypeInfo, dictionary, minimal=False) -> 'CoreTaskDefinition':
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task

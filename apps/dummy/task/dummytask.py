@@ -144,16 +144,29 @@ class DummyTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type: DummyTaskTypeInfo, dictionary):
+        # dictionary comes from GUI
         opts = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
 
-        definition.options.subtask_data_size = \
-            int(opts.get('subtask_data_size',
-                         definition.options.subtask_data_size))
+        sbs = opts.get('subtask_data_size',
+                       definition.options.subtask_data_size)
+        difficulty = opts.get('difficulty',
+                              definition.options.difficulty)
 
-        definition.options.difficulty = \
-            int(opts.get('difficulty',
-                         definition.options.difficulty))
+        if not isinstance(sbs, int):
+            raise TypeError("Subtask data size should be int")
+        if not isinstance(difficulty, int):
+            raise TypeError("Difficulty should be int")
+
+        if sbs <= 0:
+            raise Exception("Subtask data size should be greater than 0")
+        if difficulty < 0:
+            raise Exception("Difficulty should be greater than 0")
+        if difficulty >= 16 ** 8:
+            raise Exception("Difficulty should be smaller than {}".format(16 ** 8))
+
+        definition.options.difficulty = difficulty
+        definition.options.subtask_data_size = sbs
 
         return definition

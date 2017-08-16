@@ -472,7 +472,8 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
-
+# TODO test it
+# some of the tests are in the test_luxrendertask.py
 def accepting(query_extra_data_func):
     """
     A decorator for query_extra_data - it wraps the function with verification code
@@ -508,6 +509,7 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
+    # FIXME get the root path from dir_manager
     def __init__(self, node_name, task_definition, root_path, dir_manager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
@@ -546,6 +548,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     @classmethod
     def build_definition(cls, task_type: CoreTaskTypeInfo, dictionary, minimal=False):
+        # dictionary comes from the GUI
         if not minimal:
             definition = cls.build_full_definition(task_type, dictionary)
         else:
@@ -569,7 +572,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_dictionary(cls, definition):
+    def build_dictionary(cls, definition: TaskDefinition):
         task_timeout = timeout_to_string(definition.full_task_timeout)
         subtask_timeout = timeout_to_string(definition.subtask_timeout)
         output_path = cls.build_output_path(definition)

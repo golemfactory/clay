@@ -1,6 +1,5 @@
-from unittest import TestCase
-
 import os
+from unittest import TestCase
 from unittest.mock import patch
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
@@ -102,7 +101,60 @@ class TestDummyTaskBuilder(TestCase):
         assert DummyTaskBuilder.TASK_CLASS == DummyTask
 
     def test_build_dictionary(self):
+        td = DummyTaskDefinition(DummyTaskDefaults())
+        dictionary = DummyTaskBuilder.build_dictionary(td)
+        opts = dictionary["options"]
+        assert opts['subtask_data_size'] == int(td.options.subtask_data_size)
+        assert opts['difficulty'] == int(td.options.difficulty)
 
+    def test_build_full_definition(self):
+        td = DummyTaskDefinition(DummyTaskDefaults())
+
+        def get_dict():
+            dictionary = {}
+            dictionary['resources'] = {"aa"}
+            dictionary['subtasks'] = 5
+            dictionary['name'] = "name"
+            dictionary['bid'] = 5
+            dictionary['timeout'] = "5:11:11"
+            dictionary['subtask_timeout'] = "5:11:11"
+            dictionary['output_path'] = "5:11:11"
+            dictionary["options"] = {"output_path": ""}
+            return dictionary
+
+        def get_def(difficulty, sbs):
+            dictionary = get_dict()
+            dictionary["options"].update({"subtask_data_size": sbs,
+                                          "difficulty": difficulty})
+
+            return DummyTaskBuilder.build_full_definition(DummyTaskTypeInfo(None, None), dictionary)
+
+
+        difficulty = 20
+        sbs = 10
+        def_ = get_def(difficulty, sbs)
+
+        assert def_.options.difficulty == difficulty
+        assert def_.options.subtask_data_size == sbs
+
+        with self.assertRaises(Exception):
+            get_def(-1, 10)
+        with self.assertRaises(Exception):
+            get_def(10, 0)
+        with self.assertRaises(Exception):
+            get_def(10, -1)
+        with self.assertRaises(Exception):
+            get_def(16 ** 8 + 1, 10)
+        with self.assertRaises(Exception):
+            get_def(16 ** 8, 10)
+        with self.assertRaises(TypeError):
+            get_def("aa", .1)
+        with self.assertRaises(TypeError):
+            get_def("aa", 10)
+        with self.assertRaises(TypeError):
+            get_def(.1, -1)
+        with self.assertRaises(TypeError):
+            get_def(.1, .1)
 
 
 class TestDummyTaskTypeInfo(TestCase):
@@ -113,4 +165,3 @@ class TestDummyTaskTypeInfo(TestCase):
         assert isinstance(tti.defaults, DummyTaskDefaults)
         assert tti.task_builder_type == DummyTaskBuilder
         assert tti.definition == DummyTaskDefinition
-

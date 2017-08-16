@@ -5,15 +5,15 @@ import zipfile
 import zlib
 from copy import copy, deepcopy
 
-from mock import MagicMock
+from mock import MagicMock, Mock
 
-from golem.core.common import is_linux
+from golem.core.common import is_linux, timeout_to_deadline
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import TaskResourceHeader
 from golem.resource.resourcesmanager import DistributedResourceManager
-from golem.task.taskbase import ResultType, TaskEventListener, ResourceType
+from golem.task.taskbase import ResultType, TaskEventListener, ResourceType, ComputeTaskDef
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -445,6 +445,29 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
         c.load_task_results(MagicMock(), ResultType.DATA, "subtask1")
         assert os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
+
+    def test_new_compute_task_def(self):
+        c = self._get_core_task()
+        c.header.subtask_timeout = 1
+
+        hash = "aaa"
+        extra_data = Mock()
+        working_directory = "."
+        perf_index = 0
+
+        ctd = c._new_compute_task_def(hash, extra_data, working_directory, perf_index)
+        assert isinstance(ctd, ComputeTaskDef)
+        assert ctd.task_id == c.header.task_id
+        assert ctd.subtask_id == hash
+        assert ctd.extra_data == extra_data
+        assert ctd.short_description == c.short_extra_data_repr(extra_data)
+        assert ctd.src_code == c.src_code
+        assert ctd.performance == perf_index
+        assert ctd.working_directory == working_directory
+        assert ctd.docker_images == c.header.docker_images
+        assert ctd.deadline == timeout_to_deadline(c.header.subtask_timeout)
+        assert ctd.task_owner == c.header.task_owner
+        assert ctd.environment == c.header.environment
 
 
 class TestLogKeyError(LogTestCase):
