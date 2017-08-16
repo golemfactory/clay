@@ -19,7 +19,7 @@ dependencies:
   pre:
     - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
     - sudo add-apt-repository -y ppa:ethereum/ethereum && sudo apt-get update
-    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5 openexr libfreeimage3 libfreeimage-dev
+    - sudo apt-get install -y qt5-default qtbase5-dev-tools geth unzip gcc-5 g++-5 libfreeimage3 libfreeimage-dev
     - cd apps/rendering/resources/taskcollector && make && cd ../../../../..
     - pip3 install six
     - pip3 install -r requirements.txt
