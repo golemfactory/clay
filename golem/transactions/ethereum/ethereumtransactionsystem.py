@@ -27,7 +27,10 @@ class EthereumTransactionSystem(TransactionSystem):
 
         # FIXME: Passing private key all around might be a security issue.
         #        Proper account managment is needed.
-        self.__node_address_raw = privtoaddr(node_priv_key)
+        try:
+            self.__node_address_raw = privtoaddr(node_priv_key)
+        except AssertionError:
+            raise ValueError("not a valid private key")
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         self.__eth_node = self.incomes_keeper.eth_node = Client(datadir)
