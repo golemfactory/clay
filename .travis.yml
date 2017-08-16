@@ -37,3 +37,15 @@ script:
 
 after_success:
   - python3 -m codecov
+  
+before_deploy:  
+  - sudo -HE python3 setup.py release
+
+deploy:
+  provider: releases
+  api-key: "GITHUB OAUTH TOKEN"
+  file_glob: true
+  file: dist/*.tar.gz
+  skip_cleanup: true
+  on:
+    tags: true

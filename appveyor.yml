@@ -103,3 +103,23 @@ after_test:
 on_finish:
   - ps: Stop-Process -Id $IPFSProcess.Id
   - ps: Stop-Process -Id $HyperdriveProcess.Id
+
+## DEPLOYMENT
+before_deploy:
+  - pip install -r requirements-winpackager.txt
+  - python setup.py pyinstaller
+
+deploy:
+  release: Golem alpha $(appveyor_build_version)
+  description: 'Release description'
+  provider: GitHub
+  auth_token:
+    secure: <your encrypted token>
+  artifact: /dist\/*/
+  draft: false
+  prerelease: false
+  on:
+    branch: develop
+    appveyor_repo_tag: true
+
+## DEPLOYMENT END

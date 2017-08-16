@@ -43,3 +43,11 @@ test:
         timeout: 1200
   post:
     - codecov
+    
+deployment:
+  release:
+    tag: /*.*.*/
+    branch: develop
+    commands:
+      - python3 setup.py release
+      - ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` dist/
