@@ -28,7 +28,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         processor.eth_address.return_value = get_some_id()
         eth_node = mock.MagicMock()
 
-        self.instance = EthereumIncomesKeeper(processor, eth_node)
+        self.instance = EthereumIncomesKeeper(processor)
 
     @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.received')
     def test_received(self, super_received_mock):
@@ -45,7 +45,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.assert_not_called()
 
         # Payment for someone else
-        self.instance.eth_node.get_logs.return_value = [
+        self.instance.processor.get_logs.return_value = [
             {
                 'topics': [
                     EthereumIncomesKeeper.LOG_ID,
@@ -60,7 +60,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
         # Payment for us but value to small
-        self.instance.eth_node.get_logs.return_value.append({
+        self.instance.processor.get_logs.return_value.append({
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
@@ -73,7 +73,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
         # Payment with exact value
-        self.instance.eth_node.get_logs.return_value.append({
+        self.instance.processor.get_logs.return_value.append({
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
@@ -86,7 +86,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         super_received_mock.reset_mock()
 
         # Payment with higher value
-        self.instance.eth_node.get_logs.return_value.append({
+        self.instance.processor.get_logs.return_value.append({
             'topics': [
                 EthereumIncomesKeeper.LOG_ID,
                 get_some_id(),  # sender
@@ -107,7 +107,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'block_number': random.randint(0, int(SQLITE3_MAX_INT / 2)),
             'value': 2147483647,
         }
-        self.instance.eth_node.get_logs.return_value = [
+        self.instance.processor.get_logs.return_value = [
             {
                 'topics': [
                     EthereumIncomesKeeper.LOG_ID,
@@ -130,7 +130,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             'value': SQLITE3_MAX_INT - 1,
         }
 
-        self.instance.eth_node.get_logs.return_value = [
+        self.instance.processor.get_logs.return_value = [
             {
                 'topics': [
                     EthereumIncomesKeeper.LOG_ID,

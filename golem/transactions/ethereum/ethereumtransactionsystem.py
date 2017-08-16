@@ -35,26 +35,22 @@ class EthereumTransactionSystem(TransactionSystem):
         self.__eth_addr = EthereumAddress(node_address)
         log.info("Node Ethereum address: " + self.get_payment_address())
 
-        eth_node = Client(datadir)
         payment_processor = PaymentProcessor(
-            eth_node,
-            node_priv_key,
+            client=Client(datadir),
+            privkey=node_priv_key,
             faucet=True
         )
 
         super(EthereumTransactionSystem, self).__init__(
             incomes_keeper_class=EthereumIncomesKeeper(
-                payment_processor, eth_node)
+                payment_processor)
         )
 
-        self.incomes_keeper.processor.start()
+        self.incomes_keeper.start()
 
     def stop(self):
-        if self.incomes_keeper.processor.running:
-            self.incomes_keeper.processor.stop()
+        self.incomes_keeper.stop()
 
-        if self.incomes_keeper.eth_node.node is not None:
-            self.incomes_keeper.eth_node.node.stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(
@@ -62,7 +58,6 @@ class EthereumTransactionSystem(TransactionSystem):
             **kwargs
         )
         self.incomes_keeper.processor.add(payment)
-        # self.__proc.add(payment)
         return payment
 
     def get_payment_address(self):
@@ -72,7 +67,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def get_balance(self):
         if not self.incomes_keeper.processor.balance_known():
             return None, None, None
-        gnt = self.incomes_keeper.processorgnt_balance()
+        gnt = self.incomes_keeper.processor.gnt_balance()
         av_gnt = self.incomes_keeper.processor._gnt_available()
         eth = self.incomes_keeper.processor.eth_balance()
         return gnt, av_gnt, eth
@@ -82,8 +77,10 @@ class EthereumTransactionSystem(TransactionSystem):
         syncing = True
         while syncing:
             try:
-                # syncing = self.__eth_node.is_syncing()
-                syncing = self.incomes_keeper.eth_node.is_syncing()
+                # syncing = self.__eth_node.is_syncing() # old one
+
+                syncing = self.incomes_keeper.processor._PaymentProcessor__client.is_syncing() # todo GG
+                # syncing = self.incomes_keeper.processor.synchronized()
             except Exception as e:
                 log.error("IPC error: {}".format(e))
                 syncing = False

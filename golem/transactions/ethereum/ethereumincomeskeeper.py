@@ -19,19 +19,26 @@ class EthereumIncomesKeeper(IncomesKeeper):
     # http://www.sqlite.org/datatype3.html
     SQLITE3_MAX_INT = 2**31 - 1
 
-    def __init__(self, processor: PaymentProcessor, eth_node: Client):
+    def __init__(self, processor: PaymentProcessor):
         self.processor = processor
-        self.eth_node = eth_node
+
+    def start(self):
+        self.processor.start()
+
+    def stop(self):
+        self.processor.stop()
 
     def received(self, sender_node_id, task_id, subtask_id, transaction_id,
                  block_number, value):
         my_address = self.processor.eth_address()
         logger.debug('MY ADDRESS: %r', my_address)
-        incomes = self.eth_node.get_logs(
+
+        incomes = self.processor.get_logs(
             from_block=block_number,
             to_block=block_number,
             topics=[self.LOG_ID, None, my_address]
         )
+
         if not incomes:
             logger.error('Transaction not present: %r', transaction_id)
             return

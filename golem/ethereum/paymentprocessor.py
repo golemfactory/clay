@@ -6,6 +6,7 @@ import json
 from ethereum import abi, utils, keys
 from ethereum.transactions import Transaction
 from ethereum.utils import denoms
+from golem.ethereum import Client
 from pydispatch import dispatcher
 
 from golem.model import db, Payment, PaymentStatus
@@ -62,7 +63,7 @@ class PaymentProcessor(Service):
 
     SYNC_CHECK_INTERVAL = 10
 
-    def __init__(self, client, privkey, faucet=False):
+    def __init__(self, client: Client, privkey, faucet=False):
         self.__client = client
         self.__privkey = privkey
         self.__eth_balance = None
@@ -340,6 +341,9 @@ class PaymentProcessor(Service):
             return False
         return True
 
+    def get_logs(self, from_block=None, to_block=None, address=None, topics=None):
+        self.__client.get_logs(from_block=None, to_block=None, address=None, topics=None)
+
     def _run(self):
         if self._waiting_for_faucet:
             return
@@ -354,3 +358,7 @@ class PaymentProcessor(Service):
                 self.sendout()
         finally:
             self._waiting_for_faucet = False
+
+    def stop(self):
+        super(PaymentProcessor, self).stop()
+        Client._kill_node()
