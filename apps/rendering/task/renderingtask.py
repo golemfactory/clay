@@ -164,8 +164,7 @@ class RenderingTask(CoreTask):
     @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         empty_color = (0, 0, 0)
-        if isinstance(self.preview_file_path, list):  # FIXME Add possibility to remove subtask from frame
-            return
+        
         img = self._open_preview()
         self._mark_task_area(self.subtasks_given[subtask_id], img, empty_color)
         img.save(self.preview_file_path, PREVIEW_EXT)
