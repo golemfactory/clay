@@ -114,7 +114,7 @@ deploy:
   description: 'Release description'
   provider: GitHub
   auth_token:
-    secure: %GITHUB_TOKEN_PASSWORD%
+    secure: '%GITHUB_TOKEN_PASSWORD%'
   artifact: /dist\/*/
   draft: false
   prerelease: false
