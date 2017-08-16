@@ -16,7 +16,7 @@ def check_pow(proof, input_data, difficulty):
     sha.update(input_data.encode())
     sha.update(('%x' % proof).encode())
     h = int(sha.hexdigest()[0:8], 16)
-    return h >= 2 ** difficulty
+    return h >= difficulty
 
 
 def find_pow(input_data, difficulty, result_size):

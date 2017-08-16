@@ -13,7 +13,7 @@ class TestDummyTaskVerificator(TempDirFixture):
         assert isinstance(dv.verification_options, dict)
 
     def test_verify_result(self):
-        correct_solution = 0xccb33
+        correct_solution = 0x8e3b3
         temporary = 0
         shared_file = os.path.join(self.tempdir, "input_file.txt")
         with open(shared_file, "w") as f:
