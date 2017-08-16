@@ -1,5 +1,4 @@
 import os
-from unittest.mock import patch
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskDefinition
@@ -50,7 +49,7 @@ class TestDummyTaskVerificator(TempDirFixture):
         subtask_data = {"subtask_data": "0" * 128}
 
         # zero difficulty condition
-        ver.verification_options["difficulty"], temporary  = temporary, ver.verification_options["difficulty"]
+        ver.verification_options["difficulty"], temporary = temporary, ver.verification_options["difficulty"]
         self.assertFalse(ver._verify_result(0, subtask_data, bad_length_result_file, None))
         self.assertTrue(ver._verify_result(0, subtask_data, good_result_file, None))
         self.assertTrue(ver._verify_result(0, subtask_data, bad_num_result_file, None))

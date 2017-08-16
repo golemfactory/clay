@@ -20,7 +20,7 @@ logger = logging.getLogger("apps.dummy")
 
 class DummyTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self, dialog, customizer):
-        super(DummyTaskTypeInfo, self).__init__(
+        super().__init__(
             "Dummy",
             DummyTaskDefinition,
             DummyTaskDefaults(),
@@ -69,10 +69,9 @@ class DummyTask(CoreTask):
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.__get_new_subtask_id()
 
-        # create subtask-specific data, 4 bits go for one char (hex digit)
         sbs = self.task_definition.options.subtask_data_size
-        data = format((random.getrandbits(sbs)), '0{}b'.format(sbs))
-        # now data is in the format "010010111010011...001": str
+        # create subtask-specific data, 4 bits go for one char (hex digit)
+        data = "{:128x}".format(random.getrandbits(sbs * 4))
 
         shared_data_files_base = [os.path.basename(x) for x in
                                   self.task_definition.shared_data_files]
@@ -84,7 +83,6 @@ class DummyTask(CoreTask):
             'result_size': self.task_definition.result_size,
             'result_file': self.__get_result_file_name(subtask_id),
             'subtask_data_size': sbs,
-            'code_dir': self.task_definition.code_dir
         }
 
         return self._new_compute_task_def(subtask_id,
@@ -109,13 +107,17 @@ class DummyTask(CoreTask):
 
     # FIXME quite tricky to know that this method should be overwritten
     def accept_results(self, subtask_id, result_files):
+        if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
+            raise Exception("Task already accepted")
+
         super().accept_results(subtask_id, result_files)
-        self.num_tasks_received += 1
         self.counting_nodes[
-            self.subtasks_given[subtask_id]['node_id']].accept()
+            self.subtasks_given[subtask_id]['node_id']
+        ].accept()
+        self.num_tasks_received += 1
 
     def __get_new_subtask_id(self) -> str:
-        return "{}".format(str(random.getrandbits(128)))
+        return "{:32x}".format(random.getrandbits(128))
 
     def __get_result_file_name(self, subtask_id: str) -> str:
         return "{}{}{}".format(self.task_definition.out_file_basename,
@@ -131,7 +133,7 @@ class DummyTaskBuilder(CoreTaskBuilder):
 
     # TODO types should be somehow validated here
     @classmethod
-    def build_dictionary(cls, definition):
+    def build_dictionary(cls, definition: DummyTaskDefinition):
         dictionary = super().build_dictionary(definition)
         opts = dictionary['options']
 
@@ -141,7 +143,7 @@ class DummyTaskBuilder(CoreTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
+    def build_full_definition(cls, task_type: DummyTaskTypeInfo, dictionary):
         opts = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
