@@ -285,7 +285,8 @@ def file_name():
     if commit_id != tag_id:  # devel package
         return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name,
                                                          commit_id[:4],
-                                                         commit_id[-4:], plat)
+                                                         commit_id[-4:],
+                                                         plat)
     else:  # release package
         return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
 
