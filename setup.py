@@ -80,15 +80,6 @@ setup(
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
             path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
         ]),
-        (path.normpath('../../golem/gui/view/'), [
-            path.normpath('gui/view/nopreview.png')
-        ]),
-        (path.normpath('../../golem/gui/view/img'), [
-            path.normpath('gui/view/img/' + f) for f in [
-                'favicon-256x256.png', 'favicon-48x48.png', 'favicon-32x32.png',
-                'settings.png', 'task.png', 'user.png', 'new.png', 'eye.png'
-            ]
-        ]),
     ]
 )
 

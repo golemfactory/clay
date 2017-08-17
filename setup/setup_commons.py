@@ -8,7 +8,6 @@ from setuptools import find_packages, Command
 from setuptools.command.test import test
 
 from golem.core.common import get_golem_path, is_windows, is_osx, is_linux
-from gui.view.generateui import generate_ui_files
 
 
 class PyTest(test):
@@ -172,7 +171,7 @@ def get_long_description(my_path):
 def find_required_packages():
     if platform.startswith('darwin'):
         return find_packages(exclude=['examples', 'tests'])
-    return find_packages(include=['golem*', 'apps*', 'gui*'])
+    return find_packages(include=['golem*', 'apps*'])
 
 
 def parse_requirements(my_path):
@@ -201,21 +200,6 @@ def print_errors(*errors):
     for error in errors:
         if error:
             print(error)
-
-
-def generate_ui():
-    try:
-        generate_ui_files()
-    except EnvironmentError as err:
-        return \
-            """
-            ***************************************************************
-            Generating UI elements was not possible.
-            Golem will work only in command line mode.
-            Generate_ui_files function returned {}
-            ***************************************************************
-            """.format(err)
-
 
 def update_variables():
     import re
