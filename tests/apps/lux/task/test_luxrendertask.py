@@ -309,7 +309,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
 class TestLuxRenderTaskTypeInfo(TempDirFixture):
     def test_init(self):
-        typeinfo = LuxRenderTaskTypeInfo("dialog", "controller")
+        typeinfo = LuxRenderTaskTypeInfo()
         assert isinstance(typeinfo, TaskTypeInfo)
         assert typeinfo.output_formats == ["EXR", "PNG", "TGA"]
         assert typeinfo.output_file_ext == ["lxs"]
@@ -318,11 +318,9 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         assert typeinfo.options == LuxRenderOptions
         assert typeinfo.definition == RenderingTaskDefinition
         assert typeinfo.task_builder_type == LuxRenderTaskBuilder
-        assert typeinfo.dialog == "dialog"
-        assert typeinfo.dialog_controller == "controller"
 
     def test_get_task_border(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (4, 4)
         border = typeinfo.get_task_border("subtask1", definition, 10)
@@ -393,7 +391,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
         assert typeinfo.get_task_border("subtask1", definition, 10) == []
 
     def test_task_border_path(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (300, 200)
         border = typeinfo.get_task_border("subtask1", definition, 10,
@@ -410,7 +408,7 @@ class TestLuxRenderTaskTypeInfo(TempDirFixture):
                                         as_path=True) == []
         
     def test_get_task_num_from_pixels(self):
-        typeinfo = LuxRenderTaskTypeInfo(None, None)
+        typeinfo = LuxRenderTaskTypeInfo()
         definition = RenderingTaskDefinition()
         definition.resolution = (0, 0)
         assert typeinfo.get_task_num_from_pixels(10, 10, definition, 10) == 1
@@ -448,7 +446,7 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
 
         dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
         definition = LuxRenderTaskBuilder.build_definition(
-            LuxRenderTaskTypeInfo(None, None), dictionary
+            LuxRenderTaskTypeInfo(), dictionary
         )
 
         assert definition.task_id == dictionary['id']

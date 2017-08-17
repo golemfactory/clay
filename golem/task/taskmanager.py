@@ -57,7 +57,7 @@ class TaskManager(TaskEventListener):
         self.apps_manager.load_apps()
 
         apps = list(self.apps_manager.apps.values())
-        task_types = [app.task_type_info(None, app.controller) for app in apps]
+        task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
         self.node_name = node_name
