@@ -87,10 +87,8 @@ if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
     DockerManager.pull_images()
 
-if not (building_wheel or building_binary):
-    ui_err = generate_ui()
-elif building_wheel:
+if building_wheel:
     move_wheel()
 
 
-print_errors(ui_err, task_collector_err)
+print_errors(task_collector_err)
