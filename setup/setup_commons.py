@@ -61,7 +61,7 @@ class PyInstaller(Command):
 
         for spec in ['golemapp.spec', 'golemcli.spec']:
             cls.banner("Building {}".format(spec))
-            subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', '-F', spec])
+            subprocess.check_call(['python', '-m', 'PyInstaller', '--clean', '--win-private-assemblies', spec])
 
         print("> Copying taskcollector")
         cls.copy_taskcollector(dist_dir)
@@ -229,6 +229,7 @@ def update_variables():
         f_.write(variables)
 
 
+# @todo do we really need it?
 def move_wheel():
     from shutil import move
     path_ = path.join(get_golem_path(), 'dist')
@@ -283,12 +284,12 @@ def file_name():
     else:
         raise SystemError("Incorrect platform: {}".format(platform))
     if commit_id != tag_id:  # devel package
-        return "golem-{}-0x{}{}-cp27-none-{}.whl".format(tag.name,
+        return "golem-{}-0x{}{}-cp35-none-{}.whl".format(tag.name,
                                                          commit_id[:4],
                                                          commit_id[-4:],
                                                          plat)
     else:  # release package
-        return "golem-{}-cp27-none-{}.whl".format(tag.name, plat)
+        return "golem-{}-cp35-none-{}.whl".format(tag.name, plat)
 
 
 def get_files():
