@@ -325,6 +325,7 @@ class PaymentProcessor(Service):
 
     def get_ether_from_faucet(self):
         if self.__faucet and self.eth_balance(True) < 10**15:
+            log.info("Requesting tETH")
             addr = self.raw_address(self.__privkey)
             ropsten_faucet_donate(addr)
             return False
