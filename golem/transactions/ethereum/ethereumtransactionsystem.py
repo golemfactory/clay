@@ -33,6 +33,10 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
 
         self.__eth_addr = EthereumAddress(node_address)
+        if self.get_payment_address() is None:
+            raise ValueError("Invalid Ethereum address constructed '{}'"
+                             .format(node_address))
+
         log.info("Node Ethereum address: " + self.get_payment_address())
 
         payment_processor = PaymentProcessor(
@@ -50,7 +54,6 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def stop(self):
         self.incomes_keeper.stop()
-
 
     def add_payment_info(self, *args, **kwargs):
         payment = super(EthereumTransactionSystem, self).add_payment_info(
@@ -79,7 +82,8 @@ class EthereumTransactionSystem(TransactionSystem):
             try:
                 # syncing = self.__eth_node.is_syncing() # old one
 
-                syncing = self.incomes_keeper.processor._PaymentProcessor__client.is_syncing() # todo GG
+                syncing = self.incomes_keeper.processor.\
+                    _PaymentProcessor__client.is_syncing()  # todo GG
                 # syncing = self.incomes_keeper.processor.synchronized()
             except Exception as e:
                 log.error("IPC error: {}".format(e))
