@@ -81,6 +81,16 @@ class PaymentProcessor(Service):
         self.load_from_db()
         super(PaymentProcessor, self).__init__(13)
 
+    def __check(self):
+            peers = self.__client.get_peer_count()
+            log.info("Peer count: {}".format(peers))
+            if peers == 0:
+                return False
+            if self.__client.is_syncing():
+                log.info("Node is syncing...")
+                return False
+            return True
+
     def synchronized(self):
         """ Checks if the Ethereum node is in sync with the network."""
 
@@ -91,21 +101,13 @@ class PaymentProcessor(Service):
             return self.__sync
         self.__last_sync_check = time.time()
 
-        def check():
-            peers = self.__client.get_peer_count()
-            log.info("Peer count: {}".format(peers))
-            if peers == 0:
-                return False
-            if self.__client.is_syncing():
-                log.info("Node is syncing...")
-                return False
-            return True
+
 
         # TODO: This can be improved now because we use Ethereum Ropsten.
         # Normally we should check the time of latest block, but Golem testnet
         # does not produce block regularly. The workaround is to wait for 2
         # confirmations.
-        if not check():
+        if not self.__check():
             # Reset both sync flags. We have to start over.
             self.__temp_sync = False
             self.__sync = False

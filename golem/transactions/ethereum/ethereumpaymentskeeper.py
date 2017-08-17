@@ -29,20 +29,6 @@ class EthereumAddress(object):
     """ Keeps information about ethereum addresses in normalized format
     """
 
-    # @classmethod
-    # def from_priv_key(cls, priv_key):
-    #     obj = cls()
-    #     from ethereum.utils import privtoaddr
-    #     address_raw = privtoaddr(priv_key)
-    #     obj.address = obj.__parse(address_raw)
-    #     return obj
-    #
-    # @classmethod
-    # def from_spam_and_eggs(cls, spam, eggs):
-    #     obj = cls()
-    #     obj.spam, obj.eggs = spam, eggs
-    #     return obj
-
     @classmethod
     def __parse(cls, address):
         if len(address) in range(40, 51):

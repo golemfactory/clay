@@ -80,11 +80,7 @@ class EthereumTransactionSystem(TransactionSystem):
         syncing = True
         while syncing:
             try:
-                # syncing = self.__eth_node.is_syncing() # old one
-
-                syncing = self.incomes_keeper.processor.\
-                    _PaymentProcessor__client.is_syncing()  # todo GG
-                # syncing = self.incomes_keeper.processor.synchronized()
+                syncing = self.incomes_keeper.processor.synchronized()
             except Exception as e:
                 log.error("IPC error: {}".format(e))
                 syncing = False

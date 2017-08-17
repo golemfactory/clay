@@ -1,4 +1,4 @@
-from mock import patch, MagicMock, Mock
+from mock import patch, MagicMock
 
 
 from golem import testutils
@@ -33,14 +33,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
 
-    def test_get_balance(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        assert e.get_balance() == (None, None, None)
-
     @patch('golem.ethereum.paymentprocessor.PaymentProcessor.start')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.sleep')
-    def test_sync(self, sleep, *_):
-
+    def test_sync(self, sleep, *_ ):
         switch_value = [True]
 
         def false():
@@ -56,25 +51,30 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
         sleep.call_count = 0
-        with patch('golem.ethereum.Client.is_syncing', side_effect=false):
+        with patch('golem.ethereum.paymentprocessor.PaymentProcessor.synchronized', side_effect=false):
             e.sync()
             assert sleep.call_count == 1
 
         sleep.call_count = 0
-        with patch('golem.ethereum.Client.is_syncing', side_effect=switch):
+        with patch('golem.ethereum.paymentprocessor.PaymentProcessor.synchronized', side_effect=switch):
             e.sync()
             assert sleep.call_count == 2
 
         sleep.call_count = 0
-        with patch('golem.ethereum.Client.is_syncing', side_effect=error):
+        with patch('golem.ethereum.paymentprocessor.PaymentProcessor.synchronized', side_effect=error):
             e.sync()
             assert sleep.call_count == 0
 
 
+    def test_get_balance(self):
+        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        assert e.get_balance() == (None, None, None)
+
+
     import mock
     @mock.patch('golem.transactions.service.Service.running', new_callable=mock.PropertyMock)
-    def test_stop(self, mock_running):
-        mock_running.return_value = True
+    def test_stop(self, mock_is_service_running):
+        mock_is_service_running.return_value = True
 
         pkg = 'golem.ethereum.'
 
@@ -99,14 +99,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             assert not e.incomes_keeper.processor._PaymentProcessor__client._kill_node.called
             assert not e.incomes_keeper.processor._loopingCall.stop.called
 
-            mock_running.return_value = False
+            mock_is_service_running.return_value = False
             with self.assertRaisesRegexp(RuntimeError, "service not started"):
                 e.stop()
 
             assert not e.incomes_keeper.processor._PaymentProcessor__client._kill_node.called
             assert not e.incomes_keeper.processor._loopingCall.stop.called
 
-            mock_running.return_value = True
+            mock_is_service_running.return_value = True
             e.stop()
 
             assert e.incomes_keeper.processor._PaymentProcessor__client._kill_node.called
