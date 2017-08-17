@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from peewee import IntegrityError
-from golem.model import (Payment, PaymentStatus, ReceivedPayment, LocalRank,
+from golem.model import (Payment, PaymentStatus, LocalRank,
                          GlobalRank, NeighbourLocRank, NEUTRAL_TRUST, Database,
                          TaskPreset)
 from golem.testutils import DatabaseFixture, TempDirFixture
