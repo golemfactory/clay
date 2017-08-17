@@ -14,9 +14,6 @@ directory = path.abspath(path.dirname(__file__))
 requirements, dependencies = parse_requirements(directory)
 task_collector_err = TaskCollectorBuilder().build()
 
-if building_wheel or building_binary:
-    ui_err = generate_ui()
-
 update_variables()
 
 setup(
