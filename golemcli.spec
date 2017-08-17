@@ -12,7 +12,7 @@ a = Analysis(['golemcli.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
              hiddenimports=[],
              excludes=[
-                 'PyQt5', 'sip'
+                 'sip'
              ],
              pathex=[],
              binaries=[],
