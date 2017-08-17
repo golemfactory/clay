@@ -361,4 +361,5 @@ class PaymentProcessor(Service):
 
     def stop(self):
         super(PaymentProcessor, self).stop()
-        Client._kill_node()
+        self.__client._kill_node()
+        # Client._kill_node()
