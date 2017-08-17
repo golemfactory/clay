@@ -12,7 +12,7 @@ class TestGolemApp(TempDirFixture):
     @patch('golemapp.OptNode')
     def test_start_node(self, node_class):
         runner = CliRunner()
-        runner.invoke(start, '--datadir', self.path], catch_exceptions=False)
+        runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         assert node_class.called
 
     @ci_skip
