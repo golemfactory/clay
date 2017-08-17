@@ -13,7 +13,7 @@ from golemapp import start, OptNode
 class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
-        self.args = ['--nogui', '--datadir', self.path]
+        self.args = ['--datadir', self.path]
 
     def tearDown(self):
         super(TestNode, self).tearDown()
