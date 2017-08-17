@@ -1,7 +1,7 @@
 import os
 from mock import patch, Mock
 
-from golem.testutils import TempDirFixture
+from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from apps.core.task.verificator import SubtaskVerificationState
@@ -9,7 +9,14 @@ from apps.lux.task.verificator import LuxRenderVerificator, logger
 from apps.rendering.task.renderingtaskstate import AdvanceRenderingVerificationOptions
 
 
-class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
+
+
+class TestLuxRenderVerificator(TempDirFixture, LogTestCase, PEP8MixIn):
+    PEP8_FILES = [
+        'apps/lux/task/verificator.py',
+    ]
+
+
     def test_check_files(self):
         lrv = LuxRenderVerificator(AdvanceRenderingVerificationOptions)
         lrv._check_files("SUBTASK1", {}, [], Mock())
@@ -49,3 +56,5 @@ class TestLuxRenderVerificator(TempDirFixture, LogTestCase):
         with self.assertLogs(logger, level="INFO"):
             lrv._LuxRenderVerificator__verify_flm_failure("Error in something")
         assert lrv.verification_error
+
+

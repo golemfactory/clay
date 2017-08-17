@@ -2,7 +2,7 @@
 
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/ieb6fm74e0f74qm1?svg=true)](https://ci.appveyor.com/project/golemfactory/golem)
 [![CircleCI](https://circleci.com/gh/golemfactory/golem.svg?style=shield)](https://circleci.com/gh/golemfactory/golem)
-[![Codecov](https://codecov.io/gh/golemfactory/golem/badge.svg)](https://codecov.io/gh/golemfactory/golem)
+[![codecov](https://codecov.io/gh/golemfactory/golem/branch/develop/graph/badge.svg)](https://codecov.io/gh/golemfactory/golem)
 
 The aim of the Golem project is to create a global prosumer market for computing power, in which
 producers may sell spare CPU time of their personal computers and consumers may acquire resources
