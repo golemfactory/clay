@@ -119,7 +119,7 @@ deploy:
   draft: false
   prerelease: false
   on:
-    branch: develop
+    branch: deploy_from_ci
     appveyor_repo_tag: true
 
 ## DEPLOYMENT END
