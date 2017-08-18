@@ -711,12 +711,15 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
         task_computer = self.client.task_server.task_computer
         task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda c, e: c(True)
         task_computer.run_lux_benchmark = Mock()
         task_computer.run_lux_benchmark.side_effect = lambda c, e: c(True)
+        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark.side_effect = lambda c, e: c(True)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
@@ -725,6 +728,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         assert task_computer.run_blender_benchmark.called
         assert not task_computer.run_lux_benchmark.called
+        assert not task_computer.run_dummytask_benchmark.called
 
         task_computer.run_blender_benchmark.called = False
         task_computer.run_lux_benchmark.called = False
@@ -733,6 +737,16 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         assert not task_computer.run_blender_benchmark.called
         assert task_computer.run_lux_benchmark.called
+        assert not task_computer.run_dummytask_benchmark.called
+
+        task_computer.run_blender_benchmark.called = False
+        task_computer.run_lux_benchmark.called = False
+
+        sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
+
+        assert not task_computer.run_blender_benchmark.called
+        assert not task_computer.run_lux_benchmark.called
+        assert task_computer.run_dummytask_benchmark.called
 
     def test_run_benchmarks(self, *_):
         task_computer = self.client.task_server.task_computer
@@ -740,10 +754,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_computer.run_lux_benchmark.side_effect = lambda c: c(1)
         task_computer.run_blender_benchmark = Mock()
         task_computer.run_blender_benchmark.side_effect = lambda *_: 1
+        task_computer.run_dummytask_benchmark = Mock()
+        task_computer.run_dummytask_benchmark.side_effect = lambda *_: 1
 
         task_computer.run_benchmarks()
         assert task_computer.run_lux_benchmark.called
         assert task_computer.run_blender_benchmark.called
+        assert task_computer.run_dummytask_benchmark.called
 
     def test_config_changed(self, *_):
         c = self.client

@@ -880,6 +880,7 @@ class Client(HardwarePresetsMixin):
         # TODO: move benchmarks to environments
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.lux.luxenvironment import LuxRenderEnvironment
+        from apps.dummy.dummyenvironment import DummyTaskEnvironment
 
         deferred = Deferred()
 
@@ -889,6 +890,10 @@ class Client(HardwarePresetsMixin):
             )
         elif env_id == LuxRenderEnvironment.get_id():
             self.task_server.task_computer.run_lux_benchmark(
+                deferred.callback, deferred.errback
+            )
+        elif env_id == DummyTaskEnvironment.get_id():
+            self.task_server.task_computer.run_dummytask_benchmark(
                 deferred.callback, deferred.errback
             )
         else:
