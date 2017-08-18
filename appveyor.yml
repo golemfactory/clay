@@ -49,7 +49,7 @@ install:
 
   # golem-hyperdrive
   - if not exist %DIR_HYPERG% (
-      curl -LfSs -o hyperg.zip https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v%VER_HYPERG%/hyperg_%VER_HYPERG%_windows-x64.zip
+      curl -LfSs -o hyperg.zip https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v%VER_HYPERG%/hyperg_%VER_HYPERG%_windows-x64.zip &&
       7z x hyperg.zip -y -aoa -oC:\ > NUL
     )
 
