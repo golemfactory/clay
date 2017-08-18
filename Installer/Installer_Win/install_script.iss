@@ -51,6 +51,9 @@ Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Enviro
 ; Add HyperG to the PATH
 Root: "HKLM64"; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "PATH"; ValueData: "{olddata};{pf}\HyperG"; Check: NeedsAddPath('HyperG');
 
+[Setup]
+AlwaysRestart = yes
+
 ; @todo do we need any more languages? It can be confusing
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
