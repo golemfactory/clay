@@ -89,7 +89,7 @@ class PyInstaller(Command):
         import shutil
 
         taskcollector_dir = path.join('apps', 'rendering', 'resources',
-                                      'taskcollector', 'Release')
+                                      'taskcollector', 'x64' if is_windows() else '', 'Release')
         shutil.copytree(taskcollector_dir,
                         path.join(dist_dir, taskcollector_dir))
 
