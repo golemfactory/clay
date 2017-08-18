@@ -14,21 +14,25 @@ class TestDummyTaskVerificator(TempDirFixture):
     def test_verify_result(self):
         correct_solution = 0x8e3b3
         temporary = 0
-        shared_file = os.path.join(self.tempdir, "input_file.txt")
+        shared_file = os.path.join(self.tempdir, "input_file.result")
         with open(shared_file, "w") as f:
             f.write("AAAA")
 
-        good_result_file = os.path.join(self.tempdir, "good_result_file.txt")
+        good_result_file = os.path.join(self.tempdir, "good_result_file.result")
         with open(good_result_file, "w") as f:
             f.write("%x" % correct_solution)
 
-        bad_length_result_file = os.path.join(self.tempdir, "bad_length_result_file.txt")
+        bad_length_result_file = os.path.join(self.tempdir, "bad_length_result_file.result")
         with open(bad_length_result_file, "w") as f:
             f.write("0xccb330")
 
-        bad_num_result_file = os.path.join(self.tempdir, "bad_num_result_file.txt")
+        bad_num_result_file = os.path.join(self.tempdir, "bad_num_result_file.result")
         with open(bad_num_result_file, "w") as f:
             f.write("%x" % (correct_solution + 1))
+
+        bad_extension_result_file = os.path.join(self.tempdir, "bad_extension_result_file.txt")
+        with open(bad_extension_result_file, "w") as f:
+            f.write("%x" % (correct_solution))
 
         dd = DummyTaskDefaults()
         dd.result_size = 5
@@ -41,10 +45,11 @@ class TestDummyTaskVerificator(TempDirFixture):
 
         assert isinstance(dt.verificator, DummyTaskVerificator)
         assert isinstance(ver_opts, dict)
-        assert set(ver_opts.keys()) == {"difficulty", "shared_data_files", "result_size"}
+        assert set(ver_opts.keys()) == {"difficulty", "shared_data_files", "result_size", "result_extension"}
         assert ver_opts["difficulty"] == td.options.difficulty
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
+        assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
 
         subtask_data = {"subtask_data": "0" * 128}
 
@@ -52,6 +57,7 @@ class TestDummyTaskVerificator(TempDirFixture):
         ver.verification_options["difficulty"], temporary = temporary, ver.verification_options["difficulty"]
         self.assertFalse(ver._verify_result(0, subtask_data, bad_length_result_file, None))
         self.assertTrue(ver._verify_result(0, subtask_data, good_result_file, None))
+        self.assertFalse(ver._verify_result(0, subtask_data, bad_extension_result_file, None))
         self.assertTrue(ver._verify_result(0, subtask_data, bad_num_result_file, None))
         ver.verification_options["difficulty"], temporary = temporary, ver.verification_options["difficulty"]
 
@@ -60,7 +66,7 @@ class TestDummyTaskVerificator(TempDirFixture):
 
         # non-existing file
         with self.assertRaises(IOError):
-            ver._verify_result(0, subtask_data, "non/non/nonfile", None)
+            ver._verify_result(0, subtask_data, "non/non/nonfile.result", None)
 
         # good result
         assert ver._verify_result(0, subtask_data, good_result_file, None)

@@ -36,7 +36,7 @@ class ClientConfigDescriptor(object):
         self.estimated_performance = 0.0
         self.estimated_lux_performance = 0.0
         self.estimated_blender_performance = 0.0
-        self.estimated_dummy_performance = 0.0
+        self.estimated_dummytask_performance = 0.0
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
         self.max_results_sending_delay = 0.0

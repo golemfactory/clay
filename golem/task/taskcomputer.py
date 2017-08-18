@@ -8,10 +8,12 @@ from pydispatch import dispatcher
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder
+from apps.core.benchmark.benchmarkrunner import BenchmarkRunner, CoreBenchmark
 from apps.core.task.coretaskstate import TaskDesc
+from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
+from apps.dummy.task.dummytask import DummyTaskBuilder
 from apps.lux.benchmark.benchmark import LuxBenchmark
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder
-from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from golem.core.common import deadline_to_timeout, to_unicode
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.manager import DockerManager
@@ -43,7 +45,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_machine_manager=True):
+    def __init__(self, node_name, task_server: 'TaskServer', use_docker_machine_manager=True):
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -76,18 +78,22 @@ class TaskComputer(object):
         try:
             lux_perf = float(task_server.config_desc.estimated_lux_performance)
             blender_perf = float(task_server.config_desc.estimated_blender_performance)
+            dummytask_perf = float(task_server.config_desc.estimated_dummytask_performance)
         except:
             lux_perf = 0
             blender_perf = 0
-        
-        if int(lux_perf) == 0 or int(blender_perf) == 0:
+            dummytask_perf = 0
+
+        if int(lux_perf) == 0 \
+                or int(blender_perf) == 0 \
+                or int(dummytask_perf) == 0:
             run_benchmarks = True
         else:
             run_benchmarks = False
 
         self.use_docker_machine_manager = use_docker_machine_manager
         self.change_config(task_server.config_desc,
-                           in_background=False, 
+                           in_background=False,
                            run_benchmarks=run_benchmarks)
 
         self.stats = IntStatsKeeper(CompStats)
@@ -173,7 +179,7 @@ class TaskComputer(object):
         with self.lock:
             try:
                 self.current_computations.remove(task_thread)
-            except ValueError: # not in list
+            except ValueError:  # not in list
                 pass
 
         time_ = task_thread.end_time - task_thread.start_time
@@ -241,7 +247,7 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks
         self.change_docker_config(config_desc, run_benchmarks, in_background)
-    
+
     def _validate_task_state(self, task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
@@ -249,7 +255,8 @@ class TaskComputer(object):
             return False
         return True
 
-    def run_benchmark(self, benchmark, task_builder, datadir, node_name, success_callback, error_callback):
+    # TODO change the way benchmarks are run
+    def run_benchmark(self, benchmark: CoreBenchmark, task_builder, datadir, node_name, success_callback, error_callback):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
@@ -306,14 +313,38 @@ class TaskComputer(object):
         self.run_benchmark(blender_benchmark, blender_builder, datadir,
                            node_name, success_callback, error_callback)
 
+    def run_dummytask_benchmark(self, success=None, error=None):
+
+        def success_callback(performance):
+            cfg_desc = client.config_desc
+            cfg_desc.estimated_dummytask_performance = performance
+            client.change_config(cfg_desc)
+            self.config_changed()
+            if success:
+                success(performance)
+
+        def error_callback(err_msg):
+            logger.error("Unable to run dummytask benchmark: {}".format(err_msg))
+            if error:
+                error(to_unicode(err_msg))
+
+        client = self.task_server.client
+        node_name = client.get_node_name()
+        datadir = client.datadir
+        dummy_benchmark = DummyTaskBenchmark()
+        dummy_builder = DummyTaskBuilder
+        self.run_benchmark(dummy_benchmark , dummy_builder, datadir,
+                           node_name, success_callback, error_callback)
+
     def run_benchmarks(self):
         # Blender benchmark ran only if lux completed successfully
         self.run_lux_benchmark(lambda _: self.run_blender_benchmark())
+        self.run_dummytask_benchmark()
 
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
-        
+
     def change_docker_config(self, config_desc, run_benchmarks, in_background=True):
         dm = self.docker_manager
         dm.build_config(config_desc)
@@ -321,7 +352,7 @@ class TaskComputer(object):
         if not dm.docker_machine and run_benchmarks:
             self.run_benchmarks()
             return
-        
+
         if dm.docker_machine and self.use_docker_machine_manager:
 
             self.lock_config(True)
@@ -456,4 +487,3 @@ class PyTestTaskThread(PyTaskThread):
         super(PyTestTaskThread, self).__init__(task_computer, subtask_id, working_directory, src_code, extra_data,
                                                short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()
-

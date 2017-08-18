@@ -44,7 +44,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         assert ver_opts["difficulty"] == td.options.difficulty
         assert ver_opts["shared_data_files"] == td.shared_data_files
         assert ver_opts["result_size"] == td.result_size
-
+        assert ver_opts["result_extension"] == DummyTask.RESULT_EXTENSION
     def test_new_subtask_id(self):
         dt, td = self._get_new_dummy()
         new_id = dt._DummyTask__get_new_subtask_id()
@@ -60,10 +60,12 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     @patch("random.getrandbits", lambda x: 0)
     def test_query_extra_data_for_test_task(self):
-        dt, _ = self._get_new_dummy()
+        dt, td = self._get_new_dummy()
         data1 = dt.query_extra_data_for_test_task()
         data2 = dt._extra_data()
         data1.deadline = data2.deadline = 0
+        assert data1.extra_data["subtask_data"] == DummyTask.TESTING_CHAR * td.options.subtask_data_size
+        data1.extra_data["subtask_data"] = data2.extra_data["subtask_data"] = ""
         assert data1.__dict__ == data2.__dict__
 
     def test_extra_data(self):

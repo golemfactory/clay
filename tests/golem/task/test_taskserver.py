@@ -591,7 +591,7 @@ class TestTaskServer(TestWithKeysAuth, LogTestCase, testutils.DatabaseFixture):
         ccd.root_path = self.path
         ccd.estimated_lux_performance = 2000.0
         ccd.estimated_blender_performance = 2000.0
-        ccd.estimated_dummy_performance = 2000.0
+        ccd.estimated_dummytask_performance = 2000.0
         return ccd
 
     def test_should_accept_provider(self):

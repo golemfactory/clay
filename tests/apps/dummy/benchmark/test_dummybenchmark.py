@@ -2,16 +2,16 @@ import os
 import tempfile
 import unittest
 
-from apps.dummy.benchmark.benchmark import DummyBenchmark
+from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
 
 
 class TestDummyBenchmark(unittest.TestCase):
     def setUp(self):
-        self.db = DummyBenchmark()
+        self.db = DummyTaskBenchmark()
 
     def test_is_instance(self):
-        self.assertIsInstance(self.db, DummyBenchmark)
+        self.assertIsInstance(self.db, DummyTaskBenchmark)
         self.assertIsInstance(self.db.task_definition, DummyTaskDefinition)
         self.assertIsInstance(self.db.task_definition.options, DummyTaskOptions)
 

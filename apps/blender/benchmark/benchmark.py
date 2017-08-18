@@ -11,7 +11,7 @@ from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 class BlenderBenchmark(RenderingBenchmark):
     def __init__(self):
         super(BlenderBenchmark, self).__init__()
-        self.normalization_constant = 9360
+        self._normalization_constant = 9360
         if hasattr(sys, 'frozen') and sys.frozen:
             self.blender_task_path = join(dirname(sys.executable),
                                           'examples', 'blender')

@@ -1,16 +1,35 @@
+import abc
 import logging
-import time
 
+from apps.core.task.coretaskstate import TaskDefinition
 from golem.task.localcomputer import LocalComputer
+from golem.task.taskbase import Task
 
 logger = logging.getLogger("apps.core")
+
+
+class CoreBenchmark(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def normalization_constant(self) -> float:
+        pass
+
+    @property
+    @abc.abstractmethod
+    def task_definition(self) -> TaskDefinition:
+        pass
+
+    # argument is a list of files produced in computation (logs and outputs)
+    @abc.abstractmethod
+    def verify_result(self, result_data_path) -> bool:
+        pass
 
 
 class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
-    def __init__(self, task, root_path, success_callback, error_callback, benchmark):
+    def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
         super(BenchmarkRunner, self).__init__(task,
                                               root_path,
                                               success_callback,

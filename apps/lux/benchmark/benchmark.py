@@ -16,7 +16,7 @@ class LuxBenchmark(RenderingBenchmark):
 
         RenderingBenchmark.__init__(self)
 
-        self.normalization_constant = 9910
+        self._normalization_constant = 9910
 
         if hasattr(sys, 'frozen') and sys.frozen:
             self.lux_task_path = join(dirname(sys.executable),

@@ -1,6 +1,6 @@
 import os
 
-from apps.core.task.verificator import CoreVerificator, SubtaskVerificationState
+from apps.core.task.verificator import CoreVerificator
 from apps.dummy.resources.code_dir import computing
 
 
@@ -12,6 +12,11 @@ class DummyTaskVerificator(CoreVerificator):
     # subtask_info is what sits in the task.subtasks_given[subtask_id"]
     # it is set in the query_extra_data
     def _verify_result(self, _subtask_id, subtask_info, file, _task):
+
+        root, ext = os.path.splitext(file)
+        ext = ext.lower()
+        if ext != self.verification_options["result_extension"]:
+            return False
 
         with open(file, "r") as f:
             result_data = f.read()

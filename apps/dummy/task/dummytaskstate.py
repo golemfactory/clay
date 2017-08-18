@@ -44,6 +44,7 @@ class DummyTaskDefaults(TaskDefaults):
 
 
 class DummyTaskDefinition(TaskDefinition):
+
     def __init__(self, defaults=None):
         TaskDefinition.__init__(self)
 

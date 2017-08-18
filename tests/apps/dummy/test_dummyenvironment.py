@@ -16,7 +16,7 @@ class TestDummyEnvironment(unittest.TestCase):
         env = DummyTaskEnvironment()
         perf = 1234.5
         cfg_desc = ClientConfigDescriptor()
-        cfg_desc.estimated_dummy_performance = perf
+        cfg_desc.estimated_dummytask_performance = perf
         result = env.get_performance(cfg_desc)
         self.assertTrue(result == perf)
 
