@@ -82,8 +82,6 @@ class TaskManager(TaskEventListener):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        # resource_manager = OpenStackSwiftResourceManager(self.dir_manager,
-        #                                                  resource_dir_method=self.dir_manager.get_task_temporary_dir)
         resource_manager = HyperdriveResourceManager(self.dir_manager,
                                                      resource_dir_method=self.dir_manager.get_task_temporary_dir)
         self.task_result_manager = EncryptedResultPackageManager(resource_manager)
