@@ -49,8 +49,8 @@ install:
 
   # golem-hyperdrive
   - if not exist %DIR_HYPERG% (
-      appveyor DownloadFile https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v%VER_HYPERG%/hyperg_%VER_HYPERG%_windows-x64.zip
-      7z x hyperg_%VER_HYPERG%_windows-x64.zip -y -aoa -oC:\ > NUL
+      curl -LfSs -o hyperg.zip https://github.com/mfranciszkiewicz/golem-hyperdrive/releases/download/v%VER_HYPERG%/hyperg_%VER_HYPERG%_windows-x64.zip
+      7z x hyperg.zip -y -aoa -oC:\ > NUL
     )
 
   - ps: $HyperdriveProcess = Start-Process %DIR_HYPERG%\hyperg.exe -PassThru
