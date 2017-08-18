@@ -79,5 +79,5 @@ def tee_target(prefix, proc, path):
             for stream_prefix, in_, out in channels:
                 line = in_.readline()
                 if line:
-                    out.write(prefix + line)
-                    log_f.write(stream_prefix + line)
+                    out.write(prefix + str(line))
+                    log_f.write(stream_prefix + str(line))
