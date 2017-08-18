@@ -106,5 +106,6 @@ class DummyTaskOptions(Options):
         # The difficulty is a 4 byte int; 0xffffffff is the greatest
         # and 0x00000000 is the least difficulty.
         # For example difficulty 0xffff0000 requires
-        # 0xffffffff / (0xffffffff - 0xffff0000) = 65537 hash computations on average.
+        # 0xffffffff /(0xffffffff - 0xffff0000) = 65537
+        # hash computations on average.
         self.difficulty = 0xffff0000

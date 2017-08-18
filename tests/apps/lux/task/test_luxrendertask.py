@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 import unittest
@@ -19,6 +20,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import is_linux
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ComputeTaskDef
+from golem.task.taskstate import SubtaskStatus
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -175,11 +177,14 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask.subtasks_given["SUBTASK1"] = {
             "start_task": 1,
             "node_id": "NODE_1",
+            "status": SubtaskStatus.downloading
         }
+
         log_file = self.temp_file_name("stdout.log")
 
         luxtask._accept_client("NODE_1")
         luxtask.accept_results("SUBTASK1", [img_file, flm_file, log_file])
+
 
         assert luxtask.subtasks_given["SUBTASK1"]['preview_file'] == img_file
         assert os.path.isfile(luxtask.preview_file_path)

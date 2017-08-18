@@ -31,7 +31,7 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
         )
 
 
-@enforce.runtime_validation
+@enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFICATOR_CLASS = DummyTaskVerificator
@@ -77,12 +77,12 @@ class DummyTask(CoreTask):
                                   self.task_definition.shared_data_files]
 
         extra_data = {
-            'data_files': shared_data_files_base,
-            'subtask_data': data,
-            'difficulty': self.task_definition.options.difficulty,
-            'result_size': self.task_definition.result_size,
-            'result_file': self.__get_result_file_name(subtask_id),
-            'subtask_data_size': sbs,
+            "data_files": shared_data_files_base,
+            "subtask_data": data,
+            "difficulty": self.task_definition.options.difficulty,
+            "result_size": self.task_definition.result_size,
+            "result_file": self.__get_result_file_name(subtask_id),
+            "subtask_data_size": sbs,
         }
 
         return self._new_compute_task_def(subtask_id,
@@ -99,16 +99,17 @@ class DummyTask(CoreTask):
         sid = ctd.subtask_id
 
         self.subtasks_given[sid] = ctd.extra_data
-        self.subtasks_given[sid]['status'] = SubtaskStatus.starting
-        self.subtasks_given[sid]['perf'] = perf_index
-        self.subtasks_given[sid]['node_id'] = node_id
+        self.subtasks_given[sid]["status"] = SubtaskStatus.starting
+        self.subtasks_given[sid]["perf"] = perf_index
+        self.subtasks_given[sid]["node_id"] = node_id
 
         return self.ExtraData(ctd=ctd)
 
     # FIXME quite tricky to know that this method should be overwritten
     def accept_results(self, subtask_id, result_files):
-        if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
-            raise Exception("Task already accepted")
+        # TODO maybe move it to the base method
+        if self.subtasks_given[subtask_id]["status"] == SubtaskStatus.finished:
+            raise Exception("Subtask {} already accepted".format(subtask_id))
 
         super().accept_results(subtask_id, result_files)
         self.counting_nodes[
@@ -137,21 +138,21 @@ class DummyTaskBuilder(CoreTaskBuilder):
         dictionary = super().build_dictionary(definition)
         opts = dictionary['options']
 
-        opts['subtask_data_size'] = int(definition.options.subtask_data_size)
-        opts['difficulty'] = int(definition.options.difficulty)
+        opts["subtask_data_size"] = int(definition.options.subtask_data_size)
+        opts["difficulty"] = int(definition.options.difficulty)
 
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type: DummyTaskTypeInfo, dictionary):
         # dictionary comes from GUI
-        opts = dictionary['options']
+        opts = dictionary["options"]
 
         definition = super().build_full_definition(task_type, dictionary)
 
-        sbs = opts.get('subtask_data_size',
+        sbs = opts.get("subtask_data_size",
                        definition.options.subtask_data_size)
-        difficulty = opts.get('difficulty',
+        difficulty = opts.get("difficulty",
                               definition.options.difficulty)
 
         if not isinstance(sbs, int):
@@ -164,9 +165,13 @@ class DummyTaskBuilder(CoreTaskBuilder):
         if difficulty < 0:
             raise Exception("Difficulty should be greater than 0")
         if difficulty >= 16 ** 8:
-            raise Exception("Difficulty should be smaller than {}".format(16 ** 8))
+            raise Exception("Difficulty should be < {}".format(16 ** 8))
 
         definition.options.difficulty = difficulty
         definition.options.subtask_data_size = sbs
 
         return definition
+
+
+# comment that line to enable type checking
+enforce.config({'groups': {'set': {'dummy': False}}})

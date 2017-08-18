@@ -440,6 +440,31 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c._mark_subtask_failed("subtask1")
         assert c._accept_client("Node 1") == AcceptClientVerdict.REJECTED
 
+    def test_accept_results(self):
+        c = self._get_core_task()
+
+        c.subtasks_given["SUBTASK1"] = {}
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.finished
+        }
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.finished
+        }
+        with self.assertRaises(Exception):
+            c.accept_results("SUBTASK1", None)
+
+        # this one should be ok
+        c.subtasks_given["SUBTASK1"] = {
+            "status": SubtaskStatus.downloading
+        }
+        c.accept_results("SUBTASK1", None)
+
     def test_create_path_in_load_task_result(self):
         c = self._get_core_task()
         assert not os.path.isdir(os.path.join(c.tmp_dir, "subtask1"))
@@ -465,7 +490,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd.performance == perf_index
         assert ctd.working_directory == working_directory
         assert ctd.docker_images == c.header.docker_images
-        assert ctd.deadline == timeout_to_deadline(c.header.subtask_timeout)
         assert ctd.task_owner == c.header.task_owner
         assert ctd.environment == c.header.environment
 

@@ -14,7 +14,7 @@ class TestDummyTaskDefaults(TestCase):
         assert isinstance(td, DummyTaskDefaults)
         assert isinstance(td.options, DummyTaskOptions)
         assert td.options.subtask_data_size == 128
-        assert td.options.difficulty == 10
+        assert td.options.difficulty == 0xffff0000
 
         assert td.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
         assert td.result_size == 256
@@ -29,7 +29,7 @@ class TestDummyTaskOptions(TestCase):
         assert isinstance(opts, DummyTaskOptions)
         assert isinstance(opts.environment, DummyTaskEnvironment)
         assert opts.subtask_data_size == 128
-        assert opts.difficulty == 10
+        assert opts.difficulty == 0xffff0000
 
 
 class TestDummyTaskStateStyle(TestCase, PEP8MixIn):
@@ -51,7 +51,7 @@ class TestDummyTaskDefinition(TempDirFixture):
         defaults = DummyTaskDefaults()
         tdd = DummyTaskDefinition(defaults)
         assert tdd.options.subtask_data_size == 128
-        assert tdd.options.difficulty == 10
+        assert tdd.options.difficulty == 0xffff0000
         assert tdd.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
         for c in ls_R(tdd.code_dir):
             assert os.path.isfile(c)

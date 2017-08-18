@@ -3,7 +3,6 @@ import copy
 import logging
 import os
 import uuid
-
 from enum import Enum
 from typing import Type
 
@@ -19,14 +18,11 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import Environment
 from golem.network.p2p.node import Node
-from golem.resource.dirmanager import DirManager
 from golem.resource.resource import prepare_delta_zip, TaskResourceHeader
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     ResourceType, ComputeTaskDef, TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-
-from functools import wraps
 
 logger = logging.getLogger("apps.core")
 
@@ -90,10 +86,10 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 
 class CoreTask(Task):
-    VERIFICATOR_CLASS = CoreVerificator # type: Type[CoreVerificator]
+    VERIFICATOR_CLASS = CoreVerificator  # type: Type[CoreVerificator]
 
     # TODO maybe @abstract @property?
-    ENVIRONMENT_CLASS = None # type: Type[Environment]
+    ENVIRONMENT_CLASS = None  # type: Type[Environment]
 
     handle_key_error = HandleKeyError(log_key_error)
 
@@ -145,7 +141,6 @@ class CoreTask(Task):
         elif isinstance(self.environment, DockerEnvironment):
             docker_images = self.environment.docker_images
 
-
         th = TaskHeader(
             node_name=node_name,
             task_id=task_definition.task_id,
@@ -185,7 +180,6 @@ class CoreTask(Task):
         self.verificator = self.VERIFICATOR_CLASS()
         self.max_pending_client_results = max_pending_client_results
 
-
     def is_docker_task(self):
         return hasattr(self.header, 'docker_images') \
                and self.header.docker_images \
@@ -219,7 +213,23 @@ class CoreTask(Task):
             self.computation_failed(subtask_id)
 
     def accept_results(self, subtask_id, result_files):
-        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.finished
+        subtask = self.subtasks_given[subtask_id]
+        if "status" not in subtask:
+            # logger.warning("Subtask %r hasn't started", subtask_id)
+            raise Exception("Subtask {} hasn't started".format(subtask_id))
+        if subtask.get("status", None) == SubtaskStatus.finished:
+            # logger.warning("Subtask %r already accepted", subtask_id)
+            raise Exception("Subtask {} already accepted".format(subtask_id))
+        if subtask.get("status", None) not in [SubtaskStatus.starting,
+                                               SubtaskStatus.downloading,
+                                               SubtaskStatus.resent,
+                                               SubtaskStatus.finished,
+                                               SubtaskStatus.failure,
+                                               SubtaskStatus.restarted]:
+            # logger.warning("Subtask %r has wrong type", subtask_id)
+            raise Exception("Subtask {} has wrong type".format(subtask_id))
+
+        subtask["status"] = SubtaskStatus.finished
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -279,7 +289,7 @@ class CoreTask(Task):
                 return prepare_delta_zip(dir_name, resource_header, tmp_dir, self.task_resources)
 
             elif resource_type == ResourceType.PARTS:
-                 return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
+                return TaskResourceHeader.build_parts_header_delta_from_chosen(resource_header,
                                                                                dir_name,
                                                                                self.res_files)
             elif resource_type == ResourceType.HASHES:
@@ -472,6 +482,7 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
+
 # TODO test it
 # some of the tests are in the test_luxrendertask.py
 def accepting(query_extra_data_func):
@@ -480,6 +491,7 @@ def accepting(query_extra_data_func):
     :param query_extra_data_func: query_extra_data function from Task
     :return:
     """
+
     def accepting_qed(self,
                       perf_index: float,
                       num_cores=1,
@@ -503,6 +515,7 @@ def accepting(query_extra_data_func):
             return self.ExtraData()
 
         return query_extra_data_func(self, perf_index, num_cores, node_id, node_name)
+
     return accepting_qed
 
 
