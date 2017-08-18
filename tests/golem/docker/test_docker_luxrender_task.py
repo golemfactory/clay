@@ -210,8 +210,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def test_luxrender_real_task_png(self):
         task = self._test_task()
         task.output_format = "png"
-        task.res_y = 200
-        task.res_x = 200
+        task.res_y = 100
+        task.res_x = 100
         task.haltspp = 25
         task.random_crop_window_for_verification = (0.2, 0.4, 0.7, 0.9) # to make it deterministic
 
@@ -220,8 +220,8 @@ class TestDockerLuxrenderTask(TempDirFixture, DockerTestCase):
     def test_luxrender_real_task_exr(self):
         task = self._test_task()
         task.output_format = "exr"
-        task.res_y = 300
-        task.res_x = 300
+        task.res_y = 100
+        task.res_x = 100
         task.haltspp = 25
         task.random_crop_window_for_verification = (0, 1, 0, 1) # to make it deterministic
 

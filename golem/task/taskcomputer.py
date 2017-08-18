@@ -256,7 +256,8 @@ class TaskComputer(object):
         return True
 
     # TODO change the way benchmarks are run
-    def run_benchmark(self, benchmark: CoreBenchmark, task_builder, datadir, node_name, success_callback, error_callback):
+    def run_benchmark(self, benchmark: CoreBenchmark, task_builder, datadir, node_name, success_callback,
+                      error_callback):
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
@@ -333,6 +334,7 @@ class TaskComputer(object):
         datadir = client.datadir
         dummy_benchmark = DummyTaskBenchmark()
 
+        # TODO very ugly, change that while refactoring benchmarks
         class DummyTaskMod(DummyTask):
             def query_extra_data(self, *args, **kwargs):
                 return self.query_extra_data_for_test_task()
@@ -341,7 +343,7 @@ class TaskComputer(object):
             TASK_CLASS = DummyTaskMod
 
         dummy_builder = DummyTaskBuilderMod
-        self.run_benchmark(dummy_benchmark , dummy_builder, datadir,
+        self.run_benchmark(dummy_benchmark, dummy_builder, datadir,
                            node_name, success_callback, error_callback)
 
     def run_benchmarks(self):
